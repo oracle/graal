@@ -635,4 +635,14 @@ public final class JSRegexLexer extends RegexLexer {
         }
         return ret;
     }
+
+    @Override
+    protected boolean parseLiteralStart(char c) {
+        return false;
+    }
+
+    @Override
+    protected boolean parseLiteralEnd(char c) {
+        return false;
+    }
 }

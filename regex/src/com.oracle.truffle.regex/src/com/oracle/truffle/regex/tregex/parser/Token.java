@@ -194,8 +194,6 @@ public class Token implements JsonConvertible {
         return new Quantifier(min, max, greedy, possessive, raw);
     }
 
-    
-
     public static LiteralCharacter createLiteralCharacter(int codePoint) {
         return new LiteralCharacter(codePoint);
     }
@@ -286,7 +284,7 @@ public class Token implements JsonConvertible {
             super(Kind.quantifier);
             this.min = min;
             this.max = max;
-            this.greedy = greedy; 
+            this.greedy = greedy;
             this.possessive = possessive;
             this.raw = raw;
         }

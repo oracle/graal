@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,8 +62,8 @@ import com.oracle.truffle.regex.tregex.parser.flavors.PythonMethod;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
 /**
- * Implements the parsing and translating of java.util.Pattern regular expressions to ECMAScript
- * regular expressions.
+ * Implements the parsing and translating of java.util.regex.Pattern regular expressions to
+ * ECMAScript regular expressions.
  */
 public final class JavaRegexParser implements RegexParser {
 
@@ -92,9 +92,11 @@ public final class JavaRegexParser implements RegexParser {
     }
 
     public static RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
-        return new JavaRegexParser(source, new RegexASTBuilder(language, source, makeTRegexFlags(source.getOptions().getPythonMethod() != PythonMethod.search), true, compilationBuffer), compilationBuffer);
+        return new JavaRegexParser(source, new RegexASTBuilder(language, source, makeTRegexFlags(source.getOptions().getPythonMethod() != PythonMethod.search), true, compilationBuffer),
+                        compilationBuffer);
     }
 
+    @Override
     public RegexAST parse() {
         astBuilder.pushRootGroup();
 
@@ -129,9 +131,9 @@ public final class JavaRegexParser implements RegexParser {
                     break;
                 case wordBoundary:
                     if (lexer.getLocalFlags().isUnicodeCharacterClass()) {
-                        buildWordBoundaryAssertion(JavaLexer.UNICODE_CHAR_CLASS_SETS.get('w'), JavaLexer.UNICODE_CHAR_CLASS_SETS.get('W'));
+                        buildWordBoundaryAssertion(JavaLexer.UNICODE_CHAR_CLASS_SETS.get('w'));
                     } else {
-                        buildWordBoundaryAssertion(Constants.WORD_CHARS, Constants.NON_WORD_CHARS);
+                        buildWordBoundaryAssertion(Constants.WORD_CHARS);
                     }
                     break;
                 case nonWordBoundary:
@@ -152,6 +154,10 @@ public final class JavaRegexParser implements RegexParser {
                     }
 
                     if (astBuilder.getCurTerm() != null) {
+                        if (quantifier.isPossessive()) {
+                            throw new UnsupportedRegexException("possessive quantifiers are not supported");
+                        }
+
                         addQuantifier((Token.Quantifier) token);
                     } else {
                         if (isDanglingMetaCharacterCandidate(quantifier)) {
@@ -198,7 +204,8 @@ public final class JavaRegexParser implements RegexParser {
                     astBuilder.addCharClass((Token.CharacterClass) token);
                     break;
                 case classSet:
-                    astBuilder.addClassSet((Token.ClassSet) token, getFlags().isCaseInsensitive() ? JavaFlavor.getCaseFoldingAlgorithm(getFlags().isUnicodeCase() || getFlags().isUnicodeCharacterClass()) : null);
+                    astBuilder.addClassSet((Token.ClassSet) token,
+                                    getFlags().isCaseInsensitive() ? JavaFlavor.getCaseFoldingAlgorithm(getFlags().isUnicodeCase() || getFlags().isUnicodeCharacterClass()) : null);
                     break;
                 case linebreak:
                     pushGroup(); // (?:
@@ -206,8 +213,7 @@ public final class JavaRegexParser implements RegexParser {
                     addCharClass(CodePointSet.create('\n'));
                     nextSequence(); // |
                     addCharClass(CodePointSet.createNoDedup(
-                            0x000A, 0x000D, 0x0085, 0x0085, 0x2028, 0x2029
-                    ));
+                                    0x000A, 0x000D, 0x0085, 0x0085, 0x2028, 0x2029));
                     popGroup(); // )
                     break;
             }
@@ -238,22 +244,19 @@ public final class JavaRegexParser implements RegexParser {
         return RegexSyntaxException.createPattern(source, message, lexer.getLastTokenPosition());
     }
 
-    private void bailOut(String reason) throws UnsupportedRegexException {
-        throw new UnsupportedRegexException(reason);
-    }
-
     // The behavior of the word-boundary assertions depends on the notion of a word character.
     // Java's notion differs from that of ECMAScript and so we cannot compile Java word-boundary
     // assertions to ECMAScript word-boundary assertions. Furthermore, the notion of a word
     // character is dependent on whether the Java regular expression is set to use the ASCII range
     // only.
-    private void buildWordBoundaryAssertion(CodePointSet wordChars, CodePointSet nonWordChars) {
+    private void buildWordBoundaryAssertion(CodePointSet wordChars) {
         CodePointSet nsm = UnicodeProperties.getPropertyJava("Mn", false);
         CodePointSet notWordNorNsm = wordChars.union(nsm).createInverse(Encodings.UTF_16);
         pushGroup();
 
         // Case 1: not word -> word
-        // before ((start or any character that's not an accent nor a word) followed by any number of accents)
+        // before ((start or any character that's not an accent nor a word) followed by any number
+        // of accents)
         pushLookBehindAssertion();
         pushGroup();
         addCaret();
@@ -377,7 +380,8 @@ public final class JavaRegexParser implements RegexParser {
 
                 nextSequence(); // |
 
-                // \r, we have to make sure it's not followed by \n because \r\n is handled as it was a single character here
+                // \r, we have to make sure it's not followed by \n because \r\n is handled as it
+                // was a single character here
                 pushLookBehindAssertion();
                 addCharClass(CodePointSet.create('\r'));
                 popGroup();
@@ -388,7 +392,8 @@ public final class JavaRegexParser implements RegexParser {
 
             popGroup();
 
-            // ^ should not match at the end of input (we also don't want to use (?!$) as it results in backtracking)
+            // ^ should not match at the end of input (we also don't want to use (?!$) as it results
+            // in backtracking)
             pushLookAheadAssertion();
             addCharClass(Constants.DOT_ALL);
             popGroup();
@@ -408,8 +413,7 @@ public final class JavaRegexParser implements RegexParser {
             nextSequence(); // |
 
             addCharClass(CodePointSet.createNoDedup(
-                    '\n', '\n', 0x0085, 0x0085, 0x2028, 0x2029
-            ));
+                            '\n', '\n', 0x0085, 0x0085, 0x2028, 0x2029));
         }
     }
 
@@ -451,7 +455,7 @@ public final class JavaRegexParser implements RegexParser {
         astBuilder.addQuantifier(quantifier);
     }
 
-    private boolean isDanglingMetaCharacterCandidate(Token.Quantifier quantifier) {
+    private static boolean isDanglingMetaCharacterCandidate(Token.Quantifier quantifier) {
         return switch (quantifier.getRaw().charAt(0)) {
             case '*', '+', '?' -> true;
             default -> false;

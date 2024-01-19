@@ -460,4 +460,14 @@ public final class OracleDBRegexLexer extends RegexLexer {
     protected Token parseGroupLt() {
         throw CompilerDirectives.shouldNotReachHere();
     }
+
+    @Override
+    protected boolean parseLiteralStart(char c) {
+        return false;
+    }
+
+    @Override
+    protected boolean parseLiteralEnd(char c) {
+        return false;
+    }
 }

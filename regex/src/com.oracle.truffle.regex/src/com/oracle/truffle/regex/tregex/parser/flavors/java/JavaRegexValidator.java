@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors.java;
 
-import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.errors.JavaErrorMessages;
 import com.oracle.truffle.regex.errors.JsErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
@@ -74,21 +74,12 @@ public class JavaRegexValidator implements RegexValidator {
         Other
     }
 
-
     /**
      * The source object of the input pattern.
      */
     private final RegexSource source;
 
     private final JavaLexer lexer;
-
-    private static RegexFlags makeTRegexFlags(boolean sticky) {
-        // We need to set the Unicode flag to true so that character classes will treat the entire
-        // Unicode code point range as the set of all characters, not just the UTF-16 code units.
-        // We will also need to set the sticky flag to properly reflect both the sticky flag in the
-        // incoming regex flags and any \G assertions used in the expression.
-        return RegexFlags.builder().unicode(true).sticky(sticky).build();
-    }
 
     public static JavaRegexValidator createValidator(RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
         return new JavaRegexValidator(source, compilationBuffer);
@@ -130,9 +121,14 @@ public class JavaRegexValidator implements RegexValidator {
                         throw syntaxErrorHere(JavaErrorMessages.danglingMetaCharacter(quantifier.getRaw().charAt(0)));
                     }
 
-                    if (curTermState == CurTermState.Null && isDanglingMetaCharacterCandidate(quantifier))  {
+                    if (curTermState == CurTermState.Null && isDanglingMetaCharacterCandidate(quantifier)) {
                         throw syntaxErrorHere(JavaErrorMessages.danglingMetaCharacter(quantifier.getRaw().charAt(0)));
                     }
+
+                    if (quantifier.isPossessive()) {
+                        throw new UnsupportedRegexException("possessive quantifiers are not supported");
+                    }
+
                     break;
                 case alternation:
                 case inlineFlags:
@@ -181,7 +177,7 @@ public class JavaRegexValidator implements RegexValidator {
         return RegexSyntaxException.createPattern(source, message, lexer.getLastTokenPosition());
     }
 
-    private boolean isDanglingMetaCharacterCandidate(Token.Quantifier quantifier) {
+    private static boolean isDanglingMetaCharacterCandidate(Token.Quantifier quantifier) {
         return switch (quantifier.getRaw().charAt(0)) {
             case '*', '+', '?' -> true;
             default -> false;

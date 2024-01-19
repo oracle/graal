@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -184,7 +184,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("a{5,}?a", 0, "aaaaaaa");
         test("a{5,10}?", 0, "aaaaaaaaaa");
 
-        // Possessive quantifiers // TODO engine does not support this
+        // Possessive quantifiers
         // test("a?+a", 0, "a");
         // test("a*+a", 0, "aaaa");
         // test("a++a", 0, "aaaa");
@@ -201,7 +201,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("(.*)xxx\\1", 0, "abcxxxabc");
         test("(?<name>.*)xxx\\1", 0, "abc");
 
-        // Quotation // TODO not implemented but should be relatively easy
+        // Quotation
         test("\\*", 0, "*");
         test("\\Q***\\E", 0, "***");
 
@@ -352,7 +352,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
 
     @Test
     public void backslashBEscape() {
-        //test("[\\b]", 0, "");
+        // test("[\\b]", 0, "");
         test("\\b", 0, " a");
         test("\\B", 0, "aa ");
         test("[\\b]", 0, "");
@@ -395,12 +395,12 @@ public class JavaUtilPatternTests extends RegexTestBase {
         String[] patterns = new String[]{"\\w", "\\W", "\\b", "\\B"};
         char[] words = new char[]{'a', '\u03b1', '-', '\u212a', '\u017f'};
 
-        for (int flags: flagsCombinations) {
-            for (String pat: patterns) {
+        for (int flags : flagsCombinations) {
+            for (String pat : patterns) {
                 test(pat, flags, " ");
                 test("\\b", flags, "  ");
 
-                for (char ch: words) {
+                for (char ch : words) {
                     test(pat, flags, "" + ch);
 
                     test(pat, flags, ch + " ");
@@ -694,21 +694,6 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("a{2,}?", 0, "aaaaa");
     }
 
-    @Test(expected = Exception.class)
-    public void quantifiersBailout() {
-        test("abc?+c", 0, "abcc");
-        test("a{2,4}+a", 0, "aaaaa");
-    }
-
-    @Test(expected = Exception.class)
-    public void quantifiersFail() {
-        test("abc?+c", 0, "abc");
-        test("\".*+\"", 0, "\"abc\"");
-        test("\".++\"", 0, "\"abc\"");
-        test("a{2,4}+a", 0, "aaaa");
-        test("a{2,}+a", 0, "aa");
-    }
-
     @Test(expected = UnsupportedOperationException.class)
     public void atomicGroupBailout() {
         test("a(?>bc|b)c", 0, "abcc");
@@ -750,7 +735,6 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("^(a|\\1b)+$", 0, "ab");
         test("(a)\\10", 0, "aa0");
         test("(a)\\100", 0, "aa00");
-
 
         test("(abc|def)=\\1", 0, "abc=abc");
         test("(abc|def)=\\1", 0, "def=def");
@@ -834,7 +818,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("[a&&]", 0, "&");
         test("[&&a]", 0, "a");
         test("[&&a]", 0, "&");
-        //test("[&", 0, "a");
+        // test("[&", 0, "a");
     }
 
     @Test
@@ -864,7 +848,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
     public void characterClassSetNested() {
         for (char c = 'a'; c <= 'g'; c++) {
             test("[a[b-d]&&[c-f]]", 0, "" + c);
-            test("[b-[c-d]]&&[a]&&[e-f]", 0, ""+ c);
+            test("[b-[c-d]]&&[a]&&[e-f]", 0, "" + c);
         }
     }
 
@@ -1045,82 +1029,81 @@ public class JavaUtilPatternTests extends RegexTestBase {
     @Ignore
     public void unicodeProperties() {
         String[] properties = new String[]{
-                "Cn",
-                "Lu",
-                "Ll",
-                "Lt",
-                "Lm",
-                "Lo",
-                "Mn",
-                "Me",
-                "Mc",
-                "Nd",
-                "Nl",
-                "No",
-                "Zs",
-                "Zl",
-                "Cc",
-                "Cf",
-                "Zp",
-                "Co",
-                "Cs",
-                "Pd",
-                "Ps",
-                "Pe",
-                "Pc",
-                "Po",
-                "Sm",
-                "Sc",
-                "Sk",
-                "So",
-                "Pi",
-                "Pf",
-                "L",
-                "M",
-                "N",
-                "Z",
-                "C",
-                "P",
-                "S",
-                "LC",
-                "LD",
-                "L1",
-                "all",
-                "ASCII",
-                "Alnum",
-                "Alpha",
-                "Blank",
-                "Cntrl",
-                "Digit",
-                "Graph",
-                "Lower",
-                "Print",
-                "Punct",
-                "Space",
-                "Upper",
-                "XDigit",
-                "javaLowerCase",
-                "javaUpperCase",
-                "javaAlphabetic",
-                "javaIdeographic",
-                "javaTitleCase",
-                "javaDigit",
-                "javaDefined",
-                "javaLetter",
-                "javaLetterOrDigit",
-                "javaJavaIdentifierStart",
-                "javaJavaIdentifierPart",
-                "javaUnicodeIdentifierStart",
-                "javaUnicodeIdentifierPart",
-                "javaIdentifierIgnorable",
-                "javaSpaceChar",
-                "javaWhitespace",
-                "javaISOControl",
-                "javaMirrored"
+                        "Cn",
+                        "Lu",
+                        "Ll",
+                        "Lt",
+                        "Lm",
+                        "Lo",
+                        "Mn",
+                        "Me",
+                        "Mc",
+                        "Nd",
+                        "Nl",
+                        "No",
+                        "Zs",
+                        "Zl",
+                        "Cc",
+                        "Cf",
+                        "Zp",
+                        "Co",
+                        "Cs",
+                        "Pd",
+                        "Ps",
+                        "Pe",
+                        "Pc",
+                        "Po",
+                        "Sm",
+                        "Sc",
+                        "Sk",
+                        "So",
+                        "Pi",
+                        "Pf",
+                        "L",
+                        "M",
+                        "N",
+                        "Z",
+                        "C",
+                        "P",
+                        "S",
+                        "LC",
+                        "LD",
+                        "L1",
+                        "all",
+                        "ASCII",
+                        "Alnum",
+                        "Alpha",
+                        "Blank",
+                        "Cntrl",
+                        "Digit",
+                        "Graph",
+                        "Lower",
+                        "Print",
+                        "Punct",
+                        "Space",
+                        "Upper",
+                        "XDigit",
+                        "javaLowerCase",
+                        "javaUpperCase",
+                        "javaAlphabetic",
+                        "javaIdeographic",
+                        "javaTitleCase",
+                        "javaDigit",
+                        "javaDefined",
+                        "javaLetter",
+                        "javaLetterOrDigit",
+                        "javaJavaIdentifierStart",
+                        "javaJavaIdentifierPart",
+                        "javaUnicodeIdentifierStart",
+                        "javaUnicodeIdentifierPart",
+                        "javaIdentifierIgnorable",
+                        "javaSpaceChar",
+                        "javaWhitespace",
+                        "javaISOControl",
+                        "javaMirrored"
         };
 
-
-        for (String prop: properties) {
+        for (String prop : properties) {
             for (int j = 0; j <= 0x10FFFF; j++) {
                 String s = new String(new int[]{j}, 0, 1);
                 test(String.format("\\p{%s}", prop), 0, s);
@@ -1135,21 +1118,21 @@ public class JavaUtilPatternTests extends RegexTestBase {
     @Ignore
     public void unicodePOSIX() {
         String[] properties = new String[]{
-                "ALPHA",
-                "LOWER",
-                "UPPER",
-                "SPACE",
-                "PUNCT",
-                "XDIGIT",
-                "ALNUM",
-                "CNTRL",
-                "DIGIT",
-                "BLANK",
-                "GRAPH",
-                "PRINT"
+                        "ALPHA",
+                        "LOWER",
+                        "UPPER",
+                        "SPACE",
+                        "PUNCT",
+                        "XDIGIT",
+                        "ALNUM",
+                        "CNTRL",
+                        "DIGIT",
+                        "BLANK",
+                        "GRAPH",
+                        "PRINT"
         };
 
-        for (String prop: properties) {
+        for (String prop : properties) {
             for (int j = 0; j <= 0x10FFFF; j++) {
                 String s = new String(new int[]{j}, 0, 1);
                 test(String.format("\\p{Is%s}", prop), 0, s);
@@ -1164,33 +1147,33 @@ public class JavaUtilPatternTests extends RegexTestBase {
     @Ignore
     public void unicodePredicates() {
         String[] properties = new String[]{
-                "ALPHABETIC",
-                "ASSIGNED",
-                "CONTROL",
-                "EMOJI",
-                "EMOJI_PRESENTATION",
-                "EMOJI_MODIFIER",
-                "EMOJI_MODIFIER_BASE",
-                "EMOJI_COMPONENT",
-                "EXTENDED_PICTOGRAPHIC",
-                "HEXDIGIT",
-                "HEX_DIGIT",
-                "IDEOGRAPHIC",
-                "JOINCONTROL",
-                "JOIN_CONTROL",
-                "LETTER",
-                "LOWERCASE",
-                "NONCHARACTERCODEPOINT",
-                "NONCHARACTER_CODE_POINT",
-                "TITLECASE",
-                "PUNCTUATION",
-                "UPPERCASE",
-                "WHITESPACE",
-                "WHITE_SPACE",
-                "WORD"
+                        "ALPHABETIC",
+                        "ASSIGNED",
+                        "CONTROL",
+                        "EMOJI",
+                        "EMOJI_PRESENTATION",
+                        "EMOJI_MODIFIER",
+                        "EMOJI_MODIFIER_BASE",
+                        "EMOJI_COMPONENT",
+                        "EXTENDED_PICTOGRAPHIC",
+                        "HEXDIGIT",
+                        "HEX_DIGIT",
+                        "IDEOGRAPHIC",
+                        "JOINCONTROL",
+                        "JOIN_CONTROL",
+                        "LETTER",
+                        "LOWERCASE",
+                        "NONCHARACTERCODEPOINT",
+                        "NONCHARACTER_CODE_POINT",
+                        "TITLECASE",
+                        "PUNCTUATION",
+                        "UPPERCASE",
+                        "WHITESPACE",
+                        "WHITE_SPACE",
+                        "WORD"
         };
 
-        for (String prop: properties) {
+        for (String prop : properties) {
             for (int j = 0; j <= 0x10FFFF; j++) {
                 String s = new String(new int[]{j}, 0, 1);
                 test(String.format("\\p{Is%s}", prop), 0, s);

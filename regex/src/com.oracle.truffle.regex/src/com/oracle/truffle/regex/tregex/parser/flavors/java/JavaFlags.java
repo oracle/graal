@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,7 @@ import com.oracle.truffle.regex.util.TBitSet;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
 /**
- * An immutable representation of a set of java.util.Pattern regular expression flags.
+ * An immutable representation of a set of java.util.regex.Pattern regular expression flags.
  */
 @ExportLibrary(InteropLibrary.class)
 public final class JavaFlags extends AbstractConstantKeysObject {

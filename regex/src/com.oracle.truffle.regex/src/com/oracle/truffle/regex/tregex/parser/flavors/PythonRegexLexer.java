@@ -890,4 +890,14 @@ public final class PythonRegexLexer extends RegexLexer {
     public RegexSyntaxException syntaxErrorHere(String msg) {
         return RegexSyntaxException.createPattern(source, msg, position);
     }
+
+    @Override
+    protected boolean parseLiteralStart(char c) {
+        return false;
+    }
+
+    @Override
+    protected boolean parseLiteralEnd(char c) {
+        return false;
+    }
 }
