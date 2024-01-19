@@ -264,7 +264,7 @@ class NativeImageBenchmarkConfig:
         return None
 
 
-class Stages:
+class NativeImageStages:
     def __init__(self, stages_info: StagesInfo, config, bench_out, bench_err, is_gate, non_zero_is_fatal, cwd):
         self.stages_info = stages_info
         self.config = config
@@ -434,7 +434,7 @@ class NativeImageVM(GraalVm):
         self.graalvm_edition = None
         self.config: Optional[NativeImageBenchmarkConfig] = None
         self.stages_info: Optional[StagesInfo] = None
-        self.stages: Optional[Stages] = None
+        self.stages: Optional[NativeImageStages] = None
         self.jdk_profiles_collect = False
         self.adopted_jdk_pgo = False
         self.async_sampler = False
@@ -1054,7 +1054,7 @@ class NativeImageVM(GraalVm):
         # never fatal, we handle it ourselves
         config = NativeImageBenchmarkConfig(self, self.bmSuite, args)
         self.config = config
-        stages = Stages(self.stages_info, config, out, err, self.is_gate, True if self.is_gate else nonZeroIsFatal, os.path.abspath(cwd if cwd else os.getcwd()))
+        stages = NativeImageStages(self.stages_info, config, out, err, self.is_gate, True if self.is_gate else nonZeroIsFatal, os.path.abspath(cwd if cwd else os.getcwd()))
         self.stages = stages
 
         if not os.path.exists(config.output_dir):
