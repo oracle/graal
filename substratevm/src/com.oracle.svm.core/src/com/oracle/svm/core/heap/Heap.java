@@ -29,6 +29,7 @@ import java.lang.ref.ReferenceQueue;
 import java.util.List;
 import java.util.function.Consumer;
 
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -36,6 +37,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
@@ -142,6 +144,12 @@ public abstract class Heap {
      */
     @Fold
     public abstract int getPreferredAddressSpaceAlignment();
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public Pointer getImageHeapStart() {
+        Pointer heapBase = (Pointer) Isolates.getHeapBase(CurrentIsolate.getIsolate());
+        return heapBase.add(Heap.getHeap().getImageHeapOffsetInAddressSpace());
+    }
 
     /**
      * Returns an offset relative to the heap base, at which the image heap should be mapped into

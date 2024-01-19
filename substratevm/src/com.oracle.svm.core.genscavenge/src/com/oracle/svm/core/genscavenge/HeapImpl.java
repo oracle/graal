@@ -35,7 +35,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateDiagnostics;
@@ -702,12 +701,6 @@ public final class HeapImpl extends Heap {
         }
         HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(obj);
         return HeapChunk.getIdentityHashSalt(chunk).rawValue();
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static Pointer getImageHeapStart() {
-        Pointer heapBase = (Pointer) Isolates.getHeapBase(CurrentIsolate.getIsolate());
-        return heapBase.add(Heap.getHeap().getImageHeapOffsetInAddressSpace());
     }
 
     private boolean printLocationInfo(Log log, Pointer ptr, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
