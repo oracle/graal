@@ -192,7 +192,10 @@ public class IsolateArgumentParser {
     }
 
     private static boolean shouldValidate(RuntimeOptionKey<?> option) {
-        if (SubstrateOptions.UseSerialGC.getValue()) {
+        if (!option.hasBeenSet()) {
+            /* Workaround for one specific Truffle language that does something weird. */
+            return false;
+        } else if (SubstrateOptions.UseSerialGC.getValue()) {
             /* The serial GC supports changing the heap size at run-time to some degree. */
             return option != SubstrateGCOptions.MinHeapSize && option != SubstrateGCOptions.MaxHeapSize && option != SubstrateGCOptions.MaxNewSize;
         }
@@ -230,12 +233,10 @@ public class IsolateArgumentParser {
     }
 
     private static void validate(RuntimeOptionKey<?> option, Object oldValue) {
-        if (option.hasBeenSet()) {
-            Object newValue = option.getValue();
-            if (newValue == null || !newValue.equals(oldValue)) {
-                throw new IllegalArgumentException(
-                                "The option '" + option.getName() + "' can't be changed after isolate creation. Old value: " + oldValue + ", new value: " + newValue);
-            }
+        Object newValue = option.getValue();
+        if (newValue == null || !newValue.equals(oldValue)) {
+            throw new IllegalArgumentException(
+                            "The option '" + option.getName() + "' can't be changed after isolate creation. Old value: " + oldValue + ", new value: " + newValue);
         }
     }
 
@@ -344,6 +345,8 @@ public class IsolateArgumentParser {
         }
 
         CCharPointerPointer tailPtr = (CCharPointerPointer) StackValue.get(CCharPointer.class);
+
+        LibC.setErrno(0);
         UnsignedWord n = LibC.strtoull(s, tailPtr, 10);
         if (LibC.errno() != 0) {
             return false;

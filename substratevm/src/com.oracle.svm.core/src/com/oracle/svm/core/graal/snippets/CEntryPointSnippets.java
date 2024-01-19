@@ -227,13 +227,13 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (!validPageSize) {
             return CEntryPointErrors.PAGE_SIZE_CHECK_FAILED;
         }
-        CLongPointer parsedArgs = StackValue.get(IsolateArgumentParser.getStructSize());
         CEntryPointCreateIsolateParameters parameters = providedParameters;
         if (parameters.isNull() || parameters.version() < 1) {
             parameters = StackValue.get(CEntryPointCreateIsolateParameters.class);
             parameters.setReservedSpaceSize(WordFactory.zero());
             parameters.setVersion(1);
         }
+        CLongPointer parsedArgs = StackValue.get(IsolateArgumentParser.getStructSize());
         IsolateArgumentParser.parse(parameters, parsedArgs);
         if (parameters.reservedSpaceSize().equal(0)) {
             parameters.setReservedSpaceSize(WordFactory.unsigned(parsedArgs.read(IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.ReservedAddressSpaceSize))));
