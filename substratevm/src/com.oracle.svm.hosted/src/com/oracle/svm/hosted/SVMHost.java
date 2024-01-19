@@ -135,6 +135,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.graal.compiler.nodes.java.AccessFieldNode;
 import jdk.graal.compiler.nodes.java.AccessMonitorNode;
 import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.common.BoxNodeIdentityPhase;
@@ -827,6 +828,10 @@ public class SVMHost extends HostVM {
         }
         /* Fields with those names are not allowed in the image */
         if (NativeImageGenerator.checkName(field.getType().getName() + "." + field.getName()) != null) {
+            return false;
+        }
+        /* Options should not be in the image */
+        if (OptionKey.class.isAssignableFrom(field.getType())) {
             return false;
         }
         /* Fields from this package should not be in the image */
