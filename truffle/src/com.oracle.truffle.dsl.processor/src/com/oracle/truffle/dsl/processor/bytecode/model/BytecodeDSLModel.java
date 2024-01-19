@@ -62,6 +62,7 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Signature;
+import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
@@ -95,6 +96,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
      */
     private final HashMap<TypeElement, CustomOperationModel> customRegularOperations = new HashMap<>();
     private final List<CustomOperationModel> customShortCircuitOperations = new ArrayList<>();
+    private final HashMap<OperationModel, CustomOperationModel> operationsToCustomOperations = new HashMap<>();
     private LinkedHashMap<String, InstructionModel> instructions = new LinkedHashMap<>();
 
     public DeclaredType languageClass;
@@ -183,8 +185,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                         .setVariadic(0) //
                         .setVoid(true) //
                         .setChildrenMustBeValues(false) //
-                        .setOperationArgumentTypes(types.TruffleLanguage) //
-                        .setOperationArgumentNames("language");
+                        .setOperationArguments(new OperationArgument(types.TruffleLanguage, "language", "the language to associate with the root node"));
         operation(OperationKind.IF_THEN, "IfThen") //
                         .setVoid(true) //
                         .setNumChildren(2) //
@@ -205,14 +206,12 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                         .setVoid(true) //
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(false, false) //
-                        .setOperationArgumentTypes(types.BytecodeLocal) //
-                        .setOperationArgumentNames("exceptionLocal");
+                        .setOperationArguments(new OperationArgument(types.BytecodeLocal, "exceptionLocal", "the local to bind the caught exception to"));
         operation(OperationKind.FINALLY_TRY, "FinallyTry") //
                         .setVoid(true) //
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(false, false) //
-                        .setOperationArgumentTypes(types.BytecodeLocal) //
-                        .setOperationArgumentNames("exceptionLocal");
+                        .setOperationArguments(new OperationArgument(types.BytecodeLocal, "exceptionLocal", "the local to bind a thrown exception to (if available)"));
         operation(OperationKind.FINALLY_TRY_NO_EXCEPT, "FinallyTryNoExcept") //
                         .setVoid(true) //
                         .setNumChildren(2) //
@@ -220,53 +219,45 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         operation(OperationKind.LABEL, "Label") //
                         .setVoid(true) //
                         .setNumChildren(0) //
-                        .setOperationArgumentTypes(types.BytecodeLabel) //
-                        .setOperationArgumentNames("label");
+                        .setOperationArguments(new OperationArgument(types.BytecodeLabel, "label", "the label to define"));
         operation(OperationKind.BRANCH, "Branch") //
                         .setVoid(true) //
                         .setNumChildren(0) //
-                        .setOperationArgumentTypes(types.BytecodeLabel) //
-                        .setOperationArgumentNames("label") //
+                        .setOperationArguments(new OperationArgument(types.BytecodeLabel, "label", "the label to branch to")) //
                         .setInstruction(branchInstruction);
         operation(OperationKind.LOAD_CONSTANT, "LoadConstant") //
                         .setNumChildren(0) //
-                        .setOperationArgumentTypes(context.getType(Object.class)) //
-                        .setOperationArgumentNames("constant") //
+                        .setOperationArguments(new OperationArgument(context.getType(Object.class), "constant", "the constant value to load")) //
                         .setInstruction(instruction(InstructionKind.LOAD_CONSTANT, "load.constant", signature(Object.class)) //
                                         .addImmediate(ImmediateKind.CONSTANT, "constant"));
         operation(OperationKind.LOAD_ARGUMENT, "LoadArgument") //
                         .setNumChildren(0) //
-                        .setOperationArgumentTypes(context.getType(int.class)) //
-                        .setOperationArgumentNames("index") //
+                        .setOperationArguments(new OperationArgument(context.getType(int.class), "index", "the index of the argument to load")) //
                         .setInstruction(instruction(InstructionKind.LOAD_ARGUMENT, "load.argument", signature(Object.class))//
                                         .addImmediate(ImmediateKind.INTEGER, "index"));
         operation(OperationKind.LOAD_LOCAL, "LoadLocal") //
                         .setNumChildren(0) //
-                        .setOperationArgumentTypes(types.BytecodeLocal) //
-                        .setOperationArgumentNames("local") //
+                        .setOperationArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to load")) //
                         .setInstruction(instruction(InstructionKind.LOAD_LOCAL, "load.local", signature(Object.class)) //
                                         .addImmediate(ImmediateKind.INTEGER, "index"));
         operation(OperationKind.LOAD_LOCAL_MATERIALIZED, "LoadLocalMaterialized") //
                         .setNumChildren(1) //
                         .setChildrenMustBeValues(true) //
-                        .setOperationArgumentTypes(types.BytecodeLocal) //
-                        .setOperationArgumentNames("local") //
+                        .setOperationArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to load")) //
                         .setInstruction(instruction(InstructionKind.LOAD_LOCAL_MATERIALIZED, "load.local.mat", signature(Object.class, Object.class)) //
                                         .addImmediate(ImmediateKind.INTEGER, "index"));
         operation(OperationKind.STORE_LOCAL, "StoreLocal") //
                         .setNumChildren(1) //
                         .setChildrenMustBeValues(true) //
                         .setVoid(true) //
-                        .setOperationArgumentTypes(types.BytecodeLocal) //
-                        .setOperationArgumentNames("local") //
+                        .setOperationArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to store to")) //
                         .setInstruction(instruction(InstructionKind.STORE_LOCAL, "store.local", signature(void.class, Object.class)) //
                                         .addImmediate(ImmediateKind.INTEGER, "index"));
         operation(OperationKind.STORE_LOCAL_MATERIALIZED, "StoreLocalMaterialized") //
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(true, true) //
                         .setVoid(true) //
-                        .setOperationArgumentTypes(types.BytecodeLocal) //
-                        .setOperationArgumentNames("local") //
+                        .setOperationArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to store to")) //
                         .setInstruction(instruction(InstructionKind.STORE_LOCAL_MATERIALIZED, "store.local.mat",
                                         signature(void.class, Object.class, Object.class)) //
                                                         .addImmediate(ImmediateKind.INTEGER, "index"));
@@ -284,19 +275,17 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         operation(OperationKind.SOURCE, "Source") //
                         .setNumChildren(1) //
                         .setTransparent(true) //
-                        .setOperationArgumentTypes(types.Source) //
-                        .setOperationArgumentNames("source");
+                        .setOperationArguments(new OperationArgument(types.Source, "source", "the source object to associate with the enclosed operations"));
         operation(OperationKind.SOURCE_SECTION, "SourceSection") //
                         .setNumChildren(1) //
                         .setTransparent(true) //
-                        .setOperationArgumentTypes(context.getType(int.class), context.getType(int.class)) //
-                        .setOperationArgumentNames("index", "length");
+                        .setOperationArguments(new OperationArgument(context.getType(int.class), "index", "the starting character index of the source section"),
+                                        new OperationArgument(context.getType(int.class), "length", "the length (in characters) of the source section"));
         operation(OperationKind.INSTRUMENT_TAG, "Tag") //
                         .setNumChildren(1) //
                         .setTransparent(true) //
                         .setOperationArgumentVarArgs(true) //
-                        .setOperationArgumentTypes(array(context.getDeclaredType(Class.class))) //
-                        .setOperationArgumentNames("tags");
+                        .setOperationArguments(new OperationArgument(array(context.getDeclaredType(Class.class)), "tags", "the tags to associate with the enclosed operations"));
 
         popVariadicInstruction = new InstructionModel[9];
         for (int i = 0; i <= 8; i++) {
@@ -332,6 +321,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
             throw new AssertionError(String.format("Type element %s was used to instantiate more than one operation. This is a bug.", typeElement));
         }
         customRegularOperations.put(typeElement, customOp);
+        operationsToCustomOperations.put(op, customOp);
 
         return customOp;
     }
@@ -343,6 +333,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         }
         CustomOperationModel customOp = new CustomOperationModel(context, this, null, mirror, op);
         customShortCircuitOperations.add(customOp);
+        operationsToCustomOperations.put(op, customOp);
 
         return customOp;
     }
@@ -472,6 +463,10 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
 
     public InstructionModel getInstructionByName(String name) {
         return instructions.get(name);
+    }
+
+    public CustomOperationModel getCustomOperationForOperation(OperationModel op) {
+        return operationsToCustomOperations.get(op);
     }
 
     public boolean needsBciSlot() {

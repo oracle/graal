@@ -95,11 +95,13 @@ import javax.lang.model.util.ElementFilter;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.CustomOperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
@@ -188,7 +190,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         fastAccess.setInit(createFastAccessFieldInitializer());
 
         if (model.enableYield) {
-            continuationRootNodeImpl = new CodeTypeElement(Set.of(PUBLIC, STATIC, FINAL), ElementKind.CLASS, null, "ContinuationRootNodeImpl");
+            continuationRootNodeImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "ContinuationRootNodeImpl");
             continuationLocationImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "ContinuationLocationImpl");
         } else {
             continuationRootNodeImpl = null;
@@ -198,7 +200,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     public CodeTypeElement create() {
         // Print a summary of the model in a docstring at the start.
-        bytecodeNodeGen.createDocBuilder().startDoc().lines(model.pp()).end();
+        addDoc(bytecodeNodeGen, false, model.pp());
 
         // Define constants for accessing the frame.
         bytecodeNodeGen.addAll(createFrameLayoutConstants());
@@ -408,7 +410,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 continue;
             }
             if (var.getSimpleName().toString().equals(frameSlotKind)) {
-                tag.createDocBuilder().startDoc().string("FrameSlotKind." + frameSlotKind + ".tag").end();
+                addDoc(tag, false, "FrameSlotKind." + frameSlotKind + ".tag");
                 tag.createInitBuilder().string(index);
                 return tag;
             }
@@ -983,12 +985,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         ex.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
         ex.addParameter(new CodeVariableElement(parserType, "parser"));
 
-        ex.createDocBuilder().startJavadoc() //
-                        .string(String.format("Create one or more bytecode nodes. This is the entrypoint for creating new {@link %s} instances.", model.getName())).newLine() //
-                        .string(" ").newLine() //
-                        .string("@param config indicates whether to parse metadata (e.g., source information).").newLine() //
-                        .string("@param parser the parser that invokes a series of builder instructions to generate bytecode.").newLine() //
-                        .end();
+        addDoc(ex, true, String.format("""
+                        Creates one or more bytecode nodes. This is the entrypoint for creating new {@link %s} instances.
+
+                        @param config indicates whether to parse metadata (e.g., source information).
+                        @param parser the parser that invokes a series of builder instructions to generate bytecode.
+                        """, model.getName()));
+
         CodeTreeBuilder b = ex.getBuilder();
 
         b.declaration("BytecodeNodesImpl", "nodes", "new BytecodeNodesImpl(parser)");
@@ -1050,14 +1053,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         method.addParameter(new CodeVariableElement(parserType, "parser"));
         method.addThrownType(context.getType(IOException.class));
 
-        method.createDocBuilder().startJavadoc() //
-                        .string("Serializes the bytecode nodes parsed by the {@code parser}.").newLine() //
-                        .string(" ").newLine() //
-                        .string("@param config indicates whether to serialize metadata (e.g., source information).").newLine() //
-                        .string("@param buffer the buffer to write the byte output to.").newLine() //
-                        .string("@param callback the language-specific serializer for constants in the bytecode.").newLine() //
-                        .string("@param parser the parser.").newLine() //
-                        .end();
+        addDoc(method, true, """
+                        Serializes the bytecode nodes parsed by the {@code parser}.
+
+                        @param config indicates whether to serialize metadata (e.g., source information).
+                        @param buffer the buffer to write the byte output to.
+                        @param callback the language-specific serializer for constants in the bytecode.
+                        @param parser the parser.
+                        """);
 
         CodeTreeBuilder init = CodeTreeBuilder.createBuilder();
         init.startNew(operationBuilderType);
@@ -1097,14 +1100,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         method.addParameter(new CodeVariableElement(types.BytecodeDeserializer, "callback"));
         method.addThrownType(context.getType(IOException.class));
 
-        method.createDocBuilder().startJavadoc() //
-                        .string("Deserializes a byte sequence to bytecode nodes. The bytes must have been produced by a previous call to {@link #serialize}.").newLine() //
-                        .string(" ").newLine() //
-                        .string("@param language the language instance.").newLine() //
-                        .string("@param config indicates whether to deserialize metadata (e.g., source information), if available.").newLine() //
-                        .string("@param input A function that supplies the bytes to deserialize. This supplier must produce a new {@link DataInput} each time, since the bytes may be processed multiple times for reparsing.").newLine() //
-                        .string("@param callback The language-specific deserializer for constants in the bytecode. This callback must perform the inverse of the callback that was used to {@link #serialize} the nodes to bytes.").newLine() //
-                        .end();
+        addDoc(method, true,
+                        """
+                                        Deserializes a byte sequence to bytecode nodes. The bytes must have been produced by a previous call to {@link #serialize}.").newLine()
+
+                                        @param language the language instance.
+                                        @param config indicates whether to deserialize metadata (e.g., source information), if available.
+                                        @param input A function that supplies the bytes to deserialize. This supplier must produce a new {@link DataInput} each time, since the bytes may be processed multiple times for reparsing.
+                                        @param callback The language-specific deserializer for constants in the bytecode. This callback must perform the inverse of the callback that was used to {@link #serialize} the nodes to bytes.
+                                        """);
 
         CodeTreeBuilder b = method.createBuilder();
 
@@ -2326,6 +2330,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeVariableElement serialization;
 
         private CodeTypeElement create() {
+            addDoc(builder, true, """
+                            Builder class to generate bytecode. An interpreter can invoke this class with its {@link com.oracle.truffle.api.bytecode.BytecodeParser} to generate bytecode.
+                            """);
+
             builder.setSuperClass(types.BytecodeBuilder);
             builder.setEnclosingElement(bytecodeNodeGen);
 
@@ -2544,8 +2552,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     continue;
                 }
 
-                for (int i = 0; i < operation.operationArgumentTypes.length; i++) {
-                    TypeMirror argType = operation.operationArgumentTypes[i];
+                for (int i = 0; i < operation.operationArguments.length; i++) {
+                    TypeMirror argType = operation.operationArguments[i].type();
                     String argumentName = operation.getOperationArgumentName(i);
                     if (ElementUtils.typeEquals(argType, types.TruffleLanguage)) {
                         continue; // language is already available as a parameter
@@ -2581,7 +2589,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.startCall("emit" + operation.name);
                 }
 
-                for (int i = 0; i < operation.operationArgumentTypes.length; i++) {
+                for (int i = 0; i < operation.operationArguments.length; i++) {
                     b.string(operation.getOperationArgumentName(i));
                 }
 
@@ -2652,6 +2660,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createCreateLocal() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.BytecodeLocal, "createLocal");
+
+            addDoc(ex, true, "Creates a new local. Uses default values for the local's slot metadata.");
+
             CodeTreeBuilder b = ex.createBuilder();
 
             b.startReturn().startCall("createLocal");
@@ -2668,6 +2679,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(types.FrameSlotKind, "slotKind"));
             ex.addParameter(new CodeVariableElement(context.getDeclaredType(Object.class), "name"));
             ex.addParameter(new CodeVariableElement(context.getDeclaredType(Object.class), "info"));
+
+            addDoc(ex, true, """
+                            Creates a new local. Uses the given {@code slotKind}, {@code name}, and {@code info} for its frame slot metadata.
+
+                            @param slotKind the slot kind of the local.
+                            @param name the name assigned to the local's slot.
+                            @param info the info assigned to the local's slot.
+                            """);
+
             CodeTreeBuilder b = ex.createBuilder();
 
             if (model.enableSerialization) {
@@ -2693,6 +2713,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createCreateLabel() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.BytecodeLabel, "createLabel");
+
+            addDoc(ex, true, "Creates a new label. The result should be {@link #emitLabel emitted} and can be {@link #emitBranch branched to}.");
+
             CodeTreeBuilder b = ex.createBuilder();
 
             if (model.enableSerialization) {
@@ -2849,16 +2872,82 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
+        private static void appendOperationDescriptionForDoc(StringBuilder sb, OperationModel operation) {
+            if (operation.isCustom()) {
+                sb.append("custom ");
+                switch (operation.kind) {
+                    case CUSTOM_SIMPLE:
+                        CustomOperationModel customOp = operation.parent.getCustomOperationForOperation(operation);
+                        sb.append("{@link #");
+                        sb.append(customOp.getTemplateType().getQualifiedName());
+                        sb.append(" ");
+                        sb.append(operation.name);
+                        sb.append("}");
+                        break;
+                    case CUSTOM_SHORT_CIRCUIT:
+                        // short-circuit ops don't have a defining class
+                        sb.append(operation.name);
+                        break;
+                    default:
+                        throw new AssertionError("Unexpected operation kind for operation " + operation);
+                }
+            } else {
+                sb.append("built-in ");
+                sb.append(operation.name);
+            }
+            sb.append(" operation.");
+        }
+
+        private static void addBeginOrEmitOperationDoc(OperationModel operation, CodeExecutableElement ex) {
+            StringBuilder sb = new StringBuilder();
+            if (operation.hasChildren()) {
+                sb.append("Begins a ");
+            } else {
+                sb.append("Emits a ");
+            }
+
+            appendOperationDescriptionForDoc(sb, operation);
+
+            if (operation.hasChildren()) {
+                sb.append(" A corresponding call to {@link #end");
+                sb.append(operation.name);
+                sb.append("} is required to end the operation.");
+            }
+
+            List<String> javadoc = new ArrayList<>(1);
+            javadoc.add(sb.toString());
+
+            if (operation.operationArguments.length != 0) {
+                javadoc.add("");
+                for (OperationArgument argument : operation.operationArguments) {
+                    javadoc.add(argument.toJavadocParam());
+                }
+            }
+
+            addDoc(ex, true, javadoc);
+        }
+
+        private void addEndOperationDoc(OperationModel operation, CodeExecutableElement ex) {
+            assert operation.hasChildren();
+
+            StringBuilder sb = new StringBuilder("Ends a ");
+
+            appendOperationDescriptionForDoc(sb, operation);
+
+            addDoc(ex, true, sb.toString());
+        }
+
         private CodeExecutableElement createBegin(OperationModel operation) {
             if (operation.kind == OperationKind.ROOT) {
                 return createBeginRoot(operation);
             }
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "begin" + operation.name);
 
-            for (CodeVariableElement param : operation.getOperationArguments()) {
-                ex.addParameter(param);
+            for (OperationArgument arg : operation.operationArguments) {
+                ex.addParameter(arg.toVariableElement());
             }
             ex.setVarArgs(operation.operationArgumentVarArgs);
+            addBeginOrEmitOperationDoc(operation, ex);
 
             CodeTreeBuilder b = ex.createBuilder();
 
@@ -2957,6 +3046,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createBeginRoot(OperationModel rootOperation) {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "beginRoot");
             ex.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
+
+            addDoc(ex, true, """
+                            Begins a new root node.
+
+                            This method should always be invoked before subsequent builder methods, which generate and validate bytecode for the root node. The resultant root node is returned by {@link #endRoot}.
+
+                            This method can be called while generating another root node. Bytecode generation for the first root node suspends until generation for the second root node finishes (the second is not "nested" in the first).
+
+                            @param language the Truffle language to associate with the root node.
+                            """);
+
             CodeTreeBuilder b = ex.getBuilder();
 
             if (model.enableSerialization) {
@@ -3014,8 +3114,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             serializationWrapException(b, () -> {
 
                 CodeTreeBuilder after = CodeTreeBuilder.createBuilder();
-                for (int i = 0; i < operation.operationArgumentTypes.length; i++) {
-                    TypeMirror argType = operation.operationArgumentTypes[i];
+                for (int i = 0; i < operation.operationArguments.length; i++) {
+                    TypeMirror argType = operation.operationArguments[i].type();
                     String argumentName = operation.getOperationArgumentName(i);
                     if (ElementUtils.typeEquals(argType, types.TruffleLanguage)) {
                         b.statement("serialization.language = language");
@@ -3023,7 +3123,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         serializationElements.writeShort(after, "(short) ((BytecodeLocalImpl) " + argumentName + ").index");
                     } else if (ElementUtils.typeEquals(argType, new ArrayCodeTypeMirror(types.BytecodeLocal))) {
                         serializationElements.writeShort(after, "(short) " + argumentName + ".length");
-                        after.startFor().string("int i = 0; i < arg" + i + ".length; i++").end().startBlock();
+                        after.startFor().string("int i = 0; i < " + argumentName + ".length; i++").end().startBlock();
                         serializationElements.writeShort(after, "(short) ((BytecodeLocalImpl) " + argumentName + "[i]).index");
                         after.end();
                     } else if (ElementUtils.typeEquals(argType, types.BytecodeLabel)) {
@@ -3107,10 +3207,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     }
                     childBciArrayBuilder.end();
 
-                    String[] args = new String[operation.operationArgumentTypes.length + 1];
+                    String[] args = new String[operation.operationArguments.length + 1];
                     args[0] = childBciArrayBuilder.toString();
-                    for (int i = 0; i < operation.operationArgumentTypes.length; i++) {
-                        if (operation.operationArgumentTypes[i].getKind() == TypeKind.ARRAY) {
+                    for (int i = 0; i < operation.operationArguments.length; i++) {
+                        if (operation.operationArguments[i].type().getKind() == TypeKind.ARRAY) {
                             // cast to Object to avoid Java interpreting the array as desugared
                             // varargs
                             args[i + 1] = "(Object) " + operation.getOperationArgumentName(i);
@@ -3188,6 +3288,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "end" + operation.name);
+            addEndOperationDoc(operation, ex);
             CodeTreeBuilder b = ex.createBuilder();
 
             if (model.enableSerialization) {
@@ -3346,6 +3447,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createEndRoot(OperationModel rootOperation) {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), model.templateType.asType(), "endRoot");
+
+            addDoc(ex, true, """
+                            Finishes generating bytecode for the current root node.
+
+                            @returns the root node with generated bytecode.
+                            """);
+
             CodeTreeBuilder b = ex.getBuilder();
 
             if (model.enableSerialization) {
@@ -3546,9 +3654,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "emit" + operation.name);
             ex.setVarArgs(operation.operationArgumentVarArgs);
 
-            for (CodeVariableElement param : operation.getOperationArguments()) {
-                ex.addParameter(param);
+            for (OperationArgument arg : operation.operationArguments) {
+                ex.addParameter(arg.toVariableElement());
             }
+
+            addBeginOrEmitOperationDoc(operation, ex);
 
             CodeTreeBuilder b = ex.createBuilder();
 
@@ -7071,6 +7181,30 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.end(2);
     }
 
+    private static void addDoc(CodeElement<?> element, boolean javadoc, String contents) {
+        addDoc(element, javadoc, Arrays.asList(contents.split("\n")));
+    }
+
+    private static void addDoc(CodeElement<?> element, boolean javadoc, List<String> lines) {
+        CodeTreeBuilder b = element.createDocBuilder();
+        if (javadoc) {
+            b.startJavadoc();
+        } else {
+            b.startDoc();
+        }
+
+        for (String line : lines) {
+            if (line.length() == 0) {
+                b.string(" "); // inject a space so that empty lines get *'s
+            } else {
+                b.string(line);
+            }
+            b.newLine();
+        }
+
+        b.end();
+    }
+
     private CodeAnnotationMirror createExplodeLoopAnnotation(String kind) {
         CodeAnnotationMirror explodeLoop = new CodeAnnotationMirror(types.ExplodeLoop);
         if (kind != null) {
@@ -7475,8 +7609,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             private CodeExecutableElement createBegin(OperationModel operation) {
                 CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "begin" + operation.name);
-                for (CodeVariableElement param : operation.getOperationArguments()) {
-                    ex.addParameter(param);
+                for (OperationArgument arg : operation.operationArguments) {
+                    ex.addParameter(arg.toVariableElement());
                 }
                 return createMethodStub(ex);
             }
@@ -7489,8 +7623,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             private CodeExecutableElement createEmit(OperationModel operation) {
                 CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "emit" + operation.name);
-                for (CodeVariableElement param : operation.getOperationArguments()) {
-                    ex.addParameter(param);
+                for (OperationArgument arg : operation.operationArguments) {
+                    ex.addParameter(arg.toVariableElement());
                 }
                 return createMethodStub(ex);
             }
