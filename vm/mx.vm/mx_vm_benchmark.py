@@ -223,6 +223,8 @@ class NativeImageVM(GraalVm):
                                           '-R:+JfrBasedExecutionSamplerStatistics'
                                           ]
                 removed_stages.update(["instrument-image", "instrument-run"])
+            if not vm.pgo_instrumentation:
+                removed_stages.update(["instrument-image", "instrument-run"])
             if self.image_vm_args is not None:
                 base_image_build_args += self.image_vm_args
             self.is_runnable = self.check_runnable()
@@ -922,7 +924,7 @@ class NativeImageVM(GraalVm):
                     if file.endswith(".json"):
                         zipf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), os.path.join(path, '..')))
 
-    def run_stage_instrument_image(self, config, stages, out, instrumentation_image_name, image_path, profile_path):
+    def run_stage_instrument_image(self, config, stages, out, instrumentation_image_name, profile_path):
         executable_name_args = ['-o', instrumentation_image_name]
         instrument_args = ['--pgo-instrument', '-R:ProfilesDumpFile=' + profile_path]
         if self.jdk_profiles_collect:
@@ -933,7 +935,7 @@ class NativeImageVM(GraalVm):
             if config.bundle_path is not None:
                 NativeImageVM.copy_bundle_output(config)
             if s.exit_code == 0:
-                image_size = os.stat(image_path).st_size
+                image_size = os.stat(os.path.join(config.output_dir, instrumentation_image_name)).st_size
                 out('Instrumented image size: ' + str(image_size) + ' B')
 
     def _ensureSamplesAreInProfile(self, profile_path):
@@ -1067,14 +1069,11 @@ class NativeImageVM(GraalVm):
         # Native Image profile collection
         profile_path = config.profile_path_no_extension + config.profile_file_extension
         instrumentation_image_name = config.executable_name + '-instrument'
+        if stages.change_stage('instrument-image'):
+            self.run_stage_instrument_image(config, stages, out, instrumentation_image_name, profile_path)
 
-        if self.pgo_instrumentation:
-            image_path = os.path.join(config.output_dir, instrumentation_image_name)
-            if stages.change_stage('instrument-image'):
-                self.run_stage_instrument_image(config, stages, out, instrumentation_image_name, image_path, profile_path)
-
-            if stages.change_stage('instrument-run'):
-                self.run_stage_instrument_run(config, stages, image_path, profile_path)
+        if stages.change_stage('instrument-run'):
+            self.run_stage_instrument_run(config, stages, os.path.join(config.output_dir, instrumentation_image_name), profile_path)
 
         # Build the final image
         if stages.change_stage('image'):
