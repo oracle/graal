@@ -125,7 +125,7 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     @Override
     public JavaConstant readStaticFieldValue(AnalysisField field) {
         AnalysisConstantReflectionProvider aConstantReflection = (AnalysisConstantReflectionProvider) this.constantReflection;
-        JavaConstant constant = aConstantReflection.readValue(metaAccess, field, null, true);
+        JavaConstant constant = aConstantReflection.readValue(field, null, true);
         if (constant instanceof DirectSubstrateObjectConstant) {
             /*
              * The "late initialization" doesn't work with heap snapshots because the wrong value
