@@ -210,11 +210,10 @@ public class ObjectScanner {
         }
     }
 
-    @SuppressWarnings("unchecked")
     protected JavaConstant readFieldValue(AnalysisField field, JavaConstant receiver) {
         /* The object scanner processes hosted values. We must not see shadow heap values here. */
         AnalysisError.guarantee(!(receiver instanceof ImageHeapConstant));
-        return ((ConstantReflectionProviderExtension<AnalysisField>) bb.getConstantReflectionProvider()).readHostedFieldValueWithReplacement(field, receiver);
+        return bb.getUniverse().getHeapScanner().getHostedValuesProvider().readFieldValueWithReplacement(field, receiver);
     }
 
     /**

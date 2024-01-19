@@ -46,6 +46,7 @@ import com.oracle.graal.pointsto.ClassInclusionPolicy;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.bytecode.BytecodeSensitiveAnalysisPolicy;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
+import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeap;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -159,7 +160,7 @@ public final class PointsToAnalyzer {
         aUniverse.setBigBang(bigbang);
         ImageHeap heap = new ImageHeap();
         StandaloneImageHeapScanner heapScanner = new StandaloneImageHeapScanner(bigbang, heap, aMetaAccess,
-                        snippetReflection, aConstantReflection, new AnalysisObjectScanningObserver(bigbang), analysisClassLoader);
+                        snippetReflection, aConstantReflection, new AnalysisObjectScanningObserver(bigbang), analysisClassLoader, new HostedValuesProvider(aUniverse));
         aUniverse.setHeapScanner(heapScanner);
         HeapSnapshotVerifier heapVerifier = new StandaloneHeapSnapshotVerifier(bigbang, heap, heapScanner);
         aUniverse.setHeapVerifier(heapVerifier);

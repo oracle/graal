@@ -82,7 +82,7 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
 
     @Override
     protected ConstantReflectionProvider createConstantReflectionProvider() {
-        return new AnalysisConstantReflectionProvider(aUniverse, metaAccess, classInitializationSupport);
+        return new AnalysisConstantReflectionProvider(aUniverse, metaAccess);
     }
 
     @Override

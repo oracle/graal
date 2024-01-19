@@ -278,7 +278,7 @@ public class HeapSnapshotVerifier {
                 if (!Objects.deepEquals(snapshotArray, newValueArray)) {
                     /* Guarantee that the shadowed constant and the hosted constant are the same. */
                     AnalysisError.guarantee(bb.getConstantReflectionProvider().constantEquals(snapshot, newValue));
-                    Integer length = bb.getConstantReflectionProvider().readArrayLength(newValue);
+                    Integer length = bb.getUniverse().getHeapScanner().getHostedValuesProvider().readArrayLength(newValue);
                     /* Since the shadowed constant didn't change, the length should match. */
                     System.arraycopy(newValueArray, 0, snapshotArray, 0, length);
                     return true;

@@ -33,12 +33,12 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
 
-import com.oracle.graal.pointsto.ConstantReflectionProviderExtension;
 import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
-import com.oracle.graal.pointsto.heap.value.ValueSupplier;
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -51,9 +51,7 @@ import com.oracle.svm.core.meta.ObjectConstantEquality;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
-import com.oracle.svm.hosted.meta.HostedLookupSnippetReflectionProvider;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
 
 import jdk.graal.compiler.core.common.type.TypedConstant;
@@ -62,23 +60,20 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MethodHandleAccessProvider;
-import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-public class AnalysisConstantReflectionProvider extends SharedConstantReflectionProvider implements ConstantReflectionProviderExtension<AnalysisField> {
+public class AnalysisConstantReflectionProvider extends SharedConstantReflectionProvider {
     private final AnalysisUniverse universe;
     protected final UniverseMetaAccess metaAccess;
-    private final ClassInitializationSupport classInitializationSupport;
     private final AnalysisMethodHandleAccessProvider methodHandleAccess;
     private SimulateClassInitializerSupport simulateClassInitializerSupport;
     private final FieldValueInterceptionSupport fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
 
-    public AnalysisConstantReflectionProvider(AnalysisUniverse universe, UniverseMetaAccess metaAccess, ClassInitializationSupport classInitializationSupport) {
+    public AnalysisConstantReflectionProvider(AnalysisUniverse universe, UniverseMetaAccess metaAccess) {
         this.universe = universe;
         this.metaAccess = metaAccess;
-        this.classInitializationSupport = classInitializationSupport;
         this.methodHandleAccess = new AnalysisMethodHandleAccessProvider(universe);
     }
 
@@ -151,34 +146,36 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         if (array.getJavaKind() != JavaKind.Object || array.isNull()) {
             return null;
         }
+        HostedValuesProvider hostedValuesProvider = universe.getHeapScanner().getHostedValuesProvider();
         if (array instanceof ImageHeapConstant) {
             if (array instanceof ImageHeapArray heapArray) {
                 if (index < 0 || index >= heapArray.getLength()) {
                     return null;
                 }
                 heapArray.ensureReaderInstalled();
-                return replaceObject(heapArray.readElementValue(index));
+                return hostedValuesProvider.replaceObject(heapArray.readElementValue(index));
             }
             return null;
         }
         JavaConstant element = super.readArrayElement(array, index);
-        return element == null ? null : replaceObject(element);
+        return element == null ? null : hostedValuesProvider.replaceObject(element);
     }
 
     @Override
     public void forEachArrayElement(JavaConstant array, ObjIntConsumer<JavaConstant> consumer) {
+        HostedValuesProvider hostedValuesProvider = universe.getHeapScanner().getHostedValuesProvider();
         if (array instanceof ImageHeapConstant) {
             if (array instanceof ImageHeapArray heapArray) {
                 heapArray.ensureReaderInstalled();
                 for (int index = 0; index < heapArray.getLength(); index++) {
                     JavaConstant element = heapArray.readElementValue(index);
-                    consumer.accept(replaceObject(element), index);
+                    consumer.accept(hostedValuesProvider.replaceObject(element), index);
                 }
             }
             return;
         }
         /* Intercept the original consumer and apply object replacement. */
-        super.forEachArrayElement(array, (element, index) -> consumer.accept(replaceObject(element), index));
+        super.forEachArrayElement(array, (element, index) -> consumer.accept(hostedValuesProvider.replaceObject(element), index));
     }
 
     @Override
@@ -231,42 +228,11 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         }
         if (value == null) {
             VMError.guarantee(!SimulateClassInitializerSupport.singleton().isEnabled());
-            value = universe.getHeapScanner().createImageHeapConstant(readHostedFieldValueWithReplacement(field, receiver), ObjectScanner.OtherReason.UNKNOWN);
+            ImageHeapScanner heapScanner = universe.getHeapScanner();
+            HostedValuesProvider hostedValuesProvider = heapScanner.getHostedValuesProvider();
+            value = heapScanner.createImageHeapConstant(hostedValuesProvider.readFieldValueWithReplacement(field, receiver), ObjectScanner.OtherReason.UNKNOWN);
         }
         return value;
-    }
-
-    /**
-     * Read the field value and wrap it in a value supplier without performing any replacements. The
-     * shadow heap doesn't directly store simulated values. The simulated values are only accessible
-     * via {@link SimulateClassInitializerSupport#getSimulatedFieldValue(AnalysisField)}. The shadow
-     * heap is a snapshot of the hosted state; simulated values are a level above the shadow heap.
-     */
-    public ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, JavaConstant receiver) {
-        if (fieldValueInterceptionSupport.isValueAvailable(field)) {
-            /* Materialize and return the value. */
-            return ValueSupplier.eagerValue(doReadValue(field, receiver));
-        }
-        /*
-         * Return a lazy value. First, this applies to fields annotated with
-         * RecomputeFieldValue.Kind.FieldOffset and RecomputeFieldValue.Kind.Custom whose value
-         * becomes available during hosted universe building and is installed by calling
-         * ComputedValueField.processSubstrate() or ComputedValueField.readValue(). Secondly, this
-         * applies to fields annotated with @UnknownObjectField whose value is set directly either
-         * during analysis or in a later phase. Attempts to materialize the value before it becomes
-         * available will result in an error.
-         */
-        return ValueSupplier.lazyValue(() -> doReadValue(field, receiver), () -> fieldValueInterceptionSupport.isValueAvailable(field));
-    }
-
-    /** Returns the hosted field value. The receiver must be a hosted constant. */
-    @Override
-    public JavaConstant readHostedFieldValueWithReplacement(AnalysisField field, JavaConstant receiver) {
-        return replaceObject(doReadValue(field, universe.toHosted(receiver)));
-    }
-
-    private JavaConstant doReadValue(AnalysisField field, JavaConstant receiver) {
-        return universe.fromHosted(fieldValueInterceptionSupport.readFieldValue(classInitializationSupport, field, receiver));
     }
 
     /**
@@ -286,38 +252,6 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             simulateClassInitializerSupport = SimulateClassInitializerSupport.singleton();
         }
         return simulateClassInitializerSupport.getSimulatedFieldValue(field);
-    }
-
-    /**
-     * Run all registered object replacers.
-     */
-    private JavaConstant replaceObject(JavaConstant value) {
-        if (value == JavaConstant.NULL_POINTER) {
-            return JavaConstant.NULL_POINTER;
-        }
-        if (value instanceof ImageHeapConstant) {
-            /* The value is replaced when the object is snapshotted. */
-            return value;
-        }
-        if (value.getJavaKind() == JavaKind.Object) {
-            Object oldObject = universe.getSnippetReflection().asObject(Object.class, value);
-            Object newObject = universe.replaceObject(oldObject);
-            if (newObject != oldObject) {
-                JavaConstant replacedConstant = universe.getSnippetReflection().forObject(newObject);
-                validateReplacedConstant(metaAccess, replacedConstant);
-                return replacedConstant;
-            }
-        }
-        return value;
-    }
-
-    /**
-     * {@link HostedLookupSnippetReflectionProvider} replaces relocatable pointers with
-     * {@link RelocatableConstant} and regular {@link WordBase} values with
-     * {@link PrimitiveConstant}. No other {@link WordBase} values can be reachable at this point.
-     */
-    public static void validateReplacedConstant(UniverseMetaAccess access, JavaConstant value) {
-        VMError.guarantee(value instanceof RelocatableConstant || !access.isInstanceOf(value, WordBase.class));
     }
 
     @Override
