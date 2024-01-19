@@ -67,7 +67,7 @@ public final class CallTreeInfo {
         Map<AnalysisMethod, RuntimeCompiledMethod> runtimeCompilations = new HashMap<>();
         for (var method : aUniverse.getMethods()) {
             var rMethod = method.getMultiMethod(RUNTIME_COMPILED_METHOD);
-            if (rMethod != null && rMethod.isReachable() && !invalidForRuntimeCompilation.containsKey(rMethod)) {
+            if (rMethod != null && rMethod.isReachable() && !invalidForRuntimeCompilation.containsKey(rMethod) && rMethod.getAnalyzedGraph() != null) {
                 var origInlinedMethods = rMethod.getAnalyzedGraph().getInlinedMethods().stream().map(inlinedMethod -> {
                     AnalysisMethod orig = ((AnalysisMethod) inlinedMethod).getMultiMethod(ORIGINAL_METHOD);
                     assert orig != null;
