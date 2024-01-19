@@ -22,6 +22,7 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
+from __future__ import annotations
 
 import datetime
 import os
@@ -42,8 +43,8 @@ import mx_sdk_benchmark
 import mx_sdk_vm
 import mx_sdk_vm_impl
 from mx_sdk_vm_impl import svm_experimental_options
-from mx_benchmark import DataPoint, DataPoints
-from mx_sdk_benchmark import StagesInfo
+from mx_benchmark import DataPoint, DataPoints, BenchmarkSuite
+from mx_sdk_benchmark import StagesInfo, NativeImageBenchmarkMixin
 
 _suite = mx.suite('vm')
 _polybench_vm_registry = mx_benchmark.VmRegistry('PolyBench', 'polybench-vm')
@@ -123,8 +124,8 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
         return code, out, dims
 
 
-class BenchmarkConfig:
-    def __init__(self, vm, bm_suite, args):
+class NativeImageBenchmarkConfig:
+    def __init__(self, vm: "NativeImageVM", bm_suite: BenchmarkSuite | NativeImageBenchmarkMixin, args):
         self.bmSuite = bm_suite
         self.benchmark_suite_name = bm_suite.benchSuiteName(args)
         self.benchmark_name = bm_suite.benchmarkName()
@@ -285,7 +286,7 @@ class NativeImageVM(GraalVm):
         self.native_architecture = False
         self.use_upx = False
         self.graalvm_edition = None
-        self.config = None
+        self.config: Optional[NativeImageBenchmarkConfig] = None
         self.stages_info: Optional[StagesInfo] = None
         self.stages: Optional[NativeImageVM.Stages] = None
         self.jdk_profiles_collect = False
@@ -1043,14 +1044,14 @@ class NativeImageVM(GraalVm):
 
             mx.abort(
                 f"Invalid Native Image benchmark setup for {fullname(self.bmSuite.__class__)}.\n"
-                f"Please see {fullname(mx_sdk_benchmark.NativeImageBenchmarkMixin)} for more information.",
+                f"Please see {fullname(NativeImageBenchmarkMixin)} for more information.",
             )
 
         self.stages_info: StagesInfo = self.bmSuite.stages_info
         assert not self.stages_info.failed, "In case of a failed benchmark, no further calls into the VM should be made"
 
         # never fatal, we handle it ourselves
-        config = BenchmarkConfig(self, self.bmSuite, args)
+        config = NativeImageBenchmarkConfig(self, self.bmSuite, args)
         self.config = config
         stages = NativeImageVM.Stages(self.stages_info, config, out, err, self.is_gate, True if self.is_gate else nonZeroIsFatal, os.path.abspath(cwd if cwd else os.getcwd()))
         self.stages = stages
