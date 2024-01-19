@@ -264,9 +264,15 @@ public class HostedConfiguration {
 
     private static Set<AnalysisType> getForceMonitorSlotTypes(BigBang bb) {
         Set<AnalysisType> forceMonitorTypes = new HashSet<>();
-        for (Class<?> forceMonitorType : MultiThreadedMonitorSupport.FORCE_MONITOR_SLOT_TYPES) {
-            Optional<AnalysisType> aType = bb.getMetaAccess().optionalLookupJavaType(forceMonitorType);
-            aType.ifPresent(forceMonitorTypes::add);
+        for (var entry : MultiThreadedMonitorSupport.FORCE_MONITOR_SLOT_TYPES.entrySet()) {
+            Optional<AnalysisType> optionalType = bb.getMetaAccess().optionalLookupJavaType(entry.getKey());
+            if (optionalType.isPresent()) {
+                AnalysisType aType = optionalType.get();
+                forceMonitorTypes.add(aType);
+                if (entry.getValue()) {
+                    forceMonitorTypes.addAll(aType.getAllSubtypes());
+                }
+            }
         }
         return forceMonitorTypes;
     }

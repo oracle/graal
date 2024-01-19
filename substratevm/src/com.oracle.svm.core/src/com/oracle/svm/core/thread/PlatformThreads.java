@@ -1100,7 +1100,7 @@ public abstract class PlatformThreads {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void setThreadStatus(Thread thread, int threadStatus) {
         assert !isVirtual(thread);
-        assert toTarget(thread).holder.threadStatus != ThreadStatus.TERMINATED : "once a thread is marked terminated, its status must not change";
+        assert toTarget(thread).holder.threadStatus != ThreadStatus.TERMINATED : "once a thread is marked as terminated, its status must not change";
         toTarget(thread).holder.threadStatus = threadStatus;
     }
 
