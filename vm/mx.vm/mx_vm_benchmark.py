@@ -30,7 +30,7 @@ import shutil
 import tempfile
 import json
 from genericpath import exists
-from os.path import basename, dirname, getsize, join
+from os.path import basename, dirname, getsize
 from traceback import print_tb
 import inspect
 import subprocess
@@ -172,7 +172,7 @@ class NativeImageVM(GraalVm):
             unique_suite_name = f"{self.bmSuite.benchSuiteName()}-{self.bmSuite.version().replace('.', '-')}" if self.bmSuite.version() != 'unknown' else self.bmSuite.benchSuiteName()
             self.executable_name = (unique_suite_name + '-' + self.benchmark_name).lower() if self.benchmark_name else unique_suite_name.lower()
             self.final_image_name = self.executable_name + '-' + vm.config_name()
-            self.output_dir = mx.join(os.path.abspath(self.root_dir), 'native-image-benchmarks', self.executable_name + '-' + vm.config_name())
+            self.output_dir = os.path.join(os.path.abspath(self.root_dir), 'native-image-benchmarks', self.executable_name + '-' + vm.config_name())
             self.profile_path_no_extension = os.path.join(self.output_dir, self.executable_name)
             self.latest_profile_path = self.profile_path_no_extension + '-latest' + self.profile_file_extension
             self.config_dir = os.path.join(self.output_dir, 'config')
@@ -255,7 +255,7 @@ class NativeImageVM(GraalVm):
                     # The bundle output is produced next to the bundle file, which in the case of
                     # benchmarks is in the mx cache, so we make a local copy.
                     cached_bundle_path = self.extra_image_build_arguments[i][len(bundle_apply_arg):]
-                    bundle_copy_path = join(self.output_dir, basename(cached_bundle_path))
+                    bundle_copy_path = os.path.join(self.output_dir, basename(cached_bundle_path))
                     mx.ensure_dirname_exists(bundle_copy_path)
                     mx.copyfile(cached_bundle_path, bundle_copy_path)
                     self.extra_image_build_arguments[i] = bundle_apply_arg + bundle_copy_path
@@ -267,7 +267,7 @@ class NativeImageVM(GraalVm):
             bundle_create_arg = "--bundle-create"
             bundle_arg_idx = [idx for idx, arg in enumerate(self.extra_image_build_arguments) if arg.startswith(bundle_create_arg)]
             if len(bundle_arg_idx) == 1:
-                bp = join(self.extra_image_build_arguments[bundle_arg_idx[0] + 1] + ".output", "default", "reports")
+                bp = os.path.join(self.extra_image_build_arguments[bundle_arg_idx[0] + 1] + ".output", "default", "reports")
                 return bp
 
             return None
@@ -380,7 +380,7 @@ class NativeImageVM(GraalVm):
                 def generate_profiling_package_prefixes():
                     # run the native-image-configure tool to gather the jdk package prefixes
                     graalvm_home_bin = os.path.join(mx_sdk_vm.graalvm_home(), 'bin')
-                    native_image_configure_command = mx.cmd_suffix(join(graalvm_home_bin, 'native-image-configure'))
+                    native_image_configure_command = mx.cmd_suffix(os.path.join(graalvm_home_bin, 'native-image-configure'))
                     if not exists(native_image_configure_command):
                         mx.abort('Failed to find the native-image-configure command at {}. \nContent {}: \n\t{}'.format(native_image_configure_command, graalvm_home_bin, '\n\t'.join(os.listdir(graalvm_home_bin))))
                     tmp = tempfile.NamedTemporaryFile()
@@ -892,7 +892,7 @@ class NativeImageVM(GraalVm):
         """
         bundle_dir = os.path.dirname(config.bundle_path)
         bundle_name = os.path.basename(config.bundle_path)
-        bundle_output = join(bundle_dir, bundle_name[:-len(".nib")] + ".output", "default")
+        bundle_output = os.path.join(bundle_dir, bundle_name[:-len(".nib")] + ".output", "default")
         shutil.copytree(bundle_output, config.output_dir, dirs_exist_ok=True)
         mx.rmtree(bundle_output)
 
@@ -992,7 +992,7 @@ class NativeImageVM(GraalVm):
                 adopted_profile = os.path.join(adopted_profiles_dir, 'jdk_profile.iprof')
             else:
                 mx.warn(f'SubstrateVM Enterprise with JDK{jdk_version} does not contain JDK profiles.')
-                adopted_profile = join(mx.suite('substratevm-enterprise').mxDir, 'empty.iprof')
+                adopted_profile = os.path.join(mx.suite('substratevm-enterprise').mxDir, 'empty.iprof')
             jdk_profiles_args = svm_experimental_options([f'-H:AdoptedPGOEnabled={adopted_profile}'])
         else:
             jdk_profiles_args = []
@@ -1110,8 +1110,8 @@ class AnalysisReportJsonFileRule(mx_benchmark.JsonBaseRule):
             json_file_name = os.path.basename(json_file_path)
             base_search_dir = self.report_directory
             if self.is_diagnostics_mode:
-                base_search_dir = join(base_search_dir, os.path.basename(os.path.dirname(json_file_path)))
-            expected_json_file_path = join(base_search_dir, json_file_name)
+                base_search_dir = os.path.join(base_search_dir, os.path.basename(os.path.dirname(json_file_path)))
+            expected_json_file_path = os.path.join(base_search_dir, json_file_name)
             if exists(expected_json_file_path):
                 found_json_files.append(expected_json_file_path)
             else:
@@ -1179,7 +1179,7 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite, mx_benchmark.Av
         return self.vmArgs(bmSuiteArgs) + super(AgentScriptJsBenchmarkSuite, self).createCommandLineArgs(benchmarks, bmSuiteArgs)
 
     def workingDirectory(self, benchmarks, bmSuiteArgs):
-        return join(_suite.dir, 'benchmarks', 'agentscript')
+        return os.path.join(_suite.dir, 'benchmarks', 'agentscript')
 
     def createVmCommandLineArgs(self, benchmarks, runArgs):
         if not benchmarks:
@@ -1430,7 +1430,7 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         output_root = mx_sdk_vm_impl.get_final_graalvm_distribution().get_output_root()
 
         def get_size_message(image_name, image_location):
-            return FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(image_name, getsize(join(output_root, image_location)), image_location, output_root)
+            return FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(image_name, getsize(os.path.join(output_root, image_location)), image_location, output_root)
 
         for location in mx_sdk_vm_impl.get_all_native_image_locations(include_libraries=True, include_launchers=False, abs_path=False):
             lib_name = 'lib:' + mx_sdk_vm_impl.remove_lib_prefix_suffix(basename(location))
