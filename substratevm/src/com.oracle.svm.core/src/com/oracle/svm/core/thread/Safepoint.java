@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,7 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.SafepointBeginEvent;
 import com.oracle.svm.core.jfr.events.SafepointEndEvent;
+import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
@@ -219,7 +220,7 @@ public final class Safepoint {
             assert !ThreadingSupportImpl.isRecurringCallbackRegistered(myself) || ThreadingSupportImpl.isRecurringCallbackPaused();
         } else {
             do {
-                if (Master.singleton().getRequestingThread().isNonNull()) {
+                if (Master.singleton().getRequestingThread().isNonNull() || safepointSuspend.getVolatile() > 0) {
                     Statistics.incFrozen();
                     freezeAtSafepoint(newStatus, callerHasJavaFrameAnchor);
                     SafepointListenerSupport.singleton().afterFreezeAtSafepoint();
@@ -343,6 +344,9 @@ public final class Safepoint {
     @Uninterruptible(reason = "Must not contain safepoint checks.")
     private static void notInlinedLockNoTransition() {
         VMThreads.THREAD_MUTEX.lockNoTransition();
+        while (safepointSuspend.get() > 0) {
+            COND_SUSPEND.blockNoTransition();
+        }
     }
 
     /**
@@ -403,6 +407,15 @@ public final class Safepoint {
     public static int getThreadLocalSafepointRequestedOffset() {
         return VMThreadLocalInfos.getOffset(safepointRequested);
     }
+
+    /**
+     * Per-thread counter for safepoint suspends. The possible value is {@code 0} (not suspended),
+     * or positive (blocked on {@link #COND_SUSPEND}).
+     */
+    static final FastThreadLocalInt safepointSuspend = FastThreadLocalFactory.createInt("Safepoint.safepointSuspend");
+
+    /** Condition on which to block when suspended. */
+    static final VMCondition COND_SUSPEND = new VMCondition(VMThreads.THREAD_MUTEX);
 
     /** Foreign call: {@link #ENTER_SLOW_PATH_SAFEPOINT_CHECK}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
@@ -827,6 +840,10 @@ public final class Safepoint {
                 if (!isMyself(vmThread) && !SafepointBehavior.ignoresSafepoints(vmThread)) {
                     if (trace.isEnabled()) {
                         trace.string("  vmThread status: ").string(StatusSupport.getStatusString(vmThread));
+                    }
+
+                    if (safepointSuspend.get() > 0) {
+                        continue;
                     }
 
                     restoreSafepointRequestedValue(vmThread);
