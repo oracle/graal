@@ -34,7 +34,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunk;
 import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -46,12 +45,6 @@ import jdk.graal.compiler.api.replacements.Fold;
 
 @AutomaticallyRegisteredFeature
 final class VMLockFeature implements InternalFeature {
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.MultiThreaded.getValue();
-    }
-
     @Override
     public void duringSetup(DuringSetupAccess access) {
         if (!ImageSingletons.contains(VMLockSupport.class)) {

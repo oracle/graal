@@ -30,7 +30,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -47,9 +46,7 @@ public class MonitorFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            ImageSingletons.add(MonitorSupport.class, new MultiThreadedMonitorSupport());
-        }
+        ImageSingletons.add(MonitorSupport.class, new MultiThreadedMonitorSupport());
     }
 
     @Override
@@ -60,8 +57,6 @@ public class MonitorFeature implements InternalFeature {
 
     @Override
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            foreignCalls.register(MonitorSnippets.FOREIGN_CALLS);
-        }
+        foreignCalls.register(MonitorSnippets.FOREIGN_CALLS);
     }
 }

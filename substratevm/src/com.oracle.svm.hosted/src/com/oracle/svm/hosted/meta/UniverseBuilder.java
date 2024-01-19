@@ -404,11 +404,6 @@ public class UniverseBuilder {
                     FillerArray.class));
 
     private void collectMonitorFieldInfo(BigBang bb) {
-        if (!SubstrateOptions.MultiThreaded.getValue()) {
-            /* No locking information needed in single-threaded mode. */
-            return;
-        }
-
         HostedConfiguration.instance().collectMonitorFieldInfo(bb, hUniverse, getImmutableTypes());
     }
 

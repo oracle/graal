@@ -26,8 +26,6 @@ package com.oracle.svm.core.threadlocal;
 
 import java.util.Collection;
 
-import jdk.graal.compiler.word.ObjectAccess;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -38,12 +36,14 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.SubstrateDiagnostics;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.log.Log;
+
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 
 @AutomaticallyRegisteredImageSingleton
 public class VMThreadLocalInfos {
@@ -108,20 +108,12 @@ public class VMThreadLocalInfos {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Pointer primitiveData(IsolateThread thread) {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            return (Pointer) thread;
-        } else {
-            return Word.objectToUntrackedPointer(ImageSingletons.lookup(VMThreadLocalSTSupport.class).primitiveThreadLocals);
-        }
+        return (Pointer) thread;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Object objectData(IsolateThread thread) {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            return ((Pointer) thread).toObjectNonNull();
-        } else {
-            return ImageSingletons.lookup(VMThreadLocalSTSupport.class).objectThreadLocals;
-        }
+        return ((Pointer) thread).toObjectNonNull();
     }
 
     public static int getOffset(FastThreadLocal threadLocal) {

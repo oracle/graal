@@ -27,9 +27,6 @@ package com.oracle.svm.core.genscavenge;
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_END_IDENTITY;
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_TOP_IDENTITY;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.replacements.AllocationSnippets.FillContent;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -46,7 +43,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateGCOptions;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
@@ -75,6 +71,10 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.replacements.AllocationSnippets.FillContent;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Bump-pointer allocation from thread-local top and end Pointers. Many of these methods are called
@@ -428,12 +428,8 @@ public final class ThreadLocalAllocation {
     static void disableAndFlushForAllThreads() {
         VMOperation.guaranteeInProgress("ThreadLocalAllocation.disableAndFlushForAllThreads");
 
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-                disableAndFlushForThread(vmThread);
-            }
-        } else {
-            disableAndFlushForThread(WordFactory.nullPointer());
+        for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
+            disableAndFlushForThread(vmThread);
         }
     }
 
@@ -444,12 +440,9 @@ public final class ThreadLocalAllocation {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static void tearDown() {
-        IsolateThread thread = WordFactory.nullPointer();
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            // no other thread is alive, so it is always safe to access the first thread
-            thread = VMThreads.firstThreadUnsafe();
-            VMError.guarantee(VMThreads.nextThread(thread).isNull(), "Other isolate threads are still active");
-        }
+        // no other thread is alive, so it is always safe to access the first thread
+        IsolateThread thread = VMThreads.firstThreadUnsafe();
+        VMError.guarantee(VMThreads.nextThread(thread).isNull(), "Other isolate threads are still active");
         freeHeapChunks(getTlab(thread));
     }
 

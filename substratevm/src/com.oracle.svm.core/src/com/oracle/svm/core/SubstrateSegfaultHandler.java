@@ -169,25 +169,22 @@ public abstract class SubstrateSegfaultHandler {
             return false;
         }
 
-        /* Try to determine the isolate via the thread register. */
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            /*
-             * Set the thread register to null so that we don't execute this code more than once if
-             * we trigger a recursive segfault.
-             */
-            WriteCurrentVMThreadNode.writeCurrentVMThread(WordFactory.nullPointer());
+        /*
+         * Try to determine the isolate via the thread register. Set the thread register to null so
+         * that we don't execute this code more than once if we trigger a recursive segfault.
+         */
+        WriteCurrentVMThreadNode.writeCurrentVMThread(WordFactory.nullPointer());
 
-            IsolateThread isolateThread = (IsolateThread) RegisterDumper.singleton().getThreadPointer(context);
-            if (isolateThread.isNonNull()) {
-                isolate = VMThreads.IsolateTL.get(isolateThread);
-                if (isValid(isolate)) {
-                    if (SubstrateOptions.SpawnIsolates.getValue()) {
-                        CEntryPointSnippets.setHeapBase(isolate);
-                    }
-
-                    WriteCurrentVMThreadNode.writeCurrentVMThread(isolateThread);
-                    return true;
+        IsolateThread isolateThread = (IsolateThread) RegisterDumper.singleton().getThreadPointer(context);
+        if (isolateThread.isNonNull()) {
+            isolate = VMThreads.IsolateTL.get(isolateThread);
+            if (isValid(isolate)) {
+                if (SubstrateOptions.SpawnIsolates.getValue()) {
+                    CEntryPointSnippets.setHeapBase(isolate);
                 }
+
+                WriteCurrentVMThreadNode.writeCurrentVMThread(isolateThread);
+                return true;
             }
         }
 

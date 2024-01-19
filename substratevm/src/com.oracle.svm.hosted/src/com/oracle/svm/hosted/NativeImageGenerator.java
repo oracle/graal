@@ -1556,16 +1556,11 @@ public class NativeImageGenerator {
         BasePhase<CoreProviders> addressLoweringPhase = backend.newAddressLoweringPhase(runtimeCallProviders.getCodeCache());
         lowTier.replacePlaceholder(AddressLoweringPhase.class, addressLoweringPhase);
 
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            /*
-             * Graal inserts only loop safepoints. We want a SafepointNode also before every return.
-             * Our safepoint insertion phase inserts both kinds of safepoints.
-             */
-            midTier.findPhase(LoopSafepointInsertionPhase.class).set(new SubstrateSafepointInsertionPhase());
-        } else {
-            /* No need for safepoints when we have only one thread. */
-            VMError.guarantee(midTier.removePhase(LoopSafepointInsertionPhase.class));
-        }
+        /*
+         * Graal inserts only loop safepoints. We want a SafepointNode also before every return. Our
+         * safepoint insertion phase inserts both kinds of safepoints.
+         */
+        midTier.findPhase(LoopSafepointInsertionPhase.class).set(new SubstrateSafepointInsertionPhase());
 
         if (hosted) {
             lowTier.appendPhase(new VerifyNoGuardsPhase());

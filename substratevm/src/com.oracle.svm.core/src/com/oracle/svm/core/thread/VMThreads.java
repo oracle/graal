@@ -39,7 +39,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CFunctionOptions;
@@ -681,13 +680,11 @@ public abstract class VMThreads {
                 return true;
             }
 
-            if (SubstrateOptions.MultiThreaded.getValue()) {
-                int sizeOfThreadLocals = ImageSingletons.lookup(VMThreadLocalMTSupport.class).vmThreadSize;
-                UnsignedWord endOfThreadLocals = ((UnsignedWord) thread).add(sizeOfThreadLocals);
-                if (value.aboveOrEqual((UnsignedWord) thread) && value.belowThan(endOfThreadLocals)) {
-                    log.string("points into the thread locals for thread ").zhex(thread);
-                    return true;
-                }
+            int sizeOfThreadLocals = ImageSingletons.lookup(VMThreadLocalMTSupport.class).vmThreadSize;
+            UnsignedWord endOfThreadLocals = ((UnsignedWord) thread).add(sizeOfThreadLocals);
+            if (value.aboveOrEqual((UnsignedWord) thread) && value.belowThan(endOfThreadLocals)) {
+                log.string("points into the thread locals for thread ").zhex(thread);
+                return true;
             }
         }
         return false;

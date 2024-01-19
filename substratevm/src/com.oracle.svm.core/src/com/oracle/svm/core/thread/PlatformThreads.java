@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.thread;
 
-import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.thread.JavaThreads.fromTarget;
 import static com.oracle.svm.core.thread.JavaThreads.isCurrentThreadVirtual;
@@ -481,10 +480,6 @@ public abstract class PlatformThreads {
      * @return true if the application threads have been torn down, false otherwise.
      */
     public boolean tearDown() {
-        /* If the VM is single-threaded then this is the last (and only) thread. */
-        if (!MultiThreaded.getValue()) {
-            return true;
-        }
         /* Tell all the threads that the VM is being torn down. */
         boolean result = tearDownPlatformThreads();
 
