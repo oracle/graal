@@ -175,8 +175,7 @@ public final class Continuation {
 
     /**
      * A functional interface you implement to delimit the starting point of the continuation. You
-     * can only suspend the continuation when your implementation of
-     * {@link #start(SuspendCapability)} is on the stack.
+     * can only suspend the continuation when your implementation of {@code start} is on the stack.
      */
     @FunctionalInterface
     public interface EntryPoint {
@@ -184,7 +183,7 @@ public final class Continuation {
          * The starting point of your continuation. The {@code suspendCapability} should only be
          * invoked on this thread.
          */
-        public void start(SuspendCapability suspendCapability);
+        void start(SuspendCapability suspendCapability);
     }
 
     /**
