@@ -1120,7 +1120,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
             iBR = locals.getNextIndex();
             int codePointI = inputReadAndDecode(locals, i, codeRange);
             i = locals.getNextIndex();
-            if (injectBranchProbability(EXIT_PROBABILITY, !(backReference.isIgnoreCaseReference() ? equalsIgnoreCase(codePointBR, codePointI, backReference.isIgnoreCaseReferenceAlternativeMode()) : codePointBR == codePointI))) {
+            if (injectBranchProbability(EXIT_PROBABILITY,
+                            !(backReference.isIgnoreCaseReference() ? equalsIgnoreCase(codePointBR, codePointI, backReference.isIgnoreCaseReferenceAlternativeMode()) : codePointBR == codePointI))) {
                 locals.setNextIndex(saveNextIndex);
                 return -1;
             }

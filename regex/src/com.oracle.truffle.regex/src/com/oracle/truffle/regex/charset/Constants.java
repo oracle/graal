@@ -250,9 +250,8 @@ public final class Constants {
 
     // all characters except \n
     public static final CodePointSet JAVA_DOT_UNIX = CodePointSet.createNoDedup(
-            0x0000, 0x0009,
-            0x000b, 0x10ffff
-    );
+                    0x0000, 0x0009,
+                    0x000b, 0x10ffff);
 
     public static final CodePointSet NO_NEWLINE = CodePointSet.createNoDedup(
                     0x0000, 0x0009,

@@ -894,7 +894,6 @@ public final class Meta extends ContextAccessImpl {
         java_util_Map_remove = java_util_Map.requireDeclaredMethod(Name.remove, Signature.Object_Object);
         java_util_Map_containsKey = java_util_Map.requireDeclaredMethod(Name.containsKey, Signature._boolean_Object);
         java_util_Map_entrySet = java_util_Map.requireDeclaredMethod(Name.entrySet, Signature.java_util_Set);
-        java_util_Map_copy_of = java_util_Map.requireDeclaredMethod(Name.copyOf, Signature.Map_Map);
         assert java_util_Map.isInterface();
 
         java_util_HashMap = knownKlass(Type.java_util_HashMap);
@@ -1738,8 +1737,6 @@ public final class Meta extends ContextAccessImpl {
     public final Method java_util_Map_remove;
     public final Method java_util_Map_containsKey;
     public final Method java_util_Map_entrySet;
-    public final Method java_util_Map_copy_of;
-
     public final ObjectKlass java_util_HashMap;
     public final Method java_util_HashMap_init;
     public final Method java_util_HashMap_put;

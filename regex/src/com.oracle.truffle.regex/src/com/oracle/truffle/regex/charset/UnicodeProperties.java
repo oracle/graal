@@ -55,12 +55,8 @@ public class UnicodeProperties {
 
     private static final EconomicMap<String, String> javaScriptAliases = normalizeKeys(UnicodePropertyData.SCRIPT_ALIASES);
     private static final EconomicMap<String, String> javaBlockAliases = normalizeKeys(UnicodePropertyData.BLOCK_ALIASES);
-    public static final CodePointSet GRAPH = JavaGc.SPACE_SEPARATOR
-            .union(JavaGc.LINE_SEPARATOR)
-            .union(JavaGc.PARAGRAPH_SEPARATOR)
-            .union(JavaGc.CONTROL)
-            .union(JavaGc.SURROGATE)
-            .union(JavaGc.UNASSIGNED).createInverse(Encodings.UTF_16);
+    public static final CodePointSet GRAPH = JavaGc.SPACE_SEPARATOR.union(JavaGc.LINE_SEPARATOR).union(JavaGc.PARAGRAPH_SEPARATOR).union(JavaGc.CONTROL).union(JavaGc.SURROGATE).union(
+                    JavaGc.UNASSIGNED).createInverse(Encodings.UTF_16);
     public static final CodePointSet BLANK = JavaGc.SPACE_SEPARATOR.union(CodePointSet.create(0x9));
 
     private static EconomicMap<String, String> normalizeKeys(EconomicMap<String, String> original) {
@@ -122,7 +118,8 @@ public class UnicodeProperties {
         // Unicode character property aliases, defined in
         // http://www.unicode.org/Public/UNIDATA/PropertyValueAliases.txt
         return switch (name) {
-            // TODO we probably do not need to worry about case sensitivity here as we'll perform case folding later anyway
+            // TODO we probably do not need to worry about case sensitivity here as we'll perform
+            // case folding later anyway
             case "Cn" -> JavaGc.category("Cn");
             case "Lu" -> caseIns ? categories("Lu", "Ll", "Lt") : JavaGc.category("Lu");
             case "Ll" -> caseIns ? categories("Lu", "Ll", "Lt") : JavaGc.category("Ll");
@@ -182,13 +179,13 @@ public class UnicodeProperties {
 
             // Java character properties, defined by methods in Character.java
             case "javaLowerCase" -> caseIns ? JavaCharacter.LOWER_CASE.union(JavaCharacter.UPPER_CASE).union(JavaCharacter.TITLE_CASE)
-                    : JavaCharacter.LOWER_CASE;
+                            : JavaCharacter.LOWER_CASE;
             case "javaUpperCase" -> caseIns ? JavaCharacter.LOWER_CASE.union(JavaCharacter.UPPER_CASE).union(JavaCharacter.TITLE_CASE)
-                    : JavaCharacter.UPPER_CASE;
+                            : JavaCharacter.UPPER_CASE;
             case "javaAlphabetic" -> JavaCharacter.ALPHABETIC;
             case "javaIdeographic" -> JavaCharacter.IDEOGRAPHIC;
             case "javaTitleCase" -> caseIns ? JavaCharacter.LOWER_CASE.union(JavaCharacter.UPPER_CASE).union(JavaCharacter.TITLE_CASE)
-                    : JavaCharacter.TITLE_CASE;
+                            : JavaCharacter.TITLE_CASE;
             case "javaDigit" -> JavaCharacter.DIGIT;
             case "javaDefined" -> JavaCharacter.DEFINED;
             case "javaLetter" -> JavaCharacter.LETTER;
@@ -210,12 +207,8 @@ public class UnicodeProperties {
     private static CodePointSet getPosixPredicateJava(String name, boolean caseIns) {
         return switch (name) {
             case "ALPHA" -> JavaCharacter.ALPHABETIC;
-            case "LOWER" -> caseIns ? JavaCharacter.UPPER_CASE
-                    .union(JavaCharacter.LOWER_CASE)
-                    .union(JavaCharacter.TITLE_CASE) : JavaCharacter.LOWER_CASE;
-            case "UPPER" -> caseIns ? JavaCharacter.UPPER_CASE
-                    .union(JavaCharacter.LOWER_CASE)
-                    .union(JavaCharacter.TITLE_CASE) : JavaCharacter.UPPER_CASE;
+            case "LOWER" -> caseIns ? JavaCharacter.UPPER_CASE.union(JavaCharacter.LOWER_CASE).union(JavaCharacter.TITLE_CASE) : JavaCharacter.LOWER_CASE;
+            case "UPPER" -> caseIns ? JavaCharacter.UPPER_CASE.union(JavaCharacter.LOWER_CASE).union(JavaCharacter.TITLE_CASE) : JavaCharacter.UPPER_CASE;
             case "SPACE" -> WHITE_SPACE;
             case "PUNCT" -> PUNCT;
             case "XDIGIT" -> JavaCharacter.DIGIT.union(JavaPropList.HEX_DIGIT);
@@ -252,32 +245,28 @@ public class UnicodeProperties {
             case "PUNCTUATION" -> PUNCT;
             case "UPPERCASE" -> caseIns ? JavaCharacter.LOWER_CASE.union(JavaCharacter.UPPER_CASE).union(JavaCharacter.TITLE_CASE) : JavaCharacter.UPPER_CASE;
             case "WHITESPACE", "WHITE_SPACE" -> WHITE_SPACE;
-            case "WORD" -> JavaCharacter.ALPHABETIC.union(JavaPropList.JOINT_CONTROL)
-                    .union(JavaGc.NON_SPACING_MARK)
-                    .union(JavaGc.ENCLOSING_MARK)
-                    .union(JavaGc.COMBINING_SPACING_MARK)
-                    .union(JavaGc.DECIMAL_DIGIT_NUMBER)
-                    .union(JavaGc.CONNECTOR_PUNCTUATION);
+            case "WORD" -> JavaCharacter.ALPHABETIC.union(JavaPropList.JOINT_CONTROL).union(JavaGc.NON_SPACING_MARK).union(JavaGc.ENCLOSING_MARK).union(JavaGc.COMBINING_SPACING_MARK).union(
+                            JavaGc.DECIMAL_DIGIT_NUMBER).union(JavaGc.CONNECTOR_PUNCTUATION);
             default -> null;
         };
     }
 
     public static CodePointSet forUnicodePropertyJava(String propName, boolean caseIns) {
-        propName = propName.toUpperCase(Locale.ROOT);
-        CodePointSet p = getUnicodePredicateJava(propName, caseIns);
+        String propNameNormalized = propName.toUpperCase(Locale.ROOT);
+        CodePointSet p = getUnicodePredicateJava(propNameNormalized, caseIns);
         if (p != null) {
             return p;
         }
-        return getPosixPredicateJava(propName, caseIns);
+        return getPosixPredicateJava(propNameNormalized, caseIns);
     }
 
     public static CodePointSet forPOSIXNameJava(String propName, boolean caseIns) {
         return getPosixPredicateJava(propName.toUpperCase(Locale.ENGLISH), caseIns);
     }
 
-    private static CodePointSet categories(String ...name) {
+    private static CodePointSet categories(String... name) {
         CodePointSet res = CodePointSet.getEmpty();
-        for (String n: name) {
+        for (String n : name) {
             res = res.union(JavaGc.category(n));
         }
         return res;

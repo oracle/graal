@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,13 +43,104 @@ import java.util.regex.Pattern;
 
 @EspressoSubstitutions
 public final class Target_java_util_regex_Pattern {
-    private static boolean isSet(int flags, int flag) {
-        return (flags & flag) != 0;
+    private static final int ALL_FLAGS = Pattern.CASE_INSENSITIVE | Pattern.MULTILINE |
+                    Pattern.DOTALL | Pattern.UNICODE_CASE | Pattern.CANON_EQ | Pattern.UNIX_LINES | Pattern.LITERAL |
+                    Pattern.UNICODE_CHARACTER_CLASS | Pattern.COMMENTS;
+
+    @Substitution(hasReceiver = true, methodName = "<init>")
+    abstract static class Init extends SubstitutionNode {
+
+        abstract void execute(@JavaType(Pattern.class) StaticObject self, @JavaType(String.class) StaticObject p, int f);
+
+        @Specialization
+        void doDefault(
+                        @JavaType(Pattern.class) StaticObject self, @JavaType(String.class) StaticObject p, int f,
+                        @Bind("getContext()") EspressoContext context,
+                        @CachedLibrary(limit = "3") InteropLibrary regexInterop,
+                        @Cached("create(context.getMeta().java_util_regex_Pattern_init.getCallTargetNoSubstitution())") DirectCallNode original) {
+            Meta meta = context.getMeta();
+            String pattern = meta.toHostString(p);
+
+            String combined = "RegressionTestMode=true,Encoding=UTF-16,Flavor=JavaUtilPattern,Validate=true";
+
+            if ((f & ~ALL_FLAGS) != 0) {
+                StaticObject guestException = meta.java_lang_IllegalArgumentException.allocateInstance(context);
+                CallTarget exceptionInit = meta.java_lang_IllegalArgumentException_init.getCallTarget();
+                exceptionInit.call(guestException, meta.toGuestString(unknownFlagMessage(f)));
+                meta.throwException(guestException);
+            }
+
+            // this is to reproduce the java.util.regex behavior, where isEmpty is called on the
+            // pattern
+            if (p == StaticObject.NULL) {
+                throw meta.throwNullPointerException();
+            }
+
+            String sourceStr = getString(f, combined, pattern);
+            Source src = getSource(sourceStr);
+            try {
+                context.getEnv().parseInternal(src).call();
+            } catch (Exception e) {
+                CompilerDirectives.transferToInterpreter();
+                try {
+                    if (regexInterop.isException(e) && regexInterop.getExceptionType(e) == ExceptionType.PARSE_ERROR) {
+                        // this can either RegexSyntaxException or UnsupportedRegexException (no
+                        // good way to distinguish)
+                        meta.java_util_regex_Pattern_HIDDEN_unsupported.setHiddenObject(self, true);
+                        original.call(self, p, f);
+                        return;
+                    } else {
+                        throw e;
+                    }
+                } catch (UnsupportedMessageException ex) {
+                    CompilerDirectives.shouldNotReachHere(e);
+                }
+            }
+
+            meta.java_util_regex_Pattern_HIDDEN_tregexSearch.setHiddenObject(self, StaticObject.NULL);
+            meta.java_util_regex_Pattern_HIDDEN_tregexMatch.setHiddenObject(self, StaticObject.NULL);
+            meta.java_util_regex_Pattern_HIDDEN_tregexFullmatch.setHiddenObject(self, StaticObject.NULL);
+            meta.java_util_regex_Pattern_HIDDEN_unsupported.setHiddenObject(self, false);
+
+            // indicates that the group count is invalid
+            meta.java_util_regex_Pattern_capturingGroupCount.setInt(self, -1);
+            meta.java_util_regex_Pattern_pattern.setObject(self, p);
+            meta.java_util_regex_Pattern_flags.setInt(self, f);
+            meta.java_util_regex_Pattern_flags0.setInt(self, f);
+            meta.java_util_regex_Pattern_compiled.setBoolean(self, true);
+        }
+
+        @TruffleBoundary
+        private static Source getSource(String sourceStr) {
+            Source src = Source.newBuilder("regex", sourceStr, "patternExpr").build();
+            return src;
+        }
     }
 
-    private static final int ALL_FLAGS = Pattern.CASE_INSENSITIVE | Pattern.MULTILINE |
-            Pattern.DOTALL | Pattern.UNICODE_CASE | Pattern.CANON_EQ | Pattern.UNIX_LINES | Pattern.LITERAL |
-            Pattern.UNICODE_CHARACTER_CLASS | Pattern.COMMENTS;
+    @Substitution(hasReceiver = true, methodName = "namedGroups")
+    abstract static class NamedGroups extends SubstitutionNode {
+
+        abstract @JavaType(Map.class) StaticObject execute(@JavaType(Pattern.class) StaticObject self);
+
+        @Specialization
+        @JavaType(Map.class)
+        StaticObject doFallback(
+                        @JavaType(Pattern.class) StaticObject self,
+                        @Cached("create(getContext().getMeta().java_util_regex_Pattern_namedGroups.getCallTargetNoSubstitution())") DirectCallNode original,
+                        @Cached("create(getContext().getMeta().java_util_regex_Pattern_init.getCallTargetNoSubstitution())") DirectCallNode initOriginal) {
+            if (getContext().getMeta().java_util_regex_Pattern_namedGroups_field.getObject(self) == StaticObject.NULL) {
+                StaticObject pattern = getContext().getMeta().java_util_regex_Pattern_pattern.getObject(self);
+                Object flags = getContext().getMeta().java_util_regex_Pattern_flags.getValue(self);
+                initOriginal.call(self, pattern, flags);
+            }
+            return (StaticObject) original.call(self);
+        }
+    }
+
+    @TruffleBoundary
+    private static String getString(int f, String combined, String pattern) {
+        return combined + '/' + pattern + '/' + convertFlags(f);
+    }
 
     @TruffleBoundary
     public static String convertFlags(int flags) {
@@ -89,99 +180,7 @@ public final class Target_java_util_regex_Pattern {
         return "Unknown flag 0x" + Integer.toHexString(f);
     }
 
-    @Substitution(hasReceiver = true, methodName = "<init>")
-    abstract static class Init extends SubstitutionNode {
-
-        abstract void execute(@JavaType(Pattern.class) StaticObject self, @JavaType(String.class) StaticObject p, int f);
-
-
-        @Specialization
-        void doDefault(
-                @JavaType(Pattern.class) StaticObject self, @JavaType(String.class) StaticObject p, int f,
-                @Bind("getContext()") EspressoContext context,
-                @CachedLibrary(limit = "3") InteropLibrary regexInterop,
-                @Cached("create(context.getMeta().java_util_regex_Pattern_init.getCallTargetNoSubstitution())") DirectCallNode original) {
-            Meta meta = context.getMeta();
-            String pattern = meta.toHostString(p);
-
-            String combined = "RegressionTestMode=true,Encoding=UTF-16,Flavor=JavaUtilPattern,Validate=true";
-
-            if ((f & ~ALL_FLAGS) != 0) {
-                StaticObject guestException = meta.java_lang_IllegalArgumentException.allocateInstance(context);
-                CallTarget exceptionInit = meta.java_lang_IllegalArgumentException_init.getCallTarget();
-                exceptionInit.call(guestException, meta.toGuestString(unknownFlagMessage(f)));
-                meta.throwException(guestException);
-            }
-
-            // this is to reproduce the java.util.regex behavior, where isEmpty is called on the
-            // pattern
-            if (p == StaticObject.NULL) {
-                throw meta.throwNullPointerException();
-            }
-
-            String sourceStr = getString(f, combined, pattern);
-            Source src = getSource(sourceStr);
-            try {
-                context.getEnv().parseInternal(src).call();
-            } catch (Exception e) {
-                CompilerDirectives.transferToInterpreter();
-                try {
-                    if (regexInterop.isException(e) && regexInterop.getExceptionType(e) == ExceptionType.PARSE_ERROR) {
-                        // this can either RegexSyntaxException or UnsupportedRegexException (no good way to distinguish)
-                        meta.java_util_regex_Pattern_HIDDEN_unsupported.setHiddenObject(self, true);
-                        original.call(self, p, f);
-                        return;
-                    } else {
-                        throw e;
-                    }
-                } catch (UnsupportedMessageException ex) {
-                    CompilerDirectives.shouldNotReachHere(e);
-                }
-            }
-
-            meta.java_util_regex_Pattern_HIDDEN_tregexSearch.setHiddenObject(self, StaticObject.NULL);
-            meta.java_util_regex_Pattern_HIDDEN_tregexMatch.setHiddenObject(self, StaticObject.NULL);
-            meta.java_util_regex_Pattern_HIDDEN_tregexFullmatch.setHiddenObject(self, StaticObject.NULL);
-            meta.java_util_regex_Pattern_HIDDEN_unsupported.setHiddenObject(self, false);
-
-            // indicates that the group count is invalid
-            meta.java_util_regex_Pattern_capturingGroupCount.setInt(self, -1);
-            meta.java_util_regex_Pattern_pattern.setObject(self, p);
-            meta.java_util_regex_Pattern_flags.setInt(self, f);
-            meta.java_util_regex_Pattern_flags0.setInt(self, f);
-            meta.java_util_regex_Pattern_compiled.setBoolean(self, true);
-        }
-
-        @TruffleBoundary
-        private static Source getSource(String sourceStr) {
-            Source src = Source.newBuilder("regex", sourceStr, "patternExpr").build();
-            return src;
-        }
-    }
-
-    @TruffleBoundary
-    private static String getString(int f, String combined, String pattern) {
-        String sourceStr = combined + '/' + pattern + '/' + convertFlags(f);
-        return sourceStr;
-    }
-
-    @Substitution(hasReceiver = true, methodName = "namedGroups")
-    abstract static class NamedGroups extends SubstitutionNode {
-
-        abstract @JavaType(Map.class) StaticObject execute(@JavaType(Pattern.class) StaticObject self);
-
-        @Specialization
-        @JavaType(Map.class) StaticObject doFallback(
-                @JavaType(Pattern.class) StaticObject self,
-                @Bind("getContext()") EspressoContext context,
-                @Cached("create(getContext().getMeta().java_util_regex_Pattern_namedGroups.getCallTargetNoSubstitution())") DirectCallNode original,
-                @Cached("create(getContext().getMeta().java_util_regex_Pattern_init.getCallTargetNoSubstitution())") DirectCallNode initOriginal) {
-            if (getContext().getMeta().java_util_regex_Pattern_namedGroups_field.getObject(self) == StaticObject.NULL) {
-                StaticObject pattern = getContext().getMeta().java_util_regex_Pattern_pattern.getObject(self);
-                Object flags = getContext().getMeta().java_util_regex_Pattern_flags.getValue(self);
-                initOriginal.call(self, pattern, flags);
-            }
-            return (StaticObject) original.call(self);
-        }
+    private static boolean isSet(int flags, int flag) {
+        return (flags & flag) != 0;
     }
 }

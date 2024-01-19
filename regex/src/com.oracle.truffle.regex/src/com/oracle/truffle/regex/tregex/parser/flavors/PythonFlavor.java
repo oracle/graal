@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
-import java.util.function.BiPredicate;
-
 import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import org.graalvm.shadowed.com.ibm.icu.lang.UCharacter;
 
@@ -81,14 +79,10 @@ public final class PythonFlavor extends RegexFlavor {
     @Override
     public EqualsIgnoreCasePredicate getEqualsIgnoreCasePredicate(RegexAST ast) {
         if (ast.getOptions().getEncoding() == Encodings.UTF_32) {
-            return PythonFlavor::equalsIgnoreCaseUnicode;
+            return (codePointA, codePointB, altMode) -> UCharacter.toLowerCase(codePointA) == UCharacter.toLowerCase(codePointB);
         } else {
             assert ast.getOptions().getEncoding() == Encodings.LATIN_1;
             return (a, b, altMode) -> CaseFoldData.CaseFoldUnfoldAlgorithm.PythonAscii.getEqualsPredicate().test(a, b);
         }
-    }
-
-    private static boolean equalsIgnoreCaseUnicode(int codePointA, int codePointB, boolean altMode) {
-        return UCharacter.toLowerCase(codePointA) == UCharacter.toLowerCase(codePointB);
     }
 }

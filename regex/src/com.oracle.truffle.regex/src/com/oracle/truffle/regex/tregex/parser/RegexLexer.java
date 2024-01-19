@@ -334,8 +334,6 @@ public abstract class RegexLexer {
 
     /**
      * Handle incomplete hex escapes, e.g. {@code \x1}.
-     *
-     * @return
      */
     protected abstract int handleIncompleteEscapeX();
 
@@ -706,7 +704,7 @@ public abstract class RegexLexer {
      * Pattern[~U, ~N] (see the ECMAScript RegExp grammar).
      */
     protected boolean hasNamedCaptureGroups() throws RegexSyntaxException {
-        return getNamedCaptureGroups() != null;
+        return !getNamedCaptureGroups().isEmpty();
     }
 
     private void registerCaptureGroup() {
@@ -912,13 +910,9 @@ public abstract class RegexLexer {
         }
     }
 
-    protected boolean parseLiteralStart(char c) {
-        return false;
-    }
+    protected abstract boolean parseLiteralStart(char c);
 
-    protected boolean parseLiteralEnd(char c) {
-        return false;
-    }
+    protected abstract boolean parseLiteralEnd(char c);
 
     protected Token handleWordBoundary() {
         return Token.createWordBoundary();
@@ -1081,12 +1075,8 @@ public abstract class RegexLexer {
             possessive = true;
         }
 
-        checkDanglingQuantifiers();
-
         return Token.createQuantifier((int) min, (int) max, greedy, possessive, pattern.substring(startPos, position));
     }
-
-    protected void checkDanglingQuantifiers() {}
 
     private boolean isQuantifierOutOfOrder(long parsedMin, long parsedMax, int startMin, int lengthMin, int lengthMax) {
         if (Long.compareUnsigned(parsedMin, parsedMax) > 0) {
@@ -1136,6 +1126,7 @@ public abstract class RegexLexer {
     private int countZeros(int fromIndex) {
         return countFrom((c) -> c == '0', fromIndex);
     }
+
     protected ClassSetContents parseCharClassAtomPredefCharClass(char c) throws RegexSyntaxException {
         if (c == '\\') {
             if (atEnd()) {

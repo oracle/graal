@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,7 +63,6 @@ import com.oracle.truffle.regex.tregex.parser.RegexLexer;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.TBitSet;
-import org.graalvm.shadowed.com.ibm.icu.lang.UCharacter;
 
 public class JavaLexer extends RegexLexer {
 
@@ -126,14 +125,15 @@ public class JavaLexer extends RegexLexer {
     // 0x2028, LINE SEPARATOR, <LS>
     // 0x2029, PARAGRAPH SEPARATOR, <PS>
     public static final CodePointSet VERTICAL_WHITE_SPACE = CodePointSet.createNoDedup(
-            0x000a, 0x000d,
-            0x0085, 0x0085,
-            0x2028, 0x2029);
+                    0x000a, 0x000d,
+                    0x0085, 0x0085,
+                    0x2028, 0x2029);
     public static final CodePointSet NOT_VERTICAL_WHITE_SPACE = CodePointSet.createNoDedup(
                     0x0000, 0x0009,
                     0x000e, 0x0084,
                     0x0086, 0x2027,
                     0x202a, 0x10ffff);
+
     @Override
     protected Token literalChar(int codePoint) {
         if (featureEnabledIgnoreCase()) {
@@ -145,6 +145,7 @@ public class JavaLexer extends RegexLexer {
             return Token.createCharClass(CodePointSet.create(codePoint));
         }
     }
+
     private static final TBitSet WHITESPACE = TBitSet.valueOf('\t', '\n', '\f', '\r', ' ');
     private static final TBitSet PREDEFINED_CHAR_CLASSES = TBitSet.valueOf('D', 'H', 'S', 'V', 'W', 'd', 'h', 's', 'v', 'w');
     public static final Map<Character, CodePointSet> UNICODE_CHAR_CLASS_SETS;
@@ -171,7 +172,6 @@ public class JavaLexer extends RegexLexer {
     private final Deque<JavaFlags> flagsStack = new ArrayDeque<>();
     private JavaFlags currentFlags;
     private JavaFlags stagedFlags;
-    private final JavaFlags globalFlags;
     private final CodePointSetAccumulator curCharClass = new CodePointSetAccumulator();
 
     public JavaLexer(RegexSource source, JavaFlags flags, CompilationBuffer compilationBuffer) {
@@ -182,7 +182,6 @@ public class JavaLexer extends RegexLexer {
         if (flags.isLiteral()) {
             throw new UnsupportedRegexException("Literal parsing is not supported");
         }
-        this.globalFlags = flags;
         this.currentFlags = flags;
         this.stagedFlags = flags;
     }
@@ -236,7 +235,7 @@ public class JavaLexer extends RegexLexer {
 
     @Override
     protected boolean featureEnabledPossessiveQuantifiers() {
-        return false;
+        return true;
     }
 
     @Override
@@ -655,7 +654,8 @@ public class JavaLexer extends RegexLexer {
         }
 
         if (invert) {
-            // TODO reference implementation has something with hasSupplementary, do we care about this?;
+            // TODO reference implementation has something with hasSupplementary, do we care about
+            // this?;
             p = p.createInverse(Encodings.UTF_16);
         }
 
@@ -677,7 +677,7 @@ public class JavaLexer extends RegexLexer {
         CodePointSet bits = CodePointSet.getEmpty();
         boolean hasBits = false;
 
-        while(!atEnd()) {
+        while (!atEnd()) {
             if (consumingLookahead('[')) {
                 curr = parseCharClassInternal(true);
                 if (prev == null) {
@@ -777,12 +777,18 @@ public class JavaLexer extends RegexLexer {
             if (range.size() == 1 && range.getRanges()[0] == range.getRanges()[1]) {
                 int c = range.getRanges()[0];
                 if (c < 256 &&
-                        !(getLocalFlags().isCaseInsensitive() && getLocalFlags().isUnicodeCase() &&
-                                (c == 0xff || c == 0xb5 ||
-                                        c == 0x49 || c == 0x69 ||    //I and i
-                                        c == 0x53 || c == 0x73 ||    //S and s
-                                        c == 0x4b || c == 0x6b ||    //K and k
-                                        c == 0xc5 || c == 0xe5))) {  //A+ring
+                                !(getLocalFlags().isCaseInsensitive() && getLocalFlags().isUnicodeCase() &&
+                                                (c == 0xff || c == 0xb5 ||
+                                                                c == 0x49 || c == 0x69 ||    // I
+                                                                                             // and
+                                                                                             // i
+                                                                c == 0x53 || c == 0x73 ||    // S
+                                                                                             // and
+                                                                                             // s
+                                                                c == 0x4b || c == 0x6b ||    // K
+                                                                                             // and
+                                                                                             // k
+                                                                c == 0xc5 || c == 0xe5))) {  // A+ring
                     hasBits = true;
                     curr = null;
                     bits = bits.union(range);
@@ -939,7 +945,8 @@ public class JavaLexer extends RegexLexer {
     @Override
     protected int parseCustomEscapeCharFallback(int c, boolean inCharClass) {
         // any non-alphabetic character can be used after an escape
-        // digits are not accepted here since they should have been parsed as octal sequence or backreference earlier
+        // digits are not accepted here since they should have been parsed as octal sequence or
+        // backreference earlier
         if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
             throw syntaxError(JavaErrorMessages.ILLEGAL_ESCAPE_SEQUENCE);
         }
@@ -948,7 +955,8 @@ public class JavaLexer extends RegexLexer {
 
     @Override
     protected Token parseCustomGroupBeginQ(char charAfterQuestionMark) {
-        // TODO do we need to do something else than inline flags? check "Special constructs" in documentation
+        // TODO do we need to do something else than inline flags? check "Special constructs" in
+        // documentation
         char c = charAfterQuestionMark;
 
         if (c == '>') {
