@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -43,16 +43,12 @@ import mx_sdk_vm_impl
 _suite = mx.suite('java-benchmarks')
 
 
-if sys.version_info[0] < 3:
-    from ConfigParser import ConfigParser
-    from StringIO import StringIO
-    def _configparser_read_file(configp, fp):
-        configp.readfp(fp)
-else:
-    from configparser import ConfigParser
-    from io import StringIO
-    def _configparser_read_file(configp, fp):
-        configp.read_file(fp)
+from configparser import ConfigParser
+from io import StringIO
+
+
+def _configparser_read_file(configp, fp):
+    configp.read_file(fp)
 
 
 # Short-hand commands used to quickly run common benchmarks.
@@ -110,65 +106,12 @@ def createBenchmarkShortcut(benchSuite, args):
     return mx_benchmark.benchmark([benchSuite + ":" + benchname] + remaining_args)
 
 
-def _create_temporary_workdir_parser():
-    parser = argparse.ArgumentParser(add_help=False, usage=mx_benchmark._mx_benchmark_usage_example + " -- <options> -- ...")
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("--keep-scratch", action="store_true", help="Do not delete scratch directory after benchmark execution.")
-    group.add_argument("--no-scratch", action="store_true", help="Do not execute benchmark in scratch directory.")
-    return parser
-
-
-mx_benchmark.parsers["temporary_workdir_parser"] = ParserEntry(
-    _create_temporary_workdir_parser(),
-    "\n\nFlags for benchmark suites with temporary working directories:\n"
-)
-
-
 # Adds a java VM from JAVA_HOME without any assumption about it
 mx_benchmark.add_java_vm(mx_benchmark.DefaultJavaVm('java-home', 'default'), _suite, 1)
 
 
 def java_home_jdk():
     return mx.get_jdk()
-
-
-class TemporaryWorkdirMixin(mx_benchmark.VmBenchmarkSuite):
-    def before(self, bmSuiteArgs):
-        parser = mx_benchmark.parsers["temporary_workdir_parser"].parser
-        bmArgs, otherArgs = parser.parse_known_args(bmSuiteArgs)
-        self.keepScratchDir = bmArgs.keep_scratch
-        if not bmArgs.no_scratch:
-            self._create_tmp_workdir()
-        else:
-            mx.warn("NO scratch directory created! (--no-scratch)")
-            self.workdir = None
-        super(TemporaryWorkdirMixin, self).before(otherArgs)
-
-    def _create_tmp_workdir(self):
-        mx.log_deprecation("mx_java_benchmarks.mx_benchmark.TemporaryWorkdirMixin is deprecated. Use mx_benchmark.mx_benchmark.TemporaryWorkdirMixin instead.")
-        self.workdir = mkdtemp(prefix=self.name() + '-work.', dir='.')
-
-    def workingDirectory(self, benchmarks, bmSuiteArgs):
-        return self.workdir
-
-    def after(self, bmSuiteArgs):
-        if hasattr(self, "keepScratchDir") and self.keepScratchDir:
-            mx.warn("Scratch directory NOT deleted (--keep-scratch): {0}".format(self.workdir))
-        elif self.workdir:
-            rmtree(self.workdir)
-        super(TemporaryWorkdirMixin, self).after(bmSuiteArgs)
-
-    def repairDatapointsAndFail(self, benchmarks, bmSuiteArgs, partialResults, message):
-        try:
-            super(TemporaryWorkdirMixin, self).repairDatapointsAndFail(benchmarks, bmSuiteArgs, partialResults, message)
-        finally:
-            if self.workdir:
-                # keep old workdir for investigation, create a new one for further benchmarking
-                mx.warn("Keeping scratch directory after failed benchmark: {0}".format(self.workdir))
-                self._create_tmp_workdir()
-
-    def parserNames(self):
-        return super(TemporaryWorkdirMixin, self).parserNames() + ["temporary_workdir_parser"]
 
 
 class BaseMicroserviceBenchmarkSuite(mx_benchmark.BenchmarkSuite):
@@ -725,48 +668,6 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         return (
                 self.vmArgs(bmSuiteArgs) + ["-jar"] + [self.daCapoPath()] +
                 [benchmarks[0]] + runArgs)
-
-    def repairDatapoints(self, benchmarks, bmSuiteArgs, partialResults):
-        parser = argparse.ArgumentParser(add_help=False)
-        parser.add_argument("-n", "--iterations", default=None)
-        args, _ = parser.parse_known_args(self.runArgs(bmSuiteArgs))
-        if args.iterations and args.iterations.isdigit():
-            iterations = int(args.iterations)
-        else:
-            iterations = self.daCapoIterations()[benchmarks[0]]
-            iterations = iterations + self.getExtraIterationCount(iterations)
-        for i in range(0, iterations):
-            if next((p for p in partialResults if p["metric.iteration"] == i), None) is None:
-                datapoint = {
-                    "benchmark": benchmarks[0],
-                    "bench-suite": self.benchSuiteName(),
-                    "vm": "jvmci",
-                    "config.name": "default",
-                    "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
-                    "metric.name": "warmup",
-                    "metric.value": -1,
-                    "metric.unit": "ms",
-                    "metric.type": "numeric",
-                    "metric.score-function":  "id",
-                    "metric.better": "lower",
-                    "metric.iteration": i
-                }
-                partialResults.append(datapoint)
-        datapoint = {
-            "benchmark": benchmarks[0],
-            "bench-suite": self.benchSuiteName(),
-            "vm": "jvmci",
-            "config.name": "default",
-            "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
-            "metric.name": "time",
-            "metric.value": -1,
-            "metric.unit": "ms",
-            "metric.type": "numeric",
-            "metric.score-function": "id",
-            "metric.better": "lower",
-            "metric.iteration": 0
-        }
-        partialResults.append(datapoint)
 
     def benchmarkList(self, bmSuiteArgs):
         missing_sizes = set(self.daCapoIterations().keys()).difference(set(self.daCapoSizes().keys()))
