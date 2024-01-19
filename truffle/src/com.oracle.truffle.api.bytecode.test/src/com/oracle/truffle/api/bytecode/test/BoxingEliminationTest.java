@@ -566,6 +566,84 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
     }
 
     @Test
+    public void testSpecializedLocalUndefined() {
+        // if (arg0) { x = 42 } else { x /* undefined */ }
+        // return 123
+        BoxingEliminationTestRootNode node = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            BytecodeLocal x = b.createLocal();
+
+            b.beginIfThenElse();
+            b.emitLoadArgument(0);
+
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(42);
+            b.endStoreLocal();
+
+            b.emitLoadLocal(x);
+
+            b.endIfThenElse();
+
+            b.beginReturn();
+            b.emitLoadConstant(123);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "load.argument",
+                        "branch.false",
+                        "load.constant",
+                        "store.local",
+                        "branch",
+                        "load.local",
+                        "pop",
+                        "load.constant",
+                        "return",
+                        "pop");
+
+        assertEquals(123, node.getCallTarget().call(true));
+
+        assertInstructions(node,
+                        "load.argument$Boolean",
+                        "branch.false$Boolean",
+                        "load.constant$Int",
+                        "store.local$Int$unboxed",
+                        "branch",
+                        "load.local",
+                        "pop",
+                        "load.constant",
+                        "return",
+                        "pop");
+
+        /**
+         * After the first call, the local frame slot is set to Int. During this second call, the
+         * "false" branch will run the unquickened load.local, which sees the frame slot and tries
+         * to read an int. Since the local is undefined, the int read should fail gracefully, and
+         * the load.local should quicken to load.local$generic.
+         */
+        assertEquals(123, node.getCallTarget().call(false));
+
+        assertInstructions(node,
+                        "load.argument$Boolean",
+                        "branch.false$Boolean",
+                        "load.constant$Int",
+                        "store.local$Int$unboxed",
+                        "branch",
+                        "load.local$generic",
+                        "pop$generic",
+                        "load.constant",
+                        "return",
+                        "pop");
+
+        var quickenings = assertQuickenings(node, 7, 4);
+        assertStable(quickenings, node, true);
+        assertStable(quickenings, node, false);
+    }
+
+    @Test
     public void testGetLocals() {
         // local0 = arg0
         // local1 = arg1

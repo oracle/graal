@@ -5931,6 +5931,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             InstructionModel genericInstruction = typeToSpecialization.get(type(Object.class));
 
+            b.startTryBlock();
+
             b.startSwitch().string("frame.getFrameDescriptor().getSlotKind(slot)").end().startBlock();
             for (TypeMirror boxingType : model.boxingEliminatedTypes) {
                 InstructionModel boxedInstruction = typeToSpecialization.get(boxingType);
@@ -5941,7 +5943,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 emitOnSpecialize(b, "root", "bci", "bc[bci]", "LoadLocal$" + boxedInstruction.getQuickeningName());
                 b.startStatement();
                 b.string("value = ");
-                startGetFrameUnsafe(b, "frame", boxingType).string("slot").end();
+                startExpectFrameUnsafe(b, "frame", boxingType).string("slot").end();
                 b.end();
                 b.statement("break");
                 b.end();
@@ -5954,7 +5956,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             emitOnSpecialize(b, "root", "bci", "bc[bci]", "LoadLocal$" + genericInstruction.getQuickeningName());
             b.startStatement();
             b.string("value = ");
-            startGetFrameUnsafe(b, "frame", type(Object.class)).string("slot").end();
+            startExpectFrameUnsafe(b, "frame", type(Object.class)).string("slot").end();
             b.end();
             b.statement("break");
             b.end();
@@ -5964,6 +5966,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
 
             b.end(); // switch
+
+            b.end().startCatchBlock(types.UnexpectedResultException, "ex");
+
+            // If a FrameSlotException occurs, specialize to the generic version.
+            b.startStatement().string("newInstruction = ").tree(createInstructionConstant(genericInstruction)).end();
+            emitOnSpecialize(b, "root", "bci", "bc[bci]", "LoadLocal$" + genericInstruction.getQuickeningName());
+            b.startStatement();
+            b.string("value = ex.getResult()");
+            b.end();
+
+            b.end(); // catch
 
             emitQuickening(b, "root", "bc", "bci", null, "newInstruction");
             b.startStatement();
