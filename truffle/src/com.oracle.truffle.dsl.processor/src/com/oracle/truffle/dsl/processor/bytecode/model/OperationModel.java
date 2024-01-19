@@ -77,8 +77,17 @@ public class OperationModel implements PrettyPrintable {
         CUSTOM_SHORT_CIRCUIT
     }
 
-    private static final TypeMirror[] EMPTY_ARGUMENT_TYPES = new TypeMirror[0];
-    private static final String[] EMPTY_ARGUMENT_NAMES = new String[0];
+    public record OperationArgument(TypeMirror type, String name, String doc) {
+        public CodeVariableElement toVariableElement() {
+            return new CodeVariableElement(type, name);
+        }
+
+        public String toJavadocParam() {
+            return String.format("@param %s %s.", name, doc);
+        }
+    }
+
+    private static final OperationArgument[] EMPTY_ARGUMENTS = new OperationArgument[0];
 
     public final BytecodeDSLModel parent;
     public final int id;
@@ -100,9 +109,8 @@ public class OperationModel implements PrettyPrintable {
     public int numChildren;
 
     public InstructionModel instruction;
-    public TypeMirror[] operationArgumentTypes = EMPTY_ARGUMENT_TYPES;
+    public OperationArgument[] operationArguments = EMPTY_ARGUMENTS;
     public boolean operationArgumentVarArgs = false;
-    public String[] operationArgumentNames = EMPTY_ARGUMENT_NAMES;
 
     public OperationModel(BytecodeDSLModel parent, int id, OperationKind kind, String name) {
         this.parent = parent;
@@ -165,32 +173,16 @@ public class OperationModel implements PrettyPrintable {
         return this;
     }
 
-    public OperationModel setOperationArgumentTypes(TypeMirror... operationArgumentTypes) {
-        if (this.operationArgumentNames != null) {
-            assert this.operationArgumentNames.length == operationArgumentTypes.length;
+    public OperationModel setOperationArguments(OperationArgument... operationArguments) {
+        if (this.operationArguments != null) {
+            assert this.operationArguments.length == operationArguments.length;
         }
-        this.operationArgumentTypes = operationArgumentTypes;
-        return this;
-    }
-
-    public OperationModel setOperationArgumentNames(String... operationArgumentNames) {
-        if (this.operationArgumentTypes != null) {
-            assert this.operationArgumentTypes.length == operationArgumentNames.length;
-        }
-        this.operationArgumentNames = operationArgumentNames;
+        this.operationArguments = operationArguments;
         return this;
     }
 
     public String getOperationArgumentName(int i) {
-        return operationArgumentNames == EMPTY_ARGUMENT_NAMES ? "arg" + i : operationArgumentNames[i];
-    }
-
-    public CodeVariableElement[] getOperationArguments() {
-        CodeVariableElement[] result = new CodeVariableElement[operationArgumentTypes.length];
-        for (int i = 0; i < operationArgumentTypes.length; i++) {
-            result[i] = new CodeVariableElement(operationArgumentTypes[i], getOperationArgumentName(i));
-        }
-        return result;
+        return operationArguments[i].name;
     }
 
     @Override
@@ -201,6 +193,10 @@ public class OperationModel implements PrettyPrintable {
 
     public boolean isSourceOnly() {
         return kind == OperationKind.SOURCE || kind == OperationKind.SOURCE_SECTION;
+    }
+
+    public boolean isCustom() {
+        return kind == OperationKind.CUSTOM_SIMPLE || kind == OperationKind.CUSTOM_SHORT_CIRCUIT;
     }
 
     public String getConstantName() {

@@ -82,6 +82,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Instruct
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Signature;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -213,7 +214,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         operation.numChildren = 1;
         operation.isVariadic = true;
         operation.isVoid = false;
-        operation.operationArgumentTypes = new TypeMirror[0];
+        operation.operationArguments = new OperationArgument[0];
         operation.childrenMustBeValues = new boolean[]{true};
 
         /*
@@ -421,14 +422,16 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         operation.isVariadic = signature.isVariadic || isShortCircuit();
         operation.isVoid = signature.isVoid;
 
-        operation.operationArgumentTypes = new TypeMirror[signature.localSetterCount + signature.localSetterRangeCount];
+        operation.operationArguments = new OperationArgument[signature.localSetterCount + signature.localSetterRangeCount];
         for (int i = 0; i < signature.localSetterCount; i++) {
-            operation.operationArgumentTypes[i] = types.BytecodeLocal;
+            operation.operationArguments[i] = new OperationArgument(types.BytecodeLocal, "local" + i, "the local that will be set by the LocalSetter at index " + i);
         }
+
         for (int i = 0; i < signature.localSetterRangeCount; i++) {
             // todo: we might want to migrate this to a special type that validates order
             // e.g. BytecodeLocalRange
-            operation.operationArgumentTypes[signature.localSetterCount + i] = new CodeTypeMirror.ArrayCodeTypeMirror(types.BytecodeLocal);
+            operation.operationArguments[signature.localSetterCount + i] = new OperationArgument(new CodeTypeMirror.ArrayCodeTypeMirror(types.BytecodeLocal), "localRange" + i,
+                            "the local range that will be set by the LocalSetterRange at index " + i);
         }
         operation.childrenMustBeValues = new boolean[signature.valueCount];
         Arrays.fill(operation.childrenMustBeValues, true);
