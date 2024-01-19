@@ -154,8 +154,6 @@ class NativeImageVM(GraalVm):
             self.params = ['extra-image-build-argument', 'extra-jvm-arg', 'extra-run-arg', 'extra-agent-run-arg', 'extra-profile-run-arg',
                            'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages', 'skip-agent-assertions']
 
-            self.profile_file_extension = '.iprof'
-
             # These stages are not run, even if explicitly requested.
             # Some configurations don't need to/can't run certain stages
             removed_stages = set()
@@ -172,8 +170,7 @@ class NativeImageVM(GraalVm):
             self.executable_name = (unique_suite_name + '-' + self.benchmark_name).lower() if self.benchmark_name else unique_suite_name.lower()
             self.final_image_name = self.executable_name + '-' + vm.config_name()
             self.output_dir = os.path.join(os.path.abspath(self.root_dir), 'native-image-benchmarks', self.executable_name + '-' + vm.config_name())
-            self.profile_path_no_extension = os.path.join(self.output_dir, self.executable_name)
-            self.latest_profile_path = self.profile_path_no_extension + '-latest' + self.profile_file_extension
+            self.profile_path = os.path.join(self.output_dir, self.executable_name) + ".iprof"
             self.config_dir = os.path.join(self.output_dir, 'config')
             self.log_dir = self.output_dir
             base_image_build_args = ['--no-fallback', '-g']
@@ -924,9 +921,9 @@ class NativeImageVM(GraalVm):
                     if file.endswith(".json"):
                         zipf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), os.path.join(path, '..')))
 
-    def run_stage_instrument_image(self, config, stages, out, instrumentation_image_name, profile_path):
+    def run_stage_instrument_image(self, config, stages, out, instrumentation_image_name):
         executable_name_args = ['-o', instrumentation_image_name]
-        instrument_args = ['--pgo-instrument', '-R:ProfilesDumpFile=' + profile_path]
+        instrument_args = ['--pgo-instrument', '-R:ProfilesDumpFile=' + config.profile_path]
         if self.jdk_profiles_collect:
             instrument_args += svm_experimental_options(['-H:+AOTPriorityInline', '-H:-SamplingCollect', f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}'])
 
@@ -954,18 +951,17 @@ class NativeImageVM(GraalVm):
                     assert len(sample["records"]) == 1, "Sampling profiles seem to be missing records in file " + profile_path
                     assert sample["records"][0] > 0, "Sampling profiles seem to have a 0 in records in file " + profile_path
 
-    def run_stage_instrument_run(self, config, stages, image_path, profile_path):
+    def run_stage_instrument_run(self, config, stages, image_path):
         image_run_cmd = [image_path]
         image_run_cmd += config.extra_jvm_args
         image_run_cmd += config.extra_profile_run_args
         with stages.set_command(image_run_cmd) as s:
             s.execute_command()
             if s.exit_code == 0:
-                mx.copyfile(profile_path, config.latest_profile_path)
-                print(f"Profile file {config.latest_profile_path} sha1 is {mx.sha1OfFile(config.latest_profile_path)}")
-                self._ensureSamplesAreInProfile(config.latest_profile_path)
+                print(f"Profile file {config.profile_path} sha1 is {mx.sha1OfFile(config.profile_path)}")
+                self._ensureSamplesAreInProfile(config.profile_path)
             else:
-                print(f"Profile file {config.latest_profile_path} not dumped. Instrument run failed with exit code {s.exit_code}")
+                print(f"Profile file {config.profile_path} not dumped. Instrument run failed with exit code {s.exit_code}")
 
     def _print_binary_size(self, config, out):
         # The image size for benchmarks is tracked by printing on stdout and matching the rule.
@@ -977,7 +973,7 @@ class NativeImageVM(GraalVm):
 
     def run_stage_image(self, config, stages, out):
         executable_name_args = ['-o', config.final_image_name]
-        pgo_args = ['--pgo=' + config.latest_profile_path]
+        pgo_args = ['--pgo=' + config.profile_path]
         pgo_args += svm_experimental_options(['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled'])
         if self.adopted_jdk_pgo:
             # choose appropriate profiles
@@ -1066,14 +1062,12 @@ class NativeImageVM(GraalVm):
         if stages.change_stage('agent'):
             self.run_stage_agent(config, stages)
 
-        # Native Image profile collection
-        profile_path = config.profile_path_no_extension + config.profile_file_extension
         instrumentation_image_name = config.executable_name + '-instrument'
         if stages.change_stage('instrument-image'):
-            self.run_stage_instrument_image(config, stages, out, instrumentation_image_name, profile_path)
+            self.run_stage_instrument_image(config, stages, out, instrumentation_image_name)
 
         if stages.change_stage('instrument-run'):
-            self.run_stage_instrument_run(config, stages, os.path.join(config.output_dir, instrumentation_image_name), profile_path)
+            self.run_stage_instrument_run(config, stages, os.path.join(config.output_dir, instrumentation_image_name))
 
         # Build the final image
         if stages.change_stage('image'):
