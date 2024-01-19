@@ -585,7 +585,7 @@ class NativeImageVM(GraalVm):
                 if self.config.split_run:
                     with open(self.config.split_run, 'a') as stdout:
                         stdout.write(self.get_timestamp() + self.config.bmSuite.name() + ':' + self.config.benchmark_name + ' ' + self.stages_info.get_current_stage() + ': PASS\n')
-                if self.stages_info.get_current_stage().startswith(self.config.last_stage):
+                if self.stages_info.get_current_stage() == self.config.last_stage:
                     self.bench_out(self.get_timestamp() + 'Successfully finished the last specified stage:' + ' ' + self.stages_info.get_current_stage() + ' for ' + self.final_image_name)
                 else:
                     mx.log(self.get_timestamp() + 'Successfully finished stage:' + ' ' + self.stages_info.get_current_stage())
@@ -657,8 +657,8 @@ class NativeImageVM(GraalVm):
                 return v
             return writeFun
 
-        def change_stage(self, *argv):
-            return argv[0] == self.config.stage
+        def change_stage(self, stage_name):
+            return stage_name == self.config.stage
 
         @staticmethod
         def separator_line():
