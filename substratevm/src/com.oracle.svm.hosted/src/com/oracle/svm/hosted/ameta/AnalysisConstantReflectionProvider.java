@@ -224,7 +224,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
         if (value == null) {
             VMError.guarantee(!SimulateClassInitializerSupport.singleton().isEnabled());
             ImageHeapScanner heapScanner = universe.getHeapScanner();
-            HostedValuesProvider hostedValuesProvider = heapScanner.getHostedValuesProvider();
+            HostedValuesProvider hostedValuesProvider = universe.getHostedValuesProvider();
             value = heapScanner.createImageHeapConstant(hostedValuesProvider.readFieldValueWithReplacement(field, receiver), ObjectScanner.OtherReason.UNKNOWN);
         }
         return value;

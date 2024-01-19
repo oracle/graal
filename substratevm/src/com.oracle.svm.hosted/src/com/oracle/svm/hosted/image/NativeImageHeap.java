@@ -259,7 +259,7 @@ public final class NativeImageHeap implements ImageHeap {
         VMError.guarantee(HostedConfiguration.isInlinedField(field), "Expected an inlined field, found %s", field);
         JavaConstant hostedReceiver = ((ImageHeapInstance) receiver).getHostedObject();
         /* Use the HostedValuesProvider to get direct access to hosted values. */
-        HostedValuesProvider hostedValuesProvider = aUniverse.getHeapScanner().getHostedValuesProvider();
+        HostedValuesProvider hostedValuesProvider = aUniverse.getHostedValuesProvider();
         return hUniverse.getSnippetReflection().asObject(Object.class, hostedValuesProvider.readFieldValueWithReplacement(field.getWrapped(), hostedReceiver));
     }
 

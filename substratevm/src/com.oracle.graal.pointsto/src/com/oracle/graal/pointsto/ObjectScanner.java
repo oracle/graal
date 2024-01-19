@@ -213,7 +213,7 @@ public class ObjectScanner {
     protected JavaConstant readFieldValue(AnalysisField field, JavaConstant receiver) {
         /* The object scanner processes hosted values. We must not see shadow heap values here. */
         AnalysisError.guarantee(!(receiver instanceof ImageHeapConstant));
-        return bb.getUniverse().getHeapScanner().getHostedValuesProvider().readFieldValueWithReplacement(field, receiver);
+        return bb.getUniverse().getHostedValuesProvider().readFieldValueWithReplacement(field, receiver);
     }
 
     /**

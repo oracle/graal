@@ -504,7 +504,7 @@ public class AnalysisUniverse implements Universe {
                  */
                 return (JavaConstant) original;
             }
-            return heapScanner.getHostedValuesProvider().forObject(original);
+            return getHostedValuesProvider().forObject(original);
         } else {
             return constant;
         }
@@ -517,7 +517,7 @@ public class AnalysisUniverse implements Universe {
         if (constant == null) {
             return null;
         } else if (constant.getJavaKind().isObject() && !constant.isNull()) {
-            return GraalAccess.getOriginalSnippetReflection().forObject(heapScanner.getHostedValuesProvider().asObject(Object.class, constant));
+            return GraalAccess.getOriginalSnippetReflection().forObject(getHostedValuesProvider().asObject(Object.class, constant));
         } else {
             return constant;
         }
