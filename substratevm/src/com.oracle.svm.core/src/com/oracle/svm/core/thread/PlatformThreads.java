@@ -510,8 +510,9 @@ public abstract class PlatformThreads {
             }
         } else if (!VMThreads.wasStartedByCurrentIsolate(vmThread)) {
             /*
-             * Attached threads are treated like non-daemon threads as long as they don't have a
-             * thread object.
+             * Attached threads are treated like non-daemon threads before they are assigned a
+             * thread object which defines whether they are a daemon thread (which might never
+             * happen).
              */
             decrementNonDaemonThreads();
         }
@@ -745,16 +746,13 @@ public abstract class PlatformThreads {
             if (startData.isNonNull()) {
                 UnmanagedMemory.free(startData);
             }
-            if (threadHandle.equal(WordFactory.zero())) {
+            if (threadHandle.notEqual(WordFactory.zero())) {
                 ObjectHandles.getGlobal().destroy(threadHandle);
             }
             throw e;
         }
 
-        /*
-         * From this point onwards, no exceptions must be thrown (otherwise, we would need to
-         * partially undo the increment operations below).
-         */
+        /* To ensure that we have consistent thread counts, no exception must be thrown. */
         try {
             int numThreads = unattachedStartedThreads.incrementAndGet();
             assert numThreads > 0;
@@ -1263,19 +1261,6 @@ public abstract class PlatformThreads {
         Target_java_lang_Thread me = toTarget(currentThread.get());
         synchronized (me.interruptLock) {
             me.nioBlocker = b;
-        }
-    }
-
-    protected static class ThreadStartRoutinePrologue implements CEntryPointOptions.Prologue {
-        private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString("Failed to attach a newly launched thread.");
-
-        @SuppressWarnings("unused")
-        @Uninterruptible(reason = "prologue")
-        static void enter(ThreadStartData data) {
-            int code = CEntryPointActions.enterAttachThread(data.getIsolate(), true, false);
-            if (code != CEntryPointErrors.NO_ERROR) {
-                CEntryPointActions.failFatally(code, errorMessage.get());
-            }
         }
     }
 

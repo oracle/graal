@@ -100,8 +100,8 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
      * Types that are used to implement the secondary storage for monitor slots cannot themselves
      * use the additionalMonitors map. That could result in recursive manipulation of the
      * additionalMonitors map which could lead to table corruptions and double insertion of a
-     * monitor for the same object. Therefore these types will always get a monitor slot. The
-     * boolean values specifies if the monitor slot is also needed for subtypes.
+     * monitor for the same object. Therefore, these types will always get a monitor slot. The
+     * boolean value specifies if the monitor slot is also needed for subtypes.
      */
     @Platforms(Platform.HOSTED_ONLY.class)//
     public static final Map<Class<?>, Boolean> FORCE_MONITOR_SLOT_TYPES;
