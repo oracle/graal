@@ -231,7 +231,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         }
         if (value == null) {
             VMError.guarantee(!SimulateClassInitializerSupport.singleton().isEnabled());
-            value = universe.getHeapScanner().createImageHeapConstant(readHostedFieldValue(suppliedMetaAccess, field, receiver), ObjectScanner.OtherReason.UNKNOWN);
+            value = universe.getHeapScanner().createImageHeapConstant(readHostedFieldValueWithReplacement(field, receiver), ObjectScanner.OtherReason.UNKNOWN);
         }
         return value;
     }
@@ -261,7 +261,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
     /** Returns the hosted field value. The receiver must be a hosted constant. */
     @Override
-    public JavaConstant readHostedFieldValue(UniverseMetaAccess access, AnalysisField field, JavaConstant receiver) {
+    public JavaConstant readHostedFieldValueWithReplacement(AnalysisField field, JavaConstant receiver) {
         return replaceObject(doReadValue(field, universe.toHosted(receiver)));
     }
 

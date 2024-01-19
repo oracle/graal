@@ -30,18 +30,13 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
-import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.ImageHeap;
-import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
-import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -82,31 +77,6 @@ public class SVMImageHeapVerifier extends HeapSnapshotVerifier {
     private void verifyHub(SVMHost svmHost, ObjectScanner objectScanner, AnalysisType type) {
         JavaConstant hubConstant = bb.getSnippetReflectionProvider().forObject(svmHost.dynamicHub(type));
         objectScanner.scanConstant(hubConstant, ObjectScanner.OtherReason.HUB);
-    }
-
-    @Override
-    protected ObjectScanner installObjectScanner(UniverseMetaAccess metaAccess, CompletionExecutor executor) {
-        return new VerifierObjectScanner(bb, metaAccess, executor, scannedObjects, new ScanningObserver());
-    }
-
-    private static final class VerifierObjectScanner extends ObjectScanner {
-        private final UniverseMetaAccess metaAccess;
-
-        VerifierObjectScanner(BigBang bb, UniverseMetaAccess metaAccess, CompletionExecutor executor, ReusableSet scannedObjects, ObjectScanningObserver scanningObserver) {
-            super(bb, executor, scannedObjects, scanningObserver);
-            this.metaAccess = metaAccess;
-        }
-
-        @Override
-        protected JavaConstant readFieldValue(AnalysisField field, JavaConstant receiver) {
-            AnalysisConstantReflectionProvider constantReflectionProvider = (AnalysisConstantReflectionProvider) bb.getConstantReflectionProvider();
-            /*
-             * The verifier compares the hosted values with the ones from the shadow heap, so the
-             * constant reflection must not return shadow heap values.
-             */
-            VMError.guarantee(!(receiver instanceof ImageHeapConstant));
-            return constantReflectionProvider.readHostedFieldValue(metaAccess, field, receiver);
-        }
     }
 
     private SVMHost svmHost() {
