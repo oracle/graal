@@ -36,12 +36,9 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
-import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
-import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.util.VMError;
 
@@ -172,18 +169,5 @@ public class Isolates {
             return IMAGE_HEAP_BEGIN.get();
         }
         return isolate;
-    }
-
-    @Uninterruptible(reason = "Tear-down in progress.")
-    public static int tearDownCurrent() {
-        freeUnmanagedMemory();
-        Heap.getHeap().tearDown();
-        return CommittedMemoryProvider.get().tearDown();
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static void freeUnmanagedMemory() {
-        CodeInfoTable.tearDown();
-        NonmovableArrays.tearDown();
     }
 }

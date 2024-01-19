@@ -69,12 +69,10 @@ import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jni.JNIJavaVMList;
 import com.oracle.svm.core.jni.functions.JNIFunctionTables;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
-import com.oracle.svm.core.util.CounterSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ClassUtil;
@@ -256,12 +254,12 @@ public class JavaMainWrapper {
         PlatformThreads.singleton().joinAllNonDaemons();
 
         /*
-         * Run shutdown hooks (both our own hooks and application-registered hooks. Note that this
-         * can start new non-daemon threads. We are not responsible to wait until they have exited.
+         * Run shutdown hooks (both our own hooks and application-registered hooks) and teardown
+         * hooks. Note that this can start new non-daemon threads. We are not responsible to wait
+         * until they have exited.
          */
         RuntimeSupport.getRuntimeSupport().shutdown();
-
-        CounterSupport.singleton().logValues(Log.log());
+        RuntimeSupport.executeTearDownHooks();
     }
 
     @Uninterruptible(reason = "Thread state not set up yet.")
