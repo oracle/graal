@@ -123,6 +123,146 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
         return code, out, dims
 
 
+class BenchmarkConfig:
+    def __init__(self, vm, bm_suite, args):
+        self.bmSuite = bm_suite
+        self.benchmark_suite_name = bm_suite.benchSuiteName(args)
+        self.benchmark_name = bm_suite.benchmarkName()
+        self.executable, self.classpath_arguments, self.modulepath_arguments, self.system_properties, self.image_vm_args, image_run_args, self.split_run = NativeImageVM.extract_benchmark_arguments(args)
+        self.extra_image_build_arguments = bm_suite.extra_image_build_argument(self.benchmark_name, args)
+        # use list() to create fresh copies to safeguard against accidental modification
+        self.image_run_args = bm_suite.extra_run_arg(self.benchmark_name, args, list(image_run_args))
+        self.extra_jvm_args = bm_suite.extra_jvm_arg(self.benchmark_name, args)
+        self.extra_agent_run_args = bm_suite.extra_agent_run_arg(self.benchmark_name, args, list(image_run_args))
+        self.extra_agentlib_options = bm_suite.extra_agentlib_options(self.benchmark_name, args, list(image_run_args))
+        for option in self.extra_agentlib_options:
+            if option.startswith('config-output-dir'):
+                mx.abort("config-output-dir must not be set in the extra_agentlib_options.")
+        # Do not strip the run arguments if safepoint-sampler configuration is active.
+        self.extra_profile_run_args = bm_suite.extra_profile_run_arg(self.benchmark_name, args, list(image_run_args), not vm.safepoint_sampler)
+        self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args, list(image_run_args))
+        self.benchmark_output_dir = bm_suite.benchmark_output_dir(self.benchmark_name, args)
+        self.params = ['extra-image-build-argument', 'extra-jvm-arg', 'extra-run-arg', 'extra-agent-run-arg', 'extra-profile-run-arg',
+                       'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages', 'skip-agent-assertions']
+
+        # These stages are not run, even if explicitly requested.
+        # Some configurations don't need to/can't run certain stages
+        removed_stages = set()
+
+        if vm.jdk_profiles_collect:
+            # forbid image build/run in the profile collection execution mode
+            removed_stages.update(["image", "run"])
+        if vm.profile_inference_feature_extraction:
+            # do not run the image in the profile inference feature extraction mode
+            removed_stages.add("run")
+        self.skip_agent_assertions = bm_suite.skip_agent_assertions(self.benchmark_name, args)
+        self.root_dir = self.benchmark_output_dir if self.benchmark_output_dir else mx.suite('vm').get_output_root(platformDependent=False, jdkDependent=False)
+        unique_suite_name = f"{self.bmSuite.benchSuiteName()}-{self.bmSuite.version().replace('.', '-')}" if self.bmSuite.version() != 'unknown' else self.bmSuite.benchSuiteName()
+        self.executable_name = (unique_suite_name + '-' + self.benchmark_name).lower() if self.benchmark_name else unique_suite_name.lower()
+        self.instrumentation_executable_name = self.executable_name + "-instrument"
+        self.final_image_name = self.executable_name + '-' + vm.config_name()
+        self.output_dir = os.path.join(os.path.abspath(self.root_dir), 'native-image-benchmarks', self.executable_name + '-' + vm.config_name())
+        self.profile_path = os.path.join(self.output_dir, self.executable_name) + ".iprof"
+        self.config_dir = os.path.join(self.output_dir, 'config')
+        self.log_dir = self.output_dir
+        base_image_build_args = ['--no-fallback', '-g']
+        base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode'] if vm.is_gate else []
+        base_image_build_args += ['-H:+ReportExceptionStackTraces']
+        base_image_build_args += bm_suite.build_assertions(self.benchmark_name, vm.is_gate)
+
+        base_image_build_args += self.system_properties
+        self.bundle_path = self.get_bundle_path_if_present()
+        self.bundle_create_path = self.get_bundle_create_path_if_present()
+        if not self.bundle_path:
+            base_image_build_args += self.classpath_arguments
+            base_image_build_args += self.modulepath_arguments
+            base_image_build_args += self.executable
+            base_image_build_args += ['-H:Path=' + self.output_dir]
+        base_image_build_args += [
+            '-H:ConfigurationFileDirectories=' + self.config_dir,
+            '-H:+PrintAnalysisStatistics',
+            '-H:+PrintCallEdges',
+            '-H:+CollectImageBuildStatistics',
+        ]
+        self.image_build_reports_directory = os.path.join(self.output_dir, 'reports')
+        if self.bundle_create_path is not None:
+            self.image_build_reports_directory = os.path.join(self.output_dir, self.bundle_create_path)
+        self.image_build_stats_file = os.path.join(self.image_build_reports_directory, 'image_build_statistics.json')
+
+        if vm.is_quickbuild:
+            base_image_build_args += ['-Ob']
+        if vm.use_string_inlining:
+            base_image_build_args += ['-H:+UseStringInlining']
+        if vm.is_llvm:
+            base_image_build_args += ['--features=org.graalvm.home.HomeFinderFeature'] + ['-H:CompilerBackend=llvm', '-H:DeadlockWatchdogInterval=0']
+        if vm.gc:
+            base_image_build_args += ['--gc=' + vm.gc] + ['-H:+SpawnIsolates']
+        if vm.native_architecture:
+            base_image_build_args += ['-march=native']
+        if vm.analysis_context_sensitivity:
+            base_image_build_args += ['-H:AnalysisContextSensitivity=' + vm.analysis_context_sensitivity, '-H:-RemoveSaturatedTypeFlows', '-H:+AliasArrayTypeFlows']
+        if vm.no_inlining_before_analysis:
+            base_image_build_args += ['-H:-InlineBeforeAnalysis']
+        if vm.optimization_level:
+            base_image_build_args += ['-' + vm.optimization_level]
+        if vm.async_sampler:
+            base_image_build_args += ['-R:+FlightRecorder',
+                                      '-R:StartFlightRecording=filename=default.jfr',
+                                      '--enable-monitoring=jfr',
+                                      '-R:+JfrBasedExecutionSamplerStatistics'
+                                      ]
+            removed_stages.update(["instrument-image", "instrument-run"])
+        if not vm.pgo_instrumentation:
+            removed_stages.update(["instrument-image", "instrument-run"])
+        if self.image_vm_args is not None:
+            base_image_build_args += self.image_vm_args
+        self.is_runnable = self.check_runnable()
+        base_image_build_args += self.extra_image_build_arguments
+
+        # requested_stages - removed_stages while preserving order of requested_stages
+        actual_requested_stages = [s for s in bm_suite.stages_info.requested_stages if s not in removed_stages]
+
+        current_stage = bm_suite.stages_info.get_current_stage()
+        # The stage to run in this call. May be None, in which case no stage is run
+        self.stage: Optional[str] = current_stage if current_stage in actual_requested_stages else None
+
+        # The last requested stage
+        self.last_stage = actual_requested_stages[-1]
+
+        # benchmarks are allowed to use experimental options
+        self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')] + svm_experimental_options(base_image_build_args)
+
+    def check_runnable(self):
+        # TODO remove once there is load available for the specified benchmarks
+        if self.benchmark_suite_name in ["mushop", "quarkus"]:
+            return False
+        return True
+
+    def get_bundle_path_if_present(self):
+        bundle_apply_arg = "--bundle-apply="
+        for i in range(len(self.extra_image_build_arguments)):
+            if self.extra_image_build_arguments[i].startswith(bundle_apply_arg):
+                # The bundle output is produced next to the bundle file, which in the case of
+                # benchmarks is in the mx cache, so we make a local copy.
+                cached_bundle_path = self.extra_image_build_arguments[i][len(bundle_apply_arg):]
+                bundle_copy_path = os.path.join(self.output_dir, basename(cached_bundle_path))
+                mx.ensure_dirname_exists(bundle_copy_path)
+                mx.copyfile(cached_bundle_path, bundle_copy_path)
+                self.extra_image_build_arguments[i] = bundle_apply_arg + bundle_copy_path
+                return bundle_copy_path
+
+        return None
+
+    def get_bundle_create_path_if_present(self):
+        bundle_create_arg = "--bundle-create"
+        bundle_arg_idx = [idx for idx, arg in enumerate(self.extra_image_build_arguments) if arg.startswith(bundle_create_arg)]
+        if len(bundle_arg_idx) == 1:
+            bp = os.path.join(self.extra_image_build_arguments[bundle_arg_idx[0] + 1] + ".output", "default", "reports")
+            return bp
+
+        return None
+
+
 class NativeImageVM(GraalVm):
     """
     This is a VM that should be used for running all Native Image benchmarks. This VM should support all the benchmarks
@@ -131,145 +271,6 @@ class NativeImageVM(GraalVm):
        2) Builds an image based on the configuration collected by the agent.
        3) Runs the image of the benchmark with supported VM arguments and with run-time arguments.
     """
-
-    class BenchmarkConfig:
-        def __init__(self, vm, bm_suite, args):
-            self.bmSuite = bm_suite
-            self.benchmark_suite_name = bm_suite.benchSuiteName(args)
-            self.benchmark_name = bm_suite.benchmarkName()
-            self.executable, self.classpath_arguments, self.modulepath_arguments, self.system_properties, self.image_vm_args, image_run_args, self.split_run = NativeImageVM.extract_benchmark_arguments(args)
-            self.extra_image_build_arguments = bm_suite.extra_image_build_argument(self.benchmark_name, args)
-            # use list() to create fresh copies to safeguard against accidental modification
-            self.image_run_args = bm_suite.extra_run_arg(self.benchmark_name, args, list(image_run_args))
-            self.extra_jvm_args = bm_suite.extra_jvm_arg(self.benchmark_name, args)
-            self.extra_agent_run_args = bm_suite.extra_agent_run_arg(self.benchmark_name, args, list(image_run_args))
-            self.extra_agentlib_options = bm_suite.extra_agentlib_options(self.benchmark_name, args, list(image_run_args))
-            for option in self.extra_agentlib_options:
-                if option.startswith('config-output-dir'):
-                    mx.abort("config-output-dir must not be set in the extra_agentlib_options.")
-            # Do not strip the run arguments if safepoint-sampler configuration is active.
-            self.extra_profile_run_args = bm_suite.extra_profile_run_arg(self.benchmark_name, args, list(image_run_args), not vm.safepoint_sampler)
-            self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args, list(image_run_args))
-            self.benchmark_output_dir = bm_suite.benchmark_output_dir(self.benchmark_name, args)
-            self.params = ['extra-image-build-argument', 'extra-jvm-arg', 'extra-run-arg', 'extra-agent-run-arg', 'extra-profile-run-arg',
-                           'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages', 'skip-agent-assertions']
-
-            # These stages are not run, even if explicitly requested.
-            # Some configurations don't need to/can't run certain stages
-            removed_stages = set()
-
-            if vm.jdk_profiles_collect:
-                # forbid image build/run in the profile collection execution mode
-                removed_stages.update(["image", "run"])
-            if vm.profile_inference_feature_extraction:
-                # do not run the image in the profile inference feature extraction mode
-                removed_stages.add("run")
-            self.skip_agent_assertions = bm_suite.skip_agent_assertions(self.benchmark_name, args)
-            self.root_dir = self.benchmark_output_dir if self.benchmark_output_dir else mx.suite('vm').get_output_root(platformDependent=False, jdkDependent=False)
-            unique_suite_name = f"{self.bmSuite.benchSuiteName()}-{self.bmSuite.version().replace('.', '-')}" if self.bmSuite.version() != 'unknown' else self.bmSuite.benchSuiteName()
-            self.executable_name = (unique_suite_name + '-' + self.benchmark_name).lower() if self.benchmark_name else unique_suite_name.lower()
-            self.instrumentation_executable_name = self.executable_name + "-instrument"
-            self.final_image_name = self.executable_name + '-' + vm.config_name()
-            self.output_dir = os.path.join(os.path.abspath(self.root_dir), 'native-image-benchmarks', self.executable_name + '-' + vm.config_name())
-            self.profile_path = os.path.join(self.output_dir, self.executable_name) + ".iprof"
-            self.config_dir = os.path.join(self.output_dir, 'config')
-            self.log_dir = self.output_dir
-            base_image_build_args = ['--no-fallback', '-g']
-            base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode'] if vm.is_gate else []
-            base_image_build_args += ['-H:+ReportExceptionStackTraces']
-            base_image_build_args += bm_suite.build_assertions(self.benchmark_name, vm.is_gate)
-
-            base_image_build_args += self.system_properties
-            self.bundle_path = self.get_bundle_path_if_present()
-            self.bundle_create_path = self.get_bundle_create_path_if_present()
-            if not self.bundle_path:
-                base_image_build_args += self.classpath_arguments
-                base_image_build_args += self.modulepath_arguments
-                base_image_build_args += self.executable
-                base_image_build_args += ['-H:Path=' + self.output_dir]
-            base_image_build_args += [
-                '-H:ConfigurationFileDirectories=' + self.config_dir,
-                '-H:+PrintAnalysisStatistics',
-                '-H:+PrintCallEdges',
-                '-H:+CollectImageBuildStatistics',
-            ]
-            self.image_build_reports_directory = os.path.join(self.output_dir, 'reports')
-            if self.bundle_create_path is not None:
-                self.image_build_reports_directory = os.path.join(self.output_dir, self.bundle_create_path)
-            self.image_build_stats_file = os.path.join(self.image_build_reports_directory, 'image_build_statistics.json')
-
-            if vm.is_quickbuild:
-                base_image_build_args += ['-Ob']
-            if vm.use_string_inlining:
-                base_image_build_args += ['-H:+UseStringInlining']
-            if vm.is_llvm:
-                base_image_build_args += ['--features=org.graalvm.home.HomeFinderFeature'] + ['-H:CompilerBackend=llvm', '-H:DeadlockWatchdogInterval=0']
-            if vm.gc:
-                base_image_build_args += ['--gc=' + vm.gc] + ['-H:+SpawnIsolates']
-            if vm.native_architecture:
-                base_image_build_args += ['-march=native']
-            if vm.analysis_context_sensitivity:
-                base_image_build_args += ['-H:AnalysisContextSensitivity=' + vm.analysis_context_sensitivity, '-H:-RemoveSaturatedTypeFlows', '-H:+AliasArrayTypeFlows']
-            if vm.no_inlining_before_analysis:
-                base_image_build_args += ['-H:-InlineBeforeAnalysis']
-            if vm.optimization_level:
-                base_image_build_args += ['-' + vm.optimization_level]
-            if vm.async_sampler:
-                base_image_build_args += ['-R:+FlightRecorder',
-                                          '-R:StartFlightRecording=filename=default.jfr',
-                                          '--enable-monitoring=jfr',
-                                          '-R:+JfrBasedExecutionSamplerStatistics'
-                                          ]
-                removed_stages.update(["instrument-image", "instrument-run"])
-            if not vm.pgo_instrumentation:
-                removed_stages.update(["instrument-image", "instrument-run"])
-            if self.image_vm_args is not None:
-                base_image_build_args += self.image_vm_args
-            self.is_runnable = self.check_runnable()
-            base_image_build_args += self.extra_image_build_arguments
-
-            # requested_stages - removed_stages while preserving order of requested_stages
-            actual_requested_stages = [s for s in bm_suite.stages_info.requested_stages if s not in removed_stages]
-
-            current_stage = bm_suite.stages_info.get_current_stage()
-            # The stage to run in this call. May be None, in which case no stage is run
-            self.stage: Optional[str] = current_stage if current_stage in actual_requested_stages else None
-
-            # The last requested stage
-            self.last_stage = actual_requested_stages[-1]
-
-            # benchmarks are allowed to use experimental options
-            self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')] + svm_experimental_options(base_image_build_args)
-
-        def check_runnable(self):
-            # TODO remove once there is load available for the specified benchmarks
-            if self.benchmark_suite_name in ["mushop", "quarkus"]:
-                return False
-            return True
-
-        def get_bundle_path_if_present(self):
-            bundle_apply_arg = "--bundle-apply="
-            for i in range(len(self.extra_image_build_arguments)):
-                if self.extra_image_build_arguments[i].startswith(bundle_apply_arg):
-                    # The bundle output is produced next to the bundle file, which in the case of
-                    # benchmarks is in the mx cache, so we make a local copy.
-                    cached_bundle_path = self.extra_image_build_arguments[i][len(bundle_apply_arg):]
-                    bundle_copy_path = os.path.join(self.output_dir, basename(cached_bundle_path))
-                    mx.ensure_dirname_exists(bundle_copy_path)
-                    mx.copyfile(cached_bundle_path, bundle_copy_path)
-                    self.extra_image_build_arguments[i] = bundle_apply_arg + bundle_copy_path
-                    return bundle_copy_path
-
-            return None
-
-        def get_bundle_create_path_if_present(self):
-            bundle_create_arg = "--bundle-create"
-            bundle_arg_idx = [idx for idx, arg in enumerate(self.extra_image_build_arguments) if arg.startswith(bundle_create_arg)]
-            if len(bundle_arg_idx) == 1:
-                bp = os.path.join(self.extra_image_build_arguments[bundle_arg_idx[0] + 1] + ".output", "default", "reports")
-                return bp
-
-            return None
 
     def __init__(self, name, config_name, extra_java_args=None, extra_launcher_args=None):
         super().__init__(name, config_name, extra_java_args, extra_launcher_args)
@@ -1049,7 +1050,7 @@ class NativeImageVM(GraalVm):
         assert not self.stages_info.failed, "In case of a failed benchmark, no further calls into the VM should be made"
 
         # never fatal, we handle it ourselves
-        config = NativeImageVM.BenchmarkConfig(self, self.bmSuite, args)
+        config = BenchmarkConfig(self, self.bmSuite, args)
         self.config = config
         stages = NativeImageVM.Stages(self.stages_info, config, out, err, self.is_gate, True if self.is_gate else nonZeroIsFatal, os.path.abspath(cwd if cwd else os.getcwd()))
         self.stages = stages
