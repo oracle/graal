@@ -45,7 +45,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.ObjectConstantEquality;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -56,6 +55,7 @@ import com.oracle.svm.hosted.meta.RelocatableConstant;
 
 import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
@@ -64,7 +64,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-public class AnalysisConstantReflectionProvider extends SharedConstantReflectionProvider {
+public class AnalysisConstantReflectionProvider implements ConstantReflectionProvider {
     private final AnalysisUniverse universe;
     protected final UniverseMetaAccess metaAccess;
     private final AnalysisMethodHandleAccessProvider methodHandleAccess;
@@ -156,7 +156,6 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         return null;
     }
 
-    @Override
     public void forEachArrayElement(JavaConstant array, ObjIntConsumer<JavaConstant> consumer) {
         VMError.guarantee(array instanceof ImageHeapConstant);
         if (array instanceof ImageHeapArray heapArray) {
@@ -176,6 +175,11 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     @Override
     public JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
         return readValue((AnalysisField) field, receiver, false);
+    }
+
+    @Override
+    public JavaConstant boxPrimitive(JavaConstant source) {
+        throw VMError.intentionallyUnimplemented();
     }
 
     public JavaConstant readValue(AnalysisField field, JavaConstant receiver, boolean returnSimulatedValues) {
@@ -269,7 +273,16 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
-        return universe.getHeapScanner().createImageHeapConstant(super.forObject(getHostVM().dynamicHub(type)), ObjectScanner.OtherReason.UNKNOWN);
+        return universe.getHeapScanner().createImageHeapConstant(asConstant(getHostVM().dynamicHub(type)), ObjectScanner.OtherReason.UNKNOWN);
+    }
+
+    @Override
+    public Constant asObjectHub(ResolvedJavaType type) {
+        /*
+         * Substrate VM does not distinguish between the hub and the Class, they are both
+         * represented by the DynamicHub.
+         */
+        return asJavaClass(type);
     }
 
     @Override
@@ -277,10 +290,9 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         if (value == null) {
             return JavaConstant.NULL_POINTER;
         }
-        return universe.getHeapScanner().createImageHeapConstant(super.forString(value), ObjectScanner.OtherReason.UNKNOWN);
+        return universe.getHeapScanner().createImageHeapConstant(asConstant(value), ObjectScanner.OtherReason.UNKNOWN);
     }
 
-    @Override
     public JavaConstant forObject(Object object) {
         validateRawObjectConstant(object);
         if (object instanceof RelocatedPointer pointer) {
@@ -289,7 +301,11 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), word.rawValue());
         }
         /* Redirect constant lookup through the shadow heap. */
-        return universe.getHeapScanner().createImageHeapConstant(super.forObject(object), ObjectScanner.OtherReason.UNKNOWN);
+        return universe.getHeapScanner().createImageHeapConstant(asConstant(object), ObjectScanner.OtherReason.UNKNOWN);
+    }
+
+    private JavaConstant asConstant(Object object) {
+        return SubstrateObjectConstant.forObject(object);
     }
 
     /**
