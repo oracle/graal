@@ -107,7 +107,7 @@ public class HostedConstantReflectionProvider extends SharedConstantReflectionPr
     public JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
         var hField = (HostedField) field;
         assert checkHub(receiver) : "Receiver " + receiver + " of field " + hField + " read should not be java.lang.Class. Expecting to see DynamicHub here.";
-        return aConstantReflection.readValue(hMetaAccess, hField.getWrapped(), receiver, true);
+        return aConstantReflection.readValue(hField.getWrapped(), receiver, true);
     }
 
     public AnalysisConstantReflectionProvider getWrappedConstantReflection() {

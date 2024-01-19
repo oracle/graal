@@ -45,8 +45,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.RuntimeAssertionsSupport;
-import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.ObjectConstantEquality;
@@ -59,7 +57,6 @@ import com.oracle.svm.hosted.meta.HostedLookupSnippetReflectionProvider;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
 
 import jdk.graal.compiler.core.common.type.TypedConstant;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -186,10 +183,10 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
     @Override
     public JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
-        return readValue(metaAccess, (AnalysisField) field, receiver, false);
+        return readValue((AnalysisField) field, receiver, false);
     }
 
-    public JavaConstant readValue(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant receiver, boolean returnSimulatedValues) {
+    public JavaConstant readValue(AnalysisField field, JavaConstant receiver, boolean returnSimulatedValues) {
         if (!field.isStatic()) {
             if (receiver.isNull() || !field.getDeclaringClass().isAssignableFrom(((TypedConstant) receiver).getType(metaAccess))) {
                 /*
@@ -234,7 +231,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         }
         if (value == null) {
             VMError.guarantee(!SimulateClassInitializerSupport.singleton().isEnabled());
-            value = universe.getHeapScanner().createImageHeapConstant(readHostedFieldValue(suppliedMetaAccess, field, receiver), ObjectScanner.OtherReason.UNKNOWN);
+            value = universe.getHeapScanner().createImageHeapConstant(readHostedFieldValueWithReplacement(field, receiver), ObjectScanner.OtherReason.UNKNOWN);
         }
         return value;
     }
@@ -264,8 +261,8 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
     /** Returns the hosted field value. The receiver must be a hosted constant. */
     @Override
-    public JavaConstant readHostedFieldValue(UniverseMetaAccess access, AnalysisField field, JavaConstant receiver) {
-        return interceptValue(access, field, doReadValue(field, universe.toHosted(receiver)));
+    public JavaConstant readHostedFieldValueWithReplacement(AnalysisField field, JavaConstant receiver) {
+        return replaceObject(doReadValue(field, universe.toHosted(receiver)));
     }
 
     private JavaConstant doReadValue(AnalysisField field, JavaConstant receiver) {
@@ -275,7 +272,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     /**
      * For classes that are simulated as initialized, provide the value of static fields to the
      * static analysis so that they are seen properly as roots in the image heap.
-     *
+     * <p>
      * We cannot return such simulated field values for "normal" field value reads because then they
      * would be seen during bytecode parsing too. Therefore, we only return such values when
      * explicitly requested via a flag.
@@ -289,30 +286,6 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             simulateClassInitializerSupport = SimulateClassInitializerSupport.singleton();
         }
         return simulateClassInitializerSupport.getSimulatedFieldValue(field);
-    }
-
-    public JavaConstant interceptValue(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant value) {
-        JavaConstant result = value;
-        if (result != null) {
-            result = filterInjectedAccessor(field, result);
-            result = replaceObject(result);
-            result = interceptAssertionStatus(field, result);
-            result = interceptWordField(suppliedMetaAccess, field, result);
-        }
-        return result;
-    }
-
-    private static JavaConstant filterInjectedAccessor(AnalysisField field, JavaConstant value) {
-        if (field.getAnnotation(InjectAccessors.class) != null) {
-            /*
-             * Fields whose accesses are intercepted by injected accessors are not actually present
-             * in the image. Ideally they should never be read, but there are corner cases where
-             * this happens. We intercept the value and return 0 / null.
-             */
-            assert !field.isAccessed();
-            return JavaConstant.defaultForKind(value.getJavaKind());
-        }
-        return value;
     }
 
     /**
@@ -330,44 +303,21 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             Object oldObject = universe.getSnippetReflection().asObject(Object.class, value);
             Object newObject = universe.replaceObject(oldObject);
             if (newObject != oldObject) {
-                return universe.getSnippetReflection().forObject(newObject);
+                JavaConstant replacedConstant = universe.getSnippetReflection().forObject(newObject);
+                validateReplacedConstant(metaAccess, replacedConstant);
+                return replacedConstant;
             }
         }
         return value;
     }
 
     /**
-     * Intercept assertion status: the value of the field during image generation does not matter at
-     * all (because it is the hosted assertion status), we instead return the appropriate runtime
-     * assertion status. Field loads are also intrinsified early in
-     * {@link com.oracle.svm.hosted.phases.EarlyConstantFoldLoadFieldPlugin}, but we could still see
-     * such a field here if user code, e.g., accesses it via reflection.
-     */
-    private static JavaConstant interceptAssertionStatus(AnalysisField field, JavaConstant value) {
-        if (field.isStatic() && field.isSynthetic() && field.getName().startsWith("$assertionsDisabled")) {
-            Class<?> clazz = field.getDeclaringClass().getJavaClass();
-            boolean assertionsEnabled = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(clazz);
-            return JavaConstant.forBoolean(!assertionsEnabled);
-        }
-        return value;
-    }
-
-    /**
-     * Intercept {@link Word} fields. {@link Word} values are boxed objects in the hosted world, but
-     * primitive values in the runtime world, so the default value of {@link Word} fields is 0.
-     * 
      * {@link HostedLookupSnippetReflectionProvider} replaces relocatable pointers with
      * {@link RelocatableConstant} and regular {@link WordBase} values with
      * {@link PrimitiveConstant}. No other {@link WordBase} values can be reachable at this point.
      */
-    private JavaConstant interceptWordField(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant value) {
-        if (value.getJavaKind() == JavaKind.Object) {
-            VMError.guarantee(value instanceof RelocatableConstant || !suppliedMetaAccess.isInstanceOf(value, WordBase.class));
-            if (value.isNull() && field.getType().isWordType()) {
-                return JavaConstant.forIntegerKind(universe.getWordKind(), 0);
-            }
-        }
-        return value;
+    public static void validateReplacedConstant(UniverseMetaAccess access, JavaConstant value) {
+        VMError.guarantee(value instanceof RelocatableConstant || !access.isInstanceOf(value, WordBase.class));
     }
 
     @Override

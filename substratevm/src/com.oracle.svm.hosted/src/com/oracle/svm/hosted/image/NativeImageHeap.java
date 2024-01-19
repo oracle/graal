@@ -260,7 +260,7 @@ public final class NativeImageHeap implements ImageHeap {
         JavaConstant hostedReceiver = ((ImageHeapInstance) receiver).getHostedObject();
         /* Use the AnalysisConstantReflectionProvider to get direct access to hosted values. */
         AnalysisConstantReflectionProvider analysisConstantReflection = hConstantReflection.getWrappedConstantReflection();
-        return hUniverse.getSnippetReflection().asObject(Object.class, analysisConstantReflection.readHostedFieldValue(hMetaAccess, field.getWrapped(), hostedReceiver));
+        return hUniverse.getSnippetReflection().asObject(Object.class, analysisConstantReflection.readHostedFieldValueWithReplacement(field.getWrapped(), hostedReceiver));
     }
 
     private JavaConstant readConstantField(HostedField field, JavaConstant receiver) {

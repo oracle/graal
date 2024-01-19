@@ -46,6 +46,7 @@ import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier.ScanningObserver;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -338,6 +339,7 @@ public abstract class ImageHeapScanner {
                 Object replaced = universe.replaceObject(unwrapped);
                 if (replaced != unwrapped) {
                     JavaConstant replacedConstant = universe.getSnippetReflection().forObject(replaced);
+                    validateReplacedConstant(metaAccess, replacedConstant);
                     return Optional.of(replacedConstant);
                 }
             } catch (UnsupportedFeatureException e) {
@@ -349,6 +351,11 @@ public abstract class ImageHeapScanner {
 
         }
         return Optional.empty();
+    }
+
+    /** Hook to run validation checks on the replaced value. */
+    @SuppressWarnings("unused")
+    public void validateReplacedConstant(UniverseMetaAccess access, JavaConstant value) {
     }
 
     public static void maybeForceHashCodeComputation(Object constant) {
@@ -402,17 +409,7 @@ public abstract class ImageHeapScanner {
          * ready to be materialized.
          */
         AnalysisError.guarantee(rawValue.isAvailable(), "Value not yet available for %s", field);
-
-        JavaConstant transformedValue;
-        try {
-            transformedValue = transformFieldValue(field, receiver, rawValue.get());
-        } catch (UnsupportedFeatureException e) {
-            ObjectScanner.unsupportedFeatureDuringFieldScan(universe.getBigbang(), field, receiver, e, reason);
-            transformedValue = JavaConstant.NULL_POINTER;
-        }
-        assert transformedValue != null : field.getDeclaringClass().toJavaName() + "::" + field.getName();
-
-        return createImageHeapConstant(transformedValue, reason);
+        return createImageHeapConstant(rawValue.get(), reason);
     }
 
     private void notifyAnalysis(AnalysisField field, ImageHeapInstance receiver, JavaConstant fieldValue, ScanReason reason) {
@@ -443,11 +440,6 @@ public abstract class ImageHeapScanner {
             analysisModified = scanningObserver.forPrimitiveFieldValue(receiver, field, fieldValue, reason);
         }
         return analysisModified;
-    }
-
-    @SuppressWarnings("unused")
-    protected JavaConstant transformFieldValue(AnalysisField field, JavaConstant receiverConstant, JavaConstant originalValueConstant) {
-        return originalValueConstant;
     }
 
     protected JavaConstant onArrayElementReachable(ImageHeapArray array, AnalysisType arrayType, JavaConstant rawElementValue, int elementIndex, ScanReason reason,

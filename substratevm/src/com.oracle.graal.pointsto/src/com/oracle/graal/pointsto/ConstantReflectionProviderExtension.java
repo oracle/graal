@@ -24,12 +24,10 @@
  */
 package com.oracle.graal.pointsto;
 
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
-
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public interface ConstantReflectionProviderExtension<T extends ResolvedJavaField> extends ConstantReflectionProvider {
-    JavaConstant readHostedFieldValue(UniverseMetaAccess access, T field, JavaConstant receiver);
+    JavaConstant readHostedFieldValueWithReplacement(T field, JavaConstant receiver);
 }
