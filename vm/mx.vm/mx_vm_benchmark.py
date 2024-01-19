@@ -168,6 +168,7 @@ class NativeImageVM(GraalVm):
             self.root_dir = self.benchmark_output_dir if self.benchmark_output_dir else mx.suite('vm').get_output_root(platformDependent=False, jdkDependent=False)
             unique_suite_name = f"{self.bmSuite.benchSuiteName()}-{self.bmSuite.version().replace('.', '-')}" if self.bmSuite.version() != 'unknown' else self.bmSuite.benchSuiteName()
             self.executable_name = (unique_suite_name + '-' + self.benchmark_name).lower() if self.benchmark_name else unique_suite_name.lower()
+            self.instrumentation_executable_name = self.executable_name + "-instrument"
             self.final_image_name = self.executable_name + '-' + vm.config_name()
             self.output_dir = os.path.join(os.path.abspath(self.root_dir), 'native-image-benchmarks', self.executable_name + '-' + vm.config_name())
             self.profile_path = os.path.join(self.output_dir, self.executable_name) + ".iprof"
@@ -921,8 +922,8 @@ class NativeImageVM(GraalVm):
                     if file.endswith(".json"):
                         zipf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), os.path.join(path, '..')))
 
-    def run_stage_instrument_image(self, config, stages, out, instrumentation_image_name):
-        executable_name_args = ['-o', instrumentation_image_name]
+    def run_stage_instrument_image(self, config, stages, out):
+        executable_name_args = ['-o', config.instrumentation_executable_name]
         instrument_args = ['--pgo-instrument', '-R:ProfilesDumpFile=' + config.profile_path]
         if self.jdk_profiles_collect:
             instrument_args += svm_experimental_options(['-H:+AOTPriorityInline', '-H:-SamplingCollect', f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}'])
@@ -932,7 +933,7 @@ class NativeImageVM(GraalVm):
             if config.bundle_path is not None:
                 NativeImageVM.copy_bundle_output(config)
             if s.exit_code == 0:
-                image_size = os.stat(os.path.join(config.output_dir, instrumentation_image_name)).st_size
+                image_size = os.stat(os.path.join(config.output_dir, config.instrumentation_executable_name)).st_size
                 out('Instrumented image size: ' + str(image_size) + ' B')
 
     def _ensureSamplesAreInProfile(self, profile_path):
@@ -951,8 +952,8 @@ class NativeImageVM(GraalVm):
                     assert len(sample["records"]) == 1, "Sampling profiles seem to be missing records in file " + profile_path
                     assert sample["records"][0] > 0, "Sampling profiles seem to have a 0 in records in file " + profile_path
 
-    def run_stage_instrument_run(self, config, stages, image_path):
-        image_run_cmd = [image_path]
+    def run_stage_instrument_run(self, config, stages):
+        image_run_cmd = [os.path.join(config.output_dir, config.instrumentation_executable_name)]
         image_run_cmd += config.extra_jvm_args
         image_run_cmd += config.extra_profile_run_args
         with stages.set_command(image_run_cmd) as s:
@@ -1062,12 +1063,11 @@ class NativeImageVM(GraalVm):
         if stages.change_stage('agent'):
             self.run_stage_agent(config, stages)
 
-        instrumentation_image_name = config.executable_name + '-instrument'
         if stages.change_stage('instrument-image'):
-            self.run_stage_instrument_image(config, stages, out, instrumentation_image_name)
+            self.run_stage_instrument_image(config, stages, out)
 
         if stages.change_stage('instrument-run'):
-            self.run_stage_instrument_run(config, stages, os.path.join(config.output_dir, instrumentation_image_name))
+            self.run_stage_instrument_run(config, stages)
 
         # Build the final image
         if stages.change_stage('image'):
