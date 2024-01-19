@@ -1441,6 +1441,7 @@ suite = {
           "java.logging",
           "java.management",
           "static jdk.internal.vm.ci",  # JVMCI module is not on the boot layer if not enabled
+          "static jdk.jfr", # JFR is not included in the J9 JVM
         ],
         "exports" : [
           # Qualified exports
