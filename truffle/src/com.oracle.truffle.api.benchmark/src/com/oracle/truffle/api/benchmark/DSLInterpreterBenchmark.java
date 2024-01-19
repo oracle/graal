@@ -84,7 +84,7 @@ public class DSLInterpreterBenchmark extends TruffleBenchmark {
         @Setup(Level.Invocation)
         public void setup() {
             for (int i = 0; i < NODES; i++) {
-                nodes[i] = createNode(com.oracle.truffle.api.benchmark.DSLInterpreterBenchmarkFactory.SimpleDSLNodeGen::create);
+                nodes[i] = createNode(DSLInterpreterBenchmarkFactory.SimpleDSLNodeGen::create);
             }
         }
 
@@ -103,7 +103,7 @@ public class DSLInterpreterBenchmark extends TruffleBenchmark {
         @Setup(Level.Invocation)
         public void setup() {
             for (int i = 0; i < NODES; i++) {
-                nodes[i] = createNode(com.oracle.truffle.api.benchmark.DSLInterpreterBenchmarkFactory.CachedDSLNodeGen::create);
+                nodes[i] = createNode(DSLInterpreterBenchmarkFactory.CachedDSLNodeGen::create);
             }
         }
 
@@ -121,7 +121,7 @@ public class DSLInterpreterBenchmark extends TruffleBenchmark {
     @Setup
     public void setupInterpreterProfile() {
         for (int i = 0; i < 100; i++) {
-            AbstractNode node = createNode(com.oracle.truffle.api.benchmark.DSLInterpreterBenchmarkFactory.SimpleDSLNodeGen::create);
+            AbstractNode node = createNode(DSLInterpreterBenchmarkFactory.SimpleDSLNodeGen::create);
             node.execute(42L);
             node.execute(42);
             try {
@@ -129,7 +129,7 @@ public class DSLInterpreterBenchmark extends TruffleBenchmark {
             } catch (UnsupportedSpecializationException e) {
             }
 
-            node = createNode(com.oracle.truffle.api.benchmark.DSLInterpreterBenchmarkFactory.SimpleDSLNodeGen::create);
+            node = createNode(DSLInterpreterBenchmarkFactory.SimpleDSLNodeGen::create);
             node.execute(42);
             node.execute(42L);
             try {
@@ -137,7 +137,7 @@ public class DSLInterpreterBenchmark extends TruffleBenchmark {
             } catch (UnsupportedSpecializationException e) {
             }
 
-            node = createNode(com.oracle.truffle.api.benchmark.DSLInterpreterBenchmarkFactory.CachedDSLNodeGen::create);
+            node = createNode(DSLInterpreterBenchmarkFactory.CachedDSLNodeGen::create);
             node.execute(42);
             node.execute(42L);
             try {
@@ -155,7 +155,7 @@ public class DSLInterpreterBenchmark extends TruffleBenchmark {
         @Setup(Level.Invocation)
         public void setup() {
             for (int i = 0; i < NODES; i++) {
-                nodes[i] = createNode(com.oracle.truffle.api.benchmark.DSLInterpreterBenchmarkFactory.SimpleDSLNodeGen::create);
+                nodes[i] = createNode(DSLInterpreterBenchmarkFactory.SimpleDSLNodeGen::create);
                 nodes[i].execute(42);
             }
         }
@@ -170,7 +170,7 @@ public class DSLInterpreterBenchmark extends TruffleBenchmark {
         @Setup(Level.Invocation)
         public void setup() {
             for (int i = 0; i < NODES; i++) {
-                nodes[i] = createNode(com.oracle.truffle.api.benchmark.DSLInterpreterBenchmarkFactory.CachedDSLNodeGen::create);
+                nodes[i] = createNode(DSLInterpreterBenchmarkFactory.CachedDSLNodeGen::create);
                 nodes[i].execute(42);
             }
         }

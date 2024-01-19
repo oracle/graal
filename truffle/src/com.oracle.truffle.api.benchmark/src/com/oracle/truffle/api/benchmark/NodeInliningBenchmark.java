@@ -83,11 +83,11 @@ public class NodeInliningBenchmark extends TruffleBenchmark {
         final CachedSharedExclusiveNode[] sharedExclusiveCachedNodes = new CachedSharedExclusiveNode[INNER_LOOP];
         {
             for (int i = 0; i < INNER_LOOP; i++) {
-                inlinedNodes[i] = com.oracle.truffle.api.benchmark.NodeInliningBenchmarkFactory.InlinedNodeGen.create();
-                cachedNodes[i] = com.oracle.truffle.api.benchmark.NodeInliningBenchmarkFactory.CachedNodeGen.create();
+                inlinedNodes[i] = NodeInliningBenchmarkFactory.InlinedNodeGen.create();
+                cachedNodes[i] = NodeInliningBenchmarkFactory.CachedNodeGen.create();
 
-                sharedExclusiveInlinedNodes[i] = com.oracle.truffle.api.benchmark.NodeInliningBenchmarkFactory.InlinedSharedExclusiveNodeGen.create();
-                sharedExclusiveCachedNodes[i] = com.oracle.truffle.api.benchmark.NodeInliningBenchmarkFactory.CachedSharedExclusiveNodeGen.create();
+                sharedExclusiveInlinedNodes[i] = NodeInliningBenchmarkFactory.InlinedSharedExclusiveNodeGen.create();
+                sharedExclusiveCachedNodes[i] = NodeInliningBenchmarkFactory.CachedSharedExclusiveNodeGen.create();
 
                 sharedExclusiveInlinedNodes[i].execute(0, 0, 0, 0);
                 sharedExclusiveInlinedNodes[i].execute(1, 0, 0, 0);
@@ -114,8 +114,8 @@ public class NodeInliningBenchmark extends TruffleBenchmark {
         @Setup(Level.Invocation)
         public void setup() {
             for (int i = 0; i < INNER_LOOP; i++) {
-                inlinedNodes[i] = com.oracle.truffle.api.benchmark.NodeInliningBenchmarkFactory.InlinedNodeGen.create();
-                cachedNodes[i] = com.oracle.truffle.api.benchmark.NodeInliningBenchmarkFactory.CachedNodeGen.create();
+                inlinedNodes[i] = NodeInliningBenchmarkFactory.InlinedNodeGen.create();
+                cachedNodes[i] = NodeInliningBenchmarkFactory.CachedNodeGen.create();
             }
         }
 
@@ -131,7 +131,7 @@ public class NodeInliningBenchmark extends TruffleBenchmark {
     public void createInlined(BenchmarkState state) {
         InlinedNode[] nodes = state.inlinedNodes;
         for (int i = 0; i < nodes.length; i++) {
-            nodes[i] = com.oracle.truffle.api.benchmark.NodeInliningBenchmarkFactory.InlinedNodeGen.create();
+            nodes[i] = NodeInliningBenchmarkFactory.InlinedNodeGen.create();
         }
     }
 
@@ -140,7 +140,7 @@ public class NodeInliningBenchmark extends TruffleBenchmark {
     public void createCached(BenchmarkState state) {
         CachedNode[] nodes = state.cachedNodes;
         for (int i = 0; i < nodes.length; i++) {
-            nodes[i] = com.oracle.truffle.api.benchmark.NodeInliningBenchmarkFactory.CachedNodeGen.create();
+            nodes[i] = NodeInliningBenchmarkFactory.CachedNodeGen.create();
         }
     }
 

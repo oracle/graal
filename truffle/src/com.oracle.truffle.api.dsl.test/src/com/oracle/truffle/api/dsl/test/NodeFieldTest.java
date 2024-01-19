@@ -66,7 +66,7 @@ public class NodeFieldTest {
 
     @Test
     public void testIntField() {
-        assertEquals(42, createCallTarget(com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.IntFieldTestNodeFactory.create(42)).call());
+        assertEquals(42, createCallTarget(NodeFieldTestFactory.IntFieldTestNodeFactory.create(42)).call());
     }
 
     @NodeField(name = "field", type = int.class)
@@ -83,7 +83,7 @@ public class NodeFieldTest {
 
     @Test
     public void testIntFieldNoGetter() {
-        assertEquals(42, createCallTarget(com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.IntFieldNoGetterTestNodeFactory.create(42)).call());
+        assertEquals(42, createCallTarget(NodeFieldTestFactory.IntFieldNoGetterTestNodeFactory.create(42)).call());
     }
 
     @NodeField(name = "field", type = int.class)
@@ -98,7 +98,7 @@ public class NodeFieldTest {
 
     @Test
     public void testMultipleFields() {
-        assertEquals(42, createCallTarget(com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.MultipleFieldsTestNodeFactory.create(21, 21)).call());
+        assertEquals(42, createCallTarget(NodeFieldTestFactory.MultipleFieldsTestNodeFactory.create(21, 21)).call());
     }
 
     @NodeField(name = "field0", type = int.class)
@@ -117,7 +117,7 @@ public class NodeFieldTest {
 
     @Test
     public void testStringField() {
-        assertEquals("42", createCallTarget(com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.StringFieldTestNodeFactory.create("42")).call());
+        assertEquals("42", createCallTarget(NodeFieldTestFactory.StringFieldTestNodeFactory.create("42")).call());
     }
 
     @NodeField(name = "field", type = String.class)
@@ -134,7 +134,7 @@ public class NodeFieldTest {
 
     @Test
     public void testRewrite() {
-        assertEquals("42", createCallTarget(com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.RewriteTestNodeFactory.create("42")).call());
+        assertEquals("42", createCallTarget(NodeFieldTestFactory.RewriteTestNodeFactory.create("42")).call());
     }
 
     @NodeField(name = "field", type = String.class)
@@ -155,7 +155,7 @@ public class NodeFieldTest {
 
     @Test
     public void testStringContainer() {
-        assertEquals(42, createCallTarget(com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.TestContainerFactory.create("42")).call());
+        assertEquals(42, createCallTarget(NodeFieldTestFactory.TestContainerFactory.create("42")).call());
     }
 
     @NodeField(name = "field", type = int.class)
@@ -177,7 +177,7 @@ public class NodeFieldTest {
 
     @Test
     public void testObjectContainer() {
-        assertEquals("42", createCallTarget(com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.ObjectContainerNodeFactory.create("42")).call());
+        assertEquals("42", createCallTarget(NodeFieldTestFactory.ObjectContainerNodeFactory.create("42")).call());
     }
 
     @NodeField(name = "object", type = Object.class)
@@ -194,8 +194,8 @@ public class NodeFieldTest {
 
     @Test
     public void testUncachedNodeIntFieldTest() {
-        assertEquals(42, com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.UncachedNodeIntFieldTestNodeGen.create(42).execute());
-        assertFails(() -> com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.UncachedNodeObjectFieldTestNodeGen.getUncached().execute(), UnsupportedOperationException.class);
+        assertEquals(42, NodeFieldTestFactory.UncachedNodeIntFieldTestNodeGen.create(42).execute());
+        assertFails(() -> NodeFieldTestFactory.UncachedNodeObjectFieldTestNodeGen.getUncached().execute(), UnsupportedOperationException.class);
     }
 
     @GenerateUncached
@@ -221,8 +221,8 @@ public class NodeFieldTest {
     @Test
     public void testUncachedNodeObjectFieldTest() {
         Object instance = new Object();
-        assertSame(instance, com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.UncachedNodeObjectFieldTestNodeGen.create(instance).execute());
-        assertFails(() -> com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.UncachedNodeObjectFieldTestNodeGen.getUncached().execute(), UnsupportedOperationException.class);
+        assertSame(instance, NodeFieldTestFactory.UncachedNodeObjectFieldTestNodeGen.create(instance).execute());
+        assertFails(() -> NodeFieldTestFactory.UncachedNodeObjectFieldTestNodeGen.getUncached().execute(), UnsupportedOperationException.class);
     }
 
     @GenerateUncached
@@ -247,8 +247,8 @@ public class NodeFieldTest {
 
     @Test
     public void testUncachedNodeIntFieldRef() {
-        assertEquals(42, com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.UncachedNodeIntFieldRefNodeGen.create(42).execute());
-        assertEquals(0, com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.UncachedNodeIntFieldRefNodeGen.getUncached().execute());
+        assertEquals(42, NodeFieldTestFactory.UncachedNodeIntFieldRefNodeGen.create(42).execute());
+        assertEquals(0, NodeFieldTestFactory.UncachedNodeIntFieldRefNodeGen.getUncached().execute());
     }
 
     @GenerateUncached
@@ -265,7 +265,7 @@ public class NodeFieldTest {
 
     @Test
     public void testUncachedNodeSettableIntFieldRef() throws Exception {
-        UncachedNodeSettableIntFieldRef cached = com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.UncachedNodeSettableIntFieldRefNodeGen.create();
+        UncachedNodeSettableIntFieldRef cached = NodeFieldTestFactory.UncachedNodeSettableIntFieldRefNodeGen.create();
         assertEquals(0, cached.execute());
         assertEquals(0, cached.getFoo());
         cached.setFoo(42);
@@ -274,7 +274,7 @@ public class NodeFieldTest {
         assertNull(cached.getClass().getDeclaredMethod("getFoo").getAnnotation(TruffleBoundary.class));
         assertNull(cached.getClass().getDeclaredMethod("setFoo", int.class).getAnnotation(TruffleBoundary.class));
 
-        UncachedNodeSettableIntFieldRef uncached = com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.UncachedNodeSettableIntFieldRefNodeGen.getUncached();
+        UncachedNodeSettableIntFieldRef uncached = NodeFieldTestFactory.UncachedNodeSettableIntFieldRefNodeGen.getUncached();
         assertFails(() -> uncached.execute(), UnsupportedOperationException.class);
         assertFails(() -> uncached.getFoo(), UnsupportedOperationException.class);
         assertFails(() -> uncached.setFoo(42), UnsupportedOperationException.class);
@@ -356,8 +356,8 @@ public class NodeFieldTest {
 
     @Test
     public void testConstructorAnnotations() throws NoSuchMethodException, SecurityException {
-        assertEquals(42, com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.ConstructorAnnotationsTestNodeGen.create(21, 21).execute());
-        Method method = com.oracle.truffle.api.dsl.test.NodeFieldTestFactory.ConstructorAnnotationsTestNodeGen.class.getMethod("create", int.class, int.class);
+        assertEquals(42, NodeFieldTestFactory.ConstructorAnnotationsTestNodeGen.create(21, 21).execute());
+        Method method = NodeFieldTestFactory.ConstructorAnnotationsTestNodeGen.class.getMethod("create", int.class, int.class);
         MyAnnotation annotation = method.getParameters()[0].getAnnotation(MyAnnotation.class);
         assertEquals("42", annotation.string());
         assertEquals("41", annotation.stringArray()[0]);

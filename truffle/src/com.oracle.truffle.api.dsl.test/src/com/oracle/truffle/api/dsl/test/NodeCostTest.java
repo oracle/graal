@@ -56,7 +56,7 @@ public class NodeCostTest {
 
     @Test
     public void testNodeCost() {
-        TestRootNode<CostTestNode> node = TestHelper.createRoot(com.oracle.truffle.api.dsl.test.NodeCostTestFactory.CostTestNodeFactory.getInstance());
+        TestRootNode<CostTestNode> node = TestHelper.createRoot(NodeCostTestFactory.CostTestNodeFactory.getInstance());
         assertEquals(NodeCost.UNINITIALIZED, node.getNode().getCost());
         assertEquals(21, executeWith(node, 21));
         assertEquals(NodeCost.MONOMORPHIC, node.getNode().getCost());
@@ -88,7 +88,7 @@ public class NodeCostTest {
 
     @Test
     public void testNodeCostViaMethodOverride() {
-        TestRootNode<CostViaMethodOverrideNode> node = TestHelper.createRoot(com.oracle.truffle.api.dsl.test.NodeCostTestFactory.CostViaMethodOverrideNodeFactory.getInstance());
+        TestRootNode<CostViaMethodOverrideNode> node = TestHelper.createRoot(NodeCostTestFactory.CostViaMethodOverrideNodeFactory.getInstance());
         assertEquals(NodeCost.NONE, node.getNode().getCost());
         assertEquals(21, executeWith(node, 21));
         assertEquals(NodeCost.NONE, node.getNode().getCost());
@@ -111,7 +111,7 @@ public class NodeCostTest {
 
     @Test
     public void testNodeCostWithNodeInfo() {
-        TestRootNode<CostWithNodeInfoNode> node = TestHelper.createRoot(com.oracle.truffle.api.dsl.test.NodeCostTestFactory.CostWithNodeInfoNodeFactory.getInstance());
+        TestRootNode<CostWithNodeInfoNode> node = TestHelper.createRoot(NodeCostTestFactory.CostWithNodeInfoNodeFactory.getInstance());
         assertEquals(NodeCost.NONE, node.getNode().getCost());
         assertEquals(21, executeWith(node, 21));
         assertEquals(NodeCost.NONE, node.getNode().getCost());
