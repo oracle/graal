@@ -47,7 +47,7 @@ import signal
 import threading
 import json
 import argparse
-from typing import List
+from typing import List, Optional, MutableSequence
 
 import mx
 import mx_benchmark
@@ -57,7 +57,7 @@ import copy
 import urllib.request
 
 import mx_sdk_vm_impl
-from mx_benchmark import DataPoints
+from mx_benchmark import DataPoints, DataPoint, BenchmarkSuite
 
 
 def parse_prefixed_args(prefix, args):
@@ -165,15 +165,110 @@ def strip_args_with_number(strip_args, args):
     return list(result)
 
 
+class StagesInfo:
+    """
+    Holds information about benchmark stages that should be persisted across multiple stages in the same
+    ``mx benchmark`` command.
+
+    Is used to pass data from the benchmark suite to the underlying :class:`mx_benchmark.BenchmarkSuite`.
+    """
+
+    def __init__(self, requested_stages: List[str]):
+        self._requested_stages = requested_stages
+        self._stages_till_now: List[str] = []
+        self._current_stage: Optional[str] = None
+        self._failed: bool = False
+
+    @property
+    def requested_stages(self) -> List[str]:
+        """
+        List of stages requested by the user.
+
+        See also :meth:`NativeImageBenchmarkMixin.stages`
+        """
+        return self._requested_stages
+
+    @property
+    def failed(self) -> bool:
+        return self._failed
+
+    @property
+    def stages_till_now(self) -> List[str]:
+        """
+        List of stages executed so far, all of which have been successful.
+
+        Does not include the current stage.
+        """
+        return self._stages_till_now
+
+    def set_current_stage(self, stage_name: str) -> None:
+        self._current_stage = stage_name
+
+    def get_current_stage(self) -> str:
+        assert self._current_stage, "No current stage set"
+        return self._current_stage
+
+    def success(self) -> None:
+        """Called when the current stage has finished successfully"""
+        self._stages_till_now.append(self.get_current_stage())
+
+    def fail(self) -> None:
+        """Called when the current stage finished with an error"""
+        self._failed = True
+
+
 class NativeImageBenchmarkMixin(object):
+    """
+    Mixin extended by :class:`BenchmarkSuite` classes to run Native Image benchmarks.
+
+    IMPORTANT: All Native Image benchmarks must explicitly call :meth:`NativeImageBenchmarkMixin.run_stages` in order
+    for benchmarking to work. See description of that method for more information.
+    """
 
     def __init__(self):
         self.benchmark_name = None
+        self.stages_info: Optional[StagesInfo] = None
 
     def benchmarkName(self):
         if not self.benchmark_name:
             raise NotImplementedError()
         return self.benchmark_name
+
+    def run_stages(self, super_delegate: BenchmarkSuite, benchmarks, bmSuiteArgs) -> DataPoints:
+        """
+        Intercepts the main benchmark execution (:meth:`BenchmarkSuite.run`) and runs a series of benchmark stages
+        required for Native Image benchmarks in series.
+
+        The stages are requested by the user (see :meth:`NativeImageBenchmarkMixin.stages`).
+
+        There are no good ways just intercept arbitrary ``BenchmarkSuite``s, so each :class:`BenchmarkSuite` subclass
+        that is intended for Native Image benchmarking needs to make sure that the :meth:`BenchmarkSuite.run` calls into
+        this method like this::
+
+            def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
+                return self.run_stages(super(), benchmarks, bmSuiteArgs)
+
+        It is fine if this implemented in a common (Native Image-specific) subclass of multiple benchmark suites, as
+        long as it comes first in python's method-resolution-order (MRO).
+
+        :param super_delegate: A reference to the caller class' superclass (in MRO).
+        :param benchmarks: Passed to :meth:`BenchmarkSuite.run`
+        :param bmSuiteArgs: Passed to :meth:`BenchmarkSuite.run`
+        :return: Datapoints accumulated from all stages
+        """
+        datapoints: MutableSequence[DataPoint] = []
+
+        requested_stages = self.stages(self.vmArgs(bmSuiteArgs))
+        self.stages_info = StagesInfo(requested_stages)
+
+        for stage in requested_stages:
+            self.stages_info.set_current_stage(stage)
+            # Start the actual benchmark execution. The stages_info attribute will be used by the NativeImageVM to
+            # determine which stage to run this time.
+            datapoints += super_delegate.run(benchmarks, bmSuiteArgs)
+
+        self.stages_info = None
+        return datapoints
 
     def run_stage(self, vm, stage, command, out, err, cwd, nonZeroIsFatal):
         final_command = command
@@ -257,6 +352,11 @@ class NativeImageBenchmarkMixin(object):
             return None
 
     def stages(self, args):
+        """
+        Benchmark stages requested by the user with ``-Dnative-image.benchmark.stages=``.
+
+        Falls back to :meth:`NativeImageBenchmarkMixin.default_stages` if not specified.
+        """
         parsed_arg = parse_prefixed_arg('-Dnative-image.benchmark.stages=', args, 'Native Image benchmark stages should only be specified once.')
         return parsed_arg.split(',') if parsed_arg else self.default_stages()
 
