@@ -46,7 +46,6 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.meta.ObjectConstantEquality;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
@@ -79,14 +78,10 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
 
     @Override
     public Boolean constantEquals(Constant x, Constant y) {
+        VMError.guarantee(!(x instanceof JavaConstant constant) || isExpectedJavaConstant(constant));
+        VMError.guarantee(!(y instanceof JavaConstant constant) || isExpectedJavaConstant(constant));
         if (x == y) {
             return true;
-        } else if (x instanceof SubstrateObjectConstant && y instanceof SubstrateObjectConstant) {
-            return ObjectConstantEquality.get().test((SubstrateObjectConstant) x, (SubstrateObjectConstant) y);
-        } else if (x instanceof ImageHeapConstant cx && cx.isBackedByHostedObject() && y instanceof SubstrateObjectConstant) {
-            return ObjectConstantEquality.get().test((SubstrateObjectConstant) cx.getHostedObject(), (SubstrateObjectConstant) y);
-        } else if (y instanceof ImageHeapConstant cy && cy.isBackedByHostedObject() && x instanceof SubstrateObjectConstant) {
-            return ObjectConstantEquality.get().test((SubstrateObjectConstant) cy.getHostedObject(), (SubstrateObjectConstant) x);
         } else {
             return x.equals(y);
         }
@@ -151,7 +146,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
             }
             heapArray.ensureReaderInstalled();
             JavaConstant element = heapArray.readElementValue(index);
-            return validateArrayValue(element);
+            return checkExpectedValue(element);
         }
         return null;
     }
@@ -162,14 +157,18 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
             heapArray.ensureReaderInstalled();
             for (int index = 0; index < heapArray.getLength(); index++) {
                 JavaConstant element = heapArray.readElementValue(index);
-                consumer.accept(validateArrayValue(element), index);
+                consumer.accept(checkExpectedValue(element), index);
             }
         }
     }
 
-    private static JavaConstant validateArrayValue(JavaConstant value) {
-        VMError.guarantee(value.isNull() || value.getJavaKind().isPrimitive() || value instanceof RelocatableConstant || value instanceof ImageHeapConstant);
+    private static JavaConstant checkExpectedValue(JavaConstant value) {
+        VMError.guarantee(isExpectedJavaConstant(value));
         return value;
+    }
+
+    private static boolean isExpectedJavaConstant(JavaConstant value) {
+        return value.isNull() || value.getJavaKind().isPrimitive() || value instanceof RelocatableConstant || value instanceof ImageHeapConstant;
     }
 
     @Override
