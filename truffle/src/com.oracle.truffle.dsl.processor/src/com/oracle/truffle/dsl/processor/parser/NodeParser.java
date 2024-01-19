@@ -1844,7 +1844,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         TypeElement importElement = fromTypeMirror(context.reloadType(importType.asType()));
 
         List<Element> members = new ArrayList<>();
-        List<? extends Element> importMembers = context.getEnvironment().getElementUtils().getAllMembers(importType);
+        List<? extends Element> importMembers = CompilerFactory.getCompiler(importType).getAllMembersInDeclarationOrder(context.getEnvironment(), importType);
         // add default constructor
         if (includeConstructors && ElementUtils.isVisible(relativeTo, importElement) && ElementFilter.constructorsIn(importMembers).isEmpty()) {
             CodeExecutableElement executable = new CodeExecutableElement(modifiers(Modifier.PUBLIC), importElement.asType(), null);
@@ -2541,7 +2541,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<>(), templateType);
 
         // Declaration order is not required for child nodes.
-        List<? extends Element> members = processingEnv.getElementUtils().getAllMembers(templateType);
+        List<? extends Element> members = CompilerFactory.getCompiler(templateType).getAllMembersInDeclarationOrder(processingEnv, templateType);
         NodeData node = parseNodeData(templateType, lookupTypes);
         if (node.hasErrors()) {
             return node;

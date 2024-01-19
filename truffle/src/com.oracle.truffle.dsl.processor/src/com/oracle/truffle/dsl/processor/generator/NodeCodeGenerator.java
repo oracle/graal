@@ -65,6 +65,7 @@ import com.oracle.truffle.dsl.processor.AnnotationProcessor;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.GeneratorMode;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
@@ -315,7 +316,8 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
 
             type.add(constructor);
         }
-        for (ExecutableElement method : ElementFilter.methodsIn(context.getEnvironment().getElementUtils().getAllMembers(node.getTemplateType()))) {
+        for (ExecutableElement method : ElementFilter.methodsIn(
+                        CompilerFactory.getCompiler(node.getTemplateType()).getAllMembersInDeclarationOrder(context.getEnvironment(), node.getTemplateType()))) {
             if (method.getModifiers().contains(Modifier.ABSTRACT) && ElementUtils.getVisibility(method.getModifiers()) != Modifier.PRIVATE) {
                 CodeExecutableElement overrideMethod = CodeExecutableElement.clone(method);
                 overrideMethod.getModifiers().remove(Modifier.ABSTRACT);

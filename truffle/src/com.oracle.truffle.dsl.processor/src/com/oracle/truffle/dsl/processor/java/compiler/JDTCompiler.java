@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.java.compiler;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -50,16 +51,19 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.util.ElementFilter;
+import javax.lang.model.util.Elements;
+import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
-import java.lang.reflect.Field;
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
-import javax.lang.model.element.ElementKind;
-import javax.tools.Diagnostic.Kind;
 
 public class JDTCompiler extends AbstractCompiler {
 
@@ -87,7 +91,22 @@ public class JDTCompiler extends AbstractCompiler {
     @Override
     public List<? extends Element> getAllMembersInDeclarationOrder(ProcessingEnvironment environment, TypeElement type) {
         Map<TypeElement, List<? extends Element>> cache = ProcessorContext.getInstance().getCacheMap(AllMembersDeclarationOrder.class);
-        return cache.computeIfAbsent(type, (t) -> sortBySourceOrder(newElementList(environment.getElementUtils().getAllMembers(type))));
+        return cache.computeIfAbsent(type, (t) -> sortBySourceOrder(newElementList(getAllMembers(environment, type))));
+    }
+
+    private static List<? extends Element> getAllMembers(ProcessingEnvironment environment, TypeElement type) {
+        Elements elements = environment.getElementUtils();
+        List<Element> allMembers = new ArrayList<>(elements.getAllMembers(type));
+        TypeElement superTypeElement = type.getSuperclass() != null ? ElementUtils.castTypeElement(type.getSuperclass()) : null;
+        while (superTypeElement != null) {
+            for (ExecutableElement method : ElementFilter.methodsIn(superTypeElement.getEnclosedElements())) {
+                if (method.getModifiers().contains(Modifier.STATIC)) {
+                    allMembers.add(method);
+                }
+            }
+            superTypeElement = superTypeElement.getSuperclass() != null ? ElementUtils.castTypeElement(superTypeElement.getSuperclass()) : null;
+        }
+        return allMembers;
     }
 
     private static final class EnclosedDeclarationOrder {
