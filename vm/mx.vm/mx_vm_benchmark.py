@@ -264,6 +264,152 @@ class NativeImageBenchmarkConfig:
         return None
 
 
+class Stages:
+    def __init__(self, stages_info: StagesInfo, config, bench_out, bench_err, is_gate, non_zero_is_fatal, cwd):
+        self.stages_info = stages_info
+        self.config = config
+        self.bench_out = bench_out
+        self.bench_err = bench_err
+        self.final_image_name = config.final_image_name
+        self.is_gate = is_gate
+        self.non_zero_is_fatal = non_zero_is_fatal
+        self.cwd = cwd
+
+        self.exit_code = None
+        self.command = None
+        self.stderr_path = None
+        self.stdout_path = None
+
+    def reset_stage(self):
+        self.exit_code = None
+        self.command = None
+        self.stderr_path = None
+        self.stdout_path = None
+
+    def __enter__(self):
+        self.stdout_path = os.path.abspath(os.path.join(self.config.log_dir, self.final_image_name + '-' + self.stages_info.get_current_stage() + '-stdout.log'))
+        self.stderr_path = os.path.abspath(os.path.join(self.config.log_dir, self.final_image_name + '-' + self.stages_info.get_current_stage() + '-stderr.log'))
+        self.stdout_file = open(self.stdout_path, 'w')
+        self.stderr_file = open(self.stderr_path, 'w')
+
+        self.separator_line()
+        mx.log(self.get_timestamp() + 'Entering stage: ' + self.stages_info.get_current_stage() + ' for ' + self.final_image_name)
+        self.separator_line()
+
+        mx.log('Running: ')
+        mx.log(' '.join(self.command))
+
+        if self.stdout_path:
+            mx.log('The standard output is saved to ' + str(self.stdout_path))
+        if self.stderr_path:
+            mx.log('The standard error is saved to ' + str(self.stderr_path))
+
+        return self
+
+    def __exit__(self, tp, value, tb):
+        self.stdout_file.flush()
+        self.stderr_file.flush()
+
+        if self.exit_code == 0 and (tb is None):
+            self.stages_info.success()
+            if self.config.split_run:
+                with open(self.config.split_run, 'a') as stdout:
+                    stdout.write(self.get_timestamp() + self.config.bmSuite.name() + ':' + self.config.benchmark_name + ' ' + self.stages_info.get_current_stage() + ': PASS\n')
+            if self.stages_info.get_current_stage() == self.config.last_stage:
+                self.bench_out(self.get_timestamp() + 'Successfully finished the last specified stage:' + ' ' + self.stages_info.get_current_stage() + ' for ' + self.final_image_name)
+            else:
+                mx.log(self.get_timestamp() + 'Successfully finished stage:' + ' ' + self.stages_info.get_current_stage())
+
+            self.separator_line()
+        else:
+            self.stages_info.fail()
+            if self.config.split_run:
+                with open(self.config.split_run, 'a') as stdout:
+                    stdout.write(self.get_timestamp() + self.config.bmSuite.name() + ':' + self.config.benchmark_name + ' ' + self.stages_info.get_current_stage() + ': FAILURE\n')
+            if self.exit_code is not None and self.exit_code != 0:
+                mx.log(mx.colorize(self.get_timestamp() + 'Failed in stage ' + self.stages_info.get_current_stage() + ' for ' + self.final_image_name + ' with exit code ' + str(self.exit_code), 'red'))
+
+            if self.stdout_path:
+                mx.log(mx.colorize('--------- Standard output:', 'blue'))
+                with open(self.stdout_path, 'r') as stdout:
+                    mx.log(stdout.read())
+
+            if self.stderr_path:
+                mx.log(mx.colorize('--------- Standard error:', 'red'))
+                with open(self.stderr_path, 'r') as stderr:
+                    mx.log(stderr.read())
+
+            if tb:
+                mx.log(mx.colorize(self.get_timestamp() + 'Failed in stage ' + self.stages_info.get_current_stage() + ' with ', 'red'))
+                print_tb(tb)
+
+            self.separator_line()
+
+            mx.log(mx.colorize('--------- To run the failed benchmark execute the following: ', 'green'))
+            mx.log(mx.current_mx_command())
+
+            if self.stages_info.stages_till_now:
+                mx.log(mx.colorize('--------- To only prepare the benchmark add the following to the end of the previous command: ', 'green'))
+                mx.log('-Dnative-image.benchmark.stages=' + ','.join(self.stages_info.stages_till_now))
+
+            mx.log(mx.colorize('--------- To only run the failed stage add the following to the end of the previous command: ', 'green'))
+            mx.log('-Dnative-image.benchmark.stages=' + self.stages_info.get_current_stage())
+
+            mx.log(mx.colorize('--------- Additional arguments that can be used for debugging the benchmark go after the final --: ', 'green'))
+            for param in self.config.params:
+                mx.log('-Dnative-image.benchmark.' + param + '=')
+
+            self.separator_line()
+            if self.non_zero_is_fatal:
+                mx.abort(self.get_timestamp() + 'Exiting the benchmark due to the failure.')
+
+        self.stdout_file.close()
+        self.stderr_file.close()
+        self.reset_stage()
+
+    def stdout(self, include_bench_out=False):
+        def writeFun(s):
+            v = self.stdout_file.write(s)
+            if include_bench_out:
+                self.bench_out(s)
+            else:
+                mx.log(s, end='')
+            return v
+        return writeFun
+
+    def stderr(self, include_bench_err=False):
+        def writeFun(s):
+            v = self.stdout_file.write(s)
+            if include_bench_err:
+                self.bench_err(s)
+            else:
+                mx.log(s, end='')
+            return v
+        return writeFun
+
+    def change_stage(self, stage_name):
+        return stage_name == self.config.stage
+
+    @staticmethod
+    def separator_line():
+        mx.log(mx.colorize('-' * 120, 'green'))
+
+    @staticmethod
+    def get_timestamp():
+        return '[' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '] '
+
+    def set_command(self, command):
+        self.command = command
+        return self
+
+    def execute_command(self, vm=None):
+        write_output = self.stages_info.get_current_stage() == 'run' or self.stages_info.get_current_stage() == 'image' or self.is_gate
+        cmd = self.command
+        self.exit_code = self.config.bmSuite.run_stage(vm, self.stages_info.get_current_stage(), cmd, self.stdout(write_output), self.stderr(write_output), self.cwd, False)
+        if "image" not in self.stages_info.get_current_stage() and self.config.bmSuite.validateReturnCode(self.exit_code):
+            self.exit_code = 0
+
+
 class NativeImageVM(GraalVm):
     """
     This is a VM that should be used for running all Native Image benchmarks. This VM should support all the benchmarks
@@ -288,7 +434,7 @@ class NativeImageVM(GraalVm):
         self.graalvm_edition = None
         self.config: Optional[NativeImageBenchmarkConfig] = None
         self.stages_info: Optional[StagesInfo] = None
-        self.stages: Optional[NativeImageVM.Stages] = None
+        self.stages: Optional[Stages] = None
         self.jdk_profiles_collect = False
         self.adopted_jdk_pgo = False
         self.async_sampler = False
@@ -530,151 +676,6 @@ class NativeImageVM(GraalVm):
                     i += 1
 
         return executable, classpath_arguments, modulepath_arguments, system_properties, image_vm_args, image_run_args, split_run
-
-    class Stages:
-        def __init__(self, stages_info: StagesInfo, config, bench_out, bench_err, is_gate, non_zero_is_fatal, cwd):
-            self.stages_info = stages_info
-            self.config = config
-            self.bench_out = bench_out
-            self.bench_err = bench_err
-            self.final_image_name = config.final_image_name
-            self.is_gate = is_gate
-            self.non_zero_is_fatal = non_zero_is_fatal
-            self.cwd = cwd
-
-            self.exit_code = None
-            self.command = None
-            self.stderr_path = None
-            self.stdout_path = None
-
-        def reset_stage(self):
-            self.exit_code = None
-            self.command = None
-            self.stderr_path = None
-            self.stdout_path = None
-
-        def __enter__(self):
-            self.stdout_path = os.path.abspath(os.path.join(self.config.log_dir, self.final_image_name + '-' + self.stages_info.get_current_stage() + '-stdout.log'))
-            self.stderr_path = os.path.abspath(os.path.join(self.config.log_dir, self.final_image_name + '-' + self.stages_info.get_current_stage() + '-stderr.log'))
-            self.stdout_file = open(self.stdout_path, 'w')
-            self.stderr_file = open(self.stderr_path, 'w')
-
-            self.separator_line()
-            mx.log(self.get_timestamp() + 'Entering stage: ' + self.stages_info.get_current_stage() + ' for ' + self.final_image_name)
-            self.separator_line()
-
-            mx.log('Running: ')
-            mx.log(' '.join(self.command))
-
-            if self.stdout_path:
-                mx.log('The standard output is saved to ' + str(self.stdout_path))
-            if self.stderr_path:
-                mx.log('The standard error is saved to ' + str(self.stderr_path))
-
-            return self
-
-        def __exit__(self, tp, value, tb):
-            self.stdout_file.flush()
-            self.stderr_file.flush()
-
-            if self.exit_code == 0 and (tb is None):
-                self.stages_info.success()
-                if self.config.split_run:
-                    with open(self.config.split_run, 'a') as stdout:
-                        stdout.write(self.get_timestamp() + self.config.bmSuite.name() + ':' + self.config.benchmark_name + ' ' + self.stages_info.get_current_stage() + ': PASS\n')
-                if self.stages_info.get_current_stage() == self.config.last_stage:
-                    self.bench_out(self.get_timestamp() + 'Successfully finished the last specified stage:' + ' ' + self.stages_info.get_current_stage() + ' for ' + self.final_image_name)
-                else:
-                    mx.log(self.get_timestamp() + 'Successfully finished stage:' + ' ' + self.stages_info.get_current_stage())
-
-                self.separator_line()
-            else:
-                self.stages_info.fail()
-                if self.config.split_run:
-                    with open(self.config.split_run, 'a') as stdout:
-                        stdout.write(self.get_timestamp() + self.config.bmSuite.name() + ':' + self.config.benchmark_name + ' ' + self.stages_info.get_current_stage() + ': FAILURE\n')
-                if self.exit_code is not None and self.exit_code != 0:
-                    mx.log(mx.colorize(self.get_timestamp() + 'Failed in stage ' + self.stages_info.get_current_stage() + ' for ' + self.final_image_name + ' with exit code ' + str(self.exit_code), 'red'))
-
-                if self.stdout_path:
-                    mx.log(mx.colorize('--------- Standard output:', 'blue'))
-                    with open(self.stdout_path, 'r') as stdout:
-                        mx.log(stdout.read())
-
-                if self.stderr_path:
-                    mx.log(mx.colorize('--------- Standard error:', 'red'))
-                    with open(self.stderr_path, 'r') as stderr:
-                        mx.log(stderr.read())
-
-                if tb:
-                    mx.log(mx.colorize(self.get_timestamp() + 'Failed in stage ' + self.stages_info.get_current_stage() + ' with ', 'red'))
-                    print_tb(tb)
-
-                self.separator_line()
-
-                mx.log(mx.colorize('--------- To run the failed benchmark execute the following: ', 'green'))
-                mx.log(mx.current_mx_command())
-
-                if self.stages_info.stages_till_now:
-                    mx.log(mx.colorize('--------- To only prepare the benchmark add the following to the end of the previous command: ', 'green'))
-                    mx.log('-Dnative-image.benchmark.stages=' + ','.join(self.stages_info.stages_till_now))
-
-                mx.log(mx.colorize('--------- To only run the failed stage add the following to the end of the previous command: ', 'green'))
-                mx.log('-Dnative-image.benchmark.stages=' + self.stages_info.get_current_stage())
-
-                mx.log(mx.colorize('--------- Additional arguments that can be used for debugging the benchmark go after the final --: ', 'green'))
-                for param in self.config.params:
-                    mx.log('-Dnative-image.benchmark.' + param + '=')
-
-                self.separator_line()
-                if self.non_zero_is_fatal:
-                    mx.abort(self.get_timestamp() + 'Exiting the benchmark due to the failure.')
-
-            self.stdout_file.close()
-            self.stderr_file.close()
-            self.reset_stage()
-
-        def stdout(self, include_bench_out=False):
-            def writeFun(s):
-                v = self.stdout_file.write(s)
-                if include_bench_out:
-                    self.bench_out(s)
-                else:
-                    mx.log(s, end='')
-                return v
-            return writeFun
-
-        def stderr(self, include_bench_err=False):
-            def writeFun(s):
-                v = self.stdout_file.write(s)
-                if include_bench_err:
-                    self.bench_err(s)
-                else:
-                    mx.log(s, end='')
-                return v
-            return writeFun
-
-        def change_stage(self, stage_name):
-            return stage_name == self.config.stage
-
-        @staticmethod
-        def separator_line():
-            mx.log(mx.colorize('-' * 120, 'green'))
-
-        @staticmethod
-        def get_timestamp():
-            return '[' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '] '
-
-        def set_command(self, command):
-            self.command = command
-            return self
-
-        def execute_command(self, vm=None):
-            write_output = self.stages_info.get_current_stage() == 'run' or self.stages_info.get_current_stage() == 'image' or self.is_gate
-            cmd = self.command
-            self.exit_code = self.config.bmSuite.run_stage(vm, self.stages_info.get_current_stage(), cmd, self.stdout(write_output), self.stderr(write_output), self.cwd, False)
-            if "image" not in self.stages_info.get_current_stage() and self.config.bmSuite.validateReturnCode(self.exit_code):
-                self.exit_code = 0
 
     def image_build_rules(self, output, benchmarks, bmSuiteArgs):
         return self.image_build_general_rules(output, benchmarks, bmSuiteArgs) + self.image_build_analysis_rules(output, benchmarks, bmSuiteArgs) \
@@ -1053,7 +1054,7 @@ class NativeImageVM(GraalVm):
         # never fatal, we handle it ourselves
         config = NativeImageBenchmarkConfig(self, self.bmSuite, args)
         self.config = config
-        stages = NativeImageVM.Stages(self.stages_info, config, out, err, self.is_gate, True if self.is_gate else nonZeroIsFatal, os.path.abspath(cwd if cwd else os.getcwd()))
+        stages = Stages(self.stages_info, config, out, err, self.is_gate, True if self.is_gate else nonZeroIsFatal, os.path.abspath(cwd if cwd else os.getcwd()))
         self.stages = stages
 
         if not os.path.exists(config.output_dir):
