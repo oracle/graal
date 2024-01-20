@@ -339,7 +339,7 @@ public abstract class ImageHeapScanner {
             try {
                 Object replaced = universe.replaceObject(unwrapped);
                 if (replaced != unwrapped) {
-                    return Optional.of(hostedValuesProvider.validateReplacedConstant(universe.getSnippetReflection().forObject(replaced)));
+                    return Optional.of(hostedValuesProvider.validateReplacedConstant(universe.getHostedValuesProvider().forObject(replaced)));
                 }
             } catch (UnsupportedFeatureException e) {
                 /* Enhance the unsupported feature message with the object trace and rethrow. */
@@ -735,7 +735,7 @@ public abstract class ImageHeapScanner {
     }
 
     private JavaConstant asConstant(Object object) {
-        return universe.getSnippetReflection().forObject(object);
+        return hostedValuesProvider.forObject(object);
     }
 
     public void cleanupAfterAnalysis() {

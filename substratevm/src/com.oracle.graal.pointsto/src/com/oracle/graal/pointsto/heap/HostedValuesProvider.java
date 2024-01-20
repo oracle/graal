@@ -75,10 +75,10 @@ public class HostedValuesProvider {
             return value;
         }
         if (value.getJavaKind() == JavaKind.Object) {
-            Object oldObject = universe.getSnippetReflection().asObject(Object.class, value);
+            Object oldObject = asObject(Object.class, value);
             Object newObject = universe.replaceObject(oldObject);
             if (newObject != oldObject) {
-                return validateReplacedConstant(universe.getSnippetReflection().forObject(newObject));
+                return validateReplacedConstant(forObject(newObject));
             }
         }
         return value;
@@ -87,6 +87,14 @@ public class HostedValuesProvider {
     /** Hook to run validation checks on the replaced value. */
     public JavaConstant validateReplacedConstant(JavaConstant value) {
         return value;
+    }
+
+    public JavaConstant forObject(Object object) {
+        return GraalAccess.getOriginalProviders().getSnippetReflection().forObject(object);
+    }
+
+    public <T> T asObject(Class<T> type, JavaConstant constant) {
+        return GraalAccess.getOriginalProviders().getSnippetReflection().asObject(type, constant);
     }
 
 }

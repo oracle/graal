@@ -38,7 +38,6 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
-import com.oracle.svm.hosted.meta.HostedLookupSnippetReflectionProvider;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -114,16 +113,6 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
         }
     }
 
-    private JavaConstant forObject(Object object) {
-        AnalysisConstantReflectionProvider.validateRawObjectConstant(object);
-        if (object instanceof RelocatedPointer pointer) {
-            return new RelocatableConstant(pointer);
-        } else if (object instanceof WordBase word) {
-            return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), word.rawValue());
-        }
-        return SubstrateObjectConstant.forObject(object);
-    }
-
     @Override
     public Integer readArrayLength(JavaConstant array) {
         if (array.getJavaKind() != JavaKind.Object || array.isNull()) {
@@ -137,13 +126,33 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
     }
 
     /**
-     * {@link HostedLookupSnippetReflectionProvider} replaces relocatable pointers with
-     * {@link RelocatableConstant} and regular {@link WordBase} values with
-     * {@link PrimitiveConstant}. No other {@link WordBase} values can be reachable at this point.
+     * {@link #forObject} replaces relocatable pointers with {@link RelocatableConstant} and regular
+     * {@link WordBase} values with {@link PrimitiveConstant}. No other {@link WordBase} values can
+     * be reachable at this point.
      */
     @Override
     public JavaConstant validateReplacedConstant(JavaConstant value) {
         VMError.guarantee(value instanceof RelocatableConstant || !universe.getBigbang().getMetaAccess().isInstanceOf(value, WordBase.class));
         return value;
     }
+
+    @Override
+    public JavaConstant forObject(Object object) {
+        if (object instanceof RelocatedPointer pointer) {
+            return new RelocatableConstant(pointer);
+        } else if (object instanceof WordBase word) {
+            return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), word.rawValue());
+        }
+        AnalysisConstantReflectionProvider.validateRawObjectConstant(object);
+        return SubstrateObjectConstant.forObject(object);
+    }
+
+    @Override
+    public <T> T asObject(Class<T> type, JavaConstant constant) {
+        if (constant instanceof RelocatableConstant relocatable) {
+            return type.cast(relocatable.getPointer());
+        }
+        return SubstrateObjectConstant.asObject(type, constant);
+    }
+
 }

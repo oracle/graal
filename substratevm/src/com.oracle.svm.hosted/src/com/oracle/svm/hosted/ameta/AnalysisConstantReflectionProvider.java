@@ -266,7 +266,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
     }
 
     private ResolvedJavaType extractJavaType(JavaConstant constant) {
-        Object obj = universe.getSnippetReflection().asObject(Object.class, constant);
+        Object obj = universe.getHostedValuesProvider().asObject(Object.class, constant);
         if (obj instanceof DynamicHub hub) {
             return getHostVM().lookupType(hub);
         } else if (obj instanceof Class) {

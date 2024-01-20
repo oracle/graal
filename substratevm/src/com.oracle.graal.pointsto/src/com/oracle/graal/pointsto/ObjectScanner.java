@@ -267,10 +267,10 @@ public class ObjectScanner {
                     scanningObserver.forNullArrayElement(array, arrayType, idx, reason);
                 } else {
                     try {
-                        JavaConstant element = bb.getUniverse().getSnippetReflection().forObject(bb.getUniverse().replaceObject(e));
+                        JavaConstant element = bb.getUniverse().getHostedValuesProvider().forObject(bb.getUniverse().replaceObject(e));
                         scanArrayElement(array, arrayType, reason, idx, element);
                     } catch (UnsupportedFeatureException | AnalysisError.TypeNotFoundError ex) {
-                        unsupportedFeatureDuringConstantScan(bb, bb.getUniverse().getSnippetReflection().forObject(e), ex, reason);
+                        unsupportedFeatureDuringConstantScan(bb, bb.getUniverse().getHostedValuesProvider().forObject(e), ex, reason);
                     }
                 }
             }
