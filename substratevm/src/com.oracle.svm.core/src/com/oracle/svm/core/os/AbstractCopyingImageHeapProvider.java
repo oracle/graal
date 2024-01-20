@@ -146,15 +146,12 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
     @Uninterruptible(reason = "Called during isolate tear-down.")
     public int freeImageHeap(PointerBase heapBase) {
         if (heapBase.isNonNull()) {
-            UnsignedWord totalAddressSpaceSize = getImageHeapAddressSpaceSize();
             Pointer addressSpaceStart = (Pointer) heapBase;
             if (DynamicMethodAddressResolutionHeapSupport.isEnabled()) {
-                UnsignedWord preHeapRequiredBytes = getPreHeapAlignedSizeForDynamicMethodAddressResolver();
-                totalAddressSpaceSize = totalAddressSpaceSize.add(preHeapRequiredBytes);
-                addressSpaceStart = addressSpaceStart.subtract(preHeapRequiredBytes);
+                addressSpaceStart = addressSpaceStart.subtract(getPreHeapAlignedSizeForDynamicMethodAddressResolver());
             }
 
-            if (VirtualMemoryProvider.get().free(addressSpaceStart, totalAddressSpaceSize) != 0) {
+            if (VirtualMemoryProvider.get().free(addressSpaceStart, getTotalRequiredAddressSpaceSize()) != 0) {
                 return CEntryPointErrors.FREE_IMAGE_HEAP_FAILED;
             }
         }

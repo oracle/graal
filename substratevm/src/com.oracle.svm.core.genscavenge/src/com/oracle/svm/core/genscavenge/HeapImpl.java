@@ -98,8 +98,6 @@ public final class HeapImpl extends Heap {
     private static final VMMutex REF_MUTEX = new VMMutex("referencePendingList");
     private static final VMCondition REF_CONDITION = new VMCondition(REF_MUTEX);
 
-    private final int pageSize;
-
     // Singleton instances, created during image generation.
     private final YoungGeneration youngGeneration = new YoungGeneration("YoungGeneration");
     private final OldGeneration oldGeneration = new OldGeneration("OldGeneration");
@@ -124,8 +122,7 @@ public final class HeapImpl extends Heap {
     private List<Class<?>> classList;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public HeapImpl(int pageSize) {
-        this.pageSize = pageSize;
+    public HeapImpl() {
         this.gcImpl = new GCImpl();
         this.runtimeCodeInfoGcSupport = new RuntimeCodeInfoGCSupportImpl();
         HeapParameters.initialize();
@@ -366,7 +363,7 @@ public final class HeapImpl extends Heap {
 
         @Override
         public <T> boolean visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
-            if (!access.isWritable(region) && access.containsReferences(region)) {
+            if (!access.isWritable(region) && !access.consistsOfHugeObjects(region)) {
                 access.visitObjects(region, this);
             }
             return true;
@@ -705,20 +702,14 @@ public final class HeapImpl extends Heap {
 
     private boolean printLocationInfo(Log log, Pointer ptr, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
         for (ImageHeapInfo info = firstImageHeapInfo; info != null; info = info.next) {
-            if (info.isInReadOnlyPrimitivePartition(ptr)) {
-                log.string("points into the image heap (read-only primitives)");
-                return true;
-            } else if (info.isInReadOnlyReferencePartition(ptr)) {
-                log.string("points into the image heap (read-only references)");
+            if (info.isInReadOnlyRegularPartition(ptr)) {
+                log.string("points into the image heap (read-only)");
                 return true;
             } else if (info.isInReadOnlyRelocatablePartition(ptr)) {
                 log.string("points into the image heap (read-only relocatables)");
                 return true;
-            } else if (info.isInWritablePrimitivePartition(ptr)) {
-                log.string("points into the image heap (writable primitives)");
-                return true;
-            } else if (info.isInWritableReferencePartition(ptr)) {
-                log.string("points into the image heap (writable references)");
+            } else if (info.isInWritableRegularPartition(ptr)) {
+                log.string("points into the image heap (writable)");
                 return true;
             } else if (info.isInWritableHugePartition(ptr)) {
                 log.string("points into the image heap (writable huge)");

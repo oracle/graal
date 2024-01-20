@@ -36,6 +36,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.DynamicMethodAddressResolutionHeapSupport;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.graal.compiler.word.Word;
 
@@ -51,10 +52,12 @@ public abstract class AbstractImageHeapProvider implements ImageHeapProvider {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected UnsignedWord getImageHeapAddressSpaceSize() {
+        UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
         int imageHeapOffset = Heap.getHeap().getImageHeapOffsetInAddressSpace();
         assert imageHeapOffset >= 0;
         UnsignedWord size = WordFactory.unsigned(imageHeapOffset);
         size = size.add(getImageHeapSizeInFile(IMAGE_HEAP_BEGIN.get(), IMAGE_HEAP_END.get()));
+        size = UnsignedUtils.roundUp(size, pageSize);
         return size;
     }
 

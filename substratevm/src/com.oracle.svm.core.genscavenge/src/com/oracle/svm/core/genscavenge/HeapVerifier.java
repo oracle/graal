@@ -70,7 +70,7 @@ public final class HeapVerifier {
         boolean success = true;
         for (ImageHeapInfo info = HeapImpl.getFirstImageHeapInfo(); info != null; info = info.next) {
             success &= verifyAlignedChunks(null, info.getFirstWritableAlignedChunk());
-            success &= verifyUnalignedChunks(null, info.getFirstWritableUnalignedChunk());
+            success &= verifyUnalignedChunks(null, info.getFirstWritableUnalignedChunk(), info.getLastWritableUnalignedChunk());
         }
         return success;
     }
@@ -148,7 +148,7 @@ public final class HeapVerifier {
          */
         for (ImageHeapInfo info = HeapImpl.getFirstImageHeapInfo(); info != null; info = info.next) {
             success &= rememberedSet.verify(info.getFirstWritableAlignedChunk());
-            success &= rememberedSet.verify(info.getFirstWritableUnalignedChunk());
+            success &= rememberedSet.verify(info.getFirstWritableUnalignedChunk(), info.getLastWritableUnalignedChunk());
         }
 
         OldGeneration oldGeneration = HeapImpl.getHeapImpl().getOldGeneration();
@@ -213,6 +213,10 @@ public final class HeapVerifier {
     }
 
     private static boolean verifyUnalignedChunks(Space space, UnalignedHeader firstUnalignedHeapChunk) {
+        return verifyUnalignedChunks(space, firstUnalignedHeapChunk, WordFactory.nullPointer());
+    }
+
+    private static boolean verifyUnalignedChunks(Space space, UnalignedHeader firstUnalignedHeapChunk, UnalignedHeader lastUnalignedHeapChunk) {
         boolean success = true;
         UnalignedHeader uChunk = firstUnalignedHeapChunk;
         while (uChunk.isNonNull()) {
@@ -224,8 +228,12 @@ public final class HeapVerifier {
 
             OBJECT_VERIFIER.initialize(WordFactory.nullPointer(), uChunk);
             UnalignedHeapChunk.walkObjects(uChunk, OBJECT_VERIFIER);
-            uChunk = HeapChunk.getNext(uChunk);
             success &= OBJECT_VERIFIER.result;
+
+            if (uChunk.equal(lastUnalignedHeapChunk)) {
+                break;
+            }
+            uChunk = HeapChunk.getNext(uChunk);
         }
         return success;
     }
@@ -399,7 +407,6 @@ public final class HeapVerifier {
         ObjectReferenceVerifier() {
         }
 
-        @SuppressWarnings("hiding")
         public void initialize() {
             this.result = true;
         }
