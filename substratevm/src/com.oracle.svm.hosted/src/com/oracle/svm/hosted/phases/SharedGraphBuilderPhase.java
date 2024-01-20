@@ -70,7 +70,6 @@ import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
-import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
@@ -974,7 +973,6 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
              */
             protected Object resolveLinkedObject(int bci, int cpi, int opcode, BootstrapMethodIntrospection bootstrap, int parameterLength, List<JavaConstant> staticArgumentsList,
                             boolean isVarargs, boolean isPrimitiveConstant) {
-                AnalysisConstantReflectionProvider analysisConstantReflection = (AnalysisConstantReflectionProvider) getConstantReflection();
                 ResolvedJavaMethod bootstrapMethod = bootstrap.getMethod();
 
                 /* Step 1: Initialize the BootstrapMethodInfo. */
@@ -982,7 +980,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 BootstrapMethodRecord bootstrapMethodRecord = new BootstrapMethodRecord(bci, cpi, ((AnalysisMethod) method).getMultiMethod(MultiMethod.ORIGINAL_METHOD));
                 BootstrapMethodInfo bootstrapMethodInfo = BootstrapMethodConfiguration.singleton().getBootstrapMethodInfoCache().computeIfAbsent(bootstrapMethodRecord,
                                 key -> new BootstrapMethodInfo());
-                ConstantNode bootstrapMethodInfoNode = ConstantNode.forConstant(analysisConstantReflection.forObject(bootstrapMethodInfo), getMetaAccess(), getGraph());
+                ConstantNode bootstrapMethodInfoNode = ConstantNode.forConstant(getSnippetReflection().forObject(bootstrapMethodInfo), getMetaAccess(), getGraph());
 
                 /*
                  * Step 2: Check if the call site or the constant is linked or if it previously
@@ -1021,7 +1019,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                             /* A nested constant dynamic threw. */
                             return argConstant;
                         } else {
-                            currentNode = ConstantNode.forConstant(analysisConstantReflection.forObject(argConstant), getMetaAccess(), getGraph());
+                            currentNode = ConstantNode.forConstant(getSnippetReflection().forObject(argConstant), getMetaAccess(), getGraph());
                         }
                     } else {
                         /*
@@ -1054,7 +1052,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                  */
 
                 addArgument(isVarargs, arguments, 0, lookupNode);
-                ConstantNode bootstrapName = ConstantNode.forConstant(analysisConstantReflection.forString(bootstrap.getName()), getMetaAccess(), getGraph());
+                ConstantNode bootstrapName = ConstantNode.forConstant(getConstantReflection().forString(bootstrap.getName()), getMetaAccess(), getGraph());
                 addArgument(isVarargs, arguments, 1, bootstrapName);
                 addArgument(isVarargs, arguments, 2, ConstantNode.forConstant(bootstrap.getType(), getMetaAccess(), getGraph()));
 

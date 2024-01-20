@@ -30,8 +30,6 @@ import java.util.function.ObjIntConsumer;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.RelocatedPointer;
-import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
@@ -44,7 +42,6 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
@@ -297,30 +294,8 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
         return universe.getHeapScanner().createImageHeapConstant(asConstant(value), ObjectScanner.OtherReason.UNKNOWN);
     }
 
-    public JavaConstant forObject(Object object) {
-        validateRawObjectConstant(object);
-        if (object instanceof RelocatedPointer pointer) {
-            return new RelocatableConstant(pointer);
-        } else if (object instanceof WordBase word) {
-            return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), word.rawValue());
-        }
-        /* Redirect constant lookup through the shadow heap. */
-        return universe.getHeapScanner().createImageHeapConstant(asConstant(object), ObjectScanner.OtherReason.UNKNOWN);
-    }
-
     private JavaConstant asConstant(Object object) {
         return SubstrateObjectConstant.forObject(object);
-    }
-
-    /**
-     * The raw object may never be an {@link ImageHeapConstant}. However, it can be a
-     * {@link SubstrateObjectConstant} coming from graphs prepared for run time compilation. In that
-     * case we'll get a double wrapping: the {@link SubstrateObjectConstant} parameter value will be
-     * wrapped in another {@link SubstrateObjectConstant} which will then be stored in a
-     * {@link ImageHeapConstant} in the shadow heap.
-     */
-    public static void validateRawObjectConstant(Object object) {
-        AnalysisError.guarantee(!(object instanceof ImageHeapConstant), "Unexpected ImageHeapConstant %s", object);
     }
 
     private SVMHost getHostVM() {

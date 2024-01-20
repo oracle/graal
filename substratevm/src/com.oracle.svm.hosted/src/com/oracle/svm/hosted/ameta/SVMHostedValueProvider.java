@@ -38,6 +38,7 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
+import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -143,7 +144,7 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
         } else if (object instanceof WordBase word) {
             return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), word.rawValue());
         }
-        AnalysisConstantReflectionProvider.validateRawObjectConstant(object);
+        HostedSnippetReflectionProvider.validateRawObjectConstant(object);
         return SubstrateObjectConstant.forObject(object);
     }
 

@@ -40,7 +40,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.bootstrap.BootstrapMethodConfiguration;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.util.ModuleSupport;
 
@@ -242,8 +241,7 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
             EndNode checkMethodTypeEqualTrueEnd = graph.add(new EndNode());
             EndNode checkMethodTypeEqualFalseEnd = graph.add(new EndNode());
 
-            JavaConstant wrongMethodTypeException = ((AnalysisConstantReflectionProvider) getConstantReflection())
-                            .forObject(new WrongMethodTypeException("CallSite MethodType should be of type " + methodType));
+            JavaConstant wrongMethodTypeException = getSnippetReflection().forObject(new WrongMethodTypeException("CallSite MethodType should be of type " + methodType));
             ConstantNode wrongMethodTypeExceptionNode = ConstantNode.forConstant(StampFactory.forKind(JavaKind.Object), wrongMethodTypeException, getMetaAccess(), getGraph());
             InvokeWithExceptionNode throwWrongMethodTypeNode = bootstrapMethodHandler.throwBootstrapMethodError(bci, wrongMethodTypeExceptionNode);
             throwWrongMethodTypeNode.setNext(checkMethodTypeEqualFalseEnd);
