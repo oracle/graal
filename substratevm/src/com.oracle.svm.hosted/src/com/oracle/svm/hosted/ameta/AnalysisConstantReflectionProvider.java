@@ -132,13 +132,11 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         if (array.getJavaKind() != JavaKind.Object || array.isNull()) {
             return null;
         }
-        if (array instanceof ImageHeapConstant) {
-            if (array instanceof ImageHeapArray heapArray) {
-                return heapArray.getLength();
-            }
-            return null;
+        VMError.guarantee(array instanceof ImageHeapConstant);
+        if (array instanceof ImageHeapArray heapArray) {
+            return heapArray.getLength();
         }
-        return super.readArrayLength(array);
+        return null;
     }
 
     @Override
@@ -146,36 +144,33 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         if (array.getJavaKind() != JavaKind.Object || array.isNull()) {
             return null;
         }
-        HostedValuesProvider hostedValuesProvider = universe.getHeapScanner().getHostedValuesProvider();
-        if (array instanceof ImageHeapConstant) {
-            if (array instanceof ImageHeapArray heapArray) {
-                if (index < 0 || index >= heapArray.getLength()) {
-                    return null;
-                }
-                heapArray.ensureReaderInstalled();
-                return hostedValuesProvider.replaceObject(heapArray.readElementValue(index));
+        VMError.guarantee(array instanceof ImageHeapConstant);
+        if (array instanceof ImageHeapArray heapArray) {
+            if (index < 0 || index >= heapArray.getLength()) {
+                return null;
             }
-            return null;
+            heapArray.ensureReaderInstalled();
+            JavaConstant element = heapArray.readElementValue(index);
+            return validateArrayValue(element);
         }
-        JavaConstant element = super.readArrayElement(array, index);
-        return element == null ? null : hostedValuesProvider.replaceObject(element);
+        return null;
     }
 
     @Override
     public void forEachArrayElement(JavaConstant array, ObjIntConsumer<JavaConstant> consumer) {
-        HostedValuesProvider hostedValuesProvider = universe.getHeapScanner().getHostedValuesProvider();
-        if (array instanceof ImageHeapConstant) {
-            if (array instanceof ImageHeapArray heapArray) {
-                heapArray.ensureReaderInstalled();
-                for (int index = 0; index < heapArray.getLength(); index++) {
-                    JavaConstant element = heapArray.readElementValue(index);
-                    consumer.accept(hostedValuesProvider.replaceObject(element), index);
-                }
+        VMError.guarantee(array instanceof ImageHeapConstant);
+        if (array instanceof ImageHeapArray heapArray) {
+            heapArray.ensureReaderInstalled();
+            for (int index = 0; index < heapArray.getLength(); index++) {
+                JavaConstant element = heapArray.readElementValue(index);
+                consumer.accept(validateArrayValue(element), index);
             }
-            return;
         }
-        /* Intercept the original consumer and apply object replacement. */
-        super.forEachArrayElement(array, (element, index) -> consumer.accept(hostedValuesProvider.replaceObject(element), index));
+    }
+
+    private static JavaConstant validateArrayValue(JavaConstant value) {
+        VMError.guarantee(value.isNull() || value.getJavaKind().isPrimitive() || value instanceof RelocatableConstant || value instanceof ImageHeapConstant);
+        return value;
     }
 
     @Override

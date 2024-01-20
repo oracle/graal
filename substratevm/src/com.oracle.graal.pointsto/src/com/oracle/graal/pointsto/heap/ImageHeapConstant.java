@@ -276,6 +276,7 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
 
     @Override
     public String toString() {
-        return "ImageHeapConstant<" + constantData.type.toJavaName() + ", reachable: " + isReachable() + ", reader installed: " + isReaderInstalled() + ", compressed: " + compressed + ">";
+        return "ImageHeapConstant<" + constantData.type.toJavaName() + ", reachable: " + isReachable() + ", reader installed: " + isReaderInstalled() +
+                        ", compressed: " + compressed + ", backed: " + isBackedByHostedObject() + ">";
     }
 }
