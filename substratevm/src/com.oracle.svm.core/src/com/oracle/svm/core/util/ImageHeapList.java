@@ -117,8 +117,11 @@ public final class ImageHeapList {
 
         @Override
         public synchronized E set(int index, E element) {
-            modified = true;
-            return hostedList.set(index, element);
+            E result = hostedList.set(index, element);
+            if (result != element) {
+                modified = true;
+            }
+            return result;
         }
 
         @Override

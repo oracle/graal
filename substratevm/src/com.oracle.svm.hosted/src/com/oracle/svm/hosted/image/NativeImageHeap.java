@@ -453,6 +453,15 @@ public final class NativeImageHeap implements ImageHeap {
         boolean references = false;
         boolean relocatable = false; /* always false when !spawnIsolates() */
 
+        if (!type.isInstantiated()) {
+            StringBuilder msg = new StringBuilder();
+            msg.append("Image heap writing found an object whose type was not marked as instantiated by the static analysis: ");
+            msg.append(type.toJavaName(true)).append("  (").append(type).append(")");
+            msg.append(System.lineSeparator()).append("  reachable through:").append(System.lineSeparator());
+            fillReasonStack(msg, reason);
+            VMError.shouldNotReachHere(msg.toString());
+        }
+
         if (type.isInstanceClass()) {
             final HostedInstanceClass clazz = (HostedInstanceClass) type;
             // If the type has a monitor field, it has a reference field that is written.
