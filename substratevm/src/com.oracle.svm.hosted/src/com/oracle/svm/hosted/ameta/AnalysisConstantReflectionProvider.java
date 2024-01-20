@@ -254,19 +254,24 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
     }
 
     @Override
-    public AnalysisType asJavaType(Constant constant) {
+    public ResolvedJavaType asJavaType(Constant constant) {
         if (constant instanceof SubstrateObjectConstant substrateConstant) {
-            Object obj = universe.getSnippetReflection().asObject(Object.class, substrateConstant);
-            if (obj instanceof DynamicHub hub) {
-                return getHostVM().lookupType(hub);
-            } else if (obj instanceof Class) {
-                throw VMError.shouldNotReachHere("Must not have java.lang.Class object: " + obj);
-            }
+            return extractJavaType(substrateConstant);
         } else if (constant instanceof ImageHeapConstant imageHeapConstant) {
             if (metaAccess.isInstanceOf((JavaConstant) constant, Class.class)) {
                 /* All constants of type DynamicHub/java.lang.Class must have a hosted object. */
-                return asJavaType(Objects.requireNonNull(imageHeapConstant.getHostedObject()));
+                return extractJavaType(Objects.requireNonNull(imageHeapConstant.getHostedObject()));
             }
+        }
+        return null;
+    }
+
+    private ResolvedJavaType extractJavaType(JavaConstant constant) {
+        Object obj = universe.getSnippetReflection().asObject(Object.class, constant);
+        if (obj instanceof DynamicHub hub) {
+            return getHostVM().lookupType(hub);
+        } else if (obj instanceof Class) {
+            throw VMError.shouldNotReachHere("Must not have java.lang.Class object: " + obj);
         }
         return null;
     }
