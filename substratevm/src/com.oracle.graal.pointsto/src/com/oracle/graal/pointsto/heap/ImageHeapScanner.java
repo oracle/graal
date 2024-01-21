@@ -46,7 +46,6 @@ import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier.ScanningObserver;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -87,6 +86,7 @@ public abstract class ImageHeapScanner {
 
     protected final SnippetReflectionProvider snippetReflection;
     protected final ConstantReflectionProvider constantReflection;
+    protected final HostedValuesProvider hostedValuesProvider;
     protected final ConstantReflectionProvider hostedConstantReflection;
     protected final SnippetReflectionProvider hostedSnippetReflection;
 
@@ -95,7 +95,7 @@ public abstract class ImageHeapScanner {
     private boolean sealed;
 
     public ImageHeapScanner(BigBang bb, ImageHeap heap, AnalysisMetaAccess aMetaAccess, SnippetReflectionProvider aSnippetReflection,
-                    ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver) {
+                    ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver, HostedValuesProvider aHostedValuesProvider) {
         this.bb = bb;
         imageHeap = heap;
         metaAccess = aMetaAccess;
@@ -103,6 +103,7 @@ public abstract class ImageHeapScanner {
         hostVM = aMetaAccess.getUniverse().hostVM();
         snippetReflection = aSnippetReflection;
         constantReflection = aConstantReflection;
+        hostedValuesProvider = aHostedValuesProvider;
         scanningObserver = aScanningObserver;
         hostedConstantReflection = GraalAccess.getOriginalProviders().getConstantReflection();
         hostedSnippetReflection = GraalAccess.getOriginalProviders().getSnippetReflection();
@@ -256,7 +257,7 @@ public abstract class ImageHeapScanner {
         AnalysisType type = metaAccess.lookupJavaType(constant);
 
         if (type.isArray()) {
-            Integer length = constantReflection.readArrayLength(constant);
+            Integer length = hostedValuesProvider.readArrayLength(constant);
             if (type.getComponentType().isPrimitive()) {
                 return new ImageHeapPrimitiveArray(type, constant, asObject(constant), length);
             } else {
@@ -276,7 +277,7 @@ public abstract class ImageHeapScanner {
             ScanReason arrayReason = new ArrayScan(type, array, reason);
             Object[] elementValues = new Object[length];
             for (int idx = 0; idx < length; idx++) {
-                final JavaConstant rawElementValue = constantReflection.readArrayElement(constant, idx);
+                final JavaConstant rawElementValue = hostedValuesProvider.readArrayElement(constant, idx);
                 int finalIdx = idx;
                 elementValues[idx] = new AnalysisFuture<>(() -> {
                     JavaConstant arrayElement = createImageHeapConstant(rawElementValue, arrayReason);
@@ -307,7 +308,7 @@ public abstract class ImageHeapScanner {
                 AnalysisField field = (AnalysisField) javaField;
                 ValueSupplier<JavaConstant> rawFieldValue;
                 try {
-                    rawFieldValue = readHostedFieldValue(field, universe.toHosted(constant));
+                    rawFieldValue = readHostedFieldValue(field, constant);
                 } catch (InternalError | TypeNotPresentException | LinkageError e) {
                     /* Ignore missing type errors. */
                     continue;
@@ -338,9 +339,7 @@ public abstract class ImageHeapScanner {
             try {
                 Object replaced = universe.replaceObject(unwrapped);
                 if (replaced != unwrapped) {
-                    JavaConstant replacedConstant = universe.getSnippetReflection().forObject(replaced);
-                    validateReplacedConstant(metaAccess, replacedConstant);
-                    return Optional.of(replacedConstant);
+                    return Optional.of(hostedValuesProvider.validateReplacedConstant(universe.getHostedValuesProvider().forObject(replaced)));
                 }
             } catch (UnsupportedFeatureException e) {
                 /* Enhance the unsupported feature message with the object trace and rethrow. */
@@ -351,11 +350,6 @@ public abstract class ImageHeapScanner {
 
         }
         return Optional.empty();
-    }
-
-    /** Hook to run validation checks on the replaced value. */
-    @SuppressWarnings("unused")
-    public void validateReplacedConstant(UniverseMetaAccess access, JavaConstant value) {
     }
 
     public static void maybeForceHashCodeComputation(Object constant) {
@@ -568,9 +562,7 @@ public abstract class ImageHeapScanner {
     }
 
     protected ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, JavaConstant receiver) {
-        // Wrap the hosted constant into a substrate constant
-        JavaConstant value = universe.fromHosted(constantReflection.readFieldValue(field, receiver));
-        return ValueSupplier.eagerValue(value);
+        return hostedValuesProvider.readFieldValue(field, receiver);
     }
 
     public void rescanRoot(Field reflectionField) {
@@ -610,7 +602,7 @@ public abstract class ImageHeapScanner {
                     }
                     receiverConstant = replaced.get();
                 }
-                JavaConstant fieldValue = readHostedFieldValue(field, universe.toHosted(receiverConstant)).get();
+                JavaConstant fieldValue = readHostedFieldValue(field, receiverConstant).get();
                 if (fieldValue != null) {
                     ImageHeapInstance receiverObject = (ImageHeapInstance) toImageHeapObject(receiverConstant, reason);
                     JavaConstant fieldSnapshot = receiverObject.readFieldValue(field);
@@ -743,7 +735,7 @@ public abstract class ImageHeapScanner {
     }
 
     private JavaConstant asConstant(Object object) {
-        return universe.getSnippetReflection().forObject(object);
+        return hostedValuesProvider.forObject(object);
     }
 
     public void cleanupAfterAnalysis() {
@@ -751,6 +743,10 @@ public abstract class ImageHeapScanner {
     }
 
     protected abstract Class<?> getClass(String className);
+
+    public HostedValuesProvider getHostedValuesProvider() {
+        return hostedValuesProvider;
+    }
 
     protected AnalysisType lookupJavaType(String className) {
         return metaAccess.lookupJavaType(getClass(className));

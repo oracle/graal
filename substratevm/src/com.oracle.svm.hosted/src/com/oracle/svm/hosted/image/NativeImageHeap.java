@@ -48,6 +48,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
@@ -71,7 +72,6 @@ import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.HostedConfiguration;
-import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
@@ -258,9 +258,9 @@ public final class NativeImageHeap implements ImageHeap {
     Object readInlinedField(HostedField field, JavaConstant receiver) {
         VMError.guarantee(HostedConfiguration.isInlinedField(field), "Expected an inlined field, found %s", field);
         JavaConstant hostedReceiver = ((ImageHeapInstance) receiver).getHostedObject();
-        /* Use the AnalysisConstantReflectionProvider to get direct access to hosted values. */
-        AnalysisConstantReflectionProvider analysisConstantReflection = hConstantReflection.getWrappedConstantReflection();
-        return hUniverse.getSnippetReflection().asObject(Object.class, analysisConstantReflection.readHostedFieldValueWithReplacement(field.getWrapped(), hostedReceiver));
+        /* Use the HostedValuesProvider to get direct access to hosted values. */
+        HostedValuesProvider hostedValuesProvider = aUniverse.getHostedValuesProvider();
+        return hUniverse.getSnippetReflection().asObject(Object.class, hostedValuesProvider.readFieldValueWithReplacement(field.getWrapped(), hostedReceiver));
     }
 
     private JavaConstant readConstantField(HostedField field, JavaConstant receiver) {

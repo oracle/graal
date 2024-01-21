@@ -325,7 +325,7 @@ public class RuntimeCompiledMethodSupport {
     static class RuntimeCompilationReflectionProvider extends AnalysisConstantReflectionProvider {
 
         RuntimeCompilationReflectionProvider(BigBang bb, ClassInitializationSupport classInitializationSupport) {
-            super(bb.getUniverse(), bb.getMetaAccess(), classInitializationSupport);
+            super(bb.getUniverse(), bb.getMetaAccess());
         }
 
         @Override

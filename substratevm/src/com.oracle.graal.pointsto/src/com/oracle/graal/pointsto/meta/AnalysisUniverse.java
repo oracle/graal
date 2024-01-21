@@ -47,6 +47,7 @@ import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
+import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
@@ -115,7 +116,6 @@ public class AnalysisUniverse implements Universe {
     private SubstitutionProcessor[] featureNativeSubstitutions;
 
     private final MetaAccessProvider originalMetaAccess;
-    private final SnippetReflectionProvider snippetReflection;
     private final AnalysisFactory analysisFactory;
     private final AnnotationExtractor annotationExtractor;
 
@@ -136,13 +136,12 @@ public class AnalysisUniverse implements Universe {
 
     @SuppressWarnings("unchecked")
     public AnalysisUniverse(HostVM hostVM, JavaKind wordKind, AnalysisPolicy analysisPolicy, SubstitutionProcessor substitutions, MetaAccessProvider originalMetaAccess,
-                    SnippetReflectionProvider snippetReflection, AnalysisFactory analysisFactory, AnnotationExtractor annotationExtractor) {
+                    AnalysisFactory analysisFactory, AnnotationExtractor annotationExtractor) {
         this.hostVM = hostVM;
         this.wordKind = wordKind;
         this.analysisPolicy = analysisPolicy;
         this.substitutions = substitutions;
         this.originalMetaAccess = originalMetaAccess;
-        this.snippetReflection = snippetReflection;
         this.analysisFactory = analysisFactory;
         this.annotationExtractor = annotationExtractor;
 
@@ -505,7 +504,7 @@ public class AnalysisUniverse implements Universe {
                  */
                 return (JavaConstant) original;
             }
-            return snippetReflection.forObject(original);
+            return getHostedValuesProvider().forObject(original);
         } else {
             return constant;
         }
@@ -518,7 +517,7 @@ public class AnalysisUniverse implements Universe {
         if (constant == null) {
             return null;
         } else if (constant.getJavaKind().isObject() && !constant.isNull()) {
-            return GraalAccess.getOriginalSnippetReflection().forObject(snippetReflection.asObject(Object.class, constant));
+            return GraalAccess.getOriginalSnippetReflection().forObject(getHostedValuesProvider().asObject(Object.class, constant));
         } else {
             return constant;
         }
@@ -672,7 +671,7 @@ public class AnalysisUniverse implements Universe {
 
     @Override
     public SnippetReflectionProvider getSnippetReflection() {
-        return snippetReflection;
+        return bb.getSnippetReflectionProvider();
     }
 
     @Override
@@ -738,6 +737,10 @@ public class AnalysisUniverse implements Universe {
 
     public ImageHeapScanner getHeapScanner() {
         return heapScanner;
+    }
+
+    public HostedValuesProvider getHostedValuesProvider() {
+        return heapScanner.getHostedValuesProvider();
     }
 
     public void setHeapVerifier(HeapSnapshotVerifier heapVerifier) {

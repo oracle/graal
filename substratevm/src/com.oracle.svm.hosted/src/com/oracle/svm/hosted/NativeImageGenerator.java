@@ -195,6 +195,7 @@ import com.oracle.svm.hosted.FeatureImpl.OnAnalysisExitAccessImpl;
 import com.oracle.svm.hosted.ProgressReporter.ReporterClosable;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
+import com.oracle.svm.hosted.ameta.SVMHostedValueProvider;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
 import com.oracle.svm.hosted.analysis.NativeImageReachabilityAnalysisEngine;
@@ -234,7 +235,6 @@ import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInterface;
-import com.oracle.svm.hosted.meta.HostedLookupSnippetReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
@@ -949,7 +949,7 @@ public class NativeImageGenerator {
                     aScanningObserver = new ReachabilityObjectScanner(bb, aMetaAccess);
                 }
                 ImageHeapScanner heapScanner = new SVMImageHeapScanner(bb, imageHeap, loader, aMetaAccess, aProviders.getSnippetReflection(),
-                                aProviders.getConstantReflection(), aScanningObserver);
+                                aProviders.getConstantReflection(), aScanningObserver, new SVMHostedValueProvider(classInitializationSupport, aUniverse));
                 aUniverse.setHeapScanner(heapScanner);
                 ((HostedSnippetReflectionProvider) aProviders.getSnippetReflection()).setHeapScanner(heapScanner);
                 HeapSnapshotVerifier heapVerifier = new SVMImageHeapVerifier(bb, imageHeap, heapScanner);
@@ -1040,8 +1040,7 @@ public class NativeImageGenerator {
             analysisFactory = new PointsToAnalysisFactory();
         }
         SubstrateAnnotationExtractor annotationExtractor = (SubstrateAnnotationExtractor) loader.classLoaderSupport.annotationExtractor;
-        HostedLookupSnippetReflectionProvider snippetReflection = new HostedLookupSnippetReflectionProvider(new SubstrateWordTypes(originalMetaAccess, FrameAccess.getWordKind()));
-        return new AnalysisUniverse(hostVM, target.wordJavaKind, analysisPolicy, aSubstitutions, originalMetaAccess, snippetReflection, analysisFactory, annotationExtractor);
+        return new AnalysisUniverse(hostVM, target.wordJavaKind, analysisPolicy, aSubstitutions, originalMetaAccess, analysisFactory, annotationExtractor);
     }
 
     public static AnnotationSubstitutionProcessor createAnnotationSubstitutionProcessor(MetaAccessProvider originalMetaAccess, ImageClassLoader loader,
@@ -1174,7 +1173,7 @@ public class NativeImageGenerator {
         ForeignCallsProvider aForeignCalls = new SubstrateForeignCallsProvider(aMetaAccess, null);
         AnalysisConstantFieldProvider aConstantFieldProvider = new AnalysisConstantFieldProvider(aMetaAccess, (SVMHost) aUniverse.hostVM());
 
-        AnalysisConstantReflectionProvider aConstantReflection = new AnalysisConstantReflectionProvider(aUniverse, aMetaAccess, classInitializationSupport);
+        AnalysisConstantReflectionProvider aConstantReflection = new AnalysisConstantReflectionProvider(aUniverse, aMetaAccess);
 
         WordTypes aWordTypes = new SubstrateWordTypes(aMetaAccess, FrameAccess.getWordKind());
 

@@ -39,11 +39,10 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
+import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeap;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
-import com.oracle.graal.pointsto.heap.value.ValueSupplier;
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -79,9 +78,9 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     private final FieldValueInterceptionSupport fieldValueInterceptionSupport;
 
     @SuppressWarnings("this-escape")
-    public SVMImageHeapScanner(BigBang bb, ImageHeap imageHeap, ImageClassLoader loader, AnalysisMetaAccess metaAccess,
-                    SnippetReflectionProvider snippetReflection, ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver) {
-        super(bb, imageHeap, metaAccess, snippetReflection, aConstantReflection, aScanningObserver);
+    public SVMImageHeapScanner(BigBang bb, ImageHeap imageHeap, ImageClassLoader loader, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflection,
+                    ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver, HostedValuesProvider hostedValuesProvider) {
+        super(bb, imageHeap, metaAccess, snippetReflection, aConstantReflection, aScanningObserver, hostedValuesProvider);
         this.loader = loader;
         economicMapImpl = getClass("org.graalvm.collections.EconomicMapImpl");
         economicMapImplEntriesField = ReflectionUtil.lookupField(economicMapImpl, "entries");
@@ -137,17 +136,6 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
             return toImageHeapObject(constant, ObjectScanner.OtherReason.UNKNOWN);
         }
         return constant;
-    }
-
-    @Override
-    protected ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, JavaConstant receiver) {
-        AnalysisConstantReflectionProvider aConstantReflection = (AnalysisConstantReflectionProvider) this.constantReflection;
-        return aConstantReflection.readHostedFieldValue(field, receiver);
-    }
-
-    @Override
-    public void validateReplacedConstant(UniverseMetaAccess access, JavaConstant value) {
-        AnalysisConstantReflectionProvider.validateReplacedConstant(access, value);
     }
 
     @Override
