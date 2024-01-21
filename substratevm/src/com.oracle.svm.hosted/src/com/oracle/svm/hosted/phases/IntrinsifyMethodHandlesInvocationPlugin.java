@@ -46,8 +46,8 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.util.GraalAccess;
-import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.jdk.VarHandleFeature;
@@ -532,7 +532,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
         ConstantReflectionProvider originalConstantReflection = GraalAccess.getOriginalProviders().getConstantReflection();
         WordOperationPlugin wordOperationPlugin = new WordOperationPlugin(originalSnippetReflection, originalConstantReflection,
-                        new SubstrateWordTypes(parsingProviders.getMetaAccess(), FrameAccess.getWordKind()),
+                        new SubstrateWordTypes(parsingProviders.getMetaAccess(), ConfigurationValues.getWordKind()),
                         parsingProviders.getPlatformConfigurationProvider().getBarrierSet());
         graphBuilderPlugins.appendInlineInvokePlugin(wordOperationPlugin);
         graphBuilderPlugins.appendTypePlugin(wordOperationPlugin);

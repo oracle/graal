@@ -43,10 +43,10 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.BuildPhaseProvider;
-import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability.ValueAvailability;
 import com.oracle.svm.core.heap.UnknownObjectField;
@@ -349,7 +349,7 @@ public final class FieldValueInterceptionSupport {
      */
     private static JavaConstant interceptWordField(AnalysisField field, JavaConstant value) {
         if (value.getJavaKind() == JavaKind.Object && value.isNull() && field.getType().isWordType()) {
-            return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), 0);
+            return JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), 0);
         }
         return value;
     }

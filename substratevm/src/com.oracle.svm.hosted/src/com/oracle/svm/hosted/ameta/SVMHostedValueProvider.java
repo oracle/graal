@@ -33,7 +33,7 @@ import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -142,7 +142,7 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
         if (object instanceof RelocatedPointer pointer) {
             return new RelocatableConstant(pointer);
         } else if (object instanceof WordBase word) {
-            return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), word.rawValue());
+            return JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), word.rawValue());
         }
         HostedSnippetReflectionProvider.validateRawObjectConstant(object);
         return SubstrateObjectConstant.forObject(object);
