@@ -204,7 +204,7 @@ public class SVMHost extends HostVM {
         } else {
             parsingSupport = null;
         }
-        fieldValueInterceptionSupport = new FieldValueInterceptionSupport(annotationSubstitutions);
+        fieldValueInterceptionSupport = new FieldValueInterceptionSupport(annotationSubstitutions, classInitializationSupport);
         ImageSingletons.add(FieldValueInterceptionSupport.class, fieldValueInterceptionSupport);
     }
 

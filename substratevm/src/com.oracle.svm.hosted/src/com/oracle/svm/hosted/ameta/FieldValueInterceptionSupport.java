@@ -94,13 +94,15 @@ public final class FieldValueInterceptionSupport {
 
     private final AnnotationSubstitutionProcessor annotationSubstitutions;
     private final Map<ResolvedJavaField, Object> fieldValueInterceptors = new ConcurrentHashMap<>();
+    private final ClassInitializationSupport classInitializationSupport;
 
     public static FieldValueInterceptionSupport singleton() {
         return ImageSingletons.lookup(FieldValueInterceptionSupport.class);
     }
 
-    public FieldValueInterceptionSupport(AnnotationSubstitutionProcessor annotationSubstitutions) {
+    public FieldValueInterceptionSupport(AnnotationSubstitutionProcessor annotationSubstitutions, ClassInitializationSupport classInitializationSupport) {
         this.annotationSubstitutions = annotationSubstitutions;
+        this.classInitializationSupport = classInitializationSupport;
     }
 
     /**
@@ -288,7 +290,7 @@ public final class FieldValueInterceptionSupport {
         return transformerWithAvailability.intrinsify(providers, receiver);
     }
 
-    JavaConstant readFieldValue(ClassInitializationSupport classInitializationSupport, AnalysisField field, JavaConstant receiver) {
+    JavaConstant readFieldValue(AnalysisField field, JavaConstant receiver) {
         assert isValueAvailable(field) : field;
         JavaConstant value;
         var interceptor = lookupFieldValueInterceptor(field);
