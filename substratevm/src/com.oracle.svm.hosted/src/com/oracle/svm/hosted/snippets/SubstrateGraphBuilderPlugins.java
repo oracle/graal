@@ -36,7 +36,6 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.function.Function;
 import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -56,8 +55,6 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
-import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.nodes.UnsafePartitionLoadNode;
 import com.oracle.graal.pointsto.nodes.UnsafePartitionStoreNode;
@@ -75,7 +72,7 @@ import com.oracle.svm.core.graal.GraalEdgeUnsafePartition;
 import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneWithExceptionNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.FarReturnNode;
-import com.oracle.svm.core.graal.nodes.LazyConstantNode;
+import com.oracle.svm.core.graal.nodes.FieldOffsetNode;
 import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
 import com.oracle.svm.core.graal.nodes.ReadReservedRegister;
 import com.oracle.svm.core.graal.nodes.ReadReturnAddressNode;
@@ -92,7 +89,6 @@ import com.oracle.svm.core.heap.ReferenceAccessImpl;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.identityhashcode.SubstrateIdentityHashCodeNode;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
-import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
@@ -144,7 +140,6 @@ import jdk.graal.compiler.nodes.java.InstanceOfDynamicNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 import jdk.graal.compiler.nodes.spi.ArrayLengthProvider;
-import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.nodes.type.NarrowOopStamp;
 import jdk.graal.compiler.nodes.type.StampTool;
@@ -201,7 +196,7 @@ public class SubstrateGraphBuilderPlugins {
         registerSerializationPlugins(loader, snippetReflection, plugins, parsingReason);
         registerAtomicUpdaterPlugins(snippetReflection, plugins);
         registerObjectPlugins(plugins);
-        registerUnsafePlugins(plugins, snippetReflection, parsingReason);
+        registerUnsafePlugins(plugins, snippetReflection);
         registerKnownIntrinsicsPlugins(plugins);
         registerStackValuePlugins(snippetReflection, plugins);
         registerArrayPlugins(plugins, snippetReflection, parsingReason);
@@ -732,12 +727,6 @@ public class SubstrateGraphBuilderPlugins {
         }
     }
 
-    private static void registerAsUnsafeAccessed(GraphBuilderContext b, Field field) {
-        AnalysisField targetField = (AnalysisField) b.getMetaAccess().lookupJavaField(field);
-        Object reason = nonNullReason(b.getGraph().currentNodeSourcePosition());
-        targetField.registerAsUnsafeAccessed(reason);
-    }
-
     private static void registerObjectPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Object.class);
         r.register(new RequiredInvocationPlugin("clone", Receiver.class) {
@@ -759,10 +748,10 @@ public class SubstrateGraphBuilderPlugins {
         });
     }
 
-    private static void registerUnsafePlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, ParsingReason reason) {
-        registerUnsafePlugins(new Registration(plugins, "sun.misc.Unsafe"), snippetReflection, reason, true);
+    private static void registerUnsafePlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection) {
+        registerUnsafePlugins(new Registration(plugins, "sun.misc.Unsafe"), snippetReflection, true);
         Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe");
-        registerUnsafePlugins(r, snippetReflection, reason, false);
+        registerUnsafePlugins(r, snippetReflection, false);
 
         r.register(new RequiredInvocationPlugin("objectFieldOffset", Receiver.class, Class.class, String.class) {
             @Override
@@ -776,7 +765,7 @@ public class SubstrateGraphBuilderPlugins {
                     String fieldName = snippetReflection.asObject(String.class, nameNode.asJavaConstant());
                     try {
                         Field targetField = clazz.getDeclaredField(fieldName);
-                        return processFieldOffset(b, targetField, reason, false);
+                        return processFieldOffset(b, targetField, false);
                     } catch (NoSuchFieldException | LinkageError e) {
                         return false;
                     }
@@ -792,7 +781,7 @@ public class SubstrateGraphBuilderPlugins {
         r.register(new AllocateUninitializedArrayPlugin("allocateUninitializedArray", true));
     }
 
-    private static void registerUnsafePlugins(Registration r, SnippetReflectionProvider snippetReflection, ParsingReason reason, boolean isSunMiscUnsafe) {
+    private static void registerUnsafePlugins(Registration r, SnippetReflectionProvider snippetReflection, boolean isSunMiscUnsafe) {
         r.register(new RequiredInvocationPlugin("staticFieldOffset", Receiver.class, Field.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode fieldNode) {
@@ -801,7 +790,7 @@ public class SubstrateGraphBuilderPlugins {
                     receiver.get();
 
                     Field targetField = snippetReflection.asObject(Field.class, fieldNode.asJavaConstant());
-                    return processFieldOffset(b, targetField, reason, isSunMiscUnsafe);
+                    return processFieldOffset(b, targetField, isSunMiscUnsafe);
                 }
                 return false;
             }
@@ -828,7 +817,7 @@ public class SubstrateGraphBuilderPlugins {
                     receiver.get();
 
                     Field targetField = snippetReflection.asObject(Field.class, fieldNode.asJavaConstant());
-                    return processFieldOffset(b, targetField, reason, isSunMiscUnsafe);
+                    return processFieldOffset(b, targetField, isSunMiscUnsafe);
                 }
                 return false;
             }
@@ -853,35 +842,16 @@ public class SubstrateGraphBuilderPlugins {
         });
     }
 
-    public static class FieldOffsetConstantProvider implements Function<CoreProviders, JavaConstant> {
-
-        private final Field javaField;
-
-        public FieldOffsetConstantProvider(Field javaField) {
-            this.javaField = javaField;
-        }
-
-        @Override
-        public JavaConstant apply(CoreProviders providers) {
-            ResolvedJavaField rField = providers.getMetaAccess().lookupJavaField(javaField);
-            if (rField instanceof SharedField) {
-                long fieldOffset = ((SharedField) rField).getLocation();
-                assert fieldOffset > 0;
-                return JavaConstant.forLong(fieldOffset);
-            }
-            return null;
-        }
-    }
-
-    private static boolean processFieldOffset(GraphBuilderContext b, Field targetField, ParsingReason reason, boolean isSunMiscUnsafe) {
-        if (!isValidField(targetField, isSunMiscUnsafe) || reason == ParsingReason.JITCompilation) {
+    private static boolean processFieldOffset(GraphBuilderContext b, Field targetField, boolean isSunMiscUnsafe) {
+        if (!isValidField(targetField, isSunMiscUnsafe)) {
             return false;
         }
 
-        /* Register the field for unsafe access. */
-        registerAsUnsafeAccessed(b, targetField);
-
-        b.addPush(JavaKind.Long, LazyConstantNode.create(StampFactory.forKind(JavaKind.Long), new FieldOffsetConstantProvider(targetField), b));
+        /*
+         * The static analysis registers the field for unsafe access if the node remains in the
+         * graph until then.
+         */
+        b.addPush(JavaKind.Long, FieldOffsetNode.create(JavaKind.Long, b.getMetaAccess().lookupJavaField(targetField)));
         return true;
     }
 
@@ -1336,10 +1306,7 @@ public class SubstrateGraphBuilderPlugins {
 
             @Override
             protected ValueNode getFieldOffset(GraphBuilderContext b, ResolvedJavaField field) {
-                if (field instanceof AnalysisField) {
-                    ((AnalysisField) field).registerAsUnsafeAccessed(nonNullReason(b.getGraph().currentNodeSourcePosition()));
-                }
-                return LazyConstantNode.create(StampFactory.forKind(JavaKind.Long), new FieldOffsetConstantProvider(OriginalFieldProvider.getJavaField(field)), b);
+                return FieldOffsetNode.create(JavaKind.Long, field);
             }
 
             @Override

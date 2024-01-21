@@ -276,12 +276,12 @@ public class AutomaticUnsafeTransformationSupport {
      * we can install late while the analysis is already running.
      */
     private void addTransformation(BigBang bb, ResolvedJavaField original, ComputedValueField transformation) {
-        Class<?> returnType = original.getType().getJavaKind().toJavaClass();
+        JavaKind returnKind = original.getType().getJavaKind();
 
         FieldValueTransformer transformer = switch (transformation.getRecomputeValueKind()) {
-            case ArrayBaseOffset -> new ArrayBaseOffsetFieldValueTransformer(transformation.getTargetClass(), returnType);
-            case ArrayIndexScale -> new ArrayIndexScaleFieldValueTransformer(transformation.getTargetClass(), returnType);
-            case ArrayIndexShift -> new ArrayIndexShiftFieldValueTransformer(transformation.getTargetClass(), returnType);
+            case ArrayBaseOffset -> new ArrayBaseOffsetFieldValueTransformer(transformation.getTargetClass(), returnKind);
+            case ArrayIndexScale -> new ArrayIndexScaleFieldValueTransformer(transformation.getTargetClass(), returnKind);
+            case ArrayIndexShift -> new ArrayIndexShiftFieldValueTransformer(transformation.getTargetClass(), returnKind);
             case FieldOffset -> createFieldOffsetFieldValueTransformer(bb, original, transformation.getTargetField());
             case StaticFieldBase -> new StaticFieldBaseFieldValueTransformer(transformation.getTargetField());
             default -> throw VMError.shouldNotReachHere("Unexpected kind: " + transformation);
@@ -292,7 +292,7 @@ public class AutomaticUnsafeTransformationSupport {
 
     private static FieldOffsetFieldValueTransformer createFieldOffsetFieldValueTransformer(BigBang bb, ResolvedJavaField original, Field targetField) {
         bb.postTask(debugContext -> bb.getMetaAccess().lookupJavaField(targetField).registerAsUnsafeAccessed(original));
-        return new FieldOffsetFieldValueTransformer(targetField, original.getType().getJavaKind().toJavaClass());
+        return new FieldOffsetFieldValueTransformer(targetField, original.getType().getJavaKind());
     }
 
     @SuppressWarnings("try")

@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes to GraalVM Native Image.
 
+## GraalVM for JDK 23 (Internal Version 24.1.0)
+* (GR-51106) Fields that are accessed via a `VarHandle` or `MethodHandle` are no longer marked as "unsafe accessed" when the `VarHandle`/`MethodHandle` can be fully intrinsified.
+
 ## GraalVM for JDK 22 (Internal Version 24.0.0)
 * (GR-48304) Red Hat added support for the JFR event ThreadAllocationStatistics.
 * (GR-48343) Red Hat added support for the JFR events AllocationRequiringGC and SystemGC.

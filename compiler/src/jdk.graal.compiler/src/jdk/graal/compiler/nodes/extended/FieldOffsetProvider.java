@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.fieldvaluetransformer;
+package jdk.graal.compiler.nodes.extended;
 
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.ValueNodeInterface;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
-import com.oracle.svm.core.config.ConfigurationValues;
+/**
+ * Interface that can be implemented by nodes that compute the offset of a field, but cannot expose
+ * the offset as a {@link ConstantNode} yet. The provided field can be used by the compiler to
+ * convert low-level memory access nodes to high-level field access nodes.
+ */
+public interface FieldOffsetProvider extends ValueNodeInterface {
 
-import jdk.vm.ci.meta.JavaKind;
-
-public final class ArrayBaseOffsetFieldValueTransformer extends BoxingTransformer implements FieldValueTransformer {
-    private final Class<?> targetClass;
-
-    public ArrayBaseOffsetFieldValueTransformer(Class<?> targetClass, JavaKind returnKind) {
-        super(returnKind);
-        this.targetClass = targetClass;
-    }
-
-    @Override
-    public Object transform(Object receiver, Object originalValue) {
-        return box(ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.fromJavaClass(targetClass.getComponentType())));
-    }
+    /** The field whose offset this node is computing. */
+    ResolvedJavaField getField();
 }
