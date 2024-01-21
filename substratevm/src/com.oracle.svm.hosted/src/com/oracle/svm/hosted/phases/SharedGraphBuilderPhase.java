@@ -63,7 +63,6 @@ import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
 import com.oracle.svm.core.graal.nodes.FieldOffsetNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
@@ -909,13 +908,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                     int parameterLength = bootstrap.getMethod().getParameters().length;
                     List<JavaConstant> staticArguments = bootstrap.getStaticArguments();
                     boolean isVarargs = bootstrap.getMethod().isVarArgs();
-                    JavaConstant type = ((ImageHeapInstance) bootstrap.getType()).getHostedObject();
-                    DynamicHub typeClass = (DynamicHub) ((DirectSubstrateObjectConstant) type).getObject();
+                    DynamicHub typeClass = getSnippetReflection().asObject(DynamicHub.class, bootstrap.getType());
                     boolean isPrimitive = typeClass.isPrimitive();
 
                     for (JavaConstant argument : staticArguments) {
                         if (argument instanceof ImageHeapInstance imageHeapInstance) {
-                            Object arg = ((DirectSubstrateObjectConstant) imageHeapInstance.getHostedObject()).getObject();
+                            Object arg = getSnippetReflection().asObject(Object.class, imageHeapInstance);
                             if (arg instanceof UnresolvedJavaType) {
                                 return arg;
                             }
