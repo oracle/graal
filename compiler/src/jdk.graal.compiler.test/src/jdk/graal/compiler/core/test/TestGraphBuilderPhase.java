@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,7 +65,7 @@ public class TestGraphBuilderPhase extends GraphBuilderPhase {
     }
 
     /**
-     * A non-abstract subclass of {@link BytecodeParser}
+     * A non-abstract subclass of {@link BytecodeParser} for testing purposes.
      */
     static class DefaultBytecodeParser extends BytecodeParser {
         protected DefaultBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
