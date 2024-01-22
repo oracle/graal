@@ -126,7 +126,7 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
 
 class NativeImageBenchmarkConfig:
     def __init__(self, vm: "NativeImageVM", bm_suite: BenchmarkSuite | NativeImageBenchmarkMixin, args):
-        self.bmSuite = bm_suite
+        self.bm_suite = bm_suite
         self.benchmark_suite_name = bm_suite.benchSuiteName(args)
         self.benchmark_name = bm_suite.benchmarkName()
         self.executable, self.classpath_arguments, self.modulepath_arguments, self.system_properties, self.image_vm_args, image_run_args, self.split_run = NativeImageVM.extract_benchmark_arguments(args)
@@ -158,7 +158,7 @@ class NativeImageBenchmarkConfig:
             removed_stages.add("run")
         self.skip_agent_assertions = bm_suite.skip_agent_assertions(self.benchmark_name, args)
         self.root_dir = self.benchmark_output_dir if self.benchmark_output_dir else mx.suite('vm').get_output_root(platformDependent=False, jdkDependent=False)
-        unique_suite_name = f"{self.bmSuite.benchSuiteName()}-{self.bmSuite.version().replace('.', '-')}" if self.bmSuite.version() != 'unknown' else self.bmSuite.benchSuiteName()
+        unique_suite_name = f"{self.bm_suite.benchSuiteName()}-{self.bm_suite.version().replace('.', '-')}" if self.bm_suite.version() != 'unknown' else self.bm_suite.benchSuiteName()
         self.executable_name = (unique_suite_name + '-' + self.benchmark_name).lower() if self.benchmark_name else unique_suite_name.lower()
         self.instrumentation_executable_name = self.executable_name + "-instrument"
         self.final_image_name = self.executable_name + '-' + vm.config_name()
@@ -314,7 +314,7 @@ class NativeImageStages:
             self.stages_info.success()
             if self.config.split_run:
                 with open(self.config.split_run, 'a') as stdout:
-                    stdout.write(self.get_timestamp() + self.config.bmSuite.name() + ':' + self.config.benchmark_name + ' ' + self.stages_info.get_current_stage() + ': PASS\n')
+                    stdout.write(self.get_timestamp() + self.config.bm_suite.name() + ':' + self.config.benchmark_name + ' ' + self.stages_info.get_current_stage() + ': PASS\n')
             if self.stages_info.get_current_stage() == self.config.last_stage:
                 self.bench_out(self.get_timestamp() + 'Successfully finished the last specified stage:' + ' ' + self.stages_info.get_current_stage() + ' for ' + self.final_image_name)
             else:
@@ -325,7 +325,7 @@ class NativeImageStages:
             self.stages_info.fail()
             if self.config.split_run:
                 with open(self.config.split_run, 'a') as stdout:
-                    stdout.write(self.get_timestamp() + self.config.bmSuite.name() + ':' + self.config.benchmark_name + ' ' + self.stages_info.get_current_stage() + ': FAILURE\n')
+                    stdout.write(self.get_timestamp() + self.config.bm_suite.name() + ':' + self.config.benchmark_name + ' ' + self.stages_info.get_current_stage() + ': FAILURE\n')
             if self.exit_code is not None and self.exit_code != 0:
                 mx.log(mx.colorize(self.get_timestamp() + 'Failed in stage ' + self.stages_info.get_current_stage() + ' for ' + self.final_image_name + ' with exit code ' + str(self.exit_code), 'red'))
 
@@ -405,8 +405,8 @@ class NativeImageStages:
     def execute_command(self, vm=None):
         write_output = self.stages_info.get_current_stage() == 'run' or self.stages_info.get_current_stage() == 'image' or self.is_gate
         cmd = self.command
-        self.exit_code = self.config.bmSuite.run_stage(vm, self.stages_info.get_current_stage(), cmd, self.stdout(write_output), self.stderr(write_output), self.cwd, False)
-        if "image" not in self.stages_info.get_current_stage() and self.config.bmSuite.validateReturnCode(self.exit_code):
+        self.exit_code = self.config.bm_suite.run_stage(vm, self.stages_info.get_current_stage(), cmd, self.stdout(write_output), self.stderr(write_output), self.cwd, False)
+        if "image" not in self.stages_info.get_current_stage() and self.config.bm_suite.validateReturnCode(self.exit_code):
             self.exit_code = 0
 
 
