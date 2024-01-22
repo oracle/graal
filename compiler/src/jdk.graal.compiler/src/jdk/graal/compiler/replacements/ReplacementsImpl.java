@@ -109,7 +109,6 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
     }
 
     protected Providers providers;
-    public final SnippetReflectionProvider snippetReflection;
     public final TargetDescription target;
     protected GraphBuilderConfiguration.Plugins graphBuilderPlugins;
     private final DebugHandlersFactory debugHandlersFactory;
@@ -151,7 +150,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
             return (T) getProviders().getForeignCalls();
         }
         if (capability.equals(SnippetReflectionProvider.class)) {
-            return (T) snippetReflection;
+            return (T) getProviders().getSnippetReflection();
         }
         if (capability.isAssignableFrom(WordTypes.class)) {
             return (T) getProviders().getWordTypes();
@@ -237,10 +236,9 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
     private final EconomicMap<String, SnippetTemplateCache> snippetTemplateCache;
 
     @SuppressWarnings("this-escape")
-    public ReplacementsImpl(DebugHandlersFactory debugHandlersFactory, Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider,
+    public ReplacementsImpl(DebugHandlersFactory debugHandlersFactory, Providers providers, BytecodeProvider bytecodeProvider,
                     TargetDescription target) {
         this.providers = providers.copyWith(this);
-        this.snippetReflection = snippetReflection;
         this.target = target;
         this.graphs = new ConcurrentHashMap<>();
         this.snippetTemplateCache = EconomicMap.create(Equivalence.DEFAULT);
@@ -536,7 +534,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
                 Plugins plugins = new Plugins(replacements.graphBuilderPlugins);
                 GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
                 if (args != null) {
-                    plugins.prependParameterPlugin(new ConstantBindingParameterPlugin(args, metaAccess, replacements.snippetReflection));
+                    plugins.prependParameterPlugin(new ConstantBindingParameterPlugin(args, metaAccess, replacements.getProviders().getSnippetReflection()));
                 }
                 if (nonNullParameters != null && !nonNullParameters.isEmpty()) {
                     plugins.appendParameterPlugin(new NonNullParameterPlugin(nonNullParameters));

@@ -40,7 +40,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -64,11 +63,9 @@ final class EnumSwitchPlugin implements NodePlugin {
 
     private static final String METHOD_NAME_PREFIX = "$SWITCH_TABLE$";
 
-    private final SnippetReflectionProvider snippetReflection;
     private final ParsingReason reason;
 
-    EnumSwitchPlugin(SnippetReflectionProvider snippetReflection, ParsingReason reason) {
-        this.snippetReflection = snippetReflection;
+    EnumSwitchPlugin(ParsingReason reason) {
         this.reason = reason;
     }
 
@@ -113,7 +110,7 @@ final class EnumSwitchPlugin implements NodePlugin {
         }
 
         if (switchTable instanceof int[]) {
-            b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(switchTable), 1, true, b.getMetaAccess()));
+            b.addPush(JavaKind.Object, ConstantNode.forConstant(b.getSnippetReflection().forObject(switchTable), 1, true, b.getMetaAccess()));
             return true;
         }
         return false;
@@ -148,6 +145,6 @@ final class EnumSwitchFeature implements InternalFeature {
 
     @Override
     public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
-        plugins.appendNodePlugin(new EnumSwitchPlugin(providers.getSnippetReflection(), reason));
+        plugins.appendNodePlugin(new EnumSwitchPlugin(reason));
     }
 }

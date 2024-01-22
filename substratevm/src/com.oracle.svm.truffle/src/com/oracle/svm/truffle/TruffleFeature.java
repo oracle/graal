@@ -151,7 +151,6 @@ import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.runtime.TruffleCallBoundary;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.phases.HighTier;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FrameState;
@@ -355,7 +354,6 @@ public class TruffleFeature implements InternalFeature {
                         "Truffle thread local foreign poll, registered in " + TruffleFeature.class);
 
         RuntimeCompilationFeature runtimeCompilationFeature = RuntimeCompilationFeature.singleton();
-        SnippetReflectionProvider snippetReflection = runtimeCompilationFeature.getHostedProviders().getSnippetReflection();
         SubstrateTruffleCompiler truffleCompiler = truffleRuntime.preinitializeTruffleCompiler();
         truffleRuntime.initializeKnownMethods(config.getMetaAccess());
         truffleRuntime.initializeHostedKnownMethods(config.getUniverse().getOriginalMetaAccess());
@@ -383,7 +381,7 @@ public class TruffleFeature implements InternalFeature {
                         peProviders.getLowerer(),
                         peProviders.getReplacements(),
                         peProviders.getStampProvider(),
-                        snippetReflection,
+                        runtimeCompilationFeature.getHostedProviders().getSnippetReflection(),
                         runtimeCompilationFeature.getHostedProviders().getWordTypes(),
                         runtimeCompilationFeature.getHostedProviders().getPlatformConfigurationProvider(),
                         runtimeCompilationFeature.getHostedProviders().getMetaAccessExtensionProvider(),
@@ -996,7 +994,7 @@ public class TruffleFeature implements InternalFeature {
     }
 
     @Override
-    public void registerGraalPhases(Providers providers, SnippetReflectionProvider snippetReflection, Suites suites, boolean hosted) {
+    public void registerGraalPhases(Providers providers, Suites suites, boolean hosted) {
         /*
          * Please keep this code in sync with the HotSpot configuration in
          * TruffleCommunityCompilerConfiguration.

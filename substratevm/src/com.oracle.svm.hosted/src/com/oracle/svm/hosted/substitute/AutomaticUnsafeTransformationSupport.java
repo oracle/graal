@@ -68,7 +68,6 @@ import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.graph.Node;
@@ -252,7 +251,7 @@ public class AutomaticUnsafeTransformationSupport {
         plugins.setClassInitializationPlugin(classInitializationPlugin);
 
         FallbackFeature fallbackFeature = ImageSingletons.contains(FallbackFeature.class) ? ImageSingletons.lookup(FallbackFeature.class) : null;
-        ReflectionPlugins.registerInvocationPlugins(loader, GraalAccess.getOriginalSnippetReflection(), annotationSubstitutions, classInitializationPlugin, plugins.getInvocationPlugins(), null,
+        ReflectionPlugins.registerInvocationPlugins(loader, annotationSubstitutions, classInitializationPlugin, plugins.getInvocationPlugins(), null,
                         ParsingReason.AutomaticUnsafeTransformation, fallbackFeature);
 
         /*
@@ -515,15 +514,13 @@ public class AutomaticUnsafeTransformationSupport {
      * <code> static final long arrayBaseOffsets = Unsafe.getUnsafe().arrayBaseOffset(byte[].class); </code>
      */
     private void processUnsafeArrayBaseOffsetInvoke(BigBang bb, ResolvedJavaType type, Invoke unsafeArrayBaseOffsetInvoke) {
-        SnippetReflectionProvider snippetReflectionProvider = GraalAccess.getOriginalSnippetReflection();
-
         List<Supplier<String>> unsuccessfulReasons = new ArrayList<>();
 
         Class<?> arrayClass = null;
 
         ValueNode arrayClassArgument = unsafeArrayBaseOffsetInvoke.callTarget().arguments().get(1);
         if (arrayClassArgument.isJavaConstant()) {
-            arrayClass = snippetReflectionProvider.asObject(Class.class, arrayClassArgument.asJavaConstant());
+            arrayClass = GraalAccess.getOriginalSnippetReflection().asObject(Class.class, arrayClassArgument.asJavaConstant());
         } else {
             unsuccessfulReasons.add(() -> "The argument of the call to Unsafe.arrayBaseOffset() is not a constant.");
         }
@@ -556,15 +553,13 @@ public class AutomaticUnsafeTransformationSupport {
      * <code> static final long byteArrayIndexScale = Unsafe.getUnsafe().arrayIndexScale(byte[].class); </code>
      */
     private void processUnsafeArrayIndexScaleInvoke(BigBang bb, ResolvedJavaType type, Invoke unsafeArrayIndexScale, StructuredGraph clinitGraph) {
-        SnippetReflectionProvider snippetReflectionProvider = GraalAccess.getOriginalSnippetReflection();
-
         List<Supplier<String>> unsuccessfulReasons = new ArrayList<>();
 
         Class<?> arrayClass = null;
 
         ValueNode arrayClassArgument = unsafeArrayIndexScale.callTarget().arguments().get(1);
         if (arrayClassArgument.isJavaConstant()) {
-            arrayClass = snippetReflectionProvider.asObject(Class.class, arrayClassArgument.asJavaConstant());
+            arrayClass = GraalAccess.getOriginalSnippetReflection().asObject(Class.class, arrayClassArgument.asJavaConstant());
         } else {
             unsuccessfulReasons.add(() -> "The argument of the call to Unsafe.arrayIndexScale() is not a constant.");
         }

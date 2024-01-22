@@ -644,7 +644,7 @@ public class NativeImageGenerator {
             NativeImageCodeCache codeCache;
             CompileQueue compileQueue;
             try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.COMPILE_TOTAL)) {
-                compileQueue = HostedConfiguration.instance().createCompileQueue(debug, featureHandler, hUniverse, runtimeConfiguration, DeoptTester.enabled(), bb.getSnippetReflectionProvider());
+                compileQueue = HostedConfiguration.instance().createCompileQueue(debug, featureHandler, hUniverse, runtimeConfiguration, DeoptTester.enabled());
                 if (ImageSingletons.contains(RuntimeCompilationCallbacks.class)) {
                     ImageSingletons.lookup(RuntimeCompilationCallbacks.class).onCompileQueueCreation(bb, hUniverse, compileQueue);
                 }
@@ -1189,7 +1189,7 @@ public class NativeImageGenerator {
                         aWordTypes, platformConfig, aMetaAccessExtensionProvider, originalProviders.getLoopsDataProvider());
 
         BytecodeProvider bytecodeProvider = new ResolvedJavaMethodBytecodeProvider();
-        SubstrateReplacements aReplacements = new SubstrateReplacements(aProviders, aSnippetReflection, bytecodeProvider, target, new SubstrateGraphMakerFactory());
+        SubstrateReplacements aReplacements = new SubstrateReplacements(aProviders, bytecodeProvider, target, new SubstrateGraphMakerFactory());
         aProviders = (HostedProviders) aReplacements.getProviders();
         assert aReplacements == aProviders.getReplacements();
 
@@ -1378,7 +1378,7 @@ public class NativeImageGenerator {
         plugins.appendNodePlugin(new InjectedAccessorsPlugin());
         plugins.appendNodePlugin(new EarlyConstantFoldLoadFieldPlugin(providers.getMetaAccess()));
         plugins.appendNodePlugin(new ConstantFoldLoadFieldPlugin(reason));
-        plugins.appendNodePlugin(new CInterfaceInvocationPlugin(providers.getMetaAccess(), hostedSnippetReflection, nativeLibs));
+        plugins.appendNodePlugin(new CInterfaceInvocationPlugin(providers.getMetaAccess(), nativeLibs));
         plugins.appendNodePlugin(new LocalizationFeature.CharsetNodePlugin());
 
         plugins.appendInlineInvokePlugin(wordOperationPlugin);
@@ -1433,14 +1433,13 @@ public class NativeImageGenerator {
 
         SubstrateGraphBuilderPlugins.registerInvocationPlugins(annotationSubstitutionProcessor,
                         loader,
-                        hostedSnippetReflection,
                         plugins.getInvocationPlugins(),
                         replacements,
                         reason,
                         architecture,
                         supportsStubBasedPlugins);
 
-        featureHandler.forEachGraalFeature(feature -> feature.registerInvocationPlugins(providers, hostedSnippetReflection, plugins, reason));
+        featureHandler.forEachGraalFeature(feature -> feature.registerInvocationPlugins(providers, plugins, reason));
 
         providers.setGraphBuilderPlugins(plugins);
         replacements.setGraphBuilderPlugins(plugins);
@@ -1503,7 +1502,7 @@ public class NativeImageGenerator {
         return true;
     }
 
-    public static Suites createSuites(FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, SnippetReflectionProvider snippetReflection, boolean hosted) {
+    public static Suites createSuites(FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, boolean hosted) {
         SubstrateBackend backend = runtimeConfig.getBackendForNormalMethod();
         Suites suites;
         if (hosted) {
@@ -1511,10 +1510,10 @@ public class NativeImageGenerator {
         } else {
             suites = GraalConfiguration.runtimeInstance().createSuites(RuntimeOptionValues.singleton(), hosted, ConfigurationValues.getTarget().arch);
         }
-        return modifySuites(backend, suites, featureHandler, runtimeConfig, snippetReflection, hosted, false);
+        return modifySuites(backend, suites, featureHandler, hosted, false);
     }
 
-    public static Suites createFirstTierSuites(FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, SnippetReflectionProvider snippetReflection, boolean hosted) {
+    public static Suites createFirstTierSuites(FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, boolean hosted) {
         SubstrateBackend backend = runtimeConfig.getBackendForNormalMethod();
         Suites suites;
         if (hosted) {
@@ -1522,12 +1521,11 @@ public class NativeImageGenerator {
         } else {
             suites = GraalConfiguration.runtimeInstance().createFirstTierSuites(RuntimeOptionValues.singleton(), hosted, ConfigurationValues.getTarget().arch);
         }
-        return modifySuites(backend, suites, featureHandler, runtimeConfig, snippetReflection, hosted, true);
+        return modifySuites(backend, suites, featureHandler, hosted, true);
     }
 
-    @SuppressWarnings("unused")
-    private static Suites modifySuites(SubstrateBackend backend, Suites suites, FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig,
-                    SnippetReflectionProvider snippetReflection, boolean hosted, boolean firstTier) {
+    private static Suites modifySuites(SubstrateBackend backend, Suites suites, FeatureHandler featureHandler,
+                    boolean hosted, boolean firstTier) {
         Providers runtimeCallProviders = backend.getProviders();
 
         PhaseSuite<HighTierContext> highTier = suites.getHighTier();
@@ -1594,7 +1592,7 @@ public class NativeImageGenerator {
             }
         }
 
-        featureHandler.forEachGraalFeature(feature -> feature.registerGraalPhases(runtimeCallProviders, snippetReflection, suites, hosted));
+        featureHandler.forEachGraalFeature(feature -> feature.registerGraalPhases(runtimeCallProviders, suites, hosted));
 
         if (hosted && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(HostedOptionValues.singleton())) {
             highTier.prependPhase(new ImageBuildStatisticsCounterPhase(ImageBuildStatistics.CheckCountLocation.BEFORE_HIGH_TIER));

@@ -41,11 +41,10 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
 
-import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
-import jdk.graal.compiler.hotspot.word.HotSpotWordTypes;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
+
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -63,7 +62,9 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeMap;
 import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.stubs.ForeignCallStub;
+import jdk.graal.compiler.hotspot.word.HotSpotWordTypes;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodeinfo.Verbosity;
@@ -108,7 +109,6 @@ import jdk.graal.compiler.replacements.SnippetIntegerHistogram;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.classfile.ClassfileBytecode;
 import jdk.graal.compiler.word.WordTypes;
-
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -247,12 +247,6 @@ public class SymbolicSnippetEncoder {
         String snippetCounterName = 'L' + SnippetCounter.class.getName().replace('.', '/') + ';';
         String snippetIntegerHistogramName = 'L' + SnippetIntegerHistogram.class.getName().replace('.', '/') + ';';
 
-        private final ReplacementsImpl snippetReplacements;
-
-        private SnippetCounterPlugin(ReplacementsImpl snippetReplacements) {
-            this.snippetReplacements = snippetReplacements;
-        }
-
         @Override
         public boolean handleLoadField(GraphBuilderContext b, ValueNode object, ResolvedJavaField field) {
             if (field.getName().equals("group") && field.getDeclaringClass().getName().equals(snippetCounterName)) {
@@ -260,12 +254,12 @@ public class SymbolicSnippetEncoder {
                 return true;
             }
             if (field.getType().getName().equals(snippetCounterName)) {
-                b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReplacements.snippetReflection.forObject(SnippetCounter.DISABLED_COUNTER), b.getMetaAccess()));
+                b.addPush(JavaKind.Object, ConstantNode.forConstant(b.getSnippetReflection().forObject(SnippetCounter.DISABLED_COUNTER), b.getMetaAccess()));
                 return true;
             }
 
             if (field.getType().getName().equals(snippetIntegerHistogramName)) {
-                b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReplacements.snippetReflection.forObject(SnippetIntegerHistogram.DISABLED_COUNTER), b.getMetaAccess()));
+                b.addPush(JavaKind.Object, ConstantNode.forConstant(b.getSnippetReflection().forObject(SnippetIntegerHistogram.DISABLED_COUNTER), b.getMetaAccess()));
                 return true;
             }
             return false;
@@ -366,14 +360,13 @@ public class SymbolicSnippetEncoder {
 
         HotSpotProviders originalProvider = originalReplacements.getProviders();
 
-        SnippetReflectionProvider snippetReflection = originalProvider.getSnippetReflection();
         SymbolicSnippetEncoder.HotSpotSubstrateConstantReflectionProvider constantReflection = new SymbolicSnippetEncoder.HotSpotSubstrateConstantReflectionProvider(
                         originalProvider.getConstantReflection());
         HotSpotProviders newProviders = new HotSpotProviders(originalProvider.getMetaAccess(), originalProvider.getCodeCache(), constantReflection,
                         originalProvider.getConstantFieldProvider(), originalProvider.getForeignCalls(), originalProvider.getLowerer(), null, originalProvider.getSuites(),
-                        originalProvider.getRegisters(), snippetReflection, originalProvider.getWordTypes(), originalProvider.getStampProvider(),
+                        originalProvider.getRegisters(), originalProvider.getSnippetReflection(), originalProvider.getWordTypes(), originalProvider.getStampProvider(),
                         originalProvider.getPlatformConfigurationProvider(), originalProvider.getMetaAccessExtensionProvider(), originalProvider.getLoopsDataProvider(), originalProvider.getConfig());
-        HotSpotSnippetReplacementsImpl filteringReplacements = new HotSpotSnippetReplacementsImpl(newProviders, snippetReflection,
+        HotSpotSnippetReplacementsImpl filteringReplacements = new HotSpotSnippetReplacementsImpl(newProviders,
                         originalProvider.getReplacements().getDefaultReplacementBytecodeProvider(), originalProvider.getCodeCache().getTarget());
         filteringReplacements.setGraphBuilderPlugins(originalProvider.getReplacements().getGraphBuilderPlugins());
         try (DebugContext.Scope scope = debug.scope("VerifySnippetEncodeDecode", graph)) {
@@ -418,7 +411,7 @@ public class SymbolicSnippetEncoder {
         snippetReplacements.setGraphBuilderPlugins(copy);
         copy.clearInlineInvokePlugins();
         copy.appendInlineInvokePlugin(new SnippetInlineInvokePlugin());
-        copy.appendNodePlugin(new SnippetCounterPlugin(snippetReplacements));
+        copy.appendNodePlugin(new SnippetCounterPlugin());
 
         EconomicMap<SnippetKey, StructuredGraph> preparedSnippetGraphs = EconomicMap.create();
         MapCursor<SnippetKey, BiFunction<OptionValues, HotSpotSnippetReplacementsImpl, StructuredGraph>> cursor = pendingSnippetGraphs.getEntries();
@@ -979,8 +972,8 @@ public class SymbolicSnippetEncoder {
             super(replacements, providers);
         }
 
-        HotSpotSnippetReplacementsImpl(HotSpotProviders providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider, TargetDescription target) {
-            super(providers, snippetReflection, bytecodeProvider, target);
+        HotSpotSnippetReplacementsImpl(HotSpotProviders providers, BytecodeProvider bytecodeProvider, TargetDescription target) {
+            super(providers, bytecodeProvider, target);
         }
 
         @Override

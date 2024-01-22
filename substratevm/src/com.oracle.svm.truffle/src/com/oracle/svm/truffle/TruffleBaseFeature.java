@@ -139,7 +139,6 @@ import com.oracle.truffle.api.profiles.Profile;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticShape;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -428,8 +427,7 @@ public final class TruffleBaseFeature implements InternalFeature {
     }
 
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection,
-                    Plugins plugins, ParsingReason reason) {
+    public void registerInvocationPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
         StaticObjectSupport.registerInvocationPlugins(plugins, reason);
         TruffleInvocationPlugins.register(providers.getLowerer().getTarget().arch, plugins.getInvocationPlugins(), providers.getReplacements());
 
@@ -657,7 +655,7 @@ public final class TruffleBaseFeature implements InternalFeature {
     }
 
     @Override
-    public void registerGraalPhases(Providers providers, SnippetReflectionProvider snippetReflection, Suites suites, boolean hosted) {
+    public void registerGraalPhases(Providers providers, Suites suites, boolean hosted) {
         /*
          * Please keep this code in sync with the HotSpot configuration in
          * TruffleCommunityCompilerConfiguration.

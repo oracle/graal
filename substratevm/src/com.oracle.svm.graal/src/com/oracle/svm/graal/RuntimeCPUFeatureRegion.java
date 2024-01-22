@@ -29,7 +29,14 @@ import static jdk.graal.compiler.graph.Node.ConstantNodeParameter;
 import java.util.Arrays;
 import java.util.EnumSet;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.cpufeature.RuntimeCPUFeatureCheck;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.graal.aarch64.AArch64CPUFeatureRegionOp;
+import com.oracle.svm.graal.amd64.AMD64CPUFeatureRegionOp;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
@@ -47,15 +54,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.phases.util.Providers;
-
-import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.cpufeature.RuntimeCPUFeatureCheck;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.graal.aarch64.AArch64CPUFeatureRegionOp;
-import com.oracle.svm.graal.amd64.AMD64CPUFeatureRegionOp;
-
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
@@ -66,30 +64,30 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 class RuntimeCPUFeatureRegionFeature implements InternalFeature {
 
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+    public void registerInvocationPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(), RuntimeCPUFeatureRegion.class, providers.getReplacements());
         r.register(new InvocationPlugin.RequiredInlineOnlyInvocationPlugin("enter", Enum.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg0) {
-                return createRegionEnterNode(providers, snippetReflection, b, arg0);
+                return createRegionEnterNode(b, arg0);
             }
         });
         r.register(new InvocationPlugin.RequiredInlineOnlyInvocationPlugin("enter", Enum.class, Enum.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg0, ValueNode arg1) {
-                return createRegionEnterNode(providers, snippetReflection, b, arg0, arg1);
+                return createRegionEnterNode(b, arg0, arg1);
             }
         });
         r.register(new InvocationPlugin.RequiredInlineOnlyInvocationPlugin("enter", Enum.class, Enum.class, Enum.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg0, ValueNode arg1, ValueNode arg2) {
-                return createRegionEnterNode(providers, snippetReflection, b, arg0, arg1, arg2);
+                return createRegionEnterNode(b, arg0, arg1, arg2);
             }
         });
         r.register(new InvocationPlugin.RequiredInlineOnlyInvocationPlugin("enterSet", EnumSet.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg0) {
-                return createRegionEnterSetNode(providers, snippetReflection, b, arg0);
+                return createRegionEnterSetNode(b, arg0);
             }
         });
         r.register(new InvocationPlugin.RequiredInlineOnlyInvocationPlugin("leave", InvocationPlugin.Receiver.class) {
@@ -102,26 +100,26 @@ class RuntimeCPUFeatureRegionFeature implements InternalFeature {
         });
     }
 
-    private static boolean createRegionEnterNode(Providers providers, SnippetReflectionProvider snippetReflection, GraphBuilderContext b, ValueNode first, ValueNode... rest) {
-        Enum<?> firstEnum = constValueToEnum(snippetReflection, first);
-        Enum<?>[] restEnum = Arrays.stream(rest).map(n -> constValueToEnum(snippetReflection, n)).toArray(Enum<?>[]::new);
+    private static boolean createRegionEnterNode(GraphBuilderContext b, ValueNode first, ValueNode... rest) {
+        Enum<?> firstEnum = constValueToEnum(b, first);
+        Enum<?>[] restEnum = Arrays.stream(rest).map(n -> constValueToEnum(b, n)).toArray(Enum<?>[]::new);
         EnumSet<?> features = toEnumSet(firstEnum, restEnum);
         b.add(new CPUFeatureRegionEnterNode(features));
-        b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(RuntimeCPUFeatureRegion.INSTANCE), providers.getMetaAccess()));
+        b.addPush(JavaKind.Object, ConstantNode.forConstant(b.getSnippetReflection().forObject(RuntimeCPUFeatureRegion.INSTANCE), b.getMetaAccess()));
         return true;
     }
 
-    private static boolean createRegionEnterSetNode(Providers providers, SnippetReflectionProvider snippetReflection, GraphBuilderContext b, ValueNode set) {
+    private static boolean createRegionEnterSetNode(GraphBuilderContext b, ValueNode set) {
         GraalError.guarantee(set.isConstant(), "Must be a constant: %s", set);
-        EnumSet<?> features = snippetReflection.asObject(EnumSet.class, set.asJavaConstant());
+        EnumSet<?> features = b.getSnippetReflection().asObject(EnumSet.class, set.asJavaConstant());
         b.add(new CPUFeatureRegionEnterNode(features));
-        b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(RuntimeCPUFeatureRegion.INSTANCE), providers.getMetaAccess()));
+        b.addPush(JavaKind.Object, ConstantNode.forConstant(b.getSnippetReflection().forObject(RuntimeCPUFeatureRegion.INSTANCE), b.getMetaAccess()));
         return true;
     }
 
-    private static Enum<?> constValueToEnum(SnippetReflectionProvider snippetReflection, ValueNode node) {
+    private static Enum<?> constValueToEnum(GraphBuilderContext b, ValueNode node) {
         GraalError.guarantee(node.isConstant(), "Must be a constant: %s", node);
-        return snippetReflection.asObject(Enum.class, node.asJavaConstant());
+        return b.getSnippetReflection().asObject(Enum.class, node.asJavaConstant());
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

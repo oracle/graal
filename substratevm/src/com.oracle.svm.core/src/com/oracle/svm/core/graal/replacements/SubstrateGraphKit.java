@@ -38,7 +38,6 @@ import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -291,8 +290,7 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     public ConstantNode createObject(Object value) {
-        SnippetReflectionProvider snippetReflection = getProviders().getSnippetReflection();
-        return ConstantNode.forConstant(snippetReflection.forObject(value), getMetaAccess(), graph);
+        return ConstantNode.forConstant(getSnippetReflection().forObject(value), getMetaAccess(), graph);
     }
 
     public ValueNode createBoxing(ValueNode value, JavaKind kind, ResolvedJavaType targetType) {

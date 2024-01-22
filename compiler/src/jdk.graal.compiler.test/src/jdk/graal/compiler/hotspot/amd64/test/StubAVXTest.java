@@ -31,17 +31,19 @@ import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import java.util.BitSet;
 
+import org.junit.Assume;
+import org.junit.Before;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
-import jdk.graal.compiler.core.test.GraalCompilerTest;
-import jdk.graal.compiler.lir.jtt.LIRTest;
-import jdk.graal.compiler.lir.jtt.LIRTestSpecification;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.core.common.type.DataPointerConstant;
+import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.hotspot.HotSpotBackend;
 import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
@@ -55,6 +57,8 @@ import jdk.graal.compiler.lir.amd64.AMD64LIRInstruction;
 import jdk.graal.compiler.lir.asm.ArrayDataPointerConstant;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
+import jdk.graal.compiler.lir.jtt.LIRTest;
+import jdk.graal.compiler.lir.jtt.LIRTestSpecification;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -64,10 +68,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.ReplacementsImpl;
 import jdk.graal.compiler.replacements.classfile.ClassfileBytecodeProvider;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.Test;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -200,7 +200,7 @@ public class StubAVXTest extends LIRTest {
             // Build the snippet graph directly since snippet registration is closed at this point.
             ReplacementsImpl d = (ReplacementsImpl) providers.getReplacements();
             MetaAccessProvider metaAccess = d.getProviders().getMetaAccess();
-            BytecodeProvider bytecodes = new ClassfileBytecodeProvider(metaAccess, d.snippetReflection, ClassLoader.getSystemClassLoader());
+            BytecodeProvider bytecodes = new ClassfileBytecodeProvider(metaAccess, d.getProviders().getSnippetReflection(), ClassLoader.getSystemClassLoader());
             return d.makeGraph(debug, bytecodes, method, args, nonNullParameters, null, false, null);
         }
     }

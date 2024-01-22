@@ -32,7 +32,6 @@ import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.nodes.GraphEncoder;
@@ -64,9 +63,9 @@ public class HostedReplacements extends SubstrateReplacements {
     private final HostedUniverse hUniverse;
     private final SubstrateReplacements aReplacements;
 
-    public HostedReplacements(HostedUniverse hUniverse, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target, HostedProviders anaylysisProviders,
+    public HostedReplacements(HostedUniverse hUniverse, Providers providers, TargetDescription target, HostedProviders anaylysisProviders,
                     BytecodeProvider bytecodeProvider) {
-        super(providers, snippetReflection, bytecodeProvider, target, null);
+        super(providers, bytecodeProvider, target, null);
         this.hUniverse = hUniverse;
         this.aReplacements = (SubstrateReplacements) anaylysisProviders.getReplacements();
     }
