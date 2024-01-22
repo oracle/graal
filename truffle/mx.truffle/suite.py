@@ -1156,6 +1156,8 @@ suite = {
           "META-INF/MANIFEST.MF",
           "META-INF/services/*", # deliberately excluding java.nio.charset.spi.CharsetProvider
           "**/*.html",
+          "**/pom.xml",
+          "**/pom.properties",
         ],
         "patch" : {
           "com/ibm/icu/ICUConfig.properties" : {
