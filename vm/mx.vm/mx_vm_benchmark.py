@@ -874,10 +874,10 @@ class NativeImageVM(GraalVm):
         return rules
 
     def rules(self, output, benchmarks, bmSuiteArgs):
-        rules = super(NativeImageVM, self).rules(output, benchmarks, bmSuiteArgs)
+        rules = super().rules(output, benchmarks, bmSuiteArgs)
 
-        image_build_finished = 'image' in self.stages_info.stages_till_now or 'instrument-image' in self.stages_info.stages_till_now
-        if image_build_finished:
+        if self.stages_info.get_current_stage() in ["image", "instrument-image"]:
+            # Only apply image build rules for the image build stages
             rules += self.image_build_rules(output, benchmarks, bmSuiteArgs)
 
         return rules
