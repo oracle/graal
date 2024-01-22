@@ -379,7 +379,7 @@ public class NativeImageGeneratorRunner {
         }
 
         ProgressReporter reporter = new ProgressReporter(parsedHostedOptions);
-        Throwable vmError = null;
+        Throwable unhandledThrowable = null;
         boolean wasSuccessfulBuild = false;
         try (StopTimer ignored = totalTimer.start()) {
             Timer classlistTimer = timerCollection.get(TimerCollection.Registry.CLASSLIST);
@@ -571,18 +571,18 @@ public class NativeImageGeneratorRunner {
             }
             return ExitStatus.BUILDER_ERROR.getValue();
         } catch (Throwable e) {
-            vmError = e;
+            unhandledThrowable = e;
             return ExitStatus.BUILDER_ERROR.getValue();
         } finally {
-            reportEpilog(imageName, reporter, classLoader, wasSuccessfulBuild, vmError, parsedHostedOptions);
+            reportEpilog(imageName, reporter, classLoader, wasSuccessfulBuild, unhandledThrowable, parsedHostedOptions);
             NativeImageGenerator.clearSystemPropertiesForImage();
             ImageSingletonsSupportImpl.HostedManagement.clear();
         }
         return ExitStatus.OK.getValue();
     }
 
-    protected void reportEpilog(String imageName, ProgressReporter reporter, ImageClassLoader classLoader, boolean wasSuccessfulBuild, Throwable vmError, OptionValues parsedHostedOptions) {
-        reporter.printEpilog(Optional.ofNullable(imageName), Optional.ofNullable(generator), classLoader, wasSuccessfulBuild, Optional.ofNullable(vmError), parsedHostedOptions);
+    protected void reportEpilog(String imageName, ProgressReporter reporter, ImageClassLoader classLoader, boolean wasSuccessfulBuild, Throwable unhandledThrowable, OptionValues parsedHostedOptions) {
+        reporter.printEpilog(Optional.ofNullable(imageName), Optional.ofNullable(generator), classLoader, wasSuccessfulBuild, Optional.ofNullable(unhandledThrowable), parsedHostedOptions);
     }
 
     protected NativeImageGenerator createImageGenerator(ImageClassLoader classLoader, HostedOptionParser optionParser, Pair<Method, CEntryPointData> mainEntryPointData, ProgressReporter reporter) {
