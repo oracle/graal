@@ -284,18 +284,17 @@ public final class TruffleBaseFeature implements InternalFeature {
      * Register all fields accessed by a InlinedField for an instance field or a static field as
      * unsafe accessed, which is necessary for correctness of the static analysis.
      */
-    private Object processInlinedField(Object obj) {
-        if (obj instanceof InlineSupport.InlinableField && processedInlinedFields.putIfAbsent(obj, true) == null) {
+    private void processInlinedField(@SuppressWarnings("unused") DuringAnalysisAccess access, InlinableField inlinableField) {
+        if (processedInlinedFields.putIfAbsent(inlinableField, true) == null) {
             VMError.guarantee(markAsUnsafeAccessed != null, "New InlinedField found after static analysis");
             try {
-                String name = (String) UNSAFE_FIELD_name.get(obj);
-                Class<?> declaringClass = (Class<?>) UNSAFE_FIELD_declaringClass.get(obj);
+                String name = (String) UNSAFE_FIELD_name.get(inlinableField);
+                Class<?> declaringClass = (Class<?>) UNSAFE_FIELD_declaringClass.get(inlinableField);
                 markAsUnsafeAccessed.accept(declaringClass.getDeclaredField(name));
             } catch (ReflectiveOperationException ex) {
                 throw VMError.shouldNotReachHere(ex);
             }
         }
-        return obj;
     }
 
     @Override
@@ -459,13 +458,14 @@ public final class TruffleBaseFeature implements InternalFeature {
     }
 
     @Override
-    public void duringSetup(DuringSetupAccess access) {
+    public void duringSetup(DuringSetupAccess a) {
+        DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
         if (!ImageSingletons.contains(TruffleFeature.class) && isSubstrateRuntime(Truffle.getRuntime())) {
             VMError.shouldNotReachHere("TruffleFeature is required for SubstrateTruffleRuntime.");
         }
-        access.registerObjectReplacer(this::processInlinedField);
+        access.registerObjectReachableCallback(InlinableField.class, this::processInlinedField);
 
-        StaticObjectSupport.duringSetup(access);
+        StaticObjectSupport.duringSetup(a);
 
         HomeFinder hf = HomeFinder.getInstance();
         if (SubstrateOptions.TruffleStableOptions.CopyLanguageResources.getValue()) {
@@ -505,15 +505,14 @@ public final class TruffleBaseFeature implements InternalFeature {
             ImageSingletons.add(SubstrateGraalCompilerSetup.class, new SubstrateGraalCompilerSetup());
         }
 
-        DuringSetupAccessImpl config = (DuringSetupAccessImpl) access;
-        metaAccess = config.getMetaAccess();
+        metaAccess = access.getMetaAccess();
 
-        uncachedDispatchField = config.findField(LibraryFactory.class, "uncachedDispatch");
-        layoutInfoMapField = config.findField("com.oracle.truffle.object.DefaultLayout$LayoutInfo", "LAYOUT_INFO_MAP");
-        layoutMapField = config.findField("com.oracle.truffle.object.DefaultLayout", "LAYOUT_MAP");
-        libraryFactoryCacheField = config.findField("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "CACHE");
+        uncachedDispatchField = access.findField(LibraryFactory.class, "uncachedDispatch");
+        layoutInfoMapField = access.findField("com.oracle.truffle.object.DefaultLayout$LayoutInfo", "LAYOUT_INFO_MAP");
+        layoutMapField = access.findField("com.oracle.truffle.object.DefaultLayout", "LAYOUT_MAP");
+        libraryFactoryCacheField = access.findField("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "CACHE");
         if (Options.TruffleCheckPreinitializedFiles.getValue()) {
-            access.registerObjectReplacer(new TruffleFileCheck(((FeatureImpl.DuringSetupAccessImpl) access).getHostVM().getClassInitializationSupport()));
+            access.registerObjectReplacer(new TruffleFileCheck(access.getHostVM().getClassInitializationSupport()));
         }
 
         if (needsAllEncodings) {
