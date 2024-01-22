@@ -1,3 +1,25 @@
+/*
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package com.oracle.truffle.espresso.vm;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -51,8 +73,9 @@ public class ContinuationSupport {
             // ptrs already contains StaticObjects, but we need to fill out the nulls and do the
             // casts ourselves, otherwise we get ClassCastExceptions.
             StaticObject[] convertedPtrs = new StaticObject[pointers.length];
-            for (int i = 0; i < convertedPtrs.length; i++)
+            for (int i = 0; i < convertedPtrs.length; i++) {
                 convertedPtrs[i] = pointers[i] != null ? pointers[i] : StaticObject.NULL;
+            }
 
             var guestRecord = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.allocateInstance();
             meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_init_.invokeDirect(
@@ -97,10 +120,12 @@ public class ContinuationSupport {
                 Method method = Method.getHostReflectiveMethodRoot(methodGuest, meta);
 
                 var next = new HostFrameRecord(pointers, primitives, slotTags, sp, method.getMethodVersion(), null);
-                if (hostCursor != null)
+                if (hostCursor != null) {
                     hostCursor.next = next;
-                if (hostHead == null)
+                }
+                if (hostHead == null) {
                     hostHead = next;
+                }
                 hostCursor = next;
                 cursor = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_next.getObject(cursor);
             }
@@ -124,10 +149,12 @@ public class ContinuationSupport {
             StaticObject guestCursor = null;
             while (cursor != null) {
                 var next = cursor.copyToGuest(meta);
-                if (guestHead == null)
+                if (guestHead == null) {
                     guestHead = next;
-                if (guestCursor != null)
+                }
+                if (guestCursor != null) {
                     meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_next.setObject(guestCursor, next);
+                }
                 guestCursor = next;
                 cursor = cursor.next;
             }

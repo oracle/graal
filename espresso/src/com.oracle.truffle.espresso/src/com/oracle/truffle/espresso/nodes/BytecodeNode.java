@@ -506,8 +506,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     private void initArguments(VirtualFrame frame) {
         Object[] arguments = frame.getArguments();
 
-        if (maybePrepareForContinuation(frame))
+        if (maybePrepareForContinuation(frame)) {
             return;
+        }
 
         boolean hasReceiver = !getMethod().isStatic();
         int receiverSlot = hasReceiver ? 1 : 0;
@@ -562,12 +563,13 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         // Calling convention: arg[0] might be the receiver for a non-static method, the arg after
         // that is the record.
         boolean hasReceiver = !getMethod().isStatic();
-        if (hasReceiver && arguments.length == 2 && arguments[1] instanceof ContinuationSupport.HostFrameRecord hfr_)
+        if (hasReceiver && arguments.length == 2 && arguments[1] instanceof ContinuationSupport.HostFrameRecord hfr_) {
             record = hfr_;
-        else if (!hasReceiver && arguments.length == 1 && arguments[0] instanceof ContinuationSupport.HostFrameRecord hfr_)
+        } else if (!hasReceiver && arguments.length == 1 && arguments[0] instanceof ContinuationSupport.HostFrameRecord hfr_) {
             record = hfr_;
-        else
+        } else {
             return false;
+        }
 
         CompilerDirectives.transferToInterpreter();
 
@@ -577,10 +579,12 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         // TODO: This will break when assertions are enabled because we're not copying tags.
         // TODO: Copy aux slots?
         // TODO: Be less blind, do some sanity checks.
-        for (int i = 0; i < record.pointers.length; i++)
+        for (int i = 0; i < record.pointers.length; i++) {
             frame.setObjectStatic(i, record.pointers[i]);
-        for (int i = 0; i < record.primitives.length; i++)
+        }
+        for (int i = 0; i < record.primitives.length; i++) {
             frame.setLongStatic(i, record.primitives[i]);
+        }
         if (record.slotTags != null) {
             assert frame.getIndexedTags().length == record.slotTags.length;
             System.arraycopy(record.slotTags, 0, frame.getIndexedTags(), 0, record.slotTags.length);
@@ -588,9 +592,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
         int bci = getBCI(frame);
         var isInvoke = isPossiblyQuickenedInvoke(bci);
-        if (!isInvoke)
+        if (!isInvoke) {
             // TODO: Throw guest exception.
             throw new IllegalStateException("Continuation does not match currently loaded bytecode: opcode at index " + bci + " is not an invoke.");
+        }
 
         return true;
     }
@@ -1567,8 +1572,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                                 slotTags,
                                 top,
                                 methodVersion,
-                                unwindRequest.head
-                );
+                                unwindRequest.head);
 
                 throw unwindRequest;
             } catch (AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
@@ -2471,8 +2475,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         boolean tryBytecodeLevelInlining = this.instrumentation == null && allowBytecodeInlining;
         if (tryBytecodeLevelInlining) {
             var node = InlinedMethodNode.createFor(resolved, top, resolvedOpCode, curBCI, statementIndex);
-            if (node != null)
+            if (node != null) {
                 return node;
+            }
         }
 
         InvokeQuickNode invoke;

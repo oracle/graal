@@ -28,7 +28,6 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeStatic;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeStaticNodeGen;
-import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.ContinuationSupport;
 import com.oracle.truffle.espresso.vm.VM;
 
