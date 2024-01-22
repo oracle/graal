@@ -28,6 +28,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.Assume;
+import org.junit.Before;
 import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -53,6 +55,11 @@ import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
  * speculations used by Graal in {@link DisableOverflownCountedLoopsPhase}.
  */
 public class HotSpotLoopOverflowSpeculationTest extends GraalCompilerTest {
+
+    @Before
+    public void checkJDKVersion() {
+        Assume.assumeTrue("inconsistent speculation log fixed in 23+5", Runtime.version().compareToIgnoreOptional(Runtime.Version.parse("23+5")) >= 0);
+    }
 
     public static final boolean LOG_STDOUT = false;
 
