@@ -60,15 +60,15 @@ public class TestGraphBuilderPhase extends GraphBuilderPhase {
 
         @Override
         protected BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
-            return new DefaultBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext);
+            return new TestBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext);
         }
     }
 
     /**
      * A non-abstract subclass of {@link BytecodeParser} for testing purposes.
      */
-    static class DefaultBytecodeParser extends BytecodeParser {
-        protected DefaultBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
+    static class TestBytecodeParser extends BytecodeParser {
+        protected TestBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
                         IntrinsicContext intrinsicContext) {
             super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
         }
