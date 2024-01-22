@@ -1032,4 +1032,18 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     protected abstract AnalysisMethod createMultiMethod(AnalysisMethod analysisMethod, MultiMethodKey newMultiMethodKey);
 
     public abstract boolean isImplementationInvokable();
+
+    /**
+     *
+     * Lambda function names are still not completely deterministic e.g. in name
+     * Lambda$7ad16f47b695d909/0x00000007c0b4c630.accept(java.lang.Object):void hash part is not
+     * deterministic yet. In order to avoid comparing based on that part, we need to eliminate hash
+     * part from name of lambda function. To read more about Lambda names check GH issue
+     * https://github.com/openjdk/jdk/pull/10024/.
+     *
+     */
+    public static String comparableMethodSignature(AnalysisMethod method) {
+        String signature = method.format("%H.%n(%P):%R");
+        return signature.contains("$$Lambda") ? signature.replaceAll("/[0-9a-fA-Fx]*\\.", ".") : signature;
+    }
 }

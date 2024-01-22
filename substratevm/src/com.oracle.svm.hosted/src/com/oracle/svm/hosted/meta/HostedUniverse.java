@@ -631,5 +631,7 @@ public class HostedUniverse implements Universe {
      * keeps the order unchanged and therefore keeps the field order we get from the hosting VM.
      */
     static final Comparator<HostedField> FIELD_COMPARATOR_RELAXED = Comparator.comparing(HostedField::getJavaKind).reversed();
+    static final Comparator<HostedField> FIELD_COMPARATOR_RELAXED_WITH_NAME = Comparator.comparing(HostedField::getJavaKind).reversed()
+                    .thenComparing(m -> m.getDeclaringClass().wrapped.getComparableName()).thenComparing(HostedField::getName);
 
 }
