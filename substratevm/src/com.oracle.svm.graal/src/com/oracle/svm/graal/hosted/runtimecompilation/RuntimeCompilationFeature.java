@@ -568,13 +568,11 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
 
         checkMaxRuntimeCompiledMethods(treeInfo);
 
-        boolean foundError = false;
         if (t instanceof ParallelExecutionException exception) {
             for (var e : exception.getExceptions()) {
                 if (e instanceof AnalysisError.ParsingError parsingError) {
                     AnalysisMethod errorMethod = parsingError.getMethod();
                     if (errorMethod.isDeoptTarget() || SubstrateCompilationDirectives.isRuntimeCompiledMethod(errorMethod)) {
-                        foundError = true;
                         AnalysisMethod failingRuntimeMethod = null;
                         if (SubstrateCompilationDirectives.isRuntimeCompiledMethod(errorMethod)) {
                             failingRuntimeMethod = errorMethod;
@@ -592,10 +590,6 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                     }
                 }
             }
-        }
-
-        if (foundError) {
-            throw VMError.shouldNotReachHere("Analysis failed while parsing deopt and/or runtime methods");
         }
     }
 
