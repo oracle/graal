@@ -36,11 +36,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.test.jfr.events.StringEvent;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
@@ -54,6 +56,7 @@ public class TestJavaLevelVirtualThreadEvents extends JfrRecordingTest {
 
     @Test
     public void test() throws Throwable {
+        Assume.assumeFalse("Currently broken on JDK 23+ (GR-51526)", JavaVersionUtil.JAVA_SPEC >= 23);
         String[] events = new String[]{"jdk.ThreadSleep", "jdk.VirtualThreadStart", "jdk.VirtualThreadEnd", "jdk.VirtualThreadPinned", "com.jfr.String"};
         Recording recording = startRecording(events);
         Runnable r = () -> {
