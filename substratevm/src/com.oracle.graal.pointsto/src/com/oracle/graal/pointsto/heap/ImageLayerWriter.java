@@ -81,6 +81,7 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class ImageLayerWriter {
+    public static final String TYPE_SWITCH_SUBSTRING = "$$TypeSwitch";
     private final ImageLayerSnapshotUtil imageLayerSnapshotUtil;
     private final ImageHeap imageHeap;
 
@@ -94,14 +95,35 @@ public class ImageLayerWriter {
         this.imageLayerSnapshotUtil = imageLayerSnapshotUtil;
     }
 
+    /**
+     * $$TypeSwitch classes do not have a stable name between different JVM instances, which makes
+     * it hard to match them in two image build processes.
+     * <p>
+     * Those classes are only created to be a container for the static typeSwitch method used in the
+     * method handle for the corresponding switch. The only way to distinguish two $$TypeSwitch
+     * classes is to look at the code of the generated method and the class in which the hidden
+     * class is defined. Since the class is not cached, doing so might not be enough as if two
+     * identical switches are in the same class, they would create two $$TypeSwitch classes that
+     * would not be distinguishable.
+     */
+    protected static boolean isTypeSwitch(AnalysisType type) {
+        return type.toJavaName().contains(TYPE_SWITCH_SUBSTRING);
+    }
+
     public void persist(AnalysisUniverse analysisUniverse, Path layerSnapshotPath, String fileName, String suffix) {
         EconomicMap<String, Object> jsonMap = EconomicMap.create();
 
         jsonMap.put(NEXT_TYPE_ID_TAG, analysisUniverse.getNextTypeId());
         jsonMap.put(NEXT_METHOD_ID_TAG, analysisUniverse.getNextMethodId());
 
+        /*
+         * $$TypeSwitch classes should not be instantiated as they are only used as a container for
+         * a static method, so no constant of those types should be created. This filter can be
+         * removed after a mechanism for determining which types have to be persisted is added, or
+         * if a stable name is implemented for them.
+         */
         EconomicMap<String, Object> typesMap = EconomicMap.create();
-        for (AnalysisType type : analysisUniverse.getTypes().stream().filter(AnalysisType::isReachable).toList()) {
+        for (AnalysisType type : analysisUniverse.getTypes().stream().filter(t -> t.isReachable() && !isTypeSwitch(t)).toList()) {
             checkTypeStability(type);
             Class<?> clazz = type.getJavaClass();
             String typeIdentifier = imageLayerSnapshotUtil.getTypeIdentifier(type, clazz.getModule().getName());
@@ -110,7 +132,7 @@ public class ImageLayerWriter {
         jsonMap.put(TYPES_TAG, typesMap);
 
         EconomicMap<String, Object> methodsMap = EconomicMap.create();
-        for (AnalysisMethod method : analysisUniverse.getMethods().stream().filter(AnalysisMethod::isReachable).toList()) {
+        for (AnalysisMethod method : analysisUniverse.getMethods().stream().filter(m -> m.isReachable() && !isTypeSwitch(m.getDeclaringClass())).toList()) {
             Class<?> clazz = method.getDeclaringClass().getJavaClass();
             persistMethod(methodsMap, method, clazz);
         }
