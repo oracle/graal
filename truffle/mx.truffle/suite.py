@@ -105,6 +105,41 @@ suite = {
       "license": ["MIT"],
     },
 
+    "ASM_9.5": {
+      "digest": "sha512:9e65f2983783725bae196ca939b45246958731246df1c495089c8ea5ce646de77c4e01a5a9ba10642016bb3258e1727e9ebcece6e74d9e3c32f528025d76b955",
+      "sourceDigest": "sha512:64262b68c1acd473a49be3c8a89190200be66808034c55fb23ed08d8a977111c234b6dc77b6ca95310e1f1cbc43437cdc863aadb6217976cc1720d63ef01e937",
+      "maven": {
+        "groupId": "org.ow2.asm",
+        "artifactId": "asm",
+        "version": "9.5",
+      },
+      "license": "BSD-new",
+    },
+
+    "ASM_TREE_9.5": {
+      "digest": "sha512:816de8f84c216a7bd97b2458bde64a4b99a039b7b59fbd1ef52edf8bf869edabb93967736fe0c61e8eb3e1520e0cefe69ba59cda12df30f9f85db75fb6c064f3",
+      "sourceDigest": "sha512:a107043c05398091e3f3c614270c626be8ea5a1a547e30dc5709ef92069c8c8baa315c385a68f244c3a37bc148c3aeeec26adc8c00afc2a03a1d21a40e076a4c",
+      "maven": {
+        "groupId": "org.ow2.asm",
+        "artifactId": "asm-tree",
+        "version": "9.5",
+      },
+      "dependencies" : ["ASM_9.5"],
+      "license": "BSD-new",
+    },
+
+    "ASM_COMMONS_9.5": {
+      "digest": "sha512:6121a9d033627a33839d9bd264fce4a531b6a3f974720adc6150816f0316d1522c3d8caf7df039fdd46cb66bedd788e50f709d4a1f75d3525912ad7a4d87f7da",
+      "sourceDigest": "sha512:688d56a1b4fb6f7d86b79b7493a848851892910d00067a0c5effdaf7132266ec7a1ba57a8248c2fd6c0ebdef18a4918908a36e85f5927b9acb55448047a1e333",
+      "maven": {
+        "groupId": "org.ow2.asm",
+        "artifactId": "asm-commons",
+        "version": "9.5",
+      },
+      "dependencies" : ["ASM_9.5", "ASM_TREE_9.5"],
+      "license": "BSD-new",
+    },
+
     "TRUFFLE_ASM_9.5" : {
       "digest" : "sha512:7a49aaa0c4b513ca54ce684a74a3848ba4caf486320125f08cb8872720dc1e789538729f45c46d6ccf1b1ea54f7c3770dc9682d13a3f1813a348168ee5c40b82",
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/com.oracle.truffle.api.impl.asm-9.5.0.jar"],
@@ -308,7 +343,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.exception",
-        "truffle:TRUFFLE_ASM_9.5",
+        "com.oracle.truffle.api.impl.asm",
       ],
       "requires" : [
         "java.sql",
@@ -663,7 +698,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api",
-        "truffle:TRUFFLE_ASM_9.5",
+        "com.oracle.truffle.api.impl.asm",
       ],
       "requires" : [
         "jdk.unsupported", # sun.misc.Unsafe
@@ -1319,6 +1354,36 @@ suite = {
       "description" : "ANTLR4 shaded library.",
       "allowsJavadocWarnings": True,
       "javac.lint.overrides" : 'none',
+      "jacoco" : "exclude",
+      "graalCompilerSourceEdition": "ignore",
+    },
+
+    "com.oracle.truffle.api.impl.asm" : {
+      # Shadowed ASM libraries (org.ow2.asm:asm,asm-tree,asm-commons)
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "spotbugs" : "false",
+      "shadedDependencies" : [
+        "truffle:ASM_9.5",
+        "truffle:ASM_TREE_9.5",
+        "truffle:ASM_COMMONS_9.5",
+      ],
+      "class" : "ShadedLibraryProject",
+      "shade" : {
+        "packages" : {
+          "org.objectweb.asm" : "com.oracle.truffle.api.impl.asm",
+        },
+        "exclude" : [
+          "META-INF/MANIFEST.MF",
+          "**/package.html",
+        ],
+      },
+      "description" : "ASM library shadowed for Truffle.",
+      "allowsJavadocWarnings": True,
+      # We need to force javac because the generated sources in this project produce warnings in JDT.
+      "forceJavac" : "true",
+      "javac.lint.overrides" : "none",
       "jacoco" : "exclude",
       "graalCompilerSourceEdition": "ignore",
     },
