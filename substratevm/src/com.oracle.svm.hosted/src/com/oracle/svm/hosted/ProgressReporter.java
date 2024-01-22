@@ -723,8 +723,8 @@ public class ProgressReporter {
         } else {
             timeStats = String.format("%dm %ds", (int) totalSeconds / 60, (int) totalSeconds % 60);
         }
-        l().a(optionalError.isEmpty() ? "Finished" : "Failed").a(" generating '").bold().a(imageName).reset().a("' ")
-                        .a(optionalError.isEmpty() ? "in" : "after").a(" ").a(timeStats).a(".").println();
+        l().a(wasSuccessfulBuild ? "Finished" : "Failed").a(" generating '").bold().a(imageName).reset().a("' ")
+                        .a(wasSuccessfulBuild ? "in" : "after").a(" ").a(timeStats).a(".").println();
 
         printErrorMessage(optionalError, parsedHostedOptions);
     }
