@@ -1003,22 +1003,16 @@ class NativeImageVM(GraalVm):
             s.execute_command()
             if self.config.bundle_path is not None:
                 NativeImageVM.copy_bundle_output(self.config)
-            self._print_binary_size(out)
-            if self.use_upx:
-                image_path = os.path.join(self.config.output_dir, self.config.final_image_name)
-                upx_directory = mx.library("UPX", True).get_path(True)
-                upx_path = os.path.join(upx_directory, mx.exe_suffix("upx"))
-                upx_cmd = [upx_path, image_path]
-                mx.log(f"Compressing image: {' '.join(upx_cmd)}")
-                mx.run(upx_cmd, s.stdout(True), s.stderr(True))
 
-    def run_stage_run(self, out):
-        if not self.config.is_runnable:
-            mx.abort(f"Benchmark {self.config.benchmark_suite_name}:{self.config.benchmark_name} is not runnable.")
-        image_path = os.path.join(self.config.output_dir, self.config.final_image_name)
-        with self.stages.set_command([image_path] + self.config.extra_jvm_args + self.config.image_run_args) as s:
-            s.execute_command(vm=self)
             if s.exit_code == 0:
+                image_path = os.path.join(self.config.output_dir, self.config.final_image_name)
+                if self.use_upx:
+                    upx_directory = mx.library("UPX", True).get_path(True)
+                    upx_path = os.path.join(upx_directory, mx.exe_suffix("upx"))
+                    upx_cmd = [upx_path, image_path]
+                    mx.log(f"Compressing image: {' '.join(upx_cmd)}")
+                    mx.run(upx_cmd, s.stdout(True), s.stderr(True))
+
                 self._print_binary_size(out)
                 image_sections_command = "objdump -h " + image_path
                 out(subprocess.check_output(image_sections_command, shell=True, universal_newlines=True))
@@ -1028,6 +1022,12 @@ class NativeImageVM(GraalVm):
                         config_size = os.stat(config_path).st_size
                         out('The ' + config_type + ' configuration size for benchmark ' + self.config.benchmark_suite_name + ':' + self.config.benchmark_name + ' is ' + str(config_size) + ' B')
 
+    def run_stage_run(self, out):
+        if not self.config.is_runnable:
+            mx.abort(f"Benchmark {self.config.benchmark_suite_name}:{self.config.benchmark_name} is not runnable.")
+        image_path = os.path.join(self.config.output_dir, self.config.final_image_name)
+        with self.stages.set_command([image_path] + self.config.extra_jvm_args + self.config.image_run_args) as s:
+            s.execute_command(vm=self)
     def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
         # This is also called with -version to gather information about the Java VM. Since this is not technically a
         # Java VM, we delegate to the superclass
