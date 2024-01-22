@@ -59,10 +59,12 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.Pointer;
@@ -79,6 +81,12 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.c.function.CEntryPointActions;
+import com.oracle.svm.core.c.function.CEntryPointErrors;
+import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
@@ -93,6 +101,7 @@ import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
@@ -121,6 +130,8 @@ public abstract class PlatformThreads {
     public static PlatformThreads singleton() {
         return ImageSingletons.lookup(PlatformThreads.class);
     }
+
+    protected static final CEntryPointLiteral<CFunctionPointer> threadStartRoutine = CEntryPointLiteral.create(PlatformThreads.class, "threadStartRoutine", ThreadStartData.class);
 
     /** The platform {@link java.lang.Thread} for the {@link IsolateThread}. */
     static final FastThreadLocalObject<Thread> currentThread = FastThreadLocalFactory.createObject(Thread.class, "PlatformThreads.currentThread").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
@@ -539,7 +550,7 @@ public abstract class PlatformThreads {
     @SuppressWarnings("unused")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void closeOSThreadHandle(OSThreadHandle threadHandle) {
-        throw VMError.shouldNotReachHere("Shouldn't call PlatformThreads.closeOSThreadHandle directly.");
+        /* On most platforms, OS thread handles don't need to be closed. */
     }
 
     static final Method FORK_JOIN_POOL_TRY_TERMINATE_METHOD;
@@ -761,6 +772,16 @@ public abstract class PlatformThreads {
      * @return {@code false} if the thread could not be started, {@code true} on success.
      */
     protected abstract boolean doStartThread(Thread thread, long stackSize);
+
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(prologue = ThreadStartRoutinePrologue.class, epilogue = CEntryPointSetup.LeaveDetachThreadEpilogue.class)
+    protected static WordBase threadStartRoutine(ThreadStartData data) {
+        ObjectHandle threadHandle = data.getThreadHandle();
+        freeStartData(data);
+
+        threadStartRoutine(threadHandle);
+        return WordFactory.nullPointer();
+    }
 
     @SuppressFBWarnings(value = "Ru", justification = "We really want to call Thread.run and not Thread.start because we are in the low-level thread start routine")
     protected static void threadStartRoutine(ObjectHandle threadHandle) {
@@ -1194,8 +1215,17 @@ public abstract class PlatformThreads {
         }
     }
 
-    @RawStructure
-    public interface OSThreadHandle extends PointerBase {
+    protected static class ThreadStartRoutinePrologue implements CEntryPointOptions.Prologue {
+        private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString("Failed to attach a newly launched thread.");
+
+        @SuppressWarnings("unused")
+        @Uninterruptible(reason = "prologue")
+        static void enter(ThreadStartData data) {
+            int code = CEntryPointActions.enterAttachThread(data.getIsolate(), true, false);
+            if (code != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(code, errorMessage.get());
+            }
+        }
     }
 
     public interface ThreadLocalKey extends ComparableWord {
