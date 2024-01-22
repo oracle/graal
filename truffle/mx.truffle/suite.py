@@ -2304,6 +2304,7 @@ suite = {
         "artifactId" : "icu4j",
         "tag": ["default", "public"],
       },
+      "compress" : True,
       "graalCompilerSourceEdition": "ignore",
     },
 
