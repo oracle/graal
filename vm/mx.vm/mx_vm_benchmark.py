@@ -876,7 +876,7 @@ class NativeImageVM(GraalVm):
     def rules(self, output, benchmarks, bmSuiteArgs):
         rules = super().rules(output, benchmarks, bmSuiteArgs)
 
-        if self.config.stage in ["image", "instrument-image"]:
+        if self.config.stage == "image":
             # Only apply image build rules for the image build stages
             rules += self.image_build_rules(output, benchmarks, bmSuiteArgs)
         elif self.config.stage == "run":
