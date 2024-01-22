@@ -29,7 +29,6 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 
 import jdk.graal.compiler.options.Option;
@@ -112,7 +111,7 @@ public final class SerialGCOptions {
 
     private static void serialGCOnly(OptionKey<?> optionKey) {
         if (!SubstrateOptions.UseSerialGC.getValue()) {
-            throw new InterruptImageBuilding("The option '" + optionKey.getName() + "' can only be used together with the serial garbage collector ('--gc=serial').");
+            throw UserError.abort("The option '" + optionKey.getName() + "' can only be used together with the serial garbage collector ('--gc=serial').");
         }
     }
 }
