@@ -1091,7 +1091,7 @@ public class NativeImage {
         addTargetArguments();
 
         String defaultLibC = OS.getCurrent() == OS.LINUX ? "glibc" : null;
-        targetLibC = getHostedOptionFinalArgument(imageBuilderArgs, oHUseLibC).map(ArgumentEntry::value).orElse(System.getProperty("substratevm.HostLibC", defaultLibC));
+        targetLibC = getHostedOptionArgument(imageBuilderArgs, oHUseLibC).map(ArgumentEntry::value).orElse(System.getProperty("substratevm.HostLibC", defaultLibC));
 
         String clibrariesBuilderArg = config.getBuilderCLibrariesPaths().stream()
                         .flatMap(this::resolveTargetSpecificPaths)
@@ -1166,7 +1166,7 @@ public class NativeImage {
 
         imageBuilderJavaArgs.addAll(getAgentArguments());
 
-        mainClass = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHClass);
+        mainClass = getHostedOptionArgumentValue(imageBuilderArgs, oHClass);
         buildExecutable = imageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHEnableSharedLibraryFlagPrefix));
         staticExecutable = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(oHEnableStaticExecutable));
         boolean listModules = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(oH + "+" + "ListModules"));
@@ -1188,8 +1188,8 @@ public class NativeImage {
 
             if (!jarOptionMode) {
                 /* Main-class from customImageBuilderArgs counts as explicitMainClass */
-                boolean explicitMainClass = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHClass) != null;
-                mainClassModule = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHModule);
+                boolean explicitMainClass = getHostedOptionArgumentValue(imageBuilderArgs, oHClass) != null;
+                mainClassModule = getHostedOptionArgumentValue(imageBuilderArgs, oHModule);
 
                 boolean hasMainClassModule = mainClassModule != null && !mainClassModule.isEmpty();
                 boolean hasMainClass = mainClass != null && !mainClass.isEmpty();
@@ -1207,11 +1207,11 @@ public class NativeImage {
 
                 if (extraImageArgs.isEmpty()) {
                     /* No explicit image name, define image name by other means */
-                    if (getHostedOptionFinalArgumentValue(imageBuilderArgs, oHName) == null) {
+                    if (getHostedOptionArgumentValue(imageBuilderArgs, oHName) == null) {
                         /* Also no explicit image name given as customImageBuilderArgs */
                         if (explicitMainClass) {
                             imageBuilderArgs.add(oH(SubstrateOptions.Name, "main-class lower case as image name") + mainClass.toLowerCase());
-                        } else if (getHostedOptionFinalArgumentValue(imageBuilderArgs, oHName) == null) {
+                        } else if (getHostedOptionArgumentValue(imageBuilderArgs, oHName) == null) {
                             if (hasMainClassModule) {
                                 imageBuilderArgs.add(oH(SubstrateOptions.Name, "image-name from module-name") + mainClassModule.toLowerCase());
                             } else if (!listModules) {
@@ -1236,9 +1236,9 @@ public class NativeImage {
             }
         }
 
-        ArgumentEntry imageNameEntry = getHostedOptionFinalArgument(imageBuilderArgs, oHName).orElseThrow();
+        ArgumentEntry imageNameEntry = getHostedOptionArgument(imageBuilderArgs, oHName).orElseThrow();
         imageName = imageNameEntry.value;
-        ArgumentEntry imagePathEntry = getHostedOptionFinalArgument(imageBuilderArgs, oHPath).orElseThrow();
+        ArgumentEntry imagePathEntry = getHostedOptionArgument(imageBuilderArgs, oHPath).orElseThrow();
         imagePath = Path.of(imagePathEntry.value);
         Path imageNamePath = Path.of(imageName);
         Path imageNamePathParent = imageNamePath.getParent();
@@ -1307,7 +1307,7 @@ public class NativeImage {
         imageProvidedJars.forEach(this::processClasspathNativeImageMetaInf);
 
         if (!config.buildFallbackImage()) {
-            Optional<ArgumentEntry> fallbackThresholdEntry = getHostedOptionFinalArgument(imageBuilderArgs, oHFallbackThreshold);
+            Optional<ArgumentEntry> fallbackThresholdEntry = getHostedOptionArgument(imageBuilderArgs, oHFallbackThreshold);
             if (fallbackThresholdEntry.isPresent() && fallbackThresholdEntry.get().value.equals("" + SubstrateOptions.ForceFallback)) {
                 /* Bypass regular build and proceed with fallback image building */
                 return ExitStatus.FALLBACK_IMAGE.getValue();
@@ -1344,11 +1344,11 @@ public class NativeImage {
         return "^" + argPrefix.substring(0, argPrefix.length() - 1) + "(@[^=]*)?=";
     }
 
-    private static String getHostedOptionFinalArgumentValue(List<String> args, String argPrefix) {
-        return getHostedOptionFinalArgument(args, argPrefix).map(entry -> entry.value).orElse(null);
+    private static String getHostedOptionArgumentValue(List<String> args, String argPrefix) {
+        return getHostedOptionArgument(args, argPrefix).map(entry -> entry.value).orElse(null);
     }
 
-    private static Optional<ArgumentEntry> getHostedOptionFinalArgument(List<String> args, String argPrefix) {
+    private static Optional<ArgumentEntry> getHostedOptionArgument(List<String> args, String argPrefix) {
         List<ArgumentEntry> values = getHostedOptionArgumentValues(args, argPrefix);
         return values.isEmpty() ? Optional.empty() : Optional.of(values.get(values.size() - 1));
     }
@@ -1371,7 +1371,7 @@ public class NativeImage {
     private record ArgumentEntry(int index, String value) {
     }
 
-    private static Boolean getHostedOptionFinalBooleanArgumentValue(List<String> args, OptionKey<Boolean> option) {
+    private static Boolean getHostedOptionBooleanArgumentValue(List<String> args, OptionKey<Boolean> option) {
         String locationAgnosticBooleanPattern = "^" + oH + "[+-]" + option.getName() + "(@[^=]*)?$";
         Pattern pattern = Pattern.compile(locationAgnosticBooleanPattern);
         Boolean result = null;
@@ -1442,7 +1442,7 @@ public class NativeImage {
          * process (see comments for NativeImageGenerator.getTargetPlatform), we are parsing the
          * --target argument here, and generating required internal arguments.
          */
-        targetPlatform = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHTargetPlatform);
+        targetPlatform = getHostedOptionArgumentValue(imageBuilderArgs, oHTargetPlatform);
         if (targetPlatform == null) {
             return;
         }
@@ -2007,11 +2007,36 @@ public class NativeImage {
     }
 
     void addPlainImageBuilderArg(String plainArg, String origin) {
-        addPlainImageBuilderArg(injectHostedOptionOrigin(plainArg, origin));
+        addPlainImageBuilderArg(plainArg, origin, true);
+    }
+
+    void addPlainImageBuilderArg(String plainArg, String origin, boolean override) {
+        addPlainImageBuilderArg(injectHostedOptionOrigin(plainArg, origin), override);
     }
 
     void addPlainImageBuilderArg(String plainArg) {
+        addPlainImageBuilderArg(plainArg, true);
+    }
+
+    void addPlainImageBuilderArg(String plainArg, boolean override) {
         assert plainArg.startsWith(NativeImage.oH) || plainArg.startsWith(NativeImage.oR);
+        if (!override) {
+            int posValueSeparator = plainArg.indexOf('=');
+            if (posValueSeparator > 0) {
+                String argPrefix = plainArg.substring(0, posValueSeparator);
+                int posOriginSeparator = plainArg.indexOf('@');
+                if (posOriginSeparator > 0) {
+                    argPrefix = argPrefix.substring(0, posOriginSeparator);
+                }
+                String existingValue = getHostedOptionArgumentValue(imageBuilderArgs, argPrefix + '=');
+                if (existingValue != null) {
+                    /* Respect the existing value. Do not append overriding value. */
+                    return;
+                }
+            } else {
+                VMError.shouldNotReachHere("override=false currently only works for non-boolean options");
+            }
+        }
         imageBuilderArgs.add(plainArg);
     }
 
@@ -2344,7 +2369,7 @@ public class NativeImage {
 
     private boolean configureBuildOutput() {
         boolean useColorfulOutput = false;
-        String colorValue = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHColor);
+        String colorValue = getHostedOptionArgumentValue(imageBuilderArgs, oHColor);
         if (colorValue != null) { // use value set by user
             if ("always".equals(colorValue)) {
                 useColorfulOutput = true;
@@ -2353,7 +2378,7 @@ public class NativeImage {
                 addPlainImageBuilderArg(oHColor + (useColorfulOutput ? "always" : "never"), OptionOrigin.originDriver);
             }
         } else {
-            Boolean buildOutputColorfulValue = getHostedOptionFinalBooleanArgumentValue(imageBuilderArgs, SubstrateOptions.BuildOutputColorful);
+            Boolean buildOutputColorfulValue = getHostedOptionBooleanArgumentValue(imageBuilderArgs, SubstrateOptions.BuildOutputColorful);
             if (buildOutputColorfulValue != null) {
                 useColorfulOutput = buildOutputColorfulValue; // use value set by user
             } else if (hasColorSupport()) {
@@ -2361,10 +2386,10 @@ public class NativeImage {
                 addPlainImageBuilderArg(oHColor + "always", OptionOrigin.originDriver);
             }
         }
-        if (getHostedOptionFinalBooleanArgumentValue(imageBuilderArgs, SubstrateOptions.BuildOutputProgress) == null && hasProgressSupport(imageBuilderArgs)) {
+        if (getHostedOptionBooleanArgumentValue(imageBuilderArgs, SubstrateOptions.BuildOutputProgress) == null && hasProgressSupport(imageBuilderArgs)) {
             addPlainImageBuilderArg(oHEnableBuildOutputProgress);
         }
-        if (getHostedOptionFinalBooleanArgumentValue(imageBuilderArgs, SubstrateOptions.BuildOutputLinks) == null && (colorValue == null || "auto".equals(colorValue)) && useColorfulOutput) {
+        if (getHostedOptionBooleanArgumentValue(imageBuilderArgs, SubstrateOptions.BuildOutputLinks) == null && (colorValue == null || "auto".equals(colorValue)) && useColorfulOutput) {
             addPlainImageBuilderArg(oHEnableBuildOutputLinks);
         }
         return useColorfulOutput;
