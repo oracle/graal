@@ -97,6 +97,17 @@ suite = {
       "digest": "sha512:f92f976375421ef117a97cb4298b7478b849370334a1eaf2efb243bd510e79358f258f47327deb2b9441843e7061acc67add2d034259f3136d97da8a09e545a4",
     },
 
+    "JCODINGS_1.0.58": {
+      "digest" : "sha512:625210aa07d1e08bf2f5fdc9da6c491a4e5a56e7db297cba1aa73636670ac1d62f3fd763716ef6ede862456b17169272ed9c8461d07100f95262163dc9c18ef8",
+      "sourceDigest" : "sha512:d0f883f658310f7ad091aea08df28f1f5fe12080d6cb266cd91aec7e34cda1d57736d32618e8632b329854367d6e4d5fc91b5eb8ac9b823b26113fae3f75f50c",
+      "maven": {
+        "groupId": "org.jruby.jcodings",
+        "artifactId": "jcodings",
+        "version": "1.0.58",
+      },
+      "license": ["MIT"],
+    },
+
     "TRUFFLE_JCODINGS": {
       "digest" : "sha512:455f3dc287181c185ab87c03e88cc89615f3da262358f44ea01bb3cc9f04d8e3cee7911f8a14a6403d3285d9b54812aaa48ade093a0b3ec4e594adbbda1d5387",
       "version" : "1.0.58.1",
@@ -648,7 +659,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.profiles",
-        "TRUFFLE_JCODINGS",
+        "org.graalvm.shadowed.org.jcodings",
       ],
       "requires" : [
         "jdk.unsupported", # sun.misc.Unsafe
@@ -1380,6 +1391,46 @@ suite = {
         ],
       },
       "description" : "ASM library shadowed for Truffle.",
+      "allowsJavadocWarnings": True,
+      # We need to force javac because the generated sources in this project produce warnings in JDT.
+      "forceJavac" : "true",
+      "javac.lint.overrides" : "none",
+      "jacoco" : "exclude",
+      "graalCompilerSourceEdition": "ignore",
+    },
+
+    "org.graalvm.shadowed.org.jcodings" : {
+      # Shadowed JCODINGS library (org.jruby.jcodings:jcodings)
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "spotbugs" : "false",
+      "shadedDependencies" : [
+        "truffle:JCODINGS_1.0.58",
+      ],
+      "class" : "ShadedLibraryProject",
+      "shade" : {
+        "packages" : {
+          "org.jcodings" : "org.graalvm.shadowed.org.jcodings",
+        },
+        "exclude" : [
+          "module-info.java",
+          "META-INF/MANIFEST.MF",
+          "META-INF/services/java.nio.charset.spi.CharsetProvider",
+          "META-INF/maven/org.jruby.jcodings/jcodings/*", # pom.xml, pom.properties
+        ],
+        "include" : {
+          "tables/*.bin" : {
+            "tables/" : "org/graalvm/shadowed/org/jcodings/tables/",
+          },
+        },
+        "patch" : {
+          "org/jcodings/util/ArrayReader.java" : {
+            "\"/tables/\"" : "\"/org/graalvm/shadowed/org/jcodings/tables/\"",
+          },
+        },
+      },
+      "description" : "JCodings library shadowed for Truffle.",
       "allowsJavadocWarnings": True,
       # We need to force javac because the generated sources in this project produce warnings in JDT.
       "forceJavac" : "true",
