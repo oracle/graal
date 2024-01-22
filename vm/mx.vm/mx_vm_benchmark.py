@@ -39,7 +39,7 @@ from typing import Iterable, Optional
 
 import mx
 import mx_benchmark
-import mx_sdk_benchmark
+import mx_util
 import mx_sdk_vm
 import mx_sdk_vm_impl
 from mx_sdk_vm_impl import svm_experimental_options
@@ -247,7 +247,7 @@ class NativeImageBenchmarkConfig:
                 # benchmarks is in the mx cache, so we make a local copy.
                 cached_bundle_path = self.extra_image_build_arguments[i][len(bundle_apply_arg):]
                 bundle_copy_path = os.path.join(self.output_dir, basename(cached_bundle_path))
-                mx.ensure_dirname_exists(bundle_copy_path)
+                mx_util.ensure_dirname_exists(bundle_copy_path)
                 mx.copyfile(cached_bundle_path, bundle_copy_path)
                 self.extra_image_build_arguments[i] = bundle_apply_arg + bundle_copy_path
                 return bundle_copy_path
