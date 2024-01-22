@@ -318,7 +318,7 @@ class NativeImageStages:
             if self.stages_info.get_current_stage() == self.config.last_stage:
                 self.bench_out(self.get_timestamp() + 'Successfully finished the last specified stage:' + ' ' + self.stages_info.get_current_stage() + ' for ' + self.final_image_name)
             else:
-                mx.log(self.get_timestamp() + 'Successfully finished stage:' + ' ' + self.stages_info.get_current_stage())
+                self.bench_out(self.get_timestamp() + 'Successfully finished stage:' + ' ' + self.stages_info.get_current_stage())
 
             self.separator_line()
         else:
@@ -415,6 +415,8 @@ class NativeImageVM(GraalVm):
        1) Runs a benchmark with the Native Image Agent.
        2) Builds an image based on the configuration collected by the agent.
        3) Runs the image of the benchmark with supported VM arguments and with run-time arguments.
+
+    TODO update comment since this now runs only a single stage
     """
 
     def __init__(self, name, config_name, extra_java_args=None, extra_launcher_args=None):
@@ -1079,6 +1081,7 @@ class NativeImageVM(GraalVm):
         else:
             # The stage may be None, which means run no stage in this run
             assert stage_to_run is None, f"Unknown stage {stage_to_run}"
+            self.stages.bench_out(f"Skipping stage: {self.stages_info.get_current_stage()}")
 
         if self.stages_info.failed:
             mx.abort('Exiting the benchmark due to the failure.')
