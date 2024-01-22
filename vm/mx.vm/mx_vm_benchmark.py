@@ -387,9 +387,6 @@ class NativeImageStages:
             return v
         return writeFun
 
-    def change_stage(self, stage_name):
-        return stage_name == self.config.stage
-
     @staticmethod
     def separator_line():
         mx.log(mx.colorize('-' * 120, 'green'))
@@ -1056,28 +1053,24 @@ class NativeImageVM(GraalVm):
         self.config = NativeImageBenchmarkConfig(self, self.bmSuite, args)
         self.stages = NativeImageStages(self.stages_info, self.config, out, err, self.is_gate, True if self.is_gate else nonZeroIsFatal, os.path.abspath(cwd if cwd else os.getcwd()))
 
-        if not os.path.exists(self.config.output_dir):
-            os.makedirs(self.config.output_dir)
+        os.makedirs(self.config.output_dir, exist_ok=True)
+        os.makedirs(self.config.config_dir, exist_ok=True)
 
-        if not os.path.exists(self.config.config_dir):
-            os.makedirs(self.config.config_dir)
+        stage_to_run = self.config.stage
 
-        if self.stages.change_stage('agent'):
+        if stage_to_run == "agent":
             self.run_stage_agent()
-
-        if self.stages.change_stage('instrument-image'):
+        elif stage_to_run == "instrument-image":
             self.run_stage_instrument_image(out)
-
-        if self.stages.change_stage('instrument-run'):
+        elif stage_to_run == "instrument-run":
             self.run_stage_instrument_run()
-
-        # Build the final image
-        if self.stages.change_stage('image'):
+        elif stage_to_run == "image":
             self.run_stage_image(out)
-
-        # Execute the benchmark
-        if self.stages.change_stage('run'):
+        elif stage_to_run == "run":
             self.run_stage_run(out)
+        else:
+            # The stage may be None, which means run no stage in this run
+            assert stage_to_run is None, f"Unknown stage {stage_to_run}"
 
         if self.stages_info.failed:
             mx.abort('Exiting the benchmark due to the failure.')
