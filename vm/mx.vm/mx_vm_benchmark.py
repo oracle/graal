@@ -267,7 +267,7 @@ class NativeImageBenchmarkConfig:
 class NativeImageStages:
     def __init__(self, stages_info: StagesInfo, config, bench_out, bench_err, is_gate, non_zero_is_fatal, cwd):
         self.stages_info = stages_info
-        self.config = config
+        self.config: NativeImageBenchmarkConfig = config
         self.bench_out = bench_out
         self.bench_err = bench_err
         self.final_image_name = config.final_image_name
@@ -403,7 +403,8 @@ class NativeImageStages:
         return self
 
     def execute_command(self, vm=None):
-        write_output = self.stages_info.get_current_stage() == 'run' or self.stages_info.get_current_stage() == 'image' or self.is_gate
+        write_output = self.config.stage in ["run", "image"] or self.is_gate
+
         cmd = self.command
         self.exit_code = self.config.bm_suite.run_stage(vm, self.stages_info.get_current_stage(), cmd, self.stdout(write_output), self.stderr(write_output), self.cwd, False)
         if "image" not in self.stages_info.get_current_stage() and self.config.bm_suite.validateReturnCode(self.exit_code):
@@ -876,7 +877,7 @@ class NativeImageVM(GraalVm):
     def rules(self, output, benchmarks, bmSuiteArgs):
         rules = super().rules(output, benchmarks, bmSuiteArgs)
 
-        if self.stages_info.get_current_stage() in ["image", "instrument-image"]:
+        if self.config.stage in ["image", "instrument-image"]:
             # Only apply image build rules for the image build stages
             rules += self.image_build_rules(output, benchmarks, bmSuiteArgs)
 
