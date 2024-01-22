@@ -29,12 +29,12 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 
-import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
@@ -175,10 +175,10 @@ public class CEntryPointSupport implements InternalFeature {
                     b.addPush(JavaKind.Object, ReadReservedRegister.createReadIsolateThreadNode(b.getGraph()));
                 } else if (SubstrateOptions.SpawnIsolates.getValue()) {
                     ValueNode heapBase = b.add(ReadReservedRegister.createReadHeapBaseNode(b.getGraph()));
-                    ConstantNode addend = b.add(ConstantNode.forIntegerKind(FrameAccess.getWordKind(), CEntryPointSetup.SINGLE_ISOLATE_TO_SINGLE_THREAD_ADDEND));
+                    ConstantNode addend = b.add(ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), CEntryPointSetup.SINGLE_ISOLATE_TO_SINGLE_THREAD_ADDEND));
                     b.addPush(JavaKind.Object, new AddNode(heapBase, addend));
                 } else {
-                    b.addPush(JavaKind.Object, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), CEntryPointSetup.SINGLE_THREAD_SENTINEL.rawValue()));
+                    b.addPush(JavaKind.Object, ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), CEntryPointSetup.SINGLE_THREAD_SENTINEL.rawValue()));
                 }
                 return true;
             }
@@ -189,7 +189,7 @@ public class CEntryPointSupport implements InternalFeature {
                 if (SubstrateOptions.SpawnIsolates.getValue()) {
                     b.addPush(JavaKind.Object, ReadReservedRegister.createReadHeapBaseNode(b.getGraph()));
                 } else {
-                    b.addPush(JavaKind.Object, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), CEntryPointSetup.SINGLE_ISOLATE_SENTINEL.rawValue()));
+                    b.addPush(JavaKind.Object, ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), CEntryPointSetup.SINGLE_ISOLATE_SENTINEL.rawValue()));
                 }
                 return true;
             }

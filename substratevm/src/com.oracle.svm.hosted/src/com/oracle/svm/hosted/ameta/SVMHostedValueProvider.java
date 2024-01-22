@@ -33,10 +33,9 @@ import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
@@ -48,11 +47,9 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 public class SVMHostedValueProvider extends HostedValuesProvider {
 
     private final FieldValueInterceptionSupport fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
-    private final ClassInitializationSupport classInitializationSupport;
 
-    public SVMHostedValueProvider(ClassInitializationSupport classInitializationSupport, AnalysisUniverse universe) {
+    public SVMHostedValueProvider(AnalysisUniverse universe) {
         super(universe);
-        this.classInitializationSupport = classInitializationSupport;
     }
 
     /**
@@ -88,7 +85,7 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
 
     private JavaConstant doReadValue(AnalysisField field, JavaConstant receiver) {
         JavaConstant hostedReceiver = universe.toHosted(receiver);
-        return universe.fromHosted(fieldValueInterceptionSupport.readFieldValue(classInitializationSupport, field, hostedReceiver));
+        return universe.fromHosted(fieldValueInterceptionSupport.readFieldValue(field, hostedReceiver));
     }
 
     /**
@@ -142,7 +139,7 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
         if (object instanceof RelocatedPointer pointer) {
             return new RelocatableConstant(pointer);
         } else if (object instanceof WordBase word) {
-            return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), word.rawValue());
+            return JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), word.rawValue());
         }
         HostedSnippetReflectionProvider.validateRawObjectConstant(object);
         return SubstrateObjectConstant.forObject(object);

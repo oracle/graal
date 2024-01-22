@@ -259,7 +259,7 @@ public abstract class ImageHeapScanner {
         if (type.isArray()) {
             Integer length = hostedValuesProvider.readArrayLength(constant);
             if (type.getComponentType().isPrimitive()) {
-                return new ImageHeapPrimitiveArray(type, constant, asObject(constant), length);
+                return new ImageHeapPrimitiveArray(type, constant, snippetReflection.asObject(Object.class, constant), length);
             } else {
                 return createImageHeapObjectArray(constant, type, length, reason);
             }
@@ -689,7 +689,7 @@ public abstract class ImageHeapScanner {
 
     private void rescanCollectionElements(JavaConstant constant) {
         if (isNonNullObjectConstant(constant)) {
-            rescanCollectionElements(asObject(((ImageHeapConstant) constant).getHostedObject()));
+            rescanCollectionElements(snippetReflection.asObject(Object.class, constant));
         }
     }
 
@@ -728,10 +728,6 @@ public abstract class ImageHeapScanner {
     void doScan(JavaConstant constant, ScanReason reason) {
         JavaConstant value = createImageHeapConstant(constant, reason);
         markReachable(value, reason, null);
-    }
-
-    protected Object asObject(JavaConstant constant) {
-        return snippetReflection.asObject(Object.class, constant);
     }
 
     private JavaConstant asConstant(Object object) {

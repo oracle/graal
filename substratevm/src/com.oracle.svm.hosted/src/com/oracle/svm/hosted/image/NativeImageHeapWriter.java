@@ -43,7 +43,6 @@ import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.objectfile.ObjectFile;
-import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
@@ -192,9 +191,9 @@ public final class NativeImageHeapWriter {
         final JavaConstant con;
         if (heap.hMetaAccess.isInstanceOf(constant, WordBase.class)) {
             Object value = snippetReflection().asObject(Object.class, constant);
-            con = JavaConstant.forIntegerKind(FrameAccess.getWordKind(), ((WordBase) value).rawValue());
-        } else if (constant.isNull() && kind == FrameAccess.getWordKind()) {
-            con = JavaConstant.forIntegerKind(FrameAccess.getWordKind(), 0);
+            con = JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), ((WordBase) value).rawValue());
+        } else if (constant.isNull() && kind == ConfigurationValues.getWordKind()) {
+            con = JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), 0);
         } else {
             con = constant;
         }
@@ -219,9 +218,9 @@ public final class NativeImageHeapWriter {
 
         final JavaConstant con;
         if (value instanceof WordBase) {
-            con = JavaConstant.forIntegerKind(FrameAccess.getWordKind(), ((WordBase) value).rawValue());
-        } else if (value == null && kind == FrameAccess.getWordKind()) {
-            con = JavaConstant.forIntegerKind(FrameAccess.getWordKind(), 0);
+            con = JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), ((WordBase) value).rawValue());
+        } else if (value == null && kind == ConfigurationValues.getWordKind()) {
+            con = JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), 0);
         } else {
             assert kind == JavaKind.Object || value != null : "primitive value must not be null";
             con = snippetReflection().forBoxed(kind, value);

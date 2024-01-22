@@ -154,24 +154,21 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     @Override
     protected void onObjectReachable(ImageHeapConstant imageHeapConstant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
         super.onObjectReachable(imageHeapConstant, reason, onAnalysisModified);
-        JavaConstant hostedObject = imageHeapConstant.getHostedObject();
-        if (hostedObject != null) {
-            Object object = snippetReflection.asObject(Object.class, hostedObject);
-            if (object instanceof Field field) {
-                reflectionSupport.registerHeapReflectionField(field, reason);
-            } else if (object instanceof Executable executable) {
-                reflectionSupport.registerHeapReflectionExecutable(executable, reason);
-            } else if (object instanceof DynamicHub hub) {
-                reflectionSupport.registerHeapDynamicHub(hub, reason);
-            } else if (object instanceof VarHandle varHandle) {
-                varHandleSupport.registerHeapVarHandle(varHandle);
-            } else if (directMethodHandleClass.isInstance(object)) {
-                varHandleSupport.registerHeapMethodHandle((MethodHandle) object);
-            } else if (object instanceof MethodType methodType) {
-                methodHandleSupport.registerHeapMethodType(methodType);
-            } else if (memberNameClass.isInstance(object)) {
-                methodHandleSupport.registerHeapMemberName((Member) object);
-            }
+        Object object = snippetReflection.asObject(Object.class, imageHeapConstant);
+        if (object instanceof Field field) {
+            reflectionSupport.registerHeapReflectionField(field, reason);
+        } else if (object instanceof Executable executable) {
+            reflectionSupport.registerHeapReflectionExecutable(executable, reason);
+        } else if (object instanceof DynamicHub hub) {
+            reflectionSupport.registerHeapDynamicHub(hub, reason);
+        } else if (object instanceof VarHandle varHandle) {
+            varHandleSupport.registerHeapVarHandle(varHandle);
+        } else if (directMethodHandleClass.isInstance(object)) {
+            varHandleSupport.registerHeapMethodHandle((MethodHandle) object);
+        } else if (object instanceof MethodType methodType) {
+            methodHandleSupport.registerHeapMethodType(methodType);
+        } else if (memberNameClass.isInstance(object)) {
+            methodHandleSupport.registerHeapMemberName((Member) object);
         }
     }
 }

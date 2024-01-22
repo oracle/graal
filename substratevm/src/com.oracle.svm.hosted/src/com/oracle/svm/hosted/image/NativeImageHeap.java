@@ -633,15 +633,11 @@ public final class NativeImageHeap implements ImageHeap {
      * Determine if a constant will be immutable in the native image heap.
      */
     private boolean isKnownImmutableConstant(JavaConstant constant) {
-        JavaConstant hostedConstant = constant;
-        if (constant instanceof ImageHeapConstant imageHeapConstant) {
-            hostedConstant = imageHeapConstant.getHostedObject();
-            if (hostedConstant == null) {
-                /* A simulated ImageHeapConstant cannot be marked as immutable. */
-                return false;
-            }
+        if (constant instanceof ImageHeapConstant imageHeapConstant && !imageHeapConstant.isBackedByHostedObject()) {
+            /* A simulated ImageHeapConstant cannot be marked as immutable. */
+            return false;
         }
-        Object obj = hUniverse.getSnippetReflection().asObject(Object.class, hostedConstant);
+        Object obj = hUniverse.getSnippetReflection().asObject(Object.class, constant);
         return UniverseBuilder.isKnownImmutableType(obj.getClass()) || knownImmutableObjects.contains(obj);
     }
 

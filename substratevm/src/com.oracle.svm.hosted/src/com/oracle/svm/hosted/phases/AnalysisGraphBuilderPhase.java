@@ -179,8 +179,7 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
             List<JavaConstant> staticArgumentsList = bootstrap.getStaticArguments();
             boolean isVarargs = bootstrap.getMethod().isVarArgs();
             int bci = bci();
-            JavaConstant type = ((ImageHeapInstance) bootstrap.getType()).getHostedObject();
-            MethodType methodType = (MethodType) ((DirectSubstrateObjectConstant) type).getObject();
+            MethodType methodType = getSnippetReflection().asObject(MethodType.class, bootstrap.getType());
 
             for (JavaConstant argument : staticArgumentsList) {
                 if (argument instanceof ImageHeapInstance imageHeapInstance) {

@@ -36,9 +36,9 @@ import org.graalvm.word.LocationIdentity;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.c.struct.CInterfaceLocationIdentity;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
 import com.oracle.svm.core.graal.nodes.CInterfaceWriteNode;
@@ -168,7 +168,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         assert args.length == accessorInfo.parameterCount(true);
 
         ValueNode base = args[AccessorInfo.baseParameterNumber(true)];
-        assert base.getStackKind() == FrameAccess.getWordKind();
+        assert base.getStackKind() == ConfigurationValues.getWordKind();
 
         switch (accessorInfo.getAccessorKind()) {
             case ADDRESS: {
@@ -362,13 +362,13 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
     }
 
     private static ValueNode makeOffset(StructuredGraph graph, ValueNode[] args, AccessorInfo accessorInfo, int displacement, int indexScaling) {
-        ValueNode offset = ConstantNode.forIntegerKind(FrameAccess.getWordKind(), displacement, graph);
+        ValueNode offset = ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), displacement, graph);
 
         if (accessorInfo.isIndexed()) {
             ValueNode index = args[accessorInfo.indexParameterNumber(true)];
             assert index.getStackKind().isPrimitive();
-            ValueNode wordIndex = adaptPrimitiveType(graph, index, index.getStackKind(), FrameAccess.getWordKind(), false);
-            ValueNode scaledIndex = graph.unique(new MulNode(wordIndex, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), indexScaling, graph)));
+            ValueNode wordIndex = adaptPrimitiveType(graph, index, index.getStackKind(), ConfigurationValues.getWordKind(), false);
+            ValueNode scaledIndex = graph.unique(new MulNode(wordIndex, ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), indexScaling, graph)));
 
             offset = graph.unique(new AddNode(scaledIndex, offset));
         }

@@ -32,7 +32,6 @@ import java.util.function.Function;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
-import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
@@ -107,7 +106,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
                             SubstrateOptions.PreserveFramePointer.getValue()));
         }
 
-        WordTypes wordTypes = new SubstrateWordTypes(metaAccess, FrameAccess.getWordKind());
+        WordTypes wordTypes = new SubstrateWordTypes(metaAccess, ConfigurationValues.getWordKind());
 
         ForeignCallsProvider foreignCalls = createForeignCallsProvider(registerConfigs.get(ConfigKind.NORMAL));
 

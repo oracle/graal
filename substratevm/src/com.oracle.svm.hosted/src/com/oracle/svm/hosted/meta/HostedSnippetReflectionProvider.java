@@ -31,7 +31,7 @@ import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -58,7 +58,7 @@ public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionP
             /* Relocated pointers are subject to relocation, so we don't know their value yet. */
             return new RelocatableConstant(pointer);
         } else if (object instanceof WordBase word) {
-            return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), word.rawValue());
+            return JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), word.rawValue());
         }
         validateRawObjectConstant(object);
         /* Redirect constant lookup through the shadow heap. */

@@ -96,22 +96,20 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
         if (!source.getJavaKind().isObject()) {
             return null;
         }
-        if (source instanceof ImageHeapConstant imageHeapConstant) {
-            /*
-             * Unbox by reading the known single field "value", which is a primitive field of the
-             * correct unboxed type.
-             */
-            AnalysisType type = imageHeapConstant.getType();
-            if (BOXING_CLASSES.contains(type.getJavaClass())) {
-                imageHeapConstant.ensureReaderInstalled();
-                ResolvedJavaField[] fields = type.getInstanceFields(true);
-                assert fields.length == 1 && fields[0].getName().equals("value");
-                return ((ImageHeapInstance) imageHeapConstant).readFieldValue((AnalysisField) fields[0]);
-            }
-            /* Not a valid boxed primitive. */
-            return null;
+        ImageHeapConstant imageHeapConstant = (ImageHeapConstant) source;
+        /*
+         * Unbox by reading the known single field "value", which is a primitive field of the
+         * correct unboxed type.
+         */
+        AnalysisType type = imageHeapConstant.getType();
+        if (BOXING_CLASSES.contains(type.getJavaClass())) {
+            imageHeapConstant.ensureReaderInstalled();
+            ResolvedJavaField[] fields = type.getInstanceFields(true);
+            assert fields.length == 1 && fields[0].getName().equals("value");
+            return ((ImageHeapInstance) imageHeapConstant).readFieldValue((AnalysisField) fields[0]);
         }
-        return JavaConstant.forBoxedPrimitive(SubstrateObjectConstant.asObject(source));
+        /* Not a valid boxed primitive. */
+        return null;
     }
 
     @Override
