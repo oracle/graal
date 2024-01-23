@@ -195,6 +195,9 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
         standalone_jars_directory = "single"
         return os.path.join(self.renaissance_unpacked(), standalone_jars_directory, "{}.jar".format(benchmark_name))
 
+    def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
+
     def extra_run_arg(self, benchmark, args, image_run_args):
         run_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_run_arg(benchmark, args, image_run_args)
         if benchmark == "dotty" and self.version() not in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"]:
@@ -441,6 +444,9 @@ class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, B
     def benchmark_resources(self, benchmark):
         return _dacapo_resources[benchmark]
 
+    def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
+
     def extra_agent_run_arg(self, benchmark, args, image_run_args):
         user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, image_run_args)
         # remove -n X argument from image run args
@@ -560,6 +566,9 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
     def benchmark_resources(self, benchmark):
         return _scala_dacapo_resources[benchmark]
 
+    def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
+
     def extra_agent_run_arg(self, benchmark, args, image_run_args):
         user_args = super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, image_run_args)
         # remove -n X argument from image run args
@@ -630,6 +639,9 @@ class ConsoleNativeImageBenchmarkSuite(mx_java_benchmarks.ConsoleBenchmarkSuite,
     def benchSuiteName(self, bmSuiteArgs=None):
         return 'console'
 
+    def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
+
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         args = super(ConsoleNativeImageBenchmarkSuite, self).createCommandLineArgs(benchmarks, bmSuiteArgs)
         self.benchmark_name = benchmarks[0]
@@ -656,6 +668,9 @@ class SpecJVM2008NativeImageBenchmarkSuite(mx_java_benchmarks.SpecJvm2008Benchma
 
     def benchSuiteName(self, bmSuiteArgs=None):
         return 'specjvm2008'
+
+    def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         args = super().createCommandLineArgs(benchmarks, bmSuiteArgs)

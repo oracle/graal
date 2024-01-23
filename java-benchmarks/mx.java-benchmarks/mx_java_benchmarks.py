@@ -415,6 +415,9 @@ class BaseQuarkusRegistryBenchmark(BaseQuarkusBenchmarkSuite, mx_sdk_benchmark.B
     def default_stages(self):
         return ['image']
 
+    def run(self, benchmarks, bmSuiteArgs):
+        self.intercept_run(super(), benchmarks, bmSuiteArgs)
+
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
             mx.abort("Suite can only run a single benchmark per VM instance.")

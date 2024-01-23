@@ -962,7 +962,7 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
         return int(len(results) * .10)
 
     def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
-        results = super(BaseJMeterBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
+        results = self.intercept_run(super(), benchmarks, bmSuiteArgs)
         results = results[:len(results) - self.tailDatapointsToSkip(results)]
         self.addAverageAcrossLatestResults(results, "throughput")
         return results
@@ -1302,6 +1302,9 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
             return 'macos'
         else:
             mx.abort("{0} not supported in {1}.".format(BaseWrkBenchmarkSuite.__name__, mx.get_os()))
+
+    def run(self, benchmarks, bmSuiteArgs):
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         # Example of wrk output:

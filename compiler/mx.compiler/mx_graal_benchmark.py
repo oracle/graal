@@ -32,6 +32,7 @@ import mx_benchmark
 import mx_sdk_benchmark
 import mx_compiler
 from mx_java_benchmarks import DaCapoBenchmarkSuite, ScalaDaCapoBenchmarkSuite
+from mx_benchmark import DataPoints
 
 _suite = mx.suite('compiler')
 
@@ -462,6 +463,9 @@ class JMHRunnerGraalCoreBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite, JMH
     def subgroup(self):
         return "graal-compiler"
 
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
+
 
 mx_benchmark.add_bm_suite(JMHRunnerGraalCoreBenchmarkSuite())
 
@@ -477,6 +481,9 @@ class JMHJarGraalCoreBenchmarkSuite(mx_benchmark.JMHJarBenchmarkSuite, JMHJarBas
     def subgroup(self):
         return "graal-compiler"
 
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
+
 
 mx_benchmark.add_bm_suite(JMHJarGraalCoreBenchmarkSuite())
 
@@ -491,6 +498,9 @@ class JMHDistGraalCoreBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarB
 
     def subgroup(self):
         return "graal-compiler"
+
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
     def filter_distribution(self, dist):
         return super(JMHDistGraalCoreBenchmarkSuite, self).filter_distribution(dist) and \
@@ -510,6 +520,9 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarBa
 
     def subgroup(self):
         return "graal-compiler"
+
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
     @staticmethod
     def is_whitebox_dependency(dist):
