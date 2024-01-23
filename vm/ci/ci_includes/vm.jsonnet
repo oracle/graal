@@ -99,21 +99,21 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
   },
 
   local builds = [
-    utils.add_gate_predicate(self.vm_java_21 + vm_common.vm_base('linux', 'amd64', 'gate') + {
+    utils.add_gate_predicate(self.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate') + {
      run: [
        ['mx', 'build'],
        ['mx', 'unittest', '--suite', 'vm'],
      ],
      name: 'gate-vm-unittest-linux-amd64',
     }, ['sdk', 'truffle', 'vm']),
-    utils.add_gate_predicate(self.vm_java_21 + graal_common.devkits['windows-jdk21'] + vm_common.vm_base('windows', 'amd64', 'gate') + {
+    utils.add_gate_predicate(self.vm_java_Latest + graal_common.devkits['windows-jdkLatest'] + vm_common.vm_base('windows', 'amd64', 'gate') + {
      run: [
          ['mx', 'build'],
          ['mx', 'unittest', '--suite', 'vm'],
      ],
      name: 'gate-vm-unittest-windows-amd64',
     }, ["sdk", "truffle", "vm"]),
-    self.vm_java_21 + vm_common.vm_base('linux', 'amd64', 'gate') + vm_common.sulong_linux + {
+    self.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate') + vm_common.sulong_linux + {
      environment+: {
        DYNAMIC_IMPORTS: '/tools,/substratevm,/sulong',
        NATIVE_IMAGES: 'polyglot',
@@ -170,7 +170,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       name: 'gate-vm-maven-dry-run-windows-amd64',
       timelimit: '1:00:00',
     },
-    vm_common.graalvm_complete_build_deps('ce', 'windows', 'amd64', java_version='latest') + vm_common.deploy_build + vm_common.vm_base('windows', 'amd64', 'daily', deploy=true, jdk_hint='21') + vm_common.maven_deploy_base_functions.base_object('windows', 'amd64', dry_run=false, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local') + {
+    vm_common.graalvm_complete_build_deps('ce', 'windows', 'amd64', java_version='latest') + vm_common.deploy_build + vm_common.vm_base('windows', 'amd64', 'daily', deploy=true, jdk_hint='Latest') + vm_common.maven_deploy_base_functions.base_object('windows', 'amd64', dry_run=false, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local') + {
       name: 'daily-deploy-vm-maven-windows-amd64',
       timelimit: '1:00:00',
       notify_groups:: ['deploy'],
