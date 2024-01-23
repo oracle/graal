@@ -28,20 +28,26 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.time.Duration;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
+import com.oracle.svm.core.jdk.JDK22OrEarlier;
 import com.oracle.svm.core.jdk.JDK22OrLater;
+import com.oracle.svm.core.jdk.JDK23OrLater;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.jfr.Recording;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.JVMSupport;
+import jdk.jfr.internal.PlatformRecording;
+import jdk.jfr.internal.SecuritySupport;
 
 /**
  * Compatibility class to handle incompatible changes between JDK 21 and JDK 22. Once support for
@@ -109,6 +115,15 @@ public final class JfrJdkCompatibility {
             return (JVM) getJVM.invoke(null);
         }
     }
+
+    public static void setDumpDirectory(PlatformRecording platformRecording, SecuritySupport.SafePath directory) {
+        Target_jdk_jfr_internal_PlatformRecording pr = SubstrateUtil.cast(platformRecording, Target_jdk_jfr_internal_PlatformRecording.class);
+        if (JavaVersionUtil.JAVA_SPEC >= 23) {
+            pr.setDumpDirectory(directory);
+        } else {
+            pr.setDumpOnExitDirectory(directory);
+        }
+    }
 }
 
 @TargetClass(className = "jdk.jfr.internal.Utils", onlyWith = {JDK21OrEarlier.class, HasJfrSupport.class})
@@ -130,4 +145,15 @@ final class Target_jdk_jfr_internal_JVMSupport {
 final class Target_jdk_jfr_internal_util_ValueFormatter {
     @Alias
     public static native String formatTimespan(Duration dValue, String separation);
+}
+
+@TargetClass(className = "jdk.jfr.internal.PlatformRecording")
+final class Target_jdk_jfr_internal_PlatformRecording {
+    @Alias
+    @TargetElement(onlyWith = JDK23OrLater.class)
+    public native void setDumpDirectory(SecuritySupport.SafePath directory);
+
+    @Alias
+    @TargetElement(onlyWith = JDK22OrEarlier.class)
+    public native void setDumpOnExitDirectory(SecuritySupport.SafePath directory);
 }

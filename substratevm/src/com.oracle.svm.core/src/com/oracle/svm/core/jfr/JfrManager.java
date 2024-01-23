@@ -36,8 +36,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -49,6 +47,9 @@ import com.oracle.svm.core.jfr.events.EveryChunkNativePeriodicEvents;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.jfr.FlightRecorder;
 import jdk.jfr.Recording;
 import jdk.jfr.internal.LogLevel;
@@ -200,11 +201,11 @@ public class JfrManager {
                         dumpOnExit = Boolean.TRUE;
                     }
                     Path p = Paths.get(path);
-                    if (Files.isDirectory(p) && Boolean.TRUE.equals(dumpOnExit)) {
+                    if (Files.isDirectory(p) && (JavaVersionUtil.JAVA_SPEC >= 23 || Boolean.TRUE.equals(dumpOnExit))) {
                         // Decide destination filename at dump time
                         // Purposely avoid generating filename in Recording#setDestination due to
                         // security concerns
-                        PrivateAccess.getInstance().getPlatformRecording(recording).setDumpOnExitDirectory(new SecuritySupport.SafePath(p));
+                        JfrJdkCompatibility.setDumpDirectory(PrivateAccess.getInstance().getPlatformRecording(recording), new SecuritySupport.SafePath(p));
                     } else {
                         safePath = resolvePath(recording, path);
                         recording.setDestination(safePath.toPath());
