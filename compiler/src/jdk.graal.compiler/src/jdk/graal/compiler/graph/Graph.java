@@ -1359,11 +1359,16 @@ public class Graph implements EventCounter {
     }
 
     public boolean verify() {
+        verify(true);
+        return true;
+    }
+
+    public boolean verify(boolean verifyInputs) {
         if (verifyGraphs) {
             for (Node node : getNodes()) {
                 try {
                     try {
-                        assert node.verify();
+                        assert node.verify(verifyInputs);
                     } catch (AssertionError t) {
                         throw new GraalError(t);
                     } catch (RuntimeException t) {

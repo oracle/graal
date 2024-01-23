@@ -67,7 +67,7 @@ public class CaptureStateBeginNode extends BeginStateSplitNode implements Canoni
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         if (predecessor() instanceof LoopExitNode loopExit) {
             /*
              * Must guarantee only value and memory proxies are attached to the loop exit. Anything
@@ -76,6 +76,6 @@ public class CaptureStateBeginNode extends BeginStateSplitNode implements Canoni
             assert loopExit.usages().stream().allMatch(NodePredicates.isA(ValueProxyNode.class).or(MemoryProxyNode.class)) : String.format("LoopExit has disallowed usages %s", loopExit);
         }
 
-        return super.verify();
+        return super.verifyNode();
     }
 }

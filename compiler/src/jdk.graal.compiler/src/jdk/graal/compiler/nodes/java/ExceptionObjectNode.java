@@ -28,6 +28,8 @@ import static jdk.graal.compiler.nodeinfo.InputType.Memory;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_8;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.GraalError;
@@ -48,8 +50,6 @@ import jdk.graal.compiler.nodes.memory.MemoryAnchorNode;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -137,12 +137,12 @@ public final class ExceptionObjectNode extends BeginStateSplitNode implements Lo
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         assertTrue(graph().getGraphState().getFrameStateVerification() == GraphState.FrameStateVerification.NONE || stateAfter() != null, "an exception handler needs a frame state");
         assertTrue(graph().getGraphState().getFrameStateVerification() == GraphState.FrameStateVerification.NONE ||
                         stateAfter().stackSize() == 1 && stateAfter().stackAt(0).stamp(NodeView.DEFAULT).getStackKind() == JavaKind.Object,
                         "an exception handler's frame state must have only the exception on the stack");
-        return super.verify();
+        return super.verifyNode();
     }
 
     @Override
