@@ -112,8 +112,8 @@ suite = {
             "dependencies": [
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
-                "truffle:TRUFFLE_ASM_9.5",
                 "com.oracle.truffle.espresso.jdwp",
+                "com.oracle.truffle.espresso.shadowed.asm",
             ],
             "requires": [
                 "java.logging",
@@ -320,6 +320,34 @@ suite = {
             "javaCompliance": "8+",
             "checkstyle": "com.oracle.truffle.espresso",
             "testProject" : True,
+        },
+
+        "com.oracle.truffle.espresso.shadowed.asm" : {
+            # Shadowed ASM library (org.ow2.asm:asm)
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "javaCompliance" : "17+",
+            "spotbugs" : "false",
+            "shadedDependencies" : [
+                "truffle:ASM_9.5",
+            ],
+            "class" : "ShadedLibraryProject",
+            "shade" : {
+                "packages" : {
+                    "org.objectweb.asm" : "com.oracle.truffle.espresso.shadowed.asm",
+                },
+                "exclude" : [
+                    "META-INF/MANIFEST.MF",
+                    "**/package.html",
+                ],
+            },
+            "description" : "ASM library shadowed for Espresso.",
+            "allowsJavadocWarnings": True,
+            # We need to force javac because the generated sources in this project produce warnings in JDT.
+            "forceJavac" : "true",
+            "javac.lint.overrides" : "none",
+            "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
     },
 
