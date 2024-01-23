@@ -31,16 +31,31 @@ In general, it is not easy to guarantee that, because:
   What might accurately represent your application's behavior today,
   might not accurately represent it tomorrow.
 
-For example, ... TODO add example app.
+For example, let's say that you are implementing web server that serves static content.
+Most of the time, the web server will be reading a file from the disk or an in-memory cache,
+compressing that file, and sending the compressed bytes over the network.
+However, a good unit-test suite will test all components of the web server,
+including code for configuration-file parsing, cache invalidation, or remote debugging,
+which may execute infrequently or not at all during a typical execution of the web-server.
+If you collect the profiles across all the unit tests,
+they will over-represent parts of the code that execute rarely in practice,
+and in this way misdirect the compiler optimizations.
 
 Thus, we do not generally recommend to use your unit tests as profiles,
-because it is not clear how well they correspond to the what the application does.
+because it is not clear how well they represent what the application does.
 What we recommend instead is to either:
 
 - Identify a subset of *end-to-end tests* that represent important production workloads.
   An end-to-end test simulates what your application does in production, and is more likely
   to correctly portray how and where the time is spent in your code.
-- Or, create a benchmark workload that represents what your application does in production (see below).
+  In the previous web-server example, an end-to-end test would start the web-server,
+  send thousands of requests to retrieve various URLs, and then shut down the server.
+- Or, create a benchmark workload that represents what your application does in production.
+  A good benchmark would incorporate characteristics of a typical workload.
+  In the previous web-server example, a realistic benchmark would incorporate
+  the distribution of requests that was observed when the web-server was running in production.
+  I.e. the benchmark would model how often a file of a particular size was requested in production,
+  as well as the compression ratios of the files.
 
 
 2. Are PGO profiles sufficiently cross platform, or should each target be instrumented separately?
