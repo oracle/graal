@@ -7,7 +7,7 @@ You can use GraalVM just like any other Java Development Kit in your IDE.
 
 The project website at [https://www.graalvm.org/][website] describes how to [get started][getting-started], how to [stay connected][community], and how to [contribute][contributors].
 
-This is a test.
+This is a test. Another commit.
 
 ## Documentation
 
