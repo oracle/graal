@@ -739,12 +739,6 @@ suite = {
             "org.graalvm.word",
             "org.graalvm.nativeimage",
             "org.graalvm.collections",
-            # needed for dynamically loading Truffle
-            "java.sql",
-            "java.management",
-            "jdk.unsupported",
-            "jdk.management",
-            "jdk.jfr",
         ],
         "exports" : [
           "org.graalvm.home",
