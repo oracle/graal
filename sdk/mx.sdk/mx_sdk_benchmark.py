@@ -219,10 +219,11 @@ class StagesInfo:
 
 class NativeImageBenchmarkMixin(object):
     """
-    Mixin extended by :class:`BenchmarkSuite` classes to run Native Image benchmarks.
+    Mixin extended by :class:`BenchmarkSuite` classes to enable a bench suite to run as a Native Image benchmark.
 
-    IMPORTANT: All Native Image benchmarks must explicitly call :meth:`NativeImageBenchmarkMixin.run_stages` in order
-    for benchmarking to work. See description of that method for more information.
+    IMPORTANT: All Native Image benchmarks (including JVM benchmarks that are also used in Native Image benchmarks) must
+    explicitly call :meth:`NativeImageBenchmarkMixin.intercept_run` in order for benchmarking to work.
+    See description of that method for more information.
     """
 
     def __init__(self):
@@ -234,21 +235,22 @@ class NativeImageBenchmarkMixin(object):
             raise NotImplementedError()
         return self.benchmark_name
 
-    def run_stages(self, super_delegate: BenchmarkSuite, benchmarks, bmSuiteArgs) -> DataPoints:
+    def intercept_run(self, super_delegate: BenchmarkSuite, benchmarks, bmSuiteArgs) -> DataPoints:
         """
         Intercepts the main benchmark execution (:meth:`BenchmarkSuite.run`) and runs a series of benchmark stages
         required for Native Image benchmarks in series.
+        For non-native-image benchmarks, this simply delegates to the caller's ``super().run`` method.
 
         The stages are requested by the user (see :meth:`NativeImageBenchmarkMixin.stages`).
 
-        There are no good ways just intercept arbitrary ``BenchmarkSuite``s, so each :class:`BenchmarkSuite` subclass
-        that is intended for Native Image benchmarking needs to make sure that the :meth:`BenchmarkSuite.run` calls into
-        this method like this::
+        There are no good ways to just intercept ``run`` in arbitrary ``BenchmarkSuite``s, so each
+        :class:`BenchmarkSuite` subclass that is intended for Native Image benchmarking needs to make sure that the
+        :meth:`BenchmarkSuite.run` calls into this method like this::
 
             def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
-                return self.run_stages(super(), benchmarks, bmSuiteArgs)
+                return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
-        It is fine if this implemented in a common (Native Image-specific) subclass of multiple benchmark suites, as
+        It is fine if this implemented in a common (Native Image-specific) superclass of multiple benchmark suites, as
         long as it comes first in python's method-resolution-order (MRO).
 
         :param super_delegate: A reference to the caller class' superclass (in MRO).
@@ -256,6 +258,10 @@ class NativeImageBenchmarkMixin(object):
         :param bmSuiteArgs: Passed to :meth:`BenchmarkSuite.run`
         :return: Datapoints accumulated from all stages
         """
+        if not self.is_native_mode(bmSuiteArgs):
+            # This is not a Native Image benchmark, just run the benchmark as regular
+            return super_delegate.run(benchmarks, bmSuiteArgs)
+
         datapoints: MutableSequence[DataPoint] = []
 
         requested_stages = self.stages(self.vmArgs(bmSuiteArgs))
@@ -276,6 +282,10 @@ class NativeImageBenchmarkMixin(object):
             final_command = self.apply_command_mapper_hooks(command, vm)
 
         return mx.run(final_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+
+    def is_native_mode(self, bmSuiteArgs):
+        """Checks whether the given arguments request a Native Image benchmark"""
+        return "native-image" in self.jvm(bmSuiteArgs)
 
     def apply_command_mapper_hooks(self, cmd, vm):
         return mx.apply_command_mapper_hooks(cmd, vm.command_mapper_hooks)
@@ -529,9 +539,6 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         """
         return {}
 
-    def inNativeMode(self):
-        return "native-image" in self.jvm(self.bmSuiteArgs)
-
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         return self.vmArgs(bmSuiteArgs) + ["-jar", self.applicationPath()]
 
@@ -559,7 +566,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         result = ret_code, "\n".join(self.timeToFirstResponseOutputs) + '\n' + self.startupOutput + '\n' + self.peakOutput + '\n' + self.latencyOutput + '\n' + applicationOutput, dims
 
         # For HotSpot, the rules are executed after every execution. So, it is necessary to reset the data to avoid duplication of datapoints.
-        if not self.inNativeMode():
+        if not self.is_native_mode(self.bmSuiteArgs):
             self.timeToFirstResponseOutputs = []
             self.startupOutput = ''
             self.peakOutput = ''
@@ -771,7 +778,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         self.measureStartup = not args.skip_startup_measurements
         self.measurePeak = not args.skip_peak_measurements
 
-        if not self.inNativeMode():
+        if not self.is_native_mode(self.bmSuiteArgs):
             datapoints = []
             if self.measureFirstResponse:
                 # Measure time-to-first-response (without any command mapper hooks as those affect the measurement significantly)
