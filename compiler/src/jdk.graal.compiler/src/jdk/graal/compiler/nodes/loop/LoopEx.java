@@ -79,7 +79,6 @@ import jdk.graal.compiler.nodes.debug.NeverWriteSinkNode;
 import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
-import jdk.graal.compiler.phases.common.util.LoopUtility;
 
 public class LoopEx {
     protected final Loop<HIRBlock> loop;
@@ -391,13 +390,12 @@ public class LoopEx {
     }
 
     public static boolean absStrideIsOne(InductionVariable limitCheckedIV) {
-        final long absStride;
-        try {
-            absStride = LoopUtility.abs(limitCheckedIV.constantStride(), IntegerStamp.getBits(limitCheckedIV.strideNode().stamp(NodeView.DEFAULT)));
-        } catch (ArithmeticException e) {
-            return false;
-        }
-        return absStride == 1;
+        /*
+         * While Math.abs can overflow for MIN_VALUE it is fine here. In case of overflow we still
+         * get a value != 1 (namely MIN_VALUE again). Overflow handling for the limit checked IV is
+         * done in CountedLoopInfo and is an orthogonal issue.
+         */
+        return Math.abs(limitCheckedIV.constantStride()) == 1;
     }
 
     public boolean isCfgLoopExit(AbstractBeginNode begin) {
