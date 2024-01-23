@@ -677,7 +677,8 @@ public abstract class NFATraversalRegexASTVisitor {
         boolean captureGroupsMatter = ast.getOptions().getFlavor().backreferencesToUnmatchedGroupsFail() || (isBuildingDFA() && ast.getProperties().hasConditionalBackReferences());
         DeduplicationKey key = new DeduplicationKey(cur,
                         lookAroundsOnPath,
-                        forward ? dollarsOnPath : caretsOnPath,
+                        caretsOnPath,
+                        dollarsOnPath,
                         quantifierGuards,
                         internal ? insideEmptyGuardGroup : null,
                         captureGroupsMatter ? captureGroupUpdates : null,
@@ -1192,10 +1193,11 @@ public abstract class NFATraversalRegexASTVisitor {
         private final int lastGroup;
         private final int hashCode;
 
-        DeduplicationKey(RegexASTNode targetNode, StateSet<RegexAST, RegexASTNode> lookAroundsOnPath, StateSet<RegexAST, RegexASTNode> positionAssertionsOnPath,
+        DeduplicationKey(RegexASTNode targetNode, StateSet<RegexAST, RegexASTNode> lookAroundsOnPath, StateSet<RegexAST, RegexASTNode> caretsOnPath, StateSet<RegexAST, RegexASTNode> dollarsOnPath,
                         QuantifierGuardsLinkedList quantifierGuards, StateSet<RegexAST, Group> insideEmptyGuardGroup, TBitSet captureGroupUpdates, TBitSet captureGroupClears, int lastGroup) {
             this.nodesInvolved = lookAroundsOnPath.copy();
-            this.nodesInvolved.addAll(positionAssertionsOnPath);
+            this.nodesInvolved.addAll(caretsOnPath);
+            this.nodesInvolved.addAll(dollarsOnPath);
             this.nodesInvolved.add(targetNode);
             this.quantifierGuards = quantifierGuards;
             this.insideEmptyGuardGroup = insideEmptyGuardGroup == null ? null : insideEmptyGuardGroup.copy();
