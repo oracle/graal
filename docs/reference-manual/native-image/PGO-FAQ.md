@@ -7,10 +7,40 @@ permalink: /reference-manual/native-image/pgo/faq
 
 1. Can we use unit tests for profiling?
 
-DRAFT:
-- Yes 
-    - if you can make them run on an instrumented image which might not be trivial.
-    - if your unit tests are a representative workload i.e. Testing getters and setters will not get you much in terms of profiles
+Yes, that is possible, but usually not recommended.
+
+To use the unit tests to generate the profiles,
+you should generate an instrumented native image for your test suite,
+in the same way you generate a native image for any program.
+For example, you could have a `main` function that starts the test harness.
+After this instrumented image executes, it will dump the file with the profiles,
+same as any instrumented image.
+
+However, be aware that the quality of profile-guided optimizations depends on the quality of the profile
+that you provide as an input to the optimized-image build.
+You should make sure that your tests accurately represent the workload that will run in production.
+In general, it is not easy to guarantee that, because:
+
+- Unit tests are designed to test all the corner-cases of the components,
+  many of which are uncommon in practice (i.e. while they need to be tested and work correctly,
+  corner-cases in your code usually do not need to be fast).
+- Different components of your code are not always represented with the same number of unit tests.
+  A profile based on a unit-test suite may over-represent the importance of one component,
+  and under-represent the importance of others.
+- Moreover, unit-test suites evolve over time as more and more tests get added.
+  What might accurately represent your application's behavior today,
+  might not accurately represent it tomorrow.
+
+For example, ... TODO add example app.
+
+Thus, we do not generally recommend to use your unit tests as profiles,
+because it is not clear how well they correspond to the what the application does.
+What we recommend instead is to either:
+
+- Identify a subset of *end-to-end tests* that represent important production workloads.
+  An end-to-end test simulates what your application does in production, and is more likely
+  to correctly portray how and where the time is spent in your code.
+- Or, create a benchmark workload that represents what your application does in production (see below).
 
 
 2. Are PGO profiles sufficiently cross platform, or should each target be instrumented separately?
@@ -36,12 +66,16 @@ DRAFT:
 4. Can you also run the benchmark with an instrumented image?
 
 Yes, an instrumented native image can be produced for any program, including a benchmark.
-The instrumentation overhead will typically make the instrumented image slower than the default one
-(while we continually strive to minimize the impact of instrumentation, your mileage will vary).
+Be aware that the instrumentation overhead will typically make the instrumented image slower
+than the default (non-instrumented) image.
+While we continually strive to minimize the overhead of instrumentation,
+you will likely notice that the instrumented image is slower,
+and your mileage will vary depending on the code patterns
+in the application that you are running.
 
-So, if the benchmark accurately represents the workload that you will be running in production,
+In short, if the benchmark accurately represents the workload that you will be running in production,
 then it is a good idea to collect the profiles on the instrumented benchmark image,
-and subsequently use these profiles to build an optimized image.
+and subsequently use these profiles to build an optimized image for your production workload.
 
 
 5. How to find out which code paths were missed during profiling?
