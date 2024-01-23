@@ -1428,6 +1428,34 @@ suite = {
           "org/jcodings/util/ArrayReader.java" : {
             "\"/tables/\"" : "\"/org/graalvm/shadowed/org/jcodings/tables/\"",
           },
+          # Fix CESU8Encoding.leftAdjustCharHead by applying a stripped down version of:
+          # https://github.com/jruby/jcodings/pull/61/ (not in 1.0.58; remove when updating to a newer version).
+          "org/jcodings/specific/CESU8Encoding.java" : {
+"""
+  (public int leftAdjustCharHead\\(byte\\[\\] bytes, int p, int s, int end\\) {
+    if \\(s <= p\\)
+      return s;
+    int p_ = s;
+    while \\(!utf8IsLead\\(bytes\\[p_\\] & 0xff\\) && p_ > p\\)
+      p_--;)(
+    return p_;
+  })
+""" : """
+  \\1
+    if (p_ > p && s - p_ == 2 && Character.isLowSurrogate((char) utf8Decode3ByteSequence(bytes, p_))) {
+      int pSurrogatePair = p_ - 1;
+      while (!utf8IsLead(bytes[pSurrogatePair] & 0xff) && pSurrogatePair > p)
+        pSurrogatePair--;
+      if (p_ - pSurrogatePair == 3 && Character.isHighSurrogate((char) utf8Decode3ByteSequence(bytes, pSurrogatePair))) {
+        return pSurrogatePair;
+      }
+    }\\2
+
+  private static int utf8Decode3ByteSequence(byte[] bytes, int p) {
+    return ((bytes[p] & 0xF) << 12) | ((bytes[p + 1] & 0xff & 0x3f) << 6) | (bytes[p + 2] & 0xff & 0x3f);
+  }
+"""
+          },
         },
       },
       "description" : "JCodings library shadowed for Truffle.",
