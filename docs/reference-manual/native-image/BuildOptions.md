@@ -1,12 +1,14 @@
 ---
 layout: docs
 toc_group: build-overview
-link_title: Build Options
+link_title: Native Image Options
 permalink: /reference-manual/native-image/overview/BuildOptions/
 redirect_from: /reference-manual/native-image/Options/
 ---
 
-#  Native Image Build Options
+#  Native Image Options
+
+## Build Options
 
 Depending on the GraalVM version, the options to the `native-image` builder may differ.
 
@@ -67,14 +69,7 @@ Depending on the GraalVM version, the options to the `native-image` builder may 
 * `-march`: generate instructions for a specific machine type. Defaults to `x86-64-v3` on AMD64 and `armv8-a` on AArch64. Use `-march=compatibility` for best compatibility, or `-march=native` for best performance if a native executable is deployed on the same machine or on a machine with the same CPU features. To list all available machine types, use `-march=list`.
 * `-o`: name of the output file to be generated
 
-### Macro Options
-
-* `--macro:native-image-agent-library`
-* `--macro:native-image-configure-launcher`
-* `--macro:native-image-diagnostics-agent-library`
-* `--macro:native-image-launcher`
-
-### Non-standard Options
+## Non-standard Options
 
 Run `native-image --help-extra` for non-standard options help.
 
@@ -97,9 +92,50 @@ Run `native-image --help-extra` for non-standard options help.
 * `--add-opens`: value `<module>/<package>=<target-module>(,<target-module>)` updates `<module>` to open `<package>` to `<target-module>`, regardless of module declaration
 * `--add-reads`: value `<module>=<target-module>(,<target-module>)` updates `<module>` to read `<target-module>`, regardless of module declaration. `<target-module>` can be `ALL-UNNAMED` to read all unnamed modules
 
-Native Image options are also distinguished as [hosted and runtime options](HostedvsRuntimeOptions.md).
+### Macro Options
 
-### Further Reading
+* `--macro:native-image-agent-library`
+* `--macro:native-image-configure-launcher`
+* `--macro:native-image-diagnostics-agent-library`
+* `--macro:native-image-launcher`
+* `--macro:truffle-svm`
 
-* [Native Image Hosted and Runtime Options](HostedvsRuntimeOptions.md) guide.
+## Hosted and Runtime Options
+
+Native Image options are also distinguished as hosted and runtime options.
+
+* **Hosted options**: to configure a native image build, for example, influence what is put into the native binary and how it is built. These options use the prefix `-H:`.
+* **Runtime options**: to obtain the initial value(s) when building the native binary, using the prefix `-R:`. At run time, the default prefix is `-XX:` (this is application-specific and not mandated by Native Image).
+
+For more information describing how to define and use these options, read the `com.oracle.svm.core.option` package documentation.
+
+## List of Useful Options
+
+### Build Output and Build Report
+
+Native Image can print the progress output and other various statistics during the build process.
+The build output in a JSON, machine-readable format can be requested using the `-H:BuildOutputJSONFile` option, and later processed by some monitoring tool.
+The JSON files validate against the JSON schema defined in [build-output-schema-v0.9.2.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.2.json). 
+The build reports can be request using the `-H:+BuildReport` option.
+
+### Graph Dumping
+
+Native Image re-used the options for graph dumping, logging, counters, and everything else from the GraalVM debug environment.
+These GraalVM options can be used both as hosted options (if you want to dump graphs of the `native-image` builder), and as runtime options (if you want to dump graphs during dynamic compilation at run time).
+
+The Graal compiler options that work as expected include `Dump`, `DumpOnError`, `Log`, `MethodFilter`, and the options to specify file names and ports for the dump handlers.
+For example:
+* `-H:Dump= -H:MethodFilter=ClassName.MethodName`: dump the compiler graphs of the `native-image` builder.
+* `-XX:Dump= -XX:MethodFilter=ClassName.MethodName`: dump the compile graphs at run time.
+
+### Controlling the Main Entry Points
+
+* `-H:Kind=[EXECUTABLE | SHARED_LIBRARY]`: generate an executable with a main entry point, or a shared library with all entry points that are marked via `@CEntryPoint`.
+* `-H:Class=ClassName`: the class containing the default entry point method. Ignored if `Kind == SHARED_LIBRARY`.
+* `-H:Projects=Project1,Project2`: the project that contains the application (and transitively all projects that it depends on).
+* `-H:Path=FileSystemPath`: the directory where the generated executable is placed.
+
+## Related Documentation
+
 * [Build Configuration](BuildConfiguration.md#order-of-arguments-evaluation)
+* [Native Image Build Output](BuildOutput.md)
