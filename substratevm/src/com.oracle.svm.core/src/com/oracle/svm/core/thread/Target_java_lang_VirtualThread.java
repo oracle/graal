@@ -216,6 +216,13 @@ public final class Target_java_lang_VirtualThread {
         // unimplemented (GR-45392)
     }
 
+    @Substitute
+    @SuppressWarnings({"static-method", "unused"})
+    @TargetElement(onlyWith = JDK22OrLater.class)
+    private void notifyJvmtiDisableSuspend(boolean enter) {
+        // unimplemented (GR-51158)
+    }
+
     @Alias volatile Thread carrierThread;
 
     @Alias volatile Target_sun_nio_ch_Interruptible nioBlocker;
