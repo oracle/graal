@@ -1863,7 +1863,6 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             del benchmarks["movie-lens"]
             del benchmarks["naive-bayes"]
             del benchmarks["page-rank"]
-            del benchmarks["dotty"]
             del benchmarks["neo4j-analytics"]
 
         return benchmarks
