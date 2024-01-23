@@ -41,7 +41,8 @@ If you collect the profiles across all the unit tests,
 they will over-represent parts of the code that execute rarely in practice,
 and in this way misdirect the compiler optimizations.
 
-Thus, we do not generally recommend to use your unit tests as profiles,
+In conclusion, while this is possible,
+we do not generally recommend to use your unit tests as profiles,
 because it is not clear how well they represent what the application does.
 What we recommend instead is to either:
 
@@ -60,35 +61,78 @@ What we recommend instead is to either:
 
 2. Are PGO profiles sufficiently cross platform, or should each target be instrumented separately?
 
-DRAFT:
-    - Yes they are for the most part BUT
-        - We don't do any mapping 
-            - there might be some platform specific classes and methods that are different from the profile (e.g. com.oracle.svm.core.posix.headers.linux.LinuxPthread)
-            - This profiles will be dropped and the equivalent platform-specifc class will be missing profiles
-    - Best practice is - get profiles on the same platform you build the optimized build.
+Yes, in almost all cases, the PGO profiles are sufficiently cross-platform.
+You can collect the profiles by running the instrumentation image on one platform,
+but then use those profiles to build an optimized image on a different platform.
+
+There are some cases in which Native Image uses different classes and methods
+depending on the platform for which the image was built.
+For example, the `PosixProcessPropertiesSupport` class contains code that
+manipulates processes on POSIX-based systems,
+while the `WindowsProcessPropertiesSupport` class contains code
+that manipulates processes on Windows.
+Similarly, certain parts the JDK contain platform-specific code.
+In these cases, the profile will contain entries for one platform,
+but the optimized image build will not find profile entries for its platform-specific code.
+These corner-cases are rare and typically will not result in a performance impact,
+but this is something to be aware of.
+
+In conclusion, the best practice is always to collect the profiles on the same platform
+that is the target for the optimized image.
+However, using the profiles collected on a different platform will typically work well.
 
 
 3. Can the profiling information be reused after a code change, provided it is limited,
    or do you need to collect new profiling information for each build?
 
-DRAFT:
-    - Yes they are for the most part BUT
-        - Adding methods will reduce your profile coverage
-        - Removing methods will reduce your profile applicability 
-        - Modifying methods might make the profile unaplicable  (invoke on bci x becomes on bci y, the compiler can't make the connection)
+Yes, the profiling information can always be reused, and the native image has to be correctly generated.
+It is not necessary to collect new profiling information for each build.
+
+Note, however, that the performance impact on the optimized image depends on the quality of the profiles.
+If the new code of the program significantly diverges
+from the code for which the profiles was collected,
+the compiler optimizations will be misled about which code is important.
+
+Let's consider some of the possible code changes and how they affect the program:
+
+- If you add additional methods to your codebase, that will reduce the profile coverage.
+  An optimized-image build will not be able to associate profile information to these methods,
+  so they may be suboptimally compiled.
+- If you remove existing methods from the codebase will reduce the profile's applicability.
+  Some profile entries will not be used.
+- Method renaming will do both -- from the perspective of PGO, a renamed method
+  is a different method.
+- Modifying the code of a method may prevent the the application of the profile
+  when that method is compiled during the optimized image build.
+- However, all of the above may have no performance impact
+  if the method is *cold* (i.e. infrequently executed).
+
+In conclusion, it is always possible to use an outdated profile
+to build an optimized image.
+Moreover, if the code changes are small, or limited to the cold parts of the program,
+then using the old profile will usually not compromise the performance of the optimized image.
 
 
 4. Can you also run the benchmark with an instrumented image?
 
 Yes, an instrumented native image can be produced for any program, including a benchmark.
+In fact, using a representative benchmark to collect the profiles
+is the recommended way of collecting profiles.
+
 Be aware that the instrumentation overhead will typically make the instrumented image slower
 than the default (non-instrumented) image.
+You might notice that the benchmark runs slower when compiled to an instrumented image.
 While we continually strive to minimize the overhead of instrumentation,
 you will likely notice that the instrumented image is slower,
 and your mileage will vary depending on the code patterns
 in the application that you are running.
 
-In short, if the benchmark accurately represents the workload that you will be running in production,
+Also, be aware that the benchmark should ideally be representative
+of the workload that you expect in production.
+The more the benchmark's workload corresponds to the production workload,
+the morely likely will PGO have a positive performance impact.
+
+In conclusion, if the benchmark accurately represents the workload that you will be running in production,
 then it is a good idea to collect the profiles on the instrumented benchmark image,
 and subsequently use these profiles to build an optimized image for your production workload.
 
