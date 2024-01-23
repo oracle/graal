@@ -1,16 +1,33 @@
 ---
 layout: docs
 toc_group: build-overview
-link_title: Native Image Options
-permalink: /reference-manual/native-image/overview/BuildOptions/
-redirect_from: /reference-manual/native-image/Options/
+link_title: Command-line Options
+permalink: /reference-manual/native-image/overview/Options/
+redirect_from:
+  - /reference-manual/native-image/overview/BuildOptions/
+  - /reference-manual/native-image/Options/
 ---
 
-#  Native Image Options
+# Command-line Options
+
+Options to configure Native Image are provided in the following categories:
+- Build options: run `native-image --help` for help on build options.
+- Extra build options: run `native-image --help-extra` for help on extra build options.
+- Expert build options: run `native-image --expert-options` for help on expert options.
+
+Depending on the GraalVM version, the options to the `native-image` builder may differ. 
+ 
+Native Image options can also be categorized as **hosted** or **runtime** options.
+
+* **Hosted options**: to configure the build process&mdash;for example, influence what is included in the native binary and how it is built. 
+These options use the prefix `-H:`.
+* **Runtime options**: to provide the initial value(s) when building the native binary, using the prefix `-R:`. At runtime, the default prefix is `-XX:` (this is application-specific and not mandated by Native Image).
+
+For more information describing how to define and use these options, read the [`com.oracle.svm.core.option`](https://github.com/oracle/graal/tree/master/substratevm/src/com.oracle.svm.core/src/com/oracle/svm/core/option) package documentation.
 
 ## Build Options
 
-Depending on the GraalVM version, the options to the `native-image` builder may differ.
+Run `native-image --help` for help on build options.
 
 * `-cp, -classpath, --class-path <class search path of directories and zip/jar files>`: a `:` (`;` on Windows) separated list of directories, JAR archives, and ZIP archives to search for class files
 * `-p <module path>, --module-path <module path>`: a `:` (`;` on Windows) separated list of directories. Each directory is a directory of modules.
@@ -69,11 +86,11 @@ Depending on the GraalVM version, the options to the `native-image` builder may 
 * `-march`: generate instructions for a specific machine type. Defaults to `x86-64-v3` on AMD64 and `armv8-a` on AArch64. Use `-march=compatibility` for best compatibility, or `-march=native` for best performance if a native executable is deployed on the same machine or on a machine with the same CPU features. To list all available machine types, use `-march=list`.
 * `-o`: name of the output file to be generated
 
-## Non-standard Options
+## Extra Build Options
 
-Run `native-image --help-extra` for non-standard options help.
+Run `native-image --help-extra` for help on additional options.
 
-* `--exclude-config`: exclude configuration for a comma-separated pair of classpath/modulepath pattern and resource pattern. For example: `--exclude-config foo.jar,META-INF\/native-image\/.*.properties` ignores all .properties files in _META-INF/native-image_ in all JARs named _foo.jar`-.
+* `--exclude-config`: exclude configuration for a comma-separated pair of classpath/modulepath pattern and resource pattern. For example: `--exclude-config foo.jar,META-INF\/native-image\/.*.properties` ignores all properties files in _META-INF/native-image_ in all JARs named _foo.jar_.
 * `--expert-options`: list image build options for experts
 * `--expert-options-all`: list all image build options for experts (use at your own risk). Options marked with _Extra help available_ contain help that can be shown with `--expert-options-detail`
 * `--expert-options-detail`: display all available help for a comma-separated list of option names. Pass `*` to show extra help for all options that contain it.
@@ -92,50 +109,28 @@ Run `native-image --help-extra` for non-standard options help.
 * `--add-opens`: value `<module>/<package>=<target-module>(,<target-module>)` updates `<module>` to open `<package>` to `<target-module>`, regardless of module declaration
 * `--add-reads`: value `<module>=<target-module>(,<target-module>)` updates `<module>` to read `<target-module>`, regardless of module declaration. `<target-module>` can be `ALL-UNNAMED` to read all unnamed modules
 
-### Macro Options
-
-* `--macro:native-image-agent-library`
-* `--macro:native-image-configure-launcher`
-* `--macro:native-image-diagnostics-agent-library`
-* `--macro:native-image-launcher`
-* `--macro:truffle-svm`
-
-## Hosted and Runtime Options
-
-Native Image options are also distinguished as hosted and runtime options.
-
-* **Hosted options**: to configure a native image build, for example, influence what is put into the native binary and how it is built. These options use the prefix `-H:`.
-* **Runtime options**: to obtain the initial value(s) when building the native binary, using the prefix `-R:`. At run time, the default prefix is `-XX:` (this is application-specific and not mandated by Native Image).
-
-For more information describing how to define and use these options, read the `com.oracle.svm.core.option` package documentation.
-
 ## List of Useful Options
+
+There are some expert level options that a user may find useful or needed. For example, the option to dump graphs of the `native-image` builder, or to print various statistics during the build process.
 
 ### Build Output and Build Report
 
-Native Image can print the progress output and other various statistics during the build process.
-The build output in a JSON, machine-readable format can be requested using the `-H:BuildOutputJSONFile` option, and later processed by some monitoring tool.
+Native Image provides an informative [build output](BuildOutput.md) including various statistics during the build process.
+The build output in a JSON-based, machine-readable format can be requested using the `-H:BuildOutputJSONFile` option, and later processed by a monitoring tool.
 The JSON files validate against the JSON schema defined in [build-output-schema-v0.9.2.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.2.json). 
-The build reports can be request using the `-H:+BuildReport` option.
+A comprehensive report with additional information can be requested using the `-H:+BuildReport` option.
 
 ### Graph Dumping
 
 Native Image re-used the options for graph dumping, logging, counters, and everything else from the GraalVM debug environment.
-These GraalVM options can be used both as hosted options (if you want to dump graphs of the `native-image` builder), and as runtime options (if you want to dump graphs during dynamic compilation at run time).
+These GraalVM options can be used both as **hosted options** (if you want to dump graphs of the `native-image` builder), and as **runtime** options (if you want to dump graphs during dynamic compilation at runtime).
 
 The Graal compiler options that work as expected include `Dump`, `DumpOnError`, `Log`, `MethodFilter`, and the options to specify file names and ports for the dump handlers.
 For example:
 * `-H:Dump= -H:MethodFilter=ClassName.MethodName`: dump the compiler graphs of the `native-image` builder.
-* `-XX:Dump= -XX:MethodFilter=ClassName.MethodName`: dump the compile graphs at run time.
-
-### Controlling the Main Entry Points
-
-* `-H:Kind=[EXECUTABLE | SHARED_LIBRARY]`: generate an executable with a main entry point, or a shared library with all entry points that are marked via `@CEntryPoint`.
-* `-H:Class=ClassName`: the class containing the default entry point method. Ignored if `Kind == SHARED_LIBRARY`.
-* `-H:Projects=Project1,Project2`: the project that contains the application (and transitively all projects that it depends on).
-* `-H:Path=FileSystemPath`: the directory where the generated executable is placed.
+* `-XX:Dump= -XX:MethodFilter=ClassName.MethodName`: dump the compile graphs at runtime.
 
 ## Related Documentation
 
 * [Build Configuration](BuildConfiguration.md#order-of-arguments-evaluation)
-* [Native Image Build Output](BuildOutput.md)
+* [Build Overview](BuildOverview.md)
