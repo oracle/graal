@@ -1,14 +1,50 @@
 # Optimization
 
-Bytecode interpreters commonly employ [quickening](https://dl.acm.org/doi/10.1145/1869631.1869633) and [superinstructions](https://dl.acm.org/doi/abs/10.1145/1059579.1059583) to achieve better interpreted performance. This section discusses how to employ these optimizations in Bytecode DSL interpreters.
+Bytecode interpreters commonly employ a variety of optimizations to achieve better interpreted performance. 
+This section discusses how to employ these optimizations in Bytecode DSL interpreters.
+
+## Boxing elimination
+
+A major source of overhead in interpreted code (for both Truffle AST and bytecode interpreters) is boxing.
+By default, values are passed between operations as objects, which forces primitive values to be boxed up.
+Often, the boxed value is subsequently unboxed when it gets consumed.
+
+Boxing elimination avoids these unnecessary boxing steps.
+The interpreter can speculatively rewrite bytecode to pass primitive values between operations whenever possible.
+
+To enable boxing elimination, specify a set of `boxingEliminationTypes` on the `@GenerateBytecode` annotation. For example, the following configuration
+
+```
+@GenerateBytecode(
+    ...
+    boxingEliminationTypes = {long.class, boolean.class}
+)
+```
+
+will instruct the interpreter to automatically avoid boxing for `long` and `boolean` values.
+
+Boxing elimination is implemented using quickening, which is described below.
 
 ## Quickening
 
-**TODO**: talk about how quickening works, how it connects with BE, @ForceQuickening, and tracing
+[Quickening](https://dl.acm.org/doi/10.1145/1869631.1869633) is a general technique to rewrite an instruction with a specialized version that (typically) requires less work.
+Bytecode DSL supports quickened operations, which handle a subset of the specializations defined by an operation.
+
+Quickened operations can reduce the amount of work required to evaluate an operation.
+For example, a quickened operation that only accepts `int` inputs can avoid operand boxing and the additional type checks required by the general operation.
+
+Quickened instructions can be automatically derived using [tracing](#tracing), or specified manually using `@ForceQuickening`.
+
 
 ## Superinstructions
 
 **Note: Superinstructions are not yet supported**.
+
+[Superinstructions](https://dl.acm.org/doi/abs/10.1145/1059579.1059583) combine common sequences of instructions together into single instructions.
+Using superinstructions can reduce the overhead of instruction dispatch, and it can enable the host compiler to perform optimizations across the instructions (e.g., eliding a stack push for a value that is subsequently popped).
+
+Superinstructions can be automatically derived using [tracing](#tracing).
+
 
 ## Tracing
 

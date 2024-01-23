@@ -19,6 +19,7 @@ This section is a user manual for Bytecode DSL. It should be consulted in combin
     - [Source information](#source-information)
     - [Instrumentation](#instrumentation)
     - [Bytecode index introspection](#bytecode-index-introspection)
+    - [Parsing modes](#parsing-modes)
     - [Reparsing](#reparsing)
     - [Continuations](#continuations)
 
@@ -33,7 +34,7 @@ The DSL defines several built-in operations. Each operation takes a certain numb
 * Produces value: N/A
 * `beginRoot` arguments: (`TruffleLanguage<?>`)
 
-Each Root operation defines one function (i.e. a `RootNode`). Its children define the body of the function. Root is the only permitted top-level operation; all others must be enclosed inside a Root operation. The control flow must never reach the end of the Root operation (i.e., it should return). The `beginRoot` function takes the language instance as a parameter, which is used to construct the `RootNode`. The `endRoot` function returns the resulting `RootNode`.
+Each Root operation defines one function (i.e., a `RootNode`). Its children define the body of the function. Root is the only top-level operation; all others must be enclosed inside a Root operation. The control flow must never reach the end of the Root operation (i.e., it should return). The `beginRoot` function takes the language instance as a parameter, which is used to construct the `RootNode`. The `endRoot` function returns the resulting `RootNode`.
 
 To simplify parsing, root operations can be nested. However, the generated nodes are independent (a nested root node does not have access to the outer node's locals).
 
@@ -122,7 +123,7 @@ While implements the `while (cond) body` Java language construct. It evaluates `
 * `value` must produce a value
 * Requires `enableYield` feature
 
-Yield executes `value`, suspends execution at the given point, and returns a `ContinuationResult` containing the result. At a later time, a caller can resume a `ContinuationResult`, continuing execution after the Yield (see [Yielding and coroutines](#yielding-and-coroutines)). When resuming, the caller passes a value that becomes the value produced by the Yield.
+Yield executes `value`, suspends execution at the given point, and returns a `ContinuationResult` containing the result (see [Yielding and coroutines](#yielding-and-coroutines)). At a later time, a caller can resume a `ContinuationResult`, continuing execution after the Yield. When resuming, the caller passes a value that becomes the value produced by the Yield.
 
 `TryCatch(body, handler)`
 * Produces value: no
@@ -134,8 +135,11 @@ TryCatch executes its `body`. If any Truffle exception occurs during the executi
 * Produces value: no
 * `beginFinallyTry` arguments: (`BytecodeLocal`)
 
-FinallyTry executes its `body`. After the execution finishes (either normally, exceptionally, or via a control flow operation like Return or Branch), the `handler` is executed. If the `body` finished exceptionally, the Truffle exception is stored in the given local; otherwise, the value of the local is null when the `handler` executes. After executing the `handler`, if the `body` finished normally or exceptionally, control flow continues after the FinallyTry; otherwise, it continues where the control flow operation would have taken it (e.g., to a label that was branched to).
-This operation models the `try ... finally` construct in the Java language, but the user provides the finally handler as the first operation in order to simplify and speed up bytecode generation.
+FinallyTry executes its `body`. After the execution finishes (either normally, exceptionally, or via a control flow operation like Return or Branch), the `handler` is executed. If the `body` finished exceptionally, the Truffle exception is stored in the given local; otherwise, the value of the local is `null` when the `handler` executes. After executing the `handler`, if the `body` finished normally or exceptionally, control flow continues after the FinallyTry; otherwise, it continues where the control flow operation would have taken it (e.g., to a label that was branched to).
+This operation models the `try ... finally` construct in the Java language.
+
+Note the ordering of the child operations.
+The finally handler is the first operation in order to simplify and speed up bytecode generation.
 
 `FinallyTryNoExcept(handler, body)`
 * Produces value: no
@@ -180,40 +184,79 @@ Tag associates the enclosed `children` operations with the given tag for instrum
 
 ## Defining custom operations
 
-Custom operations are defined using Java classes. They can be defined in two ways: by placing them inside the operations class and annotating them with `@Operation`, or by proxying them by annotating the operations class itself with `@OperationProxy` and referencing the operation specification class.
+Custom operations are defined using Java classes in one of two ways:
 
-In both cases, the operation class can be one of two things: a Truffle DSL Node that will be converted into an Operation, or an operation implemented from scratch. The first approach is useful if the language is migrating from an AST based to Bytecode DSL based interpreter, while the second is useful if the language is writing the Bytecode DSL implementation from scratch.
+1. Typically, operations are defined as inner classes of the root class annotated with `@Operation`.
+2. To support migration from an AST interpreter, custom operations can also be *proxies* of existing existing Truffle node classes. To define an operation proxy, the root class should have an `@OperationProxy` annotation referencing the node class, and the node class itself should be marked `@OperationProxy.Proxyable`. Proxied nodes have additional restrictions compared to regular Truffle AST nodes, so making a node proxyable can require some (minimal) refactoring.
 
-In case of the Node implementation, semantics equivalent to Truffle DSL can be expected, with the restriction of having all specialization be declared static. In case of the non-Node operation definition, the class must not have instance members, must be non-nested and `final`, must only extend `Object` and must not have explicit constructors.
+Both approaches are demonstrated below:
+```
+@GenerateBytecode(...)
+@OperationProxy(MyNode.class)
+public abstract class MyBytecodeRootNode extends RootNode implements BytecodeRootNode {
+  @Operation
+  public static final MyOperation {
+    @Specialization
+    public static int doInt(int num) { ... }
 
-The semantics of the operation are then defined using the @Specialization annotated methods. Note that in the Node case, any `execute` methods are ignored, and the semantics is purely derived from the specializations. Aditionally, any existing NodeChild annotations are ignored, and instead the semantics of nesting operations explained above is used.
+    @Specialization
+    public static Object doObject(Object obj) { ... }
+  }
+}
+
+@OperationProxy.Proxyable
+public abstract MyNode extends Node {
+    ...
+}
+
+```
+
+Operation classes define `@Specialization`s in much the same way as Truffle DSL nodes, with some additional restrictions.
+All specialization methods (and any members referenced by guards/cache initializers) must be static and visible to the generated node (i.e., public or non-private).
+Additionally, they cannot define instance members.
+For regular (non-proxied) operations, specializations should also be marked `final`, may only extend `Object`, and cannot have explicit constructors.
+
+
+The semantics of an operation is determined entirely by its `@Specialization`s.
+Note that for proxied nodes, any `execute` methods that they define are ignored.
+Similarly, node fields annotated with `@NodeChild` are ignored; instead, a child value is supplied by child operations.
 
 ### Specialization parameters
 
-Each specialization method has parameters that define the semantics of it, as well as the operation as a whole. They must be in the following order:
+Each specialization of an operation can define a certain set of parameters.
+The non-frame and non-DSL parameters define a "signature" for the operation; this signature must be consistent across all specialization methods.
+Parameters must be declared in the following order:
 
 * An optional `Frame` or `VirtualFrame` parameter.
 * The value parameters. All specializations within an operation must have the same number of value parameters, but their types can change.
-* An optional `@Variadic`-annotated parameter, with the type `Object[]`. Either all or none of the specializations must have this parameter. If present, the operation is considered variadic.
-* Optional `LocalSetter` parameters. All specializations within an operation must have the same number of `LocalSetter` parameters (see "Multiple results with LocalSetter")
-* Optional `LocalSetterRange` parameters. Similar to `LocalSetter`.
+* An optional `@Variadic`-annotated parameter with the type `Object[]` can be the last value parameter (see [Variadic operations](#variadic-operations)). Either all or none of the specializations must have this parameter. 
+* Zero or more `LocalSetter` parameters. All specializations within an operation must have the same number of `LocalSetter` parameters (see [Multiple results with LocalSetter](#multiple-results-with-localsetter))
+* Zero or more `LocalSetterRange` parameters. Similar to `LocalSetter`, but for a contiguous range of locals.
 * Any Truffle DSL parameters, annotated with `@Cached` or `@Bind`. Each specialization can have a different number of these.
 
-Furthermore, either all or none of the specializations must be declared as returning `void`. This will define if the custom operation is considere to be returning a value or not.
+All specializations must have either a `void` or non-`void` return type, which determines whether the custom operation produces a value.
 
-If the operation is non-variadic and has no value parameters, the `emit` method will be defined for it in the Builder. Otherwise, a pair of `begin` and `end` methods will be defined.
+If the operation has no value parameters (i.e., no data dependencies), an  `emit` method will be defined for it in the `Builder`.
+Otherwise, a pair of `begin` and `end` methods will be defined.
+These methods can be used to emit the operation during parsing.
 
-The `begin` or `emit` methods will require one `BytecodeLocal` argument for each `LocalSetter`, and one `BytecodeLocal[]` for each `LocalSetterRange` parameter defined on the operation's specializations.
+The `begin`/`emit` methods require one `BytecodeLocal` argument for each `LocalSetter`, and one `BytecodeLocal[]` for each `LocalSetterRange` parameter in the operation's signature.
 
 ### Variadic operations
 
-Custom operations can be made variadic by adding a `@Variadic`-annotated parameter to all their specializations, after the regular value parameters.
+Custom operations can be made variadic – that is, they can take zero or more values for their last argument.
+To make an operation variadic, each specialization should declare an `Object[]` as the last value parameter and it should be annotated with `@Variadic`.
 
-The number of regular value parameters defines the minimum number of children for the operation, while all the remaining ones will be collected into one `Object[]` and passed to the variadic parameter. The length of that array will always be a compilation-time constant.
+The number of regular value parameters defines the minimum number of children for the operation; all of the remaining ones will be collected into one `Object[]` and passed for the variadic parameter.
+The variadic array's length is always a compilation-time constant (its length is encoded in the bytecode).
 
 ### Multiple results with LocalSetter
 
-Some custom operations require returning multiple values, or just want to be able to modify local variables as part of their execution. To do this, operations can define `LocalSetter` and `LocalSetterRange` parameters. `LocalSetter` represents one local variable, that can be set from the operation. `LocalSetterRange` represents a range of variables, all of which will be settable from the operation, using an index. This is similar to by-reference parameter semantics of languages such as `C++`, however reading is now allowed (the current value can still be obtained by passing it as a regular value parameter).
+Each operation can produce a single value (by returning it), but some operations may actually produce multiple results.
+Moreover, an operation may wish to modify local variables during execution.
+For either use case, an operation can declare `LocalSetter` and `LocalSetterRange` parameters, which allow it to modify the values of local variables.
+`LocalSetter` represents one local variable, whereas `LocalSetterRange` represents a contiguous range of variables.
+
 
 ## Defining short-circuiting custom operations
 
@@ -482,6 +525,8 @@ TODO
 TODO
 
  (One way to obtain the bytecode index is to bind the the `$bci` pseudovariable as a parameter to an operation specialization).
+
+### Parsing modes
 
 ### Reparsing
 
