@@ -162,7 +162,7 @@ public final class CallTreeInfo {
                 for (AnalysisMethod callee : invokeInfo.getAllCallees()) {
                     if (SubstrateCompilationDirectives.isRuntimeCompiledMethod(callee)) {
                         MethodNode calleeMethodNode = analysisMethodMap.get(callee);
-                        if (calleeMethodNode.trace == null) {
+                        if (calleeMethodNode != null && calleeMethodNode.trace == null) {
                             /*
                              * If this was the first time this node was reached, then add to
                              * worklist.
