@@ -915,7 +915,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             }
         }
 
-        nodeConstants.prependToClass(cacheClass);
+        nodeConstants.addToClass(cacheClass);
 
         return cacheClass;
     }
@@ -1357,7 +1357,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             }
 
         }
-        nodeConstants.prependToClass(uncachedClass);
+        nodeConstants.addToClass(uncachedClass);
         return uncachedClass;
 
     }

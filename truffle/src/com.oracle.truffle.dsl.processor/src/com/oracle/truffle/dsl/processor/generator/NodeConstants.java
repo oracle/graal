@@ -56,7 +56,7 @@ public final class NodeConstants {
     public final Map<String, CodeVariableElement> updaterReferences = new LinkedHashMap<>();
     private final Map<String, CodeExecutableElement> helperMethods = new LinkedHashMap<>();
 
-    public void prependToClass(CodeTypeElement clazz) {
+    public void addToClass(CodeTypeElement clazz) {
         // prepend constant fields.
         clazz.getEnclosedElements().addAll(0, updaterReferences.values());
         updaterReferences.clear();
