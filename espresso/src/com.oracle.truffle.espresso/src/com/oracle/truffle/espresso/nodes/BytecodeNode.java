@@ -454,11 +454,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     private final MethodVersion methodVersion;
 
-    // Normally null except when resuming a continuation. Points at an object representing the frame
-    // we need to resume.
-    // TODO: As this isn't final nor compilation-final, it's probably the wrong place to be.
-    private ContinuationSupport.HostFrameRecord hostFrameRecord;
-
     public BytecodeNode(MethodVersion methodVersion) {
         CompilerAsserts.neverPartOfCompilation();
         Method method = methodVersion.getMethod();
@@ -506,10 +501,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     private void initArguments(VirtualFrame frame) {
         Object[] arguments = frame.getArguments();
 
-        if (maybePrepareForContinuation(frame)) {
-            return;
-        }
-
         boolean hasReceiver = !getMethod().isStatic();
         int receiverSlot = hasReceiver ? 1 : 0;
         int curSlot = 0;
@@ -554,6 +545,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     }
 
     // region Continuations
+    private static final Object hfrPassthroughSlotKey = new Object();
+
     // Possibly initializes the frame from the frame record passed through the
     // continuations-specific calling convention.
     private boolean maybePrepareForContinuation(VirtualFrame frame) {
@@ -563,17 +556,17 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         // Calling convention: arg[0] might be the receiver for a non-static method, the arg after
         // that is the record.
         boolean hasReceiver = !getMethod().isStatic();
-        if (hasReceiver && arguments.length == 2 && arguments[1] instanceof ContinuationSupport.HostFrameRecord hfr_) {
-            record = hfr_;
-        } else if (!hasReceiver && arguments.length == 1 && arguments[0] instanceof ContinuationSupport.HostFrameRecord hfr_) {
-            record = hfr_;
+        if (hasReceiver && arguments.length == 2 && arguments[1] instanceof ContinuationSupport.HostFrameRecord hfr) {
+            record = hfr;
+        } else if (!hasReceiver && arguments.length == 1 && arguments[0] instanceof ContinuationSupport.HostFrameRecord hfr) {
+            record = hfr;
         } else {
             return false;
         }
 
         CompilerDirectives.transferToInterpreter();
 
-        hostFrameRecord = record;
+        getRoot().setContinuationHostFrameRecord(frame, record);
 
         // Blindly copy stuff in.
         // TODO: This will break when assertions are enabled because we're not copying tags.
@@ -630,11 +623,13 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
         // Now proceed through to the next frame, which will be resumed in turn unless it's null
         // (end of stack).
-        ContinuationSupport.HostFrameRecord nextFrame = hostFrameRecord.next;
-        hostFrameRecord = null;
+        var hostFrameRecord = getRoot().getContinuationHostFrameRecord(frame);
+        assert hostFrameRecord != null;  // If this fires this class has been edited
+        var nextFrameRecord = hostFrameRecord.next;
+
         int slotsNeededForReturnType;
-        if (nextFrame != null) {
-            slotsNeededForReturnType = invoke.resumeContinuation(frame, nextFrame);
+        if (nextFrameRecord != null) {
+            slotsNeededForReturnType = invoke.resumeContinuation(frame, nextFrameRecord);
         } else {
             // Reached the end of the stack - this is where we suspended, so we want to continue
             // here as if nothing had happened.
@@ -658,8 +653,11 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         // Before arguments are set up, the frame is in a weird spot in which inspecting the frame
         // is pretty meaningless. Return the 'Unknown bci' value to signify that.
         setBCI(frame, -1);
-        // Push frame arguments into locals.
-        initArguments(frame);
+        // When we're resuming a continuation we'll already have all the arguments on the resumed
+        // stack frame, so shouldn't do it again.
+        if (!maybePrepareForContinuation(frame)) {
+            initArguments(frame);
+        }
         // Initialize the BCI slot.
         setBCI(frame, 0);
     }
@@ -710,7 +708,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     @Override
     public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
         EspressoOSRInterpreterState state = (EspressoOSRInterpreterState) interpreterState;
-        return executeBodyFromBCI(osrFrame, target, state.top, state.nextStatementIndex, true);
+        return executeBodyFromBCI(osrFrame, target, state.top, state.nextStatementIndex, true, false);
     }
 
     @Override
@@ -751,29 +749,32 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     @Override
     public Object execute(VirtualFrame frame) {
+        // Are we resuming a continuation?
+        var hostFrameRecord = getRoot().getContinuationHostFrameRecord(frame);
         if (hostFrameRecord != null) {
-            // Resuming a continuation.
+            // If yes then the frame was already set up, and we need to resume in the middle.
             return executeBodyFromBCI(frame,
                             getBCI(frame),
                             hostFrameRecord.sp,
                             0,   // TODO
-                            true  // TODO: Rename this argument.
+                            false, // isOSR
+                            true   // isContinuationResume
             );
         } else {
             int startTop = startingStackOffset(getMethodVersion().getMaxLocals());
-            return executeBodyFromBCI(frame, 0, startTop, 0, false);
+            return executeBodyFromBCI(frame, 0, startTop, 0, false, false);
         }
     }
 
     @SuppressWarnings("DataFlowIssue")   // Too complex for IntelliJ to analyze.
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     @BytecodeInterpreterSwitch
-    private Object executeBodyFromBCI(VirtualFrame frame, int startBCI, int startTop, int startStatementIndex, boolean isOSR) {
+    private Object executeBodyFromBCI(VirtualFrame frame, int startBCI, int startTop, int startStatementIndex, boolean isOSR, boolean isContinuationResume) {
         CompilerAsserts.partialEvaluationConstant(startBCI);
         final InstrumentationSupport instrument = this.instrumentation;
         int statementIndex = InstrumentationSupport.NO_STATEMENT;
         int nextStatementIndex = startStatementIndex;
-        boolean skipEntryInstrumentation = isOSR;
+        boolean skipEntryInstrumentation = isOSR || isContinuationResume;
         boolean skipLivenessActions = false;
 
         final Counter loopCount = new Counter();
@@ -788,8 +789,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         if (instrument != null && !skipEntryInstrumentation) {
             instrument.notifyEntry(frame, this);
         }
-        // During OSR, the method is not executed from the beginning hence onStart is not applicable
-        if (!isOSR) {
+
+        // During OSR or continuation resume, the method is not executed from the beginning hence
+        // onStart is not applicable.
+        if (!isOSR && !isContinuationResume) {
             livenessAnalysis.onStart(frame, skipLivenessActions);
         }
 
@@ -805,7 +808,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 CompilerAsserts.partialEvaluationConstant(statementIndex);
                 CompilerAsserts.partialEvaluationConstant(nextStatementIndex);
 
-                if (hostFrameRecord != null) {
+                if (isContinuationResume) {
                     // We're in the middle of resuming a continuation so re-perform the invoke we're
                     // pointing at, but using the special calling sequence that avoids (re)reading
                     // the arguments from the interpreter stack. The stack frame we're resuming is
@@ -813,6 +816,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                     // unwind will be processed as normal.
 
                     // TODO(hearn): statementIndex
+                    isContinuationResume = false;
                     top += resumeContinuation(frame, top, curBCI, curOpcode, statementIndex);
                     curBCI = curBCI + Bytecodes.lengthOf(curOpcode);
                     continue;

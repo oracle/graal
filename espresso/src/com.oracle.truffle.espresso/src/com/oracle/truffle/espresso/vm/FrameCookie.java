@@ -43,16 +43,17 @@ public final class FrameCookie {
     enum CookieKind {
         Privileged,
         StackWalk,
+        ContinuationResume
     }
 
     private final CookieKind kind;
-    private final long data;
+    private final Object data;
 
-    public long getData() {
+    public Object getData() {
         return data;
     }
 
-    private FrameCookie(CookieKind kind, long data) {
+    private FrameCookie(CookieKind kind, Object data) {
         this.kind = kind;
         this.data = data;
     }
@@ -65,6 +66,10 @@ public final class FrameCookie {
         return new FrameCookie(CookieKind.StackWalk, data);
     }
 
+    public static FrameCookie createResumeCookie(ContinuationSupport.HostFrameRecord data) {
+        return new FrameCookie(CookieKind.ContinuationResume, data);
+    }
+
     public boolean isPrivileged() {
         return kind == CookieKind.Privileged;
     }
@@ -72,4 +77,9 @@ public final class FrameCookie {
     public boolean isStackWalk() {
         return kind == CookieKind.StackWalk;
     }
+
+    public boolean isResume() {
+        return kind == CookieKind.ContinuationResume;
+    }
+
 }

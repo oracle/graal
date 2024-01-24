@@ -60,6 +60,13 @@ import java.lang.reflect.Method;
  * hosting thread would see. Continuations are also not thread safe.
  * </p>
  *
+ * <p>
+ * Exceptions thrown from the entry point propagate out of {@link #resume()} and then mark the
+ * continuation as failed. Resuming the exception after that point will fail with {@link
+ * IllegalStateException}. If you want to retry a failed continuation you must have a clone from
+ * before the failure (see below).
+ * </p>
+ *
  * <h1>Serialization</h1>
  *
  * <p>
@@ -92,7 +99,6 @@ public final class Continuation {
     // language impls.
     // - Feature: Add more data to FrameRecord so we can do consistency checks in case the code has
     // changed.
-    // - (lowpri) Refactor to use frame slots and avoid having a non-final field in BytecodeNode.
 
     // We want a compact serialized representation, so use fields judiciously here.
 
@@ -247,10 +253,19 @@ public final class Continuation {
     }
 
     /**
+     * <p>
      * Runs the continuation until it either completes or calls {@link SuspendCapability#suspend()}.
      * The difference between the two reasons for returning is visible in {@link #getState()}. A
-     * continuation may not be resumed if it's already {@link State#COMPLETED} or
-     * {@link State#FAILED}, nor if it is already {@link State#RUNNING}.
+     * continuation may not be resumed if it's already {@link State#COMPLETED} or {@link
+     * State#FAILED}, nor if it is already {@link State#RUNNING}.
+     * </p>
+     *
+     * <p>
+     * If an exception is thrown by the continuation and escapes the entry point, it will be
+     * rethrown here. The continuation is then no longer usable and must be discarded.
+     * </p>
+     *
+     * @throws IllegalStateException if the {@link #getState()} is not {@link State#SUSPENDED}.
      */
     public void resume() {
         // Are we in the special waiting-to-start state?
