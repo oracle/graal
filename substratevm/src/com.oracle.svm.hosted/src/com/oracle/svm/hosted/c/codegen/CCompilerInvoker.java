@@ -177,7 +177,7 @@ public abstract class CCompilerInvoker {
             }
         }
 
-        private void skipLineIfHasNext(Scanner scanner, String expectedToken) {
+        private static void skipLineIfHasNext(Scanner scanner, String expectedToken) {
             if (scanner.hasNext(expectedToken)) {
                 scanner.nextLine();
             } else {
