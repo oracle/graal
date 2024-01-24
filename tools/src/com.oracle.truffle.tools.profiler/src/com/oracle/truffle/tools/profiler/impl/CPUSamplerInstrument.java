@@ -66,12 +66,13 @@ public class CPUSamplerInstrument extends TruffleInstrument {
     static final String VERSION = "0.5.0";
     private CPUSampler sampler;
 
-    // Guest languages could change the working directory of the current process,
-    // The JVM assumes that the working directory does not change.
-    // When this assumption is broken relative file paths no longer work correctly.
-    // For this reason we save the absolute path to the output file at the very start so that we
-    // avoid issues of broken relative paths
-    // See GR-36526 for more context.
+    /*
+     * Guest languages could change the working directory of the current process, The JVM assumes
+     * that the working directory does not change. When this assumption is broken relative file
+     * paths no longer work correctly. For this reason we save the absolute path to the output file
+     * at the very start so that we avoid issues of broken relative paths See GR-36526 for more
+     * context.
+     */
     private String absoluteOutputPath;
 
     @SuppressWarnings("unchecked")

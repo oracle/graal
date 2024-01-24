@@ -118,7 +118,7 @@ class CPUTracerCLI extends ProfilerCLI {
 
     protected static PrintStream chooseOutputStream(TruffleInstrument.Env env, String absoluteOutputPath) {
         try {
-            if (CPUTracerCLI.OUTPUT_FILE.hasBeenSet(env.getOptions())) {
+            if (absoluteOutputPath != null) {
                 final File file = new File(absoluteOutputPath);
                 return new PrintStream(new FileOutputStream(file));
             } else {
