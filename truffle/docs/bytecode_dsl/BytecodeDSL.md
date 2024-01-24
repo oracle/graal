@@ -190,12 +190,12 @@ public static ExampleBytecodeRootNode parseExample(ExampleLanguage language, Exp
 ```
 
 We first invoke the `ExampleBytecodeRootNodeGen#create` function, which is the entry-point for parsing.
-Its first argument is a `BytecodeConfig`, which defines a [parsing mode](UserGuide.md#parsing-modes).
+Its first argument is a `BytecodeConfig`, which defines a [parsing mode](UserGuide.md#reparsing-metadata).
 The default mode is sufficient for most use cases.
 
 The second argument is the parser. The parser implements the `BytecodeParser` functional interface, which uses a supplied `Builder` argument to parse a guest language program.
 In this example, the parser uses the visitor to parse `program`, wrapping the operations in `Root` and `Return` operations.
-The parser must be deterministic (i.e., each parse should produce the same sequence of `Builder` calls), since it may be called more than once to implement [reparsing](#reparsing).
+The parser must be deterministic (i.e., each parse should produce the same sequence of `Builder` calls), since it may be called more than once to implement [reparsing](UserGuide.md#reparsing-metadata).
 
 The result is a `BytecodeNodes` instance, which acts as a wrapper class for the `BytecodeRootNode`s produced by the parse (along with other shared information). The nodes can be extracted using `getNode()` or `getNodes()`.
 

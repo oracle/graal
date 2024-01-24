@@ -2,27 +2,6 @@
 
 This section is a user manual for Bytecode DSL. It should be consulted in combination with the Javadoc when implementing a Bytecode DSL interpreter.
 
-- [Bytecode DSL user guide](#bytecode-dsl-user-guide)
-  - [Built-in operations](#built-in-operations)
-    - [Basic operations](#basic-operations)
-    - [Control flow operations](#control-flow-operations)
-    - [Metadata operations](#metadata-operations)
-  - [Defining custom operations](#defining-custom-operations)
-    - [Specialization parameters](#specialization-parameters)
-    - [Variadic operations](#variadic-operations)
-    - [Multiple results with LocalSetter](#multiple-results-with-localsetter)
-  - [Defining short-circuiting custom operations](#defining-short-circuiting-custom-operations)
-  - [Defining locals and labels](#defining-locals-and-labels)
-    - [Using materialized local reads and writes](#using-materialized-local-reads-and-writes)
-  - [Translating your language into operations](#translating-your-language-into-operations)
-  - [Features](#features)
-    - [Source information](#source-information)
-    - [Instrumentation](#instrumentation)
-    - [Bytecode index introspection](#bytecode-index-introspection)
-    - [Parsing modes](#parsing-modes)
-    - [Reparsing](#reparsing)
-    - [Continuations](#continuations)
-
 ## Built-in operations
 
 The DSL defines several built-in operations. Each operation takes a certain number of child operations (e.g., `Op(child1, child2)`), or takes a variadic number of arguments (e.g., `Op(children*)`). Some operations may produce a value.
@@ -65,7 +44,7 @@ LoadArgument reads an argument from the frame using the given index and produces
 * Produces value: yes
 * `emitLoadLocal` arguments: (`BytecodeLocal`)
 
-LoadLocal reads the given local from the frame and produces the current value (see [Defining locals and labels](#defining-locals-and-labels)). If a value has not been written to the local, LoadLocal produces the default value as defined by the `FrameDescriptor` (`null` by default).
+LoadLocal reads the given local from the frame and produces the current value (see [Locals](#locals)). If a value has not been written to the local, LoadLocal produces the default value as defined by the `FrameDescriptor` (`null` by default).
 
 `StoreLocal(value)`
 * Produces value: no
@@ -123,7 +102,7 @@ While implements the `while (cond) body` Java language construct. It evaluates `
 * `value` must produce a value
 * Requires `enableYield` feature
 
-Yield executes `value`, suspends execution at the given point, and returns a `ContinuationResult` containing the result (see [Yielding and coroutines](#yielding-and-coroutines)). At a later time, a caller can resume a `ContinuationResult`, continuing execution after the Yield. When resuming, the caller passes a value that becomes the value produced by the Yield.
+Yield executes `value`, suspends execution at the given point, and returns a `ContinuationResult` containing the result (see [Continuations](#continuations)). At a later time, a caller can resume a `ContinuationResult`, continuing execution after the Yield. When resuming, the caller passes a value that becomes the value produced by the Yield.
 
 `TryCatch(body, handler)`
 * Produces value: no
@@ -150,7 +129,7 @@ FinallyTryNoExcept has the same semantics as FinallyTry, except the `handler` is
 * Produces value: no
 * `emitLabel` arguments: (`BytecodeLabel`)
 
-Label defines a location in the bytecode that can be used as a forward branch target. Its argument is a `BytecodeLabel` allocated by the builder (see [Defining locals and labels](#defining-locals-and-labels)). Each `BytecodeLabel` must be defined exactly once, and it should be defined directly inside the same operation in which it is created.
+Label defines a location in the bytecode that can be used as a forward branch target. Its argument is a `BytecodeLabel` allocated by the builder (see [Labels](#labels)). Each `BytecodeLabel` must be defined exactly once, and it should be defined directly inside the same operation in which it is created.
 
 `Branch`
 * Produces value: N/A
@@ -229,8 +208,8 @@ Parameters must be declared in the following order:
 
 * An optional `Frame` or `VirtualFrame` parameter.
 * The value parameters. All specializations within an operation must have the same number of value parameters, but their types can change.
-* An optional `@Variadic`-annotated parameter with the type `Object[]` can be the last value parameter (see [Variadic operations](#variadic-operations)). Either all or none of the specializations must have this parameter. 
-* Zero or more `LocalSetter` parameters. All specializations within an operation must have the same number of `LocalSetter` parameters (see [Multiple results with LocalSetter](#multiple-results-with-localsetter))
+* An optional `@Variadic`-annotated parameter with the type `Object[]` can be the last value parameter (see [Variadic operations](#variadic-operations)). Either all or none of the specializations must have this parameter.
+* Zero or more `LocalSetter` parameters. All specializations within an operation must have the same number of `LocalSetter` parameters (see [Producing multiple results with LocalSetter](#producing-multiple-results-with-localsetter))
 * Zero or more `LocalSetterRange` parameters. Similar to `LocalSetter`, but for a contiguous range of locals.
 * Any Truffle DSL parameters, annotated with `@Cached` or `@Bind`. Each specialization can have a different number of these.
 
@@ -250,35 +229,85 @@ To make an operation variadic, each specialization should declare an `Object[]` 
 The number of regular value parameters defines the minimum number of children for the operation; all of the remaining ones will be collected into one `Object[]` and passed for the variadic parameter.
 The variadic array's length is always a compilation-time constant (its length is encoded in the bytecode).
 
-### Multiple results with LocalSetter
+### Producing multiple results with LocalSetter
 
-Each operation can produce a single value (by returning it), but some operations may actually produce multiple results.
-Moreover, an operation may wish to modify local variables during execution.
-For either use case, an operation can declare `LocalSetter` and `LocalSetterRange` parameters, which allow it to modify the values of local variables.
-`LocalSetter` represents one local variable, whereas `LocalSetterRange` represents a contiguous range of variables.
+Each operation can produce a single value (by returning it), but some operations may wish to produce multiple results.
+Moreover, an operation may wish to modify [local variables](#locals) during execution.
+For either use case, an operation can declare `LocalSetter` parameters, which allow operations to store values into local variables using their `set` methods.
 
+When parsing an operation that declares `LocalSetter`s, the language specifies a `BytecodeLocal` for each `LocalSetter`; then, during execution, the operation is implicitly passed `LocalSetter`s that can write values to the locals.
+
+For operations that need to update a contiguous range of locals (i.e., locals that were allocated sequentially), there is also `LocalSetterRange`.
+During parsing, the language supplies an array of `BytecodeLocal`s, and then at run time they can be updated by index.
 
 ## Defining short-circuiting custom operations
 
-One common pattern of language operations is the short-circuiting operations. These include logical short-circuiting operations (e.g. `&&` and `||` in Java, but also null-coalescing operators in some languages, etc.).
+One limitation of regular operations is that they are *eager*: all of the child operations are evaluated before the operation itself evaluates.
+Many languages define *short-circuiting* operators (e.g., Java's `&&`) which can evaluate a subset of their operands, terminating early when an operand meets a particular condition (e.g., when it is `true`).
 
-Regular custom operations in Bytecode DSL cannot influence the execution of their children, since they are always eagerly executed. For this reason Bytecode DSL allows creation of short-circuiting custom operations. The short-circuiting custom operation is defined using a "boolean converter" operation and a "continue when" value.
+Bytecode DSL allows you to define `ShortCircuitOperation`s to implement short-circuiting behaviour.
+A short-circuit operation implements `AND` or `OR` semantics, executing each child operation until the first `false` or `true` value, respectively.
+Since operands will not necessarily be `boolean`s (an operation may have its own notion of "truthy" and "falsy" values), each short-circuit operation defines a boolean converter operation that first coerces each operand to `boolean` before it is compared to `true`/`false`.
 
-The boolean converter operation is another operation (which may or may not be its own operation as well) that converts a language value into a `boolean` result. In addition to all the requirements outlined above for operations, it must also satisfy the following constraints:
-
-* It must have exactly 1 value parameter, and not be variadic
-* It must not have any LocalSetter or LocalSetterRange parameters
-* All its specializations must return `boolean`.
-
-Then the short-circuiting operation can be derived: the new operation will be variadic, with minimum of 1 parameter, and return the first value that does **not** satisfy the `continueWhen` condition when converted to boolean using the converter operation. If the execution reaches the last child, it is executed and returned without checking. In pseudocode:
+For example, suppose there exists a `CoerceToBoolean` operation to compute whether a value is "truthy" or "falsy" (e.g., `42` and `3.14f` are truthy, but `""` and `0` are falsy).
+We can define an `AND` operation using `CoerceToBoolean` by annotating the root class with `@ShortCircuitOperation`:
+```
+@GenerateBytecode(...)
+@ShortCircuitOperation(
+    name = "BoolAnd",
+    operator = ShortCircuitOperation.Operator.AND_RETURN_CONVERTED,
+    booleanConverter = CoerceToBoolean.class
+)
+public abstract class MyBytecodeRootNode extends RootNode implements BytecodeRootNode { ... }
+```
+This specification declares a `BoolAnd` operation that executes its child operations in sequence until an operand coerces to `false`.
+It produces the converted `boolean` value of the last operand executed.
+In pseudocode:
 
 ```python
 value_1 = child_1.execute()
-if BooleanConverter(value_1) != continueWhen:
+cond_1 = CoerceToBoolean(value_1)
+if !cond_1:
+    return false
+
+value_2 = child_2.execute()
+cond_2 = CoerceToBoolean(value_2)
+if !cond_2:
+    return false
+
+# ...
+
+return CoerceToBoolean(child_n.execute())
+```
+
+Observe that the `operator` for `BoolAnd` is `AND_RETURN_CONVERTED`.
+This indicates not only that the operation is an `AND` operation, but also that it should produce the converted `boolean` value as its result (`RETURN_CONVERTED`).
+This can be used, for example, where a `boolean` value is expected, like `a && b && c` in a Java if-statement.
+
+Short circuit operations can also produce the original operand value that caused the operation to terminate (`RETURN_VALUE`).
+For example, to emulate Python's `or` operator, where `a or b or c` evaluates to the first non-falsy operand, we can define a short-circuit operation as follows:
+
+```
+@GenerateBytecode(...)
+@ShortCircuitOperation(
+    name = "FalsyCoalesce",
+    operator = ShortCircuitOperation.Operator.OR_RETURN_VALUE,
+    booleanConverter = CoerceToBoolean.class
+)
+public abstract class MyBytecodeRootNode extends RootNode implements BytecodeRootNode { ... }
+```
+
+This `FalsyCoalesce` operation behaves like the following pseudocode:
+
+```python
+value_1 = child_1.execute()
+cond_1 = CoerceToBoolean(value_1)
+if cond_1:
     return value_1
 
 value_2 = child_2.execute()
-if BooleanConverter(value_2) != continueWhen:
+cond_2 = CoerceToBoolean(value_2)
+if cond_2:
     return value_2
 
 # ...
@@ -286,98 +315,69 @@ if BooleanConverter(value_2) != continueWhen:
 return child_n.execute()
 ```
 
-The short-circuiting operation is defined by annotating the operations class with `@ShortCircuitOperation` and specifying the name of the operation, the boolean converter definition, and the continueWhen argument.
+Observe how the original value is produced instead of the converted `boolean` value.
 
-With this, we can define some common short-circuiting operations:
+The `booleanConverter` field of a `@ShortCircuitOperation` is a class – typically an existing operation class.
+If the class is not explicitly declared as an operation, Bytecode DSL will implicitly declare it as an operation and ensure it conforms to the requirements for [custom operations](#defining-custom-operations).
+A boolean converter operation must also satisfy some additional constraints:
 
+* It must have exactly 1 non-variadic value parameter.
+* It must not have any `LocalSetter` or `LocalSetterRange` parameters.
+* All of its specializations must return `boolean`.
+
+
+## Locals
+
+Bytecode DSL defines a `BytecodeLocal` abstraction to support local variables.
+Unlike temporary values, local variables persist for the extent of the enclosing operation.
+Parsers can allocate locals using the builder's `createLocal` method; the resulting `BytecodeLocal` can be used in `LoadLocal` and `StoreLocal` operations to access the local.
+
+The following code allocates a local, stores a value into it, and later loads the value back:
 ```java
-@ShortCircuitOperation(
-    name = "BoolAnd",
-    booleanConverter = ToBoolean.class,
-    continueWhen = true)
-@ShortCircuitOperation(
-    name = "BoolOr",
-    booleanConverter = ToBoolean.class,
-    continueWhen = false)
-@ShortCircuitOperation(
-    name = "NullCoalesce",
-    booleanConverter = IsNull.class,
-    continueWhen = true)
-```
-
-## Defining locals and labels
-
-Locals and labels are important abstractions that encapsulate local variables and branch targets. The builder defines `createLocal` and `createLabel` methods that can be used to obtain unique `BytecodeLocal` and `BytecodeLabel` instances.
-
-The location where you call the `create` functions is important, as the abstractions are scoped to the operation they are created in. For labels, that operation is further required to be either a Root or a Block operation.
-
-All local accesses must be (directly or indirectly) nested within the local's creating operation. It is undefined behaviour to access a local outside of its creating operation (**the builder does not validate this**). For example:
-
-```java
-// allowed
 b.beginBlock();
   var local = b.createLocal();
+
   b.beginStoreLocal(local);
-    /* ... */
+    // ...
   b.endStoreLocal();
 
+  // ...
   b.emitLoadLocal(local);
 b.endBlock();
+```
 
-// allowed (arbitrary nesting)
+
+All local accesses must be (directly or indirectly) nested within the operation that creates the local.
+It is undefined behaviour to access a local outside of its creating operation, and the builder does not validate this. For example:
+
+```java
 b.beginSomeOperation();
   var local = b.createLocal();
+  // ...
   b.beginOtherOperation();
-    b.emitLoadLocal(local); // or StoreLocal
+    b.emitLoadLocal(local); // allowed (arbitrary nesting)
   b.endOtherOperation();
 b.endSomeOperation();
 
-// undefined behaviour
-b.beginSomething();
-  var local = b.createLocal();
-b.endSomething();
-b.emitLoadLocal(local);
-```
-
-Every label must be declared directly in its creating operation; this operation must be a Block or Root. Any branch to a label must be (directly or indirectly) nested in the label's creating operation. For example:
-
-```java
-// allowed
-b.beginBlock();
-  var label = b.createLabel();
-  b.emitLabel(label);
-b.endBlock();
-
-// not allowed (nested Label operation)
-b.beginBlock();
-  var label = b.createLabel();
-  b.beginSomething();
-    b.emitLabel(label);
-  b.endSomething();
-b.endBlock();
-
-// not allowed (multiple Label declarations)
-b.beginBlock();
-  var label = b.createLabel();
-  b.emitLabel(label);
+b.beginSomeOperation();
+  b.beginOtherOperation();
+    var local = b.createLocal();
+  b.endOtherOperation();
   // ...
-  b.emitLabel(label);
-b.endBlock();
+  b.emitLoadLocal(local); // undefined behaviour: local not in scope
+b.endSomeOperation();
+
 ```
 
-Furthermore, reading/writing to locals defined by other RootNodes is undefined behaviour; branching to labels within other RootNodes is not allowed.
+Additionally, reading/writing to locals defined by other root nodes is undefined behaviour:
 
 ```java
 b.beginRoot(/* ... */);
   var local = b.createLocal();
-  var label = b.createLabel();
   // ...
-
-  b.emitLabel(label);
 
   b.beginRoot(/* ... */);
     b.emitLoadLocal(local); // undefined behaviour
-    b.emitBranch(label); // not allowed
   b.endRoot();
 b.endRoot();
 ```
@@ -389,28 +389,91 @@ It is undefined behaviour to access a local using a materialized frame that it d
 
 ```java
 b.beginRoot(/* ... */);
-  var topLevelLocal = b.createLocal();
+  var outerLocal = b.createLocal();
   // ...
 
   b.beginBlock();
-    var nonTopLevelLocal = b.createLocal();
+    var innerLocal = b.createLocal();
 
     b.beginRoot(/* ... */);
       // correct usage
-      b.beginLoadLocalMaterialized(topLevelLocal);
-        b.emitProvideTopLevelFrame(); // custom operation
+      b.beginLoadLocalMaterialized(outerLocal);
+        b.emitGetOuterFrame();
       b.endLoadLocalMaterialized();
 
       // undefined behaviour
-      b.beginLoadLocalMaterialized(nonTopLevelLocal);
-        b.emitProvideTopLevelFrame();
+      b.beginLoadLocalMaterialized(innerLocal);
+        b.emitGetOuterFrame();
       b.endLoadLocalMaterialized();
     b.endRoot();
   b.endBlock();
 b.endRoot();
 ```
 
-## Translating your language into operations
+
+
+## Labels
+
+Bytecode DSL defines a `BytecodeLabel` abstraction to represent locations in the bytecode.
+Parsers can allocate labels using the builder's `createLabel` method.
+The label should then be emitted using `emitLabel` at some location in the program, and can be branched to using `emitBranch`.
+
+The following code allocates a label, emits a branch to it, and then emits the label at the location to branch to:
+```java
+// allowed
+b.beginBlock();
+  var label = b.createLabel();
+  // ...
+  b.emitBranch(label);
+  // ...
+  b.emitLabel(label);
+b.endBlock();
+```
+
+Every label must be declared once directly in its creating operation; this operation must be a Block or Root.
+Any branch to a label must be (directly or indirectly) nested in the label's creating operation.
+Furthermore, only forward branches are supported (for backward branches, prefer While operations).
+For example:
+
+```java
+// not allowed (emitted in child operation)
+b.beginBlock();
+  var label = b.createLabel();
+  b.beginSomething();
+    b.emitLabel(label);
+  b.endSomething();
+b.endBlock();
+
+// not allowed (multiple declarations)
+b.beginBlock();
+  var label = b.createLabel();
+  b.emitLabel(label);
+  // ...
+  b.emitLabel(label);
+b.endBlock();
+
+// not allowed (backward branch)
+b.beginBlock();
+  var label = b.createLabel();
+  b.emitLabel(label);
+  // ...
+  b.emitBranch(label);
+b.endBlock();
+```
+
+Additionally, branching to labels defined by other root nodes is not allowed:
+
+```java
+b.beginRoot(/* ... */);
+  var label = b.createLabel();
+  // ...
+  b.beginRoot(/* ... */);
+    b.emitBranch(label); // builder error
+  b.endRoot();
+b.endRoot();
+```
+
+## Translating high-level semantics into operations
 
 When writing the Bytecode DSL parser for a language, your task is to translate the semantics of your language into individual operations. This is a process called "desugaring", as it can be thought as a similar process to removing syntax sugar from a language - translating higher level language constructs into lower, more verbose level. As an example of this process, let's take a simple iterator-style `for` loop (we use `«...»` as metaqotes):
 
@@ -507,11 +570,13 @@ public void visit(ForNode node) {
 
 ## Features
 
-This section describes some of the features supported by Bytecode DSL.
+This section describes some of the features supported by Bytecode DSL interpreters.
 
 ### Source information
 
-Bytecode DSL keeps track of source locations using Source and SourceSection operations. The Source operation defines the `Source` of its enclosed operations. The SourceSection operation (together with the nearest enclosing Source operation) defines the precise source location of its enclosed operations.
+Bytecode DSL keeps track of source locations using Source and SourceSection operations. The Source operation defines the `Source` of its enclosed operations. The SourceSection operation (together with the nearest enclosing Source operation) defines the source range corresponding to the enclosed operations.
+
+**TODO**: this changes with the bci rework
 
 The RootNode itself will report as its location (via `getSourceSection()`) the first SourceSection defined within it. The source location at any particular point in the code can be extracted by calling the `getSourceSectionAtBci(int)` method with a given bytecode index (see [Bytecode index introspection](#bytecode-index-introspection) for ways to obtain the bytecode index).
 
@@ -519,27 +584,32 @@ The RootNode itself will report as its location (via `getSourceSection()`) the f
 
 Bytecode DSL also associates `Tag`s with operations to support instrumentation using the Tag operation.
 
-TODO
+TODO: fill in after instrumentation is supported
 
 ### Bytecode index introspection
-TODO
+TODO: fill in after bci changes
 
- (One way to obtain the bytecode index is to bind the the `$bci` pseudovariable as a parameter to an operation specialization).
+### Reparsing metadata
 
-### Parsing modes
+In order to support source position computations and instrumentation, Truffle interpreters store extra metadata (e.g., source position information) on each root node in the program.
+This metadata can contribute significantly to the interpreter footprint, which is especially wasteful if the information is rarely used.
+Bytecode DSL allows a language to omit all (or some) metadata from the nodes and *reparse* a node when missing metadata is required.
 
-### Reparsing
+When a bytecode node is parsed, it takes a parsing mode that determines what metadata is retained.
+The default configuration, `BytecodeConfig.DEFAULT` excludes all metadata.
+In many cases, this metadata is not used on the fast path, so it is often preferable to lazily compute it instead of storing it eagerly.
+When metadata is required at a later point in time – for example, a source section is requested — the generated interpreter will invoke the same parser used to `create` the nodes.
+When it is reparsed, the extra metadata will be computed and stored on the node for subsequent access.
 
-When a bytecode node is parsed, the default `BytecodeConfig` excludes source information and instrumentation tags from the parsed result.
-This metadata can contribute significantly to the interpreter footprint, so it is often preferable to lazily compute this information instead of storing it eagerly.
+In order to support reparsing, `BytecodeParser`s **must** be deterministic and idempotent.
+Furthermore, the parser will be kept alive in the heap, so languages should be mindful of the memory retained by the parser (e.g., source file contents or ASTs).
 
-Bytecode DSL intepreters achieve this lazy computation using *reparsing*.
-When metadata is required (e.g., the source section is requested) or the `BytecodeConfig` changes (via `BytecodeNodes#updateConfiguration`), the generated interpreter will invoke the same parser used to `create` the nodes, except it will retain the additional metadata (i.e., source or instrumentation information) that was requested.
+A language implementation may choose to eagerly compute metadata that will likely be needed instead of reparsing it.
+For example, if a language makes frequent use of source information, it may make sense to create nodes with `BytecodeConfig.WITH_SOURCE` to eagerly parse source information.
 
-In order to support reparsing, the `BytecodeParser` used to `create` nodes must be deterministic and idempotent.
-The parser will be retained in a field, so languages should be considerate of the memory occupied by objects reachable from their parsers (e.g., source file contents or ASTs).
-
-A language may choose to eagerly include some metadata it knows it will always need instead of reparsing; for example, it can use `BytecodeConfig.WITH_SOURCE` to eagerly compute source information.
+### Serialization
+Bytecode DSL interpreters can support serialization, which allows a language to implement bytecode caching (à la Python's `.pyc` files). See the [Serialization guide](Serialization.md) for more details.
 
 ### Continuations
-TODO
+Bytecode DSL supports single-method continuations, whereby a bytecode node is suspended and can be resumed at a later point in time.
+Continuations allow languages to implement features like coroutines and generators that require the interpreter to suspend the state of the current method. See the [Continuations guide](Continuations.md) for more details.
