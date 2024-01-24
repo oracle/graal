@@ -92,9 +92,6 @@ import java.lang.reflect.Method;
  */
 public final class Continuation {
     // Next steps:
-    // - Be able to abort the unwind if we hit a frame that can't be suspended e.g. that holds
-    // monitors.
-    // - Ensure unwinds fail if there are any non-bytecode methods on the stack.
     // - Refactor to pull frame serialization into Truffle itself, stop exposing frame guts to
     // language impls.
     // - Feature: Add more data to FrameRecord so we can do consistency checks in case the code has
@@ -278,7 +275,13 @@ public final class Continuation {
     public void resume() {
         // Are we in the special waiting-to-start state?
         if (stateHolder.state == State.NEW) {
-            start0();
+            // Enable the use of suspend capabilities.
+            insideContinuation.set(true);
+            try {
+                start0();
+            } finally {
+                insideContinuation.set(false);
+            }
             return;
         }
 
@@ -293,10 +296,7 @@ public final class Continuation {
 
         assert stackFrameHead != null;
 
-        // Ensure the user can't leak the suspend capability and then try to suspend without a
-        // resume() on the start (which would terminate the VM due to a leaking host exception).
-        //
-        // What if someone starts a continuation inside another continuation? That's fine!
+        // Enable the use of suspend capabilities.
         insideContinuation.set(true);
         try {
             resume0();

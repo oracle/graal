@@ -132,4 +132,26 @@ public class EspressoThreadLocalState {
     public boolean isSteppingDisabled() {
         return singleSteppingDisabledCounter > 0;
     }
+
+    public int suspensionBlocks = 0;
+
+    /**
+     * Prevents {@code Continuation.SuspendCapability.suspend()} being called, typically because
+     * there is something on the stack that we can't unwind through.
+     */
+    public void blockContinuationSuspension() {
+        assert suspensionBlocks < Integer.MAX_VALUE;
+        suspensionBlocks++;
+    }
+
+    public void unblockContinuationSuspension() {
+        assert suspensionBlocks > 0;
+        suspensionBlocks--;
+    }
+
+    public boolean isContinuationSuspensionBlocked() {
+        // Why one and not zero here? Because the fact we reached here means we're inside the
+        // suspend intrinsic, and we don't want to consider that as blocking the suspend.
+        return suspensionBlocks > 1;
+    }
 }

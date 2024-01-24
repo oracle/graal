@@ -24,8 +24,10 @@ package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.ContinuationSupport;
 
@@ -36,9 +38,13 @@ import com.oracle.truffle.espresso.vm.ContinuationSupport;
 public final class Target_com_oracle_truffle_espresso_continuations_Continuation {
     @Substitution
     @TruffleBoundary
-    static void suspend0() {
+    static void suspend0(@Inject EspressoLanguage language, @Inject Meta meta) {
+        if (language.getThreadLocalState().isContinuationSuspensionBlocked()) {
+            new Throwable("suspend blocked").printStackTrace();
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalStateException, "Suspension is currently blocked by the presence of non-regular Java methods on the stack. Check for native frames and intrinsics in the stack trace of this exception.");
+        }
         // This internal exception will be caught in BytecodeNode's interpreter loop. Frame records
-        // will be added to the exception object in a linked list until it's caught below.
+        // will be added to the exception object in a linked list until it's caught in resume below.
         throw new ContinuationSupport.Unwind();
     }
 
@@ -47,21 +53,30 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
     static void resume0(
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject self,
                     @Inject Meta meta,
-                    @Inject EspressoContext context) {
+                    @Inject EspressoContext context,
+                    @Inject EspressoLanguage language) {
         ContinuationSupport.HostFrameRecord stack = ContinuationSupport.HostFrameRecord.copyFromGuest(self, meta, context);
 
         // This will break if the continuations API is redefined - TODO: find a way to block that.
         var runMethod = meta.com_oracle_truffle_espresso_continuations_Continuation_run.getMethodVersion();
 
+        // This method is an intrinsic and the act of invoking one of those blocks the ability
+        // to call suspend, so we have to undo that first.
+        var tls = language.getThreadLocalState();
+        tls.unblockContinuationSuspension();
+
         // The entry node will unpack the head frame record into the stack and then pass the
         // remaining records into the bytecode interpreter, which will then pass them down the stack
-        // until everything is fully unwound. TODO: Is creating a new node the right way to do it?
-        // Probably we should be using an explicit node with cached arguments and stuff?
+        // until everything is fully unwound.
         try {
             runMethod.getCallTarget().call(self, stack);
         } catch (ContinuationSupport.Unwind unwind) {
             CompilerDirectives.transferToInterpreter();
             meta.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.setObject(self, unwind.toGuest(meta));
+        } finally {
+            // Re-increment the block counter. It'll be reduced to zero again on our way back out
+            // of the intrinsic.
+            tls.blockContinuationSuspension();
         }
     }
 
@@ -69,7 +84,13 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
     @TruffleBoundary
     static void start0(
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/continuations/Continuation;") StaticObject self,
-                    @Inject Meta meta) {
+                    @Inject Meta meta,
+                    @Inject EspressoLanguage language) {
+        // This method is an intrinsic and the act of invoking one of those blocks the ability
+        // to call suspend, so we have to undo that first.
+        var tls = language.getThreadLocalState();
+        tls.unblockContinuationSuspension();
+
         try {
             // The run method is private in Continuation and is the continuation delimiter. Frames
             // from run onwards will be unwound on suspend, and rewound on resume.
@@ -78,6 +99,10 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
             // Guest called suspend(). By the time we get here the frame info has been gathered up
             // into host-side objects so we just need to copy the data into the guest world.
             meta.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.setObject(self, unwind.toGuest(meta));
+        } finally {
+            // Re-increment the block counter. It'll be reduced to zero again on our way back out
+            // of the intrinsic.
+            tls.blockContinuationSuspension();
         }
     }
 

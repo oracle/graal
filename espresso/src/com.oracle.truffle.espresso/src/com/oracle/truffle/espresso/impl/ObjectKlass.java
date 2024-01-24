@@ -411,6 +411,9 @@ public final class ObjectKlass extends Klass {
             }
             initState = INITIALIZING;
             getContext().getLogger().log(Level.FINEST, "Initializing: {0}", this.getNameAsString());
+
+            var tls = getContext().getLanguage().getThreadLocalState();
+            tls.blockContinuationSuspension();
             try {
                 if (!isInterface()) {
                     /*
@@ -447,6 +450,8 @@ public final class ObjectKlass extends Klass {
                 e.printStackTrace();
                 setErroneousInitialization();
                 throw e;
+            } finally {
+                tls.unblockContinuationSuspension();
             }
             checkErroneousInitialization();
             initState = INITIALIZED;
