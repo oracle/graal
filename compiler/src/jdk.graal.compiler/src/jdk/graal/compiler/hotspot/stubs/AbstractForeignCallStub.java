@@ -41,6 +41,7 @@ import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
 import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkageImpl;
 import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
+import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition;
 import jdk.graal.compiler.hotspot.meta.HotSpotLoweringProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.nodes.ParameterNode;
@@ -60,9 +61,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 /**
- * A {@linkplain #getGraph generated} stub for a
- * {@link jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition non-leaf} foreign
- * call from compiled code. A stub is required for such calls as the caller may be scheduled for
+ * A {@linkplain #getGraph generated} stub for a {@link Transition non-leaf} foreign call from
+ * compiled code. A stub is required for such calls as the caller may be scheduled for
  * deoptimization while the call is in progress. And since these are foreign/runtime calls on slow
  * paths, we don't want to force the register allocator to spill around the call. As such, this stub
  * saves and restores all allocatable registers. It also

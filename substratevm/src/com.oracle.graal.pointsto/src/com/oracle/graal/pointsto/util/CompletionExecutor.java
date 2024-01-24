@@ -163,10 +163,10 @@ public class CompletionExecutor {
         }
         bb.getHostVM().recordActivity();
         Throwable thrown = null;
-        try (DebugContext debugLocal = command.getDebug(bb.getOptions(), bb.getDebugHandlerFactories());
-                        Scope s = debugLocal.scope("Operation");
-                        Activation a = debugLocal.activate()) {
-            command.run(debugLocal);
+        try (DebugContext localDebug = command.getDebug(bb.getOptions(), bb.getDebugHandlerFactories());
+                        Scope s = localDebug.scope("Operation");
+                        Activation a = localDebug.activate()) {
+            command.run(localDebug);
         } catch (Throwable x) {
             thrown = x;
         } finally {

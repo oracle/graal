@@ -109,7 +109,7 @@ final class Target_jdk_internal_foreign_SegmentFactories {
 @TargetClass(className = "sun.nio.ch.FileChannelImpl", onlyWith = ForeignDisabled.class)
 final class Target_sun_nio_ch_FileChannelImpl {
     @Substitute
-    @SuppressWarnings({"unused","static-method"})
+    @SuppressWarnings({"unused", "static-method"})
     Target_java_lang_foreign_MemorySegment map(FileChannel.MapMode mode, long offset, long size, Target_java_lang_foreign_Arena arena) throws IOException {
         throw ForeignDisabledSubstitutions.fail();
     }
@@ -127,7 +127,7 @@ final class Target_java_lang_foreign_MemoryLayout_PathElement {
 final class Target_jdk_internal_foreign_layout_AbstractLayout {
     @Substitute
     @AlwaysInline("Make remaining code in callers unreachable.")
-    @SuppressWarnings({"unused","static-method"})
+    @SuppressWarnings({"unused", "static-method"})
     VarHandle varHandle(Target_java_lang_foreign_MemoryLayout_PathElement... elements) {
         throw ForeignDisabledSubstitutions.fail();
     }

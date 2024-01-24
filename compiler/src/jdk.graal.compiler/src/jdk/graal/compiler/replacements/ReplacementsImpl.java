@@ -77,6 +77,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.Replacements;
@@ -353,19 +354,16 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
      * @param nonNullParameters
      * @param original XXX always null?
      * @param trackNodeSourcePosition record source information
-     * @param context
-     *            {@link jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext
-     *            compilation context} for the graph
+     * @param context {@link CompilationContext compilation context} for the graph
      */
     public StructuredGraph makeGraph(DebugContext debug, BytecodeProvider bytecodeProvider, ResolvedJavaMethod method, Object[] args, BitSet nonNullParameters, ResolvedJavaMethod original,
-                    boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, IntrinsicContext.CompilationContext context) {
+                    boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, CompilationContext context) {
         return createGraphMaker(method, original).makeGraph(debug, bytecodeProvider, args, nonNullParameters, trackNodeSourcePosition, replaceePosition, context);
     }
 
     /**
      * Creates a preprocessed graph for a snippet or method substitution with a context of .
-     * {@link jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext#INLINE_AFTER_PARSING}
-     * .
+     * {@link CompilationContext#INLINE_AFTER_PARSING} .
      *
      * @param bytecodeProvider how to access the bytecode of {@code method}
      * @param method the snippet or method substitution for which a graph will be created
@@ -412,7 +410,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
 
         @SuppressWarnings("try")
         public StructuredGraph makeGraph(DebugContext debug, BytecodeProvider bytecodeProvider, Object[] args, BitSet nonNullParameters, boolean trackNodeSourcePosition,
-                        NodeSourcePosition replaceePosition, IntrinsicContext.CompilationContext context) {
+                        NodeSourcePosition replaceePosition, CompilationContext context) {
             try (DebugContext.Scope s = debug.scope("BuildSnippetGraph", method)) {
                 assert method.hasBytecodes() : method;
                 StructuredGraph graph = buildInitialGraph(debug, bytecodeProvider, method, args, nonNullParameters, trackNodeSourcePosition, replaceePosition, context);
@@ -516,7 +514,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
          */
         @SuppressWarnings("try")
         protected StructuredGraph buildInitialGraph(DebugContext debug, BytecodeProvider bytecodeProvider, final ResolvedJavaMethod methodToParse, Object[] args, BitSet nonNullParameters,
-                        boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, IntrinsicContext.CompilationContext context) {
+                        boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, CompilationContext context) {
             // @formatter:off
             // Replacements cannot have optimistic assumptions since they have
             // to be valid for the entire run of the VM.

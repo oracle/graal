@@ -38,6 +38,7 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.OptimizationLog;
+import jdk.graal.compiler.nodes.OptimizationLog.OptimizationEntry;
 import jdk.graal.compiler.nodes.OptimizationLogImpl;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -150,8 +151,8 @@ public class OptimizationLogTest extends GraalCompilerTest {
     /**
      * Tests that there is no reporting going on when the optimization log is disabled. In
      * particular, the optimization tree shall not be built and
-     * {@link jdk.graal.compiler.nodes.OptimizationLog.OptimizationEntry#withLazyProperty(String, Supplier)
-     * lazy properties} shall not be consumed.
+     * {@link OptimizationEntry#withLazyProperty(String, Supplier) lazy properties} shall not be
+     * consumed.
      */
     @Test
     public void noReportingWhenDisabled() {
