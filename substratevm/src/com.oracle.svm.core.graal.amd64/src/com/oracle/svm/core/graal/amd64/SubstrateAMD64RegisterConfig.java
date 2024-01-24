@@ -69,7 +69,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-import jdk.graal.compiler.core.common.LIRKind;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.ReservedRegisters;
@@ -83,6 +82,7 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.core.common.LIRKind;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
@@ -154,7 +154,9 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             nativeParamsStackOffset = 4 * target.wordSize;
 
             regs.remove(ReservedRegisters.singleton().getFrameRegister());
-            regs.remove(rbp);
+            if (useBasePointer) {
+                regs.remove(rbp);
+            }
             regs.remove(ReservedRegisters.singleton().getHeapBaseRegister());
             regs.remove(ReservedRegisters.singleton().getThreadRegister());
             allocatableRegs = new RegisterArray(regs);
