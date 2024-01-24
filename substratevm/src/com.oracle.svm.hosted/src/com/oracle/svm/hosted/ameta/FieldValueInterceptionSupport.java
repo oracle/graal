@@ -306,7 +306,7 @@ public final class FieldValueInterceptionSupport {
         return interceptValue(field, value);
     }
 
-    private JavaConstant interceptValue(AnalysisField field, JavaConstant value) {
+    private static JavaConstant interceptValue(AnalysisField field, JavaConstant value) {
         JavaConstant result = value;
         if (result != null) {
             result = filterInjectedAccessor(field, result);

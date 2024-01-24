@@ -1294,6 +1294,7 @@ public class SubstrateGraphBuilderPlugins {
         }
     }
 
+    @SuppressWarnings("unused")
     private static Object nonNullReason(NodeSourcePosition position) {
         return position == null ? "Unknown graph builder location." : position;
     }

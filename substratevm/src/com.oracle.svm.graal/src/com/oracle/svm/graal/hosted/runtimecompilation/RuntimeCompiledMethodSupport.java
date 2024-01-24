@@ -131,9 +131,9 @@ public class RuntimeCompiledMethodSupport {
         ImageHeapScanner imageScanner = bb.getUniverse().getHeapScanner();
 
         GraphEncoder graphEncoder = new RuntimeCompiledMethodSupport.RuntimeCompilationGraphEncoder(ConfigurationValues.getTarget().arch, imageScanner);
-        HostedProviders runtimeCompilationProviders = hostedProviders
-                        .copyWith(constantFieldProviderWrapper.apply(new RuntimeCompilationFieldProvider(hostedProviders.getMetaAccess(), hUniverse)))
-                        .copyWith(new RuntimeCompilationReflectionProvider(bb, hUniverse.hostVM().getClassInitializationSupport()));
+        HostedProviders runtimeCompilationProviders = hostedProviders.copyWith(
+                        constantFieldProviderWrapper.apply(new RuntimeCompilationFieldProvider(hostedProviders.getMetaAccess(), hUniverse))).copyWith(
+                                        new RuntimeCompilationReflectionProvider(bb, hUniverse.hostVM().getClassInitializationSupport()));
 
         SubstrateCompilationDirectives.singleton().resetDeoptEntries();
 
@@ -324,6 +324,7 @@ public class RuntimeCompiledMethodSupport {
 
     static class RuntimeCompilationReflectionProvider extends AnalysisConstantReflectionProvider {
 
+        @SuppressWarnings("unused")
         RuntimeCompilationReflectionProvider(BigBang bb, ClassInitializationSupport classInitializationSupport) {
             super(bb.getUniverse(), bb.getMetaAccess());
         }

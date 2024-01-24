@@ -1165,6 +1165,7 @@ public class NativeImageGenerator {
         }
     }
 
+    @SuppressWarnings("unused")
     private static HostedProviders createHostedProviders(TargetDescription target, AnalysisUniverse aUniverse,
                     Providers originalProviders, SubstratePlatformConfigurationProvider platformConfig, ClassInitializationSupport classInitializationSupport,
                     AnalysisMetaAccess aMetaAccess) {
@@ -1327,8 +1328,8 @@ public class NativeImageGenerator {
                                             while (cursor.advance()) {
                                                 data.add(Pair.create(cursor.getKey(), cursor.getValue()));
                                             }
-                                            data.stream().sorted(Comparator.comparing(Pair::getRight, Comparator.reverseOrder()))
-                                                            .forEach(pair -> System.out.format("        - %d occurrences during parsing: %s%n", pair.getRight(), pair.getLeft()));
+                                            data.stream().sorted(Comparator.comparing(Pair::getRight, Comparator.reverseOrder())).forEach(
+                                                            pair -> System.out.format("        - %d occurrences during parsing: %s%n", pair.getRight(), pair.getLeft()));
                                         }
                                     }));
                                 } catch (IllegalStateException e) {
