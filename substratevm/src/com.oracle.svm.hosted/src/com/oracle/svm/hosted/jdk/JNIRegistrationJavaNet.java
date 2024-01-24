@@ -116,6 +116,7 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
         RuntimeJNIAccess.register(fields(a, "java.net.Inet6Address$Inet6AddressHolder", "ipaddress", "scope_id", "scope_id_set", "scope_ifname"));
     }
 
+    @SuppressWarnings("unused")
     private static void registerInetAddressLoadImpl(DuringAnalysisAccess a) {
         RuntimeReflection.register(clazz(a, "java.net.Inet4AddressImpl"));
         RuntimeReflection.register(constructor(a, "java.net.Inet4AddressImpl"));
@@ -140,10 +141,12 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
         registerInitInetAddressIDs(a);
     }
 
+    @SuppressWarnings("unused")
     private static void registerDatagramPacketInit(DuringAnalysisAccess a) {
         RuntimeJNIAccess.register(fields(a, "java.net.DatagramPacket", "address", "port", "buf", "offset", "length", "bufLength"));
     }
 
+    @SuppressWarnings("unused")
     private static void registerPlainDatagramSocketImplInit(DuringAnalysisAccess a) {
         RuntimeJNIAccess.register(fields(a, "java.net.DatagramSocketImpl", "fd", "localPort"));
         RuntimeJNIAccess.register(fields(a, "java.net.AbstractPlainDatagramSocketImpl", "timeout", "trafficClass", "connected"));
@@ -156,16 +159,19 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
         }
     }
 
+    @SuppressWarnings("unused")
     private static void registerPlainDatagramSocketImplSocketGetOption(DuringAnalysisAccess a) {
         RuntimeJNIAccess.register(method(a, "java.net.InetAddress", "anyLocalAddress"));
         RuntimeReflection.register(clazz(a, "[Ljava.net.Inet4Address;")); /* Created via JNI. */
     }
 
+    @SuppressWarnings("unused")
     private static void registerDualStackPlainDatagramSocketImplInitIDs(DuringAnalysisAccess a) {
         RuntimeJNIAccess.register(fields(a, "java.net.DatagramSocketImpl", "fd"));
         registerInitInetAddressIDs(a);
     }
 
+    @SuppressWarnings("unused")
     private static void registerPlainSocketImplInitProto(DuringAnalysisAccess a) {
         RuntimeJNIAccess.register(fields(a, "java.net.SocketImpl", "fd", "address", "port", "localport", "serverSocket"));
         RuntimeJNIAccess.register(fields(a, "java.net.AbstractPlainSocketImpl", "timeout", "trafficClass"));
@@ -177,15 +183,18 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
         }
     }
 
+    @SuppressWarnings("unused")
     private static void registerPlainSocketImplSocketGetOption(DuringAnalysisAccess a) {
         RuntimeJNIAccess.register(fields(a, "java.net.InetAddressContainer", "addr"));
     }
 
+    @SuppressWarnings("unused")
     private static void registerDualStackPlainSocketImplInitIDs(DuringAnalysisAccess a) {
         RuntimeJNIAccess.register(constructor(a, "java.net.InetSocketAddress", InetAddress.class, int.class));
         registerInitInetAddressIDs(a);
     }
 
+    @SuppressWarnings("unused")
     private static void registerDualStackPlainSocketImplLocalAddress(DuringAnalysisAccess a) {
         RuntimeJNIAccess.register(fields(a, "java.net.InetAddressContainer", "addr"));
     }

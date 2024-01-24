@@ -165,7 +165,7 @@ public class LIRGenerationResult {
      *
      * @return index of the first insert position
      */
-    public final int getFirstInsertPosition() {
+    public static int getFirstInsertPosition() {
         return 1;
     }
 

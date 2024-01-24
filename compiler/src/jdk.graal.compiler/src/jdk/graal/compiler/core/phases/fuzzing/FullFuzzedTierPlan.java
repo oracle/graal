@@ -60,7 +60,7 @@ public final class FullFuzzedTierPlan<C> extends MinimalFuzzedTierPlan<C> {
                     long randomSeed,
                     int phaseSkipOdds,
                     String tierName) {
-        this(minimalTierPlan.getSingleApplyPhases(), minimalTierPlan.getMultiApplyPhases(), minimalTierPlan.getIgnoredPhases(), new PhaseSuite<C>(), minimalTierPlan, randomSeed,
+        this(minimalTierPlan.getSingleApplyPhases(), minimalTierPlan.getMultiApplyPhases(), minimalTierPlan.getIgnoredPhases(), new PhaseSuite<>(), minimalTierPlan, randomSeed,
                         phaseSkipOdds, tierName);
         computeFullFuzzedTierPlan(graphState);
     }

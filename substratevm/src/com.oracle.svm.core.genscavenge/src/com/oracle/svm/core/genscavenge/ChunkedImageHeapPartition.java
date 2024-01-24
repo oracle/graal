@@ -120,18 +120,18 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
         }
     }
 
-    private ImageHeapObject dequeueBestFit(NavigableMap<Long, Queue<ImageHeapObject>> objects, long nbytes) {
+    private ImageHeapObject dequeueBestFit(NavigableMap<Long, Queue<ImageHeapObject>> objectsParam, long nbytes) {
         if (nbytes < minimumObjectSize) {
             return null;
         }
-        Map.Entry<Long, Queue<ImageHeapObject>> entry = objects.floorEntry(nbytes);
+        Map.Entry<Long, Queue<ImageHeapObject>> entry = objectsParam.floorEntry(nbytes);
         if (entry == null) {
             return null;
         }
         Queue<ImageHeapObject> queue = entry.getValue();
         ImageHeapObject info = queue.remove();
         if (queue.isEmpty()) {
-            objects.remove(entry.getKey());
+            objectsParam.remove(entry.getKey());
         }
         return info;
     }
@@ -220,6 +220,7 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
         return getEndOffset() - getStartOffset();
     }
 
+    @Override
     public String toString() {
         return name;
     }

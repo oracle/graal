@@ -309,7 +309,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         OptionValues options = getInitialOptions();
         CompilerThreadFactory factory = new CompilerThreadFactory("CheckInvariantsThread");
         int availableProcessors = Runtime.getRuntime().availableProcessors();
-        ThreadPoolExecutor executor = new ThreadPoolExecutor(availableProcessors, availableProcessors, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), factory);
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(availableProcessors, availableProcessors, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(), factory);
 
         List<String> errors = Collections.synchronizedList(new ArrayList<>());
 

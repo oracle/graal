@@ -1456,7 +1456,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @KeepOriginal
     @TargetElement(onlyWith = JDK23OrLater.class)
-    private native void addSealingInfo(int modifiers, StringBuilder sb);
+    private native void addSealingInfo(int modifiersParam, StringBuilder sb);
 
     @KeepOriginal
     @TargetElement(onlyWith = JDK23OrLater.class)
@@ -1771,7 +1771,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @KeepOriginal
     @TargetElement(onlyWith = JDK22OrLater.class)
-    native Method findMethod(boolean publicOnly, String name, Class<?>... parameterTypes);
+    native Method findMethod(boolean publicOnly, String nameParam, Class<?>... parameterTypes);
 
     @KeepOriginal
     private native Method getMethod0(String methodName, Class<?>[] parameterTypes);

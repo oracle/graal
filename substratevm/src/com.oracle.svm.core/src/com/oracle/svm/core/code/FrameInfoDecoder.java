@@ -63,7 +63,7 @@ public class FrameInfoDecoder {
      */
     protected static final int ENCODED_BCI_ADDEND = 4;
     /**
-     * Flag in the encoded bci to preserve {@link FrameState#duringCall()} information.
+     * Flag in the encoded bci to preserve {@link jdk.graal.compiler.nodes.FrameState.StackState#duringCall} information.
      */
     protected static final int ENCODED_BCI_DURING_CALL_MASK = 2;
     /**

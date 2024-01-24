@@ -127,6 +127,7 @@ public abstract class SubstrateSegfaultHandler {
     private static final long MARKER_VALUE = 0x0123456789ABCDEFL;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
     static long offsetOfStaticFieldWithWellKnownValue;
+    @SuppressWarnings("unused")
     private static long staticFieldWithWellKnownValue = MARKER_VALUE;
 
     private boolean installed;

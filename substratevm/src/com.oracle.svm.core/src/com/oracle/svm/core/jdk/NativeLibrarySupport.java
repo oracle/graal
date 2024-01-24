@@ -140,6 +140,7 @@ public final class NativeLibrarySupport extends NativeLibraries {
         }
     }
 
+    @Override
     public PointerBase findSymbol(String name) {
         lock.lock();
         try {

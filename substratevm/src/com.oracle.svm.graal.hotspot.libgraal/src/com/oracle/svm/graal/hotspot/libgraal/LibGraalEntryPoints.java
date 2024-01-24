@@ -342,7 +342,7 @@ public final class LibGraalEntryPoints {
      * @param timeAndMemBufferAddress 16-byte native buffer to store result of time and memory
      *            measurements of the compilation
      * @param profilePathBufferAddress native buffer containing a 0-terminated C string representing
-     *            {@link ProfileReplaySupport.Options#LoadProfiles} path.
+     *            {@link jdk.graal.compiler.hotspot.ProfileReplaySupport.Options#LoadProfiles} path.
      * @return a handle to a {@link InstalledCode} in HotSpot's heap or 0 if compilation failed
      */
     @SuppressWarnings({"unused", "try"})

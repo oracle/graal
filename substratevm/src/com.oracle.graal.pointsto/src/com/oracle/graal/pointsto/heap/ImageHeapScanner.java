@@ -545,6 +545,7 @@ public abstract class ImageHeapScanner {
         }
     }
 
+    @SuppressWarnings("unused")
     public boolean isValueAvailable(AnalysisField field) {
         return true;
     }

@@ -48,6 +48,7 @@ public interface ImageHeapLayouter {
     ImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize);
 
     /** Hook to run tasks after heap layout is finished. */
+    @SuppressWarnings("unused")
     default void afterLayout(ImageHeap imageHeap) {
     }
 

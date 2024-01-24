@@ -416,13 +416,17 @@ final class Target_java_lang_System {
     private static int allowSecurityManager = 1;
 
     /**
-     * We do not support the {@link SecurityManager} so this method must throw a
-     * {@link SecurityException} when 'java.security.manager' is set to anything but
-     * <code>disallow</code>.
+     * We do not support the <a href=
+     * "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/SecurityManager.html">SecurityManager</a>
+     * so this method must throw a {@link SecurityException} when 'java.security.manager' is set to
+     * anything but <code>disallow</code>.
      * 
-     * @see System#setSecurityManager(SecurityManager)
-     * @see SecurityManager
+     * @see <a href=
+     *      "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/System.html#setSecurityManager(java.lang.SecurityManager)">System#setSecurityManager(SecurityManager)</a>
+     * @see <a href=
+     *      "https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/SecurityManager.html">SecurityManager</a>
      */
+    @SuppressWarnings("removal")
     @Substitute
     private static void setSecurityManager(SecurityManager sm) {
         if (sm != null) {

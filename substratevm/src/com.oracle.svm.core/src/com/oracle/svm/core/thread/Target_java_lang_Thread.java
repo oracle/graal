@@ -516,6 +516,7 @@ public final class Target_java_lang_Thread {
 
     @Substitute
     @TargetElement(onlyWith = JDK23OrLater.class)
+    @SuppressWarnings("static-method")
     void blockedOn(Target_sun_nio_ch_Interruptible b) {
         JavaThreads.blockedOn(b);
     }

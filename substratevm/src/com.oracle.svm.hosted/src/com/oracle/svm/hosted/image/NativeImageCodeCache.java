@@ -182,8 +182,8 @@ public abstract class NativeImageCodeCache {
     }
 
     protected List<Pair<HostedMethod, CompilationResult>> computeCompilationOrder(Map<HostedMethod, CompilationResult> compilationMap) {
-        return compilationMap.entrySet().stream().map(e -> Pair.create(e.getKey(), e.getValue())).sorted(Comparator.comparing(o -> o.getLeft().wrapped.format("%H.%n(%P):%R")))
-                        .collect(Collectors.toList());
+        return compilationMap.entrySet().stream().map(e -> Pair.create(e.getKey(), e.getValue())).sorted(Comparator.comparing(o -> o.getLeft().wrapped.format("%H.%n(%P):%R"))).collect(
+                        Collectors.toList());
     }
 
     public List<Pair<HostedMethod, CompilationResult>> getOrderedCompilations() {
@@ -401,9 +401,7 @@ public abstract class NativeImageCodeCache {
             if (includedMethods.add(analysisMethod)) {
                 HostedType declaringType = hUniverse.lookup(analysisMethod.getDeclaringClass());
                 String name = analysisMethod.getName();
-                HostedType[] parameterTypes = analysisMethod.getSignature().toParameterList(null).stream()
-                                .map(aType -> hUniverse.lookup(aType))
-                                .toArray(HostedType[]::new);
+                HostedType[] parameterTypes = analysisMethod.getSignature().toParameterList(null).stream().map(aType -> hUniverse.lookup(aType)).toArray(HostedType[]::new);
                 int modifiers = analysisMethod.getModifiers();
                 HostedType returnType = hUniverse.lookup(analysisMethod.getSignature().getReturnType());
                 reflectionMetadataEncoder.addHidingMethodMetadata(analysisMethod, declaringType, name, parameterTypes, modifiers, returnType);
@@ -625,6 +623,7 @@ public abstract class NativeImageCodeCache {
         return true;
     }
 
+    @SuppressWarnings("unused")
     protected boolean verifyMethods(DebugContext debug, HostedUniverse hUniverse, CodeInfoEncoder codeInfoEncoder, CodeInfo codeInfo, ConstantAccess constantAccess) {
         /*
          * Run method verification in parallel to reduce computation time.

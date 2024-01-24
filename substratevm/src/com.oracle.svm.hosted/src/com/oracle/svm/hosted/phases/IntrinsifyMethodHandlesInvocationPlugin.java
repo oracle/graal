@@ -173,7 +173,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
-    private final ParsingReason reason;
+    @SuppressWarnings("unused") private final ParsingReason reason;
     private final Providers parsingProviders;
     private final HostedProviders universeProviders;
     private final AnalysisUniverse aUniverse;
@@ -545,10 +545,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         GraphBuilderPhase.Instance graphBuilder = new HotSpotGraphBuilderInstance(parsingProviders, graphBuilderConfig, OptimisticOptimizations.NONE, null);
 
         DebugContext debug = b.getDebug();
-        StructuredGraph graph = new StructuredGraph.Builder(b.getOptions(), debug)
-                        .method(toOriginal(methodHandleMethod))
-                        .recordInlinedMethods(false)
-                        .build();
+        StructuredGraph graph = new StructuredGraph.Builder(b.getOptions(), debug).method(toOriginal(methodHandleMethod)).recordInlinedMethods(false).build();
         try (DebugContext.Scope s = debug.scope("IntrinsifyMethodHandles", graph)) {
             graphBuilder.apply(graph);
             /*

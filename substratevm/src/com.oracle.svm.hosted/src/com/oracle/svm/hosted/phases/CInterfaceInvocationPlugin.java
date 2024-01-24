@@ -146,7 +146,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         }
     }
 
-    private boolean replaceOffsetOf(GraphBuilderContext b, AnalysisMethod method, ValueNode[] args, AccessorInfo accessorInfo, int displacement) {
+    private static boolean replaceOffsetOf(GraphBuilderContext b, AnalysisMethod method, ValueNode[] args, AccessorInfo accessorInfo, int displacement) {
         /*
          * A method annotated with @OffsetOf can be static, but does not need to be. If it is
          * non-static, we just ignore the receiver.

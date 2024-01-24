@@ -1099,7 +1099,7 @@ public final class CompileTheWorld {
                 }
             } else {
                 compileTimes = new ConcurrentHashMap<>();
-                ThreadPoolExecutor threadPool = new ThreadPoolExecutor(threadCount, threadCount, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), new CTWThreadFactory(libgraal));
+                ThreadPoolExecutor threadPool = new ThreadPoolExecutor(threadCount, threadCount, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(), new CTWThreadFactory(libgraal));
                 for (Compilation task : tasks) {
                     threadPool.submit(new Runnable() {
                         @Override

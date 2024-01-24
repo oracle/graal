@@ -833,7 +833,6 @@ public class SymbolicSnippetEncoder {
                     throw new InternalError(stamp.toString());
                 }
                 ResolvedJavaType elementalType = type.getElementalType();
-                String elementalTypeName = elementalType.getName();
                 if (isGraalClass(elementalType)) {
                     if (!type.equals(elementalType)) {
                         // Ensure that the underlying type is available

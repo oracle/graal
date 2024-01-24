@@ -24,11 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.graph.Node.NodeIntrinsic;
-import jdk.graal.compiler.nodes.extended.MembarNode;
-import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -45,24 +40,26 @@ import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.SimpleCodeInfoQueryResult;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalk;
 import com.oracle.svm.core.stack.JavaStackWalker;
-import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.ContinuationInternals;
 import com.oracle.svm.core.thread.ContinuationSupport;
-import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.nodes.extended.MembarNode;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.word.Word;
 
 /** Helper for allocating and accessing {@link StoredContinuation} instances. */
 public final class StoredContinuationAccess {
@@ -269,47 +266,4 @@ public final class StoredContinuationAccess {
     public interface ContinuationStackFrameVisitorData extends PointerBase {
     }
 
-    private static final class PreemptVisitor extends StackFrameVisitor {
-        private final Pointer endSP;
-        private boolean startFromNextFrame = false;
-
-        Pointer leafSP;
-        CodePointer leafIP;
-        int preemptStatus = ContinuationSupport.FREEZE_OK;
-
-        PreemptVisitor(Pointer endSP) {
-            this.endSP = endSP;
-        }
-
-        @Override
-        protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
-            if (sp.aboveOrEqual(endSP)) {
-                return false;
-            }
-
-            FrameInfoQueryResult frameInfo = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, ip).getFrameInfo();
-            if (frameInfo.getSourceClass().equals(StoredContinuationAccess.class) && frameInfo.getSourceMethodName().equals("allocateToYield")) {
-                // Continuation is already in the process of yielding, cancel preemption.
-                preemptStatus = ContinuationSupport.FREEZE_YIELDING;
-                return false;
-            }
-
-            if (leafSP.isNull()) {
-                // Should start from the method calling `enterSlowPathSafepointCheck`.
-                if (startFromNextFrame) {
-                    leafSP = sp;
-                    leafIP = ip;
-                } else {
-                    if (frameInfo.getSourceClass().equals(Safepoint.class) && frameInfo.getSourceMethodName().equals("enterSlowPathSafepointCheck")) {
-                        startFromNextFrame = true;
-                    }
-                    return true;
-                }
-            }
-
-            VMError.guarantee(codeInfo.equal(CodeInfoTable.getImageCodeInfo()));
-
-            return true;
-        }
-    }
 }

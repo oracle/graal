@@ -232,6 +232,7 @@ public class CStructTests {
         free(ss2);
     }
 
+    @SuppressWarnings("unused")
     public void testMixedArguments(String m1, short s, SimpleStruct ss1, long l, String m2, SimpleStruct2 ss2, String m3) {
         System.out.println("You find " + m1);
         System.out.println("You find " + m2);
