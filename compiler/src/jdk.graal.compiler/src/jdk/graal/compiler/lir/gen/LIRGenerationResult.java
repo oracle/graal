@@ -165,7 +165,8 @@ public class LIRGenerationResult {
      *
      * @return index of the first insert position
      */
-    public static int getFirstInsertPosition() {
+    @SuppressWarnings("static-method")
+    public final int getFirstInsertPosition() {
         return 1;
     }
 

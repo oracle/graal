@@ -27,7 +27,6 @@ package jdk.graal.compiler.hotspot.test;
 import org.junit.Assume;
 import org.junit.AssumptionViolatedException;
 
-import jdk.graal.compiler.api.test.Graal;
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
@@ -42,7 +41,6 @@ import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
@@ -79,8 +77,6 @@ public abstract class HotSpotGraalCompilerTest extends GraalCompilerTest {
     }
 
     protected InstalledCode compileAndInstallSubstitution(ResolvedJavaMethod method) {
-        HotSpotGraalRuntimeProvider rt = (HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class);
-        rt.getHostBackend().getProviders();
         CompilationIdentifier compilationId = runtime().getHostBackend().getCompilationIdentifier(method);
         OptionValues options = getInitialOptions();
         StructuredGraph graph = getIntrinsicGraph(method, compilationId, getDebugContext(options), AllowAssumptions.YES, null);

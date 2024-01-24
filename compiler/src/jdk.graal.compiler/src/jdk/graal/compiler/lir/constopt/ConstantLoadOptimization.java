@@ -58,7 +58,6 @@ import jdk.graal.compiler.lir.phases.PreAllocationOptimizationPhase;
 import jdk.graal.compiler.options.NestedBooleanOptionKey;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
-
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
@@ -356,8 +355,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
             // create move
             LIRInstruction move = lirGen.getSpillMoveFactory().createLoad(variable, constant);
             // insert instruction
-            lirGen.getResult();
-            int insertionIndex = LIRGenerationResult.getFirstInsertPosition();
+            int insertionIndex = lirGen.getResult().getFirstInsertPosition();
             getInsertionBuffer(block).append(insertionIndex, move);
             debug.log("new move (%s) and inserted in block %s", move, block);
             // update usages
