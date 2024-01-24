@@ -449,7 +449,12 @@ public abstract class NativeImageDebugInfoProviderBase {
         HostedType declaringClass = method.getDeclaringClass();
         HostedType receiverType = method.isStatic() ? null : declaringClass;
         var signature = method.getSignature();
-        SubstrateCallingConventionType type = callingConventionKind.toType(false);
+        final SubstrateCallingConventionType type;
+        if (callingConventionKind.isCustom()) {
+            type = method.getCustomCallingConventionType();
+        } else {
+            type = callingConventionKind.toType(false);
+        }
         Backend backend = runtimeConfiguration.lookupBackend(method);
         RegisterConfig registerConfig = backend.getCodeCache().getRegisterConfig();
         assert registerConfig instanceof SubstrateRegisterConfig;
