@@ -233,6 +233,12 @@ public final class Continuation {
     }
 
     /**
+     * Tracks whether the current thread has passed through {@link #resume()}. If it hasn't then
+     * suspending is illegal.
+     */
+    private static final ThreadLocal<Boolean> insideContinuation = ThreadLocal.withInitial(() -> false);
+
+    /**
      * An object provided by the system that lets you yield control and return from
      * {@link Continuation#resume()}.
      */
@@ -246,6 +252,8 @@ public final class Continuation {
          * resumed.
          */
         public void suspend() {
+            if (!insideContinuation.get())
+                throw new IllegalStateException("Suspend capabilities can only be used inside a continuation.");
             stateHolder.state = State.SUSPENDED;
             Continuation.suspend0();
             stateHolder.state = State.RUNNING;
@@ -284,7 +292,17 @@ public final class Continuation {
         }
 
         assert stackFrameHead != null;
-        resume0();
+
+        // Ensure the user can't leak the suspend capability and then try to suspend without a
+        // resume() on the start (which would terminate the VM due to a leaking host exception).
+        //
+        // What if someone starts a continuation inside another continuation? That's fine!
+        insideContinuation.set(true);
+        try {
+            resume0();
+        } finally {
+            insideContinuation.set(false);
+        }
     }
 
     /**
