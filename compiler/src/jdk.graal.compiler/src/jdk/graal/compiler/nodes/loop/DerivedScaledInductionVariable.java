@@ -91,22 +91,68 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
 
     @Override
     public boolean isConstantInit() {
-        return scale.isConstant() && base.isConstantInit();
+        try {
+            if (scale.isConstant() && base.isConstantInit()) {
+                constantInitSafe();
+                return true;
+            }
+        } catch (ArithmeticException e) {
+            // fall through to return false
+        }
+        return false;
     }
 
     @Override
     public boolean isConstantStride() {
-        return scale.isConstant() && base.isConstantStride();
+        try {
+            if (scale.isConstant() && base.isConstantStride()) {
+                constantStrideSafe();
+                return true;
+            }
+        } catch (ArithmeticException e) {
+            // fall through to return false
+        }
+        return false;
     }
 
     @Override
     public long constantInit() {
-        return base.constantInit() * scale.asJavaConstant().asLong();
+        return constantInitSafe();
+    }
+
+    private long constantInitSafe() throws ArithmeticException {
+        return Math.multiplyExact(base.constantInit(), scale.asJavaConstant().asLong());
     }
 
     @Override
     public long constantStride() {
-        return base.constantStride() * scale.asJavaConstant().asLong();
+        return constantStrideSafe();
+    }
+
+    private long constantStrideSafe() throws ArithmeticException {
+        return Math.multiplyExact(base.constantStride(), scale.asJavaConstant().asLong());
+    }
+
+    @Override
+    public boolean isConstantExtremum() {
+        try {
+            if (scale.isConstant() && base.isConstantExtremum()) {
+                constantExtremumSafe();
+                return true;
+            }
+        } catch (ArithmeticException e) {
+            // fall through to return false
+        }
+        return false;
+    }
+
+    @Override
+    public long constantExtremum() {
+        return constantExtremumSafe();
+    }
+
+    private long constantExtremumSafe() throws ArithmeticException {
+        return Math.multiplyExact(base.constantExtremum(), scale.asJavaConstant().asLong());
     }
 
     @Override
@@ -122,16 +168,6 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
     @Override
     public ValueNode exitValueNode() {
         return mul(graph(), base.exitValueNode(), scale);
-    }
-
-    @Override
-    public boolean isConstantExtremum() {
-        return scale.isConstant() && base.isConstantExtremum();
-    }
-
-    @Override
-    public long constantExtremum() {
-        return base.constantExtremum() * scale.asJavaConstant().asLong();
     }
 
     @Override
