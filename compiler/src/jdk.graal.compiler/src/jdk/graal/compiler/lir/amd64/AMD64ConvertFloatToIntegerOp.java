@@ -40,6 +40,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
@@ -52,8 +53,8 @@ import jdk.vm.ci.meta.Value;
  * for NaNs and all values outside the integer type's range. So we need to fix up the result for
  * NaNs and positive overflowing values. Negative overflowing values keep {@code MIN_VALUE}.
  */
-public class AMD64FloatConvertOp extends AMD64LIRInstruction {
-    public static final LIRInstructionClass<AMD64FloatConvertOp> TYPE = LIRInstructionClass.create(AMD64FloatConvertOp.class);
+public class AMD64ConvertFloatToIntegerOp extends AMD64LIRInstruction {
+    public static final LIRInstructionClass<AMD64ConvertFloatToIntegerOp> TYPE = LIRInstructionClass.create(AMD64ConvertFloatToIntegerOp.class);
 
     @Def({REG}) protected Value dstValue;
     @Alive({REG}) protected Value srcValue;
@@ -69,7 +70,7 @@ public class AMD64FloatConvertOp extends AMD64LIRInstruction {
         void emit(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register dst, Register src);
     }
 
-    public AMD64FloatConvertOp(LIRGeneratorTool tool, OpcodeEmitter opcode, Value dstValue, Value srcValue, boolean canBeNaN, boolean canOverflow) {
+    public AMD64ConvertFloatToIntegerOp(LIRGeneratorTool tool, OpcodeEmitter opcode, Value dstValue, Value srcValue, boolean canBeNaN, boolean canOverflow) {
         super(TYPE);
         this.dstValue = dstValue;
         this.srcValue = srcValue;
@@ -77,6 +78,9 @@ public class AMD64FloatConvertOp extends AMD64LIRInstruction {
         this.tmpValue = canOverflow ? tool.newVariable(srcValue.getValueKind()) : Value.ILLEGAL;
         this.canBeNaN = canBeNaN;
         this.canOverflow = canOverflow;
+
+        GraalError.guarantee(srcValue.getPlatformKind() instanceof AMD64Kind kind && kind.getVectorLength() == 1 && kind.isXMM(), "source must be scalar floating-point: %s", srcValue);
+        GraalError.guarantee(dstValue.getPlatformKind() instanceof AMD64Kind kind && kind.getVectorLength() == 1 && kind.isInteger(), "destination must be integer: %s", dstValue);
     }
 
     @Override

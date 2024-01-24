@@ -123,7 +123,7 @@ import jdk.graal.compiler.lir.amd64.AMD64Binary;
 import jdk.graal.compiler.lir.amd64.AMD64BinaryConsumer;
 import jdk.graal.compiler.lir.amd64.AMD64BitSwapOp;
 import jdk.graal.compiler.lir.amd64.AMD64ClearRegisterOp;
-import jdk.graal.compiler.lir.amd64.AMD64FloatConvertOp;
+import jdk.graal.compiler.lir.amd64.AMD64ConvertFloatToIntegerOp;
 import jdk.graal.compiler.lir.amd64.AMD64FloatToHalfFloatOp;
 import jdk.graal.compiler.lir.amd64.AMD64HalfFloatToFloatOp;
 import jdk.graal.compiler.lir.amd64.AMD64MathCopySignOp;
@@ -824,8 +824,8 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
      */
     private AllocatableValue emitFloatConvertWithFixup(LIRKind kind, AMD64RMOp op, OperandSize size, Value input, boolean canBeNaN, boolean canOverflow) {
         Variable result = getLIRGen().newVariable(kind);
-        AMD64FloatConvertOp.OpcodeEmitter emitter = (crb, masm, dst, src) -> op.emit(masm, size, dst, src);
-        getLIRGen().append(new AMD64FloatConvertOp(getLIRGen(), emitter, result, input, canBeNaN, canOverflow));
+        AMD64ConvertFloatToIntegerOp.OpcodeEmitter emitter = (crb, masm, dst, src) -> op.emit(masm, size, dst, src);
+        getLIRGen().append(new AMD64ConvertFloatToIntegerOp(getLIRGen(), emitter, result, input, canBeNaN, canOverflow));
         return result;
     }
 
