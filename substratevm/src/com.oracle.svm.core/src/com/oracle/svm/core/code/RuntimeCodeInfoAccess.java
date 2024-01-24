@@ -180,6 +180,21 @@ public final class RuntimeCodeInfoAccess {
     }
 
     /**
+     * This method only walks the tether. You typically want to use {@link #walkStrongReferences}
+     * and/or {@link #walkWeakReferences} instead.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean walkTether(CodeInfo info, ObjectReferenceVisitor visitor) {
+        Pointer address = NonmovableArrays.addressOf(cast(info).getObjectFields(), CodeInfoImpl.TETHER_OBJFIELD);
+        return callVisitor(visitor, address);
+    }
+
+    @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
+    private static boolean callVisitor(ObjectReferenceVisitor visitor, Pointer address) {
+        return visitor.visitObjectReference(address, true, null);
+    }
+
+    /**
      * This method only visits a very specific subset of all the references, so you typically want
      * to use {@link #walkStrongReferences} and/or {@link #walkWeakReferences} instead.
      */
@@ -204,23 +219,11 @@ public final class RuntimeCodeInfoAccess {
     }
 
     @Uninterruptible(reason = "Prevent the GC from running - otherwise, it could accidentally visit the freed memory.")
-    static void freePartially(CodeInfo info, boolean notifyGC) {
+    static void markAsInvalidated(CodeInfo info) {
         CodeInfoImpl impl = cast(info);
         assert CodeInfoAccess.isAliveState(impl.getState()) || impl.getState() == CodeInfo.STATE_READY_FOR_INVALIDATION : "unexpected state (probably already released)";
-        if (notifyGC) {
-            // Notify the GC as long as the object data is still valid.
-            Heap.getHeap().getRuntimeCodeInfoGCSupport().unregisterCodeConstants(info);
-        }
-
-        NonmovableArrays.releaseUnmanagedArray(impl.getCodeObserverHandles());
-        impl.setCodeObserverHandles(NonmovableArrays.nullArray());
-
-        releaseCodeMemory(impl.getCodeStart(), impl.getCodeAndDataMemorySize());
-        /*
-         * Note that we must not null-out any CodeInfo metadata as it can be accessed in a stack
-         * walk even when the CodeInfo data is already partially freed.
-         */
-        CodeInfoAccess.setState(info, CodeInfo.STATE_PARTIALLY_FREED);
+        /* We can't free any data because only the GC is allowed to free CodeInfo data. */
+        CodeInfoAccess.setState(info, CodeInfo.STATE_INVALIDATED);
     }
 
     public static CodePointer allocateCodeMemory(UnsignedWord size) {
@@ -245,7 +248,7 @@ public final class RuntimeCodeInfoAccess {
         InstalledCodeObserverSupport.removeObserversOnTearDown(getCodeObserverHandles(info));
 
         assert ((CodeInfoTether) UntetheredCodeInfoAccess.getTetherUnsafe(info)).getCount() == 1 : "CodeInfo tether must not be referenced by non-teardown code.";
-        free(info, true);
+        free(info);
     }
 
     public interface NonmovableArrayAction {
@@ -262,16 +265,14 @@ public final class RuntimeCodeInfoAccess {
     };
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void free(CodeInfo info, boolean notifyGC) {
+    public static void free(CodeInfo info) {
         CodeInfoImpl impl = cast(info);
-        if (CodeInfoAccess.isAliveState(impl.getState()) || impl.getState() == CodeInfo.STATE_READY_FOR_INVALIDATION) {
-            freePartially(info, notifyGC);
-        }
 
-        if (notifyGC) {
-            // Notify the GC as long as the object data is still valid.
-            Heap.getHeap().getRuntimeCodeInfoGCSupport().unregisterRuntimeCodeInfo(info);
-        }
+        /* Free the code observers handles unconditionally (they are never in the image heap). */
+        NonmovableArrays.releaseUnmanagedArray(impl.getCodeObserverHandles());
+        impl.setCodeObserverHandles(NonmovableArrays.nullArray());
+
+        releaseCodeMemory(impl.getCodeStart(), impl.getCodeAndDataMemorySize());
 
         if (!impl.getAllObjectsAreInImageHeap()) {
             forEachArray(info, RELEASE_ACTION);

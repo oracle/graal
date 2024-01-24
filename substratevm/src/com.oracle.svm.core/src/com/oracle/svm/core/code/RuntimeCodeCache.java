@@ -210,14 +210,14 @@ public class RuntimeCodeCache {
          */
         Deoptimizer.deoptimizeInRange(CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info), false);
 
-        finishInvalidation(info, true);
+        finishInvalidation(info);
     }
 
     protected void invalidateNonStackMethod(CodeInfo info) {
         assert VMOperation.isGCInProgress() : "may only be called by the GC";
         prepareInvalidation(info);
         assert codeNotOnStackVerifier.verify(info);
-        finishInvalidation(info, false);
+        finishInvalidation(info);
     }
 
     private void prepareInvalidation(CodeInfo info) {
@@ -236,14 +236,14 @@ public class RuntimeCodeCache {
         }
     }
 
-    private void finishInvalidation(CodeInfo info, boolean notifyGC) {
+    private void finishInvalidation(CodeInfo info) {
         InstalledCodeObserverSupport.removeObservers(RuntimeCodeInfoAccess.getCodeObserverHandles(info));
-        finishInvalidation0(info, notifyGC);
+        finishInvalidation0(info);
         RuntimeCodeInfoHistory.singleton().logInvalidate(info);
     }
 
     @Uninterruptible(reason = "Modifying code tables that are used by the GC")
-    private void finishInvalidation0(CodeInfo info, boolean notifyGC) {
+    private void finishInvalidation0(CodeInfo info) {
         /*
          * Now it is guaranteed that the InstalledCode is not on the stack and cannot be invoked
          * anymore, so we can free the code and all metadata.
@@ -256,7 +256,7 @@ public class RuntimeCodeCache {
         numCodeInfos--;
         NonmovableArrays.setWord(codeInfos, numCodeInfos, WordFactory.nullPointer());
 
-        RuntimeCodeInfoAccess.freePartially(info, notifyGC);
+        RuntimeCodeInfoAccess.markAsInvalidated(info);
         assert verifyTable();
     }
 

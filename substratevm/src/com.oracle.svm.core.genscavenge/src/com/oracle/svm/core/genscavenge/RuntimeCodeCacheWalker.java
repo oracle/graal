@@ -75,7 +75,7 @@ final class RuntimeCodeCacheWalker implements CodeInfoVisitor {
         Object tether = UntetheredCodeInfoAccess.getTetherUnsafe(codeInfo);
         if (tether != null && !isReachable(tether)) {
             int state = CodeInfoAccess.getState(codeInfo);
-            if (state == CodeInfo.STATE_PARTIALLY_FREED) {
+            if (state == CodeInfo.STATE_INVALIDATED) {
                 /*
                  * The tether object is not reachable and the CodeInfo was already invalidated, so
                  * we only need to visit references that will be accessed before the unmanaged
