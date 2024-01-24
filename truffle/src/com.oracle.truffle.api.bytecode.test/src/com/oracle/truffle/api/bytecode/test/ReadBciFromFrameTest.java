@@ -251,6 +251,7 @@ abstract class BytecodeNodeWithStoredBci extends RootNode implements BytecodeRoo
         super(language, frameDescriptor);
     }
 
+    @SuppressWarnings({"serial"})
     public static final class MyException extends AbstractTruffleException {
         private static final long serialVersionUID = 1L;
         public final Object result;

@@ -156,7 +156,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         if (annotationMirrors.size() != 1) {
             throw new IllegalArgumentException(String.format("Expected element %s to have one %s annotation, but %d found.", typeElement.getSimpleName(), annotationType, annotationMirrors.size()));
         }
-        AnnotationMirror mirror = annotationMirrors.getFirst();
+        AnnotationMirror mirror = annotationMirrors.get(0);
 
         return parseCustomOperation(typeElement, mirror);
     }

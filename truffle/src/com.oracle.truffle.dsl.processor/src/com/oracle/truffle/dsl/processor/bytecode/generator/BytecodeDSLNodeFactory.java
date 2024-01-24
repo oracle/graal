@@ -297,7 +297,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 CodeVariableElement classToTag = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL),
                                 generic(ConcurrentHashMap.class,
                                                 type(Integer.class),
-                                                arrayOf(generic(context.getDeclaredType(Class.class), types.Tag))),
+                                                arrayOf(generic(context.getDeclaredType(Class.class), wildcard(types.Tag, null)))),
                                 "TAG_MASK_TO_TAGS");
                 classToTag.createInitBuilder().string("new ConcurrentHashMap<>()");
                 bytecodeNodeGen.add(classToTag);
@@ -570,9 +570,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     private CodeExecutableElement createMapTagMaskToTagsArray() {
         TypeMirror tagClass = generic(context.getDeclaredType(Class.class), wildcard(types.Tag, null));
-        CodeExecutableElement classToTagMethod = new CodeExecutableElement(Set.of(PRIVATE, STATIC), arrayOf(generic(context.getDeclaredType(Class.class), types.Tag)), "mapTagMaskToTagsArray");
+        CodeExecutableElement classToTagMethod = new CodeExecutableElement(Set.of(PRIVATE, STATIC), arrayOf(generic(context.getDeclaredType(Class.class), wildcard(types.Tag, null))),
+                        "mapTagMaskToTagsArray");
         classToTagMethod.addParameter(new CodeVariableElement(type(int.class), "tagMask"));
-        GeneratorUtils.mergeSuppressWarnings(classToTagMethod, "unchecked");
+        GeneratorUtils.mergeSuppressWarnings(classToTagMethod, "unchecked", "rawtypes");
 
         CodeTreeBuilder b = classToTagMethod.createBuilder();
 

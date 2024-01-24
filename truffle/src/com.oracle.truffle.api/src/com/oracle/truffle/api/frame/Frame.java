@@ -952,7 +952,10 @@ public interface Frame {
      * Copies values from this frame to the given frame. The frames are required to have the same
      * {@link Frame#getFrameDescriptor() frame descriptors}.
      *
-     * @param slot the slot of the local variable
+     * @param srcOffset the slot of the first local variable
+     * @param dst the destination frame
+     * @param dstOffset the first slot to copy locals into
+     * @param length the number of slots to copy
      * @since XXX
      */
     @SuppressWarnings("unused")
