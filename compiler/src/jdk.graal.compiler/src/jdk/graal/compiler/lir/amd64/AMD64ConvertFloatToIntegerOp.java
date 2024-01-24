@@ -87,7 +87,7 @@ public class AMD64ConvertFloatToIntegerOp extends AMD64LIRInstruction {
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         Register dst = asRegister(dstValue);
         Register src = asRegister(srcValue);
-        Label isNotNaN = new Label();
+        Label fixupPath = new Label();
         Label done = new Label();
 
         opcode.emit(crb, masm, dst, src);
@@ -106,50 +106,58 @@ public class AMD64ConvertFloatToIntegerOp extends AMD64LIRInstruction {
         };
 
         /*
-         * if (dst != MIN_VALUE) { goto done; }
+         * if (dst == MIN_VALUE) { goto fixupPath; }
          */
         if (integerBytes == 4) {
-            masm.cmplAndJcc(dst, Integer.MIN_VALUE, AMD64Assembler.ConditionFlag.NotEqual, done, true);
+            masm.cmplAndJcc(dst, Integer.MIN_VALUE, AMD64Assembler.ConditionFlag.Equal, fixupPath, false);
         } else {
             masm.cmpq(dst, (AMD64Address) crb.asLongConstRef(JavaConstant.forLong(Long.MIN_VALUE)));
-            masm.jcc(AMD64Assembler.ConditionFlag.NotEqual, done, true);
+            masm.jcc(AMD64Assembler.ConditionFlag.Equal, fixupPath);
         }
 
-        if (canBeNaN) {
-            /*
-             * if (isNaN(src)) { result = 0; goto done; }
-             *
-             * The isNaN check is implemented as src != src. C2's fixup stubs check for a NaN bit
-             * pattern directly, using the same number of cycles but using an extra general purpose
-             * register.
-             */
-            UCOMIS.emit(masm, floatSize, src, src);
-            masm.jcc(AMD64Assembler.ConditionFlag.NoParity, isNotNaN, true);
-            masm.movl(dst, 0);
-            masm.jmp(done);
-            masm.bind(isNotNaN);
-        }
+        crb.getLIR().addSlowPath(this, () -> {
+            masm.bind(fixupPath);
 
-        if (canOverflow) {
-            /*
-             * if (src > 0.0) { result = MAX_VALUE; }
-             *
-             * We use an actual floating point compare, C2's stubs check the sign bit in a GPR.
-             */
-            Register zero = asRegister(tmpValue);
-            masm.pxor(AVXKind.AVXSize.XMM, zero, zero);
-            UCOMIS.emit(masm, floatSize, src, zero);
-            masm.jcc(AMD64Assembler.ConditionFlag.BelowEqual, done, true);
-            /*
-             * MAX_VALUE is the bitwise negation of MIN_VALUE, which is already in dst. A negation
-             * takes the same number of cycles as a move, but its encoding is shorter.
-             */
-            if (integerBytes == 4) {
-                masm.notl(dst);
-            } else {
-                masm.notq(dst);
+            if (canBeNaN) {
+                /*
+                 * if (isNaN(src)) { result = 0; goto done; }
+                 *
+                 * The isNaN check is implemented as src != src. C2's fixup stubs check for a NaN
+                 * bit pattern directly, using the same number of cycles but using an extra general
+                 * purpose register.
+                 */
+                Label isNotNaN = new Label();
+                UCOMIS.emit(masm, floatSize, src, src);
+                masm.jcc(AMD64Assembler.ConditionFlag.NoParity, isNotNaN, true);
+                masm.movl(dst, 0);
+                masm.jmp(done);
+                masm.bind(isNotNaN);
             }
-        }
+
+            if (canOverflow) {
+                /*
+                 * if (src > 0.0) { result = MAX_VALUE; }
+                 *
+                 * We use an actual floating point compare, C2's stubs check the sign bit in a GPR.
+                 */
+                Register zero = asRegister(tmpValue);
+                masm.pxor(AVXKind.AVXSize.XMM, zero, zero);
+                UCOMIS.emit(masm, floatSize, src, zero);
+                masm.jcc(AMD64Assembler.ConditionFlag.BelowEqual, done);
+                /*
+                 * MAX_VALUE is the bitwise negation of MIN_VALUE, which is already in dst. A
+                 * negation takes the same number of cycles as a move, but its encoding is shorter.
+                 */
+                if (integerBytes == 4) {
+                    masm.notl(dst);
+                } else {
+                    masm.notq(dst);
+                }
+            }
+
+            /* Return to inline code. */
+            masm.jmp(done);
+        });
 
         masm.bind(done);
     }
