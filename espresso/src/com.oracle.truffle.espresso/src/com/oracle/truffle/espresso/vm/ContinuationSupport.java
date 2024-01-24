@@ -31,6 +31,8 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
+import java.io.Serial;
+
 /**
  * Support code used for implementation the
  * {@link com.oracle.truffle.espresso.substitutions.Target_com_oracle_truffle_espresso_continuations_Continuation
@@ -139,7 +141,10 @@ public class ContinuationSupport {
      * is gathered up into a linked list.
      */
     public static class Unwind extends ControlFlowException {
-        public HostFrameRecord head = null;
+        @Serial
+        private static final long serialVersionUID = 2520648816466452283L;
+
+        public transient HostFrameRecord head = null;
 
         @CompilerDirectives.TruffleBoundary
         public StaticObject toGuest(Meta meta) {
