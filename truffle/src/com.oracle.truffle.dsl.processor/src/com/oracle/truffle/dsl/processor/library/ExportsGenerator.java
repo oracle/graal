@@ -86,7 +86,6 @@ import com.oracle.truffle.dsl.processor.generator.DSLExpressionGenerator;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.GeneratorMode;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
-import com.oracle.truffle.dsl.processor.generator.HelperMethods;
 import com.oracle.truffle.dsl.processor.generator.NodeConstants;
 import com.oracle.truffle.dsl.processor.generator.StaticConstants;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -1294,7 +1293,6 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
         boolean firstNode = true;
         NodeConstants nodeConstants = new NodeConstants();
-        HelperMethods helperMethods = new HelperMethods();
 
         for (ExportMessageData export : messages.values()) {
             if (export.isGenerated()) {
@@ -1322,7 +1320,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             } else {
                 FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.EXPORTED_MESSAGE, uncachedSpecializedNode, uncachedSharedNodes, Collections.emptyMap(), constants,
                                 nodeConstants);
-                CodeExecutableElement generatedUncached = factory.createUncached(helperMethods);
+                CodeExecutableElement generatedUncached = factory.createUncached();
                 if (firstNode) {
                     uncachedClass.getEnclosedElements().addAll(factory.createUncachedFields());
                     firstNode = false;
@@ -1360,7 +1358,6 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
         }
         nodeConstants.prependToClass(uncachedClass);
-        helperMethods.appendToClass(uncachedClass);
         return uncachedClass;
 
     }
