@@ -170,7 +170,12 @@ final class InternalResourceCache {
     static Path installRuntimeResource(InternalResource resource) throws IOException {
         InternalResourceCache cache = createRuntimeResourceCache(resource);
         synchronized (cache) {
-            return cache.installResource(InternalResourceCache::createInternalResourceEnvReflectively);
+            Path result = cache.path;
+            if (result == null) {
+                result = cache.installResource(InternalResourceCache::createInternalResourceEnvReflectively);
+                cache.path = result;
+            }
+            return result;
         }
     }
 
