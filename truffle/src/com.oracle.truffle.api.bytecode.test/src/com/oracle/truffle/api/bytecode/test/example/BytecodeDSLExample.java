@@ -136,6 +136,7 @@ public abstract class BytecodeDSLExample extends DebugBytecodeRootNode implement
         throw ex;
     }
 
+    @SuppressWarnings({"serial"})
     protected static class EarlyReturnException extends ControlFlowException {
         private static final long serialVersionUID = 3637685681756424058L;
 

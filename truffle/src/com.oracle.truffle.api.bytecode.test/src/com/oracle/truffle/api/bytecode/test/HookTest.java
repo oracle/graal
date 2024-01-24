@@ -462,6 +462,7 @@ abstract class BytecodeNodeWithHooks extends RootNode implements BytecodeRootNod
         return ex;
     }
 
+    @SuppressWarnings({"serial"})
     public static final class MyException extends AbstractTruffleException {
         private static final long serialVersionUID = 1L;
         public final Object result;
