@@ -108,6 +108,15 @@ public class CoverageInstrument extends TruffleInstrument {
     private CoverageTracker tracker;
     private Boolean enabled;
 
+    /*
+     * Guest languages could change the working directory of the current process, The JVM assumes
+     * that the working directory does not change. When this assumption is broken relative file
+     * paths no longer work correctly. For this reason we save the absolute path to the output file
+     * at the very start so that we avoid issues of broken relative paths See GR-36526 for more
+     * context.
+     */
+    private String absoluteOutputPath;
+
     public static CoverageTracker getTracker(Engine engine) {
         Instrument instrument = engine.getInstruments().get(ID);
         if (instrument == null) {
@@ -123,11 +132,10 @@ public class CoverageInstrument extends TruffleInstrument {
         CoverageInstrument.factory = factory;
     }
 
-    protected static PrintStream chooseOutputStream(TruffleInstrument.Env env, OptionKey<String> option) {
+    protected static PrintStream chooseOutputStream(Env env, String absoluteOutputPath) {
         try {
-            if (option.hasBeenSet(env.getOptions())) {
-                final String outputPath = option.getValue(env.getOptions());
-                final File file = new File(outputPath);
+            if (absoluteOutputPath != null) {
+                final File file = new File(absoluteOutputPath);
                 new PrintStream(env.out()).println("Printing output to " + file.getAbsolutePath());
                 return new PrintStream(new FileOutputStream(file));
             } else {
@@ -171,6 +179,9 @@ public class CoverageInstrument extends TruffleInstrument {
         enabled = ENABLED.getValue(options);
         if (enabled) {
             tracker.start(new CoverageTracker.Config(getSourceSectionFilter(options), Count.getValue(options)));
+            if (CoverageInstrument.OUTPUT_FILE.hasBeenSet(env.getOptions())) {
+                absoluteOutputPath = new File(CoverageInstrument.OUTPUT_FILE.getValue(env.getOptions())).getAbsolutePath();
+            }
         }
     }
 
@@ -180,7 +191,7 @@ public class CoverageInstrument extends TruffleInstrument {
             SourceCoverage[] coverage = tracker.getCoverage();
             final OptionValues options = env.getOptions();
             final boolean strictLines = StrictLines.getValue(options);
-            PrintStream out = chooseOutputStream(env, OUTPUT_FILE);
+            PrintStream out = chooseOutputStream(env, absoluteOutputPath);
             switch (OUTPUT.getValue(options)) {
                 case HISTOGRAM:
                     new CoverageCLI(out, coverage, strictLines).printHistogramOutput();

@@ -35,7 +35,13 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
 
-/** For fields with this annotation no static analysis is done. */
+/**
+ * For fields with this annotation no static analysis is done.
+ *
+ * This annotation is only necessary during the image build. It prevents the static analysis from
+ * wrongly constant-folding a value that is initialized late during the image build and therefore
+ * not available during analysis.
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
 @Platforms(Platform.HOSTED_ONLY.class)

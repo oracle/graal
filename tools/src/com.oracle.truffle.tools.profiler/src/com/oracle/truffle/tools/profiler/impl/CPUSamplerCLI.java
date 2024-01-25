@@ -45,6 +45,8 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleContext;
@@ -52,8 +54,6 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.tools.profiler.CPUSampler;
 import com.oracle.truffle.tools.profiler.CPUSamplerData;
 import com.oracle.truffle.tools.profiler.ProfilerNode;
-import org.graalvm.shadowed.org.json.JSONArray;
-import org.graalvm.shadowed.org.json.JSONObject;
 
 @Option.Group(CPUSamplerInstrument.ID)
 class CPUSamplerCLI extends ProfilerCLI {
@@ -221,8 +221,8 @@ class CPUSamplerCLI extends ProfilerCLI {
     @Option(name = "SampleContextInitialization", help = "Enables sampling of code executed during context initialization", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> SAMPLE_CONTEXT_INITIALIZATION = new OptionKey<>(false);
 
-    static void handleOutput(TruffleInstrument.Env env, CPUSampler sampler) {
-        PrintStream out = chooseOutputStream(env);
+    static void handleOutput(TruffleInstrument.Env env, CPUSampler sampler, String absoluteOutputPath) {
+        PrintStream out = chooseOutputStream(env, absoluteOutputPath);
         Map<TruffleContext, CPUSamplerData> data = sampler.getData();
         OptionValues options = env.getOptions();
         switch (chooseOutput(options)) {
@@ -242,12 +242,10 @@ class CPUSamplerCLI extends ProfilerCLI {
         }
     }
 
-    private static PrintStream chooseOutputStream(TruffleInstrument.Env env) {
-        OptionValues options = env.getOptions();
-        final String outputPath = getOutputPath(env, options);
-        if (outputPath != null) {
+    private static PrintStream chooseOutputStream(TruffleInstrument.Env env, String absoluteOutputPath) {
+        if (absoluteOutputPath != null) {
             try {
-                final File file = new File(outputPath);
+                final File file = new File(absoluteOutputPath);
                 new PrintStream(env.out()).println("Printing output to " + file.getAbsolutePath());
                 return new PrintStream(new FileOutputStream(file));
             } catch (FileNotFoundException e) {
@@ -257,9 +255,9 @@ class CPUSamplerCLI extends ProfilerCLI {
         return new PrintStream(env.out());
     }
 
-    private static String getOutputPath(TruffleInstrument.Env env, OptionValues options) {
+    static String getOutputPath(OptionValues options) {
         if (OUTPUT_FILE.hasBeenSet(options)) {
-            return OUTPUT_FILE.getValue(env.getOptions());
+            return OUTPUT_FILE.getValue(options);
         }
         if (ENABLED.getValue(options).output == Output.FLAMEGRAPH) {
             return DEFAULT_FLAMEGRAPH_FILE;
