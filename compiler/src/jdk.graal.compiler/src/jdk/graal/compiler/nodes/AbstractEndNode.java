@@ -55,9 +55,9 @@ public abstract class AbstractEndNode extends FixedNode implements LIRLowerable 
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         assertTrue(getUsageCount() <= 1, "at most one usage");
-        return super.verify();
+        return super.verifyNode();
     }
 
     @Override

@@ -46,7 +46,6 @@ import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.Linker;
-import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmModule;
@@ -83,14 +82,8 @@ public abstract class BytecodeParser {
             if (module.globalImported(i)) {
                 continue;
             }
-            final int address = instance.globalAddress(i);
-            final long value = module.globalInitialValue(i);
             if (module.globalInitialized(i)) {
-                if (module.globalIsReference(i)) {
-                    globals.storeReference(address, WasmConstant.NULL);
-                } else {
-                    globals.storeLong(address, value);
-                }
+                globals.store(module.globalValueType(i), instance.globalAddress(i), module.globalInitialValue(i));
             } else {
                 Linker.initializeGlobal(context, instance, i, module.globalInitializerBytecode(i));
             }
@@ -471,9 +464,9 @@ public abstract class BytecodeParser {
                 case Bytecode.RETURN:
                 case Bytecode.LOOP:
                 case Bytecode.DROP:
-                case Bytecode.DROP_REF:
+                case Bytecode.DROP_OBJ:
                 case Bytecode.SELECT:
-                case Bytecode.SELECT_REF:
+                case Bytecode.SELECT_OBJ:
                 case Bytecode.I32_EQZ:
                 case Bytecode.I32_EQ:
                 case Bytecode.I32_NE:
@@ -614,11 +607,11 @@ public abstract class BytecodeParser {
                 case Bytecode.LABEL_U8:
                 case Bytecode.BR_U8:
                 case Bytecode.LOCAL_GET_U8:
-                case Bytecode.LOCAL_GET_REF_U8:
+                case Bytecode.LOCAL_GET_OBJ_U8:
                 case Bytecode.LOCAL_SET_U8:
-                case Bytecode.LOCAL_SET_REF_U8:
+                case Bytecode.LOCAL_SET_OBJ_U8:
                 case Bytecode.LOCAL_TEE_U8:
-                case Bytecode.LOCAL_TEE_REF_U8:
+                case Bytecode.LOCAL_TEE_OBJ_U8:
                 case Bytecode.GLOBAL_GET_U8:
                 case Bytecode.GLOBAL_SET_U8:
                 case Bytecode.I32_LOAD_U8:
@@ -660,11 +653,11 @@ public abstract class BytecodeParser {
                 case Bytecode.MEMORY_GROW:
                 case Bytecode.BR_I32:
                 case Bytecode.LOCAL_GET_I32:
-                case Bytecode.LOCAL_GET_REF_I32:
+                case Bytecode.LOCAL_GET_OBJ_I32:
                 case Bytecode.LOCAL_SET_I32:
-                case Bytecode.LOCAL_SET_REF_I32:
+                case Bytecode.LOCAL_SET_OBJ_I32:
                 case Bytecode.LOCAL_TEE_I32:
-                case Bytecode.LOCAL_TEE_REF_I32:
+                case Bytecode.LOCAL_TEE_OBJ_I32:
                 case Bytecode.GLOBAL_GET_I32:
                 case Bytecode.GLOBAL_SET_I32:
                 case Bytecode.I32_LOAD_I32:
@@ -891,6 +884,56 @@ public abstract class BytecodeParser {
                             }
                             break;
                         }
+                        default:
+                            throw CompilerDirectives.shouldNotReachHere();
+                    }
+                    break;
+                case Bytecode.VECTOR:
+                    final int vectorOpcode = rawPeekU8(bytecode, offset);
+                    offset++;
+                    switch (vectorOpcode) {
+                        case Bytecode.VECTOR_V128_LOAD: {
+                            final int encoding = rawPeekU8(bytecode, offset);
+                            offset++;
+                            final int indexType64 = encoding & BytecodeBitEncoding.MEMORY_64_FLAG;
+                            offset += 4;
+                            if (indexType64 == 0) {
+                                offset += 4;
+                            } else {
+                                offset += 8;
+                            }
+                            break;
+                        }
+                        case Bytecode.VECTOR_V128_CONST:
+                            offset += 16;
+                            break;
+                        case Bytecode.VECTOR_F64X2_EQ:
+                        case Bytecode.VECTOR_F64X2_NE:
+                        case Bytecode.VECTOR_F64X2_LT:
+                        case Bytecode.VECTOR_F64X2_GT:
+                        case Bytecode.VECTOR_F64X2_LE:
+                        case Bytecode.VECTOR_F64X2_GE:
+                        case Bytecode.VECTOR_V128_ANY_TRUE:
+                        case Bytecode.VECTOR_I32X4_ALL_TRUE:
+                        case Bytecode.VECTOR_I32X4_ADD:
+                        case Bytecode.VECTOR_I32X4_SUB:
+                        case Bytecode.VECTOR_I32X4_MUL:
+                        case Bytecode.VECTOR_F64X2_CEIL:
+                        case Bytecode.VECTOR_F64X2_FLOOR:
+                        case Bytecode.VECTOR_F64X2_TRUNC:
+                        case Bytecode.VECTOR_F64X2_NEAREST:
+                        case Bytecode.VECTOR_F64X2_ABS:
+                        case Bytecode.VECTOR_F64X2_NEG:
+                        case Bytecode.VECTOR_F64X2_SQRT:
+                        case Bytecode.VECTOR_F64X2_ADD:
+                        case Bytecode.VECTOR_F64X2_SUB:
+                        case Bytecode.VECTOR_F64X2_MUL:
+                        case Bytecode.VECTOR_F64X2_DIV:
+                        case Bytecode.VECTOR_F64X2_MIN:
+                        case Bytecode.VECTOR_F64X2_MAX:
+                        case Bytecode.VECTOR_F64X2_PMIN:
+                        case Bytecode.VECTOR_F64X2_PMAX:
+                            break;
                         default:
                             throw CompilerDirectives.shouldNotReachHere();
                     }

@@ -27,6 +27,7 @@
 package com.oracle.graal.pointsto.api;
 
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -41,11 +42,9 @@ import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
-import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.meta.FieldValueComputer;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
@@ -155,7 +154,7 @@ public abstract class HostVM {
      * 
      * @param newValue the type to initialize
      */
-    public abstract void onTypeReachable(AnalysisType newValue);
+    public abstract void onTypeReachable(BigBang bb, AnalysisType newValue);
 
     /**
      * Check if an {@link AnalysisType} is initialized.
@@ -315,6 +314,10 @@ public abstract class HostVM {
         return providers;
     }
 
+    public boolean isFieldIncluded(BigBang bb, Field field) {
+        return true;
+    }
+
     /**
      * Helpers to determine what analysis actions should be taken for a given Multi-Method version.
      */
@@ -419,9 +422,5 @@ public abstract class HostVM {
          * support it within deoptimization targets and runtime-compiled methods.
          */
         return method.isOriginalMethod();
-    }
-
-    public FieldValueComputer createFieldValueComputer(@SuppressWarnings("unused") AnalysisField field) {
-        return null;
     }
 }

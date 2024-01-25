@@ -34,11 +34,12 @@ import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 
 @AutomaticallyRegisteredImageSingleton
 public final class DynamicHubSupport {
 
-    @UnknownObjectField(availability = AfterHostedUniverse.class) private int maxTypeId;
+    @UnknownPrimitiveField(availability = AfterHostedUniverse.class) private int maxTypeId;
     @UnknownObjectField(availability = AfterHostedUniverse.class) private byte[] referenceMapEncoding;
 
     @Platforms(Platform.HOSTED_ONLY.class)

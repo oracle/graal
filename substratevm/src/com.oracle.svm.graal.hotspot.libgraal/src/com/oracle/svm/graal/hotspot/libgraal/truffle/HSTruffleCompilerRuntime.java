@@ -194,9 +194,6 @@ final class HSTruffleCompilerRuntime extends HSObject implements TruffleCompiler
         }
         long typeHandle = LibGraal.translate(enclosingType);
         int rawValue = callGetConstantFieldInfo(calls, env(), getHandle(), typeHandle, isStatic, fieldIndex);
-        if (rawValue == Integer.MIN_VALUE) {
-            return null;
-        }
         switch (rawValue) {
             case Integer.MIN_VALUE:
                 return null;

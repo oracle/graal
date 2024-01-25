@@ -81,6 +81,8 @@ public final class WasiClockTimeGetNode extends WasmBuiltinRootNode {
                 memory.store_i64(this, resultAddress, realtimeNow());
                 break;
             case Monotonic:
+                memory.store_i64(this, resultAddress, monotonicNow());
+                break;
             case ProcessCputimeId:
             case ThreadCputimeId:
                 throw unimplementedClock(clockId);
@@ -91,6 +93,11 @@ public final class WasiClockTimeGetNode extends WasmBuiltinRootNode {
     @TruffleBoundary
     public static long realtimeNow() {
         return ChronoUnit.NANOS.between(Instant.EPOCH, Instant.now());
+    }
+
+    @TruffleBoundary
+    public static long monotonicNow() {
+        return System.nanoTime();
     }
 
     @TruffleBoundary

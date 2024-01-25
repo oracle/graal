@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -81,6 +81,7 @@ import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
@@ -96,6 +97,7 @@ import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.truffle.nodes.AnyExtendNode;
+import jdk.graal.compiler.truffle.nodes.AnyNarrowNode;
 import jdk.graal.compiler.truffle.nodes.TruffleAssumption;
 import jdk.graal.compiler.truffle.phases.InstrumentPhase;
 import jdk.graal.compiler.truffle.phases.InstrumentationSuite;
@@ -564,6 +566,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         // replace all AnyExtendNodes with ZeroExtendNodes
         for (AnyExtendNode node : graph.getNodes(AnyExtendNode.TYPE)) {
             node.replaceAndDelete(graph.addOrUnique(ZeroExtendNode.create(node.getValue(), 64, NodeView.DEFAULT)));
+        }
+        // replace all AnyNarrowNodes with NarrowNodes
+        for (AnyNarrowNode node : graph.getNodes(AnyNarrowNode.TYPE)) {
+            node.replaceAndDelete(graph.addOrUnique(NarrowNode.create(node.getValue(), 32, NodeView.DEFAULT)));
         }
     }
 

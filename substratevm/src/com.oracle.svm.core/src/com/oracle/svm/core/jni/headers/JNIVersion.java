@@ -24,17 +24,18 @@
  */
 package com.oracle.svm.core.jni.headers;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 
 import com.oracle.svm.core.Uninterruptible;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+
 @CContext(JNIHeaderDirectives.class)
 public final class JNIVersion {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isSupported(int version) {
-        return (JavaVersionUtil.JAVA_SPEC >= 22 && version == JNIVersionJDK22OrLater.JNI_VERSION_22()) ||
+        return (JavaVersionUtil.JAVA_SPEC >= 22 && version == JNIVersionJDKLatest.JNI_VERSION_LATEST()) ||
                         version == JNI_VERSION_21() ||
                         version == JNI_VERSION_20() ||
                         version == JNI_VERSION_19() ||

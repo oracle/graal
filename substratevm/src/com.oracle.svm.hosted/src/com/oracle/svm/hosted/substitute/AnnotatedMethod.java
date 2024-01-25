@@ -30,18 +30,19 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.StructuredGraph;
 import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
@@ -84,17 +85,17 @@ public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, Origi
     }
 
     @Override
-    public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        if (original instanceof GraphProvider) {
-            return ((GraphProvider) original).buildGraph(debug, method, providers, purpose);
+    public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
+        if (original instanceof GraphProvider graphProvider) {
+            return graphProvider.buildGraph(debug, method, providers, purpose);
         }
         return null;
     }
 
     @Override
     public boolean allowRuntimeCompilation() {
-        if (original instanceof GraphProvider) {
-            return ((GraphProvider) original).allowRuntimeCompilation();
+        if (original instanceof GraphProvider graphProvider) {
+            return graphProvider.allowRuntimeCompilation();
         }
         return true;
     }

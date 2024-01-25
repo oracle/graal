@@ -326,6 +326,8 @@ public final class EngineData {
             options.put("compiler.DiagnoseFailure", "true");
         } else if (compilationFailureAction == ExceptionAction.Diagnose) {
             options.put("compiler.DiagnoseFailure", "true");
+        } else if (compilationFailureAction == ExceptionAction.Throw) {
+            options.put("compiler.DiagnoseFailure", "true");
         }
         if (TruffleOptions.AOT && traceTransferToInterpreter) {
             options.put("compiler.NodeSourcePositions", "true");

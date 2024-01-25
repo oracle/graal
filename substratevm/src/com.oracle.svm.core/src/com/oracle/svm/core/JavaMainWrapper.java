@@ -35,7 +35,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -75,11 +74,14 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 import com.oracle.svm.core.util.CounterSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.graal.compiler.word.Word;
 
 @InternalVMMethod
 public class JavaMainWrapper {
@@ -309,7 +311,7 @@ public class JavaMainWrapper {
         MAIN_ISOLATE_PARAMETERS.get().setArgc(argc);
         MAIN_ISOLATE_PARAMETERS.get().setArgv(argv);
         long stackSize = SubstrateOptions.StackSize.getHostedValue();
-        PlatformThreads.OSThreadHandle osThreadHandle = PlatformThreads.singleton().startThreadUnmanaged(RUN_MAIN_ROUTINE.get(), WordFactory.nullPointer(), (int) stackSize);
+        OSThreadHandle osThreadHandle = PlatformThreads.singleton().startThreadUnmanaged(RUN_MAIN_ROUTINE.get(), WordFactory.nullPointer(), (int) stackSize);
         if (osThreadHandle.isNull()) {
             CEntryPointActions.failFatally(1, START_THREAD_UNMANAGED_ERROR_MESSAGE.get());
             return 1;

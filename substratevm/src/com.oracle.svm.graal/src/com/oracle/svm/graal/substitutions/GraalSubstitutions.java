@@ -63,7 +63,7 @@ import com.oracle.svm.graal.GraalCompilerSupport;
 import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
 import com.oracle.svm.graal.hosted.FieldsOffsetsFeature;
 import com.oracle.svm.graal.hosted.GraalCompilerFeature;
-import com.oracle.svm.graal.hosted.RuntimeCompilationFeature;
+import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.util.ReflectionUtil;
 

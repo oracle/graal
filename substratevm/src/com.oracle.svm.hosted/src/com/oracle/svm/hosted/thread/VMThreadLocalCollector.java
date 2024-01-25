@@ -45,7 +45,7 @@ import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 /**
  * Collects all {@link FastThreadLocal} instances that are actually used by the application.
  */
-class VMThreadLocalCollector implements Function<Object, Object> {
+public class VMThreadLocalCollector implements Function<Object, Object> {
 
     final Map<FastThreadLocal, VMThreadLocalInfo> threadLocals = ObservableImageHeapMapProvider.create();
     private boolean sealed;

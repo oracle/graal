@@ -28,15 +28,16 @@ import java.util.Objects;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionKey;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
 
 /**
  * Defines a runtime {@link Option}, in contrast to a {@link HostedOptionKey hosted option}.

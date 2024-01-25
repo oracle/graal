@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.debug.SuspensionFilter;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -92,6 +93,8 @@ import org.graalvm.shadowed.org.json.JSONArray;
 import org.graalvm.shadowed.org.json.JSONObject;
 
 import java.io.IOException;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
@@ -102,11 +105,9 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.concurrent.Phaser;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -125,9 +126,10 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
     private volatile DebuggerSession debuggerSession;
     private final Enabler ioEnabler;
     private volatile boolean launched;  // true when launched, false when attached
-    private boolean disposed = false;
+    private volatile boolean disposed = false;
     private final List<Runnable> runOnDispose = new CopyOnWriteArrayList<>();
     private final List<URI> sourcePath;
+    private volatile OneTimeExecutor clientConnectionExecutor;
 
     private DebugProtocolServerImpl(ExecutionContext context, final boolean debugBreak, final boolean waitAttached, @SuppressWarnings("unused") final boolean inspectInitialization,
                     final List<URI> sourcePath) {
@@ -287,6 +289,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
         if (disposed) {
             return;
         }
+        disposed = true;
         DebugProtocolClient theClient = client;
         if (theClient != null) {
             theClient.terminated(TerminatedEvent.EventBody.create());
@@ -294,6 +297,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
         for (Runnable r : runOnDispose) {
             r.run();
         }
+        clientConnectionExecutor.shutDownAndJoin();
     }
 
     private void onDispose(Runnable r) {
@@ -595,23 +599,57 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
         };
     }
 
-    public CompletableFuture<?> start(final ServerSocket serverSocket) {
-        ExecutorService clientConnectionExecutor = Executors.newSingleThreadExecutor(new ThreadFactory() {
+    /**
+     * The executors created by Executors do not allow to join the threads in the pool. System
+     * threads must be joined before Engine close and ExecutorService.awaitTermination() does not
+     * guarantee threads termination.
+     */
+    private static class OneTimeExecutor implements Executor {
 
-            @Override
-            public Thread newThread(Runnable r) {
-                Thread thread = Executors.defaultThreadFactory().newThread(r);
-                thread.setName("DAP client connection thread");
-                return thread;
+        private final TruffleInstrument.Env env;
+        private final String threadName;
+        private Reference<Thread> thread;
+        private boolean shutDown;
+
+        OneTimeExecutor(TruffleInstrument.Env env, String threadName) {
+            this.env = env;
+            this.threadName = threadName;
+        }
+
+        public synchronized void execute(Runnable command) {
+            if (shutDown) {
+                return;
             }
-        });
+            if (thread != null) {
+                throw new IllegalStateException("This is a one-time executor.");
+            }
+            Thread t = env.createSystemThread(command);
+            t.setName(threadName);
+            t.start();
+            thread = new WeakReference<>(t);
+        }
+
+        synchronized void shutDownAndJoin() {
+            Thread t = (thread != null) ? thread.get() : null;
+            if (t != null) {
+                t.interrupt();
+                try {
+                    t.join();
+                } catch (InterruptedException ex) {
+                    // Interrupted
+                }
+            }
+            shutDown = true;
+        }
+    }
+
+    public CompletableFuture<?> start(final ServerSocket serverSocket) {
+        clientConnectionExecutor = new OneTimeExecutor(context.getEnv(), "DAP client connection thread");
         context.getInfo().println("[Graal DAP] Starting server and listening on " + serverSocket.getLocalSocketAddress());
         return CompletableFuture.runAsync(new Runnable() {
 
             @Override
             public void run() {
-                // We want to shut down the executor after this task finishes
-                clientConnectionExecutor.shutdown();
                 AtomicBoolean terminated = new AtomicBoolean(false);
                 try {
                     if (serverSocket.isClosed()) {
@@ -627,27 +665,21 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
                             context.getErr().println("[Graal DAP] Error while closing the server socket: " + e.getLocalizedMessage());
                         }
                     });
+                    if (disposed) {
+                        // Disposed in the mean time.
+                        return;
+                    }
                     try (Socket clientSocket = serverSocket.accept()) {
                         context.getInfo().println("[Graal DAP] Client connected on " + clientSocket.getRemoteSocketAddress());
 
-                        ExecutorService dapRequestExecutor = Executors.newCachedThreadPool(new ThreadFactory() {
-                            private final ThreadFactory factory = Executors.defaultThreadFactory();
-
-                            @Override
-                            public Thread newThread(Runnable r) {
-                                Thread thread = factory.newThread(r);
-                                thread.setName("DAP request handler " + thread.getName());
-                                return thread;
-                            }
-                        });
-
+                        OneTimeExecutor dapRequestExecutor = new OneTimeExecutor(context.getEnv(), "DAP request handler");
                         Future<?> listenFuture = Session.connect(DebugProtocolServerImpl.this, clientSocket.getInputStream(), clientSocket.getOutputStream(), dapRequestExecutor);
                         try {
                             listenFuture.get();
                         } catch (InterruptedException | ExecutionException e) {
                             context.getErr().println("[Graal DAP] Error: " + e.getLocalizedMessage());
                         } finally {
-                            dapRequestExecutor.shutdown();
+                            dapRequestExecutor.shutDownAndJoin();
                         }
                     }
                 } catch (IOException e) {

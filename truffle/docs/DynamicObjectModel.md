@@ -122,7 +122,7 @@ public final class MyLanguage extends TruffleLanguage<MyContext> {
     private final Shape initialArrayShape;
 
     public MyLanguage() {
-        this.initialObjectShape = Shape.newBuilder(ExtendedObject.class).build();
+        this.initialObjectShape = Shape.newBuilder().layout(ExtendedObject.class).build();
         this.initialArrayShape = Shape.newBuilder().build();
     }
 

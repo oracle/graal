@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedType;
@@ -98,7 +98,7 @@ public class SubstrateType implements SharedType {
     @Override
     public final JavaKind getStorageKind() {
         if (WordBase.class.isAssignableFrom(DynamicHub.toClass(hub))) {
-            return FrameAccess.getWordKind();
+            return ConfigurationValues.getWordKind();
         } else {
             return getJavaKind();
         }

@@ -63,6 +63,12 @@ public class PhysicalMemory {
         return LOCK.isHeldByCurrentThread();
     }
 
+    @Uninterruptible(reason = "May only be called during early startup.")
+    public static void setSize(UnsignedWord value) {
+        VMError.guarantee(!isInitialized(), "PhysicalMemorySize must not be initialized yet.");
+        cachedSize = value;
+    }
+
     /**
      * Returns the size of physical memory in bytes, querying it from the OS if it has not been
      * initialized yet.

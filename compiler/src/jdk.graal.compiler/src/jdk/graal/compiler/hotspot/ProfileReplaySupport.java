@@ -42,8 +42,8 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.util.json.JSONFormatter;
 import org.graalvm.collections.EconomicMap;
+
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
@@ -68,8 +68,8 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
+import jdk.graal.compiler.util.json.JSONFormatter;
 import jdk.graal.compiler.util.json.JSONParser;
-
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -145,7 +145,7 @@ public final class ProfileReplaySupport {
                     StableProfileProvider profileProvider, TypeFilter profileSaveFilter) {
         if (SaveProfiles.getValue(debug.getOptions()) || LoadProfiles.getValue(debug.getOptions()) != null) {
             LambdaNameFormatter lambdaNameFormatter = new LambdaNameFormatter() {
-                private final StableMethodNameFormatter stableFormatter = new StableMethodNameFormatter(graalRuntime.getHostBackend().getProviders(), debug, true);
+                private final StableMethodNameFormatter stableFormatter = new HotSpotStableMethodNameFormatter(graalRuntime.getHostBackend().getProviders(), debug, true);
 
                 @Override
                 public boolean isLambda(ResolvedJavaMethod m) {

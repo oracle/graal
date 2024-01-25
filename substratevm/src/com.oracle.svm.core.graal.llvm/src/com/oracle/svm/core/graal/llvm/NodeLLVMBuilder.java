@@ -38,8 +38,41 @@ import java.util.Map;
 import java.util.Set;
 
 import org.graalvm.collections.Pair;
+
+import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
+import com.oracle.svm.core.graal.code.CGlobalDataReference;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
+import com.oracle.svm.core.graal.code.SubstrateDebugInfoBuilder;
+import com.oracle.svm.core.graal.code.SubstrateNodeLIRBuilder;
+import com.oracle.svm.core.graal.llvm.lowering.LLVMAddressLowering.LLVMAddressValue;
+import com.oracle.svm.core.graal.llvm.runtime.LLVMExceptionUnwind;
+import com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder;
+import com.oracle.svm.core.graal.llvm.util.LLVMUtils;
+import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMKind;
+import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMPendingSpecialRegisterRead;
+import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMValueWrapper;
+import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMVariable;
+import com.oracle.svm.core.graal.meta.KnownOffsets;
+import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
+import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
+import com.oracle.svm.core.graal.nodes.ForeignCallWithExceptionNode;
+import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.meta.SharedField;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.nodes.SafepointCheckNode;
+import com.oracle.svm.core.thread.Safepoint;
+import com.oracle.svm.core.thread.ThreadingSupportImpl;
+import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMBasicBlockRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
+
 import jdk.graal.compiler.code.CompilationResult;
-import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
@@ -89,40 +122,6 @@ import jdk.graal.compiler.nodes.extended.SwitchNode;
 import jdk.graal.compiler.nodes.java.TypeSwitchNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
-import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.graal.code.CGlobalDataInfo;
-import com.oracle.svm.core.graal.code.CGlobalDataReference;
-import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
-import com.oracle.svm.core.graal.code.SubstrateDebugInfoBuilder;
-import com.oracle.svm.core.graal.code.SubstrateNodeLIRBuilder;
-import com.oracle.svm.core.graal.llvm.lowering.LLVMAddressLowering.LLVMAddressValue;
-import com.oracle.svm.core.graal.llvm.runtime.LLVMExceptionUnwind;
-import com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder;
-import com.oracle.svm.core.graal.llvm.util.LLVMUtils;
-import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMKind;
-import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMPendingSpecialRegisterRead;
-import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMValueWrapper;
-import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMVariable;
-import com.oracle.svm.core.graal.meta.KnownOffsets;
-import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
-import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
-import com.oracle.svm.core.graal.nodes.ForeignCallWithExceptionNode;
-import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.meta.SharedField;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.nodes.SafepointCheckNode;
-import com.oracle.svm.core.thread.Safepoint;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
-import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMBasicBlockRef;
-import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
-import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
-
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
@@ -499,7 +498,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
             ComputedIndirectCallTargetNode computedIndirectCallTargetNode = (ComputedIndirectCallTargetNode) callTarget;
             LLVMValueRef computedAddress = llvmOperand(computedIndirectCallTargetNode.getAddressBase());
-            CompressEncoding compressEncoding = ReferenceAccess.singleton().getCompressEncoding();
+            int compressionShift = ReferenceAccess.singleton().getCompressionShift();
             boolean nextMemoryAccessNeedsDecompress = false;
 
             for (var computation : computedIndirectCallTargetNode.getAddressComputation()) {
@@ -510,7 +509,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
                     if (nextMemoryAccessNeedsDecompress) {
                         computedAddress = builder.buildAddrSpaceCast(computedAddress, builder.objectType(true));
                         LLVMValueRef heapBase = ((LLVMVariable) gen.emitReadRegister(ReservedRegisters.singleton().getHeapBaseRegister(), null)).get();
-                        computedAddress = builder.buildUncompress(computedAddress, heapBase, true, compressEncoding.getShift());
+                        computedAddress = builder.buildUncompress(computedAddress, heapBase, true, compressionShift);
                     }
 
                     computedAddress = builder.buildGEP(computedAddress, builder.constantInt(field.getOffset()));

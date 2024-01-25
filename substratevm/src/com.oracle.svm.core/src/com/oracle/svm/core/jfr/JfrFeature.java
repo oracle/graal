@@ -47,7 +47,6 @@ import com.oracle.svm.core.thread.ThreadListenerSupportFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.sun.management.HotSpotDiagnosticMXBean;
 import com.sun.management.internal.PlatformMBeanProviderImpl;
@@ -149,8 +148,6 @@ public class JfrFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.jfr");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base");
 
         // Initialize some parts of JFR/JFC at image build time.
         List<Configuration> knownConfigurations = JFC.getConfigurations();

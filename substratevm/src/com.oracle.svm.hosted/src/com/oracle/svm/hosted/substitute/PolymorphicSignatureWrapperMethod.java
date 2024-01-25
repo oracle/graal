@@ -31,10 +31,11 @@ import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.invoke.MethodHandleUtils;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
@@ -82,28 +83,27 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
     }
 
     @Override
-    public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        AnalysisMetaAccess metaAccess = (AnalysisMetaAccess) providers.getMetaAccess();
+    public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
 
-        List<ValueNode> args = kit.loadArguments(method.toParameterTypes());
+        List<ValueNode> args = new ArrayList<>(kit.getInitialArguments());
         ValueNode receiver = null;
         if (!substitutionBaseMethod.isStatic()) {
             receiver = args.remove(0);
         }
 
-        ValueNode parameterArray = kit.append(new NewArrayNode(metaAccess.lookupJavaType(Object.class), kit.createInt(args.size()), true));
+        ValueNode parameterArray = kit.append(new NewArrayNode(kit.getMetaAccess().lookupJavaType(Object.class), kit.createInt(args.size()), true));
 
         for (int i = 0; i < args.size(); ++i) {
             ValueNode arg = args.get(i);
             if (arg.getStackKind().isPrimitive()) {
-                arg = kit.createBoxing(arg, arg.getStackKind(), metaAccess.lookupJavaType(arg.getStackKind().toBoxedJavaClass()));
+                arg = kit.createBoxing(arg, arg.getStackKind(), kit.getMetaAccess().lookupJavaType(arg.getStackKind().toBoxedJavaClass()));
             }
             StateSplit storeIndexedNode = (StateSplit) kit.createStoreIndexed(parameterArray, i, JavaKind.Object, arg);
             storeIndexedNode.setStateAfter(kit.getFrameState().create(kit.bci(), storeIndexedNode));
         }
 
-        ResolvedJavaMethod invokeTarget = metaAccess.getUniverse().lookup(substitutionBaseMethod.getOriginal());
+        AnalysisMethod invokeTarget = kit.getMetaAccess().getUniverse().lookup(substitutionBaseMethod.getOriginal());
         InvokeWithExceptionNode invoke;
         if (substitutionBaseMethod.isStatic()) {
             invoke = kit.createInvokeWithExceptionAndUnwind(invokeTarget, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci(), parameterArray);
@@ -141,7 +141,7 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
                 case Int:
                 case Long:
                     ValueNode methodHandleOrMemberName;
-                    ResolvedJavaMethod unboxMethod;
+                    AnalysisMethod unboxMethod;
                     try {
                         String unboxMethodName = returnKind.toString() + "Unbox";
                         switch (substitutionBaseMethod.getName()) {
@@ -149,7 +149,7 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
                             case "invokeExact":
                             case "invoke":
                                 methodHandleOrMemberName = receiver;
-                                unboxMethod = metaAccess.lookupJavaMethod(
+                                unboxMethod = kit.getMetaAccess().lookupJavaMethod(
                                                 MethodHandleUtils.class.getMethod(unboxMethodName, Object.class, MethodHandle.class));
                                 break;
                             case "linkToVirtual":
@@ -157,7 +157,7 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
                             case "linkToInterface":
                             case "linkToSpecial":
                                 methodHandleOrMemberName = args.get(args.size() - 1);
-                                unboxMethod = metaAccess.lookupJavaMethod(
+                                unboxMethod = kit.getMetaAccess().lookupJavaMethod(
                                                 MethodHandleUtils.class.getMethod(unboxMethodName, Object.class, Target_java_lang_invoke_MemberName.class));
                                 break;
                             default:

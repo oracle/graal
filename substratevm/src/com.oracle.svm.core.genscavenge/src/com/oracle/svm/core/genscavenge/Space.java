@@ -36,7 +36,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
@@ -508,21 +507,6 @@ public final class Space {
             appendUnalignedHeapChunk(uChunk);
             uChunk = next;
         }
-    }
-
-    boolean walkHeapChunks(MemoryWalker.Visitor visitor) {
-        boolean continueVisiting = true;
-        AlignedHeapChunk.AlignedHeader aChunk = getFirstAlignedHeapChunk();
-        while (continueVisiting && aChunk.isNonNull()) {
-            continueVisiting = visitor.visitHeapChunk(aChunk, AlignedHeapChunk.getMemoryWalkerAccess());
-            aChunk = HeapChunk.getNext(aChunk);
-        }
-        UnalignedHeapChunk.UnalignedHeader uChunk = getFirstUnalignedHeapChunk();
-        while (continueVisiting && uChunk.isNonNull()) {
-            continueVisiting = visitor.visitHeapChunk(uChunk, UnalignedHeapChunk.getMemoryWalkerAccess());
-            uChunk = HeapChunk.getNext(uChunk);
-        }
-        return continueVisiting;
     }
 
     /**

@@ -194,7 +194,7 @@ final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_CASUpdater
 
 }
 
-@TargetClass(className = "java.util.concurrent.atomic.AtomicLongFieldUpdater$LockedUpdater")
+@TargetClass(className = "java.util.concurrent.atomic.AtomicLongFieldUpdater$LockedUpdater", onlyWith = JDK21OrEarlier.class)
 final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_LockedUpdater {
     @Alias @RecomputeFieldValue(kind = AtomicFieldUpdaterOffset) //
     private long offset;

@@ -103,6 +103,11 @@ public class PositionAssertion extends Term {
         return copy(ast);
     }
 
+    /**
+     * Points to the body of a regular expression when this node is treated as an initial state of
+     * an NFA. If this {@link #isCaret()}, then this returns the next expression. If this
+     * {@link #isDollar()}, then this returns the previous expression.
+     */
     public RegexASTNode getNext() {
         return next;
     }

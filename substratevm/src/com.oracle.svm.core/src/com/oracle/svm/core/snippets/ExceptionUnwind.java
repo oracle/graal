@@ -28,7 +28,6 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -57,6 +56,7 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
+import com.oracle.svm.core.util.VMError;
 
 public abstract class ExceptionUnwind {
 
@@ -145,8 +145,8 @@ public abstract class ExceptionUnwind {
      */
     private static void reportRecursiveUnwind(Throwable exception) {
         Log.log().string("Fatal error: recursion in exception handling: ").string(exception.getClass().getName());
-        Log.log().string(" thrown while unwinding ").string(currentException.get().getClass().getName()).newline();
-        ImageSingletons.lookup(LogHandler.class).fatalError();
+        Log.log().string(" thrown while unwinding ").string(currentException.get().getClass().getName()).newline().newline();
+        VMError.shouldNotReachHere("Recursion in exception handling");
     }
 
     /**
@@ -159,8 +159,8 @@ public abstract class ExceptionUnwind {
      */
     private static void reportFatalUnwind(Throwable exception) {
         Log.log().string("Fatal error: exception unwind while thread is not in Java state: ");
-        Log.log().exception(exception).newline();
-        ImageSingletons.lookup(LogHandler.class).fatalError();
+        Log.log().exception(exception).newline().newline();
+        VMError.shouldNotReachHere("Exception unwind while thread is not in Java state");
     }
 
     /**
@@ -171,8 +171,8 @@ public abstract class ExceptionUnwind {
      */
     private static void reportUnhandledException(Throwable exception) {
         Log.log().string("Fatal error: unhandled exception in isolate ").hex(CurrentIsolate.getIsolate()).string(": ");
-        Log.log().exception(exception).newline();
-        ImageSingletons.lookup(LogHandler.class).fatalError();
+        Log.log().exception(exception).newline().newline();
+        VMError.shouldNotReachHere("Unhandled exception");
     }
 
     /** Hook to allow a {@link Feature} to install custom exception unwind code. */

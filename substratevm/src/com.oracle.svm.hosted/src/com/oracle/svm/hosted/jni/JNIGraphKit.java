@@ -24,7 +24,9 @@
  */
 package com.oracle.svm.hosted.jni;
 
+import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jni.JNIGeneratedMethodSupport;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.core.jni.access.JNIReflectionDictionary;
@@ -64,6 +66,21 @@ public class JNIGraphKit extends HostedGraphKit {
 
     JNIGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method) {
         super(debug, providers, method);
+    }
+
+    public static String signatureToIdentifier(ResolvedSignature<?> signature) {
+        StringBuilder sb = new StringBuilder();
+        boolean digest = false;
+        for (var type : signature.toParameterList(null)) {
+            if (type.getJavaKind().isPrimitive() || type.isJavaLangObject()) {
+                sb.append(type.getJavaKind().getTypeChar());
+            } else {
+                sb.append(type.toClassName());
+                digest = true;
+            }
+        }
+        sb.append('_').append(signature.getReturnType().getJavaKind().getTypeChar());
+        return digest ? SubstrateUtil.digest(sb.toString()) : sb.toString();
     }
 
     public ValueNode checkObjectType(ValueNode uncheckedValue, ResolvedJavaType type, boolean checkNonNull) {
@@ -227,6 +244,6 @@ public class JNIGraphKit extends HostedGraphKit {
     }
 
     public ConstantNode createWord(long value) {
-        return ConstantNode.forIntegerKind(wordTypes.getWordKind(), value, graph);
+        return ConstantNode.forIntegerKind(getWordTypes().getWordKind(), value, graph);
     }
 }

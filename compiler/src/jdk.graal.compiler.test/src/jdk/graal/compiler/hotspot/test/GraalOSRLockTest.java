@@ -34,6 +34,11 @@ import java.util.HashSet;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.phases.HighTier;
 import jdk.graal.compiler.debug.DebugContext;
@@ -43,11 +48,8 @@ import jdk.graal.compiler.hotspot.phases.OnStackReplacementPhase;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.BeforeClass;
-import org.junit.Test;
-
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -316,6 +318,15 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
         run(() -> {
             OptionValues options = new OptionValues(getInitialOptions(), osrLockNoDeopt());
             testOSR(options, "testOuterInnerSameLockCompileRestOfMethod");
+        });
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testOuterLockDeoptDoesNotFloatAboveMonitor() {
+        run(() -> {
+            OptionValues options = new OptionValues(getInitialOptions(), osrLockNoDeopt());
+            testOSR(options, "testOuterLockOptimizeToDeopt");
         });
     }
 
@@ -692,4 +703,30 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
         }
     }
 
+    public static ReturnValue testOuterLockOptimizeToDeopt() {
+        ReturnValue ret = ReturnValue.FAILURE;
+        synchronized (lock) {
+            Object o = null;
+            for (int i = 1; i < limit; i++) {
+                GraalDirectives.blackhole(i);
+                /*
+                 * Will fold away in canonicalization. After ConvertDeoptimizeToGuard, the deopt
+                 * should float all the way to the start of the OSR graph.
+                 */
+                if (o == null) {
+                    ret = ReturnValue.SUCCESS;
+                    if (GraalDirectives.inCompiledCode()) {
+                        GraalDirectives.deoptimize(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.UnreachedCode, true);
+                    } else {
+                        o = "";
+                    }
+                }
+            }
+            GraalDirectives.controlFlowAnchor();
+            if (GraalDirectives.inCompiledCode()) {
+                GraalDirectives.deoptimize(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.UnreachedCode, true);
+            }
+        }
+        return ret;
+    }
 }

@@ -26,8 +26,6 @@ package com.oracle.svm.core.reflect;
 
 import java.lang.reflect.Executable;
 
-import jdk.graal.compiler.nodes.NamedLocationIdentity;
-import jdk.graal.compiler.word.BarrieredAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -39,7 +37,10 @@ import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunction
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointerForCallerSensitiveAdapter;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
+import jdk.graal.compiler.word.BarrieredAccess;
 import jdk.internal.reflect.MethodAccessor;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 interface MethodAccessorJDK19 {
     Object invoke(Object obj, Object[] args, Class<?> caller);
@@ -61,9 +62,9 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
     private final boolean callerSensitiveAdapter;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateMethodAccessor(Executable member, Class<?> receiverType, CFunctionPointer expandSignature, CFunctionPointer directTarget, int vtableOffset, DynamicHub initializeBeforeInvoke,
-                    boolean callerSensitiveAdapter) {
-        super(member, expandSignature, directTarget, initializeBeforeInvoke);
+    public SubstrateMethodAccessor(Executable member, Class<?> receiverType, CFunctionPointer expandSignature, CFunctionPointer directTarget, ResolvedJavaMethod targetMethod, int vtableOffset,
+                    DynamicHub initializeBeforeInvoke, boolean callerSensitiveAdapter) {
+        super(member, expandSignature, directTarget, targetMethod, initializeBeforeInvoke);
         this.receiverType = receiverType;
         this.vtableOffset = vtableOffset;
         this.callerSensitiveAdapter = callerSensitiveAdapter;

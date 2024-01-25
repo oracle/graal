@@ -27,6 +27,28 @@ package com.oracle.svm.core.graal.meta;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.StaticFieldsSupport;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.nodes.FloatingWordCastNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
+import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
+import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
+import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
+import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
+import com.oracle.svm.core.meta.SharedField;
+import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.meta.SubstrateMethodPointerStamp;
+import com.oracle.svm.core.snippets.SubstrateIsArraySnippets;
+
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
@@ -65,28 +87,6 @@ import jdk.graal.compiler.replacements.DefaultJavaLoweringProvider;
 import jdk.graal.compiler.replacements.IsArraySnippets;
 import jdk.graal.compiler.replacements.SnippetCounter.Group;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
-import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.graal.nodes.FloatingWordCastNode;
-import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
-import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
-import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
-import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
-import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
-import com.oracle.svm.core.meta.SharedField;
-import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.meta.SubstrateMethodPointerStamp;
-import com.oracle.svm.core.snippets.SubstrateIsArraySnippets;
-
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
@@ -228,7 +228,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
             // get rid of the reserved header bits and extract the actual pointer to the hub
             assert CodeUtil.isPowerOf2(reservedBitsMask + 1) : "only the lowest bits may be set";
             int numReservedBits = CodeUtil.log2(reservedBitsMask + 1);
-            int compressionShift = ReferenceAccess.singleton().getCompressEncoding().getShift();
+            int compressionShift = ReferenceAccess.singleton().getCompressionShift();
             int numAlignmentBits = CodeUtil.log2(objectLayout.getAlignment());
             assert compressionShift <= numAlignmentBits : "compression discards bits";
             if (numReservedBits == numAlignmentBits && compressionShift == 0) {

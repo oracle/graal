@@ -34,12 +34,13 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedThread;
 import jdk.jfr.consumer.RecordingStream;
@@ -64,6 +65,7 @@ public class TestVirtualThreadsJfrStreaming extends JfrStreamingTest {
 
     @Test
     public void test() throws Throwable {
+        Assume.assumeFalse("Currently broken on JDK 23+ (GR-51526)", JavaVersionUtil.JAVA_SPEC >= 23);
         String[] events = new String[]{JfrEvent.JavaMonitorWait.getName()};
         RecordingStream stream = startStream(events);
 

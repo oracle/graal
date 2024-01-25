@@ -102,7 +102,7 @@ import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.jni.headers.JNIObjectRefType;
 import com.oracle.svm.core.jni.headers.JNIValue;
 import com.oracle.svm.core.jni.headers.JNIVersion;
-import com.oracle.svm.core.jni.headers.JNIVersionJDK22OrLater;
+import com.oracle.svm.core.jni.headers.JNIVersionJDKLatest;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -158,13 +158,10 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = CEntryPointOptions.NoPrologue.class, epilogue = CEntryPointOptions.NoEpilogue.class)
     @Uninterruptible(reason = "No need to enter the isolate and also no way to report errors if unable to.")
     static int GetVersion(JNIEnvironment env) {
-        switch (JavaVersionUtil.JAVA_SPEC) {
-            case 21:
-                return JNIVersion.JNI_VERSION_21();
-            case 22:
-                return JNIVersionJDK22OrLater.JNI_VERSION_22();
-            default:
-                throw VMError.shouldNotReachHere("Unsupported Java version " + JavaVersionUtil.JAVA_SPEC);
+        if (JavaVersionUtil.JAVA_SPEC == 21) {
+            return JNIVersion.JNI_VERSION_21();
+        } else {
+            return JNIVersionJDKLatest.JNI_VERSION_LATEST();
         }
     }
 

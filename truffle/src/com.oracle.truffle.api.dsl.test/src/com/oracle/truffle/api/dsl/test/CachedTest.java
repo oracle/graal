@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1071,6 +1071,31 @@ public class CachedTest {
                         @ExpectError("The cached dimensions attribute must be specified for array types.") //
                         @Cached(value = "value", adopt = false) Node[] cachedValue) {
             return cachedValue;
+        }
+
+    }
+
+    record TestRecord(boolean foo) {
+    }
+
+    @NodeChild
+    abstract static class CachedRecord extends ValueNode {
+
+        protected static TestRecord getRecord() {
+            return null;
+        }
+
+        // ensure that ElementUtils.elementEquals accepts records
+        @Specialization
+        static int do1(int x,
+                        @Cached("getRecord().foo()") boolean cached) {
+            return 0;
+        }
+
+        @Specialization
+        static int do1(double x,
+                        @Cached("getRecord().foo()") boolean cached) {
+            return 0;
         }
 
     }

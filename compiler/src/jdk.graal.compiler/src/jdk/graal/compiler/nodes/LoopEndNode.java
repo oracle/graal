@@ -147,10 +147,10 @@ public final class LoopEndNode extends AbstractEndNode {
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         assertTrue(loopBegin != null, "must have a loop begin");
         assertTrue(hasNoUsages(), "LoopEnds can not be used");
-        return super.verify();
+        return super.verifyNode();
     }
 
     /**

@@ -42,9 +42,7 @@ import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.core.common.spi.CodeGenProviders;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
-import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.LIRKindTool;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.DebugCloseable;
@@ -61,12 +59,13 @@ import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.SwitchStrategy;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.hashing.IntHasher;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.nodes.spi.CoreProvidersDelegate;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.RegisterConfig;
@@ -76,7 +75,6 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
@@ -84,7 +82,7 @@ import jdk.vm.ci.meta.ValueKind;
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
-public abstract class LIRGenerator implements LIRGeneratorTool {
+public abstract class LIRGenerator extends CoreProvidersDelegate implements LIRGeneratorTool {
 
     private final int loopHeaderAlignment;
 
@@ -99,8 +97,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     private final LIRKindTool lirKindTool;
 
-    private final CodeGenProviders providers;
-
     private BasicBlock<?> currentBlock;
 
     private LIRGenerationResult res;
@@ -113,13 +109,13 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     private final boolean printIrWithLir;
     private final int traceLIRGeneratorLevel;
 
-    public LIRGenerator(LIRKindTool lirKindTool, ArithmeticLIRGenerator arithmeticLIRGen, BarrierSetLIRGenerator barrierSetLIRGen, MoveFactory moveFactory, CodeGenProviders providers,
+    public LIRGenerator(LIRKindTool lirKindTool, ArithmeticLIRGenerator arithmeticLIRGen, BarrierSetLIRGenerator barrierSetLIRGen, MoveFactory moveFactory, CoreProviders providers,
                     LIRGenerationResult res) {
+        super(providers);
         this.lirKindTool = lirKindTool;
         this.arithmeticLIRGen = arithmeticLIRGen;
         this.barrierSetLIRGen = barrierSetLIRGen;
         this.res = res;
-        this.providers = providers;
         OptionValues options = res.getLIR().getOptions();
         this.printIrWithLir = !TTY.isSuppressed() && Options.PrintIRWithLIR.getValue(options);
         this.traceLIRGeneratorLevel = TTY.isSuppressed() ? 0 : Options.TraceLIRGeneratorLevel.getValue(options);
@@ -174,26 +170,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     @Override
     public TargetDescription target() {
         return getCodeCache().getTarget();
-    }
-
-    @Override
-    public CodeGenProviders getProviders() {
-        return providers;
-    }
-
-    @Override
-    public MetaAccessProvider getMetaAccess() {
-        return providers.getMetaAccess();
-    }
-
-    @Override
-    public CodeCacheProvider getCodeCache() {
-        return providers.getCodeCache();
-    }
-
-    @Override
-    public ForeignCallsProvider getForeignCalls() {
-        return providers.getForeignCalls();
     }
 
     public LIRKindTool getLIRKindTool() {

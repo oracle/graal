@@ -886,7 +886,7 @@ public class WebAssembly extends Dictionary {
                 return Double.longBitsToDouble(global.loadAsLong());
             case anyfunc:
             case externref:
-                return global.loadAsReference();
+                return global.loadAsObject();
 
         }
         throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Incorrect internal Global type");
@@ -936,11 +936,11 @@ public class WebAssembly extends Dictionary {
                     throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled");
                 }
                 if (InteropLibrary.getUncached(value).isNull(value)) {
-                    global.storeReference(WasmConstant.NULL);
+                    global.storeObject(WasmConstant.NULL);
                 } else if (!(value instanceof WasmFunctionInstance)) {
                     throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", valueType, value);
                 } else {
-                    global.storeReference(value);
+                    global.storeObject(value);
                 }
                 break;
             case externref:
@@ -948,9 +948,9 @@ public class WebAssembly extends Dictionary {
                     throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Invalid value type. Reference types are not enabled");
                 }
                 if (InteropLibrary.getUncached(value).isNull(value)) {
-                    global.storeReference(WasmConstant.NULL);
+                    global.storeObject(WasmConstant.NULL);
                 } else {
-                    global.storeReference(value);
+                    global.storeObject(value);
                 }
                 break;
         }

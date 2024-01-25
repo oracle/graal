@@ -46,7 +46,7 @@ import jdk.vm.ci.services.Services;
 /**
  * A compiler phase that can apply an ordered collection of phases to a graph.
  */
-public class PhaseSuite<C> extends BasePhase<C> implements PhasePlan<BasePhase<? super C>> {
+public class PhaseSuite<C> extends BasePhase<C> implements PhasePlan<BasePhase<? super C>>, RecursivePhase {
 
     public static class Options {
         @Option(help = "Prints the difference in the graph state caused by each phase of the suite.") //

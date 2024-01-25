@@ -309,10 +309,6 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 contextBuilder.option("log.wasm.level", WasmTestOptions.LOG_LEVEL);
             }
 
-            if (WasmTestOptions.STORE_CONSTANTS_POLICY != null && !WasmTestOptions.STORE_CONSTANTS_POLICY.equals("")) {
-                contextBuilder.option("wasm.StoreConstantsPolicy", WasmTestOptions.STORE_CONSTANTS_POLICY);
-                System.out.println("wasm.StoreConstantsPolicy: " + WasmTestOptions.STORE_CONSTANTS_POLICY);
-            }
             contextBuilder.option("wasm.Builtins", includedExternalModules());
             contextBuilder.option("wasm.WasiConstantRandomGet", "true");
             final String commandLineArgs = testCase.options().getProperty("command-line-args");
@@ -371,7 +367,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
 
             runInContexts(testCase, contextBuilder, sources, sharedEngine, testOut);
         } catch (InterruptedException | IOException e) {
-            Assert.fail(String.format("Test %s failed: %s", testCase.name(), e.getMessage()));
+            throw new RuntimeException(String.format("Test %s failed: %s", testCase.name(), e.getMessage()));
         } finally {
             if (tempWorkingDirectory != null) {
                 deleteFolder(tempWorkingDirectory.toFile());
@@ -575,7 +571,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
 
     private static ContextState saveContext(WasmContext context) {
         final MemoryRegistry memories = context.memories().duplicate();
-        final GlobalRegistry globals = context.globals().duplicate(context.getContextOptions().supportBulkMemoryAndRefTypes());
+        final GlobalRegistry globals = context.globals().duplicate();
         return new ContextState(memories, globals, context.fdManager().size());
     }
 

@@ -464,6 +464,11 @@ Absent knowledge of the random key, the attacker cannot predict the encrypted co
 
 GraalVM blinds all immediate values and data embedded in code pages of runtime compiled guest code down to a size of four bytes.
 
+### Randomized Function Entry Points
+
+A predictable code layout makes it easier for attackers to find gadgets that have been introduced, for example, via the aforementioned JIT spray attack.
+While runtime compiled methods are already placed in memory that is subject to address space layout randomization (ASLR) by the operating system, GraalVM additionally pads the starting offset of functions with a random number of trap instructions.
+
 ### Speculative Execution Attack Mitigations
 
 Speculative execution attacks such as Spectre exploit the fact that a CPU may transiently execute instructions based on branch prediction information.
@@ -472,8 +477,7 @@ However, the execution may have caused side effects in the micro-architectural s
 For example, data may have been pulled into the cache during transient execution - a side-channel that can be read by timing data access.
 
 GraalVM protects against Spectre attacks by inserting speculative execution barrier instructions in runtime compiled guest code to prevent attackers from crafting speculative execution gadgets.
-A speculative execution barrier is placed at each target of a conditional branch to stop speculative execution based on the pattern history table (Spectre V1).
-Speculative execution barriers are also placed at each possible indirect branch target to stop speculative execution based on the branch target buffer (Spectre V2).
+A speculative execution barrier is placed at each target of a conditional branch that is relevant to Java memory safety to stop speculative execution.
 
 ## Sharing Execution Engines
 

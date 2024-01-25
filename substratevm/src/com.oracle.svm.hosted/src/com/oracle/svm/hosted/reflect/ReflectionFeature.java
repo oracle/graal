@@ -70,6 +70,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.analysis.Inflation;
@@ -163,6 +164,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     private SubstrateAccessor createAccessor(Executable member) {
         MethodPointer expandSignature;
         MethodPointer directTarget = null;
+        AnalysisMethod targetMethod = null;
         DynamicHub initializeBeforeInvoke = null;
         if (member instanceof Method) {
             int vtableOffset = SubstrateMethodAccessor.STATICALLY_BOUND;
@@ -171,7 +173,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
             if (member.getDeclaringClass() == MethodHandle.class && (member.getName().equals("invoke") || member.getName().equals("invokeExact"))) {
                 /* Method handles must not be invoked via reflection. */
-                expandSignature = register(analysisAccess.getMetaAccess().lookupJavaMethod(methodHandleInvokeErrorMethod), "Registered in " + ReflectionFeature.class);
+                expandSignature = asMethodPointer(analysisAccess.getMetaAccess().lookupJavaMethod(methodHandleInvokeErrorMethod));
             } else {
                 Method target = (Method) member;
                 try {
@@ -184,18 +186,17 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
                     throw VMError.shouldNotReachHere(ex);
                 }
                 expandSignature = createExpandSignatureMethod(target, callerSensitiveAdapter);
-                AnalysisMethod targetMethod = analysisAccess.getMetaAccess().lookupJavaMethod(target);
+                targetMethod = analysisAccess.getMetaAccess().lookupJavaMethod(target);
                 /*
                  * The SubstrateMethodAccessor is also used for the implementation of MethodHandle
                  * that are created to do an invokespecial. So non-abstract instance methods have
                  * both a directTarget and a vtableOffset.
                  */
                 if (!targetMethod.isAbstract()) {
-                    directTarget = register(targetMethod, "Reflection target, registered in " + ReflectionFeature.class);
+                    directTarget = asMethodPointer(targetMethod);
                 }
                 if (!targetMethod.canBeStaticallyBound()) {
                     vtableOffset = SubstrateMethodAccessor.OFFSET_NOT_YET_COMPUTED;
-                    analysisAccess.registerAsRoot(targetMethod, false, "Accessor method for reflection, registered in " + ReflectionFeature.class);
                 }
                 VMError.guarantee(directTarget != null || vtableOffset != SubstrateMethodAccessor.STATICALLY_BOUND, "Must have either a directTarget or a vtableOffset");
                 if (!targetMethod.isStatic()) {
@@ -205,7 +206,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
                     initializeBeforeInvoke = analysisAccess.getHostVM().dynamicHub(targetMethod.getDeclaringClass());
                 }
             }
-            return new SubstrateMethodAccessor(member, receiverType, expandSignature, directTarget, vtableOffset, initializeBeforeInvoke, callerSensitiveAdapter);
+            return new SubstrateMethodAccessor(member, receiverType, expandSignature, directTarget, targetMethod, vtableOffset, initializeBeforeInvoke, callerSensitiveAdapter);
 
         } else {
             Class<?> holder = member.getDeclaringClass();
@@ -216,31 +217,30 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
                  * an interface, array, or primitive type, but we are defensive and throw the
                  * exception in that case too.
                  */
-                expandSignature = register(analysisAccess.getMetaAccess().lookupJavaMethod(newInstanceErrorMethod), "Registered in " + ReflectionFeature.class);
+                expandSignature = asMethodPointer(analysisAccess.getMetaAccess().lookupJavaMethod(newInstanceErrorMethod));
             } else {
                 expandSignature = createExpandSignatureMethod(member, false);
                 AnalysisMethod constructor = analysisAccess.getMetaAccess().lookupJavaMethod(member);
-                AnalysisMethod factoryMethod = FactoryMethodSupport.singleton().lookup(analysisAccess.getMetaAccess(), constructor, false);
-                directTarget = register(factoryMethod, "Factory method, registered in " + ReflectionFeature.class);
+                targetMethod = FactoryMethodSupport.singleton().lookup(analysisAccess.getMetaAccess(), constructor, false);
+                directTarget = asMethodPointer(targetMethod);
                 if (!constructor.getDeclaringClass().isInitialized()) {
                     initializeBeforeInvoke = analysisAccess.getHostVM().dynamicHub(constructor.getDeclaringClass());
                 }
             }
-            return new SubstrateConstructorAccessor(member, expandSignature, directTarget, initializeBeforeInvoke);
+            return new SubstrateConstructorAccessor(member, expandSignature, directTarget, targetMethod, initializeBeforeInvoke);
         }
     }
 
     private MethodPointer createExpandSignatureMethod(Executable member, boolean callerSensitiveAdapter) {
         return expandSignatureMethods.computeIfAbsent(new SignatureKey(member, callerSensitiveAdapter), signatureKey -> {
             ResolvedJavaMethod prototype = analysisAccess.getMetaAccess().lookupJavaMethod(callerSensitiveAdapter ? invokePrototypeForCallerSensitiveAdapter : invokePrototype).getWrapped();
-            return register(new ReflectionExpandSignatureMethod("invoke_" + signatureKey.uniqueShortName(), prototype, signatureKey.isStatic, signatureKey.argTypes, signatureKey.returnKind,
-                            signatureKey.callerSensitiveAdapter), "Registered in " + ReflectionFeature.class);
+            return asMethodPointer(new ReflectionExpandSignatureMethod("invoke_" + signatureKey.uniqueShortName(), prototype, signatureKey.isStatic, signatureKey.argTypes, signatureKey.returnKind,
+                            signatureKey.callerSensitiveAdapter));
         });
     }
 
-    private MethodPointer register(ResolvedJavaMethod method, String reason) {
+    private MethodPointer asMethodPointer(ResolvedJavaMethod method) {
         AnalysisMethod aMethod = method instanceof AnalysisMethod ? (AnalysisMethod) method : analysisAccess.getUniverse().lookup(method);
-        analysisAccess.registerAsRoot(aMethod, true, reason);
         return new MethodPointer(aMethod);
     }
 
@@ -272,6 +272,27 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         /* Primitive classes cannot be accessed through Class.forName() */
         for (Class<?> primitiveClass : PRIMITIVE_CLASSES) {
             ClassForNameSupport.registerNegativeQuery(primitiveClass.getName());
+        }
+
+        access.registerObjectReachableCallback(SubstrateAccessor.class, ReflectionFeature::onAccessorReachable);
+    }
+
+    private static void onAccessorReachable(DuringAnalysisAccess a, SubstrateAccessor accessor) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+
+        String reason = "Registered in " + ReflectionFeature.class;
+        ResolvedJavaMethod expandSignatureMethod = ((MethodPointer) accessor.getExpandSignature()).getMethod();
+        access.registerAsRoot((AnalysisMethod) expandSignatureMethod, true, reason);
+
+        ResolvedJavaMethod targetMethod = accessor.getTargetMethod();
+        if (targetMethod != null) {
+            if (!targetMethod.isAbstract()) {
+                access.registerAsRoot((AnalysisMethod) targetMethod, true, reason);
+            }
+            /* If the accessor can be used for a virtual call, register virtual root method. */
+            if (accessor instanceof SubstrateMethodAccessor mAccessor && mAccessor.getVTableOffset() != SubstrateMethodAccessor.STATICALLY_BOUND) {
+                access.registerAsRoot((AnalysisMethod) targetMethod, false, reason);
+            }
         }
     }
 

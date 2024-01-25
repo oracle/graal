@@ -47,6 +47,16 @@ common + common.frequencies + {
     } else {}
   ),
 
+  # Add the specified components to the field `components`.
+  with_components(builds, components)::
+    [
+      if std.objectHas(build, "components") then
+        build + { "components" : std.setUnion(components, build.components) }
+      else
+        build + { "components" : components }
+      for build in builds
+    ],
+
   // Heap settings
   // *************
   local small_heap = "1G",

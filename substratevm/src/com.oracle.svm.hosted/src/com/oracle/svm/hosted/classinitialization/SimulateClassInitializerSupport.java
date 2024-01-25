@@ -44,6 +44,7 @@ import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
+import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.fieldfolding.MarkStaticFinalFieldInitializedNode;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -163,6 +164,7 @@ import jdk.vm.ci.meta.JavaConstant;
 public class SimulateClassInitializerSupport {
 
     protected final ClassInitializationSupport classInitializationSupport = ClassInitializationSupport.singleton();
+    protected final FieldValueInterceptionSupport fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
     protected final SimulateClassInitializerPolicy simulateClassInitializerPolicy;
     protected final SimulateClassInitializerConstantFieldProvider simulatedFieldValueConstantFieldProvider;
 

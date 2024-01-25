@@ -115,13 +115,7 @@ public class LocalizationSupport {
          */
         registerRequiredReflectionAndResourcesForBundle(bundleName, Set.of(locale));
         if (!(bundle instanceof PropertyResourceBundle)) {
-            RuntimeReflection.register(bundle.getClass());
-            try {
-                Constructor<?> nullaryConstructor = bundle.getClass().getDeclaredConstructor();
-                RuntimeReflection.register(nullaryConstructor);
-            } catch (NoSuchMethodException e) {
-                RuntimeReflection.registerConstructorLookup(bundle.getClass());
-            }
+            registerNullaryConstructor(bundle.getClass());
         }
 
         /* Property-based bundle lookup happens only if class-based lookup fails */
@@ -258,8 +252,25 @@ public class LocalizationSupport {
     }
 
     public void prepareClassResourceBundle(@SuppressWarnings("unused") String basename, Class<?> bundleClass) {
-        RuntimeReflection.register(bundleClass);
-        RuntimeReflection.registerForReflectiveInstantiation(bundleClass);
+        registerNullaryConstructor(bundleClass);
         onClassBundlePrepared(bundleClass);
+    }
+
+    /**
+     * Bundle lookup code tries to reflectively access the default constructor of candidate bundle
+     * classes, and then tries to invoke them if they exist. We therefore need to register the
+     * default constructor as invoked if it exists, and as queried if it doesn't, which we know will
+     * result in a negative query.
+     */
+    private void registerNullaryConstructor(Class<?> bundleClass) {
+        RuntimeReflection.register(bundleClass);
+        Constructor<?> nullaryConstructor;
+        try {
+            nullaryConstructor = bundleClass.getDeclaredConstructor();
+        } catch (NoSuchMethodException e) {
+            RuntimeReflection.registerConstructorLookup(bundleClass);
+            return;
+        }
+        RuntimeReflection.register(nullaryConstructor);
     }
 }

@@ -28,12 +28,18 @@ import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.Inlin
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.word.LocationIdentity;
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.core.test.TestGraphBuilderPhase;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugOptions;
+import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.CompanionObjectEncoder;
 import jdk.graal.compiler.nodes.EncodedGraph;
@@ -56,10 +62,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.replacements.CachingPEGraphDecoder;
 import jdk.graal.compiler.util.CollectionsUtil;
-import org.graalvm.word.LocationIdentity;
-import org.junit.Assert;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -231,8 +233,9 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
             graphBuilderConfig = editGraphBuilderConfiguration(graphBuilderConfig);
             registerPlugins(graphBuilderConfig.getPlugins().getInvocationPlugins());
             targetGraph = new StructuredGraph.Builder(debug.getOptions(), debug, AllowAssumptions.YES).method(testMethod).build();
-            CachingPEGraphDecoder decoder = new CachingPEGraphDecoder(getTarget().arch, targetGraph, getProviders(), graphBuilderConfig, OptimisticOptimizations.NONE,
-                            null, null, new InlineInvokePlugin[]{new InlineAll()}, null, null, null, null, null, graphCache, () -> null, false, false, true);
+            GraphBuilderPhase.Instance instance = new TestGraphBuilderPhase.Instance(getProviders(), graphBuilderConfig, OptimisticOptimizations.NONE, null);
+            CachingPEGraphDecoder decoder = new CachingPEGraphDecoder(getTarget().arch, targetGraph, getProviders(), graphBuilderConfig,
+                            null, null, new InlineInvokePlugin[]{new InlineAll()}, null, null, null, null, null, graphCache, () -> null, instance, false, false, true);
 
             decoder.decode(testMethod);
             debug.dump(DebugContext.BASIC_LEVEL, targetGraph, "Target Graph");

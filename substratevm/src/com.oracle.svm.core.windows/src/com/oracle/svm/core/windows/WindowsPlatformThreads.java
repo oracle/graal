@@ -24,18 +24,11 @@
  */
 package com.oracle.svm.core.windows;
 
-import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
-import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -44,23 +37,19 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
-import com.oracle.svm.core.c.function.CEntryPointActions;
-import com.oracle.svm.core.c.function.CEntryPointErrors;
-import com.oracle.svm.core.c.function.CEntryPointOptions;
-import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.Parker;
 import com.oracle.svm.core.thread.Parker.ParkerFactory;
 import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.SynchAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
+
+import jdk.graal.compiler.core.common.NumUtil;
 
 @AutomaticallyRegisteredImageSingleton(PlatformThreads.class)
 @Platforms(Platform.WINDOWS.class)
@@ -71,27 +60,21 @@ public final class WindowsPlatformThreads extends PlatformThreads {
 
     @Override
     protected boolean doStartThread(Thread thread, long stackSize) {
-        int threadStackSize = (int) stackSize;
-        int initFlag = Process.CREATE_SUSPENDED();
+        int threadStackSize = NumUtil.safeToUInt(stackSize);
 
-        WindowsThreadStartData startData = prepareStart(thread, SizeOf.get(WindowsThreadStartData.class));
-
+        int initFlag = 0;
         // If caller specified a stack size, don't commit it all at once.
         if (threadStackSize != 0) {
             initFlag |= Process.STACK_SIZE_PARAM_IS_A_RESERVATION();
         }
 
-        CIntPointer osThreadID = UnsafeStackValue.get(CIntPointer.class);
-        WinBase.HANDLE osThreadHandle = Process._beginthreadex(WordFactory.nullPointer(), threadStackSize,
-                        WindowsPlatformThreads.osThreadStartRoutine.getFunctionPointer(), startData, initFlag, osThreadID);
+        ThreadStartData startData = prepareStart(thread, SizeOf.get(ThreadStartData.class));
+        WinBase.HANDLE osThreadHandle = Process._beginthreadex(WordFactory.nullPointer(), threadStackSize, threadStartRoutine.getFunctionPointer(), startData, initFlag, WordFactory.nullPointer());
         if (osThreadHandle.isNull()) {
             undoPrepareStartOnError(thread, startData);
             return false;
         }
-        startData.setOSThreadHandle(osThreadHandle);
-
-        // Start the thread running
-        Process.ResumeThread(osThreadHandle);
+        WinBase.CloseHandle(osThreadHandle);
         return true;
     }
 
@@ -107,7 +90,7 @@ public final class WindowsPlatformThreads extends PlatformThreads {
 
         WinBase.HANDLE osThreadHandle = Process.NoTransitions._beginthreadex(WordFactory.nullPointer(), stackSize,
                         threadRoutine, userData, initFlag, WordFactory.nullPointer());
-        return (PlatformThreads.OSThreadHandle) osThreadHandle;
+        return (OSThreadHandle) osThreadHandle;
     }
 
     @Override
@@ -176,51 +159,6 @@ public final class WindowsPlatformThreads extends PlatformThreads {
     @Override
     protected void yieldCurrent() {
         Process.SwitchToThread();
-    }
-
-    @RawStructure
-    interface WindowsThreadStartData extends ThreadStartData {
-
-        @RawField
-        WinBase.HANDLE getOSThreadHandle();
-
-        @RawField
-        void setOSThreadHandle(WinBase.HANDLE osHandle);
-    }
-
-    private static final CEntryPointLiteral<CFunctionPointer> osThreadStartRoutine = CEntryPointLiteral.create(WindowsPlatformThreads.class, "osThreadStartRoutine", WindowsThreadStartData.class);
-
-    private static class OSThreadStartRoutinePrologue implements CEntryPointOptions.Prologue {
-        private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString("Failed to attach a newly launched thread.");
-
-        @SuppressWarnings("unused")
-        @Uninterruptible(reason = "prologue")
-        static void enter(WindowsThreadStartData data) {
-            int code = CEntryPointActions.enterAttachThread(data.getIsolate(), true, false);
-            if (code != CEntryPointErrors.NO_ERROR) {
-                CEntryPointActions.failFatally(code, errorMessage.get());
-            }
-        }
-    }
-
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
-    @CEntryPointOptions(prologue = OSThreadStartRoutinePrologue.class, epilogue = LeaveDetachThreadEpilogue.class)
-    static WordBase osThreadStartRoutine(WindowsThreadStartData data) {
-        ObjectHandle threadHandle = data.getThreadHandle();
-        WinBase.HANDLE osThreadHandle = data.getOSThreadHandle();
-        freeStartData(data);
-
-        try {
-            threadStartRoutine(threadHandle);
-        } finally {
-            /*
-             * Note that there is another handle to the thread stored in VMThreads.OSThreadHandleTL.
-             * This is necessary to ensure that the operating system does not release the thread
-             * resources too early.
-             */
-            WinBase.CloseHandle(osThreadHandle);
-        }
-        return WordFactory.nullPointer();
     }
 }
 

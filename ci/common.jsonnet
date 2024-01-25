@@ -116,6 +116,8 @@ local common_json = import "../common.json";
     "linux-jdk19": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
     "linux-jdk20": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
     "linux-jdk21": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
+    "linux-jdk-latest": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
+    "linux-jdkLatest": self["linux-jdk-latest"],
   },
 
   # Dependencies
@@ -229,6 +231,9 @@ local common_json = import "../common.json";
     },
 
     svm:: {
+      packages+: {
+        cmake: "==3.22.2",
+      },
       environment+: {
         DEFAULT_VM: "server",
         LANG: "en_US.UTF-8",
@@ -341,7 +346,8 @@ local common_json = import "../common.json";
     },
 
     local linux   = { os:: "linux",   capabilities+: [self.os] },
-    local darwin  = { os:: "darwin",  capabilities+: [self.os] },
+    # Run darwin jobs on Big Sur or later by excluding all older versions
+    local darwin  = { os:: "darwin",  capabilities+: [self.os, "!darwin_sierra", "!darwin_mojave", "!darwin_catalina"] },
     local windows = { os:: "windows", capabilities+: [self.os] },
 
     local amd64   = { arch:: "amd64",   capabilities+: [self.arch] },

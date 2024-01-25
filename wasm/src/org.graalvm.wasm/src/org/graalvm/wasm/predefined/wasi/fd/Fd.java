@@ -296,6 +296,25 @@ public abstract class Fd implements Closeable {
     }
 
     /**
+     *
+     * Implementation of WASI <a href=
+     * "https://github.com/WebAssembly/WASI/blob/main/legacy/preview1/docs.md#fd_filestat_set_times"><code>fd_fdstat_set_times</code></a>:
+     * adjusts the times associated with this file descriptor.
+     *
+     * @param node the calling node, used as location for any thrown {@link WasmException}
+     * @param atim the desired values of the data access timestamp
+     * @param mtim the desired values of the data modification timestamp
+     * @param fstFlags bitmap of {@link Fstflags}
+     * @return {@link Errno#Success} in case of success, or another {@link Errno} in case of error
+     */
+    public Errno fdstatSetTimes(Node node, long atim, long mtim, int fstFlags) {
+        if (!isSet(fsRightsBase, Rights.FdFilestatSetTimes)) {
+            return Errno.Notcapable;
+        }
+        return Errno.Acces;
+    }
+
+    /**
      * Implementation of WASI <a href=
      * "https://github.com/WebAssembly/WASI/blob/a206794fea66118945a520f6e0af3754cc51860b/phases/snapshot/docs.md#fd_filestat_get"><code>fd_filestat_get</code></a>:
      * gets the <a href=

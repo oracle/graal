@@ -30,6 +30,7 @@ import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.SubstrateOptions;
@@ -90,7 +91,7 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
     }
 
     @Override
-    public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
+    public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         HostedGraphKit kit = new JNIGraphKit(debug, providers, method);
         kit.append(new LoweredDeadEndNode());
 

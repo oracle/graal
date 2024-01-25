@@ -74,10 +74,10 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         assertTrue(merge() != null, "missing merge");
         assertTrue(merge().phiPredecessorCount() == valueCount(), "mismatch between merge predecessor count and phi value count: %d != %d", merge().phiPredecessorCount(), valueCount());
-        return super.verify();
+        return super.verifyNode();
     }
 
     /**

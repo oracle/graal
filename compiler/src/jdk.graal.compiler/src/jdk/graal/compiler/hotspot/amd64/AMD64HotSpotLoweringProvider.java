@@ -39,14 +39,12 @@ import jdk.graal.compiler.hotspot.replacements.HotSpotAllocationSnippets;
 import jdk.graal.compiler.hotspot.replacements.arraycopy.HotSpotArraycopySnippets;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.calc.FloatConvertNode;
-import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.amd64.AMD64ConvertSnippets;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
@@ -117,10 +115,7 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
                     return;
             }
         }
-
-        ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, math.getOperation().foreignCallSignature, math.getValue()));
-        graph.addAfterFixed(tool.lastFixedNode(), call);
-        math.replaceAtUsages(call);
+        lowerUnaryMathToForeignCall(math, tool);
     }
 
     @Override

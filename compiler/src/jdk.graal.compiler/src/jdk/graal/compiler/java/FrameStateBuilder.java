@@ -207,7 +207,7 @@ public final class FrameStateBuilder implements SideEffectsState {
         }
     }
 
-    public void initializeForMethodStart(Assumptions assumptions, boolean eagerResolve, Plugins plugins) {
+    public void initializeForMethodStart(Assumptions assumptions, boolean eagerResolve, Plugins plugins, List<ValueNode> collectParameterNodes) {
 
         int javaIndex = 0;
         int index = 0;
@@ -236,7 +236,11 @@ public final class FrameStateBuilder implements SideEffectsState {
                 receiver = new ParameterNode(javaIndex, receiverStamp);
             }
 
-            locals[javaIndex] = graph.addOrUniqueWithInputs(receiver);
+            receiver = graph.addOrUniqueWithInputs(receiver);
+            locals[javaIndex] = receiver;
+            if (collectParameterNodes != null) {
+                collectParameterNodes.add(receiver);
+            }
             javaIndex = 1;
             index = 1;
         }
@@ -275,7 +279,11 @@ public final class FrameStateBuilder implements SideEffectsState {
                 param = new ParameterNode(index, stamp);
             }
 
-            locals[javaIndex] = graph.addOrUniqueWithInputs(param);
+            param = graph.addOrUniqueWithInputs(param);
+            locals[javaIndex] = param;
+            if (collectParameterNodes != null) {
+                collectParameterNodes.add(param);
+            }
             javaIndex++;
             if (kind.needsTwoSlots()) {
                 locals[javaIndex] = TWO_SLOT_MARKER;

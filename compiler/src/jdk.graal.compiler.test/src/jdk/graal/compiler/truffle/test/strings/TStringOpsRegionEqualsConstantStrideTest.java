@@ -51,7 +51,7 @@ public class TStringOpsRegionEqualsConstantStrideTest extends TStringOpsRegionEq
         super(arrayA, offsetA, lengthA, strideA, fromIndexA, arrayB, offsetB, lengthB, strideB, fromIndexB, lengthCMP);
     }
 
-    @Parameters(name = "{index}: offset: {1}, {6}, stride: {3}, {8}, length: {12}")
+    @Parameters(name = "{index}: offset: {1}, {6}, stride: {3}, {8}, length: {10}")
     public static List<Object[]> data() {
         return TStringOpsRegionEqualsTest.data();
     }

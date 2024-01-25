@@ -59,7 +59,6 @@ import java.util.stream.Stream;
 import com.oracle.svm.core.util.UserError;
 
 import jdk.internal.access.SharedSecrets;
-import jdk.internal.loader.BootLoader;
 import jdk.internal.loader.ClassLoaders;
 import jdk.internal.loader.Resource;
 import jdk.internal.loader.URLClassPath;
@@ -145,6 +144,7 @@ final class NativeImageClassLoader extends SecureClassLoader {
     NativeImageClassLoader(List<Path> classpath, Configuration configuration, ClassLoader parent) {
         super(parent);
 
+        Objects.requireNonNull(parent);
         this.parent = parent;
 
         Map<String, ModuleReference> nameToModule = new HashMap<>();
@@ -269,7 +269,7 @@ final class NativeImageClassLoader extends SecureClassLoader {
         }
 
         /* otherwise search in specific module */
-        ModuleReference mref = (mn != null) ? localNameToModule.get(mn) : null;
+        ModuleReference mref = localNameToModule.get(mn);
         if (mref == null) {
             return null;
         }
@@ -344,11 +344,7 @@ final class NativeImageClassLoader extends SecureClassLoader {
 
         URL url = findResource(name);
         if (url == null) {
-            if (parent != null) {
-                url = parent.getResource(name);
-            } else {
-                url = BootLoader.findResource(name);
-            }
+            url = parent.getResource(name);
         }
         return url;
     }
@@ -361,13 +357,7 @@ final class NativeImageClassLoader extends SecureClassLoader {
         Objects.requireNonNull(name);
 
         List<URL> urls = findResourcesAsList(name);
-
-        Enumeration<URL> e;
-        if (parent != null) {
-            e = parent.getResources(name);
-        } else {
-            e = BootLoader.findResources(name);
-        }
+        Enumeration<URL> e = parent.getResources(name);
 
         return new Enumeration<>() {
             final Iterator<URL> iterator = urls.iterator();
@@ -625,7 +615,7 @@ final class NativeImageClassLoader extends SecureClassLoader {
                 try {
                     c = parent.loadClass(cn);
                 } catch (ClassNotFoundException ignore) {
-                    c = null;
+                    /* Ignore. */
                 }
             }
 
@@ -636,9 +626,7 @@ final class NativeImageClassLoader extends SecureClassLoader {
                     c = findClassInModuleOrNull(loadedModule, cn);
                 } else {
                     /* Not found in modules of this loader, try class-path instead */
-                    if (c == null) {
-                        c = findClassViaClassPath(cn);
-                    }
+                    c = findClassViaClassPath(cn);
 
                     if (c == null) {
                         String pn = packageName(cn);
@@ -646,11 +634,7 @@ final class NativeImageClassLoader extends SecureClassLoader {
                         if (loader == null) {
                             loader = parent;
                         }
-                        if (loader == null) {
-                            c = BootLoader.loadClassOrNull(cn);
-                        } else {
-                            c = loader.loadClass(cn);
-                        }
+                        c = loader.loadClass(cn);
                     }
                 }
             }

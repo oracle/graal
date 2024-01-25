@@ -50,6 +50,8 @@ import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.ObjectHandle;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.Threading;
 import org.graalvm.nativeimage.Threading.RecurringCallback;
 import org.graalvm.nativeimage.UnmanagedMemory;
@@ -100,6 +102,7 @@ import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotExcep
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotExceptionHandlePointer;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotExtendedErrorInfo;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotExtendedErrorInfoPointer;
+import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsolate;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsolateThread;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotLanguage;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotLanguagePointer;
@@ -115,12 +118,19 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.RegisterDumper;
+import com.oracle.svm.core.SubstrateSegfaultHandler;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.c.SetThreadAndHeapBasePrologue;
+import com.oracle.svm.core.c.function.CEntryPointOptions;
+import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
+import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.handles.ObjectHandlesImpl;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jvmstat.PerfDataSupport;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -2457,8 +2467,7 @@ public final class PolyglotNativeAPI {
                     "@since 23.1",
     })
     public static PolyglotStatus poly_register_log_handler_callbacks(PolyglotIsolateThread thread, PolyglotNativeAPITypes.PolyglotLogCallback logCallback,
-                    PolyglotNativeAPITypes.PolyglotFlushCallback flushCallback,
-                    PolyglotNativeAPITypes.PolyglotFatalErrorCallback fatalErrorCallback, VoidPointer data) {
+                    PolyglotNativeAPITypes.PolyglotFlushCallback flushCallback, PolyglotNativeAPITypes.PolyglotFatalErrorCallback fatalErrorCallback, VoidPointer data) {
         resetErrorState();
         nullCheck(logCallback, "logCallback");
         nullCheck(flushCallback, "flushCallback");
@@ -2496,6 +2505,39 @@ public final class PolyglotNativeAPI {
         CInt64Pointer ptr = (CInt64Pointer) ImageSingletons.lookup(PerfDataSupport.class).getLong(key);
         result.write(ptr);
         return poly_ok;
+    }
+
+    @Uninterruptible(reason = "Must be uninterruptible until it gets immune to safepoints.")
+    @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class)
+    @CEntryPoint(name = "poly_handle_segfault_in_thread", documentation = {
+                    "Prints information about the segfault and calls the fatal error handler. Note that this method may only be called from an already attached thread.",
+                    "",
+                    "@param signal_info the OS-specific signal information, e.g., siginfo_t* on Linux.",
+                    "@param signal_handler_context the OS-specific signal handler context, e.g., ucontext_t* on Linux.",
+                    "@return this method never returns because it invokes the fatal error handling instead.",
+                    "",
+                    "@since 23.1.2",
+    })
+    public static void poly_handle_segfault_in_thread(PolyglotIsolateThread thread, PointerBase signal_info, RegisterDumper.Context signal_handler_context) {
+        /* Don't reset the error state so that we see it in the crash log. */
+        SubstrateSegfaultHandler.dump(signal_info, signal_handler_context);
+    }
+
+    @Uninterruptible(reason = "Must be uninterruptible until it gets immune to safepoints.")
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
+    @CEntryPoint(name = "poly_handle_segfault_in_isolate", documentation = {
+                    "Prints information about the segfault and calls the fatal error handler. Note that this method may only be called from an already attached thread.",
+                    "",
+                    "@param signal_info the OS-specific signal information, e.g., siginfo_t* on Linux.",
+                    "@param signal_handler_context the OS-specific signal handler context, e.g., ucontext_t* on Linux.",
+                    "@return this method never returns because it invokes the fatal error handling instead.",
+                    "",
+                    "@since 23.1.2",
+    })
+    public static void poly_handle_segfault_in_isolate(PolyglotIsolate isolate, PointerBase signal_info, RegisterDumper.Context signal_handler_context) {
+        /* Don't reset the error state so that we see it in the crash log. */
+        SubstrateSegfaultHandler.enterIsolateAsyncSignalSafe(isolate);
+        SubstrateSegfaultHandler.dump(signal_info, signal_handler_context);
     }
 
     private static void writeUTF8String(String valueString, CCharPointer buffer, UnsignedWord length, SizeTPointer result) {
@@ -2661,6 +2703,10 @@ public final class PolyglotNativeAPI {
         PolyglotNativeAPITypes.PolyglotFlushCallback flush;
         PolyglotNativeAPITypes.PolyglotFatalErrorCallback fatalError;
 
+        @Platforms(Platform.HOSTED_ONLY.class)
+        PolyglotNativeLogHandler() {
+        }
+
         @Override
         public void log(CCharPointer bytes, UnsignedWord length) {
             if (log.isNonNull()) {
@@ -2678,13 +2724,19 @@ public final class PolyglotNativeAPI {
         @Override
         public void fatalError() {
             if (fatalError.isNonNull()) {
-                fatalError.invoke(data);
+                markThreadAsCrashedAndInvokeFatalError();
             }
 
             /*
              * If we reach this point, then we must abort since the execution cannot proceed.
              */
             LibC.abort();
+        }
+
+        @Uninterruptible(reason = "Don't access objects in the collected Java heap after marking the thread as crashed.")
+        private void markThreadAsCrashedAndInvokeFatalError() {
+            SafepointBehavior.markThreadAsCrashed();
+            fatalError.invoke(data);
         }
     }
 }

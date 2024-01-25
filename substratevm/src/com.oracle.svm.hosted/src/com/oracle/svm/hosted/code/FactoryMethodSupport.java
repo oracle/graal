@@ -29,9 +29,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.code.FactoryMethodHolder;
 import com.oracle.svm.core.code.FactoryThrowMethodHolder;
@@ -71,10 +71,10 @@ public class FactoryMethodSupport {
              */
             ResolvedJavaType[] unwrappedParameterTypes = new ResolvedJavaType[aConstructor.getSignature().getParameterCount(false)];
             for (int i = 0; i < unwrappedParameterTypes.length; i++) {
-                unwrappedParameterTypes[i] = ((AnalysisType) aConstructor.getSignature().getParameterType(i, null)).getWrapped();
+                unwrappedParameterTypes[i] = aConstructor.getSignature().getParameterType(i).getWrapped();
             }
             ResolvedJavaType unwrappedReturnType = (throwAllocatedObject ? aMetaAccess.lookupJavaType(void.class) : aConstructor.getDeclaringClass()).getWrapped();
-            Signature unwrappedSignature = new SimpleSignature(unwrappedParameterTypes, unwrappedReturnType);
+            Signature unwrappedSignature = ResolvedSignature.fromArray(unwrappedParameterTypes, unwrappedReturnType);
             ResolvedJavaMethod unwrappedConstructor = aConstructor.getWrapped();
             ResolvedJavaType unwrappedDeclaringClass = (aMetaAccess.lookupJavaType(throwAllocatedObject ? FactoryThrowMethodHolder.class : FactoryMethodHolder.class)).getWrapped();
             ConstantPool unwrappedConstantPool = unwrappedConstructor.getConstantPool();

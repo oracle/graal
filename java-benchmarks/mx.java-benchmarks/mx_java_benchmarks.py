@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import argparse
 import os
 from os.path import join, exists
 import json
+import shutil
 from shutil import rmtree
 from tempfile import mkdtemp, mkstemp
 
@@ -42,16 +43,12 @@ import mx_sdk_vm_impl
 _suite = mx.suite('java-benchmarks')
 
 
-if sys.version_info[0] < 3:
-    from ConfigParser import ConfigParser
-    from StringIO import StringIO
-    def _configparser_read_file(configp, fp):
-        configp.readfp(fp)
-else:
-    from configparser import ConfigParser
-    from io import StringIO
-    def _configparser_read_file(configp, fp):
-        configp.read_file(fp)
+from configparser import ConfigParser
+from io import StringIO
+
+
+def _configparser_read_file(configp, fp):
+    configp.read_file(fp)
 
 
 # Short-hand commands used to quickly run common benchmarks.
@@ -109,65 +106,12 @@ def createBenchmarkShortcut(benchSuite, args):
     return mx_benchmark.benchmark([benchSuite + ":" + benchname] + remaining_args)
 
 
-def _create_temporary_workdir_parser():
-    parser = argparse.ArgumentParser(add_help=False, usage=mx_benchmark._mx_benchmark_usage_example + " -- <options> -- ...")
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("--keep-scratch", action="store_true", help="Do not delete scratch directory after benchmark execution.")
-    group.add_argument("--no-scratch", action="store_true", help="Do not execute benchmark in scratch directory.")
-    return parser
-
-
-mx_benchmark.parsers["temporary_workdir_parser"] = ParserEntry(
-    _create_temporary_workdir_parser(),
-    "\n\nFlags for benchmark suites with temporary working directories:\n"
-)
-
-
 # Adds a java VM from JAVA_HOME without any assumption about it
 mx_benchmark.add_java_vm(mx_benchmark.DefaultJavaVm('java-home', 'default'), _suite, 1)
 
 
 def java_home_jdk():
     return mx.get_jdk()
-
-
-class TemporaryWorkdirMixin(mx_benchmark.VmBenchmarkSuite):
-    def before(self, bmSuiteArgs):
-        parser = mx_benchmark.parsers["temporary_workdir_parser"].parser
-        bmArgs, otherArgs = parser.parse_known_args(bmSuiteArgs)
-        self.keepScratchDir = bmArgs.keep_scratch
-        if not bmArgs.no_scratch:
-            self._create_tmp_workdir()
-        else:
-            mx.warn("NO scratch directory created! (--no-scratch)")
-            self.workdir = None
-        super(TemporaryWorkdirMixin, self).before(otherArgs)
-
-    def _create_tmp_workdir(self):
-        mx.log_deprecation("mx_java_benchmarks.mx_benchmark.TemporaryWorkdirMixin is deprecated. Use mx_benchmark.mx_benchmark.TemporaryWorkdirMixin instead.")
-        self.workdir = mkdtemp(prefix=self.name() + '-work.', dir='.')
-
-    def workingDirectory(self, benchmarks, bmSuiteArgs):
-        return self.workdir
-
-    def after(self, bmSuiteArgs):
-        if hasattr(self, "keepScratchDir") and self.keepScratchDir:
-            mx.warn("Scratch directory NOT deleted (--keep-scratch): {0}".format(self.workdir))
-        elif self.workdir:
-            rmtree(self.workdir)
-        super(TemporaryWorkdirMixin, self).after(bmSuiteArgs)
-
-    def repairDatapointsAndFail(self, benchmarks, bmSuiteArgs, partialResults, message):
-        try:
-            super(TemporaryWorkdirMixin, self).repairDatapointsAndFail(benchmarks, bmSuiteArgs, partialResults, message)
-        finally:
-            if self.workdir:
-                # keep old workdir for investigation, create a new one for further benchmarking
-                mx.warn("Keeping scratch directory after failed benchmark: {0}".format(self.workdir))
-                self._create_tmp_workdir()
-
-    def parserNames(self):
-        return super(TemporaryWorkdirMixin, self).parserNames() + ["temporary_workdir_parser"]
 
 
 class BaseMicroserviceBenchmarkSuite(mx_benchmark.BenchmarkSuite):
@@ -346,7 +290,6 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                 '-H:+AllowFoldMethods',
                 '-H:-UseServiceLoaderFeature',
                 '-H:+AllowDeprecatedBuilderClassesOnImageClasspath', # needs to be removed once GR-41746 is fixed
-                '-H:+DisableSubstitutionReturnTypeCheck',  # remove once Quarkus fixed their substitutions (GR-48152)
         ]) + super(BaseQuarkusBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
 
@@ -725,48 +668,6 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         return (
                 self.vmArgs(bmSuiteArgs) + ["-jar"] + [self.daCapoPath()] +
                 [benchmarks[0]] + runArgs)
-
-    def repairDatapoints(self, benchmarks, bmSuiteArgs, partialResults):
-        parser = argparse.ArgumentParser(add_help=False)
-        parser.add_argument("-n", "--iterations", default=None)
-        args, _ = parser.parse_known_args(self.runArgs(bmSuiteArgs))
-        if args.iterations and args.iterations.isdigit():
-            iterations = int(args.iterations)
-        else:
-            iterations = self.daCapoIterations()[benchmarks[0]]
-            iterations = iterations + self.getExtraIterationCount(iterations)
-        for i in range(0, iterations):
-            if next((p for p in partialResults if p["metric.iteration"] == i), None) is None:
-                datapoint = {
-                    "benchmark": benchmarks[0],
-                    "bench-suite": self.benchSuiteName(),
-                    "vm": "jvmci",
-                    "config.name": "default",
-                    "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
-                    "metric.name": "warmup",
-                    "metric.value": -1,
-                    "metric.unit": "ms",
-                    "metric.type": "numeric",
-                    "metric.score-function":  "id",
-                    "metric.better": "lower",
-                    "metric.iteration": i
-                }
-                partialResults.append(datapoint)
-        datapoint = {
-            "benchmark": benchmarks[0],
-            "bench-suite": self.benchSuiteName(),
-            "vm": "jvmci",
-            "config.name": "default",
-            "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
-            "metric.name": "time",
-            "metric.value": -1,
-            "metric.unit": "ms",
-            "metric.type": "numeric",
-            "metric.score-function": "id",
-            "metric.better": "lower",
-            "metric.iteration": 0
-        }
-        partialResults.append(datapoint)
 
     def benchmarkList(self, bmSuiteArgs):
         missing_sizes = set(self.daCapoIterations().keys()).difference(set(self.daCapoSizes().keys()))
@@ -1364,8 +1265,7 @@ if 'compiler.compiler' in _allSpecJVM2008BenchesJDK9:
 if 'startup.compiler.compiler' in _allSpecJVM2008BenchesJDK9:
     _allSpecJVM2008BenchesJDK9.remove('startup.compiler.compiler')
 
-
-class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
+class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.TemporaryWorkdirMixin):
     """SpecJVM2008 benchmark suite implementation.
 
     This benchmark suite can run multiple benchmarks as part of one VM run.
@@ -1384,11 +1284,19 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         if specjvm2008 is None:
             mx.abort("Please set the SPECJVM2008 environment variable to a " +
                      "SPECjvm2008 directory.")
-        jarpath = join(specjvm2008, "SPECjvm2008.jar")
+        jarname = "SPECjvm2008.jar"
+        jarpath = join(specjvm2008, jarname)
         if not exists(jarpath):
             mx.abort("The SPECJVM2008 environment variable points to a directory " +
                      "without the SPECjvm2008.jar file.")
-        return jarpath
+
+        # copy to newly-created temporary working directory
+        working_dir_jarpath =  os.path.abspath(join(self.workdir, jarname))
+        if not exists(working_dir_jarpath):
+            mx.log("copying " + specjvm2008 + " to " + self.workdir)
+            shutil.copytree(specjvm2008, self.workdir, dirs_exist_ok=True)
+
+        return working_dir_jarpath
 
     def validateEnvironment(self):
         if not self.specJvmPath():
@@ -1397,9 +1305,6 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
     def validateReturnCode(self, retcode):
         return retcode == 0
-
-    def workingDirectory(self, benchmarks, bmSuiteArgs):
-        return mx.get_env("SPECJVM2008")
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
@@ -1958,7 +1863,6 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             del benchmarks["movie-lens"]
             del benchmarks["naive-bayes"]
             del benchmarks["page-rank"]
-            del benchmarks["dotty"]
             del benchmarks["neo4j-analytics"]
 
         return benchmarks
@@ -2007,8 +1911,26 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             mx.abort("Must specify at least one benchmark.")
         else:
             benchArg = ",".join(benchmarks)
+
+        vmArgs = self.vmArgs(bmSuiteArgs)
+        sparkBenchmarks = set([
+            "als",
+            "chi-square",
+            "dec-tree",
+            "gauss-mix",
+            "log-regression",
+            "movie-lens",
+            "naive-bayes",
+            "page-rank",
+            ])
+
+        if any(benchmark in sparkBenchmarks for benchmark in benchmarks):
+            # Spark benchmarks require a higher stack size than default in some configurations.
+            # [JDK-8303076] [GR-44499] [GR-50671]
+            vmArgs.append("-Xss1090K")
+
         runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
-        return (self.vmArgs(bmSuiteArgs) + ["-jar", self.renaissancePath()] + runArgs + [benchArg])
+        return (vmArgs + ["-jar", self.renaissancePath()] + runArgs + [benchArg])
 
     def benchmarkList(self, bmSuiteArgs):
         return [b for b, it in self.renaissanceIterations().items() if it != -1]

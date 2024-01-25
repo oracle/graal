@@ -70,7 +70,7 @@ public final class JavaVersion implements Comparable<JavaVersion> {
     }
 
     public static JavaVersion forVersion(int version) {
-        if (version < 1 || version > LATEST_SUPPORTED) {
+        if (version < 1) {
             throw new IllegalArgumentException("Unsupported java version: " + version);
         }
         return new JavaVersion(version);

@@ -30,7 +30,6 @@ import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedConstantFieldProvider;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
@@ -78,7 +77,7 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
 
     @Override
     protected ConstantReflectionProvider createConstantReflectionProvider() {
-        return new HostedConstantReflectionProvider(hostVM, (AnalysisConstantReflectionProvider) analysisProviders.getConstantReflection(), universe, (HostedMetaAccess) metaAccess);
+        return new HostedConstantReflectionProvider(universe, (HostedMetaAccess) metaAccess);
     }
 
     @Override
@@ -94,7 +93,7 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
     @Override
     protected Replacements createReplacements(Providers p, SnippetReflectionProvider reflectionProvider) {
         BytecodeProvider bytecodeProvider = new ResolvedJavaMethodBytecodeProvider();
-        return new HostedReplacements(universe, p, reflectionProvider, ConfigurationValues.getTarget(), analysisProviders, bytecodeProvider, p.getWordTypes());
+        return new HostedReplacements(universe, p, reflectionProvider, ConfigurationValues.getTarget(), analysisProviders, bytecodeProvider);
     }
 
     @Override

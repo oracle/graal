@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
@@ -58,8 +59,8 @@ public class NodeValidationChecksTest extends GraphTest {
         try {
             graph.add(new TestNode(node, null));
             Assert.fail("Exception expected.");
-        } catch (AssertionError e) {
-            Assert.assertTrue(e.getMessage().contains("Input"));
+        } catch (GraalError e) {
+            Assert.assertTrue(e.getMessage().contains("input"));
             Assert.assertTrue(e.getMessage().contains("not alive"));
         }
     }
@@ -71,8 +72,8 @@ public class NodeValidationChecksTest extends GraphTest {
         try {
             graph.add(new TestNode(null, node));
             Assert.fail("Exception expected.");
-        } catch (AssertionError e) {
-            Assert.assertTrue(e.getMessage().contains("Successor"));
+        } catch (GraalError e) {
+            Assert.assertTrue(e.getMessage().contains("successor"));
             Assert.assertTrue(e.getMessage().contains("not alive"));
         }
     }

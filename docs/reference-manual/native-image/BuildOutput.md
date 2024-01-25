@@ -142,6 +142,7 @@ Please check the [peak RSS](#glossary-peak-rss) reported at the end of the build
 By default, the build process tries to only use free memory (to avoid memory pressure on the build machine), and never more than 32GB of memory.
 If less than 8GB of memory are free, the build process falls back to use 85% of total memory.
 Therefore, consider freeing up memory if your machine is slow during a build, for example, by closing applications that you do not need.
+It is possible to overwrite the default behavior, for example with `-J-XX:MaxRAMPercentage=60.0` or `-J-Xmx16g`.
 
 By default, the build process uses all available processors to maximize speed, but not more than 32 threads.
 Use the `--parallelism` option to set the number of threads explicitly (for example, `--parallelism=4`).

@@ -84,7 +84,7 @@ public final class FloatLessThanNode extends CompareNode {
         if (value != null) {
             return value;
         }
-        return this;
+        return super.canonical(tool, forX, forY);
     }
 
     public static class FloatLessThanOp extends CompareOp {

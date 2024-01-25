@@ -32,6 +32,8 @@ public enum ExitStatus {
 
     // 3 used by `-XX:+ExitOnOutOfMemoryError` (see src/hotspot/share/utilities/debug.cpp)
     OUT_OF_MEMORY(3),
+    // Used by OOMKilled in containers
+    OUT_OF_MEMORY_KILLED(137),
 
     BUILDER_INTERRUPT_WITHOUT_REASON(4),
     DRIVER_ERROR(20),

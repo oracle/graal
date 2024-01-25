@@ -26,6 +26,13 @@ package com.oracle.svm.hosted.phases;
 
 import java.lang.reflect.Modifier;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.c.enums.EnumRuntimeData;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.c.info.EnumInfo;
+
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -43,19 +50,11 @@ import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderTool;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
-
-import com.oracle.svm.core.c.enums.EnumRuntimeData;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.c.info.EnumInfo;
-
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class CInterfaceEnumTool {
     interface CallTargetFactory {
-        MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, int bci);
+        MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, AnalysisMethod targetMethod, ValueNode[] args, StampPair returnStamp, int bci);
 
         static CallTargetFactory from(BytecodeParser p) {
             return (invokeKind, targetMethod, args, returnStamp, bci) -> p.createMethodCallTarget(invokeKind, targetMethod, args, returnStamp, null);
@@ -67,11 +66,11 @@ public class CInterfaceEnumTool {
     }
 
     private final SnippetReflectionProvider snippetReflection;
-    private final ResolvedJavaMethod convertJavaToCLongMethod;
-    private final ResolvedJavaMethod convertJavaToCIntMethod;
-    private final ResolvedJavaMethod convertCToJavaMethod;
+    private final AnalysisMethod convertJavaToCLongMethod;
+    private final AnalysisMethod convertJavaToCIntMethod;
+    private final AnalysisMethod convertCToJavaMethod;
 
-    public CInterfaceEnumTool(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection) {
+    public CInterfaceEnumTool(AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflection) {
         this.snippetReflection = snippetReflection;
         try {
             convertJavaToCLongMethod = metaAccess.lookupJavaMethod(EnumRuntimeData.class.getDeclaredMethod("convertJavaToCLong", Enum.class));
@@ -82,7 +81,7 @@ public class CInterfaceEnumTool {
         }
     }
 
-    private ResolvedJavaMethod getValueMethodForKind(JavaKind kind) {
+    private AnalysisMethod getValueMethodForKind(JavaKind kind) {
         return (kind == JavaKind.Long) ? convertJavaToCLongMethod : convertJavaToCIntMethod;
     }
 
@@ -99,8 +98,8 @@ public class CInterfaceEnumTool {
     }
 
     private MethodCallTargetNode invokeEnumValue(GraphBuilderTool b, CallTargetFactory callTargetFactory, int bci, EnumInfo enumInfo, JavaKind resultKind, ValueNode arg) {
-        ResolvedJavaMethod valueMethod = getValueMethodForKind(resultKind);
-        ResolvedJavaType returnType = (ResolvedJavaType) valueMethod.getSignature().getReturnType(null);
+        AnalysisMethod valueMethod = getValueMethodForKind(resultKind);
+        AnalysisType returnType = valueMethod.getSignature().getReturnType();
         ValueNode[] args = new ValueNode[2];
         args[0] = ConstantNode.forConstant(snippetReflection.forObject(enumInfo.getRuntimeData()), b.getMetaAccess(), b.getGraph());
         args[1] = arg;
@@ -109,7 +108,7 @@ public class CInterfaceEnumTool {
         return b.append(callTargetFactory.createMethodCallTarget(InvokeKind.Virtual, valueMethod, args, returnStamp, bci));
     }
 
-    public ValueNode createEnumLookupInvoke(HostedGraphKit kit, ResolvedJavaType enumType, EnumInfo enumInfo, JavaKind parameterKind, ValueNode arg) {
+    public ValueNode createEnumLookupInvoke(HostedGraphKit kit, AnalysisType enumType, EnumInfo enumInfo, JavaKind parameterKind, ValueNode arg) {
         // Create the invoke to the actual target method: EnumRuntimeData.convertCToJava
         int invokeBci = kit.bci();
         MethodCallTargetNode callTarget = invokeEnumLookup(kit, CallTargetFactory.from(kit), invokeBci, enumInfo, parameterKind, arg);
@@ -129,10 +128,10 @@ public class CInterfaceEnumTool {
         ValueNode[] args = new ValueNode[2];
         args[0] = ConstantNode.forConstant(snippetReflection.forObject(enumInfo.getRuntimeData()), b.getMetaAccess(), b.getGraph());
         assert !Modifier.isStatic(convertCToJavaMethod.getModifiers()) && convertCToJavaMethod.getSignature().getParameterCount(false) == 1;
-        JavaKind expectedKind = convertCToJavaMethod.getSignature().getParameterType(0, null).getJavaKind();
+        JavaKind expectedKind = convertCToJavaMethod.getSignature().getParameterType(0).getJavaKind();
         args[1] = CInterfaceInvocationPlugin.adaptPrimitiveType(b.getGraph(), arg, parameterKind, expectedKind, false);
 
-        ResolvedJavaType convertReturnType = (ResolvedJavaType) convertCToJavaMethod.getSignature().getReturnType(null);
+        AnalysisType convertReturnType = convertCToJavaMethod.getSignature().getReturnType();
         StampPair returnStamp = StampFactory.forDeclaredType(null, convertReturnType, false);
         return b.append(callTargetFactory.createMethodCallTarget(InvokeKind.Virtual, convertCToJavaMethod, args, returnStamp, bci));
     }

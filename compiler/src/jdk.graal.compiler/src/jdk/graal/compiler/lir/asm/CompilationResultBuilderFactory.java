@@ -34,19 +34,19 @@ import java.util.ServiceLoader;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.asm.Assembler;
 import jdk.graal.compiler.code.CompilationResult;
-import jdk.graal.compiler.core.common.spi.CodeGenProviders;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRInstructionVerifier;
 import jdk.graal.compiler.lir.framemap.FrameMap;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.services.Services;
 
@@ -63,7 +63,7 @@ public interface CompilationResultBuilderFactory {
     /**
      * Creates a new {@link CompilationResultBuilder}.
      */
-    CompilationResultBuilder createBuilder(CodeGenProviders providers,
+    CompilationResultBuilder createBuilder(CoreProviders providers,
                     FrameMap frameMap,
                     Assembler<?> asm,
                     DataBuilder dataBuilder,
@@ -97,7 +97,7 @@ public interface CompilationResultBuilderFactory {
         }
 
         @Override
-        public CompilationResultBuilder createBuilder(CodeGenProviders providers,
+        public CompilationResultBuilder createBuilder(CoreProviders providers,
                         FrameMap frameMap,
                         Assembler<?> asm,
                         DataBuilder dataBuilder,

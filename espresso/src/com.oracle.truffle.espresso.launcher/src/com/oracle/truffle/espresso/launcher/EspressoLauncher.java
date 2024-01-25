@@ -40,6 +40,12 @@ import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
+/**
+ * A simple emulation of the {@code java} launcher that parses the command line flags and builds and
+ * Espresso context based on them. This code isn't used by anyone except Espresso developers,
+ * because in a shipped Espresso the VM is started via {@code mokapot} instead (see
+ * {@code hacking.md} for details).
+ */
 public final class EspressoLauncher extends AbstractLanguageLauncher {
     private static final String AGENT_LIB = "java.AgentLib.";
     private static final String AGENT_PATH = "java.AgentPath.";
@@ -132,7 +138,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
 
         /**
          * Advances the position, skipping over the value associated with an option if needed.
-         * 
+         *
          * @return true if there are still arguments to process, false otherwise.
          */
         boolean next() {
@@ -412,7 +418,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
          * world. It is actually expected that the vm arguments list is populated with arguments
          * which have been pre-formatted by the regular Java launcher when passed to the VM, ie: the
          * arguments if the VM was created through a call to JNI_CreateJavaVM.
-         * 
+         *
          * In particular, it expects all kay-value pairs to be equals-separated and not
          * space-separated. Furthermore, it does not expect syntactic-sugared some arguments such as
          * '-m' or '--modules', that would have been replaced by the regular java launcher as

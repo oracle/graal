@@ -25,14 +25,15 @@
 
 package com.oracle.svm.core.heap;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.config.ObjectLayout;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Means for accessing object references, explicitly distinguishing between compressed and
@@ -117,6 +118,11 @@ public interface ReferenceAccess {
      * Returns the default compression encoding.
      */
     CompressEncoding getCompressEncoding();
+
+    /**
+     * Returns a compile-time constant for {@link CompressEncoding#getShift()}.
+     */
+    int getCompressionShift();
 
     /**
      * Returns the size of the address space, based on the reference size.

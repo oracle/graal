@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -516,19 +516,16 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
   // Intel features.
   if (is_intel(_cpuid_info))
   {
-    if (_cpuid_info->ext_cpuid1_ecx.bits.lzcnt_intel != 0)
+    if (_cpuid_info->ext_cpuid1_ecx.bits.lzcnt != 0) {
       features->fLZCNT = 1;
-    // for Intel, ecx.bits.misalignsse bit (bit 8) indicates support for prefetchw
-    if (_cpuid_info->ext_cpuid1_ecx.bits.misalignsse != 0)
-    {
+    }
+    if (_cpuid_info->ext_cpuid1_ecx.bits.prefetchw != 0) {
       features->fAMD_3DNOW_PREFETCH = 1;
     }
-    if (_cpuid_info->sef_cpuid7_ebx.bits.clwb != 0)
-    {
+    if (_cpuid_info->sef_cpuid7_ebx.bits.clwb != 0) {
       features->fCLWB = 1;
     }
-    if (_cpuid_info->sef_cpuid7_edx.bits.serialize != 0)
-    {
+    if (_cpuid_info->sef_cpuid7_edx.bits.serialize != 0) {
       features->fSERIALIZE = 1;
     }
   }
@@ -536,11 +533,10 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
   // ZX features.
   if (is_zx(_cpuid_info))
   {
-    if (_cpuid_info->ext_cpuid1_ecx.bits.lzcnt_intel != 0)
+    if (_cpuid_info->ext_cpuid1_ecx.bits.lzcnt != 0) {
       features->fLZCNT = 1;
-    // for ZX, ecx.bits.misalignsse bit (bit 8) indicates support for prefetchw
-    if (_cpuid_info->ext_cpuid1_ecx.bits.misalignsse != 0)
-    {
+    }
+    if (_cpuid_info->ext_cpuid1_ecx.bits.prefetchw != 0) {
       features->fAMD_3DNOW_PREFETCH = 1;
     }
   }

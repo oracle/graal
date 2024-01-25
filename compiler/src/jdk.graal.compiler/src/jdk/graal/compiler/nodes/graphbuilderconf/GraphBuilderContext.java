@@ -142,12 +142,16 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     }
 
     default ValueNode addNonNullCast(ValueNode value) {
+        return addNonNullCast(value, DeoptimizationAction.None);
+    }
+
+    default ValueNode addNonNullCast(ValueNode value, DeoptimizationAction action) {
         AbstractPointerStamp valueStamp = (AbstractPointerStamp) value.stamp(NodeView.DEFAULT);
         if (valueStamp.nonNull()) {
             return value;
         } else {
             LogicNode isNull = add(IsNullNode.create(value));
-            FixedGuardNode fixedGuard = add(new FixedGuardNode(isNull, DeoptimizationReason.NullCheckException, DeoptimizationAction.None, true));
+            FixedGuardNode fixedGuard = add(new FixedGuardNode(isNull, DeoptimizationReason.NullCheckException, action, true));
             Stamp newStamp = valueStamp.improveWith(StampFactory.objectNonNull());
             return add(PiNode.create(value, newStamp, fixedGuard));
         }
@@ -314,6 +318,11 @@ public interface GraphBuilderContext extends GraphBuilderTool {
 
     BailoutException bailout(String string);
 
+    /**
+     * Gets a version of a given value that has a non-null stamp. Emits a guard or an explicit
+     * exception check which is triggered if the value is null. Thus, <b> use only for values where
+     * the underlying bytecode can throw a {@link NullPointerException}! </b>
+     */
     default ValueNode nullCheckedValue(ValueNode value) {
         return nullCheckedValue(value, InvalidateReprofile);
     }
@@ -332,8 +341,9 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     }
 
     /**
-     * Gets a version of a given value that has a {@linkplain StampTool#isPointerNonNull(ValueNode)
-     * non-null} stamp.
+     * Gets a version of a given value that has a non-null stamp. Emits a guard or an explicit
+     * exception check which is triggered if the value is null. Thus, <b> use only for values where
+     * the underlying bytecode can throw a {@link NullPointerException}! </b>
      */
     default ValueNode nullCheckedValue(ValueNode value, DeoptimizationAction action) {
         if (!StampTool.isPointerNonNull(value)) {

@@ -65,17 +65,9 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>3.1.2</version>
         <configuration>
-           <argLine>
-               -Dtck.values=java-host,sl 
-               -Dtck.language=sl
-            </argLine>
             <dependenciesToScan>
                 <dependency>org.graalvm.truffle:truffle-tck-tests</dependency>
             </dependenciesToScan>
-          <includes>
-            <include>**/*TestSuite.java</include>
-            <include>**/*Test.java</include>
-          </includes>
         </configuration>
       </plugin>
     </plugins>
@@ -91,7 +83,6 @@
         </plugin>
       </plugins>
     </pluginManagement>
-    <finalName>simplelanguage</finalName>
   </build>
     <dependencies>
         <dependency>
@@ -112,22 +103,10 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.graalvm.truffle</groupId>
-            <artifactId>truffle-tck-common</artifactId>
-            <version>${graalvm.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
           <groupId>junit</groupId>
           <artifactId>junit</artifactId>
           <version>4.13.2</version>
           <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.graalvm.truffle</groupId>
-            <artifactId>truffle-tck-instrumentation</artifactId>
-            <version>${graalvm.version}</version>
-            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>

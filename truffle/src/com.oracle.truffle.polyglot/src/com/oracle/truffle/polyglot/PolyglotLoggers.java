@@ -218,6 +218,10 @@ final class PolyglotLoggers {
             }
         }
 
+        boolean isContextBoundLogger() {
+            return !useCurrentContext;
+        }
+
         void setOwner(VMObject owner) {
             if (ownerRef != null) {
                 throw new IllegalStateException("owner can only be set once");
@@ -500,7 +504,7 @@ final class PolyglotLoggers {
 
             private static String possibleSimpleName(final String loggerName) {
                 int index = -1;
-                for (int i = 0; i >= 0; i = loggerName.indexOf('.', i + 1)) {
+                for (int i = loggerName.indexOf('.'); i >= 0; i = loggerName.indexOf('.', i + 1)) {
                     if (i + 1 < loggerName.length() && Character.isUpperCase(loggerName.charAt(i + 1))) {
                         index = i + 1;
                         break;

@@ -37,9 +37,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionType;
-
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -51,6 +48,9 @@ import com.oracle.svm.core.jdk.JRTSupport.JRTDisabled;
 import com.oracle.svm.core.jdk.JRTSupport.JRTEnabled;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
 
 /**
  * Support to access system Java modules and the <b>jrt://</b> file system.
@@ -154,6 +154,9 @@ final class Target_jdk_internal_jimage_ImageReaderFactory_JRTEnabled {
  */
 @TargetClass(className = "jdk.internal.module.SystemModuleFinders", innerClass = "SystemImage", onlyWith = JRTDisabled.class)
 final class Target_jdk_internal_module_SystemModuleFinders_SystemImage_JRTDisabled {
+    @Delete //
+    static Target_jdk_internal_jimage_ImageReader READER;
+
     @Substitute
     static Target_jdk_internal_jimage_ImageReader reader() {
         throw VMError.unsupportedFeature("JRT file system is disabled");

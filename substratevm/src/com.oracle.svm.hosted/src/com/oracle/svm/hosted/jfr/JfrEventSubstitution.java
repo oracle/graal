@@ -25,9 +25,7 @@
 package com.oracle.svm.hosted.jfr;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -44,7 +42,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-import jdk.internal.misc.Unsafe;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.SecuritySupport;
 import jdk.jfr.internal.event.EventWriter;
@@ -72,7 +69,6 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
     JfrEventSubstitution(MetaAccessProvider metaAccess) {
         baseEventType = metaAccess.lookupJavaType(jdk.internal.event.Event.class);
         ResolvedJavaType jdkJfrEventWriter = metaAccess.lookupJavaType(EventWriter.class);
-        changeWriterResetMethod(jdkJfrEventWriter);
         typeSubstitution = new ConcurrentHashMap<>();
         methodSubstitutions = new ConcurrentHashMap<>();
         fieldSubstitutions = new ConcurrentHashMap<>();
@@ -184,54 +180,6 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
 
     private boolean needsClassRedefinition(ResolvedJavaType type) {
         return !type.isAbstract() && baseEventType.isAssignableFrom(type) && !baseEventType.equals(type);
-    }
-
-    /**
-     * The method EventWriter.reset() is private but it is called by the EventHandler classes, which
-     * are generated automatically. To prevent bytecode parsing issues, we patch the visibility of
-     * that method using the hacky way below.
-     */
-    private static void changeWriterResetMethod(ResolvedJavaType eventWriterType) {
-        for (ResolvedJavaMethod m : eventWriterType.getDeclaredMethods(false)) {
-            if (m.getName().equals("reset")) {
-                setPublicModifier(m);
-            }
-        }
-    }
-
-    private static void setPublicModifier(ResolvedJavaMethod m) {
-        try {
-            Class<?> hotspotMethodClass = m.getClass();
-            Method metaspaceMethodM = getMethodToFetchMetaspaceMethod(hotspotMethodClass);
-            metaspaceMethodM.setAccessible(true);
-            long metaspaceMethod = (Long) metaspaceMethodM.invoke(m);
-            VMError.guarantee(metaspaceMethod != 0);
-            Class<?> hotSpotVMConfigC = Class.forName("jdk.vm.ci.hotspot.HotSpotVMConfig");
-            Method configM = hotSpotVMConfigC.getDeclaredMethod("config");
-            configM.setAccessible(true);
-            Field methodAccessFlagsOffsetF = hotSpotVMConfigC.getDeclaredField("methodAccessFlagsOffset");
-            methodAccessFlagsOffsetF.setAccessible(true);
-            Object hotSpotVMConfig = configM.invoke(null);
-            int methodAccessFlagsOffset = methodAccessFlagsOffsetF.getInt(hotSpotVMConfig);
-            int modifiers = Unsafe.getUnsafe().getInt(metaspaceMethod + methodAccessFlagsOffset);
-            int newModifiers = modifiers & ~Modifier.PRIVATE | Modifier.PUBLIC;
-            Unsafe.getUnsafe().putInt(metaspaceMethod + methodAccessFlagsOffset, newModifiers);
-        } catch (Exception ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
-
-    private static Method getMethodToFetchMetaspaceMethod(Class<?> method) throws NoSuchMethodException {
-        // The exact method depends on the JVMCI version.
-        try {
-            return method.getDeclaredMethod("getMethodPointer");
-        } catch (NoSuchMethodException e) {
-            try {
-                return method.getDeclaredMethod("getMetaspaceMethod");
-            } catch (NoSuchMethodException e2) {
-                return method.getDeclaredMethod("getMetaspacePointer");
-            }
-        }
     }
 
     /*

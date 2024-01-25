@@ -28,6 +28,8 @@ import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
@@ -68,6 +70,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * offset in the {@link IsolateThread} data structure.
  */
 @AutomaticallyRegisteredFeature
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 public class VMThreadMTFeature implements InternalFeature {
 
     private final VMThreadLocalCollector threadLocalCollector = new VMThreadLocalCollector();

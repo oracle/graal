@@ -922,7 +922,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         if (virtualObjectMappingCount() > 0) {
             for (EscapeObjectState state : virtualObjectMappings()) {
                 assertTrue(state != null, "must be non-null");
@@ -955,7 +955,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
             assertTrue(value == null || value instanceof VirtualObjectNode || (value.getStackKind() != JavaKind.Void), "unexpected value %s at frame state %s", value, this);
         }
         verifyAfterExceptionState();
-        return super.verify();
+        return super.verifyNode();
     }
 
     private int outerLockDepth() {

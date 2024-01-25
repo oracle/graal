@@ -1500,7 +1500,7 @@ public final class CompileTheWorld {
         OptionsParser.parseOptions(extractEntries(System.getProperties(), "CompileTheWorld.", true), values, loader);
         OptionValues options = new OptionValues(values);
         if (Options.Help.getValue(options)) {
-            options.printHelp(loader, System.out, "CompileTheWorld.");
+            options.printHelp(loader, System.out, "CompileTheWorld.", true);
             System.exit(0);
         }
         return options;

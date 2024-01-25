@@ -290,6 +290,15 @@ public final class ReflectionPlugins {
                         "getField", "getMethod", "getConstructor",
                         "getDeclaredField", "getDeclaredMethod", "getDeclaredConstructor");
 
+        /*
+         * The class sun.nio.ch.Reflect contains various reflection lookup methods that then pass
+         * parameters through to the actual methods in java.lang.Class. But they do additional
+         * things like calling setAccessible(true), so method inlining before analysis cannot
+         * constant-fold them automatically. So we register them manually here for folding too.
+         */
+        registerFoldInvocationPlugins(plugins, ReflectionUtil.lookupClass(false, "sun.nio.ch.Reflect"),
+                        "lookupConstructor", "lookupMethod", "lookupField");
+
         if (MissingRegistrationUtils.throwMissingRegistrationErrors() && reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
             registerBulkInvocationPlugin(plugins, Class.class, "getClasses", RuntimeReflection::registerAllClasses);
             registerBulkInvocationPlugin(plugins, Class.class, "getDeclaredClasses", RuntimeReflection::registerAllDeclaredClasses);
@@ -626,10 +635,19 @@ public final class ReflectionPlugins {
 
         /* Any other object that is not a Class. */
         Object result = snippetReflection.asObject(Object.class, argConstant);
-        if (result != null && ALLOWED_CONSTANT_CLASSES.contains(result.getClass())) {
+        if (result != null && isAllowedConstant(result.getClass())) {
             return result;
         }
         return null;
+    }
+
+    private boolean isAllowedConstant(Class<?> clazz) {
+        for (var allowed : ALLOWED_CONSTANT_CLASSES) {
+            if (allowed.isAssignableFrom(clazz)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -644,7 +662,7 @@ public final class ReflectionPlugins {
      */
     @SuppressWarnings("unchecked")
     private <T> T getIntrinsic(GraphBuilderContext context, T element) {
-        if (reason == ParsingReason.UnsafeSubstitutionAnalysis || reason == ParsingReason.EarlyClassInitializerAnalysis) {
+        if (reason == ParsingReason.AutomaticUnsafeTransformation || reason == ParsingReason.EarlyClassInitializerAnalysis) {
             /* We are analyzing the static initializers and should always intrinsify. */
             return element;
         }

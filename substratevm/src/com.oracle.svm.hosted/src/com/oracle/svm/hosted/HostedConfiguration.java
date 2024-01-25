@@ -51,11 +51,13 @@ import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.config.ObjectLayout.IdentityHashMode;
 import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.monitor.MultiThreadedMonitorSupport;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CompileQueue;
+import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.config.HybridLayoutSupport;
 import com.oracle.svm.hosted.image.LIRNativeImageCodeCache;
@@ -66,14 +68,15 @@ import com.oracle.svm.hosted.image.ObjectFileFactory;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
-import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
+import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.internal.ValueBased;
 import jdk.vm.ci.meta.JavaKind;
@@ -162,9 +165,39 @@ public class HostedConfiguration {
         return new ObjectLayout(target, referenceSize, objectAlignment, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset, headerIdentityHashOffset, identityHashMode);
     }
 
-    public SVMHost createHostVM(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
-                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform) {
-        return new SVMHost(options, classLoader, classInitializationSupport, automaticSubstitutions, platform);
+    public static void initializeDynamicHubLayout(HostedMetaAccess hMeta) {
+        ImageSingletons.add(DynamicHubLayout.class, createDynamicHubLayout(hMeta));
+    }
+
+    private static DynamicHubLayout createDynamicHubLayout(HostedMetaAccess hMetaAccess) {
+        var dynamicHubType = hMetaAccess.lookupJavaType(Class.class);
+        var typeIDSlotsField = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "typeCheckSlots"));
+        var vtableField = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "vtable"));
+
+        ObjectLayout layout = ConfigurationValues.getObjectLayout();
+        int typeIDSlotsOffset = layout.getArrayLengthOffset() + layout.sizeInBytes(JavaKind.Int);
+        int typeIDSlotsSize = layout.sizeInBytes(typeIDSlotsField.getType().getComponentType().getStorageKind());
+
+        JavaKind vTableSlotStorageKind = vtableField.getType().getComponentType().getStorageKind();
+        int vTableSlotSize = layout.sizeInBytes(vTableSlotStorageKind);
+
+        return new DynamicHubLayout(layout, dynamicHubType, typeIDSlotsField, typeIDSlotsOffset, typeIDSlotsSize, vtableField, vTableSlotStorageKind, vTableSlotSize);
+    }
+
+    public static boolean isArrayLikeLayout(HostedType clazz) {
+        return HybridLayout.isHybrid(clazz) || DynamicHubLayout.singleton().isDynamicHub(clazz);
+    }
+
+    /**
+     * The hybrid array field and the type fields of the dynamic hub are directly inlined to the
+     * object to remove a level of indirection.
+     */
+    public static boolean isInlinedField(HostedField field) {
+        return HybridLayout.isHybridField(field) || DynamicHubLayout.singleton().isInlinedField(field);
+    }
+
+    public SVMHost createHostVM(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions) {
+        return new SVMHost(options, loader, classInitializationSupport, annotationSubstitutions);
     }
 
     public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse, RuntimeConfiguration runtimeConfiguration, boolean deoptimizeAll,
@@ -175,10 +208,6 @@ public class HostedConfiguration {
 
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
         return new SVMMethodTypeFlowBuilder(bb, method, flowsGraph, graphKind);
-    }
-
-    public void registerUsedElements(PointsToAnalysis bb, StructuredGraph graph, boolean registerEmbeddedRoots) {
-        SVMMethodTypeFlowBuilder.registerUsedElements(bb, graph, registerEmbeddedRoots);
     }
 
     public MetaAccessExtensionProvider createAnalysisMetaAccessExtensionProvider() {
@@ -192,16 +221,22 @@ public class HostedConfiguration {
     public void findAllFieldsForLayout(HostedUniverse universe, @SuppressWarnings("unused") HostedMetaAccess metaAccess,
                     @SuppressWarnings("unused") Map<AnalysisField, HostedField> universeFields,
                     ArrayList<HostedField> rawFields, ArrayList<HostedField> allFields, HostedInstanceClass clazz) {
+        DynamicHubLayout dynamicHubLayout = DynamicHubLayout.singleton();
         for (ResolvedJavaField javaField : clazz.getWrapped().getInstanceFields(false)) {
             AnalysisField aField = (AnalysisField) javaField;
             HostedField hField = universe.lookup(aField);
 
             /* Because of @Alias fields, the field lookup might not be declared in our class. */
             if (hField.getDeclaringClass().equals(clazz)) {
-                if (HybridLayout.isHybridField(hField)) {
+                if (dynamicHubLayout.isInlinedField(hField)) {
                     /*
-                     * The array or bitset field of a hybrid is not materialized, so it needs no
-                     * field offset.
+                     * The typeid slots and the vtable of the dynamic hub are not materialized, so
+                     * they need no field offset.
+                     */
+                    allFields.add(hField);
+                } else if (HybridLayout.isHybridField(hField)) {
+                    /*
+                     * The array field of a hybrid is not materialized, so it needs no field offset.
                      */
                     allFields.add(hField);
                 } else if (hField.isAccessed()) {

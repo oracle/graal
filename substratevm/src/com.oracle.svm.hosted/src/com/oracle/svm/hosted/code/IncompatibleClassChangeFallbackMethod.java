@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.code;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
@@ -67,9 +68,9 @@ public final class IncompatibleClassChangeFallbackMethod extends NonBytecodeMeth
     }
 
     @Override
-    public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
+    public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
-        ResolvedJavaMethod constructor = providers.getMetaAccess().lookupJavaMethod(ReflectionUtil.lookupConstructor(resolutionError));
+        AnalysisMethod constructor = kit.getMetaAccess().lookupJavaMethod(ReflectionUtil.lookupConstructor(resolutionError));
 
         AbstractNewObjectNode newInstance = kit.append(new NewInstanceNode(constructor.getDeclaringClass(), true));
         kit.createInvokeWithExceptionAndUnwind(constructor, InvokeKind.Special, kit.getFrameState(), kit.bci(), newInstance);

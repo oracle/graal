@@ -145,7 +145,5 @@ public abstract class SharedConstantReflectionProvider implements ConstantReflec
         return asJavaClass(type);
     }
 
-    public int getImageHeapOffset(@SuppressWarnings("unused") JavaConstant constant) {
-        throw VMError.shouldNotReachHere("Can only be used during JIT compilation at run time: " + getClass().getName());
-    }
+    public abstract int getImageHeapOffset(JavaConstant constant);
 }

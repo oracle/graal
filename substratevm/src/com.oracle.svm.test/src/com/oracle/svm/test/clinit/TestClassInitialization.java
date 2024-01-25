@@ -28,6 +28,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -612,7 +613,7 @@ class BoxingMustBeSimulated {
         System.arraycopy(shorts, 1, S1, 2, 5);
         System.arraycopy(S1, 3, S1, 5, 5);
 
-        Object[] objects = {"42", "43", "44", "45", "46", "47", "48"};
+        Object[] objects = {"42", null, "44", "45", null, "47", "48"};
         O1 = Arrays.copyOf(objects, 3);
         O2 = Arrays.copyOfRange(objects, 3, 6, String[].class);
     }
@@ -663,6 +664,100 @@ class SynchronizedMustBeDelayed {
     }
 }
 
+class InitializationOrder {
+    static final List<Class<?>> initializationOrder = Collections.synchronizedList(new ArrayList<>());
+}
+
+interface Test1_I1 {
+    default void defaultI1() {
+    }
+
+    int order = add();
+
+    static int add() {
+        InitializationOrder.initializationOrder.add(Test1_I1.class);
+        return 42;
+    }
+}
+
+interface Test1_I2 extends Test1_I1 {
+    int order = add();
+
+    static int add() {
+        InitializationOrder.initializationOrder.add(Test1_I2.class);
+        return 42;
+    }
+}
+
+interface Test1_I3 extends Test1_I2 {
+    default void defaultI3() {
+    }
+
+    int order = add();
+
+    static int add() {
+        InitializationOrder.initializationOrder.add(Test1_I3.class);
+        return 42;
+    }
+}
+
+interface Test1_I4 extends Test1_I3 {
+    int order = add();
+
+    static int add() {
+        InitializationOrder.initializationOrder.add(Test1_I4.class);
+        return 42;
+    }
+}
+
+class Test1_A implements Test1_I4 {
+    static {
+        InitializationOrder.initializationOrder.add(Test1_A.class);
+    }
+}
+
+interface Test2_I1 {
+    default void defaultI1() {
+    }
+
+    int order = add();
+
+    static int add() {
+        InitializationOrder.initializationOrder.add(Test2_I1.class);
+        return 42;
+    }
+}
+
+interface Test2_I2 extends Test2_I1 {
+    int order = add();
+
+    static int add() {
+        InitializationOrder.initializationOrder.add(Test2_I2.class);
+        return 42;
+    }
+}
+
+interface Test2_I3 extends Test2_I2 {
+    default void defaultI3() {
+    }
+
+    int order = add();
+
+    static int add() {
+        InitializationOrder.initializationOrder.add(Test2_I3.class);
+        return 42;
+    }
+}
+
+interface Test2_I4 extends Test2_I3 {
+    int order = add();
+
+    static int add() {
+        InitializationOrder.initializationOrder.add(Test2_I4.class);
+        return 42;
+    }
+}
+
 abstract class TestClassInitializationFeature implements Feature {
 
     private void checkClasses(boolean checkSafeEarly, boolean checkSafeLate) {
@@ -695,6 +790,65 @@ abstract class TestClassInitializationFeature implements Feature {
     public void afterRegistration(AfterRegistrationAccess access) {
         /* We need to access the checkedClasses array both at image build time and run time. */
         RuntimeClassInitialization.initializeAtBuildTime(TestClassInitialization.class);
+
+        /*
+         * Initialization of a class first triggers initialization of all superinterfaces that
+         * declared default methods.
+         */
+        InitializationOrder.initializationOrder.clear();
+        assertNotInitialized(Test1_I1.class, Test1_I2.class, Test1_I3.class, Test1_I4.class, Test1_A.class);
+        RuntimeClassInitialization.initializeAtBuildTime(Test1_A.class);
+        assertNotInitialized(Test1_I2.class, Test1_I4.class);
+        assertInitialized(Test1_I1.class, Test1_I3.class, Test1_A.class);
+        assertArraysEqual(new Object[]{Test1_I1.class, Test1_I3.class, Test1_A.class}, InitializationOrder.initializationOrder.toArray());
+
+        /*
+         * The old class initialization policy is wrong regarding interfaces, but we do not want to
+         * change that now because it will be deleted soon.
+         */
+        if (TestClassInitialization.simulationEnabled) {
+
+            /*
+             * Initialization of an interface does not trigger initialization of superinterfaces.
+             * Regardless whether any of the involved interfaces declare default methods.
+             */
+            InitializationOrder.initializationOrder.clear();
+            assertNotInitialized(Test2_I1.class, Test2_I2.class, Test2_I3.class, Test2_I4.class);
+            RuntimeClassInitialization.initializeAtBuildTime(Test2_I4.class);
+            assertNotInitialized(Test2_I1.class, Test2_I2.class, Test2_I3.class);
+            assertInitialized(Test2_I4.class);
+            assertArraysEqual(new Object[]{Test2_I4.class}, InitializationOrder.initializationOrder.toArray());
+            RuntimeClassInitialization.initializeAtBuildTime(Test2_I3.class);
+            assertNotInitialized(Test2_I1.class, Test2_I2.class);
+            assertInitialized(Test2_I3.class, Test2_I4.class);
+            assertArraysEqual(new Object[]{Test2_I4.class, Test2_I3.class}, InitializationOrder.initializationOrder.toArray());
+            RuntimeClassInitialization.initializeAtBuildTime(Test2_I2.class);
+            assertNotInitialized(Test2_I1.class);
+            assertInitialized(Test2_I2.class, Test2_I3.class, Test2_I4.class);
+            assertArraysEqual(new Object[]{Test2_I4.class, Test2_I3.class, Test2_I2.class}, InitializationOrder.initializationOrder.toArray());
+        }
+    }
+
+    private void assertNotInitialized(Class<?>... classes) {
+        for (var clazz : classes) {
+            if (!Unsafe.getUnsafe().shouldBeInitialized(clazz)) {
+                throw new AssertionError("Already initialized: " + clazz);
+            }
+        }
+    }
+
+    private void assertInitialized(Class<?>... classes) {
+        for (var clazz : classes) {
+            if (Unsafe.getUnsafe().shouldBeInitialized(clazz)) {
+                throw new AssertionError("Not initialized: " + clazz);
+            }
+        }
+    }
+
+    private static void assertArraysEqual(Object[] expected, Object[] actual) {
+        if (!Arrays.equals(expected, actual)) {
+            throw new RuntimeException("expected " + Arrays.toString(expected) + " but found " + Arrays.toString(actual));
+        }
     }
 
     @Override
@@ -943,8 +1097,8 @@ public class TestClassInitialization {
         assertSame(Short.class, BoxingMustBeSimulated.defaultValue(short.class).getClass());
         assertSame(Float.class, BoxingMustBeSimulated.defaultValue(float.class).getClass());
         assertTrue(Arrays.equals((short[]) BoxingMustBeSimulated.S1, new short[]{0, 0, 43, 44, 45, 44, 45, 46, 47, 0, 0, 0}));
-        assertTrue(Arrays.equals((Object[]) BoxingMustBeSimulated.O1, new Object[]{"42", "43", "44"}));
-        assertTrue(Arrays.equals((Object[]) BoxingMustBeSimulated.O2, new String[]{"45", "46", "47"}));
+        assertTrue(Arrays.equals((Object[]) BoxingMustBeSimulated.O1, new Object[]{"42", null, "44"}));
+        assertTrue(Arrays.equals((Object[]) BoxingMustBeSimulated.O2, new String[]{"45", null, "47"}));
 
         /*
          * The unsafe field offset lookup is constant folded at image build time, which also

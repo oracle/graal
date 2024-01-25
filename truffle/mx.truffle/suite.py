@@ -41,7 +41,7 @@
 suite = {
   "mxversion": "7.0.3",
   "name" : "truffle",
-  "version" : "24.0.0",
+  "version" : "24.1.0",
   "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
@@ -365,6 +365,7 @@ suite = {
         "java.sql",
         "jdk.management",
         "jdk.unsupported", # sun.misc.Unsafe
+        "jdk.attach", # required by SubprocessTestUtils
       ],
       "requiresConcealed" : {
         "java.base" : [
@@ -1440,6 +1441,7 @@ suite = {
           "java.logging",
           "java.management",
           "static jdk.internal.vm.ci",  # JVMCI module is not on the boot layer if not enabled
+          "static jdk.jfr", # JFR is not included in the J9 JVM
         ],
         "exports" : [
           # Qualified exports
