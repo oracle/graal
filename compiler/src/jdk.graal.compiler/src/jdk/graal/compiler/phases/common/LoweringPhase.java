@@ -117,6 +117,8 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
         //@formatter:off
         @Option(help = "Print schedule result pre lowering to TTY.", type = OptionType.Expert)
         public static final OptionKey<Boolean> PrintLoweringScheduleToTTY = new OptionKey<>(false);
+        @Option(help = "Dump lowering after every node to igv.", type = OptionType.Expert)
+        public static final OptionKey<Boolean> DumpAfterEveryLowering = new OptionKey<>(false);
         //@formatter:on
     }
 
@@ -584,7 +586,6 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
 
     @SuppressWarnings("try")
     private AnchoringNode process(CoreProviders context, final HIRBlock b, final NodeBitMap activeGuards, final AnchoringNode startAnchor, ScheduleResult schedule) {
-
         FixedWithNextNode lastFixedNode = b.getBeginNode();
         if (b.getBeginNode() instanceof LoopExitNode) {
             /**
@@ -692,6 +693,9 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
                     nextLastFixed = begin;
                 }
                 loweringTool.setLastFixedNode((FixedWithNextNode) nextLastFixed);
+            }
+            if (Options.DumpAfterEveryLowering.getValue(debug.getOptions())) {
+                debug.dump(DebugContext.VERY_DETAILED_LEVEL, b.getBeginNode().graph(), "After lowering %s", node);
             }
         }
         return loweringTool.getCurrentGuardAnchor();
