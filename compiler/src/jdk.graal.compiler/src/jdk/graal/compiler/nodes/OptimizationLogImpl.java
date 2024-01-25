@@ -429,7 +429,7 @@ public class OptimizationLogImpl implements OptimizationLog {
 
         @Override
         public void report(int logLevel, Class<?> optimizationClass, String eventName, Node node) {
-            assert logLevel >= MINIMUM_LOG_LEVEL;
+            assert logLevel >= OptimizationLog.MINIMUM_LOG_LEVEL : logLevel;
             String optimizationName = createOptimizationName(optimizationClass);
             NodeSourcePosition position = node.getNodeSourcePosition();
             DebugContext debug = optimizationLog.graph.getDebug();

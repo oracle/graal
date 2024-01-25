@@ -83,10 +83,6 @@ public final class PureNFA implements StateIndex<PureNFAState> {
             assert this.states[s.getId()] == null;
             this.states[s.getId()] = s;
             for (PureNFATransition t : s.getSuccessors()) {
-                if (s.getId() != 0) {
-                    // don't link the dummy initial state as predecessor of initial states.
-                    t.getTarget().addPredecessor(t);
-                }
                 assert this.transitions[t.getId()] == null || (s.getId() == 0 && this.transitions[t.getId()] == t);
                 this.transitions[t.getId()] = t;
             }
@@ -118,17 +114,11 @@ public final class PureNFA implements StateIndex<PureNFAState> {
      * transitions, we need pseudo-transitions to the NFA's initial states as entry points for the
      * DFA generator. The dummy initial state provides these transitions, in a fixed layout: The
      * first half of its {@link PureNFAState#getSuccessors() successors} lead to the NFA's anchored
-     * initial states, and the second half leads to the unanchored initial states. The dummy initial
-     * state's {@link PureNFAState#getPredecessors() predecessors} are the NFA's anchored and
-     * unanchored final state, in that order. They serve as entry points for reverse DFAs.
+     * initial states, and the second half leads to the unanchored initial states.
      */
     public PureNFAState getDummyInitialState() {
-        assert states[0].getSuccessors().length == 2 && states[0].getPredecessors().length == 2;
+        assert states[0].getSuccessors().length == 2;
         return states[0];
-    }
-
-    public int getNumberOfEntryPoints() {
-        return getDummyInitialState().getSuccessors().length / 2;
     }
 
     public PureNFATransition getAnchoredEntry() {
@@ -145,30 +135,6 @@ public final class PureNFA implements StateIndex<PureNFAState> {
 
     public PureNFAState getAnchoredInitialState() {
         return getAnchoredEntry().getTarget();
-    }
-
-    public PureNFATransition getReverseAnchoredEntry() {
-        return getDummyInitialState().getPredecessors()[0];
-    }
-
-    public PureNFATransition getReverseUnAnchoredEntry() {
-        return getDummyInitialState().getPredecessors()[1];
-    }
-
-    public PureNFAState getUnAnchoredFinalState() {
-        return getReverseUnAnchoredEntry().getSource();
-    }
-
-    public PureNFAState getAnchoredFinalState() {
-        return getReverseAnchoredEntry().getSource();
-    }
-
-    public PureNFAState getUnAnchoredInitialState(boolean forward) {
-        return forward ? getUnAnchoredInitialState() : getUnAnchoredFinalState();
-    }
-
-    public PureNFAState getAnchoredInitialState(boolean forward) {
-        return forward ? getAnchoredInitialState() : getAnchoredFinalState();
     }
 
     public PureNFAState[] getStates() {
@@ -252,7 +218,7 @@ public final class PureNFA implements StateIndex<PureNFAState> {
     @TruffleBoundary
     public JsonValue toJson(RegexAST ast) {
         return Json.obj(Json.prop("states",
-                        Arrays.stream(states).map(x -> x == null || x == getDummyInitialState() || (x.isAnchoredFinalState() && !x.hasPredecessors()) ? Json.nullValue() : x.toJson(ast))),
+                        Arrays.stream(states).map(x -> x == null || x == getDummyInitialState() ? Json.nullValue() : x.toJson(ast))),
                         Json.prop("transitions", Arrays.stream(transitions).map(x -> x == null || x.getSource() == getDummyInitialState() ? Json.nullValue() : x.toJson(ast))),
                         Json.prop("subtrees", Arrays.stream(subtrees).map(x -> x == null ? Json.nullValue() : x.toJson(ast))),
                         Json.prop("anchoredEntry", Json.array(Json.val(getAnchoredInitialState().getId()))),

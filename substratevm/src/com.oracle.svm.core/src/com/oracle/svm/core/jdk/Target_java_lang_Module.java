@@ -24,35 +24,32 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
+import com.oracle.svm.core.annotate.TargetElement;
 
 @SuppressWarnings("unused")
 @TargetClass(value = java.lang.Module.class)
 public final class Target_java_lang_Module {
+    @Substitute
+    @TargetElement(onlyWith = ForeignDisabled.class)
+    public boolean isNativeAccessEnabled() {
+        throw ForeignDisabledSubstitutions.fail();
+    }
+
     @Alias
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     public native void ensureNativeAccess(Class<?> owner, String methodName);
 
-    @SuppressWarnings("static-method")
-    @Substitute
-    private InputStream getResourceAsStream(String resourceName) {
-        String resName = resourceName;
-        if (resName.startsWith("/")) {
-            resName = resName.substring(1);
-        }
-        Object res = Resources.singleton().get(SubstrateUtil.cast(this, Module.class), resName, true);
-        return res == null ? null : new ByteArrayInputStream(((ResourceStorageEntry) res).getData().get(0));
-    }
+    @Alias
+    @TargetElement(onlyWith = JDK22OrLater.class)
+    public native void ensureNativeAccess(Class<?> owner, String methodName, Class<?> currentClass);
 
     @Substitute
     private static void defineModule0(Module module, boolean isOpen, String version, String location, Object[] pns) {

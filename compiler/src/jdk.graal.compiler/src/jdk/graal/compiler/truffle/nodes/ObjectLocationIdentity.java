@@ -26,10 +26,10 @@ package jdk.graal.compiler.truffle.nodes;
 
 import java.util.Objects;
 
-import jdk.graal.compiler.nodes.util.JavaConstantFormattable;
-import jdk.graal.compiler.nodes.util.JavaConstantFormatter;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.graal.compiler.nodes.util.JavaConstantFormattable;
+import jdk.graal.compiler.nodes.util.JavaConstantFormatter;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -41,12 +41,17 @@ public final class ObjectLocationIdentity extends LocationIdentity implements Ja
     private final JavaConstant object;
 
     public static LocationIdentity create(JavaConstant object) {
-        assert object.getJavaKind() == JavaKind.Object && object.isNonNull();
+        assert object.getJavaKind() == JavaKind.Object : object;
+        assert object.isNonNull();
         return new ObjectLocationIdentity(object);
     }
 
     private ObjectLocationIdentity(JavaConstant object) {
         this.object = object;
+    }
+
+    public JavaConstant getObject() {
+        return object;
     }
 
     @Override

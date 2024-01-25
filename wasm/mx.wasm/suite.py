@@ -42,7 +42,7 @@ suite = {
   "mxversion": "6.41.0",
   "name" : "wasm",
   "groupId" : "org.graalvm.wasm",
-  "version" : "24.0.0",
+  "version" : "24.1.0",
   "versionConflictResolution" : "latest",
   "url" : "http://graalvm.org/",
   "developer" : {
@@ -111,6 +111,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.wasm",
         "truffle:TRUFFLE_API",
+        "mx:JUNIT",
       ],
       "checkstyle" : "org.graalvm.wasm",
       "javaCompliance" : "17+",
@@ -303,6 +304,7 @@ suite = {
         "WASM",
       ],
       "maven" : False,
+      "unittestConfig": "wasm",
     },
 
     "WASM_TESTCASES" : {
@@ -320,6 +322,7 @@ suite = {
       "defaultBuild" : False,
       "maven" : False,
       "testDistribution" : True,
+      "unittestConfig": "wasm",
     },
 
     "WASM_BENCHMARKS" : {

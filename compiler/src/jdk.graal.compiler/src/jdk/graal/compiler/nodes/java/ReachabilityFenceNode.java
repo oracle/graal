@@ -29,10 +29,11 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
 import java.lang.ref.Reference;
 
-import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeInputList;
@@ -48,7 +49,7 @@ import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.nodes.spi.Virtualizable;
 import jdk.graal.compiler.nodes.spi.VirtualizerTool;
-
+import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -163,7 +164,7 @@ public final class ReachabilityFenceNode extends FixedWithNextNode implements Vi
                         /* References do not need to be uncompressed just to be kept alive. */
                         compressionInputs++;
                     } else {
-                        assert value instanceof VirtualObjectNode;
+                        assert value instanceof VirtualObjectNode : Assertions.errorMessage(value);
                         /* Virtual objects that have no other usages do not need to be tracked. */
                         droppedInputs++;
                     }
@@ -188,14 +189,14 @@ public final class ReachabilityFenceNode extends FixedWithNextNode implements Vi
                         if (v instanceof CompressionNode) {
                             v = ((CompressionNode) v).getValue();
                         } else {
-                            assert v instanceof VirtualObjectNode;
+                            assert v instanceof VirtualObjectNode : Assertions.errorMessage(v);
                             continue;
                         }
                     }
                 }
                 newInputs[i++] = v;
             }
-            assert i == newInputSize;
+            assert i == newInputSize : Assertions.errorMessage(i, newInputSize);
             return new ReachabilityFenceNode(newInputs);
         } else {
             return this;
@@ -204,7 +205,7 @@ public final class ReachabilityFenceNode extends FixedWithNextNode implements Vi
 
     private static boolean hasOnlyReachabilityFenceUsages(ValueNode value) {
         if (value.hasExactlyOneUsage()) {
-            assert value.singleUsage() instanceof ReachabilityFenceNode;
+            assert value.singleUsage() instanceof ReachabilityFenceNode : Assertions.errorMessage(value, value.singleUsage());
             return true;
         }
         return value.usages().filter(NodePredicates.isNotA(ReachabilityFenceNode.class)).isEmpty();

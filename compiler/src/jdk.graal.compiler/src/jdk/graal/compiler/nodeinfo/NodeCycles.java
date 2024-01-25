@@ -24,6 +24,9 @@
  */
 package jdk.graal.compiler.nodeinfo;
 
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.Assertions;
+
 /**
  * Constants representing an estimation of the number of CPU cycles needed to execute a certain
  * compiler node.
@@ -85,11 +88,11 @@ public enum NodeCycles {
     public static final int IGNORE_CYCLES_CONTRACT_FACTOR = 0xFFFF;
 
     public static NodeCycles compute(NodeCycles base, int opCount) {
-        assert opCount >= 0;
+        assert NumUtil.assertNonNegativeInt(opCount);
         if (opCount == 0) {
             return CYCLES_0;
         }
-        assert base.ordinal() > CYCLES_0.ordinal();
+        assert base.ordinal() > CYCLES_0.ordinal() : Assertions.errorMessage(base, base.ordinal(), CYCLES_0.ordinal());
         int log2 = log2(base.value * opCount);
         for (int i = base.ordinal(); i < VALUES.length; i++) {
             if (log2(VALUES[i].value) == log2) {
@@ -100,7 +103,7 @@ public enum NodeCycles {
     }
 
     public static NodeCycles compute(int rawValue) {
-        assert rawValue >= 0;
+        assert NumUtil.assertNonNegativeInt(rawValue);
         if (rawValue == 0) {
             return CYCLES_0;
         }

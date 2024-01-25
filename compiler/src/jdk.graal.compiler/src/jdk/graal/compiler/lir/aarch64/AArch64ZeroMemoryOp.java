@@ -128,7 +128,7 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
             if (useDcZva && zvaLength > 0) {
                 // From ARMv8-A architecture reference manual D12.2.35 Data Cache Zero ID register:
                 // A valid ZVA length should be a power-of-2 value in [4, 2048]
-                assert (CodeUtil.isPowerOf2(zvaLength) && 4 <= zvaLength && zvaLength <= 2048);
+                assert (CodeUtil.isPowerOf2(zvaLength) && 4 <= zvaLength && zvaLength <= 2048) : zvaLength;
 
                 Label preCheck = new Label();
                 Label preLoop = new Label();

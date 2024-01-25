@@ -114,7 +114,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
     }
 
     @TruffleBoundary
-    private static String outOfBoundsMessage(int index, int length) {
+    public static String outOfBoundsMessage(int index, int length) {
         return "Index " + index + " out of bounds for length " + length;
     }
 

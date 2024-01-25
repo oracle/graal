@@ -27,13 +27,36 @@ package com.oracle.graal.pointsto.results;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicSet;
+
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.api.PointstoOptions;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
+import com.oracle.graal.pointsto.flow.MethodTypeFlow;
+import com.oracle.graal.pointsto.flow.TypeFlow;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.infrastructure.Universe;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.graal.pointsto.typestate.PrimitiveConstantTypeState;
+import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.svm.util.ImageBuildStatistics;
+
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
+import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -70,6 +93,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
+import jdk.graal.compiler.nodes.extended.FieldOffsetProvider;
 import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
 import jdk.graal.compiler.nodes.java.ClassIsAssignableFromNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
@@ -87,27 +111,15 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase.CustomSimplification;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
-
-import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
-import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
-import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
-import com.oracle.graal.pointsto.flow.MethodTypeFlow;
-import com.oracle.graal.pointsto.flow.TypeFlow;
-import com.oracle.graal.pointsto.infrastructure.Universe;
-import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.graal.pointsto.typestate.TypeState;
-import com.oracle.svm.util.ImageBuildStatistics;
-
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.PrimitiveConstant;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.TriState;
 
 /**
  * This class applies static analysis results directly to the {@link StructuredGraph Graal IR} used
@@ -126,20 +138,35 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * precise stamp. We need to do that indirectly by adding a {@link PiNode} that is anchored using a
  * {@link ValueAnchorNode}.
  */
-public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
+public abstract class StrengthenGraphs {
 
     public static class Options {
         @Option(help = "Perform constant folding in StrengthenGraphs")//
         public static final OptionKey<Boolean> StrengthenGraphWithConstants = new OptionKey<>(true);
     }
 
+    protected final BigBang bb;
+    /**
+     * The universe used to convert analysis metadata to hosted metadata, or {@code null} if no
+     * conversion should be performed.
+     */
+    protected final Universe converter;
+
+    private final Map<JavaTypeProfile, JavaTypeProfile> cachedTypeProfiles = new ConcurrentHashMap<>();
+    private final Map<JavaMethodProfile, JavaMethodProfile> cachedMethodProfiles = new ConcurrentHashMap<>();
+
+    /* Cached option values to avoid repeated option lookup. */
+    private final int analysisSizeCutoff;
     private final boolean strengthenGraphWithConstants;
 
     private final StrengthenGraphsCounters beforeCounters;
     private final StrengthenGraphsCounters afterCounters;
 
-    public StrengthenGraphs(PointsToAnalysis bb, Universe converter) {
-        super(bb, converter);
+    public StrengthenGraphs(BigBang bb, Universe converter) {
+        this.bb = bb;
+        this.converter = converter;
+
+        analysisSizeCutoff = PointstoOptions.AnalysisSizeCutoff.getValue(bb.getOptions());
         strengthenGraphWithConstants = Options.StrengthenGraphWithConstants.getValue(bb.getOptions());
 
         if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(bb.getOptions())) {
@@ -151,59 +178,37 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         }
     }
 
-    private PointsToAnalysis getAnalysis() {
-        return ((PointsToAnalysis) bb);
-    }
-
-    @Override
     @SuppressWarnings("try")
-    public StaticAnalysisResults makeOrApplyResults(AnalysisMethod m) {
-        if (!m.isImplementationInvoked()) {
-            return StaticAnalysisResults.NO_RESULTS;
-        }
-        PointsToAnalysisMethod method = PointsToAnalysis.assertPointsToAnalysisMethod(m);
-        MethodTypeFlow methodTypeFlow = method.getTypeFlow();
-        if (!methodTypeFlow.flowsGraphCreated()) {
-            return StaticAnalysisResults.NO_RESULTS;
-        }
-        DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).build();
-        StructuredGraph graph = method.decodeAnalyzedGraph(debug, methodTypeFlow.getMethodFlowsGraph().getNodeFlows().getKeys());
-        if (graph != null) {
-            graph.resetDebug(debug);
-            if (beforeCounters != null) {
-                beforeCounters.collect(graph);
-            }
-            try (DebugContext.Scope s = debug.scope("StrengthenGraphs", graph);
-                            DebugContext.Activation a = debug.activate()) {
-                new AnalysisStrengthenGraphsPhase(method, graph).apply(graph, bb.getProviders(method));
-            } catch (Throwable ex) {
-                debug.handle(ex);
-            }
-            if (afterCounters != null) {
-                afterCounters.collect(graph);
-            }
-            method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE));
+    public final void applyResults(AnalysisMethod method) {
+        var nodeReferences = method instanceof PointsToAnalysisMethod ptaMethod && ptaMethod.getTypeFlow().flowsGraphCreated()
+                        ? ptaMethod.getTypeFlow().getMethodFlowsGraph().getNodeFlows().getKeys()
+                        : null;
+        var debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).build();
+        var graph = method.decodeAnalyzedGraph(debug, nodeReferences);
+        if (graph == null) {
+            return;
         }
 
-        /* Ensure that the temporarily decoded graph is not kept alive via the node references. */
-        var cursor = methodTypeFlow.getMethodFlowsGraph().getNodeFlows().getEntries();
-        while (cursor.advance()) {
-            cursor.getKey().clear();
+        graph.resetDebug(debug);
+        if (beforeCounters != null) {
+            beforeCounters.collect(graph);
         }
-        /*
-         * All information from the static analysis has been incorporated into the graph. There is
-         * no benefit in keeping results around anymore.
-         */
-        return StaticAnalysisResults.NO_RESULTS;
-    }
+        try (var s = debug.scope("StrengthenGraphs", graph); var a = debug.activate()) {
+            new AnalysisStrengthenGraphsPhase(method, graph).apply(graph, bb.getProviders(method));
+        } catch (Throwable ex) {
+            debug.handle(ex);
+        }
+        if (afterCounters != null) {
+            afterCounters.collect(graph);
+        }
+        method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE));
 
-    @Override
-    public JavaTypeProfile makeTypeProfile(AnalysisField field) {
-        /*
-         * Since LoadFieldNode are improved directly in this class, there is no need to provide a
-         * type profile for fields.
-         */
-        return null;
+        if (nodeReferences != null) {
+            /* Ensure the temporarily decoded graph is not kept alive via the node references. */
+            for (var nodeReference : nodeReferences) {
+                nodeReference.clear();
+            }
+        }
     }
 
     /*
@@ -236,11 +241,11 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
     protected abstract boolean simplifyDelegate(Node n, SimplifierTool tool);
 
-    // Wrapper to clearly identify phase
+    /* Wrapper to clearly identify phase in IGV graph dumps. */
     class AnalysisStrengthenGraphsPhase extends BasePhase<CoreProviders> {
         final CanonicalizerPhase phase;
 
-        AnalysisStrengthenGraphsPhase(PointsToAnalysisMethod method, StructuredGraph graph) {
+        AnalysisStrengthenGraphsPhase(AnalysisMethod method, StructuredGraph graph) {
             phase = CanonicalizerPhase.create().copyWithCustomSimplification(new StrengthenSimplifier(method, graph));
         }
 
@@ -276,45 +281,55 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
         /**
          * For runtime compiled methods, we must be careful to ensure new SubstrateTypes are not
-         * created due to the optimizations performed during the AnalysisStrengthenGraphsPhase.
+         * created due to the optimizations performed during the
+         * {@link AnalysisStrengthenGraphsPhase}.
          */
         private final Function<AnalysisType, ResolvedJavaType> toTargetFunction;
 
-        StrengthenSimplifier(PointsToAnalysisMethod method, StructuredGraph graph) {
+        StrengthenSimplifier(AnalysisMethod method, StructuredGraph graph) {
             this.graph = graph;
-            this.methodFlow = method.getTypeFlow();
             this.createdPiNodes = new NodeBitMap(graph);
 
-            MethodFlowsGraph originalFlows = methodFlow.getMethodFlowsGraph();
-            parameterFlows = originalFlows.getParameters();
-            nodeFlows = new NodeMap<>(graph);
-            var cursor = originalFlows.getNodeFlows().getEntries();
-            while (cursor.advance()) {
-                Node node = cursor.getKey().getNode();
-                assert nodeFlows.get(node) == null : "overwriting existing entry for " + node;
-                nodeFlows.put(node, cursor.getValue());
+            if (method instanceof PointsToAnalysisMethod ptaMethod && ptaMethod.getTypeFlow().flowsGraphCreated()) {
+                methodFlow = ptaMethod.getTypeFlow();
+                MethodFlowsGraph originalFlows = methodFlow.getMethodFlowsGraph();
+                parameterFlows = originalFlows.getParameters();
+                nodeFlows = new NodeMap<>(graph);
+                var cursor = originalFlows.getNodeFlows().getEntries();
+                while (cursor.advance()) {
+                    Node node = cursor.getKey().getNode();
+                    assert nodeFlows.get(node) == null : "overwriting existing entry for " + node;
+                    nodeFlows.put(node, cursor.getValue());
+                }
+
+                allowConstantFolding = strengthenGraphWithConstants && bb.getHostVM().allowConstantFolding(method);
+
+                /*
+                 * In deoptimization target methods optimizing the return parameter can make new
+                 * values live across deoptimization entrypoints.
+                 *
+                 * In runtime-compiled methods invokes may be intrinsified during runtime partial
+                 * evaluation and change the behavior of the invoke. This would be a problem if the
+                 * behavior of the method completely changed; however, currently this
+                 * intrinsification is used to improve the stamp of the returned value, but not to
+                 * alter the semantics. Hence, it is preferred to continue to use the return value
+                 * of the invoke (as opposed to the parameter value).
+                 */
+                allowOptimizeReturnParameter = method.isOriginalMethod() && ((PointsToAnalysis) bb).optimizeReturnedParameter();
+
+            } else {
+                methodFlow = null;
+                parameterFlows = null;
+                nodeFlows = null;
+                allowConstantFolding = false;
+                allowOptimizeReturnParameter = false;
             }
-
-            this.allowConstantFolding = strengthenGraphWithConstants && bb.getHostVM().allowConstantFolding(method);
-
-            /*
-             * In deoptimization target methods optimizing the return parameter can make new values
-             * live across deoptimization entrypoints.
-             *
-             * In runtime-compiled methods invokes may be intrinsified during runtime partial
-             * evaluation and change the behavior of the invoke. This would be a problem if the
-             * behavior of the method completely changed; however, currently this intrinsification
-             * is used to improve the stamp of the returned value, but not to alter the semantics.
-             * Hence, it is preferred to continue to use the return value of the invoke (as opposed
-             * to the parameter value).
-             */
-            this.allowOptimizeReturnParameter = method.isOriginalMethod();
 
             this.toTargetFunction = bb.getHostVM().getStrengthenGraphsToTargetFunction(method.getMultiMethodKey());
         }
 
         private TypeFlow<?> getNodeFlow(Node node) {
-            return nodeFlows.isNew(node) ? null : nodeFlows.get(node);
+            return nodeFlows == null || nodeFlows.isNew(node) ? null : nodeFlows.get(node);
         }
 
         @Override
@@ -340,7 +355,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
             if (simplifyDelegate(n, tool)) {
                 // handled elsewhere
-            } else if (n instanceof ParameterNode) {
+            } else if (n instanceof ParameterNode && parameterFlows != null) {
                 ParameterNode node = (ParameterNode) n;
                 StartNode anchorPoint = graph.start();
                 Object newStampOrConstant = strengthenStampFromTypeFlow(node, parameterFlows[node.index()], anchorPoint, tool);
@@ -390,7 +405,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                          * anchor the PiNode at the BeginNode of the preceding block, because at
                          * that point the condition is not proven yet.
                          */
-                        ValueAnchorNode anchor = graph.add(new ValueAnchorNode(null));
+                        ValueAnchorNode anchor = graph.add(new ValueAnchorNode());
                         graph.addAfterFixed(survivingBegin, anchor);
                         survivingBegin.replaceAtUsages(anchor, InputType.Guard, InputType.Anchor);
                     }
@@ -438,15 +453,20 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
             } else if (n instanceof FrameState) {
                 /*
-                 * We do not want a type to be reachable only to be used for debugging purposes in a
-                 * FrameState. We could just null out the frame slot, but to leave as much
-                 * information as possible we replace the java.lang.Class with the type name.
+                 * We do not want a constant to be reachable only to be used for debugging purposes
+                 * in a FrameState.
                  */
                 FrameState node = (FrameState) n;
                 for (int i = 0; i < node.values().size(); i++) {
-                    AnalysisType nonReachableType = asConstantNonReachableType(node.values().get(i), tool);
-                    if (nonReachableType != null) {
-                        node.values().set(i, ConstantNode.forConstant(tool.getConstantReflection().forString(getTypeName(nonReachableType)), tool.getMetaAccess(), graph));
+                    if (node.values().get(i) instanceof ConstantNode constantNode && constantNode.getValue() instanceof ImageHeapConstant imageHeapConstant && !imageHeapConstant.isReachable()) {
+                        node.values().set(i, ConstantNode.defaultForKind(JavaKind.Object, graph));
+                    }
+                    if (node.values().get(i) instanceof FieldOffsetProvider fieldOffsetProvider && !((AnalysisField) fieldOffsetProvider.getField()).isUnsafeAccessed()) {
+                        /*
+                         * We use a unique marker constant as the replacement value, so that a
+                         * search in the code base for the value leads us to here.
+                         */
+                        node.values().set(i, ConstantNode.forIntegerKind(fieldOffsetProvider.asNode().getStackKind(), 0xDEA51106, graph));
                     }
                 }
 
@@ -472,11 +492,28 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         }
 
         private void handleInvoke(Invoke invoke, SimplifierTool tool) {
-            PointsToAnalysis pta = getAnalysis();
             FixedNode node = invoke.asFixedNode();
             MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
 
+            if (callTarget.invokeKind().isDirect() && !((AnalysisMethod) callTarget.targetMethod()).isSimplyImplementationInvoked()) {
+                /*
+                 * This is a direct call to a method that the static analysis did not see as
+                 * invoked. This can happen when the receiver is always null. In most cases, the
+                 * method profile also has a length of 0 and the below code to kill the invoke would
+                 * trigger. But when only running the reachability analysis, there is no detailed
+                 * list of callees.
+                 */
+                unreachableInvoke(invoke, tool);
+                /* Invoke is unreachable, there is no point in improving any types further. */
+                return;
+            }
+
             InvokeTypeFlow invokeFlow = (InvokeTypeFlow) getNodeFlow(node);
+            if (invokeFlow == null) {
+                /* No points-to analysis results. */
+                return;
+            }
+
             Collection<AnalysisMethod> callees = invokeFlow.getOriginalCallees();
             if (callees.isEmpty()) {
                 unreachableInvoke(invoke, tool);
@@ -534,8 +571,8 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             } else {
                 TypeState receiverTypeState = null;
                 /* If the receiver flow is saturated, its exact type state does not matter. */
-                if (invokeFlow.getTargetMethod().hasReceiver() && !methodFlow.isSaturated(pta, invokeFlow.getReceiver())) {
-                    receiverTypeState = methodFlow.foldTypeFlow(pta, invokeFlow.getReceiver());
+                if (invokeFlow.getTargetMethod().hasReceiver() && !methodFlow.isSaturated((PointsToAnalysis) bb, invokeFlow.getReceiver())) {
+                    receiverTypeState = methodFlow.foldTypeFlow((PointsToAnalysis) bb, invokeFlow.getReceiver());
                 }
 
                 JavaTypeProfile typeProfile = makeTypeProfile(receiverTypeState);
@@ -546,7 +583,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 setInvokeProfiles(invoke, typeProfile, methodProfile);
             }
 
-            if (allowOptimizeReturnParameter && getAnalysis().optimizeReturnedParameter()) {
+            if (allowOptimizeReturnParameter) {
                 optimizeReturnedParameter(callees, arguments, node, tool);
             }
 
@@ -638,11 +675,10 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         }
 
         private boolean isUnreachable(Node branch) {
-            PointsToAnalysis pta = getAnalysis();
             TypeFlow<?> branchFlow = getNodeFlow(branch);
             return branchFlow != null &&
-                            !methodFlow.isSaturated(pta, branchFlow) &&
-                            methodFlow.foldTypeFlow(pta, branchFlow).isEmpty();
+                            !methodFlow.isSaturated((PointsToAnalysis) bb, branchFlow) &&
+                            methodFlow.foldTypeFlow((PointsToAnalysis) bb, branchFlow).isEmpty();
         }
 
         private void updateStampInPlace(ValueNode node, Stamp newStamp, SimplifierTool tool) {
@@ -698,17 +734,16 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 return null;
             }
 
-            ValueAnchorNode anchor = graph.add(new ValueAnchorNode(null));
+            ValueAnchorNode anchor = graph.add(new ValueAnchorNode());
             graph.addAfterFixed(anchorPoint, anchor);
             return graph.unique(new PiNode(input, piStamp, anchor));
         }
 
         private Object strengthenStampFromTypeFlow(ValueNode node, TypeFlow<?> nodeFlow, FixedWithNextNode anchorPoint, SimplifierTool tool) {
-            PointsToAnalysis pta = getAnalysis();
-            if (node.getStackKind() != JavaKind.Object) {
+            if (nodeFlow == null || !((PointsToAnalysis) bb).isSupportedJavaKind(node.getStackKind())) {
                 return null;
             }
-            if (methodFlow.isSaturated(pta, nodeFlow)) {
+            if (methodFlow.isSaturated((PointsToAnalysis) bb, nodeFlow)) {
                 /* The type flow is saturated, its type state does not matter. */
                 return null;
             }
@@ -723,7 +758,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
              */
             boolean hasUsages = node.usages().filter(n -> !(n instanceof FrameState)).isNotEmpty();
 
-            TypeState nodeTypeState = methodFlow.foldTypeFlow(pta, nodeFlow);
+            TypeState nodeTypeState = methodFlow.foldTypeFlow((PointsToAnalysis) bb, nodeFlow);
 
             if (hasUsages && allowConstantFolding && !nodeTypeState.canBeNull()) {
                 JavaConstant constantValue = nodeTypeState.asConstant();
@@ -733,7 +768,12 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             }
 
             node.inferStamp();
-            ObjectStamp oldStamp = (ObjectStamp) node.stamp(NodeView.DEFAULT);
+            Stamp s = node.stamp(NodeView.DEFAULT);
+            if (s.isIntegerStamp() || nodeTypeState.isPrimitive()) {
+                return getIntegerStamp(node, s, nodeTypeState);
+            }
+
+            ObjectStamp oldStamp = (ObjectStamp) s;
             AnalysisType oldType = (AnalysisType) oldStamp.type();
             boolean nonNull = oldStamp.nonNull() || !nodeTypeState.canBeNull();
 
@@ -744,7 +784,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
              * stamp is already more precise than the static analysis results.
              */
             List<AnalysisType> typeStateTypes = new ArrayList<>(nodeTypeState.typesCount());
-            for (AnalysisType typeStateType : nodeTypeState.types(pta)) {
+            for (AnalysisType typeStateType : nodeTypeState.types(bb)) {
                 if (oldType == null || (oldStamp.isExactType() ? oldType.equals(typeStateType) : oldType.isJavaLangObject() || oldType.isAssignableFrom(typeStateType))) {
                     typeStateTypes.add(typeStateType);
                 }
@@ -824,6 +864,27 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             return null;
         }
 
+        private IntegerStamp getIntegerStamp(ValueNode node, Stamp stamp, TypeState nodeTypeState) {
+            assert bb.trackPrimitiveValues() : nodeTypeState + "," + node + " in " + node.graph();
+            assert nodeTypeState != null && (nodeTypeState.isEmpty() || nodeTypeState.isPrimitive()) : nodeTypeState + "," + node + " in " + node.graph();
+            if (nodeTypeState instanceof PrimitiveConstantTypeState constantTypeState) {
+                long constantValue = constantTypeState.getValue();
+                if (node instanceof ConstantNode constant) {
+                    /*
+                     * Sanity check, verify that what was proven by the analysis is consistent with
+                     * the constant node in the graph.
+                     */
+                    Constant value = constant.getValue();
+                    assert value instanceof PrimitiveConstant : "Node " + value + " should be a primitive constant when extracting an integer stamp, method " + node.graph().method();
+                    assert ((PrimitiveConstant) value).asLong() == constantValue : "The actual value of node: " + value + " is different than the value " + constantValue +
+                                    " computed by points-to analysis, method in " + node.graph().method();
+                } else {
+                    return IntegerStamp.createConstant(((IntegerStamp) stamp).getBits(), constantValue);
+                }
+            }
+            return null;
+        }
+
         private void makeUnreachable(FixedNode node, CoreProviders providers, Supplier<String> message) {
             FixedNode unreachableNode = createUnreachable(graph, providers, message);
             ((FixedWithNextNode) node.predecessor()).setNext(unreachableNode);
@@ -890,6 +951,50 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             }
             return newStamp;
         }
+    }
+
+    protected JavaTypeProfile makeTypeProfile(TypeState typeState) {
+        if (typeState == null || analysisSizeCutoff != -1 && typeState.typesCount() > analysisSizeCutoff) {
+            return null;
+        }
+        var created = createTypeProfile(typeState);
+        var existing = cachedTypeProfiles.putIfAbsent(created, created);
+        return existing != null ? existing : created;
+    }
+
+    private JavaTypeProfile createTypeProfile(TypeState typeState) {
+        double probability = 1d / typeState.typesCount();
+
+        Stream<? extends ResolvedJavaType> stream = typeState.typesStream(bb);
+        if (converter != null) {
+            stream = stream.map(converter::lookup).sorted(converter.hostVM().getTypeComparator());
+        }
+        JavaTypeProfile.ProfiledType[] pitems = stream
+                        .map(type -> new JavaTypeProfile.ProfiledType(type, probability))
+                        .toArray(JavaTypeProfile.ProfiledType[]::new);
+
+        return new JavaTypeProfile(TriState.get(typeState.canBeNull()), 0, pitems);
+    }
+
+    protected JavaMethodProfile makeMethodProfile(Collection<AnalysisMethod> callees) {
+        if (analysisSizeCutoff != -1 && callees.size() > analysisSizeCutoff) {
+            return null;
+        }
+        var created = createMethodProfile(callees);
+        var existing = cachedMethodProfiles.putIfAbsent(created, created);
+        return existing != null ? existing : created;
+    }
+
+    private JavaMethodProfile createMethodProfile(Collection<AnalysisMethod> callees) {
+        JavaMethodProfile.ProfiledMethod[] pitems = new JavaMethodProfile.ProfiledMethod[callees.size()];
+        double probability = 1d / pitems.length;
+
+        int idx = 0;
+        for (AnalysisMethod aMethod : callees) {
+            ResolvedJavaMethod convertedMethod = converter == null ? aMethod : converter.lookup(aMethod);
+            pitems[idx++] = new JavaMethodProfile.ProfiledMethod(convertedMethod, probability);
+        }
+        return new JavaMethodProfile(0, pitems);
     }
 }
 

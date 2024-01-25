@@ -24,9 +24,9 @@
  */
 package jdk.graal.compiler.lir.asm;
 
+import static jdk.graal.compiler.core.common.GraalOptions.IsolatedLoopHeaderAlignment;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
-import static jdk.graal.compiler.core.common.GraalOptions.IsolatedLoopHeaderAlignment;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -40,6 +40,7 @@ import java.util.Objects;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.asm.AbstractAddress;
 import jdk.graal.compiler.asm.Assembler;
 import jdk.graal.compiler.asm.Label;
@@ -49,9 +50,8 @@ import jdk.graal.compiler.code.CompilationResult.JumpTable;
 import jdk.graal.compiler.code.DataSection.Data;
 import jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.core.common.spi.CodeGenProviders;
-import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.type.DataPointerConstant;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.GraalError;
@@ -65,13 +65,13 @@ import jdk.graal.compiler.lir.LabelRef;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.StandardOp.LabelHoldingOp;
 import jdk.graal.compiler.lir.framemap.FrameMap;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.nodes.spi.CoreProvidersDelegate;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
@@ -92,7 +92,7 @@ import jdk.vm.ci.meta.Value;
  *
  * @see CompilationResultBuilderFactory
  */
-public class CompilationResultBuilder {
+public class CompilationResultBuilder extends CoreProvidersDelegate {
 
     public static class Options {
         @Option(help = "Include the LIR as comments with the final assembly.", type = OptionType.Debug) //
@@ -128,9 +128,6 @@ public class CompilationResultBuilder {
     public final CompilationResult compilationResult;
     public final Register uncompressedNullRegister;
     public final TargetDescription target;
-    public final CodeGenProviders providers;
-    public final CodeCacheProvider codeCache;
-    public final ForeignCallsProvider foreignCalls;
     public final FrameMap frameMap;
 
     /**
@@ -183,7 +180,7 @@ public class CompilationResultBuilder {
 
     private final List<LIRInstructionVerifier> lirInstructionVerifiers;
 
-    public CompilationResultBuilder(CodeGenProviders providers,
+    public CompilationResultBuilder(CoreProviders providers,
                     FrameMap frameMap,
                     Assembler<?> asm,
                     DataBuilder dataBuilder,
@@ -195,10 +192,8 @@ public class CompilationResultBuilder {
                     EconomicMap<Constant, Data> dataCache,
                     List<LIRInstructionVerifier> lirInstructionVerifiers,
                     LIR lir) {
+        super(providers);
         this.target = providers.getCodeCache().getTarget();
-        this.providers = providers;
-        this.codeCache = providers.getCodeCache();
-        this.foreignCalls = providers.getForeignCalls();
         this.frameMap = frameMap;
         this.asm = asm;
         this.dataBuilder = dataBuilder;
@@ -419,7 +414,7 @@ public class CompilationResultBuilder {
     }
 
     public AbstractAddress asFloatConstRef(JavaConstant value, int alignment) {
-        assert value.getJavaKind() == JavaKind.Float;
+        assert value.getJavaKind() == JavaKind.Float : value;
         return recordDataReferenceInCode(value, alignment);
     }
 
@@ -431,7 +426,7 @@ public class CompilationResultBuilder {
     }
 
     public AbstractAddress asDoubleConstRef(JavaConstant value, int alignment) {
-        assert value.getJavaKind() == JavaKind.Double;
+        assert value.getJavaKind() == JavaKind.Double : value;
         return recordDataReferenceInCode(value, alignment);
     }
 
@@ -439,7 +434,7 @@ public class CompilationResultBuilder {
      * Returns the address of a long constant that is embedded as a data reference into the code.
      */
     public AbstractAddress asLongConstRef(JavaConstant value) {
-        assert value.getJavaKind() == JavaKind.Long;
+        assert value.getJavaKind() == JavaKind.Long : value;
         return recordDataReferenceInCode(value, 8);
     }
 
@@ -457,7 +452,7 @@ public class CompilationResultBuilder {
     public boolean isSuccessorEdge(LabelRef edge) {
         assert lir != null;
         int[] order = lir.codeEmittingOrder();
-        assert order[currentBlockIndex] == edge.getSourceBlock().getId();
+        assert order[currentBlockIndex] == edge.getSourceBlock().getId() : Assertions.errorMessage(order[currentBlockIndex], edge, edge.getSourceBlock());
         BasicBlock<?> nextBlock = LIR.getNextBlock(lir.getControlFlowGraph(), order, currentBlockIndex);
         return nextBlock == edge.getTargetBlock();
     }
@@ -503,8 +498,8 @@ public class CompilationResultBuilder {
      * Emits code for {@code lir} in its {@linkplain LIR#codeEmittingOrder() code emitting order}.
      */
     public void emitLIR() {
-        assert currentBlockIndex == 0;
-        assert lastImplicitExceptionOffset == Integer.MIN_VALUE;
+        assert currentBlockIndex == 0 : currentBlockIndex;
+        assert lastImplicitExceptionOffset == Integer.MIN_VALUE : lastImplicitExceptionOffset;
         this.currentBlockIndex = 0;
         this.lastImplicitExceptionOffset = Integer.MIN_VALUE;
         frameContext.enter(this);
@@ -512,7 +507,9 @@ public class CompilationResultBuilder {
         BasicBlock<?> previousBlock = null;
         for (int blockId : lir.codeEmittingOrder()) {
             BasicBlock<?> b = lir.getBlockById(blockId);
-            assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == AbstractControlFlowGraph.INVALID_BLOCK_ID) || lir.codeEmittingOrder()[currentBlockIndex] == blockId;
+            assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == AbstractControlFlowGraph.INVALID_BLOCK_ID) ||
+                            lir.codeEmittingOrder()[currentBlockIndex] == blockId : Assertions.errorMessageContext("b", b, "lir.codeOrder", lir.codeEmittingOrder(), "currentBlockIndex",
+                                            currentBlockIndex, "blockId", blockId);
             if (b != null) {
                 if (b.isAligned() && previousBlock != null) {
                     boolean hasSuccessorB = false;
@@ -706,6 +703,14 @@ public class CompilationResultBuilder {
      */
     public void setConservativeLabelRanges() {
         this.conservativeLabelOffsets = true;
+    }
+
+    /**
+     * Query, whether this {@link CompilationResultBuilder} uses conservative label ranges. This
+     * allows for larger jump distances at the cost of increased code size.
+     */
+    public boolean usesConservativeLabelRanges() {
+        return this.conservativeLabelOffsets;
     }
 
     public final boolean needsClearUpperVectorRegisters() {

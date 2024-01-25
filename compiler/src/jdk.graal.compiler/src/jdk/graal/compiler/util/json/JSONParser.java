@@ -57,6 +57,13 @@ public class JSONParser {
     }
 
     /**
+     * @return retrieves the length of the source (e.g. file) received by the JSON parser.
+     */
+    public int getSourceLength() {
+        return length;
+    }
+
+    /**
      * Public parse method. Parse a string into a JSON object.
      *
      * @return the parsed JSON Object
@@ -185,7 +192,8 @@ public class JSONParser {
         EconomicMap<String, Object> result = EconomicMap.create();
         int state = STATE_EMPTY;
 
-        assert peek() == '{';
+        int p = peek();
+        assert p == '{' : "Must be } but was " + p;
         pos++;
 
         while (pos < length) {
@@ -236,7 +244,8 @@ public class JSONParser {
         List<Object> result = new ArrayList<>();
         int state = STATE_EMPTY;
 
-        assert peek() == '[';
+        int p = peek();
+        assert p == '[' : "Must be [ but was " + p;
         pos++;
 
         while (pos < length) {
@@ -547,7 +556,7 @@ public class JSONParser {
 
         try {
             int numChars;
-            while ((numChars = reader.read(arr, 0, arr.length)) > 0) {
+            while ((numChars = reader.read(arr, 0, arr.length)) >= 0) {
                 sb.append(arr, 0, numChars);
             }
         } finally {

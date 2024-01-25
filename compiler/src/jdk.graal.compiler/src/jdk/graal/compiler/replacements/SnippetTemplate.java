@@ -25,13 +25,13 @@
 package jdk.graal.compiler.replacements;
 
 import static java.util.FormattableFlags.ALTERNATE;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static jdk.graal.compiler.debug.DebugContext.applyFormattingFlagsAndWidth;
 import static jdk.graal.compiler.debug.DebugOptions.DumpOnError;
 import static jdk.graal.compiler.graph.iterators.NodePredicates.isNotA;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 import static jdk.graal.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.word.LocationIdentity.any;
 
 import java.lang.reflect.Array;
@@ -49,20 +49,20 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
-import jdk.graal.compiler.api.replacements.SnippetTemplateCache;
-import jdk.graal.compiler.nodes.BeginNode;
-import jdk.graal.compiler.nodes.UnreachableControlSinkNode;
-import jdk.graal.compiler.replacements.nodes.CStringConstant;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.WordBase;
+
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.api.replacements.Snippet.VarargsParameter;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.api.replacements.SnippetTemplateCache;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.RetryableBailoutException;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -90,6 +90,7 @@ import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
+import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.ControlSinkNode;
 import jdk.graal.compiler.nodes.DeoptBciSupplier;
@@ -122,6 +123,7 @@ import jdk.graal.compiler.nodes.StartNode;
 import jdk.graal.compiler.nodes.StateSplit;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.UnreachableBeginNode;
+import jdk.graal.compiler.nodes.UnreachableControlSinkNode;
 import jdk.graal.compiler.nodes.UnwindNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValueNodeInterface;
@@ -180,15 +182,13 @@ import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.phases.graph.ReentrantNodeIterator;
 import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.nodes.CStringConstant;
 import jdk.graal.compiler.replacements.nodes.ExplodeLoopNode;
 import jdk.graal.compiler.replacements.nodes.FallbackInvokeWithExceptionNode;
 import jdk.graal.compiler.replacements.nodes.LoadSnippetVarargParameterNode;
 import jdk.graal.compiler.replacements.nodes.MacroWithExceptionNode;
-import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 import jdk.graal.compiler.util.CollectionsUtil;
-import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.WordBase;
-
+import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -1120,7 +1120,7 @@ public class SnippetTemplate {
                     Stamp stamp = varargs.stamp;
                     for (int j = 0; j < length; j++) {
                         // Use a decimal friendly numbering make it more obvious how values map
-                        assert parameterCount < 10000;
+                        assert parameterCount < 10000 : Assertions.errorMessage(parameterCount, params);
                         int idx = (i + 1) * 10000 + j;
                         assert idx >= parameterCount : "collision in parameter numbering";
                         ParameterNode local = snippetCopy.addOrUnique(new ParameterNode(idx, StampPair.createSingle(stamp)));
@@ -1331,7 +1331,7 @@ public class SnippetTemplate {
                         if (memoryMap == null) {
                             memoryMap = retNode.getMemoryMap();
                         } else {
-                            assert memoryMap == retNode.getMemoryMap();
+                            assert memoryMap == retNode.getMemoryMap() : Assertions.errorMessage(memoryMap, retNode);
                         }
                         retNode.setMemoryMap(null);
                     }
@@ -1344,7 +1344,7 @@ public class SnippetTemplate {
                         if (unwindMemoryMap == null) {
                             unwindMemoryMap = unwindNode.getMemoryMap();
                         } else {
-                            assert unwindMemoryMap == unwindNode.getMemoryMap();
+                            assert unwindMemoryMap == unwindNode.getMemoryMap() : Assertions.errorMessage(unwindMemoryMap, unwindNode, unwindNode.getMemoryMap());
                         }
                         unwindNode.setMemoryMap(null);
                     }
@@ -1676,7 +1676,8 @@ public class SnippetTemplate {
                     assert list.size() == length : length + " != " + list.size();
                 } else {
                     array = varargs.value;
-                    assert array != null && array.getClass().isArray();
+                    assert array != null;
+                    assert array.getClass().isArray();
                     assert Array.getLength(array) == length : length + " != " + Array.getLength(array);
                 }
 
@@ -1708,7 +1709,7 @@ public class SnippetTemplate {
      * @param localKind the kind of the {@link Local} to which {@code argument} will be bound
      */
     protected JavaConstant forBoxed(Object argument, JavaKind localKind) {
-        assert localKind == localKind.getStackKind();
+        assert localKind == localKind.getStackKind() : Assertions.errorMessage(argument, localKind);
         if (localKind == JavaKind.Int) {
             return JavaConstant.forBoxedPrimitive(argument);
         }
@@ -2253,8 +2254,10 @@ public class SnippetTemplate {
             if (scope != null) {
                 log.addLog(duplicates, snippet.getInliningLog());
             }
-            NodeSourcePosition position = replacee.getNodeSourcePosition();
-            InliningUtil.updateSourcePosition(replaceeGraph, duplicates, mark, position, true);
+            if (replaceeGraph.trackNodeSourcePosition()) {
+                NodeSourcePosition position = replacee.getNodeSourcePosition();
+                InliningUtil.updateSourcePosition(replaceeGraph, duplicates, mark, position, true);
+            }
             debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "After inlining snippet %s", snippet.method());
             return duplicates;
         }
@@ -2305,9 +2308,10 @@ public class SnippetTemplate {
      * @param replacer object that replaces the usages of {@code replacee}
      * @param tool lowering tool used to insert the snippet into the control-flow
      * @param args the arguments to be bound to the flattened positional parameters of the snippet
+     * @return the return node of the inlined snippet
      */
     @SuppressWarnings("try")
-    public void instantiate(MetaAccessProvider metaAccess, FloatingNode replacee, UsageReplacer replacer, LoweringTool tool, Arguments args) {
+    public ValueNode instantiate(MetaAccessProvider metaAccess, FloatingNode replacee, UsageReplacer replacer, LoweringTool tool, Arguments args) {
         DebugContext debug = replacee.getDebug();
         assert assertSnippetKills(replacee);
         try (DebugCloseable a = args.info.instantiationTimer.start(debug);
@@ -2334,7 +2338,7 @@ public class SnippetTemplate {
              * floating nodes that are not state-splits do not need to re-wire frame states, however
              * snippets might contain merges for which we want proper frame states
              */
-            assert !(replacee instanceof StateSplit);
+            assert !(replacee instanceof StateSplit) : Assertions.errorMessageContext("replacee", replacee);
             updateStamps(replacee, duplicates);
 
             rewireMemoryGraph(replacee, duplicates);
@@ -2352,6 +2356,8 @@ public class SnippetTemplate {
             }
 
             debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "After lowering %s with %s", replacee, this);
+
+            return returnValue;
         }
     }
 
@@ -2393,7 +2399,7 @@ public class SnippetTemplate {
             UnmodifiableEconomicMap<Node, Node> duplicates = inlineSnippet(replacee, debug, replaceeGraph, replacements);
 
             // floating nodes are not state-splits not need to re-wire frame states
-            assert !(replacee instanceof StateSplit);
+            assert !(replacee instanceof StateSplit) : Assertions.errorMessageContext("replacee", replacee);
             updateStamps(replacee, duplicates);
 
             rewireMemoryGraph(replacee, duplicates);
@@ -2638,7 +2644,7 @@ public class SnippetTemplate {
         FrameState exceptionState = exceptionObject.stateAfter();
         assert exceptionState.values().contains(exceptionObject);
         assert exceptionState.rethrowException();
-        assert exceptionState.stackSize() == 1;
+        assert exceptionState.stackSize() == 1 : Assertions.errorMessage(exceptionObject, newExceptionObject, newStateSplit, exceptionState);
         FrameState newExceptionState = exceptionState.duplicate();
         newExceptionState.applyToNonVirtual(new NodePositionClosure<>() {
             @Override
@@ -2773,7 +2779,7 @@ public class SnippetTemplate {
                 assert IS_IN_NATIVE_IMAGE || checkConstantArgument(metaAccess, method, signature, i - offset, args.info.getParameterName(i), args.values[i], kind);
 
             } else if (args.info.isVarargsParameter(i)) {
-                assert args.values[i] instanceof Varargs;
+                assert args.values[i] instanceof Varargs : Assertions.errorMessage(args.values[i], args, method);
                 Varargs varargs = (Varargs) args.values[i];
                 assert IS_IN_NATIVE_IMAGE || checkVarargs(metaAccess, method, signature, i - offset, args.info.getParameterName(i), varargs);
 

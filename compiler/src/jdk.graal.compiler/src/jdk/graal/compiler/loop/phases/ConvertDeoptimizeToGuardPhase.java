@@ -32,6 +32,7 @@ import java.util.Optional;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.cfg.Loop;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeSourcePosition;
@@ -63,17 +64,18 @@ import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.extended.OSRMonitorEnterNode;
 import jdk.graal.compiler.nodes.loop.LoopEx;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.phases.RecursivePhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.graal.compiler.phases.common.LazyValue;
 import jdk.graal.compiler.phases.common.PostRunCanonicalizationPhase;
-
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.TriState;
 
@@ -88,7 +90,7 @@ import jdk.vm.ci.meta.TriState;
  * branch starting at an other kind of {@link ControlSplitNode}, it will only bring the
  * {@link DeoptimizeNode} as close to the {@link ControlSplitNode} as possible.
  */
-public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<CoreProviders> {
+public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<CoreProviders> implements RecursivePhase {
 
     public ConvertDeoptimizeToGuardPhase(CanonicalizerPhase canonicalizer) {
         super(canonicalizer);
@@ -263,10 +265,22 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
                     }
                     return;
                 } else if (current.predecessor() == null || current.predecessor() instanceof ControlSplitNode) {
-                    assert current.predecessor() != null || (current instanceof StartNode && current == ((AbstractBeginNode) current).graph().start());
+                    assert current.predecessor() != null || (current instanceof StartNode && current == ((AbstractBeginNode) current).graph().start()) : Assertions.errorMessageContext("current",
+                                    current, "pred", current.predecessor());
                     moveAsDeoptAfter((AbstractBeginNode) current, deopt);
                     return;
                 }
+            } else if (current instanceof OSRMonitorEnterNode monitorEnterNode) {
+                /*
+                 * OSR locals (including locks) need to remain in the graph and be lowered to LIR
+                 * even when a deopt floats all the way to OSRStart, so that the actions associated
+                 * with OSRStart and OSRMonitorEnter are performed and the associated FrameState is
+                 * correct. Since OSR lock nodes are only lowered along with the OSRMonitorEnter
+                 * they're used by, we must not float a deopt above a OSRMonitorEnterNode to prevent
+                 * it from being removed from the graph.
+                 */
+                moveAsDeoptAfter(monitorEnterNode, deopt);
+                return;
             }
             current = current.predecessor();
         }

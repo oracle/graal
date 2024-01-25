@@ -33,6 +33,7 @@ import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.common.cfg.Loop;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
@@ -79,7 +80,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
-
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
@@ -230,7 +230,7 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
                     proxy.replaceAndDelete(osrLocal);
 
                 } else {
-                    assert value == null || value instanceof OSRLocalNode;
+                    assert value == null || value instanceof OSRLocalNode : Assertions.errorMessage(value);
                 }
             }
 

@@ -9,13 +9,19 @@ redirect_from: /reference-manual/native-image/Reflection/
 # Reflection in Native Image
 
 Java reflection support (the `java.lang.reflect.*` API) enables Java code to examine its own classes, methods, fields and their properties at run time.
-
-Native Image has partial support for reflection and needs to know ahead-of-time the reflectively accessed program elements.
-Examining and accessing program elements through `java.lang.reflect.*` or loading classes with `Class.forName(String)` at run time requires preparing additional metadata for those program elements.
 (Note: loading classes with `Class.forName(String)` are included here since it is closely related to reflection.)
 
+Native Image fully supports reflection in ahead-of-time compiled images.
+It may require additional configuration when reflection is used in ways that are unpredictable for the static analysis (e.g., depending on user input).
+Examining and accessing program elements through `java.lang.reflect.*` or loading classes with `Class.forName(String)` at run time can require preparing additional metadata for those program elements in the image.
+This metadata must be stored in the image already when it is created ahead of time.
+To reduce both the overall file size of images and the overhead of maintaining configuration, it is nonetheless recommended to avoid the use of reflection when possible.
+
 Native Image tries to resolve the target elements through a static analysis that detects calls to the Reflection API.
-Where the analysis fails, the program elements reflectively accessed at run time must be specified using a manual configuration. See [Reachability Metadata](ReachabilityMetadata.md) and [Collect Metadata with the Tracing Agent](AutomaticMetadataCollection.md) for more information.
+Where the analysis fails, the program elements reflectively accessed at run time must be specified using a manual configuration.
+See [Reachability Metadata](ReachabilityMetadata.md) for more details on this configuration.
+Note that you can [Collect Metadata with the Tracing Agent](AutomaticMetadataCollection.md).
+Using this manual or agent-provided configuration the image builder can include the required metadata in the created image, allowing reflective accesses during image runtime.
 
 ### Table of Contents
 
@@ -137,6 +143,13 @@ Code may also write non-static final fields like `String.value` in this example,
 
 More than one configuration can be used by specifying multiple paths for `ReflectionConfigurationFiles` and separating them with `,`.
 Also, `-H:ReflectionConfigurationResources` can be specified to load one or several configuration files from the build's class path, such as from a JAR file.
+
+### Elements and queries registered by default
+
+Querying the methods and constructor of `java.lang.Object` does not require configuration. The Java access rules still apply.
+Likewise, when using the [strict metadata mode](#strict-metadata-mode), it is possible to query the public or declared fields, methods and constructors of `java.lang.Object`, primitive classes and array classes without requiring a configuration entry.
+These queries return empty arrays in most cases, except for `java.lang.Object` methods and constructors and array public methods (all inherited from `java.lang.Object`). The image size impact of this inclusion is therefore minimal.
+On the other hand, it is necessary to register these methods and constructors if they need to be reflectively invoked at run-time, via `Method.invoke()` or `Constructor.newInstance()`.
 
 ## Conditional Configuration
 

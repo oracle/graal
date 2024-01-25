@@ -47,20 +47,22 @@ local verify_ci = (import 'ci/ci_common/ci-check.libsonnet').verify_ci;
   overlay: graal_common.ci.overlay,
   specVersion: "3",
   builds: [common.add_excludes_guard(b) for b in (
-    compiler.builds +
-    wasm.builds +
-    espresso.builds +
-    regex.builds +
-    sdk.builds +
-    substratevm.builds +
-    sulong.builds +
-    tools.builds +
-    truffle.builds +
-    javadoc.builds +
-    vm.builds +
-    visualizer.builds
+    common.with_components(compiler.builds, ["compiler"]) +
+    common.with_components(wasm.builds, ["wasm"]) +
+    common.with_components(espresso.builds, ["espresso"]) +
+    common.with_components(regex.builds, ["regex"]) +
+    common.with_components(sdk.builds, ["sdk"]) +
+    common.with_components(substratevm.builds, ["svm"]) +
+    common.with_components(sulong.builds, ["sulong"]) +
+    common.with_components(tools.builds, ["tools"]) +
+    common.with_components(truffle.builds, ["truffle"]) +
+    common.with_components(javadoc.builds, ["javadoc"]) +
+    common.with_components(vm.builds, ["vm"]) +
+    common.with_components(visualizer.builds, ["visualizer"])
   )],
   assert verify_ci(self.builds),
   // verify that the run-spec demo works
   assert (import "ci/ci_common/run-spec-demo.jsonnet").check(),
+  // ensure that the galahad CI configuration does not break
+  assert std.type(std.manifestJson((import "galahad.jsonnet").builds)) == "string"
 }

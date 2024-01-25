@@ -98,14 +98,23 @@ public final class DAPTester {
     }
 
     public void finish() throws IOException {
+        finish(true);
+    }
+
+    public void finish(boolean success) throws IOException {
         if (!lastValue.isDone()) {
             try {
                 lastValue.get();
+                if (!success) {
+                    throw new AssertionError("Finished successfully, but expected to fail.");
+                }
             } catch (InterruptedException ex) {
                 throw new AssertionError("Last eval(...) has not finished yet", ex);
             } catch (ExecutionException ex) {
                 // Guest language execution failed
-                throw new AssertionError(ex);
+                if (success) {
+                    throw new AssertionError(ex);
+                }
             }
         }
         if (handler.getInputStream().available() > 0) {

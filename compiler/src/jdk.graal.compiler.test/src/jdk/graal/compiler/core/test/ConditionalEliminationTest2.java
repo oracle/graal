@@ -24,6 +24,9 @@
  */
 package jdk.graal.compiler.core.test;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -34,8 +37,6 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.ConditionalEliminationPhase;
 import jdk.graal.compiler.phases.common.FloatingReadPhase;
 import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
-import org.junit.Assert;
-import org.junit.Test;
 
 /**
  * Collection of tests for {@link ConditionalEliminationPhase} including those that triggered bugs
@@ -114,8 +115,7 @@ public class ConditionalEliminationTest2 extends ConditionalEliminationTestBase 
         new HighTierLoweringPhase(canonicalizer).apply(graph, context);
         canonicalizer.apply(graph, context);
         new FloatingReadPhase(canonicalizer).apply(graph, context);
-        new ConditionalEliminationPhase(true).apply(graph, context);
-        canonicalizer.apply(graph, context);
+        new ConditionalEliminationPhase(canonicalizer, true).apply(graph, context);
 
         assertDeepEquals(1, graph.getNodes().filter(GuardNode.class).count());
     }
@@ -136,8 +136,7 @@ public class ConditionalEliminationTest2 extends ConditionalEliminationTestBase 
 
         new HighTierLoweringPhase(canonicalizer).apply(graph, context);
         canonicalizer.apply(graph, context);
-        new ConditionalEliminationPhase(true).apply(graph, context);
-        canonicalizer.apply(graph, context);
+        new ConditionalEliminationPhase(canonicalizer, true).apply(graph, context);
 
         assertDeepEquals(0, graph.getNodes().filter(GuardNode.class).count());
     }
@@ -149,9 +148,8 @@ public class ConditionalEliminationTest2 extends ConditionalEliminationTestBase 
         CoreProviders context = getProviders();
 
         canonicalizer.apply(graph, context);
-        new ConditionalEliminationPhase(true).apply(graph, context);
+        new ConditionalEliminationPhase(canonicalizer, true).apply(graph, context);
         getDebugContext().dump(DebugContext.BASIC_LEVEL, graph, "After ConditionalEliminationPhase");
-        canonicalizer.apply(graph, context);
 
         Assert.assertEquals(count, graph.getNodes().filter(InstanceOfNode.class).count());
     }

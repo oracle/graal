@@ -24,16 +24,18 @@
  */
 package com.oracle.svm.core.heap;
 
-import java.util.ArrayList;
+import java.util.List;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
+import com.oracle.svm.core.util.ImageHeapList;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -41,7 +43,6 @@ import com.oracle.svm.core.util.VMError;
  * garbage collector implementations.
  */
 public class GCCause {
-    @Platforms(Platform.HOSTED_ONLY.class) private static final ArrayList<GCCause> HostedGCCauseList = new ArrayList<>();
 
     @DuplicatedInNativeCode public static final GCCause JavaLangSystemGC = new GCCause("java.lang.System.gc()", 0);
     @DuplicatedInNativeCode public static final GCCause UnitTest = new GCCause("Forced GC in unit test", 1);
@@ -50,28 +51,13 @@ public class GCCause {
     @DuplicatedInNativeCode public static final GCCause JvmtiForceGC = new GCCause("JvmtiEnv ForceGarbageCollection", 4);
     @DuplicatedInNativeCode public static final GCCause HeapDump = new GCCause("Heap Dump Initiated GC ", 5);
 
-    @UnknownObjectField(availability = ReadyForCompilation.class) protected static GCCause[] GCCauses;
-
     private final int id;
     private final String name;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    @SuppressWarnings("this-escape")
     protected GCCause(String name, int id) {
         this.id = id;
         this.name = name;
-        addGCCauseMapping();
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private void addGCCauseMapping() {
-        synchronized (HostedGCCauseList) {
-            while (HostedGCCauseList.size() <= id) {
-                HostedGCCauseList.add(null);
-            }
-            VMError.guarantee(HostedGCCauseList.get(id) == null, "%s and another GCCause have the same id.", name);
-            HostedGCCauseList.set(id, this);
-        }
     }
 
     public String getName() {
@@ -84,24 +70,40 @@ public class GCCause {
     }
 
     public static GCCause fromId(int causeId) {
-        return GCCauses[causeId];
+        return getGCCauses().get(causeId);
     }
 
-    public static GCCause[] getGCCauses() {
-        return GCCauses;
+    public static List<GCCause> getGCCauses() {
+        return ImageSingletons.lookup(GCCauseSupport.class).gcCauses;
     }
+}
+
+@AutomaticallyRegisteredImageSingleton
+class GCCauseSupport {
+    final List<GCCause> gcCauses = ImageHeapList.create(GCCause.class, null);
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void cacheReverseMapping() {
-        GCCauses = HostedGCCauseList.toArray(new GCCause[HostedGCCauseList.size()]);
+    Object collectGCCauses(Object obj) {
+        if (obj instanceof GCCause gcCause) {
+            synchronized (gcCauses) {
+                int id = gcCause.getId();
+                while (gcCauses.size() <= id) {
+                    gcCauses.add(null);
+                }
+                var existing = gcCauses.set(id, gcCause);
+                if (existing != null && existing != gcCause) {
+                    throw VMError.shouldNotReachHere("Two GCCause objects have the same id " + id + ": " + gcCause.getName() + ", " + existing.getName());
+                }
+            }
+        }
+        return obj;
     }
 }
 
 @AutomaticallyRegisteredFeature
 class GCCauseFeature implements InternalFeature {
     @Override
-    public void beforeCompilation(BeforeCompilationAccess access) {
-        GCCause.cacheReverseMapping();
-        access.registerAsImmutable(GCCause.GCCauses);
+    public void duringSetup(DuringSetupAccess access) {
+        access.registerObjectReplacer(ImageSingletons.lookup(GCCauseSupport.class)::collectGCCauses);
     }
 }

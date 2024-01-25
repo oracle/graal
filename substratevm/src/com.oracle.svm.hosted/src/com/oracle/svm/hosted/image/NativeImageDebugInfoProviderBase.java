@@ -25,10 +25,26 @@
  */
 package com.oracle.svm.hosted.image;
 
+import static com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind.ADDRESS;
+import static com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind.GETTER;
+import static com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind.SETTER;
+
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
+import java.util.HashMap;
+
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.word.WordBase;
+
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.util.VMError;
@@ -46,22 +62,15 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.InjectedFieldsType;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
+
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.target.Backend;
+import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.graal.compiler.core.common.CompressEncoding;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.word.WordBase;
-
-import java.nio.file.FileSystems;
-import java.nio.file.Path;
-import java.util.HashMap;
-
-import static com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind.ADDRESS;
-import static com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind.GETTER;
-import static com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind.SETTER;
 
 /**
  * Abstract base class for implementation of DebugInfoProvider API providing a suite of useful
@@ -71,6 +80,7 @@ public abstract class NativeImageDebugInfoProviderBase {
     protected final NativeImageHeap heap;
     protected final NativeImageCodeCache codeCache;
     protected final NativeLibraries nativeLibs;
+    protected final RuntimeConfiguration runtimeConfiguration;
     protected final boolean useHeapBase;
     protected final int compressShift;
     protected final int referenceSize;
@@ -85,10 +95,11 @@ public abstract class NativeImageDebugInfoProviderBase {
     final HashMap<JavaKind, HostedType> javaKindToHostedType;
     private final Path cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
 
-    public NativeImageDebugInfoProviderBase(NativeImageCodeCache codeCache, NativeImageHeap heap, NativeLibraries nativeLibs, HostedMetaAccess metaAccess) {
+    public NativeImageDebugInfoProviderBase(NativeImageCodeCache codeCache, NativeImageHeap heap, NativeLibraries nativeLibs, HostedMetaAccess metaAccess, RuntimeConfiguration runtimeConfiguration) {
         this.heap = heap;
         this.codeCache = codeCache;
         this.nativeLibs = nativeLibs;
+        this.runtimeConfiguration = runtimeConfiguration;
         this.hubType = metaAccess.lookupJavaType(Class.class);
         this.wordBaseType = metaAccess.lookupJavaType(WordBase.class);
         this.pointerSize = ConfigurationValues.getTarget().wordSize;
@@ -107,8 +118,8 @@ public abstract class NativeImageDebugInfoProviderBase {
         this.referenceSize = getObjectLayout().getReferenceSize();
         this.referenceAlignment = getObjectLayout().getAlignment();
         /* Offsets need to be adjusted relative to the heap base plus partition-specific offset. */
-        primitiveStartOffset = (int) primitiveFields.getAddress();
-        referenceStartOffset = (int) objectFields.getAddress();
+        primitiveStartOffset = (int) primitiveFields.getOffset();
+        referenceStartOffset = (int) objectFields.getOffset();
         javaKindToHostedType = initJavaKindToHostedTypes(metaAccess);
     }
 
@@ -397,7 +408,7 @@ public abstract class NativeImageDebugInfoProviderBase {
         assert constant.getJavaKind() == JavaKind.Object && !constant.isNull() : "invalid constant for object offset lookup";
         NativeImageHeap.ObjectInfo objectInfo = heap.getConstantInfo(constant);
         if (objectInfo != null) {
-            return objectInfo.getAddress();
+            return objectInfo.getOffset();
         }
         return -1;
     }
@@ -424,6 +435,25 @@ public abstract class NativeImageDebugInfoProviderBase {
             map.put(kind, javaType);
         }
         return map;
+    }
+
+    /**
+     * Retrieve details of the native calling convention for a top level compiled method, including
+     * details of which registers or stack slots are used to pass parameters.
+     * 
+     * @param method The method whose calling convention is required.
+     * @return The calling convention for the method.
+     */
+    protected SubstrateCallingConvention getCallingConvention(HostedMethod method) {
+        SubstrateCallingConventionKind callingConventionKind = method.getCallingConventionKind();
+        HostedType declaringClass = method.getDeclaringClass();
+        HostedType receiverType = method.isStatic() ? null : declaringClass;
+        var signature = method.getSignature();
+        SubstrateCallingConventionType type = callingConventionKind.toType(false);
+        Backend backend = runtimeConfiguration.lookupBackend(method);
+        RegisterConfig registerConfig = backend.getCodeCache().getRegisterConfig();
+        assert registerConfig instanceof SubstrateRegisterConfig;
+        return (SubstrateCallingConvention) registerConfig.getCallingConvention(type, signature.getReturnType(), signature.toParameterTypes(receiverType), backend);
     }
 
     /*

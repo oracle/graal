@@ -104,12 +104,13 @@ import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMROp;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import jdk.graal.compiler.asm.amd64.AVXKind;
 import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
-import jdk.graal.compiler.core.common.calc.FloatConvert;
-import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRValueUtil;
@@ -148,7 +149,6 @@ import jdk.graal.compiler.lir.amd64.vector.AMD64VectorFloatCompareOp;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorUnary;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGenerator;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -475,7 +475,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     }
 
     public Value emitBinaryMemory(VexRVMOp op, OperandSize size, AllocatableValue a, AMD64AddressValue location, LIRFrameState state) {
-        assert (size.isXmmType() && supportAVX());
+        assert (size.isXmmType() && supportAVX()) : size;
         Variable result = getLIRGen().newVariable(LIRKind.combine(a));
         getLIRGen().append(new AMD64VectorBinary.AVXBinaryMemoryOp(op, getRegisterSize(result), result, a, location, state));
         return result;
@@ -903,17 +903,46 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
 
     @Override
     public Value emitNarrow(Value inputVal, int bits) {
-        if (inputVal.getPlatformKind() == AMD64Kind.QWORD && bits <= 32) {
+        if ((inputVal instanceof ConstantValue con) && (con.getConstant() instanceof JavaConstant jCon)) {
+            /*
+             * Narrow constants explicitly. Otherwise, assumptions in the remaining LIR generation
+             * might be violated.
+             */
+            JavaKind jKind = jCon.getJavaKind();
+            assert jKind.isNumericInteger() : "Can only narrow integer constants.";
+            assert bits <= jKind.getByteCount() * 8 : "Narrow input has fewer bits than narrow output.";
+
+            long mask = CodeUtil.mask(bits);
+            long narrowed = CodeUtil.signExtend(jCon.asLong() & mask, bits);
+
+            switch (jKind) {
+                case Byte:
+                    return new ConstantValue(LIRKind.combine(inputVal), JavaConstant.forByte((byte) narrowed));
+                case Short:
+                    return new ConstantValue(LIRKind.combine(inputVal), JavaConstant.forShort((short) narrowed));
+                case Char:
+                    return new ConstantValue(LIRKind.combine(inputVal), JavaConstant.forChar((char) narrowed));
+                case Int:
+                    return new ConstantValue(LIRKind.combine(inputVal), JavaConstant.forInt((int) narrowed));
+                case Long:
+                    if (bits <= 32) {
+                        return new ConstantValue(LIRKind.combine(inputVal).changeType(AMD64Kind.DWORD), JavaConstant.forInt((int) narrowed));
+                    } else {
+                        return new ConstantValue(LIRKind.combine(inputVal), JavaConstant.forLong(narrowed));
+                    }
+                default:
+                    GraalError.shouldNotReachHere("Unexpected Java kind for constant during narrowing: " + jKind);
+            }
+        } else if (inputVal.getPlatformKind() == AMD64Kind.QWORD && bits <= 32) {
             // TODO make it possible to reinterpret Long as Int in LIR without move
             return emitConvertOp(LIRKind.combine(inputVal).changeType(AMD64Kind.DWORD), AMD64RMOp.MOV, DWORD, inputVal);
-        } else {
-            return inputVal;
         }
+        return inputVal;
     }
 
     @Override
     public Value emitSignExtend(Value inputVal, int fromBits, int toBits) {
-        assert fromBits <= toBits && toBits <= 64;
+        assert fromBits <= toBits && toBits <= 64 : fromBits + " " + toBits;
         if (fromBits == toBits) {
             return inputVal;
         } else if (toBits > 32) {
@@ -945,11 +974,11 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
 
     @Override
     public Value emitZeroExtend(Value inputVal, int fromBits, int toBits) {
-        assert fromBits <= toBits && toBits <= 64;
+        assert fromBits <= toBits && toBits <= 64 : fromBits + " " + toBits;
         if (fromBits == toBits) {
             return inputVal;
         } else if (fromBits > 32) {
-            assert inputVal.getPlatformKind() == AMD64Kind.QWORD;
+            assert inputVal.getPlatformKind() == AMD64Kind.QWORD : Assertions.errorMessage(inputVal, fromBits, toBits);
             Variable result = getLIRGen().newVariable(LIRKind.combine(inputVal));
             long mask = CodeUtil.mask(fromBits);
             getLIRGen().append(new AMD64Binary.DataTwoOp(AND.getRMOpcode(QWORD), QWORD, result, asAllocatable(inputVal), JavaConstant.forLong(mask)));
@@ -1024,14 +1053,14 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     @Override
     public Variable emitFusedMultiplyAdd(Value a, Value b, Value c) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(a, b, c));
-        assert ((AMD64Kind) a.getPlatformKind()).isXMM() && ((AMD64Kind) b.getPlatformKind()).isXMM() && ((AMD64Kind) c.getPlatformKind()).isXMM();
+        assert ((AMD64Kind) a.getPlatformKind()).isXMM() && ((AMD64Kind) b.getPlatformKind()).isXMM() && ((AMD64Kind) c.getPlatformKind()).isXMM() : a + " " + b + " " + c;
         assert a.getPlatformKind().equals(b.getPlatformKind());
         assert b.getPlatformKind().equals(c.getPlatformKind());
 
         if (a.getPlatformKind() == AMD64Kind.DOUBLE) {
             getLIRGen().append(new AMD64Ternary.ThreeOp(VFMADD231SD, AVXSize.XMM, result, asAllocatable(c), asAllocatable(a), asAllocatable(b)));
         } else {
-            assert a.getPlatformKind() == AMD64Kind.SINGLE;
+            assert a.getPlatformKind() == AMD64Kind.SINGLE : Assertions.errorMessage(a, b, c);
             getLIRGen().append(new AMD64Ternary.ThreeOp(VFMADD231SS, AVXSize.XMM, result, asAllocatable(c), asAllocatable(a), asAllocatable(b)));
         }
         return result;
@@ -1244,7 +1273,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     protected void emitStoreConst(AMD64Kind kind, AMD64AddressValue address, ConstantValue value, LIRFrameState state) {
         Constant c = value.getConstant();
         if (JavaConstant.isNull(c)) {
-            assert kind == AMD64Kind.DWORD || kind == AMD64Kind.QWORD;
+            assert kind == AMD64Kind.DWORD || kind == AMD64Kind.QWORD : Assertions.errorMessage(kind, address, value, state);
             OperandSize size = kind == AMD64Kind.DWORD ? DWORD : QWORD;
             getLIRGen().append(new AMD64BinaryConsumer.MemoryConstOp(AMD64MIOp.MOV, size, address, 0, state));
             return;
@@ -1253,7 +1282,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
             if (kind == AMD64Kind.DWORD) {
                 if (getLIRGen().target().inlineObjects || !(c instanceof JavaConstant)) {
                     // if c is a JavaConstant, it's an oop, otherwise it's a metaspace constant
-                    assert !(c instanceof JavaConstant) || ((JavaConstant) c).getJavaKind() == JavaKind.Object;
+                    assert !(c instanceof JavaConstant) || ((JavaConstant) c).getJavaKind() == JavaKind.Object : c;
                     getLIRGen().append(new AMD64BinaryConsumer.MemoryVMConstOp(AMD64MIOp.MOV, address, (VMConstant) c, state));
                     return;
                 }
@@ -1433,7 +1462,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     @Override
     public Value emitRoundFloatToInteger(Value value) {
         PlatformKind valuePlatformKind = value.getPlatformKind();
-        assert valuePlatformKind == AMD64Kind.SINGLE || valuePlatformKind == AMD64Kind.DOUBLE;
+        assert valuePlatformKind == AMD64Kind.SINGLE || valuePlatformKind == AMD64Kind.DOUBLE : Assertions.errorMessage(valuePlatformKind);
         Variable result = getLIRGen().newVariable(LIRKind.value(value.getPlatformKind() == AMD64Kind.SINGLE ? AMD64Kind.DWORD : AMD64Kind.QWORD));
         getLIRGen().append(new AMD64RoundFloatToIntegerOp(getLIRGen(), result, asAllocatable(value)));
         return result;

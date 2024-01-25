@@ -160,8 +160,8 @@ public final class CompileTheWorld {
 
     /**
      * @param options a space separated set of option value settings with each option setting in a
-     *            {@code -Dgraal.<name>=<value>} format but without the leading {@code -Dgraal.}.
-     *            Ignored if null.
+     *            {@code -Djdk.graal.<name>=<value>} format but without the leading
+     *            {@code -Djdk.graal.}. Ignored if null.
      */
     public static EconomicMap<OptionKey<?>, Object> parseOptions(String options) {
         EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
@@ -1500,7 +1500,7 @@ public final class CompileTheWorld {
         OptionsParser.parseOptions(extractEntries(System.getProperties(), "CompileTheWorld.", true), values, loader);
         OptionValues options = new OptionValues(values);
         if (Options.Help.getValue(options)) {
-            options.printHelp(loader, System.out, "CompileTheWorld.");
+            options.printHelp(loader, System.out, "CompileTheWorld.", true);
             System.exit(0);
         }
         return options;

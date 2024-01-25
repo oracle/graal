@@ -65,7 +65,7 @@ class SSALinearScanResolveDataFlowPhase extends LinearScanResolveDataFlowPhase {
             ArrayList<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(phiOutBlock);
             int phiOutIdx = SSAUtil.phiOutIndex(allocator.getLIR(), phiOutBlock);
             int phiOutId = midBlock != null ? fromBlockLastInstructionId : instructions.get(phiOutIdx).id();
-            assert phiOutId >= 0;
+            assert phiOutId >= 0 : phiOutId;
 
             PhiValueVisitor visitor = new PhiValueVisitor() {
 

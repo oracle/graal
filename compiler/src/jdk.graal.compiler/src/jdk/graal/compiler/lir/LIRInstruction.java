@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.lir;
 
-import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.CONST;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.HINT;
@@ -37,6 +36,7 @@ import static jdk.graal.compiler.lir.LIRInstruction.OperandMode.ALIVE;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandMode.DEF;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandMode.TEMP;
 import static jdk.graal.compiler.lir.LIRValueUtil.isVirtualStackSlot;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -47,12 +47,11 @@ import java.util.EnumMap;
 import java.util.EnumSet;
 
 import jdk.graal.compiler.graph.NodeSourcePosition;
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.StandardOp.LoadConstantOp;
 import jdk.graal.compiler.lir.StandardOp.MoveOp;
 import jdk.graal.compiler.lir.StandardOp.ValueMoveOp;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
-
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.JavaConstant;
@@ -228,7 +227,7 @@ public abstract class LIRInstruction {
      */
     public LIRInstruction(LIRInstructionClass<? extends LIRInstruction> c) {
         instructionClass = c;
-        assert c.getClazz() == this.getClass();
+        assert c.getClazz() == this.getClass() : c.getClazz() + " " + this.getClass();
         id = -1;
     }
 

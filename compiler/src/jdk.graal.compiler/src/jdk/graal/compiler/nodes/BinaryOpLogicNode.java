@@ -25,12 +25,14 @@
 package jdk.graal.compiler.nodes;
 
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
-
+import jdk.graal.compiler.nodes.calc.ConditionalNode;
+import jdk.graal.compiler.nodes.spi.Canonicalizable;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.vm.ci.meta.TriState;
 
 @NodeInfo
@@ -64,14 +66,10 @@ public abstract class BinaryOpLogicNode extends LIRLowerableLogicNode implements
 
     public BinaryOpLogicNode(NodeClass<? extends BinaryOpLogicNode> c, ValueNode x, ValueNode y) {
         super(c);
-        assert x != null && y != null;
+        assert x != null;
+        assert y != null;
         this.x = x;
         this.y = y;
-    }
-
-    @Override
-    public boolean verify() {
-        return super.verify();
     }
 
     /**
@@ -83,7 +81,7 @@ public abstract class BinaryOpLogicNode extends LIRLowerableLogicNode implements
      */
     @SuppressWarnings("deprecation")
     public LogicNode maybeCommuteInputs() {
-        assert this instanceof BinaryCommutative;
+        assert this instanceof BinaryCommutative : Assertions.errorMessageContext("this", this);
         if (!y.isConstant() && (x.isConstant() || x.getId() > y.getId())) {
             ValueNode tmp = x;
             x = y;
@@ -104,4 +102,28 @@ public abstract class BinaryOpLogicNode extends LIRLowerableLogicNode implements
     public abstract Stamp getSucceedingStampForY(boolean negated, Stamp xStamp, Stamp yStamp);
 
     public abstract TriState tryFold(Stamp xStamp, Stamp yStamp);
+
+    @Override
+    public Node canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        // fold conditions of the form forX op forY where forX=(c ? condTrueVal : condFalseVal)
+        // for example for integer test of (c ? 0 : 1 ) & 1 == 0) to c
+        if (forX instanceof ConditionalNode conditional) {
+            final ValueNode condTrueVal = conditional.trueValue();
+            final ValueNode condFalseVal = conditional.falseValue();
+            // evaluate the conditional true and false value against the forY of this condition, if
+            // they are both known, i.e., both evaluate to a clear result use the input of the
+            // conditional in its respective form instead
+            final TriState trueValCond = tryFold(condTrueVal.stamp(NodeView.DEFAULT), forY.stamp(NodeView.DEFAULT));
+            final TriState falseValCond = tryFold(condFalseVal.stamp(NodeView.DEFAULT), forY.stamp(NodeView.DEFAULT));
+            if (trueValCond.isUnknown() || falseValCond.isUnknown()) {
+                return this;
+            }
+            if (trueValCond == falseValCond) {
+                return LogicConstantNode.forBoolean(trueValCond.toBoolean());
+            } else {
+                return trueValCond.toBoolean() ? conditional.condition() : LogicNegationNode.create(conditional.condition());
+            }
+        }
+        return this;
+    }
 }

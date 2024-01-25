@@ -28,16 +28,23 @@ import java.net.URI;
 import java.nio.Buffer;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.truffle.phases.DeoptimizeOnExceptionPhase;
-import jdk.graal.compiler.truffle.phases.InstrumentPhase;
-import jdk.graal.compiler.truffle.substitutions.GraphBuilderInvocationPluginProvider;
-import jdk.graal.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
 import org.graalvm.collections.EconomicMap;
+
+import com.oracle.truffle.compiler.ConstantFieldInfo;
+import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime.InlineKind;
+import com.oracle.truffle.compiler.TruffleSourceLanguagePosition;
+
 import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.SourceLanguagePosition;
 import jdk.graal.compiler.graph.SourceLanguagePositionProvider;
+import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.EncodedGraph;
@@ -54,7 +61,9 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.ParameterPlugin;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.contract.NodeCostUtil;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.CachingPEGraphDecoder;
@@ -64,18 +73,14 @@ import jdk.graal.compiler.replacements.ReplacementsImpl;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
-
-import com.oracle.truffle.compiler.ConstantFieldInfo;
-import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
-import com.oracle.truffle.compiler.TruffleCompilable;
-import com.oracle.truffle.compiler.TruffleCompilationTask;
-import com.oracle.truffle.compiler.TruffleCompilerRuntime;
-import com.oracle.truffle.compiler.TruffleSourceLanguagePosition;
-import com.oracle.truffle.compiler.TruffleCompilerRuntime.InlineKind;
-
+import jdk.graal.compiler.truffle.phases.DeoptimizeOnExceptionPhase;
+import jdk.graal.compiler.truffle.phases.InstrumentPhase;
+import jdk.graal.compiler.truffle.substitutions.GraphBuilderInvocationPluginProvider;
+import jdk.graal.compiler.truffle.substitutions.TruffleGraphBuilderPlugins;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -143,6 +148,9 @@ public abstract class PartialEvaluator {
         // Graphs with assumptions cannot be cached across compilations, so the persistent cache is
         // disabled if assumptions are allowed.
         this.persistentEncodedGraphCache = TruffleCompilerOptions.EncodedGraphCache.getValue(options) && !TruffleCompilerOptions.ParsePEGraphsWithAssumptions.getValue(options);
+
+        firstTierDecodingPlugins.maybePrintIntrinsics(options);
+        lastTierDecodingPlugins.maybePrintIntrinsics(options);
     }
 
     public abstract PartialEvaluationMethodInfo getMethodInfo(ResolvedJavaMethod method);
@@ -404,10 +412,14 @@ public abstract class PartialEvaluator {
         Providers compilationUnitProviders = config.lastTier().providers().copyWith(constantFieldProvider);
 
         assert !allowAssumptionsDuringParsing || !persistentEncodedGraphCache;
-        return new CachingPEGraphDecoder(config.architecture(), context.graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations,
+        return new CachingPEGraphDecoder(config.architecture(), context.graph, compilationUnitProviders, newConfig,
                         loopExplosionPlugin, decodingPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, types.OptimizedCallTarget_callInlined,
-                        sourceLanguagePositionProvider, postParsingPhase, graphCache, createCachedGraphScope, allowAssumptionsDuringParsing, false, true);
+                        sourceLanguagePositionProvider, postParsingPhase, graphCache, createCachedGraphScope,
+                        createGraphBuilderPhaseInstance(compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations),
+                        allowAssumptionsDuringParsing, false, true);
     }
+
+    protected abstract GraphBuilderPhase.Instance createGraphBuilderPhaseInstance(CoreProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts);
 
     @SuppressWarnings("try")
     public void doGraphPE(TruffleTierContext context, InlineInvokePlugin inlineInvokePlugin, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
@@ -426,7 +438,7 @@ public abstract class PartialEvaluator {
             assert !context.graph.isSubstitution();
             decoder.decode(context.graph.method());
         }
-        assert listener.graphSize == NodeCostUtil.computeGraphSize(listener.graph);
+        assert listener.graphSize == NodeCostUtil.computeGraphSize(listener.graph) : Assertions.errorMessage(listener.graph, listener.graphSize);
     }
 
     /**
@@ -462,6 +474,9 @@ public abstract class PartialEvaluator {
                 }
             }
         }
+        if (types.Throwable_jfrTracing != null) {
+            appendJFRTracingPlugin(plugins);
+        }
     }
 
     /**
@@ -481,6 +496,22 @@ public abstract class PartialEvaluator {
                     return true;
                 }
                 return false;
+            }
+        });
+    }
+
+    /**
+     * For details see {@link KnownTruffleTypes#Throwable_jfrTracing}.
+     */
+    private void appendJFRTracingPlugin(Plugins plugins) {
+        plugins.appendNodePlugin(new NodePlugin() {
+            @Override
+            public boolean handleLoadStaticField(GraphBuilderContext b, ResolvedJavaField field) {
+                if (field.equals(types.Throwable_jfrTracing)) {
+                    b.addPush(JavaKind.Boolean, jdk.graal.compiler.nodes.ConstantNode.forBoolean(false));
+                    return true;
+                }
+                return NodePlugin.super.handleLoadStaticField(b, field);
             }
         });
     }

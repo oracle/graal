@@ -124,7 +124,7 @@ public abstract class FloatingIntegerDivRemNode<OP> extends BinaryArithmeticNode
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         /*
          * Special case unconditionally deopting rem operations: Other optimziations can lead to
          * graphs where the rem operation will unconditionally deopt.
@@ -150,6 +150,6 @@ public abstract class FloatingIntegerDivRemNode<OP> extends BinaryArithmeticNode
         boolean cannotDeopt = (!canDivideByZero() && !overflowVisibleSideEffect());
         boolean isAfterStage = graph().isAfterStage(GraphState.StageFlag.FIXED_READS);
         GraalError.guarantee(guardWillAlwaysDeopt || cannotDeopt || isAfterStage, "Floating irem must never create an exception or trap");
-        return super.verify();
+        return super.verifyNode();
     }
 }

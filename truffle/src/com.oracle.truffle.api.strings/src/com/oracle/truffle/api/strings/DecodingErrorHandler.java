@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.strings;
 
-import com.oracle.truffle.api.CompilerDirectives;
-
 /**
  * An error handler for handling byte sequences that cannot be decoded in operations such as
  * {@link TruffleStringIterator.NextNode}.
@@ -100,7 +98,6 @@ interface DecodingErrorHandler {
             this.codepoint = codepoint;
             this.byteLength = byteLength;
             if (byteLength <= 0) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw InternalErrors.illegalState("byteLength must be greater than zero");
             }
         }

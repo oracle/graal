@@ -67,7 +67,9 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     private JNIMethodId javaUtilResourceBundleGetBundleImplSLCC;
     private boolean queriedJavaUtilResourceBundleGetBundleImplSLCC;
 
+    private JNIObjectHandle javaIoObjectStreamClass;
     private JNIMethodId javaIoObjectStreamClassForClass;
+    private JNIMethodId javaIoObjectStreamClassGetName;
     private JNIMethodId javaIoObjectStreamClassGetClassDataLayout0;
     private JNIObjectHandle javaIOObjectStreamClassClassDataSlot;
     private JNIFieldId javaIOObjectStreamClassClassDataSlotDesc;
@@ -83,6 +85,11 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     private JNIMethodId javaUtilResourceBundleGetLocale;
 
     final JNIFieldId javaLangInvokeSerializedLambdaCapturingClass;
+
+    final JNIMethodId sunUtilResourcesBundlesCacheKeyGetName;
+    final JNIMethodId sunUtilResourcesBundlesCacheKeyGetLocale;
+
+    final JNIMethodId javaLangModuleGetName;
 
     NativeImageAgentJNIHandleSet(JNIEnvironment env) {
         super(env);
@@ -120,6 +127,13 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
         JNIObjectHandle serializedLambda = findClass(env, "java/lang/invoke/SerializedLambda");
         javaLangInvokeSerializedLambdaCapturingClass = getFieldId(env, serializedLambda, "capturingClass", "Ljava/lang/Class;", false);
+
+        JNIObjectHandle sunUtilResourcesBundlesCacheKey = findClass(env, "sun/util/resources/Bundles$CacheKey");
+        sunUtilResourcesBundlesCacheKeyGetName = getMethodId(env, sunUtilResourcesBundlesCacheKey, "getName", "()Ljava/lang/String;", false);
+        sunUtilResourcesBundlesCacheKeyGetLocale = getMethodId(env, sunUtilResourcesBundlesCacheKey, "getLocale", "()Ljava/util/Locale;", false);
+
+        JNIObjectHandle javaLangModule = findClass(env, "java/lang/Module");
+        javaLangModuleGetName = getMethodId(env, javaLangModule, "getName", "()Ljava/lang/String;", false);
     }
 
     JNIMethodId getJavaLangReflectExecutableGetParameterTypes(JNIEnvironment env) {
@@ -156,11 +170,25 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         return javaUtilResourceBundleGetBundleImplSLCC;
     }
 
+    JNIObjectHandle getJavaIOObjectStreamClass(JNIEnvironment env) {
+        if (javaIoObjectStreamClass.equal(nullHandle())) {
+            javaIoObjectStreamClass = findClass(env, "java/io/ObjectStreamClass");
+        }
+        return javaIoObjectStreamClass;
+    }
+
     JNIMethodId getJavaIoObjectStreamClassForClass(JNIEnvironment env, JNIObjectHandle javaIoObjectStreamClass) {
         if (javaIoObjectStreamClassForClass.equal(nullHandle())) {
             javaIoObjectStreamClassForClass = getMethodId(env, javaIoObjectStreamClass, "forClass", "()Ljava/lang/Class;", false);
         }
         return javaIoObjectStreamClassForClass;
+    }
+
+    JNIMethodId getJavaIoObjectStreamClassGetName(JNIEnvironment env) {
+        if (javaIoObjectStreamClassGetName.equal(nullHandle())) {
+            javaIoObjectStreamClassGetName = getMethodId(env, getJavaIOObjectStreamClass(env), "getName", "()Ljava/lang/String;", false);
+        }
+        return javaIoObjectStreamClassGetName;
     }
 
     JNIMethodId getJavaIoObjectStreamClassGetClassDataLayout0(JNIEnvironment env, JNIObjectHandle javaIoObjectStreamClass) {

@@ -75,7 +75,7 @@ public class CompileTheWorldFuzzedSuitesCompilationTask extends CompilationTask 
                         ps.printf("Command to retry:%n");
                         ps.printf("mx gate --extra-vm-argument='-DCompileTheWorld.LoadPhasePlan=%s.phaseplan'" +
                                         " --extra-vm-argument='-DCompileTheWorld.MethodFilter=%s'" +
-                                        " --extra-vm-argument='-Dgraal.CompilerConfiguration=%s' --tags ctw%n%n",
+                                        " --extra-vm-argument='-Djdk.graal.CompilerConfiguration=%s' --tags ctw%n%n",
                                         dumpPath, getMethod().format("%H.%n"), compiler.getGraalRuntime().getCompilerConfigurationName());
                         ps.printf("Failure:%n%s%n%n", cause.toString());
                         ps.printf("%s%n%n", phasePlan.toString());

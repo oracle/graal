@@ -24,18 +24,17 @@
  */
 package com.oracle.svm.core;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.type.Stamp;
-import jdk.graal.compiler.core.common.type.StampFactory;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.meta.JavaKind;
 
 public abstract class FrameAccess {
 
@@ -84,10 +83,6 @@ public abstract class FrameAccess {
     @Fold
     public static int uncompressedReferenceSize() {
         return wordSize();
-    }
-
-    public static JavaKind getWordKind() {
-        return ConfigurationValues.getTarget().wordJavaKind;
     }
 
     public static Stamp getWordStamp() {

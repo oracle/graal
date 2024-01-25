@@ -25,12 +25,6 @@
  */
 package jdk.graal.compiler.asm.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.CPU;
-import static jdk.vm.ci.aarch64.AArch64.SIMD;
-import static jdk.vm.ci.aarch64.AArch64.cpuRegisters;
-import static jdk.vm.ci.aarch64.AArch64.r0;
-import static jdk.vm.ci.aarch64.AArch64.sp;
-import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Asserts.verifyRegistersF;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Asserts.verifyRegistersFF;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Asserts.verifyRegistersR;
@@ -165,6 +159,12 @@ import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.InstructionType.Ge
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.InstructionType.General64;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.InstructionType.floatFromSize;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.InstructionType.generalFromSize;
+import static jdk.vm.ci.aarch64.AArch64.CPU;
+import static jdk.vm.ci.aarch64.AArch64.SIMD;
+import static jdk.vm.ci.aarch64.AArch64.cpuRegisters;
+import static jdk.vm.ci.aarch64.AArch64.r0;
+import static jdk.vm.ci.aarch64.AArch64.sp;
+import static jdk.vm.ci.aarch64.AArch64.zr;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -172,9 +172,10 @@ import java.util.Arrays;
 import java.util.EnumSet;
 
 import jdk.graal.compiler.asm.Assembler;
+import jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
-
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64.CPUFeature;
 import jdk.vm.ci.aarch64.AArch64.Flag;
@@ -799,7 +800,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         }
 
         public static InstructionType generalFromSize(int size) {
-            assert size == 32 || size == 64;
+            assert size == 32 || size == 64 : size;
             return size == 32 ? General32 : General64;
         }
 
@@ -1642,11 +1643,11 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     protected final void ldrHelper(int srcSize, Register rt, AArch64Address address, boolean allowZeroReg) {
-        assert srcSize == 8 || srcSize == 16 || srcSize == 32 || srcSize == 64;
-        assert allowZeroReg ? verifyRegistersZ(rt) : verifyRegistersR(rt);
+        assert srcSize == 8 || srcSize == 16 || srcSize == 32 || srcSize == 64 : srcSize;
+        assert allowZeroReg ? verifyRegistersZ(rt) : verifyRegistersR(rt) : rt;
 
         /* When using an immediate or register based addressing mode, then the load flag is set. */
-        int loadFlag = address.getAddressingMode() == AArch64Address.AddressingMode.PC_LITERAL ? 0 : LoadFlag;
+        int loadFlag = address.getAddressingMode() == AddressingMode.PC_LITERAL ? 0 : LoadFlag;
         loadStoreInstruction(LDR, rt, address, false, getLog2TransferSize(srcSize), loadFlag);
     }
 
@@ -1660,9 +1661,9 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * @param address all addressing modes allowed. May not be null.
      */
     protected void ldrs(int targetSize, int srcSize, Register rt, AArch64Address address) {
-        assert srcSize == 8 || srcSize == 16 || srcSize == 32;
-        assert targetSize == 32 || targetSize == 64;
-        assert srcSize != targetSize;
+        assert srcSize == 8 || srcSize == 16 || srcSize == 32 : srcSize;
+        assert targetSize == 32 || targetSize == 64 : targetSize;
+        assert srcSize != targetSize : srcSize + " " + targetSize;
         assert verifyRegistersR(rt);
 
         /* A flag is used to differentiate whether the value should be extended to 32 or 64 bits. */
@@ -1759,7 +1760,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         };
 
         public static PrefetchMode lookup(int enc) {
-            assert enc >= 00 && enc < modes.length;
+            assert enc >= 00 && enc < modes.length : enc + " " + modes;
             return modes[enc];
         }
 
@@ -1812,7 +1813,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * @param address all addressing modes allowed. May not be null.
      */
     public void str(int destSize, Register rt, AArch64Address address) {
-        assert destSize == 8 || destSize == 16 || destSize == 32 || destSize == 64;
+        assert destSize == 8 || destSize == 16 || destSize == 32 || destSize == 64 : destSize;
         assert verifyRegistersZ(rt);
 
         loadStoreInstruction(STR, rt, address, false, getLog2TransferSize(destSize));
@@ -1823,11 +1824,11 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     private void loadStoreInstruction(Instruction instr, Register reg, AArch64Address address, boolean isFP, int log2TransferSize, int extraEncoding) {
-        assert log2TransferSize >= 0 && log2TransferSize < (isFP ? 5 : 4);
-        assert address.getBitMemoryTransferSize() == AArch64Address.ANY_SIZE || getLog2TransferSize(address.getBitMemoryTransferSize()) == log2TransferSize;
+        assert log2TransferSize >= 0 && log2TransferSize < (isFP ? 5 : 4) : log2TransferSize + " " + isFP;
+        assert address.getBitMemoryTransferSize() == AArch64Address.ANY_SIZE || getLog2TransferSize(address.getBitMemoryTransferSize()) == log2TransferSize : Assertions.errorMessage(address);
 
         int transferSizeEncoding;
-        if (address.getAddressingMode() == AArch64Address.AddressingMode.PC_LITERAL) {
+        if (address.getAddressingMode() == AddressingMode.PC_LITERAL) {
             assert log2TransferSize >= 2 : "PC literal loads only works for load/stores of 32-bit and larger";
             transferSizeEncoding = (log2TransferSize - 2) << LoadStoreTransferSizeOffset;
         } else {
@@ -1849,7 +1850,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
                 break;
             case EXTENDED_REGISTER_OFFSET:
             case REGISTER_OFFSET:
-                ExtendType extendType = address.getAddressingMode() == AArch64Address.AddressingMode.EXTENDED_REGISTER_OFFSET ? address.getExtendType() : ExtendType.UXTX;
+                ExtendType extendType = address.getAddressingMode() == AddressingMode.EXTENDED_REGISTER_OFFSET ? address.getExtendType() : ExtendType.UXTX;
                 int shouldScaleFlag = (address.isRegisterOffsetScaled() ? 1 : 0) << LoadStoreScaledRegOffset;
                 emitInt(memOp | LoadStoreRegisterOp | rs2(address.getOffset()) | extendType.encoding << ExtendTypeOffset | shouldScaleFlag | rs1(address.getBase()));
                 break;
@@ -1906,8 +1907,8 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     private static int generateLoadStorePairInstructionEncoding(Instruction instr, Register rt, Register rt2, AArch64Address address, boolean isFP, int log2TransferSize) {
-        assert log2TransferSize >= 2 && log2TransferSize < (isFP ? 5 : 4);
-        assert getLog2TransferSize(address.getBitMemoryTransferSize()) == log2TransferSize;
+        assert log2TransferSize >= 2 && log2TransferSize < (isFP ? 5 : 4) : log2TransferSize + " " + isFP;
+        assert getLog2TransferSize(address.getBitMemoryTransferSize()) == log2TransferSize : Assertions.errorMessageContext("address", address, "logTransferSize", log2TransferSize);
 
         int transferSizeEncoding = (log2TransferSize - 2) << (isFP ? 30 : 31);
         int floatFlag = isFP ? 1 << LoadStoreFpFlagOffset : 0;
@@ -1941,7 +1942,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * @param rn general purpose register.
      */
     protected void ldxr(int size, Register rt, Register rn) {
-        assert size == 8 || size == 16 || size == 32 || size == 64;
+        assert size == 8 || size == 16 || size == 32 || size == 64 : size;
         assert verifyRegistersRP(rt, rn);
 
         exclusiveLoadInstruction(LDXR, rt, rn, getLog2TransferSize(size));
@@ -1958,7 +1959,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * @param rn general purpose register.
      */
     protected void stxr(int size, Register rs, Register rt, Register rn) {
-        assert size == 8 || size == 16 || size == 32 || size == 64;
+        assert size == 8 || size == 16 || size == 32 || size == 64 : size;
         assert verifyRegistersRZP(rs, rt, rn);
 
         exclusiveStoreInstruction(STXR, rs, rt, rn, getLog2TransferSize(size));
@@ -1975,7 +1976,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * @param rn general purpose register.
      */
     public void ldar(int size, Register rt, Register rn) {
-        assert size == 8 || size == 16 || size == 32 || size == 64;
+        assert size == 8 || size == 16 || size == 32 || size == 64 : size;
         assert verifyRegistersRP(rt, rn);
 
         exclusiveLoadInstruction(LDAR, rt, rn, getLog2TransferSize(size));
@@ -1989,7 +1990,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * @param rn general purpose register.
      */
     public void stlr(int size, Register rt, Register rn) {
-        assert size == 8 || size == 16 || size == 32 || size == 64;
+        assert size == 8 || size == 16 || size == 32 || size == 64 : size;
         assert verifyRegistersZP(rt, rn);
 
         // Hack: Passing the r0 means it is ignored when building the encoding.
@@ -2005,7 +2006,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * @param rn general purpose register.
      */
     protected void ldaxr(int size, Register rt, Register rn) {
-        assert size == 8 || size == 16 || size == 32 || size == 64;
+        assert size == 8 || size == 16 || size == 32 || size == 64 : size;
         assert verifyRegistersRP(rt, rn);
 
         exclusiveLoadInstruction(LDAXR, rt, rn, getLog2TransferSize(size));
@@ -2022,7 +2023,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * @param rn general purpose register.
      */
     protected void stlxr(int size, Register rs, Register rt, Register rn) {
-        assert size == 8 || size == 16 || size == 32 || size == 64;
+        assert size == 8 || size == 16 || size == 32 || size == 64 : size;
         assert verifyRegistersRZP(rs, rt, rn);
 
         exclusiveStoreInstruction(STLXR, rs, rt, rn, getLog2TransferSize(size));
@@ -2036,7 +2037,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * @param log2TransferSize log2Ceil of memory transfer size.
      */
     private void exclusiveLoadInstruction(Instruction instr, Register rt, Register rn, int log2TransferSize) {
-        assert log2TransferSize >= 0 && log2TransferSize < 4;
+        assert log2TransferSize >= 0 && log2TransferSize < 4 : log2TransferSize;
         int transferSizeEncoding = log2TransferSize << LoadStoreTransferSizeOffset;
         emitInt(transferSizeEncoding | instr.encoding | rn(rn) | rt(rt));
     }
@@ -2052,8 +2053,8 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * @param log2TransferSize log2Ceil of memory transfer size.
      */
     private void exclusiveStoreInstruction(Instruction instr, Register rs, Register rt, Register rn, int log2TransferSize) {
-        assert log2TransferSize >= 0 && log2TransferSize < 4;
-        assert instr == STLR || (!rs.equals(rt) && !rs.equals(rn));
+        assert log2TransferSize >= 0 && log2TransferSize < 4 : log2TransferSize;
+        assert instr == STLR || (!rs.equals(rt) && !rs.equals(rn)) : instr + " " + rt + " " + rn;
 
         int transferSizeEncoding = log2TransferSize << LoadStoreTransferSizeOffset;
         emitInt(transferSizeEncoding | instr.encoding | rs2(rs) | rn(rn) | rt(rt));
@@ -2072,7 +2073,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * @param release boolean value signifying if the store should use release semantics.
      */
     public void cas(int size, Register rs, Register rt, Register rn, boolean acquire, boolean release) {
-        assert size == 8 || size == 16 || size == 32 || size == 64;
+        assert size == 8 || size == 16 || size == 32 || size == 64 : size;
         assert verifyRegistersRZP(rs, rt, rn);
 
         compareAndSwapInstruction(CAS, rs, rt, rn, getLog2TransferSize(size), acquire, release);
@@ -2096,7 +2097,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * @param release boolean value signifying if the store should use release semantics.
      */
     public void ldadd(int size, Register rs, Register rt, Register rn, boolean acquire, boolean release) {
-        assert size == 8 || size == 16 || size == 32 || size == 64;
+        assert size == 8 || size == 16 || size == 32 || size == 64 : size;
         assert verifyRegistersZRP(rs, rt, rn);
 
         loadAndAddInstruction(LDADD, rs, rt, rn, getLog2TransferSize(size), acquire, release);
@@ -2119,7 +2120,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * @param release boolean value signifying if the store should use release semantics.
      */
     public void swp(int size, Register rs, Register rt, Register rn, boolean acquire, boolean release) {
-        assert size == 8 || size == 16 || size == 32 || size == 64;
+        assert size == 8 || size == 16 || size == 32 || size == 64 : size;
         assert verifyRegistersRZP(rs, rt, rn);
 
         swapInstruction(SWP, rs, rt, rn, getLog2TransferSize(size), acquire, release);
@@ -2493,7 +2494,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     private void bitfieldInstruction(Instruction instr, Register dst, Register src, int r, int s, InstructionType type) {
-        assert s >= 0 && s < type.width && r >= 0 && r < type.width;
+        assert s >= 0 && s < type.width && r >= 0 && r < type.width : s + " " + type + " " + r;
 
         int sf = type == General64 ? 1 << ImmediateSizeOffset : 0;
         emitInt(type.encoding | instr.encoding | BitfieldImmOp | sf | r << ImmediateRotateOffset | s << ImmediateOffset | rd(dst) | rs1(src));
@@ -2518,7 +2519,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         assert verifySizeAndRegistersRZZ(size, dst, src1, src2);
 
         InstructionType type = generalFromSize(size);
-        assert lsb >= 0 && lsb < type.width;
+        assert lsb >= 0 && lsb < type.width : lsb + " " + type;
         int sf = type == General64 ? 1 << ImmediateSizeOffset : 0;
         emitInt(type.encoding | EXTR.encoding | sf | lsb << ImmediateOffset | rd(dst) | rs1(src1) | rs2(src2));
     }
@@ -2598,8 +2599,8 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     private void addSubShiftedInstruction(Instruction instr, Register dst, Register src1, Register src2, ShiftType shiftType, int imm, InstructionType type) {
-        assert shiftType != ShiftType.ROR;
-        assert imm >= 0 && imm < type.width;
+        assert shiftType != ShiftType.ROR : shiftType;
+        assert imm >= 0 && imm < type.width : imm + " " + type;
 
         emitInt(type.encoding | instr.encoding | AddSubShiftedOp | imm << ImmediateOffset | shiftType.encoding << ShiftTypeOffset | rd(dst) | rs1(src1) | rs2(src2));
     }
@@ -2678,7 +2679,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     private void addSubExtendedInstruction(Instruction instr, Register dst, Register src1, Register src2, ExtendType extendType, int shiftAmt, InstructionType type) {
-        assert shiftAmt >= 0 && shiftAmt <= 4;
+        assert shiftAmt >= 0 && shiftAmt <= 4 : shiftAmt;
 
         emitInt(type.encoding | instr.encoding | AddSubExtendedOp | shiftAmt << ImmediateOffset | extendType.encoding << ExtendTypeOffset | rd(dst) | rs1(src1) | rs2(src2));
     }
@@ -2829,7 +2830,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     private void logicalRegInstruction(Instruction instr, Register dst, Register src1, Register src2, ShiftType shiftType, int shiftAmt, InstructionType type) {
-        assert shiftAmt >= 0 && shiftAmt < type.width;
+        assert shiftAmt >= 0 && shiftAmt < type.width : shiftAmt + " " + type;
 
         emitInt(type.encoding | instr.encoding | LogicalShiftOp | shiftAmt << ImmediateOffset | shiftType.encoding << ShiftTypeOffset | rd(dst) | rs1(src1) | rs2(src2));
     }
@@ -3026,7 +3027,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         if (size == 64) {
             dataProcessing1SourceOp(REVX, dst, src, generalFromSize(size));
         } else {
-            assert size == 32;
+            assert size == 32 : size;
             dataProcessing1SourceOp(REVW, dst, src, generalFromSize(size));
         }
     }
@@ -3261,11 +3262,11 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * @param address all addressing modes allowed. May not be null.
      */
     public void fldr(int size, Register rt, AArch64Address address) {
-        assert size == 8 || size == 16 || size == 32 || size == 64 || size == 128;
+        assert size == 8 || size == 16 || size == 32 || size == 64 || size == 128 : size;
         assert verifyRegistersF(rt);
 
         /* When using an immediate or register based addressing mode, then the load flag is set. */
-        int loadFlag = address.getAddressingMode() == AArch64Address.AddressingMode.PC_LITERAL ? 0 : LoadFlag;
+        int loadFlag = address.getAddressingMode() == AddressingMode.PC_LITERAL ? 0 : LoadFlag;
         loadStoreInstruction(LDR, rt, address, true, getLog2TransferSize(size), loadFlag);
     }
 
@@ -3277,7 +3278,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * @param address all addressing modes allowed. May not be null.
      */
     public void fstr(int size, Register rt, AArch64Address address) {
-        assert size == 8 || size == 16 || size == 32 || size == 64 || size == 128;
+        assert size == 8 || size == 16 || size == 32 || size == 64 || size == 128 : size;
         assert verifyRegistersF(rt);
 
         loadStoreInstruction(STR, rt, address, true, getLog2TransferSize(size));
@@ -3289,7 +3290,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * registers.
      */
     public void fldp(int size, Register rt, Register rt2, AArch64Address address) {
-        assert size == 32 || size == 64 || size == 128;
+        assert size == 32 || size == 64 || size == 128 : size;
         assert verifyRegistersFF(rt, rt2);
 
         loadStorePairInstruction(LDP, rt, rt2, address, true, getLog2TransferSize(size));
@@ -3301,7 +3302,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * registers.
      */
     public void fstp(int size, Register rt, Register rt2, AArch64Address address) {
-        assert size == 32 || size == 64 || size == 128;
+        assert size == 32 || size == 64 || size == 128 : size;
         assert verifyRegistersFF(rt, rt2);
 
         loadStorePairInstruction(STP, rt, rt2, address, true, getLog2TransferSize(size));
@@ -3458,19 +3459,19 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      */
     public void fcvt(int dstSize, int srcSize, Register dst, Register src) {
         assert verifyRegistersFF(dst, src);
-        assert dstSize != srcSize;
+        assert dstSize != srcSize : dstSize + " " + srcSize;
 
         switch (dstSize) {
             case 16:
-                assert srcSize == 32 || srcSize == 64;
+                assert srcSize == 32 || srcSize == 64 : srcSize;
                 fpDataProcessing1Source(FCVT2H, dst, src, floatFromSize(srcSize));
                 break;
             case 32:
-                assert srcSize == 16 || srcSize == 64;
+                assert srcSize == 16 || srcSize == 64 : srcSize;
                 fpDataProcessing1Source(FCVT2S, dst, src, floatFromSize(srcSize));
                 break;
             case 64:
-                assert srcSize == 16 || srcSize == 32;
+                assert srcSize == 16 || srcSize == 32 : srcSize;
                 fpDataProcessing1Source(FCVT2D, dst, src, floatFromSize(srcSize));
                 break;
             default:
@@ -4129,7 +4130,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
          * @return New patched instruction value.
          */
         public static int patchAdrpHi21(int original, int imm21) {
-            assert (imm21 & 0x1FFFFF) == imm21;
+            assert (imm21 & 0x1FFFFF) == imm21 : imm21;
 
             // adrp imm_hi bits
             int immHi = (imm21 >> 2) & 0x7FFFF;
@@ -4149,7 +4150,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
          * @return New patched instruction value.
          */
         public static int patchAddLo12(int original, int imm12) {
-            assert (imm12 & 0xFFF) == imm12;
+            assert (imm12 & 0xFFF) == imm12 : imm12;
 
             int[] addBits = {0, 6, 6, 0};
             int[] addOffsets = {0, 2, 0, 0};
@@ -4166,10 +4167,10 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
          * @return New patched instruction value.
          */
         public static int patchLdrLo12(int original, int imm12, int srcSize) {
-            assert (imm12 & 0xFFF) == imm12;
-            assert srcSize == 64 || srcSize == 32 || srcSize == 16 || srcSize == 8;
+            assert (imm12 & 0xFFF) == imm12 : imm12;
+            assert srcSize == 64 || srcSize == 32 || srcSize == 16 || srcSize == 8 : srcSize;
             int shiftSize = srcSize == 64 ? 3 : (srcSize == 32 ? 2 : (srcSize == 16 ? 1 : 0));
-            assert (shiftSize == 0) || ((imm12 & ((1 << shiftSize) - 1)) == 0);
+            assert (shiftSize == 0) || ((imm12 & ((1 << shiftSize) - 1)) == 0) : shiftSize + " " + imm12;
 
             int shiftedValue = (imm12 & 0xFFF) >> shiftSize;
             int[] ldrBits = {0, 6, 6, 0};
@@ -4185,7 +4186,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
          * @return New patched instruction value.
          */
         public static int patchMov(int original, int imm16) {
-            assert (imm16 & 0xFFFF) == imm16;
+            assert (imm16 & 0xFFFF) == imm16 : imm16;
             int[] movBits = {3, 8, 5, 0};
             int[] movOffsets = {5, 0, 0, 0};
             return PatcherUtil.patchBitSequence(original, imm16, movBits, movOffsets);

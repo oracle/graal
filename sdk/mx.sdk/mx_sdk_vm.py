@@ -263,7 +263,8 @@ class GraalVmComponent(object):
                  stability=None,
                  extra_installable_qualifiers=None,
                  has_relative_home=True,
-                 jvm_configs=None):
+                 jvm_configs=None,
+                 extra_native_targets=None):
         """
         :param suite mx.Suite: the suite this component belongs to
         :type name: str
@@ -280,6 +281,7 @@ class GraalVmComponent(object):
                 'configs': ['-truffle KNOWN'],
                 'priority': -1,  # 0 is invalid; < 0 prepends to the default configs; > 0 appends
             }
+        :param extra_native_targets: list of str, enables extra targets in multi-target projects.
         :type license_files: list[str]
         :type third_party_license_files: list[str]
         :type polyglot_lib_build_args: list[str]
@@ -341,6 +343,7 @@ class GraalVmComponent(object):
         self.extra_installable_qualifiers = extra_installable_qualifiers or []
         self.has_relative_home = has_relative_home
         self.jvm_configs = jvm_configs or []
+        self.extra_native_targets = extra_native_targets
 
         if supported is not None or early_adopter:
             if stability is not None:
@@ -807,11 +810,11 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
             if is_gate or is_bench:
                 # For gate and benchmark jobs, we want to know about each compilation failure
                 # but only exit the VM on systemic compilation failure for gate jobs.
-                vm_options.append('-Dgraal.CompilationFailureAction=Diagnose')
-                mx.log('Adding -Dgraal.CompilationFailureAction=Diagnose VM option to image')
+                vm_options.append('-Djdk.graal.CompilationFailureAction=Diagnose')
+                mx.log('Adding -Djdk.graal.CompilationFailureAction=Diagnose VM option to image')
                 if is_gate:
-                    mx.log('Adding -Dgraal.SystemicCompilationFailureRate=-1 VM option to image')
-                    vm_options.append('-Dgraal.SystemicCompilationFailureRate=-1')
+                    mx.log('Adding -Djdk.graal.SystemicCompilationFailureRate=-1 VM option to image')
+                    vm_options.append('-Djdk.graal.SystemicCompilationFailureRate=-1')
 
         if use_upgrade_module_path or _jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk):
             vm_options.append('-XX:ThreadPriorityPolicy=1')
@@ -886,7 +889,7 @@ def _vm_options_match(vm_options, vm_options_path):
 
 def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                   root_module_names=None,
-                  missing_export_target_action='create',
+                  missing_export_target_action='none',
                   with_source=lambda x: True,
                   vendor_info=None,
                   dedup_legal_notices=True,
@@ -909,7 +912,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                        "create" - an empty module is created
                         "error" - raise an error
                          "warn" - raise a warning
-                           None - do nothing
+                         "none" - do nothing
     :param lambda with_source: returns True if the sources of a module distribution must be included in the new JDK
     :param dict vendor_info: values for the jlink vendor options added by JDK-8232080
     :param bool use_upgrade_module_path: if True, then instead of linking `module_dists` into the image, resolve
@@ -919,6 +922,11 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
     :return bool: False if use_upgrade_module_path == True and the existing image is up to date otherwise True
     """
     assert callable(with_source)
+    import mx_sdk_vm_impl
+
+    missing_export_target_action = missing_export_target_action or mx_sdk_vm_impl.default_jlink_missing_export_action()
+    allowed_actions = ('create', 'error', 'warn', 'none')
+    assert missing_export_target_action in allowed_actions, f"Unknown missing export action. Expected: {allowed_actions}. Got: {missing_export_target_action}"
 
     if jdk.javaCompliance < '9':
         mx.abort('Cannot derive a new JDK from ' + jdk.home + ' with jlink since it is not JDK 9 or later')
@@ -951,55 +959,56 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
     # Map from JavaModuleDescriptors to post-jlink jar location.
     synthetic_modules = OrderedDict()
     try:
-        ignore_module_names = set(mx_javamodules.get_module_name(mx.dependency(ignore_dist)) for ignore_dist in ignore_dists)
-        # Synthesize modules for targets of qualified exports that are not present in `modules`.
-        # Without this, runtime module resolution will fail due to missing modules.
-        target_requires = {}
-        for jmd in modules:
-            for targets in jmd.exports.values():
-                for target in targets:
-                    if target not in all_module_names and target not in ignore_module_names and target not in hashes:
-                        target_requires.setdefault(target, set()).add(jmd.name)
-        if target_requires and missing_export_target_action is not None:
-            if missing_export_target_action in ('error', 'warn'):
-                mx.abort_or_warn('Target(s) of qualified exports cannot be resolved:\n* ' + '\n* '.join(f"{k} required by {v}" for k, v in target_requires.items()), missing_export_target_action == 'abort')
-            assert missing_export_target_action in ('create', 'warn'), 'invalid value for missing_export_target_action: ' + str(missing_export_target_action)
+        if missing_export_target_action != 'none':
+            ignore_module_names = set(mx_javamodules.get_module_name(mx.dependency(ignore_dist)) for ignore_dist in ignore_dists)
+            # Synthesize modules for targets of qualified exports that are not present in `modules`.
+            # Without this, runtime module resolution will fail due to missing modules.
+            target_requires = {}
+            for jmd in modules:
+                for targets in jmd.exports.values():
+                    for target in targets:
+                        if target not in all_module_names and target not in ignore_module_names and target not in hashes:
+                            target_requires.setdefault(target, set()).add(jmd.name)
+            if target_requires:
+                if missing_export_target_action in ('error', 'warn'):
+                    mx.abort_or_warn('Target(s) of qualified exports cannot be resolved:\n* ' + '\n* '.join(f"{k} required by {v}" for k, v in target_requires.items()), missing_export_target_action == 'abort')
+                assert missing_export_target_action in ('create', 'warn'), 'invalid value for missing_export_target_action: ' + missing_export_target_action
 
-            for name, requires in sorted(target_requires.items()):
-                module_jar = join(build_dir, name + '.jar')
-                jmd = JavaModuleDescriptor(name, {}, requires={module: [] for module in requires}, uses=set(), provides={}, jarpath=module_jar)
-                module_build_dir = mx.ensure_dir_exists(join(build_dir, name))
-                module_info = jmd.as_module_info()
-                module_info_java = join(module_build_dir, 'module-info.java')
-                module_info_class = join(module_build_dir, 'module-info.class')
-                dst_module_jar = join(upgrade_dir, name + '.jar')
-                synthetic_modules[jmd] = dst_module_jar
-                if use_upgrade_module_path and exists(dst_module_jar):
-                    with ZipFile(dst_module_jar, 'r') as zf:
-                        previous_module_info = zf.read('module-info.java').decode()
-                    if previous_module_info == module_info:
-                        mx.logv('[Reusing synthetic module {}]'.format(name))
-                        os.rename(dst_module_jar, module_jar)
-                        continue
-                    mx.logv('[Rebuilding synthetic module {} as module descriptor changed]'.format(name))
+                for name, requires in sorted(target_requires.items()):
+                    module_jar = join(build_dir, name + '.jar')
+                    jmd = JavaModuleDescriptor(name, {}, requires={module: [] for module in requires}, uses=set(), provides={}, jarpath=module_jar)
+                    module_build_dir = mx.ensure_dir_exists(join(build_dir, name))
+                    module_info = jmd.as_module_info()
+                    module_info_java = join(module_build_dir, 'module-info.java')
+                    module_info_class = join(module_build_dir, 'module-info.class')
+                    dst_module_jar = join(upgrade_dir, name + '.jar')
+                    synthetic_modules[jmd] = dst_module_jar
+                    if use_upgrade_module_path and exists(dst_module_jar):
+                        with ZipFile(dst_module_jar, 'r') as zf:
+                            previous_module_info = zf.read('module-info.java').decode()
+                        if previous_module_info == module_info:
+                            mx.logv('[Reusing synthetic module {}]'.format(name))
+                            os.rename(dst_module_jar, module_jar)
+                            continue
+                        mx.logv('[Rebuilding synthetic module {} as module descriptor changed]'.format(name))
 
-                with open(module_info_java, 'w') as fp:
-                    fp.write(module_info)
-                mx.run([jdk.javac, '-d', module_build_dir,
-                        '--limit-modules=java.base,' + ','.join(jmd.requires.keys()),
-                        '--module-path=' + os.pathsep.join((m.jarpath for m in modules)),
-                        module_info_java])
-                with ZipFile(module_jar, 'w') as zf:
-                    zf.write(module_info_java, 'module-info.java')
-                    zf.write(module_info_class, 'module-info.class')
-                if exists(jmd.get_jmod_path()):
-                    os.remove(jmd.get_jmod_path())
-                if not use_upgrade_module_path:
-                    mx.run([jdk.javac.replace('javac', 'jmod'), 'create', '--class-path=' + module_build_dir, jmd.get_jmod_path()])
+                    with open(module_info_java, 'w') as fp:
+                        fp.write(module_info)
+                    mx.run([jdk.javac, '-d', module_build_dir,
+                            '--limit-modules=java.base,' + ','.join(jmd.requires.keys()),
+                            '--module-path=' + os.pathsep.join((m.jarpath for m in modules)),
+                            module_info_java])
+                    with ZipFile(module_jar, 'w') as zf:
+                        zf.write(module_info_java, 'module-info.java')
+                        zf.write(module_info_class, 'module-info.class')
+                    if exists(jmd.get_jmod_path()):
+                        os.remove(jmd.get_jmod_path())
+                    if not use_upgrade_module_path:
+                        mx.run([jdk.javac.replace('javac', 'jmod'), 'create', '--class-path=' + module_build_dir, jmd.get_jmod_path()])
 
-            modules.extend(synthetic_modules.keys())
-            module_names = frozenset((m.name for m in modules))
-            all_module_names = frozenset(list(jdk_modules.keys())) | module_names
+                modules.extend(synthetic_modules.keys())
+                module_names = frozenset((m.name for m in modules))
+                all_module_names = frozenset(list(jdk_modules.keys())) | module_names
 
         # Edit lib/security/default.policy in java.base
         patched_java_base = _patch_default_security_policy(build_dir, jmods_dir, dst_jdk_dir)

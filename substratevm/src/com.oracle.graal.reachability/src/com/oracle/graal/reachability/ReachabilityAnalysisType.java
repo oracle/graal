@@ -62,7 +62,31 @@ public class ReachabilityAnalysisType extends AnalysisType {
         super(universe, javaType, storageKind, objectType, cloneableType);
     }
 
-    public boolean registerAsInstantiated() {
+    @Override
+    public boolean registerAsInHeap(Object reason) {
+        if (!super.registerAsInHeap(reason)) {
+            return false;
+        }
+        if (registerAsInstantiated()) {
+            ReachabilityAnalysisEngine bb = (ReachabilityAnalysisEngine) universe.getBigbang();
+            bb.schedule(() -> bb.onTypeInstantiated(this, reason));
+        }
+        return true;
+    }
+
+    @Override
+    public boolean registerAsAllocated(Object reason) {
+        if (!super.registerAsAllocated(reason)) {
+            return false;
+        }
+        if (registerAsInstantiated()) {
+            ReachabilityAnalysisEngine bb = (ReachabilityAnalysisEngine) universe.getBigbang();
+            bb.schedule(() -> bb.onTypeInstantiated(this, reason));
+        }
+        return true;
+    }
+
+    private boolean registerAsInstantiated() {
         return AtomicUtils.atomicMark(this, isInstantiatedUpdater);
     }
 

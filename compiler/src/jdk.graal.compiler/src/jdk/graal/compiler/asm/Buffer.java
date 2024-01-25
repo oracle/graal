@@ -88,13 +88,13 @@ final class Buffer {
     }
 
     public void emitByte(int b) {
-        assert NumUtil.isUByte(b) || NumUtil.isByte(b);
+        assert NumUtil.isUByte(b) || NumUtil.isByte(b) : b;
         ensureSize(data.position() + 1);
         data.put((byte) (b & 0xFF));
     }
 
     public void emitShort(int b) {
-        assert NumUtil.isUShort(b) || NumUtil.isShort(b);
+        assert NumUtil.isUShort(b) || NumUtil.isShort(b) : b;
         ensureSize(data.position() + 2);
         data.putShort((short) b);
     }
@@ -118,13 +118,13 @@ final class Buffer {
     }
 
     public void emitByte(int b, int pos) {
-        assert NumUtil.isUByte(b) || NumUtil.isByte(b);
+        assert NumUtil.isUByte(b) || NumUtil.isByte(b) : b;
         ensureSize(pos + 1);
         data.put(pos, (byte) (b & 0xFF));
     }
 
     public void emitShort(int b, int pos) {
-        assert NumUtil.isUShort(b) || NumUtil.isShort(b);
+        assert NumUtil.isUShort(b) || NumUtil.isShort(b) : b;
         ensureSize(pos + 2);
         data.putShort(pos, (short) b).position();
     }

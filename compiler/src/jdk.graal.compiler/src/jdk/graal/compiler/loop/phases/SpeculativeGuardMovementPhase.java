@@ -32,6 +32,7 @@ import jdk.graal.compiler.core.common.cfg.Loop;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
@@ -74,13 +75,13 @@ import jdk.graal.compiler.nodes.loop.InductionVariable.Direction;
 import jdk.graal.compiler.nodes.loop.LoopEx;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.phases.FloatingGuardPhase;
+import jdk.graal.compiler.phases.Speculative;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.PostRunCanonicalizationPhase;
 import jdk.graal.compiler.phases.common.util.EconomicSetNodeEventListener;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
-
 import jdk.vm.ci.meta.DefaultProfilingInfo;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -120,7 +121,7 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  * speculation log entry is associated with the hoisted guard such that when it fails, the same
  * guard hoisting will not be performed in a subsequent compilation.
  */
-public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<MidTierContext> implements FloatingGuardPhase {
+public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<MidTierContext> implements FloatingGuardPhase, Speculative {
 
     private final boolean ignoreFrequency;
     private final boolean requireSpeculationLog;
@@ -305,7 +306,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             HIRBlock earliest = null;
             for (Node input : node.inputs().snapshot()) {
                 if (input != null) {
-                    assert input instanceof ValueNode;
+                    assert input instanceof ValueNode : Assertions.errorMessage(input);
                     HIRBlock inputEarliest;
                     if (input instanceof WithExceptionNode) {
                         inputEarliest = cfg.getNodeToBlock().get(((WithExceptionNode) input).next());
@@ -322,8 +323,8 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         }
 
         private Loop<HIRBlock> tryOptimizeCompare(GuardNode guard, CompareNode compare) {
-            assert compare instanceof IntegerLessThanNode || compare instanceof IntegerBelowNode;
-            assert !compare.usages().filter(GuardNode.class).isEmpty();
+            assert compare instanceof IntegerLessThanNode || compare instanceof IntegerBelowNode : Assertions.errorMessage(compare);
+            assert !compare.usages().filter(GuardNode.class).isEmpty() : Assertions.errorMessage(compare, compare.usages());
             InductionVariable ivX = loops.getInductionVariable(compare.getX());
             InductionVariable ivY = loops.getInductionVariable(compare.getY());
             if (ivX == null && ivY == null) {
@@ -426,7 +427,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                 extremumTest = graph.addOrUniqueWithInputs(IntegerBelowNode.create(x1, y1, NodeView.DEFAULT));
                 initTest = graph.addOrUniqueWithInputs(IntegerBelowNode.create(x2, y2, NodeView.DEFAULT));
             } else {
-                assert compare instanceof IntegerLessThanNode;
+                assert compare instanceof IntegerLessThanNode : Assertions.errorMessage(compare);
                 extremumTest = graph.addOrUniqueWithInputs(IntegerLessThanNode.create(x1, y1, NodeView.DEFAULT));
                 initTest = graph.addOrUniqueWithInputs(IntegerLessThanNode.create(x2, y2, NodeView.DEFAULT));
             }
@@ -514,7 +515,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                     x = limit;
                     y = start;
                 } else {
-                    assert direction == Direction.Down;
+                    assert direction == Direction.Down : direction;
                     // start < limit || newCompare
                     x = start;
                     y = limit;
@@ -525,7 +526,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                     x = start;
                     y = limit;
                 } else {
-                    assert direction == Direction.Down;
+                    assert direction == Direction.Down : direction;
                     // start <= limit || newCompare
                     x = limit;
                     y = start;
@@ -592,7 +593,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
 
             CountedLoopInfo countedLoop = loopEx.counted();
 
-            if (profilingInfo != null && !(profilingInfo instanceof DefaultProfilingInfo)) {
+            if (!(profilingInfo instanceof DefaultProfilingInfo)) {
                 double loopFreqThreshold = 1;
                 if (!(iv.initNode() instanceof ConstantNode && bound instanceof ConstantNode)) {
                     // additional compare and short-circuit-or introduced in optimizeCompare
@@ -851,7 +852,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         private HIRBlock earliestBlockForGuard(GuardNode guard, Loop<HIRBlock> forcedHoisting) {
             DebugContext debug = guard.getDebug();
             Node anchor = guard.getAnchor().asNode();
-            assert guard.inputs().count() == 2;
+            assert guard.inputs().count() == 2 : Assertions.errorMessage(guard.inputs());
             HIRBlock conditionEarliest = earliestBlock(guard.getCondition());
 
             HIRBlock anchorEarliest = earliestBlock(anchor);
@@ -930,10 +931,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                     return false;
                 }
             }
-            if (profilingInfo == null) {
-                return false;
-            }
-            if (checkDeoptimizationCount) {
+            if (checkDeoptimizationCount && profilingInfo != null) {
                 if (profilingInfo.getDeoptimizationCount(DeoptimizationReason.LoopLimitCheck) > 1) {
                     debug.log("Preventing Speculative Guard Motion because of failed LoopLimitCheck");
                     return false;

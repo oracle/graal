@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.BitSet;
 
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.Indent;
 import jdk.graal.compiler.lir.LIRInstruction;
@@ -59,7 +60,8 @@ public class LinearScanResolveDataFlowPhase extends LinearScanAllocationPhase {
     protected void resolveCollectMappings(BasicBlock<?> fromBlock, BasicBlock<?> toBlock, BasicBlock<?> midBlock, MoveResolver moveResolver) {
         assert moveResolver.checkEmpty();
         assert midBlock == null ||
-                        (midBlock.getPredecessorCount() == 1 && midBlock.getSuccessorCount() == 1 && midBlock.getPredecessorAt(0).equals(fromBlock) && midBlock.getSuccessorAt(0).equals(toBlock));
+                        (midBlock.getPredecessorCount() == 1 && midBlock.getSuccessorCount() == 1 && midBlock.getPredecessorAt(0).equals(fromBlock) &&
+                                        midBlock.getSuccessorAt(0).equals(toBlock)) : Assertions.errorMessage(fromBlock, toBlock, midBlock, moveResolver);
 
         int toBlockFirstInstructionId = allocator.getFirstLirInstructionId(toBlock);
         int fromBlockLastInstructionId = allocator.getLastLirInstructionId(fromBlock) + 1;
@@ -116,7 +118,7 @@ public class LinearScanResolveDataFlowPhase extends LinearScanAllocationPhase {
                 }
             }
 
-            moveResolver.setInsertPosition(allocator.getLIR().getLIRforBlock(toBlock), 1);
+            moveResolver.setInsertPosition(allocator.getLIR().getLIRforBlock(toBlock), allocator.getLIRGenerationResult().getFirstInsertPosition());
         }
     }
 
@@ -168,7 +170,7 @@ public class LinearScanResolveDataFlowPhase extends LinearScanAllocationPhase {
                          */
                         resolveCollectMappings(pred, sux, block, moveResolver);
                         if (moveResolver.hasMappings()) {
-                            moveResolver.setInsertPosition(instructions, 1);
+                            moveResolver.setInsertPosition(instructions, allocator.getLIRGenerationResult().getFirstInsertPosition());
                             moveResolver.resolveAndAppendMoves();
                         }
                     }

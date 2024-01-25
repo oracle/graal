@@ -24,11 +24,11 @@
  */
 package jdk.graal.compiler.hotspot.stubs;
 
+import static jdk.graal.compiler.nodes.ConstantNode.forBoolean;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCallee;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
 import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
-import static jdk.graal.compiler.nodes.ConstantNode.forBoolean;
 
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -43,7 +43,6 @@ import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import jdk.graal.compiler.hotspot.meta.HotSpotLoweringProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
-import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -51,8 +50,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.GraphKit;
 import jdk.graal.compiler.replacements.nodes.ReadRegisterNode;
-import jdk.graal.compiler.word.WordTypes;
-
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotSignature;
 import jdk.vm.ci.meta.JavaMethod;
@@ -123,7 +120,7 @@ public abstract class AbstractForeignCallStub extends Stub {
                         address,
                         HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS,
                         NativeCall,
-                        NativeCall);
+                        null);
     }
 
     protected abstract HotSpotForeignCallDescriptor getTargetSignature(HotSpotForeignCallDescriptor descriptor);
@@ -193,7 +190,7 @@ public abstract class AbstractForeignCallStub extends Stub {
      *             getAndClearObjectResult(thread());
      *             DeoptimizeCallerNode.deopt(None, RuntimeConstraint);
      *         }
-     *         return verifyObject(getAndClearObjectResult(thread()));
+     *         return getAndClearObjectResult(thread());
      *     }
      * </pre>
      *
@@ -227,7 +224,6 @@ public abstract class AbstractForeignCallStub extends Stub {
     @Override
     @SuppressWarnings("try")
     protected final StructuredGraph getGraph(DebugContext debug, CompilationIdentifier compilationId) {
-        WordTypes wordTypes = providers.getWordTypes();
         boolean isObjectResult = returnsObject();
         // Do we want to clear the pending exception?
         boolean shouldClearException = shouldClearException();
@@ -236,19 +232,17 @@ public abstract class AbstractForeignCallStub extends Stub {
             ForeignCallSnippets.Templates foreignCallSnippets = lowerer.getForeignCallSnippets();
             ResolvedJavaMethod handlePendingException = foreignCallSnippets.handlePendingException.getMethod();
             ResolvedJavaMethod getAndClearObjectResult = foreignCallSnippets.getAndClearObjectResult.getMethod();
-            ResolvedJavaMethod verifyObject = foreignCallSnippets.verifyObject.getMethod();
             ResolvedJavaMethod thisMethod = getGraphMethod();
-            HotSpotGraphKit kit = new HotSpotGraphKit(debug, thisMethod, providers, wordTypes, providers.getGraphBuilderPlugins(), compilationId, toString(), false, true);
+            HotSpotGraphKit kit = new HotSpotGraphKit(debug, thisMethod, providers, providers.getGraphBuilderPlugins(), compilationId, toString(), false, true);
             StructuredGraph graph = kit.getGraph();
             graph.getGraphState().forceDisableFrameStateVerification();
-            ReadRegisterNode thread = kit.append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), wordTypes.getWordKind(), true, false));
+            ReadRegisterNode thread = kit.append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), providers.getWordTypes().getWordKind(), true, false));
             ValueNode result = createTargetCall(kit, thread);
             if (linkage.getDescriptor().getTransition() == HotSpotForeignCallDescriptor.Transition.SAFEPOINT) {
                 kit.createIntrinsicInvoke(handlePendingException, thread, forBoolean(shouldClearException, graph), forBoolean(isObjectResult, graph));
             }
             if (isObjectResult) {
-                InvokeNode object = kit.createIntrinsicInvoke(getAndClearObjectResult, thread);
-                result = kit.createIntrinsicInvoke(verifyObject, object);
+                result = kit.createIntrinsicInvoke(getAndClearObjectResult, thread);
             }
             kit.append(new ReturnNode(linkage.getDescriptor().getResultType() == void.class ? null : result));
             debug.dump(DebugContext.VERBOSE_LEVEL, graph, "Initial stub graph");

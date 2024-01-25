@@ -24,10 +24,8 @@
  */
 package com.oracle.svm.core;
 
-import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 
@@ -39,22 +37,6 @@ public final class MemoryWalker {
         <T> boolean visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access);
     }
 
-    public interface Visitor extends ImageHeapRegionVisitor {
-        /**
-         * Visit a heap chunk, using the provided access methods. Return true if visiting should
-         * continue, else false.
-         */
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while visiting memory.")
-        <T extends PointerBase> boolean visitHeapChunk(T heapChunk, HeapChunkAccess<T> access);
-
-        /**
-         * Visit compiled code, using the provided access methods. Return true if visiting should
-         * continue, else false.
-         */
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while visiting memory.")
-        <T extends CodeInfo> boolean visitCode(T codeInfo, CodeAccess<T> access);
-    }
-
     /** A set of access methods for visiting regions of the native image heap. */
     public interface NativeImageHeapRegionAccess<T> {
 
@@ -64,50 +46,11 @@ public final class MemoryWalker {
 
         String getRegionName(T region);
 
-        boolean containsReferences(T region);
-
         boolean isWritable(T region);
+
+        boolean consistsOfHugeObjects(T region);
 
         boolean visitObjects(T region, ObjectVisitor visitor);
     }
 
-    /** A set of access methods for visiting heap chunk memory. */
-    public interface HeapChunkAccess<T extends PointerBase> {
-
-        /** Return the start of the heap chunk. */
-        UnsignedWord getStart(T heapChunk);
-
-        /** Return the size of the heap chunk. */
-        UnsignedWord getSize(T heapChunk);
-
-        /** Return the address where allocation starts within the heap chunk. */
-        UnsignedWord getAllocationStart(T heapChunk);
-
-        /**
-         * Return the address where allocation has ended within the heap chunk. This is the first
-         * address past the end of allocated space within the heap chunk.
-         */
-        UnsignedWord getAllocationEnd(T heapChunk);
-
-        /**
-         * Return the name of the region that contains the heap chunk. E.g., "young", "old", "free",
-         * etc.
-         */
-        String getRegion(T heapChunk);
-
-        /** Return true if the heap chunk is an aligned heap chunk, else false. */
-        boolean isAligned(T heapChunk);
-    }
-
-    /** A set of access methods for visiting code memory. */
-    public interface CodeAccess<T extends CodeInfo> {
-
-        UnsignedWord getStart(T codeInfo);
-
-        UnsignedWord getCodeAndDataMemorySize(T codeInfo);
-
-        UnsignedWord getNativeMetadataSize(T codeInfo);
-
-        String getName(T codeInfo);
-    }
 }

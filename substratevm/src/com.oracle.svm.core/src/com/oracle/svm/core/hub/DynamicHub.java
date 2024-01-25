@@ -25,6 +25,7 @@
 package com.oracle.svm.core.hub;
 
 import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
+import static com.oracle.svm.core.annotate.TargetElement.CONSTRUCTOR_NAME;
 import static com.oracle.svm.core.reflect.ReflectionMetadataDecoder.NO_DATA;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_CLASSES_FLAG;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_CONSTRUCTORS_FLAG;
@@ -72,9 +73,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -84,6 +82,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
+import com.oracle.svm.core.BuildPhaseProvider.CompileQueueFinished;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
@@ -101,7 +100,9 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDK22OrLater;
+import com.oracle.svm.core.jdk.JDK23OrLater;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
@@ -117,9 +118,15 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.internal.access.JavaLangReflectAccess;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.reflect.CallerSensitive;
+import jdk.internal.reflect.CallerSensitiveAdapter;
 import jdk.internal.reflect.FieldAccessor;
 import jdk.internal.reflect.Reflection;
 import jdk.internal.reflect.ReflectionFactory;
@@ -127,7 +134,10 @@ import sun.reflect.annotation.AnnotationType;
 import sun.reflect.generics.factory.GenericsFactory;
 import sun.reflect.generics.repository.ClassRepository;
 
-@Hybrid
+/**
+ * Instantiations of this class have a special layout. See {@code DynamicHubLayout} for a
+ * description of how the object is arranged.
+ */
 @Substitute
 @TargetClass(java.lang.Class.class)
 @SuppressWarnings({"static-method", "serial"})
@@ -202,10 +212,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * table.
      */
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
-    private short monitorOffset;
+    private char monitorOffset;
 
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
-    private short optionalIdentityHashOffset;
+    private char identityHashOffset;
 
     /**
      * Bit-set for various boolean flags, to reduce size of instances. It is important that this
@@ -339,10 +349,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * match the assignee's type.
      */
     @UnknownObjectField(availability = AfterHostedUniverse.class)//
-    @Hybrid.TypeIDSlots private short[] typeCheckSlots;
+    private short[] typeCheckSlots;
 
     @UnknownObjectField(availability = AfterHostedUniverse.class)//
-    @Hybrid.Array private CFunctionPointer[] vtable;
+    private CFunctionPointer[] vtable;
 
     /** Field used for module information access at run-time. */
     private Module module;
@@ -445,22 +455,18 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setData(int layoutEncoding, int typeID, int monitorOffset, int optionalIdentityHashOffset, short typeCheckStart, short typeCheckRange, short typeCheckSlot,
+    public void setData(int layoutEncoding, int typeID, int monitorOffset, int identityHashOffset, short typeCheckStart, short typeCheckRange, short typeCheckSlot,
                     short[] typeCheckSlots, CFunctionPointer[] vtable, long referenceMapIndex, boolean isInstantiated, boolean canInstantiateAsInstance, boolean isProxyClass,
                     boolean isRegisteredForSerialization) {
         assert this.vtable == null : "Initialization must be called only once";
         assert !(!isInstantiated && canInstantiateAsInstance);
-        if (LayoutEncoding.isPureInstance(layoutEncoding)) {
-            ObjectLayout ol = ConfigurationValues.getObjectLayout();
-            assert ol.hasFixedIdentityHashField() ? (optionalIdentityHashOffset == ol.getFixedIdentityHashOffset()) : (optionalIdentityHashOffset > 0);
-        } else {
-            assert optionalIdentityHashOffset == -1;
-        }
+        VMError.guarantee(monitorOffset == (char) monitorOffset, "Class %s has an invalid monitor field offset. Most likely, its objects are larger than supported.", name);
+        VMError.guarantee(identityHashOffset == (char) identityHashOffset, "Class %s has an invalid identity hash code field offset. Most likely, its objects are larger than supported.", name);
 
         this.layoutEncoding = layoutEncoding;
         this.typeID = typeID;
-        this.monitorOffset = NumUtil.safeToShort(monitorOffset);
-        this.optionalIdentityHashOffset = NumUtil.safeToShort(optionalIdentityHashOffset);
+        this.monitorOffset = (char) monitorOffset;
+        this.identityHashOffset = (char) identityHashOffset;
         this.typeCheckStart = typeCheckStart;
         this.typeCheckRange = typeCheckRange;
         this.typeCheckSlot = typeCheckSlot;
@@ -632,13 +638,25 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return monitorOffset;
     }
 
+    /**
+     * If possible, use {@link LayoutEncoding#getIdentityHashOffset(Object)} instead. If the hash
+     * code field is optional, note that this method may return an offset that is outside the bounds
+     * of a newly allocated object.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    int getOptionalIdentityHashOffset() {
+    public int getIdentityHashOffset() {
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
-        if (ol.hasFixedIdentityHashField()) { // enable elimination of our field
-            return ol.getFixedIdentityHashOffset();
+        if (ol.isIdentityHashFieldInObjectHeader()) { // enable elimination of our field
+            return ol.getObjectHeaderIdentityHashOffset();
         }
-        return optionalIdentityHashOffset;
+
+        int result = identityHashOffset;
+        if (GraalDirectives.inIntrinsic()) {
+            ReplacementsUtil.dynamicAssert(result > 0, "must have an identity hash field");
+        } else {
+            assert result > 0 : "must have an identity hash field";
+        }
+        return result;
     }
 
     public DynamicHub getSuperHub() {
@@ -863,7 +881,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private native boolean isAnonymousClass();
 
     @KeepOriginal
-    @TargetElement
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     private native boolean isUnnamedClass();
 
     @Substitute
@@ -1058,16 +1076,32 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return getReflectionFactory().copyMethod(method);
     }
 
-    private void checkMethod(String methodName, Class<?>[] parameterTypes, Executable method, boolean publicOnly) throws NoSuchMethodException {
+    private void checkMethod(String methodName, Class<?>[] parameterTypes, Method method, boolean publicOnly) throws NoSuchMethodException {
+        if (CONSTRUCTOR_NAME.equals(methodName)) {
+            throw new NoSuchMethodException(methodToString(methodName, parameterTypes));
+        }
+        checkExecutable(methodName, parameterTypes, method, publicOnly);
+    }
+
+    private void checkConstructor(Class<?>[] parameterTypes, Constructor<?> constructor, boolean publicOnly) throws NoSuchMethodException {
+        checkExecutable(CONSTRUCTOR_NAME, parameterTypes, constructor, publicOnly);
+    }
+
+    private void checkExecutable(String methodName, Class<?>[] parameterTypes, Executable method, boolean publicOnly) throws NoSuchMethodException {
         boolean throwMissingErrors = throwMissingRegistrationErrors();
         Class<?> clazz = DynamicHub.toClass(this);
         if (method == null) {
-            if (throwMissingErrors && !allElementsRegistered(publicOnly, ALL_DECLARED_METHODS_FLAG, ALL_METHODS_FLAG)) {
+            boolean isConstructor = methodName.equals(CONSTRUCTOR_NAME);
+            int allDeclaredFlag = isConstructor ? ALL_DECLARED_CONSTRUCTORS_FLAG : ALL_DECLARED_METHODS_FLAG;
+            int allPublicFlag = isConstructor ? ALL_CONSTRUCTORS_FLAG : ALL_METHODS_FLAG;
+            if (throwMissingErrors && !allElementsRegistered(publicOnly, allDeclaredFlag, allPublicFlag) &&
+                            !(isConstructor && isInterface())) {
                 MissingReflectionRegistrationUtils.forMethod(clazz, methodName, parameterTypes);
             }
             /*
              * If getDeclaredMethods (or getMethods for a public method) is registered, we know for
-             * sure that the method does indeed not exist if we don't find it.
+             * sure that the method does indeed not exist if we don't find it. This is also the case
+             * when querying an interface constructor.
              */
             throw new NoSuchMethodException(methodToString(methodName, parameterTypes));
         } else {
@@ -1210,6 +1244,14 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         /* No runtime access checks. */
     }
 
+    /**
+     * Never called as it is partially evaluated away due to SecurityManager.
+     */
+    @KeepOriginal
+    @SuppressWarnings({"deprecation", "unused"})
+    private static native void checkPackageAccessForPermittedSubclasses(@SuppressWarnings("removal") SecurityManager sm,
+                    ClassLoader ccl, Class<?>[] subClasses);
+
     @Substitute
     private static ReflectionFactory getReflectionFactory() {
         return Target_jdk_internal_reflect_ReflectionFactory.getReflectionFactory();
@@ -1232,7 +1274,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                 candidate = constructor;
             }
         }
-        checkMethod("<init>", parameterTypes, candidate, which == Member.PUBLIC);
+        checkConstructor(parameterTypes, candidate, which == Member.PUBLIC);
         return candidate;
     }
 
@@ -1305,24 +1347,28 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
+    @CallerSensitive
     private static Class<?> forName(String className) throws Throwable {
         return forName(className, Reflection.getCallerClass());
     }
 
     @Substitute
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
+    @CallerSensitiveAdapter
     private static Class<?> forName(String className, Class<?> caller) throws Throwable {
         return forName(className, true, caller.getClassLoader(), caller);
     }
 
     @Substitute
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
+    @CallerSensitive
     private static Class<?> forName(Module module, String className) throws Throwable {
         return forName(module, className, Reflection.getCallerClass());
     }
 
     @Substitute
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
+    @CallerSensitiveAdapter
     private static Class<?> forName(@SuppressWarnings("unused") Module module, String className, Class<?> caller) throws Throwable {
         /*
          * The module system is not supported for now, therefore the module parameter is ignored and
@@ -1336,11 +1382,13 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Substitute
+    @CallerSensitive
     private static Class<?> forName(String name, boolean initialize, ClassLoader loader) throws Throwable {
         return forName(name, initialize, loader, Reflection.getCallerClass());
     }
 
     @Substitute
+    @CallerSensitiveAdapter
     private static Class<?> forName(String name, boolean initialize, ClassLoader loader, @SuppressWarnings("unused") Class<?> caller) throws Throwable {
         if (name == null) {
             throw new NullPointerException();
@@ -1405,6 +1453,14 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @KeepOriginal
     public native String toGenericString();
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK23OrLater.class)
+    private native void addSealingInfo(int modifiers, StringBuilder sb);
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK23OrLater.class)
+    private native boolean hasSealedAncestor(Class<?> clazz);
 
     @KeepOriginal
     public native boolean isSynthetic();
@@ -1714,13 +1770,22 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private native GenericsFactory getFactory();
 
     @KeepOriginal
+    @TargetElement(onlyWith = JDK22OrLater.class)
+    native Method findMethod(boolean publicOnly, String name, Class<?>... parameterTypes);
+
+    @KeepOriginal
     private native Method getMethod0(String methodName, Class<?>[] parameterTypes);
 
     @KeepOriginal
     private static native void addAll(Collection<Field> c, Field[] o);
 
     @KeepOriginal
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     private native Target_java_lang_PublicMethods_MethodList getMethodsRecursive(String methodName, Class<?>[] parameterTypes, boolean includeStatic);
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK22OrLater.class)
+    private native Target_java_lang_PublicMethods_MethodList getMethodsRecursive(String methodName, Class<?>[] parameterTypes, boolean includeStatic, boolean publicOnly);
 
     @KeepOriginal
     private native Field getField0(String fieldName);
@@ -1833,18 +1898,25 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     private static final class DynamicHubMetadata {
+        @UnknownPrimitiveField(availability = CompileQueueFinished.class) //
         final int enclosingMethodInfoIndex;
 
+        @UnknownPrimitiveField(availability = CompileQueueFinished.class)//
         final int annotationsIndex;
 
+        @UnknownPrimitiveField(availability = CompileQueueFinished.class)//
         final int typeAnnotationsIndex;
 
+        @UnknownPrimitiveField(availability = CompileQueueFinished.class)//
         final int classesEncodingIndex;
 
+        @UnknownPrimitiveField(availability = CompileQueueFinished.class)//
         final int permittedSubclassesEncodingIndex;
 
+        @UnknownPrimitiveField(availability = CompileQueueFinished.class)//
         final int nestMembersEncodingIndex;
 
+        @UnknownPrimitiveField(availability = CompileQueueFinished.class)//
         final int signersEncodingIndex;
 
         private DynamicHubMetadata(int enclosingMethodInfoIndex, int annotationsIndex, int typeAnnotationsIndex, int classesEncodingIndex, int permittedSubclassesEncodingIndex,
@@ -1860,14 +1932,19 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     private static final class ReflectionMetadata {
+        @UnknownPrimitiveField(availability = CompileQueueFinished.class)//
         final int fieldsEncodingIndex;
 
+        @UnknownPrimitiveField(availability = CompileQueueFinished.class)//
         final int methodsEncodingIndex;
 
+        @UnknownPrimitiveField(availability = CompileQueueFinished.class)//
         final int constructorsEncodingIndex;
 
+        @UnknownPrimitiveField(availability = CompileQueueFinished.class)//
         final int recordComponentsEncodingIndex;
 
+        @UnknownPrimitiveField(availability = CompileQueueFinished.class)//
         final int classFlags;
 
         private ReflectionMetadata(int fieldsEncodingIndex, int methodsEncodingIndex, int constructorsEncodingIndex, int recordComponentsEncodingIndex, int classFlags) {

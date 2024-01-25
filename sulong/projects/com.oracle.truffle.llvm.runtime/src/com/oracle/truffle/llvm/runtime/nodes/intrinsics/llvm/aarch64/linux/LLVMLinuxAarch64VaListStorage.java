@@ -166,7 +166,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
     @ExportMessage
     public void copyFrom(Object source, @SuppressWarnings("unused") long length,
                     @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
-                    @CachedLibrary(limit = "1") LLVMVaListLibrary vaListLibrary,
+                    @CachedLibrary(limit = "2") LLVMVaListLibrary vaListLibrary,
                     @Cached BranchProfile invalidLengthProfile) {
         if (length != Aarch64BitVarArgs.SIZE_OF_VALIST) {
             invalidLengthProfile.enter();
@@ -729,7 +729,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
         @GenerateAOT.Exclude // recursion cut
         static void copyNative(LLVMLinuxAarch64VaListStorage source, LLVMLinuxAarch64VaListStorage dest, Frame frame,
                         @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
-                        @CachedLibrary(limit = "1") LLVMVaListLibrary vaListLibrary) {
+                        @CachedLibrary(limit = "2") LLVMVaListLibrary vaListLibrary) {
             // The source valist is just a holder of the native counterpart and thus the destination
             // will not be set up as a managed va_list as it would be too complicated to restore the
             // managed state from the native one.
@@ -739,7 +739,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
         @Specialization
         @GenerateAOT.Exclude // recursion cut
         static void copyManagedToNative(LLVMLinuxAarch64VaListStorage source, NativeVAListWrapper dest, Frame frame,
-                        @CachedLibrary(limit = "1") LLVMVaListLibrary vaListLibrary) {
+                        @CachedLibrary(limit = "2") LLVMVaListLibrary vaListLibrary) {
             LLVMLinuxAarch64VaListStorage dummyClone = new LLVMLinuxAarch64VaListStorage(dest.nativeVAListPtr, source.vaListType);
             dummyClone.nativized = true;
             vaListLibrary.initialize(dummyClone, source.realArguments, source.numberOfExplicitArguments, frame);

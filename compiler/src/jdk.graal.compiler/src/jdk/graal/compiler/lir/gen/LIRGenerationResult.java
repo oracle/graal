@@ -24,17 +24,17 @@
  */
 package jdk.graal.compiler.lir.gen;
 
-import jdk.graal.compiler.lir.LIR;
-import jdk.graal.compiler.lir.LIRInstruction;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.CompilationIdentifier.Verbosity;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.lir.LIR;
+import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.framemap.FrameMap;
 import jdk.graal.compiler.lir.framemap.FrameMapBuilder;
-
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.RegisterConfig;
 
@@ -157,5 +157,19 @@ public class LIRGenerationResult {
             return "<unknown>";
         }
         return compilationId.toString(Verbosity.NAME);
+    }
+
+    /**
+     * Return the first position to insert a LIR instruction. No instruction should be inserted
+     * before this position.
+     *
+     * @return index of the first insert position
+     */
+    public final int getFirstInsertPosition() {
+        return 1;
+    }
+
+    public boolean emitIndirectTargetBranchMarkers() {
+        return false;
     }
 }

@@ -74,7 +74,7 @@ final class TruffleConstantFieldProvider implements ConstantFieldProvider {
             }
             if (isArrayField) {
                 int dimensions = info.getDimensions();
-                assert dimensions >= 0;
+                assert dimensions >= 0 : dimensions;
                 return tool.foldStableArray(tool.readValue(), dimensions, true);
             } else {
                 return tool.foldConstant(tool.readValue());

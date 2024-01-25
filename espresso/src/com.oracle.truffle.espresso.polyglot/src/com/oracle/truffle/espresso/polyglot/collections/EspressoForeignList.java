@@ -54,12 +54,10 @@ import com.oracle.truffle.espresso.polyglot.UnsupportedMessageException;
 
 public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
 
-    protected Object foreignObject;
-
     @Override
     public int size() {
         try {
-            return (int) Interop.getArraySize(foreignObject);
+            return (int) Interop.getArraySize(this);
         } catch (UnsupportedMessageException e) {
             throw new UnsupportedOperationException();
         }
@@ -68,10 +66,9 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
     @Override
     public boolean add(T t) {
         int size = size();
-        if (Interop.isArrayElementWritable(foreignObject, size)) {
+        if (Interop.isArrayElementWritable(this, size)) {
             try {
-                Interop.writeArrayElement(foreignObject, size, t);
-                modCount++;
+                Interop.writeArrayElement(this, size, t);
                 return true;
             } catch (InteropException e) {
                 throw new UnsupportedOperationException();
@@ -85,8 +82,8 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
     public T get(int index) {
         Objects.checkIndex(index, size());
         try {
-            if (Interop.isArrayElementReadable(foreignObject, index)) {
-                return (T) Polyglot.cast(Object.class, Interop.readArrayElement(foreignObject, index));
+            if (Interop.isArrayElementReadable(this, index)) {
+                return (T) Polyglot.cast(Object.class, Interop.readArrayElement(this, index));
             } else {
                 throw new UnsupportedOperationException();
             }
@@ -98,11 +95,10 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
     @Override
     public T set(int index, T element) {
         Objects.checkIndex(index, size() + 1);
-        if (Interop.isArrayElementWritable(foreignObject, index)) {
+        if (Interop.isArrayElementWritable(this, index)) {
             try {
                 T previous = get(index);
-                Interop.writeArrayElement(foreignObject, index, element);
-                modCount++;
+                Interop.writeArrayElement(this, index, element);
                 return previous;
             } catch (InteropException e) {
                 throw new UnsupportedOperationException();
@@ -115,18 +111,17 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
     public void add(int index, T element) {
         Objects.checkIndex(index, size() + 1);
         try {
-            long size = Interop.getArraySize(foreignObject);
-            if (Interop.isArrayElementInsertable(foreignObject, size)) {
+            long size = Interop.getArraySize(this);
+            if (Interop.isArrayElementInsertable(this, size)) {
                 // shift elements to the right if any
                 long cur = size;
                 while (cur > index) {
-                    Object o = Polyglot.cast(Object.class, Interop.readArrayElement(foreignObject, cur - 1));
-                    Interop.writeArrayElement(foreignObject, cur, o);
+                    Object o = Polyglot.cast(Object.class, Interop.readArrayElement(this, cur - 1));
+                    Interop.writeArrayElement(this, cur, o);
                     cur--;
                 }
                 // write new element to list
-                Interop.writeArrayElement(foreignObject, index, element);
-                modCount++;
+                Interop.writeArrayElement(this, index, element);
                 return;
             }
             throw new UnsupportedOperationException();
@@ -138,11 +133,10 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
     @Override
     public T remove(int index) {
         Objects.checkIndex(index, size());
-        if (Interop.isArrayElementRemovable(foreignObject, index)) {
+        if (Interop.isArrayElementRemovable(this, index)) {
             try {
                 T previous = get(index);
-                Interop.removeArrayElement(foreignObject, index);
-                modCount++;
+                Interop.removeArrayElement(this, index);
                 return previous;
             } catch (InteropException e) {
                 throw new UnsupportedOperationException();
@@ -155,7 +149,7 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
     @Override
     public String toString() {
         try {
-            return Interop.asString(Interop.toDisplayString(foreignObject));
+            return Interop.asString(Interop.toDisplayString(this));
         } catch (UnsupportedMessageException e) {
             return super.toString();
         }
@@ -179,12 +173,6 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
          */
         int lastRet = -1;
 
-        /**
-         * The modCount value that the iterator believes that the backing List should have. If this
-         * expectation is violated, the iterator has detected concurrent modification.
-         */
-        int expectedModCount = modCount;
-
         @Override
         public boolean hasNext() {
             return cursor != size();
@@ -193,7 +181,6 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
         @Override
         @SuppressWarnings("unchecked")
         public T next() {
-            checkForComodification();
             try {
                 int i = cursor;
                 T next = get(i);
@@ -201,7 +188,6 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
                 cursor = i + 1;
                 return next;
             } catch (IndexOutOfBoundsException e) {
-                checkForComodification();
                 throw new NoSuchElementException();
             }
         }
@@ -211,7 +197,6 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
             if (lastRet < 0) {
                 throw new UnsupportedOperationException();
             }
-            checkForComodification();
 
             try {
                 EspressoForeignList.this.remove(lastRet);
@@ -219,14 +204,7 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
                     cursor--;
                 }
                 lastRet = -1;
-                expectedModCount = modCount;
             } catch (IndexOutOfBoundsException e) {
-                throw new ConcurrentModificationException();
-            }
-        }
-
-        final void checkForComodification() {
-            if (modCount != expectedModCount) {
                 throw new ConcurrentModificationException();
             }
         }

@@ -24,21 +24,23 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.SIMD;
 import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize.FullReg;
 import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize.Word;
+import static jdk.vm.ci.aarch64.AArch64.CPU;
+import static jdk.vm.ci.aarch64.AArch64.SIMD;
+import static jdk.vm.ci.aarch64.AArch64.zr;
 
 import java.util.Arrays;
 
+import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.code.DataSection;
 import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.asm.ArrayDataPointerConstant;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -122,28 +124,40 @@ public abstract class AArch64ComplexVectorOp extends AArch64LIRInstruction {
         asm.adrpAdd(dst);
     }
 
-    /**
-     * Check if vector register {@code src} is all zeros and set condition flags accordingly.
-     * Register {@code dst} is clobbered by this operation.
-     */
-    protected static void vectorCheckZero(AArch64MacroAssembler asm, Register dst, Register src) {
-        vectorCheckZero(asm, AArch64ASIMDAssembler.ElementSize.Byte, dst, src, false);
+    protected static void cbnzVector(AArch64MacroAssembler asm, AArch64ASIMDAssembler.ElementSize eSize, Register vecDst, Register vecSrc, Register tmp, boolean allOnes, Label label) {
+        vectorCheckZeroReduce(asm, eSize, vecDst, vecSrc, tmp, allOnes);
+        asm.cbnz(64, tmp, label);
+    }
+
+    protected static void cmpZeroVector(AArch64MacroAssembler asm, Register vecDst, Register vecSrc, Register tmp) {
+        vectorCheckZeroReduce(asm, AArch64ASIMDAssembler.ElementSize.Byte, vecDst, vecSrc, tmp, false);
+        asm.cmp(64, tmp, zr);
     }
 
     /**
-     * Check if vector register {@code src} is all zeros and set condition flags accordingly. If
-     * {@code allOnes} is true, assume that non-zero elements are always filled with ones, e.g.
+     * Check if vector register {@code vecSrc} is all zeros and set condition flags accordingly.
+     * Registers {@code vecDst} and {@code tmp} are clobbered by this operation.
+     */
+    protected static void cmpZeroVector(AArch64MacroAssembler asm, AArch64ASIMDAssembler.ElementSize eSize, Register vecDst, Register vecSrc, Register tmp, boolean allOnes) {
+        vectorCheckZeroReduce(asm, eSize, vecDst, vecSrc, tmp, allOnes);
+        asm.cmp(64, tmp, zr);
+    }
+
+    /**
+     * Reduce a 128-bit vector to 64 bit and load it to a general-purpose register for a zero check.
+     * If {@code allOnes} is true, assume that non-zero elements are always filled with ones, e.g.
      * {@code 0xff} for byte elements, allowing a slightly faster check.
      */
-    protected static void vectorCheckZero(AArch64MacroAssembler asm, AArch64ASIMDAssembler.ElementSize eSize, Register dst, Register src, boolean allOnes) {
-        assert src.getRegisterCategory().equals(SIMD);
-        assert dst.getRegisterCategory().equals(SIMD);
+    private static void vectorCheckZeroReduce(AArch64MacroAssembler asm, AArch64ASIMDAssembler.ElementSize eSize, Register vecDst, Register vecSrc, Register tmp, boolean allOnes) {
+        assert vecSrc.getRegisterCategory().equals(SIMD);
+        assert vecDst.getRegisterCategory().equals(SIMD);
+        assert tmp.getRegisterCategory().equals(CPU);
         if (eSize == AArch64ASIMDAssembler.ElementSize.Byte || !allOnes) {
-            asm.neon.umaxvSV(FullReg, Word, dst, src);
+            asm.neon.umaxpVVV(FullReg, Word, vecDst, vecSrc, vecSrc);
         } else {
-            asm.neon.xtnVV(eSize.narrow(), dst, src);
+            asm.neon.xtnVV(eSize.narrow(), vecDst, vecSrc);
         }
-        asm.fcmpZero(64, dst);
+        asm.neon.umovGX(AArch64ASIMDAssembler.ElementSize.DoubleWord, tmp, vecDst, 0);
     }
 
     /**

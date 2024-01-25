@@ -26,10 +26,10 @@ package com.oracle.svm.core.genscavenge.remset;
 
 import java.util.List;
 
-import jdk.graal.compiler.nodes.gc.BarrierSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -47,6 +47,7 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
 
+import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -212,10 +213,18 @@ public class CardTableBasedRememberedSet implements RememberedSet {
 
     @Override
     public boolean verify(UnalignedHeader firstUnalignedHeapChunk) {
+        return verify(firstUnalignedHeapChunk, WordFactory.nullPointer());
+    }
+
+    @Override
+    public boolean verify(UnalignedHeader firstUnalignedHeapChunk, UnalignedHeader lastUnalignedHeapChunk) {
         boolean success = true;
         UnalignedHeader uChunk = firstUnalignedHeapChunk;
         while (uChunk.isNonNull()) {
             success &= UnalignedChunkRememberedSet.verify(uChunk);
+            if (uChunk.equal(lastUnalignedHeapChunk)) {
+                break;
+            }
             uChunk = HeapChunk.getNext(uChunk);
         }
         return success;

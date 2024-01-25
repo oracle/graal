@@ -24,35 +24,37 @@
  */
 package jdk.graal.compiler.core.gen;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.code.ValueUtil.isLegal;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.graal.compiler.core.common.GraalOptions.MatchExpressions;
 import static jdk.graal.compiler.core.common.SpectrePHTMitigations.Options.SpeculativeExecutionBarriers;
 import static jdk.graal.compiler.core.match.ComplexMatchValue.INTERIOR_MATCH;
 import static jdk.graal.compiler.lir.LIR.verifyBlock;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isLegal;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableMapCursor;
+
+import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.calc.Condition;
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.core.common.cfg.BlockMap;
+import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.core.match.ComplexMatchValue;
 import jdk.graal.compiler.core.match.MatchPattern;
 import jdk.graal.compiler.core.match.MatchRuleRegistry;
 import jdk.graal.compiler.core.match.MatchStatement;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TTY;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.UnmodifiableMapCursor;
-import jdk.graal.compiler.core.common.LIRKind;
-import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.core.common.cfg.BlockMap;
-import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
-import jdk.graal.compiler.core.match.ComplexMatchValue;
 import jdk.graal.compiler.graph.GraalGraphError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeMap;
@@ -101,6 +103,8 @@ import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.IntegerDivRemNode;
 import jdk.graal.compiler.nodes.calc.IntegerTestNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
+import jdk.graal.compiler.nodes.calc.OpMaskOrTestNode;
+import jdk.graal.compiler.nodes.calc.OpMaskTestNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.ForeignCall;
@@ -113,7 +117,6 @@ import jdk.graal.compiler.nodes.spi.NodeValueMap;
 import jdk.graal.compiler.nodes.spi.NodeWithState;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.StackSlot;
@@ -216,7 +219,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         assert (!isRegister(operand) || !gen.attributes(asRegister(operand)).isAllocatable());
         assert nodeOperands != null && (nodeOperands.get(x) == null || nodeOperands.get(x) instanceof ComplexMatchValue) : "operand cannot be set twice";
         assert operand != null && isLegal(operand) : "operand must be legal";
-        assert !(x instanceof VirtualObjectNode);
+        assert !(x instanceof VirtualObjectNode) : Assertions.errorMessage(x);
         nodeOperands.set(x, operand);
         return operand;
     }
@@ -226,10 +229,10 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
      * ValueNodes.
      */
     public void setMatchResult(Node x, Value operand) {
-        assert operand.equals(INTERIOR_MATCH) || operand instanceof ComplexMatchValue;
+        assert operand.equals(INTERIOR_MATCH) || operand instanceof ComplexMatchValue : Assertions.errorMessage(x, operand);
         assert operand instanceof ComplexMatchValue || MatchPattern.isSingleValueUser(x) : "interior matches must be single user";
         assert nodeOperands != null && nodeOperands.get(x) == null : "operand cannot be set twice";
-        assert !(x instanceof VirtualObjectNode);
+        assert !(x instanceof VirtualObjectNode) : Assertions.errorMessage(x, operand);
         nodeOperands.set(x, operand);
     }
 
@@ -251,13 +254,13 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     }
 
     public LabelRef getLIRBlock(FixedNode b) {
-        assert gen.getResult().getLIR().getControlFlowGraph() instanceof ControlFlowGraph;
+        assert gen.getResult().getLIR().getControlFlowGraph() instanceof ControlFlowGraph : Assertions.errorMessage(gen.getResult().getLIR().getControlFlowGraph());
         HIRBlock result = ((ControlFlowGraph) gen.getResult().getLIR().getControlFlowGraph()).blockFor(b);
         int suxIndex = 0;
         for (int i = 0; i < gen.getCurrentBlock().getSuccessorCount(); i++) {
             BasicBlock<?> succ = gen.getCurrentBlock().getSuccessorAt(i);
             if (succ == result) {
-                assert gen.getCurrentBlock() instanceof HIRBlock;
+                assert gen.getCurrentBlock() instanceof HIRBlock : Assertions.errorMessage(gen.getCurrentBlock());
                 return LabelRef.forSuccessor(gen.getResult().getLIR(), gen.getCurrentBlock(), suxIndex);
             }
             suxIndex++;
@@ -342,7 +345,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         return values.toArray(new Value[values.size()]);
     }
 
-    public void doBlockPrologue(@SuppressWarnings("unused") HIRBlock block, @SuppressWarnings("unused") OptionValues options) {
+    public final void doBlockPrologue(HIRBlock block, OptionValues options) {
 
         if (SpeculativeExecutionBarriers.getValue(options)) {
             boolean hasControlSplitPredecessor = false;
@@ -369,10 +372,10 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
             setSourcePosition(null);
 
             if (block == gen.getResult().getLIR().getControlFlowGraph().getStartBlock()) {
-                assert block.getPredecessorCount() == 0;
+                assert block.getPredecessorCount() == 0 : Assertions.errorMessage(block);
                 emitPrologue(graph);
             } else {
-                assert block.getPredecessorCount() > 0;
+                assert block.getPredecessorCount() > 0 : Assertions.errorMessage(block);
                 // create phi-in value array
                 AbstractBeginNode begin = block.getBeginNode();
                 if (begin instanceof AbstractMergeNode) {
@@ -433,7 +436,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
             if (!gen.hasBlockEnd(block)) {
                 NodeIterable<Node> successors = block.getEndNode().successors();
-                assert successors.count() == block.getSuccessorCount();
+                assert successors.count() == block.getSuccessorCount() : Assertions.errorMessage(successors, block);
                 if (block.getSuccessorCount() != 1) {
                     /*
                      * If we have more than one successor, we cannot just use the first one. Since
@@ -593,6 +596,10 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
             gen.emitJump(((LogicConstantNode) node).getValue() ? trueSuccessor : falseSuccessor);
         } else if (node instanceof IntegerTestNode) {
             gen.emitIntegerTestBranch(operand(((IntegerTestNode) node).getX()), operand(((IntegerTestNode) node).getY()), trueSuccessor, falseSuccessor, trueSuccessorProbability);
+        } else if (node instanceof OpMaskTestNode test) {
+            gen.emitOpMaskTestBranch(operand(test.getX()), test.invertX(), operand(test.getY()), trueSuccessor, falseSuccessor, trueSuccessorProbability);
+        } else if (node instanceof OpMaskOrTestNode orTest) {
+            gen.emitOpMaskOrTestBranch(operand(orTest.getX()), operand(orTest.getY()), orTest.allZeros(), trueSuccessor, falseSuccessor, trueSuccessorProbability);
         } else if (node instanceof OpaqueLogicNode) {
             emitBranch(((OpaqueLogicNode) node).value(), trueSuccessor, falseSuccessor, trueSuccessorProbability);
         } else {
@@ -622,6 +629,10 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         } else if (node instanceof IntegerTestNode) {
             IntegerTestNode test = (IntegerTestNode) node;
             return gen.emitIntegerTestMove(operand(test.getX()), operand(test.getY()), trueValue, falseValue);
+        } else if (node instanceof OpMaskTestNode test) {
+            return gen.emitOpMaskTestMove(operand(test.getX()), test.invertX(), operand(test.getY()), trueValue, falseValue);
+        } else if (node instanceof OpMaskOrTestNode orTest) {
+            return gen.emitOpMaskOrTestMove(operand(orTest.getX()), operand(orTest.getY()), orTest.allZeros(), trueValue, falseValue);
         } else {
             throw GraalError.unimplemented(node.toString());
         }
@@ -640,6 +651,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         LabelRef exceptionEdge = null;
         if (x instanceof InvokeWithExceptionNode) {
             exceptionEdge = getLIRBlock(((InvokeWithExceptionNode) x).exceptionEdge());
+            exceptionEdge.getTargetBlock().setIndirectBranchTarget();
         }
         LIRFrameState callState = stateWithExceptionEdge(x, exceptionEdge);
 
@@ -670,8 +682,9 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         ForeignCallLinkage linkage = gen.getForeignCalls().lookupForeignCall(x.getDescriptor());
 
         LabelRef exceptionEdge = null;
-        if (x instanceof WithExceptionNode) {
-            exceptionEdge = getLIRBlock(((WithExceptionNode) x).exceptionEdge());
+        if (x instanceof WithExceptionNode withExceptionNode) {
+            exceptionEdge = getLIRBlock(withExceptionNode.exceptionEdge());
+            exceptionEdge.getTargetBlock().setIndirectBranchTarget();
         }
         LIRFrameState callState = stateWithExceptionEdge(x, exceptionEdge);
 
@@ -741,7 +754,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                     keyTargets[i] = getLIRBlock(intSwitch.keySuccessor(i));
                     keyConstants[i] = intSwitch.keyAt(i);
                     keyProbabilities[i] = intSwitch.keyProbability(i);
-                    assert keyConstants[i].getJavaKind() == keyKind;
+                    assert keyConstants[i].getJavaKind() == keyKind : Assertions.errorMessage(keyConstants, keyKind);
                 }
                 gen.emitStrategySwitch(keyConstants, keyProbabilities, keyTargets, defaultTarget, value);
             } else {
@@ -768,13 +781,13 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
     private static FrameState getFrameState(DeoptimizingNode deopt) {
         if (deopt instanceof DeoptimizingNode.DeoptBefore) {
-            assert !(deopt instanceof DeoptimizingNode.DeoptDuring || deopt instanceof DeoptimizingNode.DeoptAfter);
+            assert !(deopt instanceof DeoptimizingNode.DeoptDuring || deopt instanceof DeoptimizingNode.DeoptAfter) : Assertions.errorMessage(deopt);
             return ((DeoptimizingNode.DeoptBefore) deopt).stateBefore();
         } else if (deopt instanceof DeoptimizingNode.DeoptDuring) {
-            assert !(deopt instanceof DeoptimizingNode.DeoptAfter);
+            assert !(deopt instanceof DeoptimizingNode.DeoptAfter) : Assertions.errorMessage(deopt);
             return ((DeoptimizingNode.DeoptDuring) deopt).stateDuring();
         } else {
-            assert deopt instanceof DeoptimizingNode.DeoptAfter;
+            assert deopt instanceof DeoptimizingNode.DeoptAfter : Assertions.errorMessage(deopt);
             return ((DeoptimizingNode.DeoptAfter) deopt).stateAfter();
         }
     }

@@ -29,6 +29,13 @@ import static jdk.graal.compiler.debug.Assertions.assertionsEnabled;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+
+import jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph;
+import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hightiercodegen.irwalk.StackifierIRWalker;
 import jdk.graal.compiler.hightiercodegen.reconstruction.StackifierData;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.CatchScopeContainer;
@@ -37,15 +44,10 @@ import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.LoopS
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.Scope;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.ScopeContainer;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.SwitchScopeContainer;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
-import jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph;
-import jdk.graal.compiler.core.common.cfg.Loop;
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
-import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
+import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 
 /**
@@ -130,7 +132,7 @@ public class LabeledBlockGeneration {
         }
         ScopeContainer scopeContainer = stackifierData.getScopeEntry(block.getEndNode());
         if (block.isLoopEnd()) {
-            assert block.getSuccessorCount() == 1;
+            assert block.getSuccessorCount() == 1 : Assertions.errorMessage(block);
             // loopEndNodes have back edges and therefore do not need a forward jump
             return false;
         }
@@ -154,7 +156,7 @@ public class LabeledBlockGeneration {
             if (invokeWithExc.getPrimarySuccessor() == successor.getBeginNode()) {
                 return !isJumpingOverCatchBlock(block, successor, stackifierData);
             } else {
-                assert invokeWithExc.exceptionEdge() == successor.getBeginNode();
+                assert invokeWithExc.exceptionEdge() == successor.getBeginNode() : Assertions.errorMessage(invokeWithExc, successor);
                 if (((CatchScopeContainer) scopeContainer).getCatchScope() != null) {
                     return false;
                 }
@@ -171,6 +173,15 @@ public class LabeledBlockGeneration {
         }
         if (isLastBlockInThenBranch(block, stackifierData)) {
             return !isJumpingToAfterElseBranch(block, successor, stackifierData);
+        }
+        if (isLastBlockInSwitchArm(block, stackifierData)) {
+            /*
+             * Always generate a labeled block around switch statements as a target for switch arms
+             * to jump out of. This can result in less than optimal code if all switch arms jump to
+             * the merge block after the switch, but determining that is tricky to do correctly
+             * without having knowing the order in which blocks will be lowered.
+             */
+            return true;
         }
         return successor.getId() != block.getId() + 1;
     }
@@ -245,6 +256,36 @@ public class LabeledBlockGeneration {
     }
 
     /**
+     * Checks if the given block is the last block in one of the arms of an
+     * {@link IntegerSwitchNode}.
+     *
+     * Example:
+     *
+     * <pre>
+     * switch (x) {
+     *     case 1:
+     *         A();
+     *         B();
+     *         break;
+     * }
+     * C();
+     * </pre>
+     *
+     * For the example above this function returns true for the basic block {@code B} and false
+     * otherwise.
+     */
+    private static boolean isLastBlockInSwitchArm(HIRBlock block, StackifierData stackifierData) {
+        Scope scope = stackifierData.getEnclosingScope().get(block);
+        if (scope != null) {
+            HIRBlock startBlock = scope.getStartBlock();
+            if (startBlock.getEndNode() instanceof IntegerSwitchNode) {
+                return scope.getLastBlock() == block;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Checks if the edge from {@code block} to {@code successor} is jumping over all
      * {@link HIRBlock}s in the catch scope.
      * <p>
@@ -267,8 +308,8 @@ public class LabeledBlockGeneration {
      * @param successor primary successor of the {@link InvokeWithExceptionNode}
      */
     private static boolean isJumpingOverCatchBlock(HIRBlock block, HIRBlock successor, StackifierData stackifierData) {
-        assert block.getEndNode() instanceof InvokeWithExceptionNode;
-        assert block.getFirstSuccessor() == successor;
+        assert block.getEndNode() instanceof InvokeWithExceptionNode : Assertions.errorMessage(block, block.getEndNode());
+        assert block.getFirstSuccessor() == successor : Assertions.errorMessage(block, successor);
         CatchScopeContainer catchScopeContainer = (CatchScopeContainer) stackifierData.getScopeEntry(block.getEndNode());
         Scope catchScope = catchScopeContainer.getCatchScope();
 

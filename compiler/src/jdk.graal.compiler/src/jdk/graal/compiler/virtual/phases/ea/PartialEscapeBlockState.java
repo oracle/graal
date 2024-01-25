@@ -28,10 +28,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.BeginNode;
+import jdk.graal.compiler.nodes.ControlSplitNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -216,7 +221,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
                     if (otherAllocation instanceof FixedWithNextNode) {
                         graph.addBeforeFixed(fixed, (FixedWithNextNode) otherAllocation);
                     } else {
-                        assert otherAllocation instanceof FloatingNode;
+                        assert otherAllocation instanceof FloatingNode : Assertions.errorMessage(otherAllocation, fixed, virtual, materializeEffects);
                     }
                 }
                 if (!objects.isEmpty()) {
@@ -226,7 +231,23 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
                     } else {
                         try (DebugCloseable context = graph.withNodeSourcePosition(NodeSourcePosition.placeholder(graph.method()))) {
                             commit = graph.add(new CommitAllocationNode());
-                            graph.addBeforeFixed(fixed, commit);
+                            if (fixed.predecessor() != null && fixed.predecessor() instanceof FixedWithNextNode) {
+                                graph.addBeforeFixed(fixed, commit);
+                            } else {
+                                if (fixed instanceof AbstractBeginNode abs && abs.predecessor() instanceof ControlSplitNode) {
+                                    /*
+                                     * We have an abstract begin node (for example a loop exit)
+                                     * directly as a split successor. We cannot just insert the node
+                                     * here. We have to build a new node after which we can insert.
+                                     */
+                                    BeginNode b = graph.add(new BeginNode());
+                                    fixed.replaceAtPredecessor(b);
+                                    b.setNext(fixed);
+                                    graph.addBeforeFixed(fixed, commit);
+                                } else {
+                                    throw GraalError.shouldNotReachHere("Complex control flow pattern - cannot easily insert materialization before " + fixed);
+                                }
+                            }
                         }
                     }
                     for (AllocatedObjectNode obj : objects) {
@@ -242,7 +263,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
                     }
                     commit.getEnsureVirtual().addAll(ensureVirtual);
 
-                    assert commit.usages().filter(AllocatedObjectNode.class).count() == commit.getUsageCount();
+                    assert commit.usages().filter(AllocatedObjectNode.class).count() == commit.getUsageCount() : Assertions.errorMessage(commit, commit.usages(), commit.getUsageCount());
                     List<AllocatedObjectNode> materializedValues = commit.usages().filter(AllocatedObjectNode.class).snapshot();
                     for (int i = 0; i < commit.getValues().size(); i++) {
                         if (materializedValues.contains(commit.getValues().get(i))) {

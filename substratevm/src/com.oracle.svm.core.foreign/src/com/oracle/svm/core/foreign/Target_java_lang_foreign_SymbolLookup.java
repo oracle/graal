@@ -27,6 +27,7 @@ package com.oracle.svm.core.foreign;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +50,7 @@ import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.internal.foreign.MemorySessionImpl;
 import jdk.internal.foreign.Utils;
 import jdk.internal.loader.NativeLibrary;
@@ -65,7 +67,7 @@ import jdk.internal.reflect.Reflection;
  * succeed. See
  * {@link com.oracle.svm.core.jdk.Target_java_lang_ClassLoader#loadLibrary(java.lang.Class, java.lang.String)}
  */
-@TargetClass(className = "java.lang.foreign.SymbolLookup")
+@TargetClass(className = "java.lang.foreign.SymbolLookup", onlyWith = ForeignFunctionsEnabled.class)
 public final class Target_java_lang_foreign_SymbolLookup {
 
     @Substitute
@@ -84,6 +86,9 @@ public final class Target_java_lang_foreign_SymbolLookup {
     @NeverInline("Starting a stack walk in the caller frame")
     static SymbolLookup libraryLookup(Path path, Arena arena) {
         Util_java_lang_foreign_SymbolLookup.ensureNativeAccess(StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), true), SymbolLookup.class, "libraryLookup");
+        if (path.getFileSystem() != FileSystems.getDefault()) {
+            throw new IllegalArgumentException("Path not in default file system: " + path);
+        }
         return Util_java_lang_foreign_SymbolLookup.libraryLookup(LookupNativeLibraries::loadLibraryPlatformSpecific, arena, List.of(path));
     }
 
@@ -134,7 +139,12 @@ final class Util_java_lang_foreign_SymbolLookup {
          */
         Target_java_lang_Module module = SubstrateUtil.cast(currentClass != null ? currentClass.getModule() : ClassLoader.getSystemClassLoader().getUnnamedModule(),
                         Target_java_lang_Module.class);
-        module.ensureNativeAccess(owner, methodName);
+        if (JavaVersionUtil.JAVA_SPEC <= 21) {
+            module.ensureNativeAccess(owner, methodName);
+        } else {
+            module.ensureNativeAccess(owner, methodName, currentClass);
+        }
+
     }
 
     static <Z> LookupNativeLibraries createNativeLibraries(BiConsumer<LookupNativeLibraries, Z> loadLibraryFunc, List<Z> libDescs) {

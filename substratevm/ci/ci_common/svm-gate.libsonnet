@@ -1,6 +1,7 @@
 {
   local common     = import "../../../ci/ci_common/common.jsonnet",
   local run_spec   = import "../../../ci/ci_common/run-spec.libsonnet",
+  local galahad    = import "../../../ci/ci_common/galahad-common.libsonnet",
 
   local task_spec     = run_spec.task_spec,
   local evaluate_late = run_spec.evaluate_late,
@@ -72,7 +73,10 @@
   use_musl:: require_musl + task_spec({
       mxgate_config+::["musl"],
       mxgate_extra_args+: ["--extra-image-builder-arguments=--libc=musl --static"],
-  }),
+  } +
+    # The galahad gates run with oracle JDK, which do not offer a musl build
+    galahad.exclude
+  ),
 
   add_quickbuild:: task_spec({
       mxgate_config+::["quickbuild"],
@@ -113,10 +117,11 @@
       "pcre": "==8.43",
       "sshpass": "==1.05"
     },
+  } + evaluate_late("riscv64-svmtest", function(b) {
     downloads+: {
       QEMU_HOME          : {name : "qemu-riscv64", version : "1.0"},
-      C_LIBRARY_PATH     : {name : "riscv-static-libraries", version : "1.0"},
-      JAVA_HOME_RISCV    : {name : "labsjdk", version : common.labsjdk21.downloads.JAVA_HOME.version + "-linux-riscv64" }
+      C_LIBRARY_PATH     : {name : "riscv-static-libraries", version : std.toString(b.jdk_version)},
+      JAVA_HOME_RISCV    : {name : "labsjdk", version : b.downloads.JAVA_HOME.version + "-linux-riscv64" }
     },
-  }),
+  })),
 }

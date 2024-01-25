@@ -34,7 +34,7 @@ import com.oracle.truffle.tools.dap.types.DebugProtocolClient;
 import com.oracle.truffle.tools.dap.types.LoadedSourceEvent;
 
 import java.net.URI;
-import java.nio.file.InvalidPathException;
+import java.nio.file.FileSystemNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -205,7 +205,7 @@ public final class LoadedSourcesHandler implements LoadSourceListener {
                     tFile = context.getEnv().getTruffleFile(truffleContext, path);
                 }
             }
-        } catch (UnsupportedOperationException | InvalidPathException ex) {
+        } catch (UnsupportedOperationException | IllegalArgumentException | FileSystemNotFoundException ex) {
             // Unsupported URI/path
         }
         if (tFile != null) {
@@ -218,7 +218,7 @@ public final class LoadedSourcesHandler implements LoadSourceListener {
         } else if (path != null) {
             try {
                 srcRef = !context.getEnv().getTruffleFile(truffleContext, path).isReadable();
-            } catch (SecurityException | InvalidPathException ex) {
+            } catch (UnsupportedOperationException | SecurityException | IllegalArgumentException ex) {
                 // Can not verify readability
                 srcRef = true;
             }

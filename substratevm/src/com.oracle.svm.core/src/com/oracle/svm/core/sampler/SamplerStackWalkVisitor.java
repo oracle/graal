@@ -44,7 +44,7 @@ public final class SamplerStackWalkVisitor extends ParameterizedStackFrameVisito
 
     @Override
     @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
-    protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, Object data) {
+    public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, Object data) {
         return recordIp(ip);
     }
 

@@ -24,9 +24,9 @@
  */
 package jdk.graal.compiler.replacements;
 
+import static jdk.graal.compiler.nodes.CallTargetNode.InvokeKind.Static;
 import static jdk.vm.ci.code.BytecodeFrame.UNKNOWN_BCI;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
-import static jdk.graal.compiler.nodes.CallTargetNode.InvokeKind.Static;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -37,6 +37,7 @@ import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
@@ -75,8 +76,6 @@ import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProvidersDelegate;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.word.WordTypes;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -92,7 +91,6 @@ import jdk.vm.ci.meta.Signature;
 public abstract class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool {
 
     protected final StructuredGraph graph;
-    protected final WordTypes wordTypes;
     protected final GraphBuilderConfiguration.Plugins graphBuilderPlugins;
     protected FixedWithNextNode lastFixedNode;
 
@@ -101,7 +99,7 @@ public abstract class GraphKit extends CoreProvidersDelegate implements GraphBui
     protected abstract static class Structure {
     }
 
-    public GraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes, Plugins graphBuilderPlugins, CompilationIdentifier compilationId, String name,
+    public GraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, Plugins graphBuilderPlugins, CompilationIdentifier compilationId, String name,
                     boolean trackNodeSourcePosition, boolean recordInlinedMethods) {
         super(providers);
         StructuredGraph.Builder builder = new StructuredGraph.Builder(debug.getOptions(), debug).recordInlinedMethods(recordInlinedMethods).compilationId(compilationId).profileProvider(null);
@@ -120,7 +118,6 @@ public abstract class GraphKit extends CoreProvidersDelegate implements GraphBui
             graph.withNodeSourcePosition(NodeSourcePosition.substitution(stubMethod));
         }
         graph.recordMethod(stubMethod);
-        this.wordTypes = wordTypes;
         this.graphBuilderPlugins = graphBuilderPlugins;
         this.lastFixedNode = graph.start();
 
@@ -156,19 +153,19 @@ public abstract class GraphKit extends CoreProvidersDelegate implements GraphBui
     }
 
     public <T extends Node> T changeToWord(T node) {
-        if (node instanceof ValueNode valueNode && wordTypes != null && wordTypes.isWord(valueNode)) {
-            valueNode.setStamp(wordTypes.getWordStamp(StampTool.typeOrNull(valueNode)));
+        if (node instanceof ValueNode valueNode && getWordTypes() != null && getWordTypes().isWord(valueNode)) {
+            valueNode.setStamp(getWordTypes().getWordStamp(StampTool.typeOrNull(valueNode)));
         }
         return node;
     }
 
     public Stamp wordStamp(ResolvedJavaType type) {
-        assert wordTypes != null && wordTypes.isWord(type);
-        return wordTypes.getWordStamp(type);
+        assert getWordTypes().isWord(type) : type;
+        return getWordTypes().getWordStamp(type);
     }
 
     public final JavaKind asKind(JavaType type) {
-        return wordTypes != null ? wordTypes.asKind(type) : type.getJavaKind();
+        return getWordTypes() != null ? getWordTypes().asKind(type) : type.getJavaKind();
     }
 
     @Override
@@ -250,7 +247,7 @@ public abstract class GraphKit extends CoreProvidersDelegate implements GraphBui
     @SuppressWarnings("try")
     public InvokeNode createInvoke(ResolvedJavaMethod method, InvokeKind invokeKind, FrameStateBuilder frameStateBuilder, int bci, ValueNode... args) {
         try (DebugCloseable context = graph.withNodeSourcePosition(invokePosition(bci))) {
-            assert method.isStatic() == (invokeKind == InvokeKind.Static);
+            assert method.isStatic() == (invokeKind == InvokeKind.Static) : Assertions.errorMessage(method, invokeKind, frameStateBuilder, bci, args);
             Signature signature = method.getSignature();
             JavaType returnType = signature.getReturnType(null);
             assert checkArgs(method, args);
@@ -490,7 +487,7 @@ public abstract class GraphKit extends CoreProvidersDelegate implements GraphBui
     public InvokeWithExceptionNode startInvokeWithException(ResolvedJavaMethod method, InvokeKind invokeKind,
                     FrameStateBuilder frameStateBuilder, int invokeBci, ValueNode... args) {
 
-        assert method.isStatic() == (invokeKind == InvokeKind.Static);
+        assert method.isStatic() == (invokeKind == InvokeKind.Static) : Assertions.errorMessage(method, invokeKind, frameStateBuilder, invokeBci, args);
         Signature signature = method.getSignature();
         JavaType returnType = signature.getReturnType(null);
         assert checkArgs(method, args);

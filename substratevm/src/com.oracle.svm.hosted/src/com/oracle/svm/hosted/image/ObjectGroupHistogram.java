@@ -36,7 +36,7 @@ import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.hosted.config.HybridLayout;
+import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.util.LogUtils;
@@ -104,9 +104,9 @@ public final class ObjectGroupHistogram {
         processObject(NonmovableArrays.getHostedArray(DynamicHubSupport.getReferenceMapEncoding()), "DynamicHub", true, null, null);
         processObject(CodeInfoTable.getImageCodeCache(), "ImageCodeInfo", true, ObjectGroupHistogram::filterCodeInfoObjects, null);
 
-        processObject(readGraalSupportField("graphEncoding"), "CompressedGraph", true, ObjectGroupHistogram::filterGraalSupportObjects, null);
-        processObject(readGraalSupportField("graphObjects"), "CompressedGraph", true, ObjectGroupHistogram::filterGraalSupportObjects, null);
-        processObject(readGraalSupportField("graphNodeTypes"), "CompressedGraph", true, ObjectGroupHistogram::filterGraalSupportObjects, null);
+        processObject(readTruffleRuntimeCompilationSupportField("graphEncoding"), "CompressedGraph", true, ObjectGroupHistogram::filterGraalSupportObjects, null);
+        processObject(readTruffleRuntimeCompilationSupportField("graphObjects"), "CompressedGraph", true, ObjectGroupHistogram::filterGraalSupportObjects, null);
+        processObject(readTruffleRuntimeCompilationSupportField("graphNodeTypes"), "CompressedGraph", true, ObjectGroupHistogram::filterGraalSupportObjects, null);
 
         processType(ResolvedJavaType.class, "Graal Metadata", false, null, null);
         processType(ResolvedJavaMethod.class, "Graal Metadata", false, null, null);
@@ -142,9 +142,9 @@ public final class ObjectGroupHistogram {
         System.out.format("%s; %d; %d%n", "Total", totalHistogram.getTotalCount(), totalHistogram.getTotalSize());
     }
 
-    private static Object readGraalSupportField(String name) {
+    private static Object readTruffleRuntimeCompilationSupportField(String name) {
         try {
-            Class<?> graalSupportClass = Class.forName("com.oracle.svm.graal.GraalSupport");
+            Class<?> graalSupportClass = Class.forName("com.oracle.svm.graal.TruffleRuntimeCompilationSupport");
             Object graalSupport = ImageSingletons.lookup(graalSupportClass);
             return ReflectionUtil.readField(graalSupportClass, name, graalSupport);
         } catch (Throwable ex) {
@@ -180,7 +180,7 @@ public final class ObjectGroupHistogram {
         if (info.getClazz().isInstanceClass()) {
             JavaConstant con = heap.hUniverse.getSnippetReflection().forObject(info.getObject());
             for (HostedField field : info.getClazz().getInstanceFields(true)) {
-                if (field.getType().getStorageKind() == JavaKind.Object && !HybridLayout.isHybridField(field) && field.isAccessed()) {
+                if (field.getType().getStorageKind() == JavaKind.Object && !HostedConfiguration.isInlinedField(field) && field.isAccessed()) {
                     if (fieldFilter == null || fieldFilter.test(info, field)) {
                         JavaConstant fieldValue = heap.hConstantReflection.readFieldValue(field, con);
                         if (fieldValue.isNonNull()) {

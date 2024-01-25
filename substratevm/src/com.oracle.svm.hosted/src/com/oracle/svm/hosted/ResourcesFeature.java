@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -138,7 +138,8 @@ public final class ResourcesFeature implements InternalFeature {
     static final String MODULE_NAME_ALL_UNNAMED = "ALL-UNNAMED";
 
     public static class Options {
-        @Option(help = "Regexp to match names of resources to be included in the image.", type = OptionType.User)//
+        @Option(help = {"Regexp to match names of resources to be included in the image.",
+                        "Use a resource-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead."}, type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
         @Option(help = "Regexp to match names of resources to be excluded from the image.", type = OptionType.User)//
@@ -280,12 +281,12 @@ public final class ResourcesFeature implements InternalFeature {
                     }
                 }
 
-                InputStream is = module.getResourceAsStream(resourcePath);
                 boolean isDirectory = Files.isDirectory(Path.of(resourcePath));
                 if (isDirectory) {
                     String content = getDirectoryContent(resourcePath, false);
                     Resources.singleton().registerDirectoryResource(module, resourcePath, content, false);
                 } else {
+                    InputStream is = module.getResourceAsStream(resourcePath);
                     registerResource(module, resourcePath, false, is);
                 }
             } catch (IOException e) {
@@ -306,16 +307,23 @@ public final class ResourcesFeature implements InternalFeature {
                 throw VMError.shouldNotReachHere("getResources for resourcePath " + resourcePath + " failed", e);
             }
 
+            // getResources could return same entry that was found by different(parent) classLoaders
+            Set<String> alreadyProcessedResources = new HashSet<>();
             while (urls.hasMoreElements()) {
                 URL url = urls.nextElement();
+                if (alreadyProcessedResources.contains(url.toString())) {
+                    continue;
+                }
+
+                alreadyProcessedResources.add(url.toString());
                 try {
-                    InputStream is = url.openStream();
                     boolean fromJar = url.getProtocol().equalsIgnoreCase("jar");
                     boolean isDirectory = resourceIsDirectory(url, fromJar, resourcePath);
                     if (isDirectory) {
                         String content = getDirectoryContent(fromJar ? url.toString() : Paths.get(url.toURI()).toString(), fromJar);
                         Resources.singleton().registerDirectoryResource(null, resourcePath, content, fromJar);
                     } else {
+                        InputStream is = url.openStream();
                         registerResource(null, resourcePath, fromJar, is);
                     }
                 } catch (IOException e) {
@@ -344,8 +352,8 @@ public final class ResourcesFeature implements InternalFeature {
         /* Util functions for resource attributes calculations */
         private String urlToJarPath(URL url) {
             try {
-                return ((JarURLConnection) url.openConnection()).getJarFileURL().getFile();
-            } catch (IOException e) {
+                return ((JarURLConnection) url.openConnection()).getJarFileURL().toURI().getPath();
+            } catch (IOException | URISyntaxException e) {
                 throw new RuntimeException(e);
             }
         }

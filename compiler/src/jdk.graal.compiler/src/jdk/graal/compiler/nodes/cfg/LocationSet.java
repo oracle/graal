@@ -61,7 +61,8 @@ public class LocationSet {
         } else if (location.isImmutable()) {
             return;
         } else {
-            assert location.isMutable() && location.isSingle();
+            assert location.isMutable();
+            assert location.isSingle();
             if (firstLocation == null) {
                 firstLocation = location;
             } else if (location.equals(firstLocation)) {

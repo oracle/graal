@@ -89,7 +89,6 @@ public class MethodFlowsGraphClone extends MethodFlowsGraph {
         }
 
         nodeFlows = lookupClonesOf(bb, originalFlowsGraph.nodeFlows);
-        instanceOfFlows = lookupClonesOf(bb, originalFlowsGraph.instanceOfFlows);
         miscEntryFlows = lookupClonesOf(bb, originalFlowsGraph.miscEntryFlows);
         invokeFlows = lookupClonesOf(bb, originalFlowsGraph.invokeFlows);
 
@@ -128,8 +127,8 @@ public class MethodFlowsGraphClone extends MethodFlowsGraph {
         assert !(original instanceof FieldTypeFlow) : "Trying to clone a field type flow";
         assert !(original instanceof ArrayElementsTypeFlow) : "Trying to clone an mixed elements type flow";
 
-        if (original instanceof AllInstantiatedTypeFlow || original instanceof AllSynchronizedTypeFlow) {
-            /* All instantiated is not cloneable. */
+        if (original instanceof AllInstantiatedTypeFlow || original instanceof AllSynchronizedTypeFlow || original instanceof AnyPrimitiveSourceTypeFlow) {
+            /* These flows are not cloneable. */
             return original;
         }
         if (original instanceof ProxyTypeFlow) {

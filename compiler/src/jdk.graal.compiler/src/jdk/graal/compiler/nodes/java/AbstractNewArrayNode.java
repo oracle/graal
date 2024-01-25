@@ -65,7 +65,7 @@ public abstract class AbstractNewArrayNode extends AbstractNewObjectNode impleme
      * The list of node which produce input for this instruction.
      */
     public ValueNode dimension(int index) {
-        assert index == 0;
+        assert index == 0 : index;
         return length();
     }
 

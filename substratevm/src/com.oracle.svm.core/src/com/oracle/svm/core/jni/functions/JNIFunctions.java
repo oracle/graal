@@ -26,18 +26,14 @@ package com.oracle.svm.core.jni.functions;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Array;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
@@ -106,7 +102,7 @@ import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.jni.headers.JNIObjectRefType;
 import com.oracle.svm.core.jni.headers.JNIValue;
 import com.oracle.svm.core.jni.headers.JNIVersion;
-import com.oracle.svm.core.jni.headers.JNIVersionJDK22OrLater;
+import com.oracle.svm.core.jni.headers.JNIVersionJDKLatest;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -120,6 +116,9 @@ import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.util.Utf8;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.MetaUtil;
 
@@ -159,13 +158,10 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = CEntryPointOptions.NoPrologue.class, epilogue = CEntryPointOptions.NoEpilogue.class)
     @Uninterruptible(reason = "No need to enter the isolate and also no way to report errors if unable to.")
     static int GetVersion(JNIEnvironment env) {
-        switch (JavaVersionUtil.JAVA_SPEC) {
-            case 21:
-                return JNIVersion.JNI_VERSION_21();
-            case 22:
-                return JNIVersionJDK22OrLater.JNI_VERSION_22();
-            default:
-                throw VMError.shouldNotReachHere("Unsupported Java version " + JavaVersionUtil.JAVA_SPEC);
+        if (JavaVersionUtil.JAVA_SPEC == 21) {
+            return JNIVersion.JNI_VERSION_21();
+        } else {
+            return JNIVersionJDKLatest.JNI_VERSION_LATEST();
         }
     }
 
@@ -997,22 +993,15 @@ public final class JNIFunctions {
         JNIAccessibleMethodDescriptor descriptor = JNIReflectionDictionary.getMethodDescriptor(jniMethod);
         if (descriptor != null) {
             Class<?> clazz = jniMethod.getDeclaringClass().getClassObject();
-            if (descriptor.isConstructor()) {
-                for (Constructor<?> ctor : clazz.getDeclaredConstructors()) {
-                    if (descriptor.equals(JNIAccessibleMethodDescriptor.of(ctor))) {
-                        result = ctor;
-                        break;
-                    }
-                }
-            } else {
-                for (Method method : clazz.getDeclaredMethods()) {
-                    if (descriptor.getName().equals(method.getName())) {
-                        if (descriptor.equals(JNIAccessibleMethodDescriptor.of(method))) {
-                            result = method;
-                            break;
-                        }
-                    }
-                }
+            Class<?>[] parameter = MethodType.fromMethodDescriptorString(descriptor.getSignature(), JNIFunctions.class.getClassLoader()).parameterArray();
+            try {
+                result = descriptor.isConstructor() ? clazz.getDeclaredConstructor(parameter) : clazz.getDeclaredMethod(descriptor.getName(), parameter);
+            } catch (NoSuchMethodException e) {
+                /*
+                 * The method might have been registered for JNI access but not for reflection. When
+                 * missing registration errors are not thrown, this results in a
+                 * NoSuchMethodException, which means we have to return null.
+                 */
             }
         }
         return JNIObjectHandles.createLocal(result);

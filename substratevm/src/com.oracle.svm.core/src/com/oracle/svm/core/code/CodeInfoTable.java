@@ -29,8 +29,6 @@ import java.lang.management.MemoryPoolMXBean;
 import java.util.Arrays;
 import java.util.List;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -59,6 +57,8 @@ import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.CounterFeature;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.Option;
 import jdk.vm.ci.code.InstalledCode;
 
 /**
@@ -118,7 +118,7 @@ public class CodeInfoTable {
         /* Deoptimization entry points are always in the image, i.e., never compiled at run time. */
         CodeInfo info = getImageCodeInfo();
         CodeInfoQueryResult result = new CodeInfoQueryResult();
-        long relativeIP = CodeInfoAccess.lookupDeoptimizationEntrypoint(info, deoptOffsetInImage, encodedBci, result);
+        long relativeIP = CodeInfoAccess.lookupDeoptimizationEntrypoint(info, deoptOffsetInImage, encodedBci, result, FrameInfoDecoder.SubstrateConstantAccess);
         if (relativeIP < 0) {
             return null;
         }
@@ -217,7 +217,7 @@ public class CodeInfoTable {
             if (CodeInfoAccess.isAlive(info)) {
                 invalidateCodeAtSafepoint0(info);
             }
-            assert CodeInfoAccess.getState(info) == CodeInfo.STATE_PARTIALLY_FREED;
+            assert CodeInfoAccess.getState(info) == CodeInfo.STATE_INVALIDATED;
         } finally {
             CodeInfoAccess.releaseTether(untetheredInfo, tether);
         }

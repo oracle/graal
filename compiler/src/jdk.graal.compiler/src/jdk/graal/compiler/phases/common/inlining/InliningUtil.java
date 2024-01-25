@@ -24,9 +24,9 @@
  */
 package jdk.graal.compiler.phases.common.inlining;
 
+import static jdk.graal.compiler.core.common.GraalOptions.HotSpotPrintInlining;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
-import static jdk.graal.compiler.core.common.GraalOptions.HotSpotPrintInlining;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -34,20 +34,19 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-import jdk.graal.compiler.phases.common.inlining.info.InlineInfo;
-import jdk.graal.compiler.phases.common.util.EconomicSetNodeEventListener;
-import jdk.graal.compiler.phases.util.ValueMergeUtil;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
+
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.core.common.util.Util;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
@@ -108,10 +107,12 @@ import jdk.graal.compiler.nodes.java.MonitorIdNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.phases.common.inlining.info.InlineInfo;
+import jdk.graal.compiler.phases.common.util.EconomicSetNodeEventListener;
+import jdk.graal.compiler.phases.util.ValueMergeUtil;
 import jdk.graal.compiler.replacements.nodes.MacroInvokable;
 import jdk.graal.compiler.replacements.nodes.ResolvedMethodHandleCallTargetNode;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -387,7 +388,8 @@ public class InliningUtil extends ValueMergeUtil {
         StructuredGraph graph = invokeNode.graph();
         final NodeInputList<ValueNode> parameters = invoke.callTarget().arguments();
 
-        assert inlineGraph.getGuardsStage().ordinal() >= graph.getGuardsStage().ordinal();
+        assert inlineGraph.getGuardsStage().ordinal() >= graph.getGuardsStage().ordinal() : Assertions.errorMessageContext("inlineGraph", inlineGraph, "inline graph stage",
+                        inlineGraph.getGuardsStage(), "graph", graph, "graph.guardsStage", graph.getGuardsStage());
         assert invokeNode.graph().isBeforeStage(StageFlag.FLOATING_READS) : "inline isn't handled correctly after floating reads phase";
 
         if (receiverNullCheck && !((MethodCallTargetNode) invoke.callTarget()).isStatic()) {
@@ -431,8 +433,14 @@ public class InliningUtil extends ValueMergeUtil {
 
             @Override
             public Node replacement(Node node) {
-                if (node instanceof ParameterNode) {
-                    return parameters.get(((ParameterNode) node).index());
+                if (node instanceof ParameterNode parameterNode) {
+                    ValueNode argument = parameters.get(parameterNode.index());
+                    /*
+                     * Create Pi nodes to correct mismatches between caller argument and callee
+                     * parameter stamps, which can be caused by e.g. invokes with an unresolved
+                     * return type, or OSRLocals which always have an unrestricted stamp.
+                     */
+                    return graph.addOrUnique(PiNode.create(argument, parameterNode.stamp(NodeView.DEFAULT)));
                 } else if (node == entryPointNode) {
                     return prevBegin;
                 }
@@ -597,7 +605,7 @@ public class InliningUtil extends ValueMergeUtil {
             InvokeWithExceptionNode invokeWithException = ((InvokeWithExceptionNode) invoke);
             if (unwindNode != null && unwindNode.isAlive()) {
                 assert unwindNode.predecessor() != null;
-                assert invokeWithException.exceptionEdge().successors().count() == 1;
+                assert invokeWithException.exceptionEdge().successors().count() == 1 : Assertions.errorMessage(invokeWithException, invokeWithException.exceptionEdge());
                 ExceptionObjectNode obj = (ExceptionObjectNode) invokeWithException.exceptionEdge();
                 /*
                  * The exception object node is a begin node, i.e., it can be used as an anchor for
@@ -644,7 +652,7 @@ public class InliningUtil extends ValueMergeUtil {
                 ValueNode mergedReturn = mergeReturns(merge, processedReturns);
                 Pair<ValueNode, FixedNode> returnAnchorPair = replaceInvokeAtUsages(invokeNode, mergedReturn, merge, beforeInlining);
                 returnValue = returnAnchorPair.getLeft();
-                assert returnAnchorPair.getRight() == merge;
+                assert returnAnchorPair.getRight() == merge : Assertions.errorMessage(returnAnchorPair.getRight(), merge);
                 if (merge.isPhiAtMerge(mergedReturn)) {
                     fixFrameStates(graph, merge, mergedReturn, returnValue);
                 }
@@ -679,7 +687,7 @@ public class InliningUtil extends ValueMergeUtil {
     }
 
     private static Pair<ValueNode, FixedNode> replaceInvokeAtUsages(ValueNode invokeNode, ValueNode origReturn, FixedNode anchorCandidate, Graph.Mark beforeInlining) {
-        assert invokeNode instanceof Invoke;
+        assert invokeNode instanceof Invoke : Assertions.errorMessage(invokeNode);
         ValueNode returnVal = origReturn;
         FixedNode anchorVal = anchorCandidate;
         if (origReturn != null) {
@@ -689,7 +697,7 @@ public class InliningUtil extends ValueMergeUtil {
                 StructuredGraph graph = origReturn.graph();
                 if (!(anchorCandidate instanceof AbstractBeginNode)) {
                     // Add anchor for pi after the original candidate
-                    ValueAnchorNode anchor = graph.add(new ValueAnchorNode(null));
+                    ValueAnchorNode anchor = graph.add(new ValueAnchorNode());
                     if (anchorCandidate.predecessor() == null) {
                         anchor.setNext(anchorCandidate);
                     } else {
@@ -803,16 +811,15 @@ public class InliningUtil extends ValueMergeUtil {
          * Not every duplicate node is newly created, so only update the position of the newly
          * created nodes.
          */
-        EconomicSet<Node> newNodes = EconomicSet.create(Equivalence.DEFAULT);
-        newNodes.addAll(invokeGraph.getNewNodes(mark));
         EconomicMap<NodeSourcePosition, NodeSourcePosition> posMap = EconomicMap.create(Equivalence.DEFAULT);
         UnmodifiableMapCursor<Node, Node> cursor = duplicates.getEntries();
         ResolvedJavaMethod inlineeRoot = null;
         while (cursor.advance()) {
             Node value = cursor.getValue();
-            if (!newNodes.contains(value)) {
+            if (!invokeGraph.isNew(mark, value)) {
                 continue;
             }
+
             if (isSubstitution && invokePos == null) {
                 // There's no caller information so the source position for this node will be
                 // invalid, so it should be cleared.
@@ -822,6 +829,10 @@ public class InliningUtil extends ValueMergeUtil {
                 if (oldPos != null) {
                     NodeSourcePosition updatedPos = posMap.get(oldPos);
                     if (updatedPos == null) {
+                        // This verifies that all the incoming source positions agree about their
+                        // root method. It then inserts invokePos as the caller so they will all
+                        // continue to agree about the root method since it will be
+                        // invokePos.getRootMethod.
                         if (inlineeRoot == null) {
                             assert (inlineeRoot = oldPos.getRootMethod()) != null;
                         } else {
@@ -846,7 +857,6 @@ public class InliningUtil extends ValueMergeUtil {
                 }
             }
         }
-        assert invokeGraph.verifySourcePositions(false);
     }
 
     public static void processMonitorId(FrameState stateAfter, MonitorIdNode monitorIdNode) {
@@ -1155,12 +1165,12 @@ public class InliningUtil extends ValueMergeUtil {
                     ReceiverTypeSpeculationContext.class);
 
     public static SpeculationLog.SpeculationReason createSpeculation(Invoke invoke, JavaTypeProfile typeProfile) {
-        assert typeProfile.getNotRecordedProbability() == 0.0D;
+        assert typeProfile.getNotRecordedProbability() == 0.0D : typeProfile;
         FrameState frameState = invoke.stateAfter();
         assert frameState != null;
         ProfilingInfo profilingInfo = invoke.asNode().graph().getProfilingInfo(frameState.getCode().getMethod());
         return FALLBACK_DEOPT_SPECULATION.createSpeculationReason(frameState.getMethod(), invoke.bci(),
-                        profilingInfo == null ? TriState.FALSE : profilingInfo.getExceptionSeen(invoke.bci()),
+                        profilingInfo == null ? TriState.UNKNOWN : profilingInfo.getExceptionSeen(invoke.bci()),
                         new ReceiverTypeSpeculationContext(typeProfile));
     }
 

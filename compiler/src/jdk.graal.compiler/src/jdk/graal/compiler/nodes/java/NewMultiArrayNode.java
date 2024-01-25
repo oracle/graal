@@ -27,6 +27,7 @@ package jdk.graal.compiler.nodes.java;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_8;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.graph.NodeClass;
@@ -38,7 +39,6 @@ import jdk.graal.compiler.nodes.DeoptimizingFixedWithNextNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.ArrayLengthProvider;
 import jdk.graal.compiler.nodes.spi.Lowerable;
-
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -73,7 +73,8 @@ public class NewMultiArrayNode extends DeoptimizingFixedWithNextNode implements 
         super(c, StampFactory.objectNonNull(TypeReference.createExactTrusted(type)));
         this.type = type;
         this.dimensions = new NodeInputList<>(this, dimensions);
-        assert dimensions.length > 0 && type.isArray();
+        assert NumUtil.assertPositiveInt(dimensions.length);
+        assert type.isArray();
     }
 
     public ResolvedJavaType type() {

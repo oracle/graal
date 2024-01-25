@@ -24,9 +24,9 @@
  */
 package jdk.graal.compiler.truffle.hotspot.aarch64;
 
+import static jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.Z_FIELD_BARRIER;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import static jdk.vm.ci.meta.JavaKind.Object;
-import static jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.Z_FIELD_BARRIER;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64Address;
@@ -47,7 +47,6 @@ import jdk.graal.compiler.serviceprovider.ServiceProvider;
 import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
 import jdk.graal.compiler.truffle.hotspot.TruffleCallBoundaryInstrumentationFactory;
 import jdk.graal.compiler.truffle.hotspot.TruffleEntryPointDecorator;
-
 import jdk.vm.ci.code.Register;
 
 @ServiceProvider(TruffleCallBoundaryInstrumentationFactory.class)
@@ -62,7 +61,7 @@ public class AArch64TruffleCallBoundaryInstrumentationFactory extends TruffleCal
                 AArch64HotSpotBackend.emitInvalidatePlaceholder(crb, masm);
 
                 try (ScratchRegister scratch = masm.getScratchRegister()) {
-                    Register thisRegister = crb.codeCache.getRegisterConfig().getCallingConventionRegisters(JavaCall, Object).get(0);
+                    Register thisRegister = crb.getCodeCache().getRegisterConfig().getCallingConventionRegisters(JavaCall, Object).get(0);
                     Register spillRegister = scratch.getRegister();
                     Label doProlog = new Label();
                     if (config.useCompressedOops) {
@@ -74,7 +73,7 @@ public class AArch64TruffleCallBoundaryInstrumentationFactory extends TruffleCal
                         AArch64Address address = AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, thisRegister, installedCodeOffset);
                         masm.ldr(64, spillRegister, address);
                         if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
-                            ForeignCallLinkage callTarget = crb.providers.getForeignCalls().lookupForeignCall(Z_FIELD_BARRIER);
+                            ForeignCallLinkage callTarget = crb.getForeignCalls().lookupForeignCall(Z_FIELD_BARRIER);
                             AArch64FrameMap frameMap = (AArch64FrameMap) crb.frameMap;
                             AArch64HotSpotZBarrierSetLIRGenerator.emitBarrier(crb, masm, null, spillRegister, config, callTarget, address, null, frameMap);
                         }

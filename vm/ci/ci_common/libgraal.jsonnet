@@ -45,15 +45,16 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   libgraal_truffle_base(quickbuild_args=[], extra_vm_args=[], coverage=false): self.libgraal_build(['-J-esa', '-J-ea', '-esa', '-ea'] + quickbuild_args) + {
     environment+: {
       # The Truffle TCK tests run as a part of Truffle TCK gate, tools tests run as a part of tools gate
-      TEST_LIBGRAAL_EXCLUDE: 'com.oracle.truffle.tck.tests.* com.oracle.truffle.tools.*'
+      TEST_LIBGRAAL_EXCLUDE: 'com.oracle.truffle.tck.tests.* com.oracle.truffle.tools.* com.oracle.truffle.regex.*'
     },
     run+: [
       ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Truffle'] + if coverage then g.jacoco_gate_args else [] +
-        if extra_vm_args != [] then ['--extra-vm-argument=' + std.join(" ", extra_vm_args)] else [],
+        ['--extra-vm-argument=' + std.join(" ", ['-DGCUtils.saveHeapDumpTo=.'] + extra_vm_args)],
     ],
     logs+: [
       '*/graal-compiler.log',
-      '*/graal-compiler-ctw.log'
+      '*/graal-compiler-ctw.log',
+      '*/gcutils_heapdump_*.hprof.gz'
     ],
     timelimit: '1:00:00',
     teardown+: if coverage then [
@@ -76,7 +77,6 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     "gate-vm-libgraal_truffle-labsjdk-latest-linux-amd64": {},
     "gate-vm-libgraal_compiler_zgc-labsjdk-latest-linux-amd64": {},
     "gate-vm-libgraal_compiler_quickbuild-labsjdk-latest-linux-amd64": {},
-    "gate-vm-libgraal_truffle_quickbuild-labsjdk-latest-linux-amd64": t("1:10:00"),
 
     "gate-vm-libgraal_compiler-labsjdk-21-linux-amd64": {} + graal_common.mach5_target,
     "gate-vm-libgraal_truffle-labsjdk-21-linux-amd64": {},
@@ -88,6 +88,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
     "daily-vm-libgraal_compiler_zgc-labsjdk-21-linux-amd64": {},
     "daily-vm-libgraal_compiler_quickbuild-labsjdk-21-linux-amd64": {},
+    "daily-vm-libgraal_truffle_quickbuild-labsjdk-latest-linux-amd64": t("1:10:00"),
     "daily-vm-libgraal_truffle_quickbuild-labsjdk-21-linux-amd64": t("1:10:00"),
   },
 
@@ -113,7 +114,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
   # Builds run on all platforms (platform = JDK + OS + ARCH)
   local all_platforms_builds = [
-    c["gate_vm_" + underscore(os_arch)] +
+    c.vm_base(os(os_arch), arch(os_arch), 'gate') +
     svm_common(os_arch, jdk) +
     vm["custom_vm_" + os(os_arch)] +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
@@ -144,7 +145,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
   # Builds run on all platforms (platform = JDK + OS + ARCH) but Windows currently requires Windows server 2019
   local all_platforms_zgc_builds = [
-    adjust_windows_version(c["gate_vm_" + underscore(os_arch)]) +
+    adjust_windows_version(c.vm_base(os(os_arch), arch(os_arch), 'gate')) +
     svm_common(os_arch, jdk) +
     vm["custom_vm_" + os(os_arch)] +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
@@ -166,7 +167,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
   # Coverage builds only on jdk21 (GR-46676)
   local coverage_jdk21_builds = [
-    c["gate_vm_" + underscore(os_arch)] +
+    c.vm_base(os(os_arch), arch(os_arch), 'gate') +
     svm_common(os_arch, jdk) +
     vm["custom_vm_" + os(os_arch)] +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",

@@ -100,13 +100,13 @@ class WindowsBuildEnvironmentUtil {
                             OUTPUT_SEPARATOR, vcVarsAllLocation, OUTPUT_SEPARATOR);
             Process p = Runtime.getRuntime().exec(new String[]{"cmd.exe", "/c", commandSequence});
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
-                String line = null;
+                String line;
                 while ((line = reader.readLine()) != null) {
                     if (line.startsWith(OUTPUT_SEPARATOR)) {
                         numSeenOutputSeparators++;
                     } else if (numSeenOutputSeparators == 0) {
                         // collect environment variables from 1st `set` invocation
-                        processLineWithKeyValue(line, (key, value) -> originalEnv.put(key, value));
+                        processLineWithKeyValue(line, originalEnv::put);
                     } else if (numSeenOutputSeparators == 2) {
                         // iterate through updated environment variables from 2nd `set` invocation
                         processLineWithKeyValue(line, (key, value) -> {

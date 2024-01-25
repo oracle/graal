@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,18 @@
 package com.oracle.svm.core.graal.replacements;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
+import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
+import com.oracle.svm.core.nodes.CFunctionCaptureNode;
+import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
+import com.oracle.svm.core.nodes.CFunctionPrologueNode;
+import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
@@ -71,20 +82,6 @@ import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.GraphKit;
-import jdk.graal.compiler.word.WordTypes;
-import org.graalvm.word.WordBase;
-
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
-import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
-import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
-import com.oracle.svm.core.nodes.CFunctionCaptureNode;
-import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
-import com.oracle.svm.core.nodes.CFunctionPrologueNode;
-import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
-import com.oracle.svm.core.thread.VMThreads.StatusSupport;
-import com.oracle.svm.core.util.VMError;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.Constant;
@@ -99,31 +96,29 @@ public class SubstrateGraphKit extends GraphKit {
 
     private final FrameStateBuilder frameState;
     private int nextBCI;
-
-    private static boolean trackNodeSourcePosition(boolean forceTrackNodeSourcePosition) {
-        return forceTrackNodeSourcePosition || SubstrateOptions.parseOnce();
-    }
+    private final List<ValueNode> arguments;
 
     @SuppressWarnings("this-escape")
-    public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes,
-                    GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId, boolean forceTrackNodeSourcePosition, boolean recordInlinedMethods) {
-        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null, trackNodeSourcePosition(forceTrackNodeSourcePosition), recordInlinedMethods);
-        assert wordTypes != null : "Support for Word types is mandatory";
+    public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers,
+                    GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId, boolean recordInlinedMethods) {
+        super(debug, stubMethod, providers, graphBuilderPlugins, compilationId, null, true, recordInlinedMethods);
+        assert getWordTypes() != null : "Support for Word types is mandatory";
         frameState = new FrameStateBuilder(this, stubMethod, graph);
         frameState.disableKindVerification();
         frameState.disableStateVerification();
-        frameState.initializeForMethodStart(null, true, graphBuilderPlugins);
+        List<ValueNode> collectedArguments = new ArrayList<>();
+        frameState.initializeForMethodStart(null, true, graphBuilderPlugins, collectedArguments);
+        arguments = Collections.unmodifiableList(collectedArguments);
         graph.start().setStateAfter(frameState.create(bci(), graph.start()));
     }
 
-    public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes,
-                    GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId, boolean forceTrackNodeSourcePosition) {
-        this(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, forceTrackNodeSourcePosition, false);
+    public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId) {
+        this(debug, stubMethod, providers, graphBuilderPlugins, compilationId, false);
     }
 
     @Override
-    protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, int bci) {
-        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, null, null, null);
+    public MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, int bci) {
+        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp);
     }
 
     public SubstrateLoweringProvider getLoweringProvider() {
@@ -142,21 +137,7 @@ public class SubstrateGraphKit extends GraphKit {
         frameState.storeLocal(index, slotKind, value);
     }
 
-    public List<ValueNode> loadArguments(JavaType[] paramTypes) {
-        List<ValueNode> arguments = new ArrayList<>();
-        int numOfParams = paramTypes.length;
-        int javaIndex = 0;
-
-        for (int i = 0; i < numOfParams; i++) {
-            JavaType type = paramTypes[i];
-            JavaKind kind = type.getJavaKind();
-
-            assert frameState.loadLocal(javaIndex, kind) != null;
-            arguments.add(frameState.loadLocal(javaIndex, kind));
-
-            javaIndex += kind.getSlotCount();
-        }
-
+    public List<ValueNode> getInitialArguments() {
         return arguments;
     }
 
@@ -334,10 +315,6 @@ public class SubstrateGraphKit extends GraphKit {
         return nextBCI++;
     }
 
-    public static boolean isWord(Class<?> klass) {
-        return WordBase.class.isAssignableFrom(klass);
-    }
-
     public StructuredGraph finalizeGraph() {
         if (lastFixedNode != null) {
             throw VMError.shouldNotReachHere("Manually constructed graph does not terminate control flow properly. lastFixedNode: " + lastFixedNode);
@@ -345,7 +322,7 @@ public class SubstrateGraphKit extends GraphKit {
 
         mergeUnwinds();
         assert graph.verify();
-        assert wordTypes.ensureGraphContainsNoWordTypeReferences(graph);
+        assert getWordTypes().ensureGraphContainsNoWordTypeReferences(graph);
         return graph;
     }
 
@@ -400,15 +377,9 @@ public class SubstrateGraphKit extends GraphKit {
         return withExceptionNode;
     }
 
-    public void appendStateSplitProxy(FrameState state) {
-        StateSplitProxyNode proxy = new StateSplitProxyNode(null);
+    public void appendStateSplitProxy() {
+        StateSplitProxyNode proxy = new StateSplitProxyNode();
         append(proxy);
-        proxy.setStateAfter(state);
-    }
-
-    public void appendStateSplitProxy(FrameStateBuilder stateBuilder) {
-        StateSplitProxyNode proxy = new StateSplitProxyNode(null);
-        append(proxy);
-        proxy.setStateAfter(stateBuilder.create(bci(), proxy));
+        proxy.setStateAfter(frameState.create(bci(), proxy));
     }
 }

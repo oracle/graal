@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1184,14 +1184,14 @@ public class ELFObjectFile extends ObjectFile {
         DwarfRangesSectionImpl elfRangesSectionImpl = dwarfSections.getRangesSectionImpl();
         DwarfLineSectionImpl elfLineSectionImpl = dwarfSections.getLineSectionImpl();
         /* Now we can create the section elements with empty content. */
-        newUserDefinedSection(elfStrSectionImpl.getSectionName(), elfStrSectionImpl);
-        newUserDefinedSection(elfAbbrevSectionImpl.getSectionName(), elfAbbrevSectionImpl);
-        newUserDefinedSection(frameSectionImpl.getSectionName(), frameSectionImpl);
-        newUserDefinedSection(elfLocSectionImpl.getSectionName(), elfLocSectionImpl);
-        newUserDefinedSection(elfInfoSectionImpl.getSectionName(), elfInfoSectionImpl);
-        newUserDefinedSection(elfARangesSectionImpl.getSectionName(), elfARangesSectionImpl);
-        newUserDefinedSection(elfRangesSectionImpl.getSectionName(), elfRangesSectionImpl);
-        newUserDefinedSection(elfLineSectionImpl.getSectionName(), elfLineSectionImpl);
+        newDebugSection(elfStrSectionImpl.getSectionName(), elfStrSectionImpl);
+        newDebugSection(elfAbbrevSectionImpl.getSectionName(), elfAbbrevSectionImpl);
+        newDebugSection(frameSectionImpl.getSectionName(), frameSectionImpl);
+        newDebugSection(elfLocSectionImpl.getSectionName(), elfLocSectionImpl);
+        newDebugSection(elfInfoSectionImpl.getSectionName(), elfInfoSectionImpl);
+        newDebugSection(elfARangesSectionImpl.getSectionName(), elfARangesSectionImpl);
+        newDebugSection(elfRangesSectionImpl.getSectionName(), elfRangesSectionImpl);
+        newDebugSection(elfLineSectionImpl.getSectionName(), elfLineSectionImpl);
         /*
          * Add symbols for the base of all DWARF sections whose content may need to be referenced
          * using a section global offset. These need to be written using a base relative reloc so

@@ -76,25 +76,25 @@ public class Bytecode {
     public static final int CALL_INDIRECT_I32 = 0x14;
 
     public static final int DROP = 0x15;
-    public static final int DROP_REF = 0x16;
+    public static final int DROP_OBJ = 0x16;
 
     public static final int SELECT = 0x17;
-    public static final int SELECT_REF = 0x18;
+    public static final int SELECT_OBJ = 0x18;
 
     public static final int LOCAL_GET_U8 = 0x19;
     public static final int LOCAL_GET_I32 = 0x1A;
-    public static final int LOCAL_GET_REF_U8 = 0x1B;
-    public static final int LOCAL_GET_REF_I32 = 0x1C;
+    public static final int LOCAL_GET_OBJ_U8 = 0x1B;
+    public static final int LOCAL_GET_OBJ_I32 = 0x1C;
 
     public static final int LOCAL_SET_U8 = 0x1D;
     public static final int LOCAL_SET_I32 = 0x1E;
-    public static final int LOCAL_SET_REF_U8 = 0x1F;
-    public static final int LOCAL_SET_REF_I32 = 0x20;
+    public static final int LOCAL_SET_OBJ_U8 = 0x1F;
+    public static final int LOCAL_SET_OBJ_I32 = 0x20;
 
     public static final int LOCAL_TEE_U8 = 0x21;
     public static final int LOCAL_TEE_I32 = 0x22;
-    public static final int LOCAL_TEE_REF_U8 = 0x23;
-    public static final int LOCAL_TEE_REF_I32 = 0x24;
+    public static final int LOCAL_TEE_OBJ_U8 = 0x23;
+    public static final int LOCAL_TEE_OBJ_I32 = 0x24;
 
     public static final int GLOBAL_GET_U8 = 0x25;
     public static final int GLOBAL_GET_I32 = 0x26;
@@ -336,7 +336,7 @@ public class Bytecode {
     public static final int MISC = 0xFB;
 
     public static final int ATOMIC = 0xFC;
-
+    public static final int VECTOR = 0xFD;
     public static final int NOTIFY = 0xFE;
 
     // Misc opcodes
@@ -442,6 +442,40 @@ public class Bytecode {
     public static final int ATOMIC_NOTIFY = 0x40;
     public static final int ATOMIC_WAIT32 = 0x41;
     public static final int ATOMIC_WAIT64 = 0x42;
+
+    // Vector opcodes
+    public static final int VECTOR_V128_LOAD = 0x00;
+    public static final int VECTOR_V128_CONST = 0x0C;
+
+    public static final int VECTOR_F64X2_EQ = 0x47;
+    public static final int VECTOR_F64X2_NE = 0x48;
+    public static final int VECTOR_F64X2_LT = 0x49;
+    public static final int VECTOR_F64X2_GT = 0x4A;
+    public static final int VECTOR_F64X2_LE = 0x4B;
+    public static final int VECTOR_F64X2_GE = 0x4C;
+
+    public static final int VECTOR_V128_ANY_TRUE = 0x53;
+
+    public static final int VECTOR_I32X4_ALL_TRUE = 0xA3;
+    public static final int VECTOR_I32X4_ADD = 0xAE;
+    public static final int VECTOR_I32X4_SUB = 0xB1;
+    public static final int VECTOR_I32X4_MUL = 0xB5;
+
+    public static final int VECTOR_F64X2_CEIL = 0x74;
+    public static final int VECTOR_F64X2_FLOOR = 0x75;
+    public static final int VECTOR_F64X2_TRUNC = 0x7A;
+    public static final int VECTOR_F64X2_NEAREST = 0x94;
+    public static final int VECTOR_F64X2_ABS = 0xEC;
+    public static final int VECTOR_F64X2_NEG = 0xED;
+    public static final int VECTOR_F64X2_SQRT = 0xEF;
+    public static final int VECTOR_F64X2_ADD = 0xF0;
+    public static final int VECTOR_F64X2_SUB = 0xF1;
+    public static final int VECTOR_F64X2_MUL = 0xF2;
+    public static final int VECTOR_F64X2_DIV = 0xF3;
+    public static final int VECTOR_F64X2_MIN = 0xF4;
+    public static final int VECTOR_F64X2_MAX = 0xF5;
+    public static final int VECTOR_F64X2_PMIN = 0xF6;
+    public static final int VECTOR_F64X2_PMAX = 0xF7;
 
     public static final byte[] EMPTY_BYTES = {};
     public static final int COMMON_BYTECODE_OFFSET = Bytecode.I32_EQ - Instructions.I32_EQ;

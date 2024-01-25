@@ -35,6 +35,7 @@ import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.InputType;
@@ -50,7 +51,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -322,7 +322,7 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
     }
 
     public static LogicNode createCompareNode(CanonicalCondition condition, ValueNode x, ValueNode y, ConstantReflectionProvider constantReflection, NodeView view) {
-        assert x.getStackKind() == y.getStackKind();
+        assert x.getStackKind() == y.getStackKind() : Assertions.errorMessageContext("condition", condition, "x", x, "y", y);
         assert !x.getStackKind().isNumericFloat();
 
         LogicNode comparison;
@@ -339,7 +339,7 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
             assert x.getStackKind().isNumericInteger();
             comparison = IntegerLessThanNode.create(x, y, view);
         } else {
-            assert condition == CanonicalCondition.BT;
+            assert condition == CanonicalCondition.BT : Assertions.errorMessage(condition, x, y);
             assert x.getStackKind().isNumericInteger();
             comparison = IntegerBelowNode.create(x, y, view);
         }
@@ -472,7 +472,7 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
 
     public static LogicNode createCompareNode(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth,
                     CanonicalCondition condition, ValueNode x, ValueNode y, NodeView view) {
-        assert x.getStackKind() == y.getStackKind();
+        assert x.getStackKind() == y.getStackKind() : Assertions.errorMessageContext("x", x, "y", y);
         assert !x.getStackKind().isNumericFloat();
 
         LogicNode comparison;
@@ -490,7 +490,7 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
             assert x.getStackKind().isNumericInteger();
             comparison = IntegerLessThanNode.create(constantReflection, metaAccess, options, smallestCompareWidth, x, y, view);
         } else {
-            assert condition == CanonicalCondition.BT;
+            assert condition == CanonicalCondition.BT : Assertions.errorMessage(x, y, condition);
             assert x.getStackKind().isNumericInteger();
             comparison = IntegerBelowNode.create(constantReflection, metaAccess, options, smallestCompareWidth, x, y, view);
         }
@@ -504,14 +504,14 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
     }
 
     public static LogicNode createFloatCompareNode(CanonicalCondition condition, ValueNode x, ValueNode y, boolean unorderedIsTrue, NodeView view) {
-        assert x.getStackKind() == y.getStackKind();
+        assert x.getStackKind() == y.getStackKind() : Assertions.errorMessageContext("x", x, "y", y);
         assert x.getStackKind().isNumericFloat();
 
         LogicNode comparison;
         if (condition == CanonicalCondition.EQ) {
             comparison = FloatEqualsNode.create(x, y, view);
         } else {
-            assert condition == CanonicalCondition.LT;
+            assert condition == CanonicalCondition.LT : Assertions.errorMessage(x, y, unorderedIsTrue);
             comparison = FloatLessThanNode.create(x, y, unorderedIsTrue, view);
         }
 

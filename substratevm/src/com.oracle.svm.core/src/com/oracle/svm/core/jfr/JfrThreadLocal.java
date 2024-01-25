@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jfr;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -52,6 +51,10 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
+
+import jdk.graal.compiler.api.replacements.Fold;
+
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 /**
  * This class holds various JFR-specific thread local values.
@@ -474,6 +477,11 @@ public class JfrThreadLocal implements ThreadListener {
         return missedSamples.get();
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static long getMissedSamples(IsolateThread thread) {
+        return missedSamples.get(thread);
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void increaseUnparseableStacks() {
         unparseableStacks.set(getUnparseableStacks() + 1);
@@ -482,6 +490,11 @@ public class JfrThreadLocal implements ThreadListener {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getUnparseableStacks() {
         return unparseableStacks.get();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static long getUnparseableStacks(IsolateThread thread) {
+        return unparseableStacks.get(thread);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

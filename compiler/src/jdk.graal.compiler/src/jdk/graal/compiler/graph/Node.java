@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.graph;
 
+import static jdk.graal.compiler.graph.Graph.isNodeModificationCountsEnabled;
 import static jdk.graal.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 
 import java.lang.annotation.ElementType;
@@ -40,13 +41,18 @@ import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import org.graalvm.collections.EconomicSet;
+
 import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Edges.Type;
+import jdk.graal.compiler.graph.Graph.NodeEventListener;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.graph.iterators.NodePredicate;
 import jdk.graal.compiler.nodeinfo.InputType;
@@ -55,7 +61,6 @@ import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.services.Services;
 import sun.misc.Unsafe;
 
@@ -309,7 +314,7 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     final void init(NodeClass<? extends Node> c) {
-        assert c.getJavaClass() == this.getClass();
+        assert c.getJavaClass() == this.getClass() : Assertions.errorMessageContext("c", c, "this", this);
         this.nodeClass = c;
         id = INITIAL_ID;
         extraUsages = EMPTY_ARRAY;
@@ -415,7 +420,7 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Gets the maximum number of usages {@code this} has had at any point in time.
+     * Gets the current number of usages {@code this} node has.
      */
     public int getUsageCount() {
         if (usage0 == null) {
@@ -515,7 +520,7 @@ public abstract class Node implements Cloneable, Formattable {
         } else if (destIndex == 1) {
             movUsageFromEndToIndexOne();
         } else {
-            assert destIndex == 0;
+            assert destIndex == 0 : destIndex;
             movUsageFromEndToIndexZero();
         }
     }
@@ -555,29 +560,81 @@ public abstract class Node implements Cloneable, Formattable {
      * Removes one occurrence of a given node from this node's {@linkplain #usages() usages}.
      *
      * @param node the node to remove
-     * @return whether or not {@code usage} was in the usage list
      */
     public boolean removeUsage(Node node) {
         assert node != null;
         // For large graphs, usage removal is performance critical.
         // Furthermore, it is critical that this method maintains the invariant that the usage list
         // has no null element preceding a non-null element.
-        incUsageModCount();
         if (usage0 == node) {
             movUsageFromEndToIndexZero();
+            incUsageModCount();
             return true;
         }
         if (usage1 == node) {
             movUsageFromEndToIndexOne();
+            incUsageModCount();
             return true;
         }
         for (int i = this.extraUsagesCount - 1; i >= 0; i--) {
             if (extraUsages[i] == node) {
                 movUsageFromEndToExtraUsages(i);
+                incUsageModCount();
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * Removes all nodes in the provided set from {@code this} node's usages. This is significantly
+     * faster than repeated execution of {@link Node#removeUsage}.
+     */
+    public void removeUsages(EconomicSet<Node> toDelete) {
+        if (toDelete.size() == 0) {
+            return;
+        } else if (toDelete.size() == 1) {
+            removeUsage(toDelete.iterator().next());
+            return;
+        }
+
+        // requires iteration from back to front to check nodes prior to being moved to the front
+        for (int i = extraUsagesCount - 1; i >= 0; i--) {
+            if (toDelete.contains(extraUsages[i])) {
+                movUsageFromEndToExtraUsages(i);
+                incUsageModCount();
+            }
+        }
+        if (usage1 != null && toDelete.contains(usage1)) {
+            movUsageFromEndToIndexOne();
+            incUsageModCount();
+        }
+        if (usage0 != null && toDelete.contains(usage0)) {
+            movUsageFromEndToIndexZero();
+            incUsageModCount();
+        }
+    }
+
+    /**
+     * Removes all dead nodes from {@code this} node's usages. This is significantly faster than
+     * repeated execution of {@link Node#removeUsage}.
+     */
+    public void removeDeadUsages() {
+        // requires iteration from back to front to check nodes prior to being moved to the front
+        for (int i = extraUsagesCount - 1; i >= 0; i--) {
+            if (!extraUsages[i].isAlive()) {
+                movUsageFromEndToExtraUsages(i);
+                incUsageModCount();
+            }
+        }
+        if (usage1 != null && !usage1.isAlive()) {
+            movUsageFromEndToIndexOne();
+            incUsageModCount();
+        }
+        if (usage0 != null && !usage0.isAlive()) {
+            movUsageFromEndToIndexZero();
+            incUsageModCount();
+        }
     }
 
     public final Node predecessor() {
@@ -585,27 +642,27 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     public final int modCount() {
-        if (Graph.isNodeModificationCountsEnabled() && graph != null) {
+        if (isNodeModificationCountsEnabled() && graph != null) {
             return graph.getNodeModCount(this);
         }
         return 0;
     }
 
     final void incModCount() {
-        if (Graph.isNodeModificationCountsEnabled() && graph != null) {
+        if (isNodeModificationCountsEnabled() && graph != null) {
             graph.incNodeModCount(this);
         }
     }
 
     final int usageModCount() {
-        if (Graph.isNodeModificationCountsEnabled() && graph != null) {
+        if (isNodeModificationCountsEnabled() && graph != null) {
             return graph.nodeUsageModCount(this);
         }
         return 0;
     }
 
     final void incUsageModCount() {
-        if (Graph.isNodeModificationCountsEnabled() && graph != null) {
+        if (isNodeModificationCountsEnabled() && graph != null) {
             graph.incNodeUsageModCount(this);
         }
     }
@@ -1072,7 +1129,7 @@ public abstract class Node implements Cloneable, Formattable {
     private void maybeNotifyInputChanged(Node node) {
         if (graph != null) {
             assert !graph.isFrozen();
-            Graph.NodeEventListener listener = graph.nodeEventListener;
+            NodeEventListener listener = graph.nodeEventListener;
             if (listener != null) {
                 listener.event(Graph.NodeEvent.INPUT_CHANGED, node);
             }
@@ -1081,14 +1138,14 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Iterates over each {@link Graph.NodeEventListener} attached to {@code this.graph()} if
+     * Iterates over each {@link NodeEventListener} attached to {@code this.graph()} if
      * {@code node.isAlive()} and notifies the listener that {@code node} has had its last usage
      * removed.
      */
     public void maybeNotifyZeroUsages(Node node) {
         if (graph != null && node.isAlive()) {
             assert !graph.isFrozen();
-            Graph.NodeEventListener listener = graph.nodeEventListener;
+            NodeEventListener listener = graph.nodeEventListener;
             if (listener != null) {
                 listener.event(Graph.NodeEvent.ZERO_USAGES, node);
             }
@@ -1305,8 +1362,8 @@ public abstract class Node implements Cloneable, Formattable {
             newNode = (Node) UNSAFE.allocateInstance(getClass());
             newNode.nodeClass = nodeClassTmp;
             nodeClassTmp.getData().copy(this, newNode);
-            copyOrClearEdgesForClone(newNode, Edges.Type.Inputs, edgesToCopy);
-            copyOrClearEdgesForClone(newNode, Edges.Type.Successors, edgesToCopy);
+            copyOrClearEdgesForClone(newNode, Type.Inputs, edgesToCopy);
+            copyOrClearEdgesForClone(newNode, Type.Successors, edgesToCopy);
         } catch (Exception e) {
             throw new GraalGraphError(e).addContext(this);
         }
@@ -1333,42 +1390,71 @@ public abstract class Node implements Cloneable, Formattable {
     protected void afterClone(@SuppressWarnings("unused") Node other) {
     }
 
+    @SuppressWarnings("unchecked")
     protected boolean verifyInputs() {
-        for (Position pos : inputPositions()) {
-            Node input = pos.get(this);
-            if (input == null) {
-                assertTrue(pos.isInputOptional(), "non-optional input %s cannot be null in %s (fix nullness or use @OptionalInput)", pos, this);
-            } else {
-                assertFalse(input.isDeleted(), "input was deleted %s", input);
-                assertTrue(input.isAlive(), "input is not alive yet, i.e., it was not yet added to the graph");
-                assertTrue(pos.getInputType() == InputType.Unchecked || input.isAllowedUsageType(pos.getInputType()), "invalid usage type input:%s inputType:%s inputField:%s", input,
-                                pos.getInputType(), pos.getName());
-                Class<?> expectedType = pos.getType();
-                assertTrue(expectedType.isAssignableFrom(input.getClass()), "Invalid input type for %s: expected a %s but was a %s", pos, expectedType, input.getClass());
-            }
-        }
-        /*
-         * Verify properties of input list objects themselves, as opposed to their contents. The
-         * iteration over input positions above visits the contents of input lists but does not
-         * distinguish between null and empty lists.
-         */
         InputEdges inputEdges = nodeClass.getInputEdges();
+
+        // Verify properties of direct inputs
+        for (int i = 0; i < inputEdges.getDirectCount(); i++) {
+            Node input = (Node) inputEdges.get(this, i);
+            verifyInput(inputEdges, i, input);
+        }
+
+        // Verify properties of input list objects
         for (int i = inputEdges.getDirectCount(); i < inputEdges.getCount(); i++) {
             Object inputList = inputEdges.get(this, i);
             if (inputList == null) {
                 assertTrue(inputEdges.isOptional(i), "non-optional input list %s cannot be null in %s (fix nullness or use @OptionalInput)", inputEdges.getName(i), this);
+            } else {
+                NodeList<Node> nodeList = (NodeList<Node>) inputList;
+                for (Node input : nodeList) {
+                    verifyInput(inputEdges, i, input);
+                }
             }
         }
         return true;
     }
 
-    public boolean verify() {
+    private void verifyInput(InputEdges inputEdges, int i, Node input) {
+        if (input == null) {
+            assertTrue(inputEdges.isOptional(i), "non-optional input %s cannot be null in %s (fix nullness or use @OptionalInput)", inputEdges.getName(i), this);
+        } else {
+            assertFalse(input.isDeleted(), "input was deleted %s", input);
+            assertTrue(input.isAlive(), "input is not alive yet, i.e., it was not yet added to the graph");
+            InputType inputType = inputEdges.getInputType(i);
+            assertTrue(inputType == InputType.Unchecked || input.isAllowedUsageType(inputType), "invalid usage type input:%s inputType:%s inputField:%s", input,
+                            inputType, inputEdges.getName(i));
+            Class<?> expectedType = i < inputEdges.getDirectCount() ? inputEdges.getType(i) : Node.class;
+            assertTrue(expectedType.isAssignableFrom(input.getClass()), "Invalid input type for %s: expected a %s but was a %s", inputEdges.getName(i), expectedType, input.getClass());
+        }
+    }
+
+    public final boolean verify() {
+        return verify(true);
+    }
+
+    /**
+     * Basic verification of node properties. This method is final so that a node cannot
+     * accidentally skip calling super(). Node specific verification should be done in
+     * {@link #verifyNode()}.
+     */
+    public final boolean verify(boolean verifyInputs) {
         assertTrue(isAlive(), "cannot verify inactive node %s", this);
-        assertTrue(graph() != null, "null graph");
-        verifyInputs();
+        assertTrue(graph != null, "null graph");
+        if (verifyInputs) {
+            verifyInputs();
+        }
         if (graph.verifyGraphEdges) {
             verifyEdges();
         }
+        verifyNode();
+        return true;
+    }
+
+    /**
+     * Verify node properties which are not covered by {@link #verify()}.
+     */
+    protected boolean verifyNode() {
         return true;
     }
 
@@ -1384,7 +1470,7 @@ public abstract class Node implements Cloneable, Formattable {
 
         for (Node successor : successors()) {
             assertTrue(successor.predecessor() == this, "missing predecessor in %s (actual: %s)", successor, successor.predecessor());
-            assertTrue(successor.graph() == graph(), "mismatching graph in successor %s", successor);
+            assertTrue(successor.graph == graph, "mismatching graph in successor %s", successor);
         }
         for (Node usage : usages()) {
             assertFalse(usage.isDeleted(), "usage %s must never be deleted", usage);

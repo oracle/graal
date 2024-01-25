@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.reflect;
 
+import static com.oracle.svm.core.MissingRegistrationUtils.ERROR_EMPHASIS_INDENT;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -103,7 +105,13 @@ public final class MissingReflectionRegistrationUtils {
     }
 
     private static String errorMessage(String failedAction, String elementDescriptor, String note, String helpLink) {
-        return "The program tried to reflectively " + failedAction + " " + elementDescriptor +
+        /* Can't use multi-line strings as they pull in format and bloat "Hello, World!" */
+        return "The program tried to reflectively " + failedAction +
+                        System.lineSeparator() +
+                        System.lineSeparator() +
+                        ERROR_EMPHASIS_INDENT + elementDescriptor +
+                        System.lineSeparator() +
+                        System.lineSeparator() +
                         " without it being registered for runtime reflection. Add " + elementDescriptor + " to the " + helpLink + " metadata to solve this problem. " +
                         (note != null ? "Note: " + note + " " : "") +
                         "See https://www.graalvm.org/latest/reference-manual/native-image/metadata/#" + helpLink + " for help.";

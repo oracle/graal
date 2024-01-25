@@ -26,10 +26,6 @@ package com.oracle.svm.hosted.analysis;
 
 import java.util.function.Function;
 
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -40,6 +36,9 @@ import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
 
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**

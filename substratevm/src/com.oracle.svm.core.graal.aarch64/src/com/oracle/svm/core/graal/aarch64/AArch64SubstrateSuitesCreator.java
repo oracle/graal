@@ -25,6 +25,7 @@
 package com.oracle.svm.core.graal.aarch64;
 
 import jdk.graal.compiler.core.aarch64.AArch64SuitesCreator;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.phases.tiers.CompilerConfiguration;
@@ -37,7 +38,7 @@ public class AArch64SubstrateSuitesCreator extends AArch64SuitesCreator {
 
     @Override
     protected GraphBuilderPhase createGraphBuilderPhase(GraphBuilderConfiguration graphBuilderConfiguration) {
-        return new GraphBuilderPhase(graphBuilderConfiguration);
+        throw GraalError.shouldNotReachHere("this path is unused");
     }
 
 }

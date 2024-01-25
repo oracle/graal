@@ -26,19 +26,18 @@ package com.oracle.svm.hosted.code;
 
 import java.util.IdentityHashMap;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.bytecode.BytecodeProvider;
-import jdk.graal.compiler.java.BytecodeParser;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.word.WordTypes;
-
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.bytecode.BytecodeProvider;
+import jdk.graal.compiler.java.BytecodeParser;
+import jdk.graal.compiler.nodes.GraphEncoder;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -66,8 +65,8 @@ public class HostedReplacements extends SubstrateReplacements {
     private final SubstrateReplacements aReplacements;
 
     public HostedReplacements(HostedUniverse hUniverse, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target, HostedProviders anaylysisProviders,
-                    BytecodeProvider bytecodeProvider, WordTypes wordTypes) {
-        super(providers, snippetReflection, bytecodeProvider, target, wordTypes, null);
+                    BytecodeProvider bytecodeProvider) {
+        super(providers, snippetReflection, bytecodeProvider, target, null);
         this.hUniverse = hUniverse;
         this.aReplacements = (SubstrateReplacements) anaylysisProviders.getReplacements();
     }
@@ -79,7 +78,7 @@ public class HostedReplacements extends SubstrateReplacements {
     }
 
     @Override
-    public void encodeSnippets() {
+    public void encodeSnippets(GraphEncoder encoder) {
         /* Copy over all snippets from the analysis replacements, changing out metadata objects. */
         IdentityHashMap<Object, Object> mapping = new IdentityHashMap<>();
         super.copyFrom(aReplacements, obj -> AnalysisToHostedGraphTransplanter.replaceAnalysisObjects(obj, null, mapping, hUniverse));

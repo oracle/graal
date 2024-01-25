@@ -71,7 +71,7 @@ public class SaveCalleeSaveRegisters extends PreAllocationOptimizationPhase {
     private static RegisterMap<Variable> saveAtEntry(LIR lir, LIRGeneratorTool lirGen, LIRGenerationResult lirGenRes, RegisterArray calleeSaveRegisters, Architecture arch) {
         BasicBlock<?> startBlock = lir.getControlFlowGraph().getStartBlock();
         ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(startBlock);
-        int insertionIndex = 1;
+        int insertionIndex = lirGenRes.getFirstInsertPosition();
         LIRInsertionBuffer buffer = new LIRInsertionBuffer();
         buffer.init(instructions);
         StandardOp.LabelOp entry = (StandardOp.LabelOp) instructions.get(insertionIndex - 1);
@@ -99,7 +99,8 @@ public class SaveCalleeSaveRegisters extends PreAllocationOptimizationPhase {
         int insertionIndex = instructions.size() - 1;
         LIRInsertionBuffer buffer = new LIRInsertionBuffer();
         buffer.init(instructions);
-        assert instructions.get(insertionIndex) instanceof StandardOp.BlockEndOp;
+        LIRInstruction lirInstruction = instructions.get(insertionIndex);
+        assert lirInstruction instanceof StandardOp.BlockEndOp : lirInstruction;
         calleeSaveRegisters.forEach((Register register, Variable saved) -> {
             LIRInstruction restore = moveFactory.createMove(register.asValue(saved.getValueKind()), saved);
             buffer.append(insertionIndex, restore);

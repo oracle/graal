@@ -25,12 +25,13 @@ Here you will learn how to:
 - [Containerise a Native Executable and Run in a Docker Container](containerise-native-executable-with-docker.md)
 - [Create a Heap Dump from a Native Executable](create-heap-dump-from-native-executable.md)
 - [Debug Native Executables with GDB](debug-native-executables-with-gdb.md)
+- [Include Reachability Metadata Using the Native Image Gradle Plugin](include-reachability-metadata-gradle.md)
+- [Include Reachability Metadata Using the Native Image Maven Plugin](include-reachability-metadata-maven.md)
 - [Include Resources in a Native Executable](include-resources.md)
 - [Optimize a Native Executable with Profile-Guided Optimizations](optimize-native-executable-with-pgo.md)
 - [Use GraalVM Dashboard to Optimize the Size of a Native Executable](use-graalvm-dashboard.md)
 - [Use Gradle to Build a Native Executable from a Java Application](https://graalvm.github.io/native-build-tools/latest/gradle-plugin-quickstart.html)
 - [Use Maven to Build a Native Executable from a Java Application](https://graalvm.github.io/native-build-tools/latest/maven-plugin-quickstart.html)
-- [Use Shared Reachability Metadata with Native Image Gradle Plugin](use-reachability-metadata-repository-gradle.md)
 - [Use System Properties in a Native Executable](use-system-properties.md)
 
 ## Microservices Frameworks

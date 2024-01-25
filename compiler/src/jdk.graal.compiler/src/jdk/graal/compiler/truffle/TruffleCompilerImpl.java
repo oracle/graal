@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.truffle;
 
-import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
 import static jdk.graal.compiler.core.CompilationWrapper.ExceptionAction.Diagnose;
 import static jdk.graal.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
 import static jdk.graal.compiler.phases.OptimisticOptimizations.ALL;
@@ -32,6 +31,7 @@ import static jdk.graal.compiler.phases.OptimisticOptimizations.Optimization.Rem
 import static jdk.graal.compiler.phases.OptimisticOptimizations.Optimization.UseExceptionProbability;
 import static jdk.graal.compiler.phases.OptimisticOptimizations.Optimization.UseTypeCheckHints;
 import static jdk.graal.compiler.phases.OptimisticOptimizations.Optimization.UseTypeCheckedInlining;
+import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -41,13 +41,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.truffle.nodes.AnyExtendNode;
-import jdk.graal.compiler.truffle.nodes.TruffleAssumption;
-import jdk.graal.compiler.truffle.phases.InstrumentPhase;
-import jdk.graal.compiler.truffle.phases.InstrumentationSuite;
-import jdk.graal.compiler.truffle.phases.TruffleTier;
 import org.graalvm.collections.EconomicMap;
+
+import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+import com.oracle.truffle.compiler.TruffleCompiler;
+import com.oracle.truffle.compiler.TruffleCompilerAssumptionDependency;
+import com.oracle.truffle.compiler.TruffleCompilerListener;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
+
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.CompilationPrinter;
@@ -60,6 +63,7 @@ import jdk.graal.compiler.core.common.CompilationIdentifier.Verbosity;
 import jdk.graal.compiler.core.common.RetryableBailoutException;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.core.target.Backend;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
@@ -72,10 +76,12 @@ import jdk.graal.compiler.debug.LogStream;
 import jdk.graal.compiler.debug.MemUseTrackerKey;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.debug.TimerKey;
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
@@ -90,15 +96,12 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-
-import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
-import com.oracle.truffle.compiler.TruffleCompilable;
-import com.oracle.truffle.compiler.TruffleCompilationTask;
-import com.oracle.truffle.compiler.TruffleCompiler;
-import com.oracle.truffle.compiler.TruffleCompilerAssumptionDependency;
-import com.oracle.truffle.compiler.TruffleCompilerListener;
-import com.oracle.truffle.compiler.TruffleCompilerRuntime;
-
+import jdk.graal.compiler.truffle.nodes.AnyExtendNode;
+import jdk.graal.compiler.truffle.nodes.AnyNarrowNode;
+import jdk.graal.compiler.truffle.nodes.TruffleAssumption;
+import jdk.graal.compiler.truffle.phases.InstrumentPhase;
+import jdk.graal.compiler.truffle.phases.InstrumentationSuite;
+import jdk.graal.compiler.truffle.phases.TruffleTier;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.InstalledCode;
@@ -207,7 +210,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
 
     /**
      * General options configured for the compiler. E.g. default values set with
-     * -Dgraal.OptionKey=value.
+     * -Djdk.graal.OptionKey=value.
      */
     protected abstract OptionValues getGraalOptions();
 
@@ -564,6 +567,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         for (AnyExtendNode node : graph.getNodes(AnyExtendNode.TYPE)) {
             node.replaceAndDelete(graph.addOrUnique(ZeroExtendNode.create(node.getValue(), 64, NodeView.DEFAULT)));
         }
+        // replace all AnyNarrowNodes with NarrowNodes
+        for (AnyNarrowNode node : graph.getNodes(AnyNarrowNode.TYPE)) {
+            node.replaceAndDelete(graph.addOrUnique(NarrowNode.create(node.getValue(), 32, NodeView.DEFAULT)));
+        }
     }
 
     /**
@@ -620,7 +627,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
 
         try (DebugCloseable a = CodeInstallationTime.start(debug); DebugCloseable c = CodeInstallationMemUse.start(debug)) {
             InstalledCode installedCode = createInstalledCode(compilable);
-            assert graph.getSpeculationLog() == result.getSpeculationLog();
+            assert graph.getSpeculationLog() == result.getSpeculationLog() : Assertions.errorMessage(graph, graph.getSpeculationLog(), result, result.getSpeculationLog());
             tier.backend().createInstalledCode(debug, graph.method(), compilationRequest, result, installedCode, false);
             if (outInstalledCode != null) {
                 outInstalledCode[0] = installedCode;

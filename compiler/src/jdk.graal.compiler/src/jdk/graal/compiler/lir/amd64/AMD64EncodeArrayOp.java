@@ -24,13 +24,13 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMIOp.VPERMQ;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp.VPBROADCASTD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPACKUSWB;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPOR;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.XMM;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.YMM;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import java.util.EnumSet;
 
@@ -46,7 +46,7 @@ import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool.CharsetName;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
@@ -54,7 +54,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/0a3a925ad88921d387aa851157f54ac0054d347b/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L6084-L6242",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/c5e72450966ad50d57a8d22e9d634bfcb319aee9/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L6147-L6305",
           sha1 = "90e15d79705bc87ffbefbcaa4bdfa55123c12aba")
 // @formatter:on
 @Opcode("AMD64_ENCODE_ARRAY")
@@ -100,7 +100,7 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
         this.tempValue5 = tool.newVariable(LIRKind.value(AMD64Kind.DWORD));
 
         this.charset = charset;
-        assert charset == LIRGeneratorTool.CharsetName.ASCII || charset == LIRGeneratorTool.CharsetName.ISO_8859_1;
+        assert charset == CharsetName.ASCII || charset == CharsetName.ISO_8859_1 : charset;
     }
 
     @Override

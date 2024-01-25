@@ -28,6 +28,7 @@ package com.oracle.svm.core.jdk.localization;
 import static com.oracle.svm.util.StringUtil.toDotSeparated;
 import static com.oracle.svm.util.StringUtil.toSlashSeparated;
 
+import java.lang.reflect.Constructor;
 import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.Collections;
@@ -56,6 +57,7 @@ import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.debug.GraalError;
+import sun.util.resources.Bundles;
 
 /**
  * Holder for localization information that is computed during image generation and used at run
@@ -107,6 +109,16 @@ public class LocalizationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void prepareBundle(String bundleName, ResourceBundle bundle, Function<String, Optional<Module>> findModule, Locale locale) {
+        /*
+         * Class-based bundle lookup happens on every query, but we don't need to register the
+         * constructor for a property resource bundle since the class lookup will fail.
+         */
+        registerRequiredReflectionAndResourcesForBundle(bundleName, Set.of(locale));
+        if (!(bundle instanceof PropertyResourceBundle)) {
+            registerNullaryConstructor(bundle.getClass());
+        }
+
+        /* Property-based bundle lookup happens only if class-based lookup fails */
         if (bundle instanceof PropertyResourceBundle) {
             String[] bundleNameWithModule = SubstrateUtil.split(bundleName, ":", 2);
             String resourceName;
@@ -131,12 +143,8 @@ public class LocalizationSupport {
                     module.ifPresent(m -> ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, finalResourceName));
                 }
             }
-        } else {
-            registerRequiredReflectionAndResourcesForBundle(bundleName, Set.of(locale));
-            RuntimeReflection.register(bundle.getClass());
-            RuntimeReflection.registerForReflectiveInstantiation(bundle.getClass());
-            onBundlePrepared(bundle);
         }
+        onBundlePrepared(bundle);
     }
 
     private static String packageName(String bundleName) {
@@ -183,6 +191,10 @@ public class LocalizationSupport {
             String bundleWithLocale = control.toBundleName(baseName, locale);
             RuntimeReflection.registerClassLookup(bundleWithLocale);
             Resources.singleton().registerNegativeQuery(bundleWithLocale.replace('.', '/') + ".properties");
+            String otherBundleName = Bundles.toOtherBundleName(baseName, bundleWithLocale, locale);
+            if (!otherBundleName.equals(bundleWithLocale)) {
+                RuntimeReflection.registerClassLookup(otherBundleName);
+            }
         }
     }
 
@@ -240,8 +252,25 @@ public class LocalizationSupport {
     }
 
     public void prepareClassResourceBundle(@SuppressWarnings("unused") String basename, Class<?> bundleClass) {
-        RuntimeReflection.register(bundleClass);
-        RuntimeReflection.registerForReflectiveInstantiation(bundleClass);
+        registerNullaryConstructor(bundleClass);
         onClassBundlePrepared(bundleClass);
+    }
+
+    /**
+     * Bundle lookup code tries to reflectively access the default constructor of candidate bundle
+     * classes, and then tries to invoke them if they exist. We therefore need to register the
+     * default constructor as invoked if it exists, and as queried if it doesn't, which we know will
+     * result in a negative query.
+     */
+    private void registerNullaryConstructor(Class<?> bundleClass) {
+        RuntimeReflection.register(bundleClass);
+        Constructor<?> nullaryConstructor;
+        try {
+            nullaryConstructor = bundleClass.getDeclaredConstructor();
+        } catch (NoSuchMethodException e) {
+            RuntimeReflection.registerConstructorLookup(bundleClass);
+            return;
+        }
+        RuntimeReflection.register(nullaryConstructor);
     }
 }

@@ -32,15 +32,16 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
 
-import jdk.graal.compiler.core.test.GraalCompilerTest;
-import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
-import jdk.graal.compiler.hotspot.JVMCIVersionCheck.Version;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
+
+import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.hotspot.JVMCIVersionCheck;
+import jdk.graal.compiler.hotspot.JVMCIVersionCheck.Version;
 
 @RunWith(Parameterized.class)
 public class JVMCIVersionCheckTest extends GraalCompilerTest {
@@ -53,14 +54,28 @@ public class JVMCIVersionCheckTest extends GraalCompilerTest {
                     "21-ea+11-790"
     };
 
-    static final Map<String, String> props;
+    static final Map<String, String> PROPS;
     static {
         Properties sprops = System.getProperties();
-        props = new HashMap<>(sprops.size());
+        Map<String, String> propsLocal = new HashMap<>(sprops.size());
         for (String name : sprops.stringPropertyNames()) {
-            props.put(name, sprops.getProperty(name));
+            propsLocal.put(name, sprops.getProperty(name));
         }
+        PROPS = Map.copyOf(propsLocal);
+    }
 
+    static Map<String, String> createTestProperties(String javaSpecVersion, String javaVmVersion, String javaVmVendor) {
+        var props = new HashMap<>(JVMCIVersionCheckTest.PROPS);
+        if (javaSpecVersion != null) {
+            props.put("java.specification.version", javaSpecVersion);
+        }
+        if (javaVmVersion != null) {
+            props.put("java.vm.version", javaVmVersion);
+        }
+        if (javaVmVendor != null) {
+            props.put("java.vm.vendor", javaVmVendor);
+        }
+        return Map.copyOf(props);
     }
 
     @Parameters(name = "{0} vs {1}")
@@ -109,15 +124,19 @@ public class JVMCIVersionCheckTest extends GraalCompilerTest {
     public void test01() {
         String legacyPrefix = version.toString().startsWith("jvmci") ? "prefix-" : "";
         String javaVmVersion = legacyPrefix + version.toString() + "Suffix";
+        String javaSpecVersion = "21";
+        var props = createTestProperties(javaSpecVersion, javaVmVersion, null);
+        var jvmciMinVersions = Map.of(
+                        javaSpecVersion, Map.of(JVMCIVersionCheck.DEFAULT_VENDOR_ENTRY, minVersion));
         if (!version.isLessThan(minVersion)) {
             try {
-                JVMCIVersionCheck.check(props, minVersion, "21", javaVmVersion, false);
+                JVMCIVersionCheck.check(props, false, null, jvmciMinVersions);
             } catch (InternalError e) {
                 throw new AssertionError("Failed " + JVMCIVersionCheckTest.class.getSimpleName(), e);
             }
         } else {
             try {
-                JVMCIVersionCheck.check(props, minVersion, "21", javaVmVersion, false);
+                JVMCIVersionCheck.check(props, false, null, jvmciMinVersions);
                 String value = System.getenv("JVMCI_VERSION_CHECK");
                 if (!"warn".equals(value) && !"ignore".equals(value)) {
                     Assert.fail("expected to fail checking " + javaVmVersion + " against " + minVersion);

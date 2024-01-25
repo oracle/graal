@@ -26,11 +26,13 @@ package jdk.graal.compiler.core.test;
 
 import java.lang.reflect.Method;
 
+import org.junit.Assume;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.test.Graal;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
-import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -43,9 +45,6 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.graal.compiler.test.GraalTest;
-import org.junit.Assume;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -83,7 +82,7 @@ public class StaticInterfaceFieldTest extends GraalTest {
         PhaseSuite<HighTierContext> graphBuilderSuite = new PhaseSuite<>();
         Plugins plugins = new Plugins(new InvocationPlugins());
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true).withUnresolvedIsError(true);
-        graphBuilderSuite.appendPhase(new GraphBuilderPhase(config));
+        graphBuilderSuite.appendPhase(new TestGraphBuilderPhase(config));
         HighTierContext context = new HighTierContext(providers, graphBuilderSuite, OptimisticOptimizations.NONE);
 
         Assume.assumeTrue(VerifyPhase.class.desiredAssertionStatus());

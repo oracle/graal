@@ -53,7 +53,7 @@ public class DiagnosticsOutputDirectory {
      * Gets the path to the output directory managed by this object, creating if it doesn't exist
      * and has not been deleted.
      *
-     * @returns the directory or {@code null} if the could not be created or has been deleted
+     * @return the directory or {@code null} if the could not be created or has been deleted
      */
     public String getPath() {
         return getPath(true);

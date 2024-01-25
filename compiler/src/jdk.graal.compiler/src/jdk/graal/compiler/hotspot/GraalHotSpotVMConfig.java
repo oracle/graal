@@ -32,9 +32,9 @@ import java.util.Map;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Fold.InjectedParameter;
 import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -56,8 +56,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     GraalHotSpotVMConfig(HotSpotVMConfigStore store) {
         super(store);
 
-        assert narrowKlassShift <= logKlassAlignment;
-        assert narrowOopShift <= logMinObjAlignment();
+        assert narrowKlassShift <= logKlassAlignment : Assertions.errorMessageContext("narrowKlassShift", narrowKlassShift, "logKlassAlignment", logKlassAlignment);
+        int logMinObjAlignment = logMinObjAlignment();
+        assert narrowOopShift <= logMinObjAlignment : Assertions.errorMessageContext("narrowOopShift", narrowOopShift, "logMinObjAlignment", logMinObjAlignment);
         oopEncoding = new CompressEncoding(narrowOopBase, narrowOopShift);
         klassEncoding = new CompressEncoding(narrowKlassBase, narrowKlassShift);
 
@@ -128,9 +129,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // of the mark word.
     public final int lockingMode = getFlag("LockingMode", Integer.class);
 
-    public final int lockingModeMonitor = getConstant("LockingMode::LM_MONITOR", Integer.class, 0, JDK >= 22 && JDK_BUILD >= 18);
-    public final int lockingModeStack = getConstant("LockingMode::LM_LEGACY", Integer.class, 1, JDK >= 22 && JDK_BUILD >= 18);
-    public final int lockingModeLightweight = getConstant("LockingMode::LM_LIGHTWEIGHT", Integer.class, 2, JDK >= 22 && JDK_BUILD >= 18);
+    public final int lockingModeMonitor = getConstant("LockingMode::LM_MONITOR", Integer.class, 0, JDK >= 22);
+    public final int lockingModeStack = getConstant("LockingMode::LM_LEGACY", Integer.class, 1, JDK >= 22);
+    public final int lockingModeLightweight = getConstant("LockingMode::LM_LIGHTWEIGHT", Integer.class, 2, JDK >= 22);
 
     public final boolean foldStableValues = getFlag("FoldStableValues", Boolean.class);
     public final int maxVectorSize = getFlag("MaxVectorSize", Integer.class);
@@ -269,6 +270,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final int threadIsInVTMSTransitionOffset = getFieldOffset("JavaThread::_is_in_VTMS_transition", Integer.class, "bool");
     public final int threadIsInTmpVTMSTransitionOffset = getFieldOffset("JavaThread::_is_in_tmp_VTMS_transition", Integer.class, "bool");
+    public final int threadIsDisableSuspendOffset = getFieldOffset("JavaThread::_is_disable_suspend", Integer.class, "bool", -1, JDK >= 22);
 
     public final int javaLangThreadJFREpochOffset = getFieldValue("java_lang_Thread::_jfr_epoch_offset", Integer.class, "int");
     public final int javaLangThreadTIDOffset = getFieldValue("java_lang_Thread::_tid_offset", Integer.class, "int");
@@ -349,7 +351,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int objectMonitorEntryList = getFieldOffset("ObjectMonitor::_EntryList", Integer.class, "ObjectWaiter*");
     public final int objectMonitorSucc = getFieldOffset("ObjectMonitor::_succ", Integer.class, "JavaThread*");
 
-    public final long objectMonitorAnonymousOwner = getConstant("ObjectMonitor::ANONYMOUS_OWNER", Long.class, 1L, JDK >= 22 && JDK_BUILD >= 18);
+    public final long objectMonitorAnonymousOwner = getConstant("ObjectMonitor::ANONYMOUS_OWNER", Long.class, 1L, JDK >= 22);
 
     public final int markWordNoHashInPlace = getConstant("markWord::no_hash_in_place", Integer.class);
     public final int markWordNoLockInPlace = getConstant("markWord::no_lock_in_place", Integer.class);
@@ -524,9 +526,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
      */
     private boolean checkNullAllocationStubs() {
         if (newInstanceOrNullAddress == 0L) {
-            assert newArrayOrNullAddress == 0L;
-            assert newMultiArrayOrNullAddress == 0L;
-            assert dynamicNewInstanceOrNullAddress == 0L;
+            assert newArrayOrNullAddress == 0L : newArrayOrNullAddress;
+            assert newMultiArrayOrNullAddress == 0L : newMultiArrayOrNullAddress;
+            assert dynamicNewInstanceOrNullAddress == 0L : dynamicNewInstanceAddress;
         } else {
             assert newArrayOrNullAddress != 0L;
             assert newMultiArrayOrNullAddress != 0L;
@@ -597,9 +599,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // Tracking of the number of monitors held by the current thread. This is used by loom but in
     // JDK 20 was enabled by default to ensure it was correctly implemented.
     public final int threadHeldMonitorCountOffset = getFieldOffset("JavaThread::_held_monitor_count", Integer.class, JDK >= 22 ? "intx" : "int64_t");
-    public final int threadLockStackOffset = getFieldOffset("JavaThread::_lock_stack", Integer.class, "LockStack", -1, JDK >= 22 && JDK_BUILD >= 18);
-    public final int lockStackTopOffset = getFieldOffset("LockStack::_top", Integer.class, "uint32_t", -1, JDK >= 22 && JDK_BUILD >= 18);
-    public final int lockStackEndOffset = getConstant("LockStack::_end_offset", Integer.class, -1, JDK >= 22 && JDK_BUILD >= 18);
+    public final int threadLockStackOffset = getFieldOffset("JavaThread::_lock_stack", Integer.class, "LockStack", -1, JDK >= 22);
+    public final int lockStackTopOffset = getFieldOffset("LockStack::_top", Integer.class, "uint32_t", -1, JDK >= 22);
+    public final int lockStackEndOffset = getConstant("LockStack::_end_offset", Integer.class, -1, JDK >= 22);
 
     public final long throwAndPostJvmtiExceptionAddress = getAddress("JVMCIRuntime::throw_and_post_jvmti_exception");
     public final long throwKlassExternalNameExceptionAddress = getAddress("JVMCIRuntime::throw_klass_external_name_exception");
@@ -668,7 +670,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
                 if (markId == HotSpotMarkId.ENTRY_BARRIER_PATCH) {
                     continue;
                 }
-                reportError("Unsupported Mark " + markId);
+                GraalHotSpotVMConfigAccess.reportError("Unsupported Mark " + markId);
             }
             markId.setValue(result.intValue());
         }

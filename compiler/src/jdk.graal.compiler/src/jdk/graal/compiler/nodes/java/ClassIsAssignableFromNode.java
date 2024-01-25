@@ -91,7 +91,7 @@ public final class ClassIsAssignableFromNode extends BinaryOpLogicNode implement
                 return LogicConstantNode.forBoolean(thisType.isAssignableFrom(otherType));
             }
         }
-        return this;
+        return super.canonical(tool, forX, forY);
     }
 
     @Override

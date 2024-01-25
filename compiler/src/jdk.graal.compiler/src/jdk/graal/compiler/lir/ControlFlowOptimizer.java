@@ -25,6 +25,7 @@
 package jdk.graal.compiler.lir;
 
 import static jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph.INVALID_BLOCK_ID;
+import static jdk.graal.compiler.lir.LIR.verifyBlocks;
 
 import java.util.ArrayList;
 
@@ -33,7 +34,6 @@ import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.PostAllocationOptimizationPhase;
-
 import jdk.vm.ci.code.TargetDescription;
 
 /**
@@ -47,15 +47,17 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PostAllocationOptimizationContext context) {
         LIR lir = lirGenRes.getLIR();
-        new Optimizer(lir).deleteEmptyBlocks(lir.getBlocks());
+        new Optimizer(lir, lirGenRes.emitIndirectTargetBranchMarkers()).deleteEmptyBlocks(lir.getBlocks());
     }
 
     private static final class Optimizer {
 
         private final LIR lir;
+        private final boolean preserveIndirectBranchTargetMarkers;
 
-        private Optimizer(LIR lir) {
+        private Optimizer(LIR lir, boolean preserveIndirectBranchTargetMarkers) {
             this.lir = lir;
+            this.preserveIndirectBranchTargetMarkers = preserveIndirectBranchTargetMarkers;
         }
 
         private static final CounterKey BLOCKS_DELETED = DebugContext.counter("BlocksDeleted");
@@ -69,6 +71,12 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
          */
         private boolean canDeleteBlock(BasicBlock<?> block) {
             if (block == null || block.getSuccessorCount() != 1 || block.getPredecessorCount() == 0 || block.getSuccessorAt(0) == block) {
+                return false;
+            }
+            if (preserveIndirectBranchTargetMarkers && block.isIndirectBranchTarget()) {
+                /*
+                 * Blocks marked as indirect branch targets must be preserved.
+                 */
                 return false;
             }
 
@@ -98,7 +106,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
         }
 
         private void deleteEmptyBlocks(int[] blocks) {
-            assert LIR.verifyBlocks(lir, blocks);
+            assert verifyBlocks(lir, blocks);
             for (int i = 0; i < blocks.length; i++) {
                 BasicBlock<?> block = lir.getBlockById(blocks[i]);
                 if (canDeleteBlock(block)) {
@@ -112,7 +120,7 @@ public final class ControlFlowOptimizer extends PostAllocationOptimizationPhase 
                     blocks[i] = INVALID_BLOCK_ID;
                 }
             }
-            assert LIR.verifyBlocks(lir, blocks);
+            assert verifyBlocks(lir, blocks);
         }
     }
 }

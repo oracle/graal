@@ -33,6 +33,7 @@ import jdk.graal.compiler.core.common.type.ArithmeticOpTable.IntegerConvertOp.Si
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -40,7 +41,6 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
 import jdk.vm.ci.code.CodeUtil;
 
 /**
@@ -57,7 +57,8 @@ public final class SignExtendNode extends IntegerConvertNode<SignExtend> {
 
     public SignExtendNode(ValueNode input, int resultBits) {
         this(input, PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)), resultBits);
-        assert 0 < PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)) && PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)) <= resultBits;
+        assert 0 < PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)) && PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)) <= resultBits : Assertions.errorMessageContext("input", input,
+                        "resultBits", resultBits);
     }
 
     public SignExtendNode(ValueNode input, int inputBits, int resultBits) {
@@ -141,7 +142,7 @@ public final class SignExtendNode extends IntegerConvertNode<SignExtend> {
                         // Need to keep the narrow, skip the sign extend.
                         return NarrowNode.create(narrow.getValue(), resultBits, view);
                     } else {
-                        assert istamp.getBits() == resultBits;
+                        assert istamp.getBits() == resultBits : Assertions.errorMessageContext("self", self, "forValue", forValue, "iStamp", istamp, "resultBits", resultBits);
                         // Just return the original value.
                         return narrow.getValue();
                     }

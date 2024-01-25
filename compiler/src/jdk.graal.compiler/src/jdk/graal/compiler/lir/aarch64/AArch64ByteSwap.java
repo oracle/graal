@@ -49,7 +49,7 @@ public class AArch64ByteSwap {
         public ByteSwapOp(AllocatableValue result, AllocatableValue input) {
             super(TYPE);
             AArch64Kind kind = (AArch64Kind) input.getPlatformKind();
-            assert kind == AArch64Kind.DWORD || kind == AArch64Kind.QWORD;
+            assert kind == AArch64Kind.DWORD || kind == AArch64Kind.QWORD : kind;
 
             this.result = result;
             this.input = input;

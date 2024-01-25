@@ -25,9 +25,7 @@
 package com.oracle.svm.hosted.jfr;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -43,7 +41,7 @@ import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.internal.misc.Unsafe;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.SecuritySupport;
 import jdk.jfr.internal.event.EventWriter;
@@ -66,14 +64,19 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
     private final ConcurrentHashMap<ResolvedJavaField, ResolvedJavaField> fieldSubstitutions;
     private final Map<String, Class<? extends jdk.jfr.Event>> mirrorEventMapping;
 
+    private static final Method registerMirror = JavaVersionUtil.JAVA_SPEC < 22 ? ReflectionUtil.lookupMethod(SecuritySupport.class, "registerMirror", Class.class) : null;
+
     JfrEventSubstitution(MetaAccessProvider metaAccess) {
         baseEventType = metaAccess.lookupJavaType(jdk.internal.event.Event.class);
         ResolvedJavaType jdkJfrEventWriter = metaAccess.lookupJavaType(EventWriter.class);
-        changeWriterResetMethod(jdkJfrEventWriter);
         typeSubstitution = new ConcurrentHashMap<>();
         methodSubstitutions = new ConcurrentHashMap<>();
         fieldSubstitutions = new ConcurrentHashMap<>();
-        mirrorEventMapping = createMirrorEventsMapping();
+        if (JavaVersionUtil.JAVA_SPEC < 22) {
+            mirrorEventMapping = createMirrorEventsMapping();
+        } else {
+            mirrorEventMapping = null;
+        }
     }
 
     @Override
@@ -150,10 +153,17 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
             Class<? extends jdk.internal.event.Event> newEventClass = OriginalClassProvider.getJavaClass(eventType).asSubclass(jdk.internal.event.Event.class);
             eventType.initialize();
 
-            // It is crucial that mirror events are registered before the actual events.
-            Class<? extends jdk.jfr.Event> mirrorEventClass = mirrorEventMapping.get(newEventClass.getName());
-            if (mirrorEventClass != null) {
-                SecuritySupport.registerMirror(mirrorEventClass);
+            if (JavaVersionUtil.JAVA_SPEC < 22) {
+                /*
+                 * It is crucial that mirror events are registered before the actual events.
+                 * Starting with JDK 22, this is no longer necessary because
+                 * MetadataRepository.register(...) handles that directly, see code that uses
+                 * MirrorEvents.find(...).
+                 */
+                Class<? extends jdk.jfr.Event> mirrorEventClass = mirrorEventMapping.get(newEventClass.getName());
+                if (mirrorEventClass != null) {
+                    registerMirror.invoke(null, mirrorEventClass);
+                }
             }
 
             SecuritySupport.registerEvent(newEventClass);
@@ -170,54 +180,6 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
 
     private boolean needsClassRedefinition(ResolvedJavaType type) {
         return !type.isAbstract() && baseEventType.isAssignableFrom(type) && !baseEventType.equals(type);
-    }
-
-    /**
-     * The method EventWriter.reset() is private but it is called by the EventHandler classes, which
-     * are generated automatically. To prevent bytecode parsing issues, we patch the visibility of
-     * that method using the hacky way below.
-     */
-    private static void changeWriterResetMethod(ResolvedJavaType eventWriterType) {
-        for (ResolvedJavaMethod m : eventWriterType.getDeclaredMethods(false)) {
-            if (m.getName().equals("reset")) {
-                setPublicModifier(m);
-            }
-        }
-    }
-
-    private static void setPublicModifier(ResolvedJavaMethod m) {
-        try {
-            Class<?> hotspotMethodClass = m.getClass();
-            Method metaspaceMethodM = getMethodToFetchMetaspaceMethod(hotspotMethodClass);
-            metaspaceMethodM.setAccessible(true);
-            long metaspaceMethod = (Long) metaspaceMethodM.invoke(m);
-            VMError.guarantee(metaspaceMethod != 0);
-            Class<?> hotSpotVMConfigC = Class.forName("jdk.vm.ci.hotspot.HotSpotVMConfig");
-            Method configM = hotSpotVMConfigC.getDeclaredMethod("config");
-            configM.setAccessible(true);
-            Field methodAccessFlagsOffsetF = hotSpotVMConfigC.getDeclaredField("methodAccessFlagsOffset");
-            methodAccessFlagsOffsetF.setAccessible(true);
-            Object hotSpotVMConfig = configM.invoke(null);
-            int methodAccessFlagsOffset = methodAccessFlagsOffsetF.getInt(hotSpotVMConfig);
-            int modifiers = Unsafe.getUnsafe().getInt(metaspaceMethod + methodAccessFlagsOffset);
-            int newModifiers = modifiers & ~Modifier.PRIVATE | Modifier.PUBLIC;
-            Unsafe.getUnsafe().putInt(metaspaceMethod + methodAccessFlagsOffset, newModifiers);
-        } catch (Exception ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
-
-    private static Method getMethodToFetchMetaspaceMethod(Class<?> method) throws NoSuchMethodException {
-        // The exact method depends on the JVMCI version.
-        try {
-            return method.getDeclaredMethod("getMethodPointer");
-        } catch (NoSuchMethodException e) {
-            try {
-                return method.getDeclaredMethod("getMetaspaceMethod");
-            } catch (NoSuchMethodException e2) {
-                return method.getDeclaredMethod("getMetaspacePointer");
-            }
-        }
     }
 
     /*

@@ -44,22 +44,22 @@ public class SchedulePhaseBenchmark extends GraalBenchmark {
 
     @Benchmark
     public void cfgCompute1(StringEquals s) {
-        ControlFlowGraph.compute(s.graph, true, false, false, false);
+        ControlFlowGraph.newBuilder(s.graph).connectBlocks(true).computeLoops(false).computeDominators(false).computePostdominators(false).computeFrequency(true).build();
     }
 
     @Benchmark
     public void cfgCompute2(StringEquals s) {
-        ControlFlowGraph.compute(s.graph, true, true, false, false);
+        ControlFlowGraph.newBuilder(s.graph).connectBlocks(true).computeLoops(true).computeDominators(false).computePostdominators(false).computeFrequency(true).build();
     }
 
     @Benchmark
     public void cfgCompute3(StringEquals s) {
-        ControlFlowGraph.compute(s.graph, true, true, true, false);
+        ControlFlowGraph.newBuilder(s.graph).connectBlocks(true).computeLoops(true).computeDominators(true).computePostdominators(false).computeFrequency(true).build();
     }
 
     @Benchmark
     public void cfgCompute4(StringEquals s) {
-        ControlFlowGraph.compute(s.graph, true, true, true, true);
+        ControlFlowGraph.newBuilder(s.graph).connectBlocks(true).computeLoops(true).computeDominators(true).computePostdominators(true).computeFrequency(true).build();
     }
 
     public static int[] intersectionSnippet(int[] in1, int[] in2) {

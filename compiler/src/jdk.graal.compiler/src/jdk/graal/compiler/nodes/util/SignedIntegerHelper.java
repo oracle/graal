@@ -26,11 +26,11 @@ package jdk.graal.compiler.nodes.util;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.nodes.LogicNode;
-import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
-
 import jdk.vm.ci.code.CodeUtil;
 
 public class SignedIntegerHelper extends IntegerHelper {
@@ -40,13 +40,13 @@ public class SignedIntegerHelper extends IntegerHelper {
 
     @Override
     public long upperBound(IntegerStamp stamp) {
-        assert stamp.getBits() == bits;
+        assert stamp.getBits() == bits : Assertions.errorMessage(stamp, bits);
         return stamp.upperBound();
     }
 
     @Override
     public long lowerBound(IntegerStamp stamp) {
-        assert stamp.getBits() == bits;
+        assert stamp.getBits() == bits : Assertions.errorMessage(stamp, bits);
         return stamp.lowerBound();
     }
 

@@ -29,6 +29,7 @@ import jdk.graal.compiler.asm.aarch64.AArch64Address;
 import jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.aarch64.AArch64AddressValue;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
@@ -38,7 +39,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
@@ -91,7 +91,7 @@ public class AArch64AddressNode extends AddressNode implements LIRLowerable {
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         assertTrue(bitMemoryTransferSize == AArch64Address.ANY_SIZE || bitMemoryTransferSize == 8 || bitMemoryTransferSize == 16 || bitMemoryTransferSize == 32 || bitMemoryTransferSize == 64 ||
                         bitMemoryTransferSize == 128, "Invalid memory transfer size.");
         switch (addressingMode) {
@@ -115,7 +115,7 @@ public class AArch64AddressNode extends AddressNode implements LIRLowerable {
             default:
                 fail("Pairwise and post/pre index addressing modes should not be present.");
         }
-        return super.verify();
+        return super.verifyNode();
     }
 
     @Override
@@ -149,7 +149,7 @@ public class AArch64AddressNode extends AddressNode implements LIRLowerable {
     }
 
     public void setDisplacement(long displacement, int scaleFactor, AArch64Address.AddressingMode addressingMode) {
-        assert scaleFactor == 1 || bitMemoryTransferSize / Byte.SIZE == scaleFactor;
+        assert scaleFactor == 1 || bitMemoryTransferSize / Byte.SIZE == scaleFactor : Assertions.errorMessageContext("scaleFactor", scaleFactor, "bitMemoryTransfeSize", bitMemoryTransferSize);
         this.displacement = NumUtil.safeToInt(displacement);
         this.scaleFactor = scaleFactor;
         this.addressingMode = addressingMode;

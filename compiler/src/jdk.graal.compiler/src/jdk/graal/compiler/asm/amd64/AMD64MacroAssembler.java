@@ -32,13 +32,15 @@ import java.util.function.Supplier;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.Stride;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
+import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.InvokeTarget;
 
 /**
  * This class implements commonly used X86 code patterns.
@@ -238,7 +240,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public final void movflt(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM);
+        assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM) : dst + " " + src;
         if (isAVX512Register(dst) || isAVX512Register(src)) {
             VexMoveOp.VMOVAPS.emit(this, AVXKind.AVXSize.XMM, dst, src);
         } else {
@@ -265,7 +267,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public final void movdbl(Register dst, Register src) {
-        assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM);
+        assert dst.getRegisterCategory().equals(AMD64.XMM) && src.getRegisterCategory().equals(AMD64.XMM) : dst + " " + src;
         if (isAVX512Register(dst) || isAVX512Register(src)) {
             VexMoveOp.VMOVAPD.emit(this, AVXKind.AVXSize.XMM, dst, src);
         } else {
@@ -363,6 +365,16 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     /**
+     * Functional interface used for performing actions after a call has been emitted.
+     */
+    public interface PostCallAction {
+        PostCallAction NONE = (before, after) -> {
+        };
+
+        void apply(int beforePos, int afterPos);
+    }
+
+    /**
      * Emits alignment before a direct call to a fixed address. The alignment consists of two parts:
      * 1) when {@code align} is true, the fixed address, i.e., the displacement of the call
      * instruction, should be aligned to 4 bytes; 2) when {@code useBranchesWithin32ByteBoundary} is
@@ -398,13 +410,6 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     /**
      * Emits an indirect call instruction.
-     */
-    public final int indirectCall(Register callReg) {
-        return indirectCall(callReg, false);
-    }
-
-    /**
-     * Emits an indirect call instruction.
      *
      * The {@code NativeCall::is_call_before(address pc)} function in HotSpot determines that there
      * is a direct call instruction whose last byte is at {@code pc - 1} if the byte at
@@ -415,7 +420,8 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      *
      * @return the position of the emitted call instruction
      */
-    public final int indirectCall(Register callReg, boolean mitigateDecodingAsDirectCall) {
+    public int indirectCall(PostCallAction postCallAction, Register callReg, boolean mitigateDecodingAsDirectCall, InvokeTarget callTarget,
+                    CallingConvention.Type callingConventionType) {
         int indirectCallSize = needsRex(callReg) ? 3 : 2;
         int insertedNops = mitigateJCCErratum(indirectCallSize);
 
@@ -434,33 +440,55 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
         int beforeCall = position();
         call(callReg);
-        assert beforeCall + indirectCallSize == position();
+        assert beforeCall + indirectCallSize == position() : Assertions.errorMessage(beforeCall, indirectCallSize, position());
         if (mitigateDecodingAsDirectCall) {
             int directCallPos = position() - DIRECT_CALL_INSTRUCTION_SIZE;
             GraalError.guarantee(directCallPos >= 0 && getByte(directCallPos) != DIRECT_CALL_INSTRUCTION_CODE,
                             "This indirect call can be decoded as a direct call.");
         }
+
+        int afterCall = position();
+        if (postCallAction != PostCallAction.NONE) {
+            postCallAction.apply(beforeCall, afterCall);
+        }
+
         return beforeCall;
     }
 
-    public final int directCall(long address, Register scratch) {
+    public int directCall(PostCallAction postCallAction, long address, Register scratch, InvokeTarget callTarget) {
         int bytesToEmit = needsRex(scratch) ? 13 : 12;
         mitigateJCCErratum(bytesToEmit);
         int beforeCall = position();
         movq(scratch, address);
         call(scratch);
-        assert beforeCall + bytesToEmit == position();
+        int afterCall = position();
+        assert beforeCall + bytesToEmit == afterCall : Assertions.errorMessage(beforeCall, bytesToEmit, afterCall);
+
+        if (postCallAction != PostCallAction.NONE) {
+            postCallAction.apply(beforeCall, afterCall);
+        }
         return beforeCall;
     }
 
-    public final int directJmp(long address, Register scratch) {
+    public int directJmp(long address, Register scratch) {
         int bytesToEmit = needsRex(scratch) ? 13 : 12;
         mitigateJCCErratum(bytesToEmit);
         int beforeJmp = position();
         movq(scratch, address);
         jmpWithoutAlignment(scratch);
-        assert beforeJmp + bytesToEmit == position();
+        assert beforeJmp + bytesToEmit == position() : Assertions.errorMessage(beforeJmp, bytesToEmit, position());
         return beforeJmp;
+    }
+
+    public int call(PostCallAction postCallAction, InvokeTarget callTarget) {
+        int beforeCall = position();
+        call();
+        int afterCall = position();
+        if (postCallAction != PostCallAction.NONE) {
+            postCallAction.apply(beforeCall, afterCall);
+        }
+
+        return beforeCall;
     }
 
     // This should guarantee that the alignment in AMD64Assembler.jcc methods will be not triggered.
@@ -497,7 +525,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
             applyBeforeFusedPair.accept(beforeFusedPair);
         }
         op.emit(this, size, src, imm32, annotateImm);
-        assert beforeFusedPair + bytesToEmit == position();
+        assert beforeFusedPair + bytesToEmit == position() : Assertions.errorMessage(beforeFusedPair, bytesToEmit, position());
         jcc(cc, branchTarget, isShortJmp);
         assert ensureWithinBoundary(beforeFusedPair);
     }
@@ -511,7 +539,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
             applyBeforeFusedPair.accept(beforeFusedPair);
         }
         op.emit(this, size, src, imm32, annotateImm);
-        assert beforeFusedPair + bytesToEmit == position();
+        assert beforeFusedPair + bytesToEmit == position() : Assertions.errorMessage(beforeFusedPair, bytesToEmit, position());
         jcc(cc, branchTarget, isShortJmp);
         assert ensureWithinBoundary(beforeFusedPair);
     }
@@ -522,7 +550,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         final int beforeFusedPair = position();
         op.emit(this, size, src1, src2);
         final int beforeJcc = position();
-        assert beforeFusedPair + bytesToEmit == beforeJcc;
+        assert beforeFusedPair + bytesToEmit == beforeJcc : Assertions.errorMessage(beforeFusedPair, bytesToEmit, beforeJcc);
         jcc(cc, branchTarget, isShortJmp);
         assert ensureWithinBoundary(beforeFusedPair);
         return beforeJcc;
@@ -537,7 +565,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         }
         op.emit(this, size, src1, src2);
         final int beforeJcc = position();
-        assert beforeFusedPair + bytesToEmit == beforeJcc;
+        assert beforeFusedPair + bytesToEmit == beforeJcc : Assertions.errorMessage(beforeFusedPair, bytesToEmit, beforeJcc);
         jcc(cc, branchTarget, isShortJmp);
         assert ensureWithinBoundary(beforeFusedPair);
         return beforeJcc;
@@ -548,7 +576,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         alignFusedPair(branchTarget, isShortJmp, bytesToEmit);
         final int beforeFusedPair = position();
         op.emit(this, size, dst);
-        assert beforeFusedPair + bytesToEmit == position();
+        assert beforeFusedPair + bytesToEmit == position() : Assertions.errorMessage(beforeFusedPair, bytesToEmit, position());
         jcc(cc, branchTarget, isShortJmp);
         assert ensureWithinBoundary(beforeFusedPair);
     }
@@ -661,7 +689,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         final int beforeFusedPair = position();
         AMD64Address src2AsAddress = src2.get();
         op.emit(this, size, src1, src2AsAddress);
-        assert beforeFusedPair + bytesToEmit == position();
+        assert beforeFusedPair + bytesToEmit == position() : Assertions.errorMessage(beforeFusedPair, bytesToEmit, position());
         jcc(cc, branchTarget, false);
         assert ensureWithinBoundary(beforeFusedPair);
     }
@@ -1048,10 +1076,10 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     private static int scaleDisplacement(Stride strideDst, Stride strideSrc, int displacement) {
         if (strideSrc.value < strideDst.value) {
-            assert (displacement & ((1 << (strideDst.log2 - strideSrc.log2)) - 1)) == 0;
+            assert (displacement & ((1 << (strideDst.log2 - strideSrc.log2)) - 1)) == 0 : Assertions.errorMessage(displacement, strideDst, strideSrc);
             return displacement >> (strideDst.log2 - strideSrc.log2);
         }
-        assert strideSrc.value == strideDst.value;
+        assert strideSrc.value == strideDst.value : Assertions.errorMessage(strideSrc, strideDst);
         return displacement;
     }
 

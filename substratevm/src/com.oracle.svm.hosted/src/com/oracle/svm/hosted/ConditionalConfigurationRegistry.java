@@ -26,6 +26,7 @@ package com.oracle.svm.hosted;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -38,6 +39,8 @@ public abstract class ConditionalConfigurationRegistry {
     private final Map<String, Collection<Runnable>> pendingReachabilityHandlers = new ConcurrentHashMap<>();
 
     protected void registerConditionalConfiguration(ConfigurationCondition condition, Runnable runnable) {
+        Objects.requireNonNull(condition, "Cannot use null value as condition for conditional configuration. Please ensure that you register a non-null condition.");
+        Objects.requireNonNull(runnable, "Cannot use null value as runnable for conditional configuration. Please ensure that you register a non-null runnable.");
         if (ConfigurationCondition.alwaysTrue().equals(condition)) {
             /* analysis optimization to include new types as early as possible */
             runnable.run();

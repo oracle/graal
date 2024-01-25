@@ -24,17 +24,17 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
 import jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
-
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 
@@ -75,11 +75,11 @@ public enum AArch64AcrossVectorOp {
                     masm.neon.addvSV(size, eSize, resultReg, inputReg);
                     break;
                 case SADDLV:
-                    assert ElementSize.fromKind(result.getPlatformKind()) == eSize.expand();
+                    assert ElementSize.fromKind(result.getPlatformKind()) == eSize.expand() : Assertions.errorMessage(result, eSize);
                     masm.neon.saddlvSV(size, eSize, resultReg, inputReg);
                     break;
                 case UADDLV:
-                    assert ElementSize.fromKind(result.getPlatformKind()) == eSize.expand();
+                    assert ElementSize.fromKind(result.getPlatformKind()) == eSize.expand() : Assertions.errorMessage(result, eSize);
                     masm.neon.uaddlvSV(size, eSize, resultReg, inputReg);
                     break;
                 case UMAX:

@@ -237,7 +237,7 @@ public abstract class RegexASTNode implements JsonConvertible {
     }
 
     /**
-     * Subexpression contains {@link #isCaret() "$"}.
+     * Subexpression contains {@link #isDollar() "$"}.
      */
     public boolean hasDollar() {
         return isFlagSet(FLAG_HAS_DOLLAR);

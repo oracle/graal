@@ -24,9 +24,9 @@
  */
 package jdk.graal.compiler.nodes.graphbuilderconf;
 
-import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.graal.compiler.core.common.GraalOptions.StrictDeoptInsertionChecks;
 import static jdk.graal.compiler.core.common.type.StampFactory.objectNonNull;
+import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
@@ -36,17 +36,13 @@ import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.DeoptimizeNode;
-import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
-import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
-import jdk.graal.compiler.nodes.extended.GuardingNode;
-import jdk.graal.compiler.nodes.java.InstanceOfDynamicNode;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.DynamicPiNode;
 import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
@@ -70,8 +66,11 @@ import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.calc.SignExtendNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
+import jdk.graal.compiler.nodes.extended.GuardingNode;
+import jdk.graal.compiler.nodes.java.InstanceOfDynamicNode;
 import jdk.graal.compiler.nodes.type.StampTool;
-
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -143,12 +142,16 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     }
 
     default ValueNode addNonNullCast(ValueNode value) {
+        return addNonNullCast(value, DeoptimizationAction.None);
+    }
+
+    default ValueNode addNonNullCast(ValueNode value, DeoptimizationAction action) {
         AbstractPointerStamp valueStamp = (AbstractPointerStamp) value.stamp(NodeView.DEFAULT);
         if (valueStamp.nonNull()) {
             return value;
         } else {
             LogicNode isNull = add(IsNullNode.create(value));
-            FixedGuardNode fixedGuard = add(new FixedGuardNode(isNull, DeoptimizationReason.NullCheckException, DeoptimizationAction.None, true));
+            FixedGuardNode fixedGuard = add(new FixedGuardNode(isNull, DeoptimizationReason.NullCheckException, action, true));
             Stamp newStamp = valueStamp.improveWith(StampFactory.objectNonNull());
             return add(PiNode.create(value, newStamp, fixedGuard));
         }
@@ -315,6 +318,11 @@ public interface GraphBuilderContext extends GraphBuilderTool {
 
     BailoutException bailout(String string);
 
+    /**
+     * Gets a version of a given value that has a non-null stamp. Emits a guard or an explicit
+     * exception check which is triggered if the value is null. Thus, <b> use only for values where
+     * the underlying bytecode can throw a {@link NullPointerException}! </b>
+     */
     default ValueNode nullCheckedValue(ValueNode value) {
         return nullCheckedValue(value, InvalidateReprofile);
     }
@@ -333,8 +341,9 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     }
 
     /**
-     * Gets a version of a given value that has a {@linkplain StampTool#isPointerNonNull(ValueNode)
-     * non-null} stamp.
+     * Gets a version of a given value that has a non-null stamp. Emits a guard or an explicit
+     * exception check which is triggered if the value is null. Thus, <b> use only for values where
+     * the underlying bytecode can throw a {@link NullPointerException}! </b>
      */
     default ValueNode nullCheckedValue(ValueNode value, DeoptimizationAction action) {
         if (!StampTool.isPointerNonNull(value)) {

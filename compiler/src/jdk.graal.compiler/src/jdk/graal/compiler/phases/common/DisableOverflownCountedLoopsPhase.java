@@ -43,6 +43,11 @@ public class DisableOverflownCountedLoopsPhase extends Phase {
     }
 
     @Override
+    public boolean shouldApply(StructuredGraph graph) {
+        return graph.hasLoops();
+    }
+
+    @Override
     protected void run(StructuredGraph graph) {
         for (LoopBeginNode lb : graph.getNodes(LoopBeginNode.TYPE)) {
             if (lb.countedLoopDisabled()) {

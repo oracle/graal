@@ -25,14 +25,14 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.zr;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction.LD2_MULTIPLE_2R;
 import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction.LD4_MULTIPLE_4R;
 import static jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize.FullReg;
 import static jdk.graal.compiler.asm.aarch64.AArch64Address.createStructureImmediatePostIndexAddress;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.vm.ci.aarch64.AArch64.zr;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import java.util.Arrays;
 
@@ -46,12 +46,11 @@ import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool.ArrayIndexOfVariant;
-
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -631,9 +630,11 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
                 break;
         }
         masm.neon.orrVVV(FullReg, vecTmp[0], vecArray1, vecArray2);
-        /* If value != 0, then there was a match somewhere. */
-        vectorCheckZero(masm, ElementSize.fromStride(getMatchResultStride()), vecTmp[0], vecTmp[0], variant != ArrayIndexOfVariant.Table);
-        masm.branchConditionally(ConditionFlag.NE, matchInChunk);
+        try (ScratchRegister sc = masm.getScratchRegister()) {
+            Register tmp = sc.getRegister();
+            /* If value != 0, then there was a match somewhere. */
+            cbnzVector(masm, ElementSize.fromStride(getMatchResultStride()), vecTmp[0], vecTmp[0], tmp, variant != ArrayIndexOfVariant.Table, matchInChunk);
+        }
     }
 
     private Stride getMatchResultStride() {

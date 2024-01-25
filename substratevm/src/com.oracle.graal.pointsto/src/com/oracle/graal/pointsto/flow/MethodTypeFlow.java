@@ -30,13 +30,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.debug.Assertions;
-import jdk.graal.compiler.nodes.ParameterNode;
-import jdk.graal.compiler.nodes.ReturnNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.ValueNode;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.builder.TypeFlowGraphBuilder;
@@ -45,6 +38,12 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisError.ParsingError;
+
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.ReturnNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 
 public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
@@ -161,6 +160,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
                             !reason.getSource().getMethod().equals(method), "Parsing reason cannot be in the target method itself: %s", method);
 
             parsingReason = reason;
+            method.setParsingReason(PointsToAnalysisMethod.unwrapInvokeReason(reason));
             try {
                 MethodTypeFlowBuilder builder = bb.createMethodTypeFlowBuilder(bb, method, null, graphKind);
                 try {
@@ -180,7 +180,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
                 initFlowsGraph(bb, builder.postInitFlows);
             } catch (Throwable t) {
-                /* Wrap all other errors as parsing errors. */
+                /* Wrap all errors as parsing errors. */
                 throw AnalysisError.parsingError(method, t);
             }
         }
@@ -226,13 +226,17 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         return flowsGraph == null ? Collections.emptyList() : List.of(flowsGraph);
     }
 
-    public EconomicMap<Object, InvokeTypeFlow> getInvokes() {
+    public List<InvokeTypeFlow> getInvokes() {
         ensureFlowsGraphSealed();
-        return flowsGraph == null ? EconomicMap.emptyMap() : flowsGraph.getInvokes();
+        return flowsGraph == null ? List.of() : flowsGraph.getInvokes();
     }
 
     public TypeFlow<?> getParameter(int idx) {
         return flowsGraph == null ? null : flowsGraph.getParameter(idx);
+    }
+
+    public TypeFlow<?> getReturn() {
+        return flowsGraph == null ? null : flowsGraph.getReturnFlow();
     }
 
     /** Check if the type flow is saturated, i.e., any of its clones is saturated. */
@@ -254,10 +258,6 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
     public int getReturnedParameterIndex() {
         assert flowsGraphCreated() : returnedParameterIndex;
         return returnedParameterIndex;
-    }
-
-    public Object getParsingReason() {
-        return PointsToAnalysisMethod.unwrapInvokeReason(parsingReason);
     }
 
     @Override
@@ -316,6 +316,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         }
         if (newParsingReason != null) {
             parsingReason = newParsingReason;
+            method.setParsingReason(PointsToAnalysisMethod.unwrapInvokeReason(newParsingReason));
         }
 
         try {
@@ -341,7 +342,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
                 }
             }
         } catch (Throwable t) {
-            /* Wrap all other errors as parsing errors. */
+            /* Wrap all errors as parsing errors. */
             throw AnalysisError.parsingError(method, t);
         }
         return true;

@@ -51,6 +51,11 @@ import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import org.graalvm.word.LocationIdentity;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.api.replacements.Snippet.NonNullParameter;
@@ -68,7 +73,6 @@ import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.PhiNode;
@@ -98,11 +102,6 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.graal.compiler.test.AddExports;
-import org.graalvm.word.LocationIdentity;
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
-
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
@@ -140,6 +139,10 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         }
 
         return true;
+    }
+
+    public static void main(String[] args) {
+
     }
 
     public static String relativeFileName(String absolutePath) {
@@ -219,6 +222,11 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             }
             return true;
         }
+
+        public boolean checkAssertions() {
+            return true;
+        }
+
     }
 
     @Test
@@ -237,7 +245,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         Plugins plugins = new Plugins(new InvocationPlugins());
         plugins.setClassInitializationPlugin(new DoNotInitializeClassInitializationPlugin());
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true).withUnresolvedIsError(true);
-        graphBuilderSuite.appendPhase(new GraphBuilderPhase(config));
+        graphBuilderSuite.appendPhase(new TestGraphBuilderPhase(config));
         HighTierContext context = new HighTierContext(providers, graphBuilderSuite, OptimisticOptimizations.NONE);
 
         Assume.assumeTrue(VerifyPhase.class.desiredAssertionStatus());
@@ -339,6 +347,14 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyPluginFrameState());
         verifiers.add(new VerifyGraphUniqueUsages());
         verifiers.add(new VerifyEndlessLoops());
+        verifiers.add(new VerifyPhaseNoDirectRecursion());
+        VerifyAssertionUsage assertionUsages = null;
+        boolean checkAssertions = tool.checkAssertions();
+
+        if (checkAssertions) {
+            assertionUsages = new VerifyAssertionUsage(metaAccess);
+            verifiers.add(assertionUsages);
+        }
 
         loadVerifiers(verifiers);
 
@@ -443,6 +459,15 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                 } catch (Throwable e) {
                     errors.add(e.getMessage());
                 }
+            }
+        }
+
+        if (assertionUsages != null) {
+            assert checkAssertions;
+            try {
+                assertionUsages.postProcess();
+            } catch (Throwable e) {
+                errors.add(e.getMessage());
             }
         }
 

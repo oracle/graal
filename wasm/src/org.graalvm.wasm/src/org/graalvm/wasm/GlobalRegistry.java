@@ -40,6 +40,8 @@
  */
 package org.graalvm.wasm;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.globals.WasmGlobal;
@@ -62,18 +64,14 @@ public class GlobalRegistry {
     // Such an assumption can be invalidated if the late-linking causes this array
     // to be replaced with a larger array.
     @CompilationFinal(dimensions = 0) private long[] globals;
-    @CompilationFinal(dimensions = 0) private Object[] globalReferences;
+    @CompilationFinal(dimensions = 0) private Object[] objectGlobals;
     @CompilationFinal(dimensions = 1) private WasmGlobal[] externalGlobals;
     private int globalCount;
     private int externalGlobalCount;
 
-    public GlobalRegistry(boolean useReferenceTypes) {
+    public GlobalRegistry() {
         this.globals = new long[INITIAL_GLOBALS_SIZE];
-        if (useReferenceTypes) {
-            this.globalReferences = new Object[INITIAL_GLOBALS_SIZE];
-        } else {
-            this.globalReferences = null;
-        }
+        this.objectGlobals = new Object[INITIAL_GLOBALS_SIZE];
         this.externalGlobals = new WasmGlobal[INITIAL_GLOBALS_SIZE];
         this.globalCount = 0;
         this.externalGlobalCount = 0;
@@ -88,11 +86,9 @@ public class GlobalRegistry {
             final long[] nGlobals = new long[globals.length * 2];
             System.arraycopy(globals, 0, nGlobals, 0, globals.length);
             globals = nGlobals;
-            if (globalReferences != null) {
-                final Object[] nGlobalReferences = new Object[globalReferences.length * 2];
-                System.arraycopy(globalReferences, 0, nGlobalReferences, 0, globalReferences.length);
-                globalReferences = nGlobalReferences;
-            }
+            final Object[] nObjectGlobals = new Object[objectGlobals.length * 2];
+            System.arraycopy(objectGlobals, 0, nObjectGlobals, 0, objectGlobals.length);
+            objectGlobals = nObjectGlobals;
         }
     }
 
@@ -107,9 +103,7 @@ public class GlobalRegistry {
     public int allocateGlobal() {
         ensureGlobalCapacity();
         globals[globalCount] = 0;
-        if (globalReferences != null) {
-            globalReferences[globalCount] = null;
-        }
+        objectGlobals[globalCount] = null;
         int idx = globalCount;
         globalCount++;
         return idx;
@@ -135,13 +129,46 @@ public class GlobalRegistry {
         return globals[address];
     }
 
+    public Vector128 loadAsVector128(int address) {
+        return (Vector128) loadAsObject(address);
+    }
+
     public Object loadAsReference(int address) {
-        assert globalReferences != null;
+        return loadAsObject(address);
+    }
+
+    public Object loadAsObject(int address) {
         if (address < 0) {
             final WasmGlobal global = externalGlobals[-address - 1];
-            return global.loadAsReference();
+            return global.loadAsObject();
         }
-        return globalReferences[address];
+        return objectGlobals[address];
+    }
+
+    public void store(byte globalValueType, int address, Object value) {
+        switch (globalValueType) {
+            case WasmType.I32_TYPE:
+                storeInt(address, (int) value);
+                break;
+            case WasmType.I64_TYPE:
+                storeLong(address, (long) value);
+                break;
+            case WasmType.F32_TYPE:
+                storeInt(address, Float.floatToRawIntBits((float) value));
+                break;
+            case WasmType.F64_TYPE:
+                storeLong(address, Double.doubleToRawLongBits((double) value));
+                break;
+            case WasmType.V128_TYPE:
+                storeVector128(address, (Vector128) value);
+                break;
+            case WasmType.FUNCREF_TYPE:
+            case WasmType.EXTERNREF_TYPE:
+                storeReference(address, value);
+                break;
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
     }
 
     public void storeInt(int address, int value) {
@@ -157,24 +184,31 @@ public class GlobalRegistry {
         }
     }
 
+    public void storeVector128(int address, Vector128 value) {
+        storeObject(address, value);
+    }
+
     public void storeReference(int address, Object value) {
-        assert globalReferences != null;
+        storeObject(address, value);
+    }
+
+    public void storeObject(int address, Object value) {
         if (address < 0) {
             final WasmGlobal global = externalGlobals[-address - 1];
-            global.storeReference(value);
+            global.storeObject(value);
         } else {
-            globalReferences[address] = value;
+            objectGlobals[address] = value;
         }
     }
 
-    public GlobalRegistry duplicate(boolean useReferenceTypes) {
-        final GlobalRegistry other = new GlobalRegistry(useReferenceTypes);
+    public GlobalRegistry duplicate() {
+        final GlobalRegistry other = new GlobalRegistry();
         for (int i = 0; i < globalCount; i++) {
             final int address = other.allocateGlobal();
             final long value = this.loadAsLong(address);
-            final Object referenceValue = this.loadAsReference(address);
+            final Object objectValue = this.loadAsObject(address);
             other.storeLong(address, value);
-            other.storeReference(address, referenceValue);
+            other.storeObject(address, objectValue);
         }
         for (int i = 0; i < externalGlobalCount; i++) {
             other.allocateExternalGlobal(this.externalGlobals[i]);

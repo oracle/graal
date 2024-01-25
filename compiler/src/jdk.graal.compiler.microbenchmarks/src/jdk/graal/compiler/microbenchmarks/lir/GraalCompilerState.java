@@ -36,6 +36,12 @@ import java.lang.annotation.Target;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Param;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.api.test.Graal;
 import jdk.graal.compiler.code.CompilationResult;
@@ -78,12 +84,6 @@ import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.tiers.TargetProvider;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.runtime.RuntimeProvider;
-import org.openjdk.jmh.annotations.Level;
-import org.openjdk.jmh.annotations.Param;
-import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.Setup;
-import org.openjdk.jmh.annotations.State;
-
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
@@ -393,7 +393,8 @@ public abstract class GraalCompilerState {
     }
 
     private static ControlFlowGraph deepCopy(ControlFlowGraph cfg) {
-        return ControlFlowGraph.compute(cfg.graph, true, true, true, true, true, true);
+        return ControlFlowGraph.newBuilder(cfg.graph).backendBlocks(true).connectBlocks(true).computeFrequency(true).computeLoops(true).computeDominators(true).computePostdominators(
+                        true).build();
     }
 
     /**

@@ -28,42 +28,160 @@ import static com.oracle.svm.core.thread.VirtualThreadHelper.asTarget;
 import static com.oracle.svm.core.thread.VirtualThreadHelper.asThread;
 
 import java.util.Locale;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ScheduledExecutorService;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.Inject;
+import com.oracle.svm.core.annotate.InjectAccessors;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDK22OrLater;
+import com.oracle.svm.core.jdk.JDK23OrLater;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
 @TargetClass(className = "java.lang.VirtualThread")
 public final class Target_java_lang_VirtualThread {
     // Checkstyle: stop
     @Alias static int NEW;
     @Alias static int STARTED;
-    @Alias static int RUNNABLE;
+    @Alias //
+    @TargetElement(onlyWith = JDK21OrEarlier.class) static int RUNNABLE;
     @Alias static int RUNNING;
     @Alias static int PARKING;
     @Alias static int PARKED;
     @Alias static int PINNED;
     @Alias static int YIELDING;
+    @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int YIELDED;
     @Alias static int TERMINATED;
     @Alias static int SUSPENDED;
     @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int TIMED_PARKING;
     @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int TIMED_PARKED;
     @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int TIMED_PINNED;
+    @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int UNPARKED;
     @Alias static Target_jdk_internal_vm_ContinuationScope VTHREAD_SCOPE;
+
+    /**
+     * (Re)initialize the default scheduler at runtime so that it does not reference any platform
+     * threads of the image builder and uses the respective number of CPUs and system properties.
+     */
+    @Alias //
+    @InjectAccessors(DefaultSchedulerAccessor.class) //
+    public static ForkJoinPool DEFAULT_SCHEDULER;
+
+    /**
+     * (Re)initialize the unparker at runtime so that it does not reference any platform threads of
+     * the image builder.
+     */
+    @Alias //
+    @InjectAccessors(UnparkerAccessor.class) //
+    private static ScheduledExecutorService UNPARKER;
+
+    /** Go through {@link #nondefaultScheduler}. */
+    @Alias //
+    @InjectAccessors(SchedulerAccessor.class) //
+    public Executor scheduler;
+
+    /**
+     * {@code null} if using {@link #DEFAULT_SCHEDULER}, otherwise a specific {@link Executor}. This
+     * avoids references to the {@link #DEFAULT_SCHEDULER} of the image builder which can reference
+     * platform threads and fail the image build.
+     */
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = NondefaultSchedulerSupplier.class) //
+    private Executor nondefaultScheduler;
     // Checkstyle: resume
+
+    @Alias
+    private static native ForkJoinPool createDefaultScheduler();
+
+    @Alias
+    private static native ScheduledExecutorService createDelayedTaskScheduler();
+
+    private static final class DefaultSchedulerAccessor {
+        private static volatile ForkJoinPool defaultScheduler;
+
+        public static ForkJoinPool get() {
+            ForkJoinPool result = defaultScheduler;
+            if (result == null) {
+                result = initializeDefaultScheduler();
+            }
+            return result;
+        }
+
+        private static synchronized ForkJoinPool initializeDefaultScheduler() {
+            ForkJoinPool result = defaultScheduler;
+            if (result == null) {
+                result = createDefaultScheduler();
+                defaultScheduler = result;
+            }
+            return result;
+        }
+    }
+
+    private static final class UnparkerAccessor {
+        private static volatile ScheduledExecutorService delayedTaskScheduler;
+
+        public static ScheduledExecutorService get() {
+            ScheduledExecutorService result = delayedTaskScheduler;
+            if (result == null) {
+                result = initializeDelayedTaskScheduler();
+            }
+            return result;
+        }
+
+        private static synchronized ScheduledExecutorService initializeDelayedTaskScheduler() {
+            ScheduledExecutorService result = delayedTaskScheduler;
+            if (result == null) {
+                result = createDelayedTaskScheduler();
+                delayedTaskScheduler = result;
+            }
+            return result;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    private static final class SchedulerAccessor {
+        static Executor get(Target_java_lang_VirtualThread self) {
+            Executor scheduler = self.nondefaultScheduler;
+            if (scheduler == null) {
+                scheduler = DefaultSchedulerAccessor.get();
+            }
+            return scheduler;
+        }
+
+        static void set(Target_java_lang_VirtualThread self, Executor executor) {
+            assert self.nondefaultScheduler == null;
+            if (executor != DefaultSchedulerAccessor.get()) {
+                self.nondefaultScheduler = executor;
+            }
+        }
+    }
+
+    private static final class NondefaultSchedulerSupplier implements FieldValueTransformer {
+        @Override
+        public Object transform(Object receiver, Object originalValue) {
+            Class<?> vthreadClass = ReflectionUtil.lookupClass(false, "java.lang.VirtualThread");
+            Object defaultScheduler = ReflectionUtil.readStaticField(vthreadClass, "DEFAULT_SCHEDULER");
+            return (originalValue == defaultScheduler) ? null : originalValue;
+        }
+    }
 
     @Substitute
     private static void registerNatives() {
@@ -97,6 +215,13 @@ public final class Target_java_lang_VirtualThread {
     @SuppressWarnings({"static-method", "unused"})
     private void notifyJvmtiHideFrames(boolean hide) {
         // unimplemented (GR-45392)
+    }
+
+    @Substitute
+    @SuppressWarnings({"static-method", "unused"})
+    @TargetElement(onlyWith = JDK23OrLater.class)
+    private void notifyJvmtiDisableSuspend(boolean enter) {
+        // unimplemented (GR-51158)
     }
 
     @Alias volatile Thread carrierThread;
@@ -187,7 +312,9 @@ public final class Target_java_lang_VirtualThread {
             } else {
                 return Thread.State.RUNNABLE;
             }
-        } else if (state == RUNNABLE) {
+        } else if (JavaVersionUtil.JAVA_SPEC < 22 && state == RUNNABLE) {
+            return Thread.State.RUNNABLE;
+        } else if (JavaVersionUtil.JAVA_SPEC >= 22 && (state == UNPARKED || state == YIELDED)) {
             return Thread.State.RUNNABLE;
         } else if (state == RUNNING) {
             Object token = VirtualThreadHelper.acquireInterruptLockMaybeSwitch(this);

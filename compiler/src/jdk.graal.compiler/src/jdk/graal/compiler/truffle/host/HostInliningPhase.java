@@ -41,8 +41,12 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+
+import com.oracle.truffle.compiler.HostMethodInfo;
+
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.phases.HighTier;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
@@ -80,9 +84,6 @@ import jdk.graal.compiler.phases.contract.NodeCostUtil;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.PartialEvaluator;
-
-import com.oracle.truffle.compiler.HostMethodInfo;
-
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -404,7 +405,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
     private List<CallTree> exploreGraph(InliningPhaseContext context, CallTree caller, StructuredGraph graph, int exploreRound) {
         caller.exploredIndex = exploreRound;
 
-        ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, false, true, false);
+        ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeDominators(true).computeFrequency(true).build();
         EconomicSet<AbstractBeginNode> deoptimizedBlocks = EconomicSet.create();
         EconomicSet<AbstractBeginNode> inInterpreterBlocks = EconomicSet.create();
         List<CallTree> children = new ArrayList<>();
@@ -1203,7 +1204,9 @@ public class HostInliningPhase extends AbstractInliningPhase {
             InliningUtil.replaceInvokeCallTarget(invoke, targetGraph, InvokeKind.Special, targetMethod);
         }
 
-        assert call.invoke.asFixedNode().graph() == targetGraph;
+        StructuredGraph graph = call.invoke.asFixedNode().graph();
+        assert graph == targetGraph : Assertions.errorMessageContext("call", call, "invoke", call.invoke, "graph", call.invoke.asFixedNode().graph(), "targetGraph",
+                        targetGraph);
         assert inlineGraph.method().equals(targetMethod);
 
         return inlineForCanonicalization(canonicalizableNodes, invoke, targetMethod, inlineGraph);

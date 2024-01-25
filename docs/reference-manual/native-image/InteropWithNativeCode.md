@@ -16,8 +16,9 @@ There are two mechanisms for calling natively compiled Java methods:
 
 ### Related Documentation
 
-- [Build a Native Shared Library](guides/build-native-shared-library.md)
-- [Embedding Truffle Languages](https://nirvdrum.com/2022/05/09/truffle-language-embedding.html)-- a blog post by Kevin Menard where he compares both mechanisms in Native Image for exposing Java methods
+- [Foreign Function and Memory API in Native Image](ForeignInterface.md)
 - [Java Native Interface (JNI) on Native Image](JNI.md)
 - [JNI Invocation API](JNIInvocationAPI.md)
 - [Native Image C API](C-API.md)
+- [Build a Native Shared Library](guides/build-native-shared-library.md)
+- [Embedding Truffle Languages](https://nirvdrum.com/2022/05/09/truffle-language-embedding.html)-- a blog post by Kevin Menard where he compares both mechanisms in Native Image for exposing Java methods

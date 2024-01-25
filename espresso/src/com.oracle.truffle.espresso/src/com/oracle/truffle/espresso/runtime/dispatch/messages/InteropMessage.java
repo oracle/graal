@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.runtime.dispatch.messages;
 
+import java.math.BigInteger;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -74,12 +75,14 @@ public abstract class InteropMessage extends EspressoNode {
         FitsInLong,
         FitsInFloat,
         FitsInDouble,
+        FitsInBigInteger,
         AsByte,
         AsShort,
         AsInt,
         AsLong,
         AsFloat,
         AsDouble,
+        AsBigInteger,
         HasMembers,
         GetMembers,
         IsMemberReadable,
@@ -122,6 +125,7 @@ public abstract class InteropMessage extends EspressoNode {
         IsBufferWritable,
         GetBufferSize,
         ReadBufferByte,
+        ReadBuffer,
         WriteBufferByte,
         ReadBufferShort,
         WriteBufferShort,
@@ -529,6 +533,22 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
+    public abstract static class FitsInBigInteger extends InteropMessage {
+        @Override
+        public final String name() {
+            return "fitsInBigInteger";
+        }
+
+        @Override
+        public final Object execute(Object[] args) throws InteropException {
+            assert args.length == 1;
+            return execute(args[0]);
+        }
+
+        public abstract boolean execute(Object receiver);
+    }
+
+    @GenerateUncached(inherit = true)
     public abstract static class AsByte extends InteropMessage {
         @Override
         public final String name() {
@@ -622,6 +642,22 @@ public abstract class InteropMessage extends EspressoNode {
         }
 
         public abstract double execute(Object receiver) throws UnsupportedMessageException;
+    }
+
+    @GenerateUncached(inherit = true)
+    public abstract static class AsBigInteger extends InteropMessage {
+        @Override
+        public final String name() {
+            return "asBigInteger";
+        }
+
+        @Override
+        public final Object execute(Object[] args) throws InteropException {
+            assert args.length == 1;
+            return execute(args[0]);
+        }
+
+        public abstract BigInteger execute(Object receiver) throws UnsupportedMessageException;
     }
 
     @GenerateUncached(inherit = true)

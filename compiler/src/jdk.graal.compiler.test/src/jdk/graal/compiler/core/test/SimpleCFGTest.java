@@ -122,7 +122,7 @@ public class SimpleCFGTest extends GraalCompilerTest {
         g.start().setNext(s);
 
         g.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, g, "after build");
-        ControlFlowGraph.compute(g, true, true, true, true);
+        ControlFlowGraph.newBuilder(g).connectBlocks(true).computeLoops(true).computeDominators(true).computePostdominators(true).computeFrequency(true).build();
     }
 
     static int singleLoop(int end) {
@@ -144,7 +144,7 @@ public class SimpleCFGTest extends GraalCompilerTest {
     public void testSingleSplitLoop() {
         StructuredGraph g = parseEager(getResolvedJavaMethod("singleLoop"), AllowAssumptions.NO);
         g.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, g, "after build");
-        ControlFlowGraph.compute(g, true, true, true, true);
+        ControlFlowGraph.newBuilder(g).connectBlocks(true).computeLoops(true).computeDominators(true).computePostdominators(true).computeFrequency(true).build();
     }
 
     static int foo(int a, int b) {
@@ -214,7 +214,7 @@ public class SimpleCFGTest extends GraalCompilerTest {
 
         dumpGraph(graph);
 
-        ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
+        ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeDominators(true).computePostdominators(true).computeFrequency(true).build();
 
         HIRBlock[] blocks = cfg.getBlocks();
         // check number of blocks

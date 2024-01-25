@@ -29,6 +29,9 @@ import static jdk.graal.compiler.api.directives.GraalDirectives.injectIterationC
 
 import java.util.ListIterator;
 
+import org.junit.Ignore;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.GraalOptions;
@@ -58,9 +61,6 @@ import jdk.graal.compiler.phases.common.MidTierLoweringPhase;
 import jdk.graal.compiler.phases.common.RemoveValueProxyPhase;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
-import org.junit.Ignore;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class LoopPartialUnrollTest extends GraalCompilerTest {
@@ -342,13 +342,13 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
             new FloatingReadPhase(canonicalizer).apply(graph, context);
             new RemoveValueProxyPhase(canonicalizer).apply(graph, context);
             new DeadCodeEliminationPhase().apply(graph);
-            new ConditionalEliminationPhase(true).apply(graph, context);
+            new ConditionalEliminationPhase(canonicalizer, true).apply(graph, context);
             new GuardLoweringPhase().apply(graph, context);
             new MidTierLoweringPhase(canonicalizer).apply(graph, context);
             new FrameStateAssignmentPhase().apply(graph);
             new DeoptimizationGroupingPhase().apply(graph, context);
             canonicalizer.apply(graph, context);
-            new ConditionalEliminationPhase(true).apply(graph, context);
+            new ConditionalEliminationPhase(canonicalizer, true).apply(graph, context);
             if (partialUnroll) {
                 LoopsData dataCounted = getDefaultMidTierContext().getLoopsDataProvider().getLoopsData(graph);
                 dataCounted.detectCountedLoops();
@@ -412,4 +412,26 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
         return res;
     }
 
+    static int rr = 0;
+
+    static int countedAfterSnippet(int i, int limit) {
+        int res = 0;
+        for (int j = i; GraalDirectives.injectIterationCount(1000, j <= limit); j += Integer.MAX_VALUE) {
+            rr += 42;
+            res += j;
+        }
+        return res;
+    }
+
+    @Test
+    public void strideOverflow() {
+        check = false;
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
+        for (int i = -1000; i < 1000; i++) {
+            for (int j = 0; j < 100; j++) {
+                test(opt, "countedAfterSnippet", i, j);
+            }
+        }
+        check = true;
+    }
 }

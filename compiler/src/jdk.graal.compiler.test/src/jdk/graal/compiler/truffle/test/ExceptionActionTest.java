@@ -44,7 +44,6 @@ import jdk.graal.compiler.truffle.test.nodes.AbstractTestNode;
 import jdk.graal.compiler.truffle.test.nodes.RootTestNode;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -62,17 +61,6 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
     };
 
     static Object nonConstant;
-
-    @BeforeClass
-    public static void setUp() {
-        // All ExceptionActionTest's tests are executed in the spawned subprocess. The
-        // PermanentBailoutNode is used only by the code running in the subprocess. Needless
-        // PermanentBailoutNode initialization in the parent process will cause ExceptionActionTest
-        // failure when running with the engine.ExceptionAction=Throw.
-        if (SubprocessTestUtils.isSubprocess()) {
-            createPermanentBailoutNode().getCallTarget().call();
-        }
-    }
 
     @Test
     public void testDefault() throws Exception {
@@ -127,6 +115,21 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
     }
 
     @Test
+    public void testPermanentBailoutThrowWithGraalExitVM() throws Exception {
+        BiConsumer<String, String> verifier = (log, output) -> {
+            Assert.assertFalse(formatMessage("Unexpected bailout.", log, output), hasBailout(log));
+            Assert.assertFalse(formatMessage("Unexpected exit.", log, output), hasExit(log));
+            Assert.assertTrue(formatMessage("Expected OptimizationFailedException.", log, output), hasOptFailedException(log));
+        };
+        executeInSubProcess(verifier, ExceptionActionTest::createPermanentBailoutNode,
+                        new String[]{
+                                        "-Djdk.graal.CompilationFailureAction=ExitVM",
+                                        "-Djdk.graal.CompilationBailoutAsFailure=true",
+                        },
+                        "engine.CompilationFailureAction", "Throw");
+    }
+
+    @Test
     public void testNonPermanentBailout() throws Exception {
         BiConsumer<String, String> verifier = (log, output) -> {
             Assert.assertFalse(formatMessage("Unexpected bailout.", log, output), hasBailout(log));
@@ -134,7 +137,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertFalse(formatMessage("Unexpected OptimizationFailedException.", log, output), hasOptFailedException(log));
         };
         executeInSubProcess(verifier, ExceptionActionTest::createConstantNode,
-                        new String[]{"-Dgraal.CrashAt=com.oracle.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
+                        new String[]{"-Djdk.graal.CrashAt=com.oracle.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
                         "engine.CompilationFailureAction", "ExitVM",
                         "compiler.PerformanceWarningsAreFatal", "all");
     }
@@ -147,7 +150,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertFalse(formatMessage("Unexpected OptimizationFailedException.", log, output), hasOptFailedException(log));
         };
         executeInSubProcess(verifier, ExceptionActionTest::createConstantNode,
-                        new String[]{"-Dgraal.CrashAt=com.oracle.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
+                        new String[]{"-Djdk.graal.CrashAt=com.oracle.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
                         "engine.TraceCompilationDetails", "true");
     }
 
@@ -164,7 +167,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             String[] useVMOptions = Arrays.copyOf(additionalVmOptions, additionalVmOptions.length + 2);
             useVMOptions[useVMOptions.length - 2] = String.format("-D%s=%s", LOG_FILE_PROPERTY, log);
             // Prevent graal graph dumping for ExceptionAction#Diagnose
-            useVMOptions[useVMOptions.length - 1] = "-Dgraal.Dump=Truffle:0";
+            useVMOptions[useVMOptions.length - 1] = "~~-Djdk.graal.Dump";
             subprocess = SubprocessTestUtils.executeInSubprocess(ExceptionActionTest.class, () -> {
                 setupContext(contextOptions);
                 OptimizedCallTarget target = (OptimizedCallTarget) rootNodeFactory.get().getCallTarget();

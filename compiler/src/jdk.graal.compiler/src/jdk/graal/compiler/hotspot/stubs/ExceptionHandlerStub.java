@@ -76,7 +76,7 @@ public class ExceptionHandlerStub extends SnippetStub {
         if (index == 2) {
             return providers.getRegisters().getThreadRegister();
         }
-        assert index == 3;
+        assert index == 3 : index;
         return StubOptions.TraceExceptionHandlerStub.getValue(options);
     }
 

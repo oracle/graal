@@ -30,6 +30,7 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.IterableNodeType;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -40,7 +41,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.BinaryNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable.BinaryCommutative;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -74,12 +74,12 @@ public final class IntegerAddExactOverflowNode extends IntegerExactOverflowNode 
     private static LogicConstantNode canonicalXYconstant(ValueNode forX, ValueNode forY) {
         JavaConstant xConst = forX.asJavaConstant();
         JavaConstant yConst = forY.asJavaConstant();
-        assert xConst.getJavaKind() == yConst.getJavaKind();
+        assert xConst.getJavaKind() == yConst.getJavaKind() : Assertions.errorMessageContext("forX", forX, "forY", forY);
         try {
             if (xConst.getJavaKind() == JavaKind.Int) {
                 Math.addExact(xConst.asInt(), yConst.asInt());
             } else {
-                assert xConst.getJavaKind() == JavaKind.Long;
+                assert xConst.getJavaKind() == JavaKind.Long : Assertions.errorMessage(forX, forY, xConst, yConst);
                 Math.addExact(xConst.asLong(), yConst.asLong());
             }
         } catch (ArithmeticException ex) {

@@ -437,7 +437,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
     @Test
     public void testInstrumentOption() {
         // Instrument options can be set to context builders with implicit engine:
-        Context.Builder contextBuilder = Context.newBuilder();
+        Context.Builder contextBuilder = Context.newBuilder().option("engine.WarnOptionDeprecation", "false");
         contextBuilder.option("optiontestinstr1.StringOption1", "Hello");
         contextBuilder.build().close();
     }
@@ -518,7 +518,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
     public void testInstrumentOptionAsContext() {
         // Instrument options are refused by context builders with an existing engine:
         Context.Builder contextBuilder = Context.newBuilder();
-        Engine engine = Engine.create();
+        Engine engine = Engine.newBuilder().option("engine.WarnOptionDeprecation", "false").build();
         contextBuilder.engine(engine);
         contextBuilder.option("optiontestinstr1.StringOption1", "Hello");
         try {
@@ -536,7 +536,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
     public void testInvalidEngineOptionAsContext() {
         // Instrument options are refused by context builders with an existing engine:
         Context.Builder contextBuilder = Context.newBuilder();
-        Engine engine = Engine.create();
+        Engine engine = Engine.newBuilder().option("engine.WarnOptionDeprecation", "false").build();
         contextBuilder.engine(engine);
         contextBuilder.option("optiontestinstr1.StringOption1+Typo", "100");
         try {
@@ -544,7 +544,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
             fail();
         } catch (IllegalArgumentException ex) {
             // O.K.
-            assertTrue(ex.getMessage().startsWith("Could not find option with name optiontestinstr1.StringOption1+Typo."));
+            assertTrue(ex.getMessage(), ex.getMessage().startsWith("Could not find option with name optiontestinstr1.StringOption1+Typo."));
         }
         engine.close();
     }

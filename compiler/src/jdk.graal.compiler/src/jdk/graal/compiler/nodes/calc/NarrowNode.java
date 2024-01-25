@@ -55,7 +55,7 @@ public final class NarrowNode extends IntegerConvertNode<Narrow> {
 
     public NarrowNode(ValueNode input, int resultBits) {
         this(input, PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)), resultBits);
-        assert 0 < resultBits && resultBits <= PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT));
+        assert 0 < resultBits && resultBits <= PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)) : resultBits;
     }
 
     public NarrowNode(ValueNode input, int inputBits, int resultBits) {

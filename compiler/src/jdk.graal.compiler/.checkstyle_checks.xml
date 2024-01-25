@@ -166,7 +166,7 @@
       <property name="message" value="Do not cast directly to `LoadConstantOp`. Use `LoadConstantOp.asLoadConstantOp(op)` instead!"/>
     </module>
     <module name="RegexpSinglelineJava">
-      <property name="format" value="while \(true\)"/>
+      <property name="format" value="while \(true\)|for \(;;\)"/>
       <property name="message" value="Do not introduce untrusted endless loops. Ensure the loop terminates or is capped with a maximum number of iterations. If you trust your loop ignore this checkstyle message with a line comment in the line of the loop header with TERMINATION ARGUMENT: ."/>
       <property name="ignoreComments" value="true"/>
       <property name="id" value="endless-loop"/>

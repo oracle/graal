@@ -25,8 +25,6 @@
 package jdk.graal.compiler.hotspot.amd64.test;
 
 import jdk.graal.compiler.core.test.GraalCompilerTest;
-import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
-import jdk.vm.ci.meta.SpeculationLog;
 
 import org.junit.Test;
 
@@ -57,10 +55,4 @@ public class ArrayAccessInLoopToAddressTest extends GraalCompilerTest {
     public void testNegativeInductionVariable() {
         test("negativeInductionVariable", new short[]{1, 3, 7, 9});
     }
-
-    @Override
-    protected SpeculationLog getSpeculationLog() {
-        return new HotSpotSpeculationLog();
-    }
-
 }

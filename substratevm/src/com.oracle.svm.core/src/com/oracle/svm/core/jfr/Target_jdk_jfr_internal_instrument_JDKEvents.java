@@ -27,6 +27,8 @@ package com.oracle.svm.core.jfr;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
 
 import jdk.jfr.events.ActiveRecordingEvent;
 import jdk.jfr.events.ActiveSettingEvent;
@@ -42,5 +44,8 @@ final class Target_jdk_jfr_internal_instrument_JDKEvents {
     // This is a list of the classes with instrumentation code that should be applied.
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true) private static Class<?>[] instrumentationClasses = new Class<?>[]{};
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true) private static Class<?>[] mirrorEventClasses = new Class<?>[]{};
+    @Alias //
+    @TargetElement(onlyWith = JDK21OrEarlier.class) //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true) //
+    private static Class<?>[] mirrorEventClasses = new Class<?>[]{};
 }

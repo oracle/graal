@@ -28,8 +28,11 @@ import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.InputType;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -37,9 +40,6 @@ import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
-import jdk.graal.compiler.nodeinfo.InputType;
-import jdk.graal.compiler.nodeinfo.NodeInfo;
-
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -80,7 +80,8 @@ public class OffsetAddressNode extends AddressNode implements Canonicalizable {
     public void setBase(ValueNode base) {
         updateUsages(this.base, base);
         this.base = base;
-        assert base != null && (base.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp || IntegerStamp.getBits(base.stamp(NodeView.DEFAULT)) == 64);
+        assert base != null && (base.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp || IntegerStamp.getBits(base.stamp(NodeView.DEFAULT)) == 64) : Assertions.errorMessageContext("this",
+                        this, "base", base);
     }
 
     public ValueNode getOffset() {
@@ -90,7 +91,8 @@ public class OffsetAddressNode extends AddressNode implements Canonicalizable {
     public void setOffset(ValueNode offset) {
         updateUsages(this.offset, offset);
         this.offset = offset;
-        assert offset != null && IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)) == 64;
+        assert offset != null;
+        assert IntegerStamp.getBits(offset.stamp(NodeView.DEFAULT)) == 64 : Assertions.errorMessageContext("offset", offset, "this", this);
     }
 
     @Override

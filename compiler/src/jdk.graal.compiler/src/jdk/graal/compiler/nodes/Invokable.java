@@ -24,9 +24,9 @@
  */
 package jdk.graal.compiler.nodes;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -99,7 +99,7 @@ public interface Invokable extends DeoptBciSupplier {
         if (log != null) {
             // At this point, the invokable node was already added to the inlining log
             // in the call to updateInliningLogAfterRegister, so we need to remove it.
-            assert other instanceof Invokable;
+            assert other instanceof Invokable : Assertions.errorMessage(other);
             if (log.getUpdateScope() != null) {
                 // InliningLog.UpdateScope determines how to update the log.
                 log.getUpdateScope().accept((Invokable) other, this);

@@ -26,14 +26,13 @@ package com.oracle.svm.hosted.classinitialization;
 
 import java.lang.reflect.Proxy;
 
-import jdk.graal.compiler.java.LambdaUtils;
-
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 
+import jdk.graal.compiler.java.LambdaUtils;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 class AllowAllHostedUsagesClassInitializationSupport extends ClassInitializationSupport {
@@ -45,21 +44,7 @@ class AllowAllHostedUsagesClassInitializationSupport extends ClassInitialization
     @Override
     public void initializeAtBuildTime(Class<?> aClass, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
-        Class<?> cur = aClass;
-        do {
-            classInitializationConfiguration.insert(cur.getTypeName(), InitKind.BUILD_TIME, cur == aClass ? reason : "super type of " + aClass.getTypeName(), true);
-            initializeInterfacesAtBuildTime(cur.getInterfaces(), "interface of " + aClass.getTypeName());
-            cur = cur.getSuperclass();
-        } while (cur != null);
-    }
-
-    private void initializeInterfacesAtBuildTime(Class<?>[] interfaces, String reason) {
-        for (Class<?> iface : interfaces) {
-            if (metaAccess.lookupJavaType(iface).declaresDefaultMethods()) {
-                classInitializationConfiguration.insert(iface.getTypeName(), InitKind.BUILD_TIME, reason, true);
-            }
-            initializeInterfacesAtBuildTime(iface.getInterfaces(), reason);
-        }
+        forceInitializeHosted(aClass, reason, false);
     }
 
     @Override
@@ -103,7 +88,13 @@ class AllowAllHostedUsagesClassInitializationSupport extends ClassInitialization
         classInitKinds.put(clazz, initKind);
 
         forceInitializeHosted(clazz.getSuperclass(), "super type of " + clazz.getTypeName(), allowInitializationErrors);
-        forceInitializeInterfaces(clazz.getInterfaces(), "super type of " + clazz.getTypeName());
+        if (!clazz.isInterface()) {
+            /*
+             * Initialization of an interface does not trigger initialization of superinterfaces.
+             * Regardless whether any of the involved interfaces declare default methods.
+             */
+            forceInitializeInterfaces(clazz.getInterfaces(), "super type of " + clazz.getTypeName());
+        }
     }
 
     private void forceInitializeInterfaces(Class<?>[] interfaces, String reason) {

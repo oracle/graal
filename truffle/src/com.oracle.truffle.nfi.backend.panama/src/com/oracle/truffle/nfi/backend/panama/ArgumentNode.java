@@ -229,12 +229,11 @@ abstract class ArgumentNode extends Node {
         }
 
         @Specialization(limit = "3")
-        @SuppressWarnings("preview")
         Object doConvert(Object value,
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
             PanamaNFIContext ctx = PanamaNFIContext.get(this);
             try {
-                return ctx.getContextArena().allocateUtf8String(interop.asString(value));
+                return ctx.getContextArena().allocateFrom(interop.asString(value));
             } catch (UnsupportedMessageException ex) {
                 throw UnsupportedTypeException.create(new Object[]{value});
             }

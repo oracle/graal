@@ -30,8 +30,6 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 import java.lang.invoke.WrongMethodTypeException;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -40,6 +38,26 @@ import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
+import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
+import com.oracle.svm.core.graal.word.SubstrateWordTypes;
+import com.oracle.svm.core.jdk.VarHandleFeature;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
+import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.meta.HostedUniverse;
+
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
@@ -53,6 +71,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeMap;
+import jdk.graal.compiler.hotspot.HotSpotGraphBuilderInstance;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
@@ -107,29 +126,6 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.InlineDuringParsingPlugin;
 import jdk.graal.compiler.replacements.MethodHandlePlugin;
 import jdk.graal.compiler.word.WordOperationPlugin;
-import org.graalvm.nativeimage.ImageSingletons;
-
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
-import com.oracle.graal.pointsto.util.GraalAccess;
-import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
-import com.oracle.svm.core.graal.word.SubstrateWordTypes;
-import com.oracle.svm.core.jdk.VarHandleFeature;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
-import com.oracle.svm.hosted.meta.HostedType;
-import com.oracle.svm.hosted.meta.HostedUniverse;
-import com.oracle.svm.hosted.snippets.IntrinsificationPluginRegistry;
-import com.oracle.svm.util.ReflectionUtil;
-
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -143,9 +139,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Legacy code which will be replaced by the more general method handle intrinsification and
- * inlining in {@link com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder} once
- * {@link com.oracle.svm.core.SubstrateOptions#parseOnce()} is always on, including when JIT
- * compilation is enabled.
+ * inlining in {@link com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder}.
  *
  * Support for method handles that can be reduced to a plain invocation. This is enough to support
  * the method handles used for Java 8 Lambda expressions. Support for arbitrary method handles is
@@ -179,24 +173,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
-    private static final Field varHandleVFormField;
-    private static final Method varFormInitMethod;
-    private static final Method varHandleGetMethodHandleMethod;
-
-    static {
-        varHandleVFormField = ReflectionUtil.lookupField(VarHandle.class, "vform");
-        try {
-            Class<?> varFormClass = Class.forName("java.lang.invoke.VarForm");
-            varFormInitMethod = ReflectionUtil.lookupMethod(varFormClass, "getMethodType_V", int.class);
-            varHandleGetMethodHandleMethod = ReflectionUtil.lookupMethod(VarHandle.class, "getMethodHandle", int.class);
-        } catch (ClassNotFoundException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
-
-    public static class IntrinsificationRegistry extends IntrinsificationPluginRegistry {
-    }
-
     private final ParsingReason reason;
     private final Providers parsingProviders;
     private final HostedProviders universeProviders;
@@ -205,8 +181,6 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     private final HostedSnippetReflectionProvider hostedSnippetReflection;
 
     private final ClassInitializationPlugin classInitializationPlugin;
-
-    private final IntrinsificationRegistry intrinsificationRegistry;
 
     private final ResolvedJavaType methodHandleType;
     private final ResolvedJavaType varHandleType;
@@ -223,13 +197,6 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         this.parsingProviders = new Providers(originalProviders).copyWith(new MethodHandlesMetaAccessExtensionProvider());
 
         this.classInitializationPlugin = new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM());
-
-        if (reason == ParsingReason.PointsToAnalysis) {
-            intrinsificationRegistry = new IntrinsificationRegistry();
-            ImageSingletons.add(IntrinsificationRegistry.class, intrinsificationRegistry);
-        } else {
-            intrinsificationRegistry = ImageSingletons.lookup(IntrinsificationRegistry.class);
-        }
 
         methodHandleType = universeProviders.getMetaAccess().lookupJavaType(MethodHandle.class);
         varHandleType = universeProviders.getMetaAccess().lookupJavaType(VarHandle.class);
@@ -333,48 +300,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             if (args.length < 1 || !args[0].isJavaConstant() || !isVarHandle(args[0])) {
                 return false;
             }
-
-            try {
-                /*
-                 * The field VarHandle.vform.methodType_V_table is a @Stable field but initialized
-                 * lazily on first access. Therefore, constant folding can happen only after
-                 * initialization has happened. We force initialization by invoking the method
-                 * VarHandle.vform.getMethodType_V(0).
-                 */
-                VarHandle varHandle = hostedSnippetReflection.asObject(VarHandle.class, args[0].asJavaConstant());
-                Object varForm = varHandleVFormField.get(varHandle);
-                varFormInitMethod.invoke(varForm, 0);
-
-                /*
-                 * The AccessMode used for the access that we are going to intrinsify is hidden in a
-                 * AccessDescriptor object that is also passed in as a parameter to the intrinsified
-                 * method. Initializing all AccessMode enum values is easier than trying to extract
-                 * the actual AccessMode.
-                 */
-                for (VarHandle.AccessMode accessMode : VarHandle.AccessMode.values()) {
-                    /*
-                     * Force initialization of the @Stable field VarHandle.vform.memberName_table.
-                     * Starting with JDK 17, this field is lazily initialized.
-                     */
-                    boolean isAccessModeSupported = varHandle.isAccessModeSupported(accessMode);
-                    /*
-                     * Force initialization of the @Stable field
-                     * VarHandle.typesAndInvokers.methodType_table.
-                     */
-                    varHandle.accessModeType(accessMode);
-
-                    if (isAccessModeSupported) {
-                        /*
-                         * Force initialization of the @Stable field VarHandle.methodHandleTable (or
-                         * VarHandle.typesAndInvokers.methodHandle_tabel on JDK <= 17) .
-                         */
-                        varHandleGetMethodHandleMethod.invoke(varHandle, accessMode.ordinal());
-                    }
-                }
-            } catch (ReflectiveOperationException ex) {
-                throw VMError.shouldNotReachHere(ex);
-            }
-
+            VarHandleFeature.eagerlyInitializeVarHandle(hostedSnippetReflection.asObject(VarHandle.class, args[0].asJavaConstant()));
             return true;
         } else {
             return false;
@@ -594,14 +520,6 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
     @SuppressWarnings("try")
     private boolean processInvokeWithMethodHandle(GraphBuilderContext b, Replacements replacements, ResolvedJavaMethod methodHandleMethod, ValueNode[] methodHandleArguments) {
-        /*
-         * When parsing for compilation, we must not intrinsify method handles that were not
-         * intrinsified during analysis. Otherwise new code that was not seen as reachable by the
-         * static analysis would be compiled.
-         */
-        if (!reason.duringAnalysis() && intrinsificationRegistry.get(b.getMethod(), b.bci()) != Boolean.TRUE) {
-            return false;
-        }
         Plugins graphBuilderPlugins = new Plugins(parsingProviders.getReplacements().getGraphBuilderPlugins());
 
         registerInvocationPlugins(graphBuilderPlugins.getInvocationPlugins(), replacements);
@@ -615,7 +533,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
         ConstantReflectionProvider originalConstantReflection = GraalAccess.getOriginalProviders().getConstantReflection();
         WordOperationPlugin wordOperationPlugin = new WordOperationPlugin(originalSnippetReflection, originalConstantReflection,
-                        new SubstrateWordTypes(parsingProviders.getMetaAccess(), FrameAccess.getWordKind()),
+                        new SubstrateWordTypes(parsingProviders.getMetaAccess(), ConfigurationValues.getWordKind()),
                         parsingProviders.getPlatformConfigurationProvider().getBarrierSet());
         graphBuilderPlugins.appendInlineInvokePlugin(wordOperationPlugin);
         graphBuilderPlugins.appendTypePlugin(wordOperationPlugin);
@@ -624,7 +542,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         graphBuilderPlugins.setClassInitializationPlugin(new NoClassInitializationPlugin());
 
         GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getSnippetDefault(graphBuilderPlugins);
-        GraphBuilderPhase.Instance graphBuilder = new GraphBuilderPhase.Instance(parsingProviders, graphBuilderConfig, OptimisticOptimizations.NONE, null);
+        GraphBuilderPhase.Instance graphBuilder = new HotSpotGraphBuilderInstance(parsingProviders, graphBuilderConfig, OptimisticOptimizations.NONE, null);
 
         DebugContext debug = b.getDebug();
         StructuredGraph graph = new StructuredGraph.Builder(b.getOptions(), debug)
@@ -649,14 +567,6 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             Transplanter transplanter = new Transplanter(b, transplanted);
             try {
                 transplanter.graph(graph);
-
-                if (reason.duringAnalysis()) {
-                    /*
-                     * Successfully intrinsified during analysis, remember that we can intrinsify
-                     * when parsing for compilation.
-                     */
-                    intrinsificationRegistry.add(b.getMethod(), b.bci(), Boolean.TRUE);
-                }
                 return true;
             } catch (AbortTransplantException ex) {
                 /*

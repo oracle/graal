@@ -29,7 +29,7 @@ import java.lang.ref.ReferenceQueue;
 import java.util.List;
 import java.util.function.Consumer;
 
-import jdk.graal.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -37,7 +37,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
@@ -45,7 +45,8 @@ import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
-import com.oracle.svm.core.os.ImageHeapProvider;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 public abstract class Heap {
     @Fold
@@ -122,12 +123,6 @@ public abstract class Heap {
 
     /**
      * Get the ObjectHeader implementation that this Heap uses.
-     *
-     * TODO: This is used during native image generation to put appropriate headers on Objects in
-     * the native image heap. Is there any reason to expose the whole ObjectHeader interface, since
-     * only setBootImageOnLong(0L) is used then, to get the native image object header bits?
-     *
-     * TODO: Would an "Unsigned getBootImageObjectHeaderBits()" method be sufficient?
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract ObjectHeader getObjectHeader();
@@ -150,29 +145,18 @@ public abstract class Heap {
     @Fold
     public abstract int getPreferredAddressSpaceAlignment();
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public Pointer getImageHeapStart() {
+        Pointer heapBase = (Pointer) Isolates.getHeapBase(CurrentIsolate.getIsolate());
+        return heapBase.add(Heap.getHeap().getImageHeapOffsetInAddressSpace());
+    }
+
     /**
      * Returns an offset relative to the heap base, at which the image heap should be mapped into
      * the address space.
      */
     @Fold
     public abstract int getImageHeapOffsetInAddressSpace();
-
-    /**
-     * Returns the number of null bytes that should be prepended to the image heap during the image
-     * build. This value must be a multiple of the page size. When the image heap is mapped at
-     * runtime, this extra memory gets mapped as well but is marked as inaccessible (see
-     * {@link ImageHeapProvider} for more details).
-     */
-    @Fold
-    public abstract int getImageHeapNullRegionSize();
-
-    /**
-     * Returns whether the runtime page size doesn't have to match the page size set at image
-     * creation ({@link SubstrateOptions#getPageSize()}). If there is a mismatch, then the page size
-     * set at image creation must be a multiple of the runtime page size.
-     */
-    @Fold
-    public abstract boolean allowPageSizeMismatch();
 
     /**
      * Returns true if the given object is located in the image heap.

@@ -25,12 +25,12 @@
 package jdk.graal.compiler.nodes.virtual;
 
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.ValueNode;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -110,7 +110,7 @@ public class VirtualInstanceNode extends VirtualObjectNode {
 
     @Override
     public JavaKind entryKind(MetaAccessExtensionProvider metaAccessExtensionProvider, int index) {
-        assert index >= 0 && index < fields.length;
+        assert index >= 0 && index < fields.length : Assertions.errorMessageContext("index", index, "fields", fields);
         return metaAccessExtensionProvider.getStorageKind(fields[index].getType());
     }
 

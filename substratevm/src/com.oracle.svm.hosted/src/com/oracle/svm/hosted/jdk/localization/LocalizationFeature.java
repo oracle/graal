@@ -100,6 +100,7 @@ import sun.util.cldr.CLDRLocaleProviderAdapter;
 import sun.util.locale.LocaleObjectCache;
 import sun.util.locale.provider.LocaleProviderAdapter;
 import sun.util.locale.provider.ResourceBundleBasedAdapter;
+import sun.util.resources.Bundles;
 import sun.util.resources.LocaleData;
 import sun.util.resources.ParallelListResourceBundle;
 
@@ -134,6 +135,13 @@ import sun.util.resources.ParallelListResourceBundle;
  */
 @AutomaticallyRegisteredFeature
 public class LocalizationFeature implements InternalFeature {
+
+    /**
+     * Locales required by default in Java.
+     * 
+     * @see Locale#getAvailableLocales()
+     */
+    private static final Locale[] MINIMAL_LOCALES = new Locale[]{Locale.ROOT, Locale.ENGLISH, Locale.US};
 
     protected final boolean optimizedMode = Options.LocalizationOptimizedMode.getValue();
 
@@ -371,6 +379,8 @@ public class LocalizationFeature implements InternalFeature {
         if (Options.IncludeAllLocales.getValue()) {
             Collections.addAll(locales, Locale.getAvailableLocales());
             /*- Fallthrough to also allow adding custom locales */
+        } else {
+            Collections.addAll(locales, MINIMAL_LOCALES);
         }
         List<String> invalid = new ArrayList<>();
         for (String tag : Options.IncludeLocales.getValue().values()) {
@@ -559,19 +569,43 @@ public class LocalizationFeature implements InternalFeature {
         prepareBundle(baseName, allLocales);
     }
 
-    @SuppressWarnings("deprecation")
+    private static final String[] RESOURCE_EXTENSION_PREFIXES = new String[]{
+                    "sun.text.resources.cldr",
+                    "sun.util.resources.cldr",
+                    "sun.text.resources",
+                    "sun.util.resources"
+    };
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public void prepareBundle(String baseName, Collection<Locale> wantedLocales) {
         if (baseName.isEmpty()) {
             return;
         }
 
+        prepareBundleInternal(baseName, wantedLocales);
+
+        String alternativeBundleName = null;
+        for (String resourceExtentionPrefix : RESOURCE_EXTENSION_PREFIXES) {
+            if (baseName.startsWith(resourceExtentionPrefix) && !baseName.startsWith(resourceExtentionPrefix + ".ext")) {
+                alternativeBundleName = baseName.replace(resourceExtentionPrefix, resourceExtentionPrefix + ".ext");
+                break;
+            }
+        }
+        if (alternativeBundleName != null) {
+            prepareBundleInternal(alternativeBundleName, wantedLocales);
+        }
+    }
+
+    private void prepareBundleInternal(String baseName, Collection<Locale> wantedLocales) {
         boolean somethingFound = false;
         for (Locale locale : wantedLocales) {
             List<ResourceBundle> resourceBundle;
             try {
                 resourceBundle = ImageSingletons.lookup(ClassLoaderSupport.class).getResourceBundle(baseName, locale);
             } catch (MissingResourceException mre) {
+                for (Locale candidateLocale : support.control.getCandidateLocales(baseName, locale)) {
+                    prepareNegativeBundle(baseName, candidateLocale);
+                }
                 continue;
             }
             somethingFound |= !resourceBundle.isEmpty();
@@ -607,7 +641,7 @@ public class LocalizationFeature implements InternalFeature {
             trace(errorMessage);
             prepareNegativeBundle(baseName, Locale.ROOT);
             for (String language : wantedLocales.stream().map(Locale::getLanguage).collect(Collectors.toSet())) {
-                prepareNegativeBundle(baseName, new Locale(language));
+                prepareNegativeBundle(baseName, Locale.of(language));
             }
             for (Locale locale : wantedLocales) {
                 if (!locale.getCountry().isEmpty()) {
@@ -619,14 +653,13 @@ public class LocalizationFeature implements InternalFeature {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     protected void prepareNegativeBundle(String baseName, Locale locale) {
-        String bundleName = baseName + (locale.toString().isEmpty() ? "" : "_" + locale);
-        Class<?> clazz = findClassByName.apply(bundleName);
-        if (clazz != null) {
-            RuntimeReflection.register(clazz);
-        } else {
-            RuntimeReflection.registerClassLookup(bundleName);
-        }
+        String bundleName = support.control.toBundleName(baseName, locale);
+        RuntimeReflection.registerClassLookup(bundleName);
         Resources.singleton().registerNegativeQuery(support.getResultingPattern(baseName, locale) + ".properties");
+        String otherBundleName = Bundles.toOtherBundleName(baseName, bundleName, locale);
+        if (!otherBundleName.equals(bundleName)) {
+            RuntimeReflection.registerClassLookup(otherBundleName);
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

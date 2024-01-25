@@ -47,6 +47,14 @@ import jdk.jfr.FlightRecorder;
 public final class ProviderImpl implements EventFactory.Provider {
     @Override
     public EventFactory getEventFactory() {
-        return FlightRecorder.isAvailable() ? new EventFactoryImpl() : null;
+        return hasJFRModule() && supportsJFR() ? new EventFactoryImpl() : null;
+    }
+
+    private static boolean hasJFRModule() {
+        return ModuleLayer.boot().findModule("jdk.jfr").isPresent();
+    }
+
+    private static boolean supportsJFR() {
+        return FlightRecorder.isAvailable();
     }
 }

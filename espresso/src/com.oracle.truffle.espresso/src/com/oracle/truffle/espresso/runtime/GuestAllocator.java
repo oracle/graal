@@ -395,6 +395,7 @@ public final class GuestAllocator implements LanguageAccess {
 
     private static StaticObject createForeign(EspressoLanguage lang, Klass klass, Object foreignObject) {
         assert foreignObject != null;
+        assert klass == null || !klass.isAbstract() || klass.isArray();
         StaticObject newObj = lang.getForeignShape().getFactory().create(klass, true);
         lang.getForeignProperty().setObject(newObj, foreignObject);
         if (klass != null) {

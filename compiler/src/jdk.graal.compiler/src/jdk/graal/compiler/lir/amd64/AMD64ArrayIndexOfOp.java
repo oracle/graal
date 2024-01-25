@@ -49,6 +49,7 @@ import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
 import jdk.graal.compiler.core.common.Stride;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIRInstructionClass;
@@ -365,7 +366,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
                 break;
             case WithMask:
                 assert !valuesOnStack;
-                assert nValues == 2;
+                assert nValues == 2 : nValues;
                 asm.movSZx(valueSize, ZERO_EXTEND, cmpResult, arrayAddr);
                 asm.orq(cmpResult, asRegister(searchValue[1]));
                 asm.cmpqAndJcc(cmpResult, asRegister(searchValue[0]), AMD64Assembler.ConditionFlag.Equal, elementWiseFound, true);
@@ -647,7 +648,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
                 }
                 break;
             case MatchRange:
-                assert nVectors == 1;
+                assert nVectors == 1 : nVectors;
                 if (nValues == 2) {
                     asm.pminu(vSize, stride, vecTmp[0], vecCmp[0], vecArray[0]);
                     asm.pminu(vSize, stride, vecTmp[1], vecArray[0], vecCmp[1]);
@@ -655,7 +656,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
                     asm.pcmpeq(vSize, stride, vecTmp[1], vecArray[0]);
                     asm.pand(vSize, vecTmp[0], vecTmp[1]);
                 } else {
-                    assert nValues == 4;
+                    assert nValues == 4 : nValues;
                     asm.pminu(vSize, stride, vecTmp[0], vecCmp[0], vecArray[0]);
                     asm.pminu(vSize, stride, vecTmp[1], vecArray[0], vecCmp[1]);
                     asm.pcmpeq(vSize, stride, vecTmp[0], vecCmp[0]);
@@ -672,7 +673,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
                 emitVectorCompareCheckVectorFound(asm, vSize, cmpResult, vectorFound[0], shortJmp);
                 break;
             case WithMask:
-                assert nValues == 2 && nVectors == 1;
+                assert nValues == 2 && nVectors == 1 : Assertions.errorMessage(nValues, nVectors);
                 asm.por(vSize, vecArray[0], vecCmp[1]);
                 asm.pcmpeq(vSize, stride, vecArray[0], vecCmp[0]);
                 asm.pmovmsk(vSize, cmpResult, vecArray[0]);
@@ -855,7 +856,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
             case S2:
                 return OperandSize.DWORD;
             default:
-                assert stride == Stride.S4;
+                assert stride == Stride.S4 : stride;
                 return OperandSize.QWORD;
         }
     }

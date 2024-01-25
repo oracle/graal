@@ -27,18 +27,6 @@ package jdk.graal.compiler.java;
 import static java.lang.String.format;
 import static java.lang.reflect.Modifier.STATIC;
 import static java.lang.reflect.Modifier.SYNCHRONIZED;
-import static jdk.vm.ci.code.BytecodeFrame.UNKNOWN_BCI;
-import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateRecompile;
-import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
-import static jdk.vm.ci.meta.DeoptimizationAction.None;
-import static jdk.vm.ci.meta.DeoptimizationReason.ClassCastException;
-import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
-import static jdk.vm.ci.meta.DeoptimizationReason.RuntimeConstraint;
-import static jdk.vm.ci.meta.DeoptimizationReason.UnreachedCode;
-import static jdk.vm.ci.meta.DeoptimizationReason.Unresolved;
-import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static jdk.graal.compiler.bytecode.Bytecodes.AALOAD;
 import static jdk.graal.compiler.bytecode.Bytecodes.AASTORE;
 import static jdk.graal.compiler.bytecode.Bytecodes.ACONST_NULL;
@@ -259,6 +247,18 @@ import static jdk.graal.compiler.java.BytecodeParserOptions.TraceParserPlugins;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_FAST_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_DURING_PARSING;
+import static jdk.vm.ci.code.BytecodeFrame.UNKNOWN_BCI;
+import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateRecompile;
+import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
+import static jdk.vm.ci.meta.DeoptimizationAction.None;
+import static jdk.vm.ci.meta.DeoptimizationReason.ClassCastException;
+import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
+import static jdk.vm.ci.meta.DeoptimizationReason.RuntimeConstraint;
+import static jdk.vm.ci.meta.DeoptimizationReason.UnreachedCode;
+import static jdk.vm.ci.meta.DeoptimizationReason.Unresolved;
+import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
+import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -270,6 +270,8 @@ import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.bytecode.Bytecode;
@@ -435,8 +437,6 @@ import jdk.graal.compiler.phases.util.ValueMergeUtil;
 import jdk.graal.compiler.replacements.nodes.MacroInvokable;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.CodeUtil;
@@ -463,7 +463,7 @@ import jdk.vm.ci.meta.TriState;
 /**
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
  */
-public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilderContext {
+public abstract class BytecodeParser extends CoreProvidersDelegate implements GraphBuilderContext {
 
     /**
      * The minimum value to which {@link BytecodeParserOptions#TraceBytecodeParserLevel} must be set
@@ -545,7 +545,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         InliningScope(BytecodeParser parser) {
             this.parser = parser;
             assert parser.parent == null;
-            assert parser.bci() == 0;
+            assert parser.bci() == 0 : Assertions.errorMessage(parser);
             mark = null;
             callee = null;
         }
@@ -594,7 +594,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
                                 // Swap the top-of-stack value with the return value
                                 ValueNode tos = frameStateBuilder.pop(returnKind);
-                                assert tos.getStackKind() == returnVal.getStackKind();
+                                assert tos.getStackKind() == returnVal.getStackKind() : Assertions.errorMessage(tos, returnVal);
                                 FrameState newFrameState = frameStateBuilder.create(parser.stream.nextBCI(), parser.getNonIntrinsicAncestor(), false, new JavaKind[]{returnKind},
                                                 new ValueNode[]{returnVal});
                                 frameState.replaceAndDelete(newFrameState);
@@ -818,7 +818,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 }
                 if (invalidBCIsToFind != 0) {
                     throw new GraalError(
-                                    "Invalid BCI state missmatch: This root compiled method substitution %s " +
+                                    "Invalid BCI state mismatch: This root compiled method substitution %s " +
                                                     "uses invalid side-effecting nodes resulting in invalid deoptimization information. " +
                                                     "Method substitutions must never have more than one state (the after state) for deoptimization." +
                                                     " Multiple states are only allowed if they are dominated by a control-flow split, there is only" +
@@ -1022,7 +1022,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     @SuppressWarnings("try")
     protected void buildRootMethod() {
         FrameStateBuilder startFrameState = new FrameStateBuilder(this, code, graph, graphBuilderConfig.retainLocalVariables());
-        startFrameState.initializeForMethodStart(graph.getAssumptions(), graphBuilderConfig.eagerResolving() || intrinsicContext != null, graphBuilderConfig.getPlugins());
+        startFrameState.initializeForMethodStart(graph.getAssumptions(), graphBuilderConfig.eagerResolving() || intrinsicContext != null, graphBuilderConfig.getPlugins(), null);
 
         try (IntrinsicScope s = intrinsicContext != null ? new IntrinsicScope(this) : null) {
             build(graph.start(), startFrameState);
@@ -1099,7 +1099,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                         } else {
                             frameState.clearNonLiveLocals(startBlock, liveness, true);
                         }
-                        assert bci() == 0;
+                        assert bci() == 0 : bci();
                         startNode.setStateAfter(createFrameState(bci(), startNode));
                     } else {
                         if (startNode.stateAfter() == null) {
@@ -1116,7 +1116,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                     // add a monitor enter to the start block
                     methodSynchronizedObject = synchronizedObject(frameState, method);
                     frameState.clearNonLiveLocals(startBlock, liveness, true);
-                    assert bci() == 0;
+                    assert bci() == 0 : bci();
                     genMonitorEnter(methodSynchronizedObject, bci());
                 }
 
@@ -1195,8 +1195,8 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     private FrameState createStateAfterStartOfReplacementGraph() {
         assert parent == null;
         assert frameState.getMethod().equals(intrinsicContext.getIntrinsicMethod());
-        assert bci() == 0;
-        assert frameState.stackSize() == 0;
+        assert bci() == 0 : bci();
+        assert frameState.stackSize() == 0 : Assertions.errorMessage(frameState, frameState.stackSize());
         FrameState stateAfterStart;
         if (intrinsicContext.isPostParseInlined()) {
             stateAfterStart = graph.add(new FrameState(BytecodeFrame.BEFORE_BCI));
@@ -1204,6 +1204,41 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             stateAfterStart = frameState.createInitialIntrinsicFrameState(intrinsicContext.getOriginalMethod());
         }
         return stateAfterStart;
+    }
+
+    private static final SpeculationReasonGroup UNRESOLVED = new SpeculationReasonGroup("Unresolved", ResolvedJavaMethod.class, int.class);
+
+    public static final CounterKey unresolvedSpeculationTaken = DebugContext.counter("BytecodeParser_UnresolvedSpeculation_Taken");
+    public static final CounterKey unresolvedSpeculationNotTaken = DebugContext.counter("BytecodeParser_UnresolvedSpeculation_NotTaken");
+
+    /**
+     * Returns a speculation object if it's possible to speculate on an unresolved type or field at
+     * the current bytecode location.
+     */
+    private SpeculationLog.Speculation mayUseUnresolved(int bci) {
+        return mayUseSpeculation(bci, UNRESOLVED, unresolvedSpeculationTaken, unresolvedSpeculationNotTaken);
+    }
+
+    protected void appendUnresolvedDeopt() {
+        SpeculationLog.Speculation speculation = mayUseUnresolved(bci());
+        if (speculation == null) {
+            /*
+             * A previous speculation on this unresolved item failed. This means that we previously
+             * deopted at this position. The interpreter should have resolved the item we need here.
+             * However, due to inlining and our use of imprecise frame states, we may have deopted
+             * to and invalidated the callee of this method rather than this method itself. Prevent
+             * a deopt loop by capturing a precise state.
+             */
+            speculation = SpeculationLog.NO_SPECULATION;
+            StateSplitProxyNode stateSplit = append(new StateSplitProxyNode());
+            stateSplit.setStateAfter(createFrameState(bci(), stateSplit));
+        }
+        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved, speculation));
+        /*
+         * Track source position for deopt nodes even if
+         * GraphBuilderConfiguration.trackNodeSourcePosition is not set.
+         */
+        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
     }
 
     /**
@@ -1215,12 +1250,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected void handleUnresolvedLoadConstant(JavaType unresolvedType) {
         assert !graphBuilderConfig.unresolvedIsError() || unresolvedType == null;
-        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-        /*
-         * Track source position for deopt nodes even if
-         * GraphBuilderConfiguration.trackNodeSourcePosition is not set.
-         */
-        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
+        appendUnresolvedDeopt();
     }
 
     /**
@@ -1264,8 +1294,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected void handleUnresolvedNewInstance(JavaType type) {
         assert !graphBuilderConfig.unresolvedIsError();
-        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
+        appendUnresolvedDeopt();
     }
 
     /**
@@ -1273,8 +1302,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected void handleIllegalNewInstance(JavaType type) {
         assert !graphBuilderConfig.unresolvedIsError();
-        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
+        appendUnresolvedDeopt();
     }
 
     /**
@@ -1283,8 +1311,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected void handleUnresolvedNewObjectArray(JavaType type, ValueNode length) {
         assert !graphBuilderConfig.unresolvedIsError();
-        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
+        appendUnresolvedDeopt();
     }
 
     /**
@@ -1293,8 +1320,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected void handleUnresolvedNewMultiArray(JavaType type, ValueNode[] dims) {
         assert !graphBuilderConfig.unresolvedIsError();
-        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
+        appendUnresolvedDeopt();
     }
 
     /**
@@ -1303,8 +1329,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected void handleUnresolvedLoadField(JavaField field, ValueNode receiver) {
         assert !graphBuilderConfig.unresolvedIsError();
-        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
+        appendUnresolvedDeopt();
     }
 
     /**
@@ -1314,8 +1339,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected void handleUnresolvedStoreField(JavaField field, ValueNode value, ValueNode receiver) {
         assert !graphBuilderConfig.unresolvedIsError();
-        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
+        appendUnresolvedDeopt();
     }
 
     /**
@@ -1323,8 +1347,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected void handleUnresolvedExceptionType(JavaType type) {
         assert !graphBuilderConfig.unresolvedIsError();
-        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
+        appendUnresolvedDeopt();
     }
 
     /**
@@ -1333,8 +1356,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected void handleUnresolvedInvoke(JavaMethod javaMethod, InvokeKind invokeKind) {
         assert !graphBuilderConfig.unresolvedIsError();
-        DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
-        deopt.updateNodeSourcePosition(() -> createBytecodePosition());
+        appendUnresolvedDeopt();
     }
 
     protected FrameStateBuilder createFrameStateForExceptionHandling(@SuppressWarnings("unused") int bci) {
@@ -1378,7 +1400,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         } else {
             createHandleExceptionTarget(afterExceptionLoaded, bci, dispatchState);
         }
-        assert currentLastInstr == lastInstr;
+        assert currentLastInstr == lastInstr : Assertions.errorMessageContext("currentLastInstr", currentLastInstr, "lastInstr", lastInstr);
         return dispatchBegin;
     }
 
@@ -1511,7 +1533,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     protected void genGoto() {
         appendGoto(currentBlock.getSuccessor(0));
-        assert currentBlock.numNormalSuccessors() == 1;
+        assert currentBlock.numNormalSuccessors() == 1 : Assertions.errorMessageContext("currentBlock", currentBlock);
     }
 
     protected LogicNode genObjectEquals(ValueNode x, ValueNode y) {
@@ -1758,7 +1780,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     private boolean genDynamicInvokeHelper(ResolvedJavaMethod target, int cpi, int opcode) {
-        assert opcode == INVOKEDYNAMIC || opcode == INVOKEVIRTUAL;
+        assert opcode == INVOKEDYNAMIC || opcode == INVOKEVIRTUAL : opcode;
 
         JavaConstant appendix = constantPool.lookupAppendix(cpi, opcode);
         ValueNode appendixNode = null;
@@ -1770,7 +1792,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
         }
 
-        boolean hasReceiver = (opcode == INVOKEDYNAMIC) ? false : !target.isStatic();
+        boolean hasReceiver = opcode != INVOKEDYNAMIC && !target.isStatic();
         ValueNode[] args = frameState.popArguments(target.getSignature().getParameterCount(hasReceiver));
         if (hasReceiver) {
             appendInvoke(InvokeKind.Virtual, target, args, null);
@@ -2067,12 +2089,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     protected Invoke createNonInlinedInvoke(ExceptionEdgeAction exceptionEdge, int invokeBci, ValueNode[] invokeArgs, ResolvedJavaMethod targetMethod,
                     InvokeKind invokeKind, JavaKind resultType, JavaType returnType, JavaTypeProfile profile) {
 
-        StampPair returnStamp = graphBuilderConfig.getPlugins().getOverridingStamp(this, returnType, false);
-        if (returnStamp == null) {
-            returnStamp = StampFactory.forDeclaredType(graph.getAssumptions(), returnType, false);
-        }
-
-        MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, targetMethod, invokeArgs, returnStamp, profile));
+        MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, targetMethod, invokeArgs, returnType, profile));
         Invoke invoke = createNonInlinedInvoke(exceptionEdge, invokeBci, callTarget, resultType);
 
         for (InlineInvokePlugin plugin : graphBuilderConfig.getPlugins().getInlineInvokePlugins()) {
@@ -2083,11 +2100,14 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     protected Invoke createNonInlinedInvoke(ExceptionEdgeAction exceptionEdge, int invokeBci, CallTargetNode callTarget, JavaKind resultType) {
+        Invoke invoke;
         if (exceptionEdge == ExceptionEdgeAction.OMIT) {
-            return createInvoke(invokeBci, callTarget, resultType);
+            invoke = append(createInvoke(invokeBci, callTarget, resultType));
         } else {
-            return createInvokeWithException(invokeBci, callTarget, resultType, exceptionEdge);
+            invoke = append(createInvokeWithException(invokeBci, callTarget, resultType, exceptionEdge));
         }
+        invoke.setStateAfter(createFrameState(stream.nextBCI(), invoke));
+        return invoke;
     }
 
     /**
@@ -2115,7 +2135,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         } else if (graphBuilderConfig.getBytecodeExceptionMode() == BytecodeExceptionMode.OmitAll) {
             return ExceptionEdgeAction.OMIT;
         } else {
-            assert graphBuilderConfig.getBytecodeExceptionMode() == BytecodeExceptionMode.Profile;
+            assert graphBuilderConfig.getBytecodeExceptionMode() == BytecodeExceptionMode.Profile : graphBuilderConfig.getBytecodeExceptionMode();
             // be conservative if information was not recorded (could result in endless
             // recompiles otherwise)
             if (!StressInvokeWithExceptionNode.getValue(options)) {
@@ -2635,7 +2655,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 lastInstr = singleReturnData.beforeReturnNode;
                 calleeReturnValue = singleReturnData.returnValue;
             } else {
-                assert calleeReturnDataList.size() > 1;
+                assert calleeReturnDataList.size() > 1 : calleeReturnDataList;
                 /* Callee has multiple returns, we need to insert a control flow merge. */
                 returnMergeNode = graph.add(new MergeNode());
                 calleeReturnValue = ValueMergeUtil.mergeValueProducers(returnMergeNode, calleeReturnDataList, returnData -> returnData.beforeReturnNode, returnData -> returnData.returnValue);
@@ -2653,14 +2673,22 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         return null;
     }
 
+    public MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, JavaType returnType, JavaTypeProfile profile) {
+        StampPair returnStamp = graphBuilderConfig.getPlugins().getOverridingStamp(this, returnType, false);
+        if (returnStamp == null) {
+            returnStamp = StampFactory.forDeclaredType(graph.getAssumptions(), returnType, false);
+        }
+
+        return createMethodCallTarget(invokeKind, targetMethod, args, returnStamp, profile);
+    }
+
     public MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, JavaTypeProfile profile) {
         return new MethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, profile);
     }
 
     protected InvokeNode createInvoke(int invokeBci, CallTargetNode callTarget, JavaKind resultType) {
-        InvokeNode invoke = append(new InvokeNode(callTarget, invokeBci));
+        InvokeNode invoke = new InvokeNode(callTarget, invokeBci);
         frameState.pushReturn(resultType, invoke);
-        invoke.setStateAfter(createFrameState(stream.nextBCI(), invoke));
         return invoke;
     }
 
@@ -2674,9 +2702,8 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         }
 
         AbstractBeginNode exceptionEdge = handleException(null, bci(), exceptionEdgeAction == ExceptionEdgeAction.INCLUDE_AND_DEOPTIMIZE);
-        InvokeWithExceptionNode invoke = append(new InvokeWithExceptionNode(callTarget, exceptionEdge, invokeBci));
+        InvokeWithExceptionNode invoke = new InvokeWithExceptionNode(callTarget, exceptionEdge, invokeBci);
         frameState.pushReturn(resultType, invoke);
-        invoke.setStateAfter(createFrameState(stream.nextBCI(), invoke));
         return invoke;
     }
 
@@ -2690,17 +2717,19 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                     assert stateSplit != null;
                     if (stateAfter.bci == BytecodeFrame.AFTER_BCI) {
                         assert stateAfter.hasExactlyOneUsage();
-                        assert stateAfter.usages().first() == stateSplit;
+                        assert stateAfter.usages().first() == stateSplit : Assertions.errorMessage(stateAfter, stateSplit);
                         FrameState state;
                         if (returnVal.getStackKind() == JavaKind.Illegal) {
                             // This should only occur when Fold and NodeIntrinsic plugins are
                             // deferred. Their return value might not be a Java type and in that
                             // case this can't be the final AFTER_BCI so just create a FrameState
                             // without a return value on the top of stack.
-                            assert stateSplit instanceof Invoke;
+                            assert stateSplit instanceof Invoke : Assertions.errorMessage(stateSplit);
                             ResolvedJavaMethod targetMethod = ((Invoke) stateSplit).getTargetMethod();
                             if (!IS_IN_NATIVE_IMAGE) {
-                                assert targetMethod != null && (targetMethod.getAnnotation(Fold.class) != null || targetMethod.getAnnotation(Node.NodeIntrinsic.class) != null);
+                                assert targetMethod != null;
+                                assert (targetMethod.getAnnotation(Fold.class) != null || targetMethod.getAnnotation(Node.NodeIntrinsic.class) != null) : "Target should be fold or intrinsic " +
+                                                targetMethod;
                             }
                             state = new FrameState(BytecodeFrame.AFTER_BCI);
                         } else {
@@ -2740,7 +2769,8 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         JavaKind returnKind = method.getSignature().getReturnKind();
         if (kind != returnKind) {
             // sub-word integer
-            assert returnKind.isNumericInteger() && returnKind.getStackKind() == JavaKind.Int;
+            assert returnKind.isNumericInteger();
+            assert returnKind.getStackKind() == JavaKind.Int : Assertions.errorMessageContext("value", value, "returnKind", returnKind);
             IntegerStamp stamp = (IntegerStamp) value.stamp(NodeView.DEFAULT);
 
             // the bytecode verifier doesn't check that the value is in the correct range
@@ -2759,7 +2789,8 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
              * things to the state of the locals.
              */
             ValueNode receiver = graph.start().stateAfter().localAt(0);
-            assert receiver != null && receiver.getStackKind() == JavaKind.Object;
+            assert receiver != null;
+            assert receiver.getStackKind() == JavaKind.Object : Assertions.errorMessageContext("x", x, "receiver", receiver);
             if (RegisterFinalizerNode.mayHaveFinalizer(receiver, getMetaAccess(), graph.getAssumptions())) {
                 RegisterFinalizerNode regFin = new RegisterFinalizerNode(receiver);
                 append(regFin);
@@ -2888,7 +2919,8 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     @Override
     public <T extends Node> T append(T v) {
-        assert !graph.trackNodeSourcePosition() || graph.currentNodeSourcePosition() != null || currentBlock == blockMap.getUnwindBlock() || currentBlock instanceof ExceptionDispatchBlock;
+        assert !graph.trackNodeSourcePosition() || graph.currentNodeSourcePosition() != null || currentBlock == blockMap.getUnwindBlock() ||
+                        currentBlock instanceof ExceptionDispatchBlock : Assertions.errorMessage(graph, currentBlock);
         if (v.graph() != null) {
             return v;
         }
@@ -3013,7 +3045,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         BeginNode holder = new BeginNode();
         lastInstr = graph.add(holder);
         frameState = newState;
-        assert frameState.stackSize() == 1;
+        assert frameState.stackSize() == 1 : Assertions.errorMessage(frameState);
         ValueNode exception = frameState.peekObject();
         synchronizedEpilogue(BytecodeFrame.AFTER_EXCEPTION_BCI, exception, JavaKind.Void);
         lastInstr.setNext(target);
@@ -3081,8 +3113,9 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     @SuppressWarnings("try")
     private FixedNode createTarget(BciBlock block, FrameStateBuilder state, boolean canReuseInstruction, boolean canReuseState) {
-        assert block != null && state != null;
-        assert !block.isExceptionEntry() || state.stackSize() == 1;
+        assert block != null;
+        assert state != null;
+        assert !block.isExceptionEntry() || state.stackSize() == 1 : Assertions.errorMessage(block, state);
 
         try (DebugCloseable context = openNodeContext(state, block.startBci)) {
             if (getFirstInstruction(block) == null) {
@@ -3133,7 +3166,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                  * time the backward loop edge is reached, the block will already be processed, and
                  * its rethrow exception will be set to false.
                  */
-                assert !(block instanceof ExceptionDispatchBlock);
+                assert !(block instanceof ExceptionDispatchBlock) : block;
                 assert !getEntryState(block).rethrowException();
                 target.state.setRethrowException(false);
                 getEntryState(block).merge(loopBegin, target.state);
@@ -3298,7 +3331,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
             assert frameState.stackSize() == 1 : frameState;
             if (block.handler.isCatchAll()) {
-                assert block.getSuccessorCount() == 1;
+                assert block.getSuccessorCount() == 1 : Assertions.errorMessage(block);
                 appendGoto(block.getSuccessor(0));
                 return;
             }
@@ -3340,7 +3373,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 FixedNode nextDispatch = createTarget(nextBlock, frameState);
                 piNodeAnchor.setNext(catchSuccessor);
                 IfNode ifNode = append(new IfNode(graph.unique(createInstanceOf(checkedCatchType, exception)), piNodeAnchor, nextDispatch, BranchProbabilityData.unknown()));
-                assert ifNode.trueSuccessor() == piNodeAnchor;
+                assert ifNode.trueSuccessor() == piNodeAnchor : Assertions.errorMessageContext("if", ifNode, "ifNode.true", ifNode.trueSuccessor(), "piNodeAnchor", piNodeAnchor);
                 piNode.setGuard(ifNode.trueSuccessor());
             } else {
                 handleUnresolvedExceptionType(catchType);
@@ -3452,12 +3485,12 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             stream.next();
             bci = stream.currentBCI();
 
-            assert block == currentBlock;
+            assert block == currentBlock : Assertions.errorMessage(block, currentBlock);
             assert checkLastInstruction();
             if (bci < endBCI) {
                 if (bci > block.getEndBci()) {
                     assert !block.getSuccessor(0).isExceptionEntry();
-                    assert block.numNormalSuccessors() == 1;
+                    assert block.numNormalSuccessors() == 1 : Assertions.errorMessage(block);
                     // we fell through to the next block, add a goto and break
                     appendGoto(block.getSuccessor(0));
                     break;
@@ -3538,8 +3571,8 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     protected void genIf(ValueNode x, Condition cond, ValueNode y) {
-        assert x.getStackKind() == y.getStackKind();
-        assert currentBlock.getSuccessorCount() == 2;
+        assert x.getStackKind() == y.getStackKind() : Assertions.errorMessageContext("x", x, "y", y);
+        assert currentBlock.getSuccessorCount() == 2 : Assertions.errorMessageContext("currentBlock", currentBlock, "currentBlock.succ", currentBlock.successors);
         BciBlock trueBlock = currentBlock.getSuccessor(0);
         BciBlock falseBlock = currentBlock.getSuccessor(1);
 
@@ -3800,7 +3833,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                     return genIntegerEquals(a, b);
                 }
             case LT:
-                assert a.getStackKind() != JavaKind.Object;
+                assert a.getStackKind() != JavaKind.Object : Assertions.errorMessageContext("a", a, "b", b);
                 return genIntegerLessThan(a, b);
             default:
                 throw GraalError.shouldNotReachHere("Unexpected condition: " + cond); // ExcludeFromJacocoGeneratedReport
@@ -3820,7 +3853,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             // This is an empty block. Skip it.
             BciBlock successorBlock = nextBlock.successors.get(0);
             appendGoto(successorBlock);
-            assert nextBlock.numNormalSuccessors() == 1;
+            assert nextBlock.numNormalSuccessors() == 1 : Assertions.errorMessage(nextBlock);
         } else {
             appendGoto(nextBlock);
         }
@@ -3911,8 +3944,8 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         throw GraphUtil.createBailoutException(string, bailout, elements);
     }
 
-    private FrameState createFrameState(int bci, StateSplit forStateSplit) {
-        assert !(forStateSplit instanceof BytecodeExceptionNode);
+    protected FrameState createFrameState(int bci, StateSplit forStateSplit) {
+        assert !(forStateSplit instanceof BytecodeExceptionNode) : Assertions.errorMessageContext("forStateSplit", forStateSplit);
         if (currentBlock != null && bci > currentBlock.getEndBci()) {
             frameState.clearNonLiveLocals(currentBlock, liveness, false);
         }
@@ -3932,7 +3965,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     @Override
     public void setStateAfter(StateSplit sideEffect) {
-        assert sideEffect.hasSideEffect() || sideEffect instanceof AbstractMergeNode;
+        assert sideEffect.hasSideEffect() || sideEffect instanceof AbstractMergeNode : Assertions.errorMessage(sideEffect);
         FrameState stateAfter = createFrameState(stream.nextBCI(), sideEffect);
         sideEffect.setStateAfter(stateAfter);
     }
@@ -3995,19 +4028,24 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     protected void genLoadConstant(int cpi, int opcode) {
         Object con = lookupConstant(cpi, opcode, false);
+        genLoadConstantHelper(con, opcode);
+    }
+
+    protected void genLoadConstantHelper(Object con, int opcode) {
         if (con == null) {
             handleUnresolvedLoadConstant(null);
-        } else if (con instanceof JavaType) {
+        } else if (con instanceof JavaType type) {
             // this is a load of class constant which might be unresolved
-            JavaType type = (JavaType) con;
             if (typeIsResolved(type)) {
+                assert opcode != LDC2_W : "Type cannot use two slots";
                 frameState.push(JavaKind.Object, appendConstant(getConstantReflection().asJavaClass((ResolvedJavaType) type)));
             } else {
                 handleUnresolvedLoadConstant(type);
             }
-        } else if (con instanceof JavaConstant) {
-            JavaConstant constant = (JavaConstant) con;
-            frameState.push(constant.getJavaKind(), appendConstant(constant));
+        } else if (con instanceof JavaConstant constant) {
+            JavaKind javaKind = constant.getJavaKind();
+            assert (opcode == LDC2_W) == javaKind.needsTwoSlots() : "Constant required incorrect number of slots: needsTwoSlots is " + javaKind.needsTwoSlots();
+            frameState.push(javaKind, appendConstant(constant));
         } else if (!(con instanceof Throwable)) {
             /**
              * We use the exceptional return value of {@link #lookupConstant(int, int)} as sentinel
@@ -4033,7 +4071,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 JavaType componentType = type.getComponentType();
                 if (componentType != null) {
                     JavaKind refinedKind = componentType.getJavaKind();
-                    assert refinedKind == JavaKind.Byte || refinedKind == JavaKind.Boolean;
+                    assert refinedKind == JavaKind.Byte || refinedKind == JavaKind.Boolean : refinedKind;
                     return refinedKind;
                 }
             }
@@ -4343,7 +4381,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     protected JavaType lookupType(int cpi, int bytecode) {
         maybeEagerlyResolve(cpi, bytecode);
         JavaType result = constantPool.lookupType(cpi, bytecode);
-        assert !graphBuilderConfig.unresolvedIsError() || result instanceof ResolvedJavaType;
+        assert !graphBuilderConfig.unresolvedIsError() || result instanceof ResolvedJavaType : Assertions.errorMessage(result);
         return result;
     }
 
@@ -4489,7 +4527,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     /**
      * Returns a speculation object if it's possible to speculate on the given {@code reason} at the
-     * bytecode location indicated by the BCI.
+     * bytecode location indicated by the BCI. Returns {@code null} otherwise.
      */
     private SpeculationLog.Speculation mayUseSpeculation(int bci, SpeculationReasonGroup reason, CounterKey speculationTaken, CounterKey speculationNotTaken) {
         SpeculationLog speculationLog = graph.getSpeculationLog();
@@ -4522,7 +4560,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             if (profile.getNullSeen().isFalse()) {
                 SpeculationLog.Speculation speculation = mayUseTypeProfile();
                 if (speculation != null) {
-                    object = nullCheckedValue(object);
+                    object = addNonNullCast(object, InvalidateReprofile);
                     ResolvedJavaType singleType = profile.asSingleType();
                     if (singleType != null && checkedType.getType().isAssignableFrom(singleType)) {
                         LogicNode typeCheck = append(createInstanceOf(TypeReference.createExactTrusted(singleType), object, profile));
@@ -4585,7 +4623,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         LogicNode instanceOfNode = null;
         if (profile != null) {
             if (profile.getNullSeen().isFalse()) {
-                object = nullCheckedValue(object);
+                object = addNonNullCast(object, InvalidateReprofile);
                 boolean createGuard = true;
                 ResolvedJavaType singleType = profile.asSingleType();
                 if (singleType != null) {
@@ -5034,7 +5072,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 JavaKind[] pushedSlotKinds = {field.getJavaKind()};
                 ValueNode[] pushedValues = {value};
                 FrameState fs = frameState.create(bci(), getNonIntrinsicAncestor(), false, pushedSlotKinds, pushedValues);
-                assert stackSizeBefore == fs.stackSize();
+                assert stackSizeBefore == fs.stackSize() : Assertions.errorMessageContext("stackSizeBefore", stackSizeBefore, "fs.stackSize", fs.stackSize(), "fs", fs);
                 return fs;
             };
             classInitializationPlugin.apply(this, holder, stateBefore);

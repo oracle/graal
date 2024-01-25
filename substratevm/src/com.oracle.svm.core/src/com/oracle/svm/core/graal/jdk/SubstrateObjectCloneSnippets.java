@@ -30,30 +30,6 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_
 
 import java.util.Map;
 
-import jdk.graal.compiler.api.replacements.Snippet;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
-import jdk.graal.compiler.graph.Node.NodeIntrinsic;
-import jdk.graal.compiler.nodes.GraphState;
-import jdk.graal.compiler.nodes.NodeView;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
-import jdk.graal.compiler.nodes.extended.ForeignCallNode;
-import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import jdk.graal.compiler.nodes.spi.LoweringTool;
-import jdk.graal.compiler.nodes.spi.VirtualizerTool;
-import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.replacements.SnippetTemplate;
-import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
-import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
-import jdk.graal.compiler.replacements.Snippets;
-import jdk.graal.compiler.replacements.nodes.ObjectClone;
-import jdk.graal.compiler.word.BarrieredAccess;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.WordFactory;
 
@@ -79,6 +55,31 @@ import com.oracle.svm.core.util.NonmovableByteArrayReader;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.nodes.GraphState;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.extended.ForeignCallNode;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.nodes.spi.VirtualizerTool;
+import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.SnippetTemplate;
+import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
+import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
+import jdk.graal.compiler.replacements.Snippets;
+import jdk.graal.compiler.replacements.nodes.ObjectClone;
+import jdk.graal.compiler.word.BarrieredAccess;
+import jdk.graal.compiler.word.ObjectAccess;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -169,6 +170,12 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
         int monitorOffset = hub.getMonitorOffset();
         if (monitorOffset != 0) {
             BarrieredAccess.writeObject(result, monitorOffset, null);
+        }
+
+        /* Reset identity hashcode if it is potentially outside the object header. */
+        if (ConfigurationValues.getObjectLayout().isIdentityHashFieldAtTypeSpecificOffset()) {
+            int offset = LayoutEncoding.getIdentityHashOffset(result);
+            ObjectAccess.writeInt(result, offset, 0);
         }
 
         return result;

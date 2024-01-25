@@ -29,6 +29,7 @@ package jdk.graal.compiler.replacements.aarch64;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.graph.NodeClass;
@@ -52,7 +53,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.Snippets;
-
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
@@ -94,7 +94,7 @@ public class AArch64IntegerArithmeticSnippets extends SnippetTemplate.AbstractTe
             return;
         }
         JavaKind kind = node.stamp(NodeView.DEFAULT).getStackKind();
-        assert kind == JavaKind.Int || kind == JavaKind.Long;
+        assert kind == JavaKind.Int || kind == JavaKind.Long : Assertions.errorMessage(node);
         SnippetTemplate.SnippetInfo snippet;
         if (node instanceof SafeNode) {
             // We already introduced the zero division check, nothing to do.

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,6 @@ import re
 import tempfile
 from glob import glob
 from contextlib import contextmanager
-from distutils.dir_util import mkpath  # pylint: disable=no-name-in-module
 from os.path import join, exists, dirname
 import pipes
 from argparse import ArgumentParser
@@ -268,7 +267,7 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
             raise mx.abort('The built GraalVM for config ' + str(config) + ' does not contain a native-image command')
 
     def _native_image(args, **kwargs):
-        mx.run([native_image_cmd] + _maybe_convert_to_args_file(args), **kwargs)
+        return mx.run([native_image_cmd] + _maybe_convert_to_args_file(args), **kwargs)
 
     def is_launcher(launcher_path):
         with open(launcher_path, 'rb') as fp:
@@ -282,12 +281,20 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
         verbose_image_build_option = ['--verbose'] if mx.get_opts().verbose else []
         _native_image(verbose_image_build_option + ['--macro:native-image-launcher'])
 
-    def query_native_image(all_args, option):
-
+    def query_native_image(all_args):
         stdoutdata = []
         def stdout_collector(x):
             stdoutdata.append(x.rstrip())
-        _native_image(['--dry-run', '--verbose'] + all_args, out=stdout_collector)
+        stderrdata = []
+        def stderr_collector(x):
+            stderrdata.append(x.rstrip())
+        exit_code = _native_image(['--dry-run', '--verbose'] + all_args, nonZeroIsFatal=False, out=stdout_collector, err=stderr_collector)
+        if exit_code != 0:
+            for line in stdoutdata:
+                print(line)
+            for line in stderrdata:
+                print(line)
+            mx.abort('Failed to query native-image.')
 
         def remove_quotes(val):
             if len(val) >= 2 and val.startswith("'") and val.endswith("'"):
@@ -295,19 +302,24 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
             else:
                 return val
 
-        result = None
+        path_regex = re.compile(r'^-H:Path(@[^=]*)?=')
+        name_regex = re.compile(r'^-H:Name(@[^=]*)?=')
+        path = name = None
         for line in stdoutdata:
             arg = remove_quotes(line.rstrip('\\').strip())
-            m = re.match(option, arg)
-            if m:
-                result = arg[m.end():]
+            path_matcher = path_regex.match(arg)
+            if path_matcher:
+                path = arg[path_matcher.end():]
+            name_matcher = name_regex.match(arg)
+            if name_matcher:
+                name = arg[name_matcher.end():]
 
-        return result
+        assert path is not None and name is not None
+        return path, name
 
     def native_image_func(args, **kwargs):
         all_args = base_args + common_args + args
-        path = query_native_image(all_args, r'^-H:Path(@[^=]*)?=')
-        name = query_native_image(all_args, r'^-H:Name(@[^=]*)?=')
+        path, name = query_native_image(all_args)
         image = join(path, name)
         _native_image(all_args, **kwargs)
         return image
@@ -315,7 +327,7 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
     yield native_image_func
 
 native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
-_native_unittest_features = '--features=com.oracle.svm.test.ImageInfoTest$TestFeature,com.oracle.svm.test.ServiceLoaderTest$TestFeature,com.oracle.svm.test.SecurityServiceTest$TestFeature'
+_native_unittest_features = '--features=com.oracle.svm.test.ImageInfoTest$TestFeature,com.oracle.svm.test.ServiceLoaderTest$TestFeature,com.oracle.svm.test.SecurityServiceTest$TestFeature,com.oracle.svm.test.ReflectionRegistrationTest$TestFeature'
 
 IMAGE_ASSERTION_FLAGS = svm_experimental_options(['-H:+VerifyGraalGraphs', '-H:+VerifyPhases'])
 
@@ -481,9 +493,9 @@ def native_unittests_task(extra_build_args=None):
     resources_from_dir = join(cp_entry_name, 'resourcesFromDir')
     simple_dir = join(cp_entry_name, 'simpleDir')
 
-    mkpath(cp_entry_name)
-    mkpath(resources_from_dir)
-    mkpath(simple_dir)
+    os.makedirs(cp_entry_name)
+    os.makedirs(resources_from_dir)
+    os.makedirs(simple_dir)
 
     for i in range(4):
         with open(join(cp_entry_name, "resourcesFromDir", f'cond-resource{i}.txt'), 'w') as out:
@@ -905,7 +917,7 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
         '-H:CLibraryPath=' + sourcepath,
         '--native-image-info',
         '-cp', classpath('com.oracle.svm.test'),
-        '-Dgraal.LogFile=graal.log',
+        '-Djdk.graal.LogFile=graal.log',
         '-g',
     ] + svm_experimental_options([
         '-H:+VerifyNamingConventions',
@@ -969,7 +981,7 @@ def benchmark(args):
 
 def mx_post_parse_cmd_line(opts):
     for dist in suite.dists:
-        if not dist.isTARDistribution():
+        if dist.isJARDistribution():
             dist.set_archiveparticipant(GraalArchiveParticipant(dist, isTest=dist.name.endswith('_TEST')))
 
 def native_image_context_run(func, func_args=None, config=None, build_if_missing=False):
@@ -977,7 +989,7 @@ def native_image_context_run(func, func_args=None, config=None, build_if_missing
     with native_image_context(config=config, build_if_missing=build_if_missing) as native_image:
         func(native_image, func_args)
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+svm = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='SubstrateVM',
     short_name='svm',
@@ -992,14 +1004,16 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         'substratevm:OBJECTFILE',
         'substratevm:POINTSTO',
         'substratevm:NATIVE_IMAGE_BASE',
-    ],
+    ] + (['substratevm:SVM_FOREIGN'] if mx_sdk_vm.base_jdk().javaCompliance >= '22' else []),
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
+    extra_native_targets=['linux-default-glibc', 'linux-default-musl'] if mx.is_linux() else None,
     stability="earlyadopter",
     jlink=False,
     installable=False,
-))
+)
+mx_sdk_vm.register_graalvm_component(svm)
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+svm_nfi = mx_sdk_vm.GraalVmLanguage(
     suite=suite,
     name='SVM Truffle NFI Support',
     short_name='svmnfi',
@@ -1012,9 +1026,10 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     builder_jar_distributions=[],
     support_distributions=['substratevm:SVM_NFI_GRAALVM_SUPPORT'],
     installable=False,
-))
+)
+mx_sdk_vm.register_graalvm_component(svm_nfi)
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+svm_static_libs = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='SubstrateVM Static Libraries',
     short_name='svmsl',
@@ -1024,7 +1039,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     support_distributions=['substratevm:SVM_STATIC_LIBRARIES_SUPPORT'],
     installable=False,
-))
+)
+mx_sdk_vm.register_graalvm_component(svm_static_libs)
 
 def _native_image_launcher_main_class():
     """
@@ -1058,23 +1074,7 @@ driver_exe_build_args = driver_build_args + svm_experimental_options([
 
 additional_ni_dependencies = []
 
-if mx.get_jdk(tag='default').javaCompliance >= '21':
-    mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
-        suite=suite,
-        name='SubstrateVM Foreign API Preview Feature',
-        short_name='svmforeign',
-        dir_name='svm-preview',
-        installable_id='native-image',
-        license_files=[],
-        third_party_license_files=[],
-        dependencies=['SubstrateVM'],
-        builder_jar_distributions=['substratevm:SVM_FOREIGN'],
-        installable=False,
-        jlink=False,
-    ))
-    additional_ni_dependencies += ['svmforeign']
-
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+native_image = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='Native Image',
     short_name='ni',
@@ -1132,7 +1132,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     installable=True,
     stability="earlyadopter",
     jlink=False,
-))
+)
+mx_sdk_vm.register_graalvm_component(native_image)
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
@@ -1206,7 +1207,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     stability="supported",
 ))
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
+truffle_runtime_svm = mx_sdk_vm.GraalVmTruffleLibrary(
     suite=suite,
     name='Truffle Runtime SVM',
     short_name='svmt',
@@ -1220,7 +1221,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     support_distributions=[],
     stability="supported",
     jlink=False,
-))
+)
+mx_sdk_vm.register_graalvm_component(truffle_runtime_svm)
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
@@ -1234,28 +1236,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     support_distributions=[
         "substratevm:POLYGLOT_NATIVE_API_HEADERS",
     ],
-    polyglot_lib_build_args=[
-        "--macro:truffle",
-        "--features=org.graalvm.polyglot.nativeapi.PolyglotNativeAPIFeature",
-        "-Dorg.graalvm.polyglot.nativeapi.libraryPath=${java.home}/lib/polyglot/",
-        # Temporary solution for polyglot-native-api.jar on classpath, will be fixed by modularization, GR-45104.
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.c.function=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.handles=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.headers=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.jvmstat=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.thread=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.threadlocal=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.util=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.hosted=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.hosted.c=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.hosted.c.util=ALL-UNNAMED",
-        "--add-exports org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED",
-    ] + svm_experimental_options([
-        "-H:CStandard=C11",
-        "-H:+SpawnIsolates",
-    ]),
     polyglot_lib_jar_dependencies=[
         "substratevm:POLYGLOT_NATIVE_API",
     ],
@@ -1336,7 +1316,7 @@ libgraal_build_args = [
     '-H:+PreserveFramePointer',
     '-H:-DeleteLocalSymbols',
 
-    # Configure -Dlibgraal.HeapDumpOnOutOfMemoryError=true
+    # Configure -Djdk.libgraal.internal.HeapDumpOnOutOfMemoryError=true
     '--enable-monitoring=heapdump',
     '-H:HeapDumpDefaultFilenamePrefix=libgraal_pid',
 
@@ -1930,12 +1910,17 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
         required_exports = mx_javamodules.requiredExports(distributions_transitive, get_jdk())
         exports_flags = mx_sdk_vm.AbstractNativeImageConfig.get_add_exports_list(required_exports)
 
-        graal_compiler_flags_map['21'] = exports_flags
-        # Currently JDK 22 has the same flags
-        graal_compiler_flags_map['22'] = graal_compiler_flags_map['21']
+        min_version = 21
+        graal_compiler_flags_map[str(min_version)] = exports_flags
+
+        feature_version = get_jdk().javaCompliance.value
+        if str(feature_version) not in graal_compiler_flags_map and feature_version > min_version:
+            # Unless specified otherwise, newer JDK versions use the same flags as JDK 21
+            graal_compiler_flags_map[str(feature_version)] = graal_compiler_flags_map[str(min_version)]
+
         # DO NOT ADD ANY NEW ADD-OPENS OR ADD-EXPORTS HERE!
         #
-        # Instead provide the correct requiresConcealed entries in the moduleInfo
+        # Instead, provide the correct requiresConcealed entries in the moduleInfo
         # section of org.graalvm.nativeimage.builder in the substratevm suite.py.
 
         graal_compiler_flags_base = [

@@ -28,6 +28,14 @@ import java.lang.reflect.Modifier;
 import java.util.Optional;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.AnnotationAccess;
+
+import com.oracle.graal.pointsto.AbstractAnalysisEngine;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.common.meta.MultiMethod;
+
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
@@ -37,6 +45,7 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.FieldOffsetProvider;
 import jdk.graal.compiler.nodes.extended.ForeignCall;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
@@ -49,14 +58,6 @@ import jdk.graal.compiler.nodes.virtual.VirtualInstanceNode;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.MacroInvokable;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
-import org.graalvm.nativeimage.AnnotationAccess;
-
-import com.oracle.graal.pointsto.AbstractAnalysisEngine;
-import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.common.meta.MultiMethod;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -94,10 +95,10 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
             int parameterCount = method.getSignature().getParameterCount(!isStatic);
             int offset = isStatic ? 0 : 1;
             for (int i = offset; i < parameterCount; i++) {
-                accessedTypes.add((ReachabilityAnalysisType) method.getSignature().getParameterType(i - offset, method.getDeclaringClass()));
+                accessedTypes.add(method.getSignature().getParameterType(i - offset));
             }
 
-            accessedTypes.add((ReachabilityAnalysisType) method.getSignature().getReturnType(method.getDeclaringClass()));
+            accessedTypes.add(method.getSignature().getReturnType());
         }
 
         for (Node n : graph.getNodes()) {
@@ -132,6 +133,8 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
                     continue;
                 }
                 embeddedConstants.add(((JavaConstant) node.getValue()));
+            } else if (n instanceof FieldOffsetProvider node) {
+                ((AnalysisField) node.getField()).registerAsUnsafeAccessed(AbstractAnalysisEngine.sourcePosition(node.asNode()));
             } else if (n instanceof InstanceOfNode) {
                 InstanceOfNode node = (InstanceOfNode) n;
                 accessedTypes.add((ReachabilityAnalysisType) node.type().getType());

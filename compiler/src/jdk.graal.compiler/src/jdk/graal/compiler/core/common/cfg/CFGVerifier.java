@@ -27,12 +27,14 @@ package jdk.graal.compiler.core.common.cfg;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
+import jdk.graal.compiler.debug.Assertions;
+
 public class CFGVerifier {
 
     public static <T extends BasicBlock<T>, C extends AbstractControlFlowGraph<T>> boolean verify(C cfg) {
         for (T block : cfg.getBlocks()) {
-            assert block.getId() <= AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX;
-            assert cfg.getBlocks()[block.getId()] == block;
+            assert block.getId() <= AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX : block.getId();
+            assert cfg.getBlocks()[block.getId()] == block : Assertions.errorMessageContext("block", block, "cfgBlockId", cfg.getBlocks()[block.getId()]);
 
             for (int i = 0; i < block.getPredecessorCount(); i++) {
                 T pred = block.getPredecessorAt(i);
@@ -47,7 +49,7 @@ public class CFGVerifier {
             }
 
             if (block.getDominator() != null) {
-                assert block.getDominator().getId() < block.getId();
+                assert block.getDominator().getId() < block.getId() : Assertions.errorMessage(block, block.getDominator());
 
                 BasicBlock<?> domChild = block.getDominator().getFirstDominated();
                 while (domChild != null) {
@@ -61,8 +63,8 @@ public class CFGVerifier {
 
             T dominated = block.getFirstDominated();
             while (dominated != null) {
-                assert dominated.getId() > block.getId();
-                assert dominated.getDominator() == block;
+                assert dominated.getId() > block.getId() : Assertions.errorMessageContext("dominated", dominated, "block", block);
+                assert dominated.getDominator() == block : Assertions.errorMessageContext("domianted", dominated, "dominated.dom", dominated.getDominator(), "block", block);
                 dominated = dominated.getDominatedSibling();
             }
 
@@ -82,7 +84,8 @@ public class CFGVerifier {
 
                 while (stack.size() > 0) {
                     T tos = stack.pop();
-                    assert tos.getId() <= postDominatorBlock.getId();
+                    assert tos.getId() <= postDominatorBlock.getId() : Assertions.errorMessageContext("tos", tos, "tos.getid", tos.getId(), "postDom", postDominatorBlock, "postDomId",
+                                    postDominatorBlock.getId());
                     if (tos == postDominatorBlock) {
                         continue; // found a valid path
                     }
@@ -98,15 +101,15 @@ public class CFGVerifier {
                 }
             }
 
-            assert cfg.getLoops() == null || !block.isLoopHeader() || block.getLoop().getHeader() == block;
+            assert cfg.getLoops() == null || !block.isLoopHeader() || block.getLoop().getHeader() == block : Assertions.errorMessage(block, block.getLoop());
         }
 
         if (cfg.getLoops() != null) {
             for (Loop<T> loop : cfg.getLoops()) {
-                assert loop.getHeader().isLoopHeader();
+                assert loop.getHeader().isLoopHeader() : "LoopHeader block must be loop header " + Assertions.errorMessageContext("loop", loop, "loop.getheader", loop.getHeader());
 
                 for (T block : loop.getBlocks()) {
-                    assert block.getId() >= loop.getHeader().getId();
+                    assert block.getId() >= loop.getHeader().getId() : Assertions.errorMessageContext("block", block, "loop.getheader", loop.getHeader());
 
                     Loop<?> blockLoop = block.getLoop();
                     while (blockLoop != loop) {
@@ -126,12 +129,12 @@ public class CFGVerifier {
                 }
 
                 for (T block : loop.getLoopExits()) {
-                    assert block.getId() >= loop.getHeader().getId();
+                    assert block.getId() >= loop.getHeader().getId() : Assertions.errorMessageContext("block", block, "loop", loop, "loop.gethead", loop.getHeader());
 
                     Loop<?> blockLoop = block.getLoop();
                     while (blockLoop != null) {
                         blockLoop = blockLoop.getParent();
-                        assert blockLoop != loop;
+                        assert blockLoop != loop : "Parent loop must be different than loop that is exitted " + Assertions.errorMessageContext("blockLoop", blockLoop, "loop", loop);
                     }
                 }
             }

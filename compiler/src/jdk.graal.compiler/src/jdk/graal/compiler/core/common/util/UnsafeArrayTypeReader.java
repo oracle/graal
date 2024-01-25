@@ -85,10 +85,10 @@ public abstract class UnsafeArrayTypeReader extends AbstractTypeReader {
     }
 
     protected static long readOffset(byte[] data, long byteIndex, int numBytes) {
-        assert byteIndex >= 0;
-        assert numBytes > 0;
-        assert byteIndex + numBytes <= data.length;
-        assert Unsafe.ARRAY_BYTE_INDEX_SCALE == 1;
+        assert byteIndex >= 0 : "(no detailed message because code must be allocation free)";
+        assert numBytes > 0 : "(no detailed message because code must be allocation free)";
+        assert byteIndex + numBytes <= data.length : "(no detailed message because code must be allocation free)";
+        assert Unsafe.ARRAY_BYTE_INDEX_SCALE == 1 : "(no detailed message because code must be allocation free)";
 
         return byteIndex + Unsafe.ARRAY_BYTE_BASE_OFFSET;
     }

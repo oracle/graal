@@ -74,7 +74,7 @@ import jdk.internal.misc.Unsafe;
 public class SubstrateOptions {
 
     @Option(help = "Deprecated, option no longer has any effect.", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
-    public static final HostedOptionKey<Boolean> ParseOnce = new HostedOptionKey<>(true);
+    static final HostedOptionKey<Boolean> ParseOnce = new HostedOptionKey<>(true);
     @Option(help = "Deprecated, option no longer has any effect.", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
     static final HostedOptionKey<Boolean> ParseOnceJIT = new HostedOptionKey<>(true);
     @Option(help = "Preserve the local variable information for every Java source line to allow line-by-line stepping in the debugger. Allow the lookup of Java-level method information, e.g., in stack traces.")//
@@ -84,14 +84,6 @@ public class SubstrateOptions {
 
     @Option(help = "Image Build ID is a 128-bit UUID string generated randomly, once per bundle or digest of input args when bundles are not used.")//
     public static final HostedOptionKey<String> ImageBuildID = new HostedOptionKey<>("");
-
-    public static boolean parseOnce() {
-        /*
-         * GR-48579: Old code only reachable when this method would return false will be deleted
-         * later.
-         */
-        return true;
-    }
 
     @Option(help = "Module containing the class that contains the main entry point. Optional if --shared is used.", type = OptionType.User)//
     public static final HostedOptionKey<String> Module = new HostedOptionKey<>("");
@@ -112,7 +104,11 @@ public class SubstrateOptions {
 
     @APIOption(name = "static")//
     @Option(help = "Build statically linked executable (requires static libc and zlib)")//
-    public static final HostedOptionKey<Boolean> StaticExecutable = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> StaticExecutable = new HostedOptionKey<>(false, key -> {
+        if (!Platform.includedIn(Platform.LINUX.class)) {
+            throw UserError.invalidOptionValue(key, key.getValue(), "Building static executable images is currently only supported on Linux. Remove the '--static' option or build on a Linux machine");
+        }
+    });
 
     @APIOption(name = "libc")//
     @Option(help = "Selects the libc implementation to use. Available implementations: glibc, musl, bionic")//
@@ -294,7 +290,7 @@ public class SubstrateOptions {
             // We allow all positive numbers, and treat that as our current highest supported level.
             return OptimizationLevel.O3;
         } else {
-            throw UserError.abort("Invalid value '%s' provided for option Optimize (expected 'b' or numeric value >= 0)", value);
+            throw UserError.invalidOptionValue(Optimize, value, "Accepted values are 'b' or numeric value >= 0");
         }
     }
 
@@ -335,7 +331,7 @@ public class SubstrateOptions {
     @Option(help = "Path passed to the linker as the -rpath (list of comma-separated directories)")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LinkerRPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
-    @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
+    @Option(help = {"Directory of the image file to be generated", "Use the '-o' option instead."}, type = OptionType.User)//
     public static final HostedOptionKey<String> Path = new HostedOptionKey<>(null);
 
     public static final class GCGroup implements APIOptionGroup {
@@ -403,7 +399,8 @@ public class SubstrateOptions {
     @Option(help = "Verify naming conventions during image construction.")//
     public static final HostedOptionKey<Boolean> VerifyNamingConventions = new HostedOptionKey<>(false);
 
-    @Option(help = "Enable support for threads and and thread-local variables (disable for single-threaded implementation)")//
+    @Option(help = "Enable support for threads and and thread-local variables (disable for single-threaded implementation)", //
+                    deprecated = true, deprecationMessage = "This special mode to build images that cannot start any additional threads has no benefits anymore and will be removed in a future release")//
     public static final HostedOptionKey<Boolean> MultiThreaded = new HostedOptionKey<>(true);
 
     @Option(help = "Use only a writable native image heap (requires ld.gold linker)")//
@@ -412,7 +409,7 @@ public class SubstrateOptions {
     @Option(help = "Force no direct relocations to be present in the text section of the generated image", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> NoDirectRelocationsInText = new HostedOptionKey<>(true);
 
-    @Option(help = "Support multiple isolates.") //
+    @Option(help = "Support multiple isolates.", deprecated = true, deprecationMessage = "This option disables a major feature of GraalVM Native Image and will be removed in a future release") //
     public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<>(true);
 
     @Option(help = "At CEntryPoints check that the passed IsolateThread is valid.") //
@@ -491,7 +488,7 @@ public class SubstrateOptions {
                     yield false;
                 }
                 case "never" -> false;
-                default -> throw UserError.abort("Unsupported value '%s' for '--color' option. Only 'always', 'never', and 'auto' are accepted.", value);
+                default -> throw UserError.invalidOptionValue(Color, value, "Only 'always', 'never', and 'auto' are accepted values");
             };
         }
         return false;
@@ -528,6 +525,11 @@ public class SubstrateOptions {
                     "docs/reference-manual/native-image/assets/build-output-schema-v0.9.2.json", type = OptionType.User)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Paths> BuildOutputJSONFile = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.build());
 
+    public static final String NATIVE_IMAGE_OPTIONS_ENV_VAR = "NATIVE_IMAGE_OPTIONS";
+
+    @Option(help = "Internal option to forward the value of " + NATIVE_IMAGE_OPTIONS_ENV_VAR)//
+    public static final HostedOptionKey<String> BuildOutputNativeImageOptionsEnvVarValue = new HostedOptionKey<>(null);
+
     /*
      * Object and array allocation options.
      */
@@ -553,6 +555,16 @@ public class SubstrateOptions {
 
     @Option(help = "How many bytes to pad fields and classes marked @Contended with.") //
     public static final HostedOptionKey<Integer> ContendedPaddingWidth = new HostedOptionKey<>(128);
+
+    @Option(help = "Add additional header bytes to each object, for diagnostic purposes.", type = OptionType.Debug) //
+    public static final HostedOptionKey<Integer> AdditionalHeaderBytes = new HostedOptionKey<>(0, SubstrateOptions::validateAdditionalHeaderBytes);
+
+    private static void validateAdditionalHeaderBytes(HostedOptionKey<Integer> optionKey) {
+        int value = optionKey.getValue();
+        if (value < 0 || value % 4 != 0) {
+            throw UserError.invalidOptionValue(optionKey, value, "The value must be 0 or a positive multiple of 4.");
+        }
+    }
 
     /*
      * Isolate tear down options.
@@ -626,8 +638,8 @@ public class SubstrateOptions {
                     isLLVMBackendMissing = ReflectionUtil.lookupClass(true, "com.oracle.svm.core.graal.llvm.LLVMFeature") == null;
                 }
                 if (isLLVMBackendMissing) {
-                    throw UserError.abort(
-                                    "The LLVM backend for GraalVM Native Image is missing and needs to be build from source. " +
+                    throw UserError.invalidOptionValue(CompilerBackend, newValue,
+                                    "The LLVM backend for GraalVM Native Image is missing and needs to be built from source. " +
                                                     "For instructions, please see https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/LLVMBackend.md.");
                 }
 
@@ -673,6 +685,9 @@ public class SubstrateOptions {
     @Option(help = "Common prefix used by method symbols in image.")//
     public static final HostedOptionKey<String> ImageSymbolsPrefix = new HostedOptionKey<>("");
 
+    /**
+     * Needs to be removed as part of GR-50210.
+     */
     @Option(help = "Fold SecurityManager getter.", stability = OptionStability.EXPERIMENTAL, type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> FoldSecurityManagerGetter = new HostedOptionKey<>(true);
 
@@ -756,7 +771,7 @@ public class SubstrateOptions {
         try {
             return Paths.get(Path.getValue()).resolve(DebugInfoSourceCacheRoot.getValue());
         } catch (InvalidPathException ipe) {
-            throw UserError.abort("Invalid path provided for option DebugInfoSourceCacheRoot %s", DebugInfoSourceCacheRoot.getValue());
+            throw UserError.invalidOptionValue(DebugInfoSourceCacheRoot, DebugInfoSourceCacheRoot.getValue(), "The path is invalid");
         }
     }
 
@@ -764,11 +779,12 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> StripDebugInfo = new HostedOptionKey<>(OS.getCurrent() != OS.DARWIN, SubstrateOptions::validateStripDebugInfo);
 
     private static void validateStripDebugInfo(HostedOptionKey<Boolean> optionKey) {
+        Boolean optionValue = optionKey.getValue();
         if (OS.getCurrent() == OS.DARWIN && optionKey.hasBeenSet() && optionKey.getValue()) {
-            throw UserError.abort("Using %s is not supported on macOS", SubstrateOptionsParser.commandArgument(SubstrateOptions.StripDebugInfo, "+"));
+            throw UserError.invalidOptionValue(optionKey, optionValue, "The option is not supported on macOS");
         }
         if (OS.getCurrent() == OS.WINDOWS && optionKey.hasBeenSet() && !optionKey.getValue()) {
-            throw UserError.abort("Using %s is not supported on Windows: debug info is always generated in a separate file", SubstrateOptionsParser.commandArgument(optionKey, "-"));
+            throw UserError.invalidOptionValue(optionKey, optionValue, "The option is not supported on Windows (debug info is always generated in a separate file)");
         }
     }
 
@@ -942,6 +958,9 @@ public class SubstrateOptions {
         }
     };
 
+    @Option(help = "Only print diagnostic output that is async signal safe.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> AsyncSignalSafeDiagnostics = new HostedOptionKey<>(false);
+
     @Option(help = "Specifies the number of entries that diagnostic buffers have.", type = OptionType.Debug)//
     public static final HostedOptionKey<Integer> DiagnosticBufferSize = new HostedOptionKey<>(30);
 
@@ -956,7 +975,7 @@ public class SubstrateOptions {
     @Option(help = "Verify type states computed by the static analysis at run time. This is useful when diagnosing problems in the static analysis, but reduces peak performance significantly.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyTypes = new HostedOptionKey<>(false);
 
-    @Option(help = "Run reachability handlers concurrently during analysis.", type = Expert)//
+    @Option(help = "Run reachability handlers concurrently during analysis.", type = Expert, deprecated = true, deprecationMessage = "This option was introduced to simplify migration to GraalVM 22.2 and will be removed in a future release")//
     public static final HostedOptionKey<Boolean> RunReachabilityHandlersConcurrently = new HostedOptionKey<>(true);
 
     @Option(help = "Force many trampolines to be needed for inter-method calls. Normally trampolines are only used when a method destination is outside the range of a pc-relative branch instruction.", type = OptionType.Debug)//
@@ -978,7 +997,8 @@ public class SubstrateOptions {
         }
     };
 
-    @Option(help = "Instead of abort, only warn if image builder classes are found on the image class-path.", type = OptionType.Debug)//
+    @Option(help = "Instead of abort, only warn if image builder classes are found on the image class-path.", type = OptionType.Debug, //
+                    deprecated = true, deprecationMessage = "This option was introduced to simplify migration to GraalVM 23.0 and will be removed in a future release")//
     public static final HostedOptionKey<Boolean> AllowDeprecatedBuilderClassesOnImageClasspath = new HostedOptionKey<>(false);
 
     @Option(help = "file:doc-files/MissingRegistrationHelp.txt")//
@@ -1008,13 +1028,10 @@ public class SubstrateOptions {
     @Option(help = "Allows the addresses of pinned objects to be passed to other code.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> PinnedObjectAddressing = new HostedOptionKey<>(true);
 
-    @Option(help = "Emit indirect branch target marker instructions.", type = OptionType.Expert) //
-    public static final HostedOptionKey<Boolean> IndirectBranchTargetMarker = new HostedOptionKey<>(false);
-
     @Option(help = "Enable and disable normal processing of flags relating to experimental options.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL) //
     public static final HostedOptionKey<Boolean> UnlockExperimentalVMOptions = new HostedOptionKey<>(false);
 
-    @Option(help = "Force using legacy method handle intrinsics.", type = Expert) //
+    @Option(help = "Force using legacy method handle intrinsics.", type = Expert, deprecated = true, deprecationMessage = "This option was introduced to simplify migration to GraalVM 23.1 and will be removed in a future release") //
     public static final HostedOptionKey<Boolean> UseOldMethodHandleIntrinsics = new HostedOptionKey<>(false);
 
     @Option(help = "Include all classes, methods, and fields from given modules", type = OptionType.Debug) //
@@ -1022,4 +1039,22 @@ public class SubstrateOptions {
 
     @Option(help = "Include all classes, methods, fields, and resources from given paths", type = OptionType.Debug) //
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeAllFromPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+
+    public static boolean includeAll() {
+        return IncludeAllFromPath.hasBeenSet() || IncludeAllFromPath.hasBeenSet();
+    }
+
+    @Option(help = "Run layered image base layer open-world analysis. Includes all public types and methods that can be reached using normal Java access rules.")//
+    public static final HostedOptionKey<Boolean> LayeredBaseImageAnalysis = new HostedOptionKey<>(false);
+
+    @Option(help = "Support for calls via the Java Foreign Function and Memory API", type = Expert) //
+    public static final HostedOptionKey<Boolean> ForeignAPISupport = new HostedOptionKey<>(false);
+
+    public static class TruffleStableOptions {
+
+        @Option(help = "Automatically copy the necessary language resources to the resources/languages directory next to the produced image." +
+                        "Language resources for each language are specified in the native-image-resources.filelist file located in the language home directory." +
+                        "If there is no native-image-resources.filelist file in the language home directory or the file is empty, then no resources are copied.", type = User, stability = OptionStability.STABLE)//
+        public static final HostedOptionKey<Boolean> CopyLanguageResources = new HostedOptionKey<>(true);
+    }
 }

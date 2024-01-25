@@ -85,9 +85,9 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 }
                 String[] mainClassModuleArgParts = mainClassModuleArg.split("/", 2);
                 if (mainClassModuleArgParts.length > 1) {
-                    nativeImage.addPlainImageBuilderArg(NativeImage.injectHostedOptionOrigin(nativeImage.oHClass + mainClassModuleArgParts[1], OptionOrigin.originDriver));
+                    nativeImage.addPlainImageBuilderArg(nativeImage.oHClass + mainClassModuleArgParts[1], OptionOrigin.originDriver);
                 }
-                nativeImage.addPlainImageBuilderArg(NativeImage.injectHostedOptionOrigin(nativeImage.oHModule + mainClassModuleArgParts[0], OptionOrigin.originDriver));
+                nativeImage.addPlainImageBuilderArg(nativeImage.oHModule + mainClassModuleArgParts[0], OptionOrigin.originDriver);
                 nativeImage.setModuleOptionMode(true);
                 return true;
             case addModulesOption:
@@ -129,7 +129,6 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             case "--enable-preview":
                 args.poll();
                 nativeImage.addCustomJavaArgs("--enable-preview");
-                nativeImage.enablePreview();
                 return true;
             case nativeAccessOption:
                 args.poll();
@@ -137,7 +136,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (modules == null) {
                     NativeImage.showError(nativeAccessOption + moduleSetModifierOptionErrorMessage);
                 }
-                nativeImage.addCustomJavaArgs(nativeAccessOption + "=" + modules + ",org.graalvm.nativeimage.foreign");
+                nativeImage.addCustomJavaArgs(nativeAccessOption + "=" + modules + ",org.graalvm.nativeimage.builder");
                 return true;
         }
 
@@ -152,7 +151,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
         if (headArg.startsWith(NativeImage.oH)) {
             args.poll();
-            nativeImage.addPlainImageBuilderArg(NativeImage.injectHostedOptionOrigin(headArg, args.argumentOrigin));
+            nativeImage.addPlainImageBuilderArg(headArg, args.argumentOrigin);
             return true;
         }
         if (headArg.startsWith(NativeImage.oR)) {
@@ -218,7 +217,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             if (nativeAccessModules.isEmpty()) {
                 NativeImage.showError(headArg + moduleSetModifierOptionErrorMessage);
             }
-            nativeImage.addCustomJavaArgs(headArg + ",org.graalvm.nativeimage.foreign");
+            nativeImage.addCustomJavaArgs(headArg + ",org.graalvm.nativeimage.builder");
             return true;
         }
         return false;
@@ -252,7 +251,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
         if (!jarFileNameBase.isEmpty()) {
             String origin = "manifest from " + jarFilePath.toUri();
-            nativeImage.addPlainImageBuilderArg(NativeImage.injectHostedOptionOrigin(nativeImage.oHName + jarFileNameBase, origin));
+            nativeImage.addPlainImageBuilderArg(nativeImage.oHName + jarFileNameBase, origin, false);
         }
         Path finalFilePath = nativeImage.useBundle() ? nativeImage.bundleSupport.substituteClassPath(jarFilePath) : jarFilePath;
         if (!NativeImage.processJarManifestMainAttributes(finalFilePath, nativeImage::handleManifestFileAttributes)) {

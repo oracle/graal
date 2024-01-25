@@ -36,7 +36,7 @@ import jdk.internal.foreign.abi.VMStorage;
  * Packs the address of a {@link com.oracle.svm.hosted.foreign.DowncallStub} with some extra
  * information.
  */
-@TargetClass(className = "jdk.internal.foreign.abi.NativeEntryPoint")
+@TargetClass(className = "jdk.internal.foreign.abi.NativeEntryPoint", onlyWith = ForeignFunctionsEnabled.class)
 @Substitute
 public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
 

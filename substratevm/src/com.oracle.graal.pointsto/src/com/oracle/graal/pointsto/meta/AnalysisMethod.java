@@ -41,8 +41,25 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+
+import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
+
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.api.PointstoOptions;
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.graal.pointsto.infrastructure.GraphProvider;
+import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
+import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
+import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
+import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.AtomicUtils;
+import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
+import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.NodeSourcePosition;
@@ -53,24 +70,9 @@ import jdk.graal.compiler.nodes.EncodedGraph.EncodedNodeReference;
 import jdk.graal.compiler.nodes.GraphDecoder;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
-
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.api.PointstoOptions;
-import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
-import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
-import com.oracle.graal.pointsto.infrastructure.GraphProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
-import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
-import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
-import com.oracle.graal.pointsto.reports.ReportUtils;
-import com.oracle.graal.pointsto.results.StaticAnalysisResults;
-import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.graal.pointsto.util.AtomicUtils;
-import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
-import com.oracle.svm.common.meta.MultiMethod;
-
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
@@ -118,6 +120,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private final String qualifiedName;
 
     protected final AnalysisType declaringClass;
+    protected final ResolvedSignature<AnalysisType> signature;
     private final int parsingContextMaxDepth;
 
     private final MultiMethodKey multiMethodKey;
@@ -180,6 +183,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         id = universe.nextMethodId.getAndIncrement();
 
         declaringClass = universe.lookup(wrapped.getDeclaringClass());
+        signature = getUniverse().lookup(wrapped.getSignature(), wrapped.getDeclaringClass());
         hasNeverInlineDirective = universe.hostVM().hasNeverInlineDirective(wrapped);
 
         name = createName(wrapped, multiMethodKey);
@@ -218,7 +222,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         if (PointstoOptions.TrackAccessChain.getValue(declaringClass.universe.hostVM().options())) {
             startTrackInvocations();
         }
-        registerSignatureTypes();
         parsingContextMaxDepth = PointstoOptions.ParsingContextMaxDepth.getValue(declaringClass.universe.hostVM.options());
     }
 
@@ -227,6 +230,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         wrapped = original.wrapped;
         id = original.id;
         declaringClass = original.declaringClass;
+        signature = original.signature;
         hasNeverInlineDirective = original.hasNeverInlineDirective;
         exceptionHandlers = original.exceptionHandlers;
         localVariableTable = original.localVariableTable;
@@ -251,22 +255,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             aName += StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR + multiMethodKey;
         }
         return aName;
-    }
-
-    /**
-     * Lookup the parameters and return type so that they are added to the universe even if the
-     * method is never linked and parsed.
-     */
-    private void registerSignatureTypes() {
-        boolean isStatic = Modifier.isStatic(getModifiers());
-        int parameterCount = getSignature().getParameterCount(!isStatic);
-
-        int offset = isStatic ? 0 : 1;
-        for (int i = offset; i < parameterCount; i++) {
-            getSignature().getParameterType(i - offset, getDeclaringClass());
-        }
-
-        getSignature().getReturnType(getDeclaringClass());
     }
 
     public String getQualifiedName() {
@@ -626,22 +614,31 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     @Override
-    public WrappedSignature getSignature() {
-        return getUniverse().lookup(wrapped.getSignature(), wrapped.getDeclaringClass());
+    public ResolvedSignature<AnalysisType> getSignature() {
+        return signature;
     }
 
     @Override
-    public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        if (wrapped instanceof GraphProvider) {
-            return ((GraphProvider) wrapped).buildGraph(debug, method, providers, purpose);
+    public JavaType[] toParameterTypes() {
+        throw JVMCIError.shouldNotReachHere("ResolvedJavaMethod.toParameterTypes returns the wrong result for constructors. Use toParameterList instead.");
+    }
+
+    public List<AnalysisType> toParameterList() {
+        return getSignature().toParameterList(isStatic() ? null : getDeclaringClass());
+    }
+
+    @Override
+    public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
+        if (wrapped instanceof GraphProvider graphProvider) {
+            return graphProvider.buildGraph(debug, method, providers, purpose);
         }
         return null;
     }
 
     @Override
     public boolean allowRuntimeCompilation() {
-        if (wrapped instanceof GraphProvider) {
-            return ((GraphProvider) wrapped).allowRuntimeCompilation();
+        if (wrapped instanceof GraphProvider graphProvider) {
+            return graphProvider.allowRuntimeCompilation();
         }
         return true;
     }
@@ -734,11 +731,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public ProfilingInfo getProfilingInfo(boolean includeNormal, boolean includeOSR) {
-        /*
-         * This is also the profiling information used when parsing methods for static analysis, so
-         * it needs to be conservative.
-         */
-        return StaticAnalysisResults.NO_RESULTS;
+        return null;
     }
 
     @Override
@@ -932,14 +925,15 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             return null;
         }
 
-        return decodeAnalyzedGraph(debug, nodeReferences, analyzedGraph.trackNodeSourcePosition());
+        return decodeAnalyzedGraph(debug, nodeReferences, analyzedGraph.trackNodeSourcePosition(), GraphDecoder::new);
     }
 
     /**
      * Returns the {@link StructuredGraph Graal IR} for the method that has been processed by the
      * static analysis.
      */
-    public StructuredGraph decodeAnalyzedGraph(DebugContext debug, Iterable<EncodedNodeReference> nodeReferences, boolean trackNodeSourcePosition) {
+    public StructuredGraph decodeAnalyzedGraph(DebugContext debug, Iterable<EncodedNodeReference> nodeReferences, boolean trackNodeSourcePosition,
+                    BiFunction<Architecture, StructuredGraph, GraphDecoder> decoderProvider) {
         if (analyzedGraph == null) {
             return null;
         }
@@ -948,7 +942,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         // Note we never record inlined methods. This is correct even for runtime compiled methods
         StructuredGraph result = new StructuredGraph.Builder(debug.getOptions(), debug, allowAssumptions).method(this).recordInlinedMethods(false).trackNodeSourcePosition(
                         trackNodeSourcePosition).build();
-        GraphDecoder decoder = new GraphDecoder(AnalysisParsedGraph.HOST_ARCHITECTURE, result);
+        GraphDecoder decoder = decoderProvider.apply(AnalysisParsedGraph.HOST_ARCHITECTURE, result);
         decoder.decode(analyzedGraph, nodeReferences);
         /*
          * Since we are merely decoding the graph, the resulting graph should have the same

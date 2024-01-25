@@ -24,8 +24,8 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64ASIMDAssembler;
@@ -35,11 +35,10 @@ import jdk.graal.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -333,8 +332,11 @@ public final class AArch64ArrayCompareToOp extends AArch64ComplexVectorOp {
         masm.neon.cmeqVVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, eSize, array1HighV, array1HighV, array2HighV);
         masm.neon.andVVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, tmpRegV1, array1LowV, array1HighV);
         masm.neon.uminvSV(AArch64ASIMDAssembler.ASIMDSize.FullReg, eSize, tmpRegV1, tmpRegV1);
-        masm.fcmpZero(64, tmpRegV1);
-        masm.branchConditionally(ConditionFlag.EQ, mismatchInChunk);
+        try (AArch64MacroAssembler.ScratchRegister scratchReg = masm.getScratchRegister()) {
+            Register tmp = scratchReg.getRegister();
+            masm.neon.umovGX(AArch64ASIMDAssembler.ElementSize.DoubleWord, tmp, tmpRegV1, 0);
+            masm.cbz(64, tmp, mismatchInChunk);
+        }
         masm.cmp(64, array1, lastChunkAddress1);
         masm.branchConditionally(ConditionFlag.LO, simdLoop);
 

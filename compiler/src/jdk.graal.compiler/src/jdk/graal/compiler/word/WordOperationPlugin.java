@@ -31,8 +31,12 @@ import static org.graalvm.word.LocationIdentity.any;
 import java.lang.reflect.Constructor;
 import java.util.Arrays;
 
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.impl.WordFactoryOperation;
+
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.BridgeMethodUtils;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.calc.Condition.CanonicalizedCondition;
@@ -43,6 +47,7 @@ import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.Invoke;
@@ -74,9 +79,8 @@ import jdk.graal.compiler.nodes.java.ValueCompareAndSwapNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.type.StampTool;
-import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.impl.WordFactoryOperation;
-
+import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.word.Word.Opcode;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
@@ -177,7 +181,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
          * In that case we assume it is not a word type.
          */
         if (arrayType != null && wordTypes.isWord(arrayType.getComponentType())) {
-            assert elementKind == JavaKind.Object;
+            assert elementKind == JavaKind.Object : Assertions.errorMessage(array, index, boundsCheck, elementKind);
             b.addPush(elementKind, createLoadIndexedNode(array, index, boundsCheck));
             return true;
         }
@@ -214,7 +218,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
     public boolean handleStoreIndexed(GraphBuilderContext b, ValueNode array, ValueNode index, GuardingNode boundsCheck, GuardingNode storeCheck, JavaKind elementKind, ValueNode value) {
         ResolvedJavaType arrayType = StampTool.typeOrNull(array);
         if (arrayType != null && wordTypes.isWord(arrayType.getComponentType())) {
-            assert elementKind == JavaKind.Object;
+            assert elementKind == JavaKind.Object : Assertions.errorMessage(array, index, boundsCheck, storeCheck, elementKind, value);
             if (value.getStackKind() != wordKind) {
                 throw bailout(b, "Cannot store a non-word value into a word array: " + arrayType.toJavaName(true));
             }
@@ -264,17 +268,17 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
         if (factoryOperation != null) {
             switch (factoryOperation.opcode()) {
                 case ZERO:
-                    assert args.length == 0;
+                    assert NumUtil.assertArrayLength(args, 0);
                     b.addPush(returnKind, forIntegerKind(wordKind, 0L));
                     return;
 
                 case FROM_UNSIGNED:
-                    assert args.length == 1;
+                    assert NumUtil.assertArrayLength(args, 1);
                     b.push(returnKind, fromUnsigned(b, args[0]));
                     return;
 
                 case FROM_SIGNED:
-                    assert args.length == 1;
+                    assert NumUtil.assertArrayLength(args, 1);
                     b.push(returnKind, fromSigned(b, args[0]));
                     return;
             }
@@ -287,7 +291,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
         switch (operation.opcode()) {
             case NODE_CLASS:
             case INTEGER_DIVISION_NODE_CLASS:
-                assert args.length == 2;
+                assert NumUtil.assertArrayLength(args, 2);
                 ValueNode left = args[0];
                 ValueNode right = operation.rightOperandIsInt() ? toUnsigned(b, args[1], JavaKind.Int) : fromSigned(b, args[1]);
 
@@ -295,36 +299,36 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                 break;
 
             case COMPARISON:
-                assert args.length == 2;
+                assert NumUtil.assertArrayLength(args, 2);
                 b.push(returnKind, comparisonOp(b, operation.condition(), args[0], fromSigned(b, args[1])));
                 break;
 
             case IS_NULL:
-                assert args.length == 1;
+                assert NumUtil.assertArrayLength(args, 1);
                 b.push(returnKind, comparisonOp(b, Condition.EQ, args[0], ConstantNode.forIntegerKind(wordKind, 0L)));
                 break;
 
             case IS_NON_NULL:
-                assert args.length == 1;
+                assert NumUtil.assertArrayLength(args, 1);
                 b.push(returnKind, comparisonOp(b, Condition.NE, args[0], ConstantNode.forIntegerKind(wordKind, 0L)));
                 break;
 
             case NOT:
-                assert args.length == 1;
+                assert NumUtil.assertArrayLength(args, 1);
                 b.addPush(returnKind, new XorNode(args[0], b.add(forIntegerKind(wordKind, -1))));
                 break;
 
             case READ_POINTER:
             case READ_OBJECT:
             case READ_BARRIERED: {
-                assert args.length == 2 || args.length == 3;
+                assert NumUtil.assertArrayLength(args, 2, 3);
                 JavaKind readKind = wordTypes.asKind(wordMethod.getSignature().getReturnType(wordMethod.getDeclaringClass()));
                 AddressNode address = makeAddress(b, args[0], args[1]);
                 LocationIdentity location;
                 if (args.length == 2) {
                     location = any();
                 } else {
-                    assert args[2].isConstant() : args[2];
+                    assert GraphUtil.assertIsConstant(args[2]);
                     location = snippetReflection.asObject(LocationIdentity.class, args[2].asJavaConstant());
                     assert location != null : snippetReflection.asObject(Object.class, args[2].asJavaConstant());
                 }
@@ -334,14 +338,14 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
 
             case READ_POINTER_VOLATILE:
             case READ_BARRIERED_VOLATILE: {
-                assert args.length == 2 || args.length == 3;
+                assert NumUtil.assertArrayLength(args, 2, 3);
                 JavaKind readKind = wordTypes.asKind(wordMethod.getSignature().getReturnType(wordMethod.getDeclaringClass()));
                 AddressNode address = makeAddress(b, args[0], args[1]);
                 LocationIdentity location;
                 if (args.length == 2) {
                     location = any();
                 } else {
-                    assert args[2].isConstant() : args[2];
+                    assert GraphUtil.assertIsConstant(args[2]);
                     location = snippetReflection.asObject(LocationIdentity.class, args[2].asJavaConstant());
                     assert location != null : snippetReflection.asObject(Object.class, args[2].asJavaConstant());
                 }
@@ -349,7 +353,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                 break;
             }
             case READ_HEAP: {
-                assert args.length == 3 || args.length == 4;
+                assert NumUtil.assertArrayLength(args, 3, 4);
                 JavaKind readKind = wordTypes.asKind(wordMethod.getSignature().getReturnType(wordMethod.getDeclaringClass()));
                 AddressNode address = makeAddress(b, args[0], args[1]);
                 BarrierType barrierType = snippetReflection.asObject(BarrierType.class, args[2].asJavaConstant());
@@ -357,7 +361,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                 if (args.length == 3) {
                     location = any();
                 } else {
-                    assert args[3].isConstant();
+                    assert GraphUtil.assertIsConstant(args[3]);
                     location = snippetReflection.asObject(LocationIdentity.class, args[3].asJavaConstant());
                 }
                 b.push(returnKind, readOp(b, readKind, address, location, barrierType, true));
@@ -370,14 +374,14 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
             case INITIALIZE:
             case WRITE_POINTER_SIDE_EFFECT_FREE:
             case WRITE_POINTER_VOLATILE: {
-                assert args.length == 3 || args.length == 4;
+                assert NumUtil.assertArrayLength(args, 3, 4);
                 JavaKind writeKind = wordTypes.asKind(wordMethod.getSignature().getParameterType(wordMethod.isStatic() ? 2 : 1, wordMethod.getDeclaringClass()));
                 AddressNode address = makeAddress(b, args[0], args[1]);
                 LocationIdentity location;
                 if (args.length == 3) {
                     location = any();
                 } else {
-                    assert args[3].isConstant();
+                    assert GraphUtil.assertIsConstant(args[3]);
                     location = snippetReflection.asObject(LocationIdentity.class, args[3].asJavaConstant());
                 }
                 writeOp(b, writeKind, address, location, args[2], operation.opcode());
@@ -385,38 +389,38 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
             }
 
             case TO_RAW_VALUE:
-                assert args.length == 1;
+                assert NumUtil.assertArrayLength(args, 1);
                 b.push(returnKind, toUnsigned(b, args[0], JavaKind.Long));
                 break;
 
             case OBJECT_TO_TRACKED:
-                assert args.length == 1;
+                assert NumUtil.assertArrayLength(args, 1);
                 WordCastNode objectToTracked = b.add(WordCastNode.objectToTrackedPointer(args[0], wordKind));
                 b.push(returnKind, objectToTracked);
                 break;
 
             case OBJECT_TO_UNTRACKED:
-                assert args.length == 1;
+                assert NumUtil.assertArrayLength(args, 1);
                 WordCastNode objectToUntracked = b.add(WordCastNode.objectToUntrackedPointer(args[0], wordKind));
                 b.push(returnKind, objectToUntracked);
                 break;
 
             case FROM_ADDRESS:
-                assert args.length == 1;
+                assert NumUtil.assertArrayLength(args, 1);
                 WordCastNode addressToWord = b.add(WordCastNode.addressToWord(args[0], wordKind));
                 b.push(returnKind, addressToWord);
                 break;
 
             case TO_OBJECT:
-                assert args.length == 1;
+                assert NumUtil.assertArrayLength(args, 1);
                 WordCastNode wordToObject = b.add(WordCastNode.wordToObject(args[0], wordKind));
                 b.push(returnKind, wordToObject);
                 break;
 
             case TO_TYPED_OBJECT:
-                assert args.length == 3;
-                assert args[1].isConstant();
-                assert args[2].isConstant();
+                assert NumUtil.assertArrayLength(args, 3);
+                assert GraphUtil.assertIsConstant(args[1]);
+                assert GraphUtil.assertIsConstant(args[2]);
                 ResolvedJavaType type = constantReflection.asJavaType(args[1].asJavaConstant());
                 boolean nonNull = args[2].asJavaConstant().asInt() != 0;
                 TypeReference trusted = TypeReference.createTrustedWithoutAssumptions(type);
@@ -426,17 +430,17 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                 break;
 
             case TO_OBJECT_NON_NULL:
-                assert args.length == 1;
+                assert NumUtil.assertArrayLength(args, 1);
                 WordCastNode wordToObjectNonNull = b.add(WordCastNode.wordToObjectNonNull(args[0], wordKind));
                 b.push(returnKind, wordToObjectNonNull);
                 break;
 
             case CAS_POINTER:
-                assert args.length == 5;
+                assert NumUtil.assertArrayLength(args, 5);
                 AddressNode address = makeAddress(b, args[0], args[1]);
                 JavaKind valueKind = wordTypes.asKind(wordMethod.getSignature().getParameterType(1, wordMethod.getDeclaringClass()));
                 assert valueKind.equals(wordTypes.asKind(wordMethod.getSignature().getParameterType(2, wordMethod.getDeclaringClass()))) : wordMethod.getSignature();
-                assert args[4].isConstant() : Arrays.toString(args);
+                assert GraphUtil.assertIsConstant(args[4]) : Arrays.toString(args);
                 LocationIdentity location = snippetReflection.asObject(LocationIdentity.class, args[4].asJavaConstant());
                 JavaType returnType = wordMethod.getSignature().getReturnType(wordMethod.getDeclaringClass());
                 b.addPush(returnKind, casOp(valueKind, wordTypes.asKind(returnType), address, location, args[2], args[3]));
@@ -464,7 +468,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
     }
 
     private ValueNode comparisonOp(GraphBuilderContext graph, Condition condition, ValueNode left, ValueNode right) {
-        assert left.getStackKind() == wordKind && right.getStackKind() == wordKind;
+        assert left.getStackKind() == wordKind && right.getStackKind() == wordKind : "Stack kind must match " + left + " " + right;
 
         CanonicalizedCondition canonical = condition.canonicalize();
 
@@ -477,7 +481,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
         } else if (canonical.getCanonicalCondition() == CanonicalCondition.BT) {
             comparison = new IntegerBelowNode(a, b);
         } else {
-            assert canonical.getCanonicalCondition() == CanonicalCondition.LT;
+            assert canonical.getCanonicalCondition() == CanonicalCondition.LT : Assertions.errorMessage(canonical.getCanonicalCondition(), condition, left, right);
             comparison = new IntegerLessThanNode(a, b);
         }
 
@@ -492,10 +496,10 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
         return graph.add(new ConditionalNode(graph.add(comparison), trueValue, falseValue));
     }
 
-    protected ValueNode readOp(GraphBuilderContext b, JavaKind readKind, AddressNode address, LocationIdentity location, Word.Opcode op) {
-        assert op == Word.Opcode.READ_POINTER || op == Word.Opcode.READ_OBJECT || op == Word.Opcode.READ_BARRIERED;
-        final BarrierType barrier = (op == Word.Opcode.READ_BARRIERED && readKind.isObject() ? barrierSet.readBarrierType(location, address, null) : BarrierType.NONE);
-        final boolean compressible = (op == Word.Opcode.READ_OBJECT || op == Word.Opcode.READ_BARRIERED);
+    protected ValueNode readOp(GraphBuilderContext b, JavaKind readKind, AddressNode address, LocationIdentity location, Opcode op) {
+        assert op == Opcode.READ_POINTER || op == Opcode.READ_OBJECT || op == Opcode.READ_BARRIERED : op;
+        final BarrierType barrier = (op == Opcode.READ_BARRIERED && readKind.isObject() ? barrierSet.readBarrierType(location, address, null) : BarrierType.NONE);
+        final boolean compressible = (op == Opcode.READ_OBJECT || op == Opcode.READ_BARRIERED);
 
         return readOp(b, readKind, address, location, barrier, compressible);
     }
@@ -510,10 +514,10 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
         return read;
     }
 
-    protected ValueNode readVolatileOp(GraphBuilderContext b, JavaKind readKind, AddressNode address, LocationIdentity location, Word.Opcode op) {
-        assert op == Word.Opcode.READ_POINTER_VOLATILE || op == Word.Opcode.READ_BARRIERED_VOLATILE;
-        final BarrierType barrier = op == Word.Opcode.READ_BARRIERED_VOLATILE && readKind.isObject() ? barrierSet.readBarrierType(location, address, null) : BarrierType.NONE;
-        final boolean compressible = op == Word.Opcode.READ_BARRIERED_VOLATILE;
+    protected ValueNode readVolatileOp(GraphBuilderContext b, JavaKind readKind, AddressNode address, LocationIdentity location, Opcode op) {
+        assert op == Opcode.READ_POINTER_VOLATILE || op == Opcode.READ_BARRIERED_VOLATILE : op;
+        final BarrierType barrier = op == Opcode.READ_BARRIERED_VOLATILE && readKind.isObject() ? barrierSet.readBarrierType(location, address, null) : BarrierType.NONE;
+        final boolean compressible = op == Opcode.READ_BARRIERED_VOLATILE;
         /*
          * A JavaOrderedReadNode is lowered to an OrderedReadNode that will not float. This means it
          * cannot float above an explicit zero check on its base address or any other test that
@@ -523,11 +527,10 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
         return read;
     }
 
-    protected void writeOp(GraphBuilderContext b, JavaKind writeKind, AddressNode address, LocationIdentity location, ValueNode value, Word.Opcode op) {
-        assert op == Word.Opcode.WRITE_POINTER || op == Word.Opcode.WRITE_POINTER_SIDE_EFFECT_FREE || op == Word.Opcode.WRITE_OBJECT || op == Word.Opcode.WRITE_BARRIERED ||
-                        op == Word.Opcode.INITIALIZE ||
-                        op == Word.Opcode.WRITE_POINTER_VOLATILE;
-        assert op != Word.Opcode.INITIALIZE || location.isInit() : "must use init location for initializing";
+    protected void writeOp(GraphBuilderContext b, JavaKind writeKind, AddressNode address, LocationIdentity location, ValueNode value, Opcode op) {
+        assert op == Opcode.WRITE_POINTER || op == Opcode.WRITE_POINTER_SIDE_EFFECT_FREE || op == Opcode.WRITE_OBJECT || op == Opcode.WRITE_BARRIERED || op == Opcode.INITIALIZE ||
+                        op == Opcode.WRITE_POINTER_VOLATILE : op;
+        assert op != Opcode.INITIALIZE || location.isInit() : "must use init location for initializing";
 
         final BarrierType barrier = (op == Word.Opcode.WRITE_BARRIERED ? BarrierType.UNKNOWN : BarrierType.NONE);
         final boolean compressible = (op == Word.Opcode.WRITE_OBJECT || op == Word.Opcode.WRITE_BARRIERED);
@@ -571,11 +574,11 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
         }
 
         if (toKind == JavaKind.Int) {
-            assert value.getStackKind() == JavaKind.Long;
+            assert value.getStackKind() == JavaKind.Long : Assertions.errorMessage(value, toKind, unsigned);
             return b.add(new NarrowNode(value, 32));
         } else {
-            assert toKind == JavaKind.Long;
-            assert value.getStackKind() == JavaKind.Int : value;
+            assert toKind == JavaKind.Long : Assertions.errorMessage(value, toKind, unsigned);
+            assert value.getStackKind() == JavaKind.Int : Assertions.errorMessage(value, toKind, unsigned);
             if (unsigned) {
                 return b.add(new ZeroExtendNode(value, 64));
             } else {

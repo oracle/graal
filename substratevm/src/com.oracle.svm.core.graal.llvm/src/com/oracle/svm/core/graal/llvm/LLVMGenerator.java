@@ -45,51 +45,14 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 
-import jdk.graal.compiler.code.CompilationResult;
-import jdk.graal.compiler.code.DataSection;
-import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.graal.compiler.core.common.LIRKind;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.core.common.calc.Condition;
-import jdk.graal.compiler.core.common.calc.FloatConvert;
-import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.core.common.memory.BarrierType;
-import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
-import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
-import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
-import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
-import jdk.graal.compiler.core.common.spi.LIRKindTool;
-import jdk.graal.compiler.core.common.type.CompressibleConstant;
-import jdk.graal.compiler.core.common.type.IllegalStamp;
-import jdk.graal.compiler.core.common.type.RawPointerStamp;
-import jdk.graal.compiler.core.common.type.Stamp;
-import jdk.graal.compiler.core.common.type.StampFactory;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.lir.LIRFrameState;
-import jdk.graal.compiler.lir.LIRInstruction;
-import jdk.graal.compiler.lir.LabelRef;
-import jdk.graal.compiler.lir.Variable;
-import jdk.graal.compiler.lir.VirtualStackSlot;
-import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
-import jdk.graal.compiler.lir.gen.BarrierSetLIRGeneratorTool;
-import jdk.graal.compiler.lir.gen.LIRGenerationResult;
-import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-import jdk.graal.compiler.lir.gen.MoveFactory;
-import jdk.graal.compiler.nodes.AbstractBeginNode;
-import jdk.graal.compiler.nodes.ParameterNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.cfg.HIRBlock;
-import jdk.graal.compiler.nodes.type.NarrowOopStamp;
-import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
-import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
@@ -129,9 +92,45 @@ import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.code.DataSection;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.calc.Condition;
+import jdk.graal.compiler.core.common.calc.FloatConvert;
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.core.common.memory.BarrierType;
+import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
+import jdk.graal.compiler.core.common.spi.LIRKindTool;
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
+import jdk.graal.compiler.core.common.type.IllegalStamp;
+import jdk.graal.compiler.core.common.type.RawPointerStamp;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.lir.LIRFrameState;
+import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.LabelRef;
+import jdk.graal.compiler.lir.Variable;
+import jdk.graal.compiler.lir.VirtualStackSlot;
+import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
+import jdk.graal.compiler.lir.gen.BarrierSetLIRGeneratorTool;
+import jdk.graal.compiler.lir.gen.LIRGenerationResult;
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
+import jdk.graal.compiler.lir.gen.MoveFactory;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.cfg.HIRBlock;
+import jdk.graal.compiler.nodes.spi.CoreProvidersDelegate;
+import jdk.graal.compiler.nodes.type.NarrowOopStamp;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.MemoryBarriers;
 import jdk.vm.ci.code.Register;
@@ -145,7 +144,6 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -156,9 +154,8 @@ import jdk.vm.ci.meta.ValueKind;
  * Contains the tools needed to emit instructions from Graal nodes into LLVM bitcode,
  * via the LLVMIRBuilder class.
  */
-public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
+public class LLVMGenerator extends CoreProvidersDelegate implements LIRGeneratorTool, SubstrateLIRGenerator {
     private static final SubstrateDataBuilder dataBuilder = new SubstrateDataBuilder();
-    private final Providers providers;
     private final CompilationResult compilationResult;
 
     private final LLVMIRBuilder builder;
@@ -179,7 +176,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     private final Map<Constant, String> constants = new HashMap<>();
 
     LLVMGenerator(Providers providers, CompilationResult result, StructuredGraph graph, ResolvedJavaMethod method, int debugLevel) {
-        this.providers = providers;
+        super(providers);
         this.compilationResult = result;
         this.builder = new LLVMIRBuilder(method.format("%H.%n"));
         this.arithmetic = new ArithmeticLLVMGenerator();
@@ -203,21 +200,6 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     }
 
     @Override
-    public Providers getProviders() {
-        return providers;
-    }
-
-    @Override
-    public MetaAccessProvider getMetaAccess() {
-        return providers.getMetaAccess();
-    }
-
-    @Override
-    public CodeCacheProvider getCodeCache() {
-        return providers.getCodeCache();
-    }
-
-    @Override
     public TargetDescription target() {
         return getCodeCache().getTarget();
     }
@@ -225,11 +207,6 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     @Override
     public SubstrateRegisterConfig getRegisterConfig() {
         return (SubstrateRegisterConfig) getCodeCache().getRegisterConfig();
-    }
-
-    @Override
-    public ForeignCallsProvider getForeignCalls() {
-        return providers.getForeignCalls();
     }
 
     CompilationResult getCompilationResult() {
@@ -1023,7 +1000,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             if (javaKind == JavaKind.Int) {
                 assert LLVMIRBuilder.isIntegerType(typeOf(retVal));
                 retVal = arithmetic.emitIntegerConvert(retVal, builder.intType());
-            } else if (returnsEnum && javaKind == FrameAccess.getWordKind()) {
+            } else if (returnsEnum && javaKind == ConfigurationValues.getWordKind()) {
                 /*
                  * An enum value is represented by a long in the function body, but is returned as
                  * an object (CEnum values are returned as an int)
@@ -1353,15 +1330,21 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             // https://docs.oracle.com/javase/specs/jls/se7/html/jls-15.html#jls-15.19
 
             LLVMTypeRef typeA = typeOf(a);
-            int bitWidthA = LLVMIRBuilder.integerTypeWidth(typeA);
+            final int bitWidthA = LLVMIRBuilder.integerTypeWidth(typeA);
+            int promotedBitWidthA = bitWidthA;
 
+            /*
+             * GR-48976: After unary numeric promotion is fixed in the LLVM backend, this manual
+             * promotion can be removed. At the moment, values that should be promoted by
+             * LIRGeneratorTool.toRegisterKind are not promoted on the LLVM backend.
+             */
             if (bitWidthA == 8 || bitWidthA == 16) {
-                bitWidthA = 32;
+                promotedBitWidthA = 32;
             }
 
-            assert bitWidthA == 32 || bitWidthA == 64;
+            assert promotedBitWidthA == 32 || promotedBitWidthA == 64;
 
-            LLVMValueRef shiftDistanceBitMask = builder.constantInteger(bitWidthA - 1, bitWidthA);
+            LLVMValueRef shiftDistanceBitMask = builder.constantInteger(promotedBitWidthA - 1, bitWidthA);
             LLVMValueRef valB = emitIntegerConvert(b, typeA);
             return builder.buildAnd(valB, shiftDistanceBitMask);
         }
@@ -1621,6 +1604,12 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         }
 
         @Override
+        public Variable emitReverseBits(Value operand) {
+            LLVMValueRef reversed = builder.buildBitReverse(getVal(operand));
+            return new LLVMVariable(reversed);
+        }
+
+        @Override
         public Value emitMathMax(Value a, Value b) {
             LLVMValueRef max = builder.buildMax(getVal(a), getVal(b));
             return new LLVMVariable(max);
@@ -1851,13 +1840,13 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         if (cacheLineSize == 0) {
             throw shouldNotReachHere("cache writeback with cache line size of 0"); // ExcludeFromJacocoGeneratedReport
         }
-        LLVMValueRef start = builder.buildBitcast(getVal(address), builder.rawPointerType());
+        LLVMValueRef start = builder.buildIntToPtr(getVal(address), builder.rawPointerType());
         LLVMValueRef end = builder.buildGEP(start, builder.constantInt(cacheLineSize));
         builder.buildClearCache(start, end);
     }
 
     @Override
     public void emitCacheWritebackSync(boolean isPreSync) {
-        throw unimplemented("cache sync barrier (GR-30894)"); // ExcludeFromJacocoGeneratedReport
+        builder.buildFence();
     }
 }

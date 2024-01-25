@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package jdk.graal.compiler.virtual.phases.ea;
 
 import java.util.ArrayList;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
@@ -90,7 +91,7 @@ public final class GraphEffectList extends EffectList {
         add(new SimpleEffect("add fixed node") {
             @Override
             public void apply(StructuredGraph graph) {
-                assert !node.isAlive() && !node.isDeleted() && position.isAlive();
+                assert !node.isAlive() && !node.isDeleted() && position.isAlive() : Assertions.errorMessageContext("node", node, "position", position);
                 graph.addBeforeFixed(position, graph.add(node));
             }
 
@@ -155,7 +156,7 @@ public final class GraphEffectList extends EffectList {
             @Override
             public void apply(StructuredGraph graph) {
                 GraalError.guarantee(node.isUnregistered(), cause);
-                assert !node.isAlive() && !node.isDeleted();
+                assert !node.isAlive() && !node.isDeleted() : node;
                 graph.addWithoutUniqueWithInputs(node);
             }
 
@@ -381,13 +382,15 @@ public final class GraphEffectList extends EffectList {
                     if (node.hasUsages() && (replacementNode.stamp(NodeView.DEFAULT).tryImproveWith(node.stamp(NodeView.DEFAULT)) != null)) {
                         replacementNode = graph.unique(new PiNode(replacementNode, node.stamp(NodeView.DEFAULT)));
                     }
-                    node.replaceAtUsages(replacementNode);
-                    if (node instanceof WithExceptionNode) {
-                        GraphUtil.unlinkAndKillExceptionEdge((WithExceptionNode) node);
-                    } else if (node instanceof FixedWithNextNode) {
-                        GraphUtil.unlinkFixedNode((FixedWithNextNode) node);
+                    if (node != replacementNode) {
+                        node.replaceAtUsages(replacementNode);
+                        if (node instanceof WithExceptionNode) {
+                            GraphUtil.unlinkAndKillExceptionEdge((WithExceptionNode) node);
+                        } else if (node instanceof FixedWithNextNode) {
+                            GraphUtil.unlinkFixedNode((FixedWithNextNode) node);
+                        }
+                        obsoleteNodes.add(node);
                     }
-                    obsoleteNodes.add(node);
                 }
             }
 
@@ -406,12 +409,12 @@ public final class GraphEffectList extends EffectList {
      * @param newInput The value to replace with.
      */
     public void replaceFirstInput(Node node, Node oldInput, Node newInput) {
-        assert node.isAlive() && oldInput.isAlive() && !newInput.isDeleted();
+        assert node.isAlive() && oldInput.isAlive() && !newInput.isDeleted() : Assertions.errorMessageContext("node", node, "newInput", newInput);
         add(new Effect("replace first input") {
             @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
                 if (node.isAlive()) {
-                    assert oldInput.isAlive() && newInput.isAlive();
+                    assert oldInput.isAlive() && newInput.isAlive() : "Both must be alive " + Assertions.errorMessageContext("oldInput", oldInput, "newInput", newInput);
                     node.replaceFirstInput(oldInput, newInput);
                 }
             }

@@ -27,8 +27,6 @@ package com.oracle.svm.hosted.heap;
 import java.io.UnsupportedEncodingException;
 import java.util.Collection;
 
-import jdk.graal.compiler.core.common.util.TypeConversion;
-import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -37,6 +35,8 @@ import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.core.common.util.TypeConversion;
+import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 /** Legacy implementation, only used by other legacy code (see GR-44538). */
@@ -80,12 +80,12 @@ class HeapDumpHostedUtils {
                 for (ResolvedJavaField resolvedJavaField : inHotSpotFieldOrder(sfields)) {
                     if (resolvedJavaField instanceof SharedField) {
                         final SharedField field = (SharedField) resolvedJavaField;
-                        if (!field.isWritten() && field.isValueAvailable()) {
-                            /* I am only interested in fields that are not constants. */
-                            continue;
-                        }
                         if (!field.isAccessed()) {
                             /* I am only interested in fields that are used. */
+                            continue;
+                        }
+                        if (!field.isWritten() && field.isValueAvailable()) {
+                            /* I am only interested in fields that are not constants. */
                             continue;
                         }
                         writeField(field, writeBuffer);

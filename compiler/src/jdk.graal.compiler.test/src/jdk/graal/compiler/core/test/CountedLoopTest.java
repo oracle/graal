@@ -716,12 +716,16 @@ public class CountedLoopTest extends GraalCompilerTest {
     public void testCounted(boolean removable, String snippetName, Object start, Object limit, Object step) {
         this.loopCanBeRemoved = removable;
         Object[] args = {start, limit, step};
+        resetSpeculationLog();
         test(snippetName, args);
         this.argsToBind = args;
+        resetSpeculationLog();
         test(snippetName, args);
         this.argsToBind = new Object[]{NO_BIND, NO_BIND, step};
+        resetSpeculationLog();
         test(snippetName, args);
         this.argsToBind = new Object[]{start, NO_BIND, step};
+        resetSpeculationLog();
         test(snippetName, args);
         this.argsToBind = null;
         this.loopCanBeRemoved = false;

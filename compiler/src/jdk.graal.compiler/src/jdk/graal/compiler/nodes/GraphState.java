@@ -30,10 +30,10 @@ import java.util.Locale;
 import java.util.Objects;
 
 import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Graph;
-import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
-
+import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.vm.ci.meta.SpeculationLog;
 
 /**
@@ -547,7 +547,7 @@ public final class GraphState {
      * {@link GuardsStage} needs to indicate a progression in the compilation, not a regression.
      */
     public void setGuardsStage(GuardsStage guardsStage) {
-        assert guardsStage.ordinal() >= this.guardsStage.ordinal();
+        assert guardsStage.ordinal() >= this.guardsStage.ordinal() : Assertions.errorMessageContext("this", this.guardsStage, "other", guardsStage);
         this.guardsStage = guardsStage;
     }
 

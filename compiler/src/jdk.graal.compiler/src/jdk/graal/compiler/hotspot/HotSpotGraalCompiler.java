@@ -35,15 +35,15 @@ import jdk.graal.compiler.core.CompilationWatchDog;
 import jdk.graal.compiler.core.GraalCompiler;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Activation;
 import jdk.graal.compiler.debug.DebugHandlersFactory;
 import jdk.graal.compiler.debug.DebugOptions;
-import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntime.HotSpotGC;
+import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.phases.OnStackReplacementPhase;
 import jdk.graal.compiler.java.GraphBuilderPhase;
-import jdk.graal.compiler.java.StableMethodNameFormatter;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.nodes.Cancellable;
@@ -59,7 +59,6 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.serviceprovider.GraalUnsafeAccess;
-
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
@@ -217,7 +216,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
                     OptionValues options) {
         int entryBCI = graph.getEntryBCI();
         ResolvedJavaMethod method = graph.method();
-        assert options == graph.getOptions();
+        assert options == graph.getOptions() : Assertions.errorMessage(options, graph.getOptions());
         HotSpotBackend backend = graalRuntime.getHostBackend();
         HotSpotProviders providers = backend.getProviders();
         final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
@@ -241,7 +240,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
                         eagerResolving, isOSR);
 
         GraalCompiler.compileGraph(graph, method, providers, backend, graphBuilderSuite, optimisticOpts, profilingInfo, suites, lirSuites, result, crbf, true);
-        graph.getOptimizationLog().emit(new StableMethodNameFormatter(providers, graph.getDebug()));
+        graph.getOptimizationLog().emit(new HotSpotStableMethodNameFormatter(providers, graph.getDebug()));
         if (!isOSR) {
             profilingInfo.setCompilerIRSize(StructuredGraph.class, graph.getNodeCount());
         }
@@ -285,28 +284,25 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
      */
     protected PhaseSuite<HighTierContext> configGraphBuilderSuite(PhaseSuite<HighTierContext> suite, boolean shouldDebugNonSafepoints, boolean shouldRetainLocalVariables, boolean eagerResolving,
                     boolean isOSR) {
-        if (shouldDebugNonSafepoints || shouldRetainLocalVariables || isOSR || eagerResolving) {
-            PhaseSuite<HighTierContext> newGbs = suite.copy();
-            GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) newGbs.findPhase(GraphBuilderPhase.class).previous();
-            GraphBuilderConfiguration graphBuilderConfig = graphBuilderPhase.getGraphBuilderConfig();
-            if (shouldDebugNonSafepoints) {
-                graphBuilderConfig = graphBuilderConfig.withNodeSourcePosition(true);
-            }
-            if (shouldRetainLocalVariables) {
-                graphBuilderConfig = graphBuilderConfig.withRetainLocalVariables(true);
-            }
-            if (eagerResolving) {
-                graphBuilderConfig = graphBuilderConfig.withEagerResolving(true);
-                graphBuilderConfig = graphBuilderConfig.withUnresolvedIsError(true);
-            }
-            GraphBuilderPhase newGraphBuilderPhase = new HotSpotGraphBuilderPhase(graphBuilderConfig);
-            newGbs.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);
-            if (isOSR) {
-                newGbs.appendPhase(new OnStackReplacementPhase());
-            }
-            return newGbs;
+        PhaseSuite<HighTierContext> newGbs = suite.copy();
+        GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) newGbs.findPhase(GraphBuilderPhase.class).previous();
+        GraphBuilderConfiguration graphBuilderConfig = graphBuilderPhase.getGraphBuilderConfig();
+        if (shouldDebugNonSafepoints) {
+            graphBuilderConfig = graphBuilderConfig.withNodeSourcePosition(true);
         }
-        return suite;
+        if (shouldRetainLocalVariables) {
+            graphBuilderConfig = graphBuilderConfig.withRetainLocalVariables(true);
+        }
+        if (eagerResolving) {
+            graphBuilderConfig = graphBuilderConfig.withEagerResolving(true);
+            graphBuilderConfig = graphBuilderConfig.withUnresolvedIsError(true);
+        }
+        GraphBuilderPhase newGraphBuilderPhase = new HotSpotGraphBuilderPhase(graphBuilderConfig);
+        newGbs.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);
+        if (isOSR) {
+            newGbs.appendPhase(new OnStackReplacementPhase());
+        }
+        return newGbs;
     }
 
     @Override

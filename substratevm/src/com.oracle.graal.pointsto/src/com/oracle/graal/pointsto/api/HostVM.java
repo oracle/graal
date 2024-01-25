@@ -27,6 +27,7 @@
 package com.oracle.graal.pointsto.api;
 
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -35,6 +36,20 @@ import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+
+import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
+
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
+import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
+import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
@@ -45,23 +60,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
-import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
-
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
-import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.meta.FieldValueComputer;
-import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
-import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
-import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.common.meta.MultiMethod;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -94,7 +92,7 @@ public abstract class HostVM {
      * @param metaAccess the meta-access provider
      * @param constant the constant to check
      */
-    public boolean isRelocatedPointer(UniverseMetaAccess metaAccess, JavaConstant constant) {
+    public boolean isRelocatedPointer(JavaConstant constant) {
         return false;
     }
 
@@ -156,7 +154,7 @@ public abstract class HostVM {
      * 
      * @param newValue the type to initialize
      */
-    public abstract void onTypeReachable(AnalysisType newValue);
+    public abstract void onTypeReachable(BigBang bb, AnalysisType newValue);
 
     /**
      * Check if an {@link AnalysisType} is initialized.
@@ -316,6 +314,10 @@ public abstract class HostVM {
         return providers;
     }
 
+    public boolean isFieldIncluded(BigBang bb, Field field) {
+        return true;
+    }
+
     /**
      * Helpers to determine what analysis actions should be taken for a given Multi-Method version.
      */
@@ -420,9 +422,5 @@ public abstract class HostVM {
          * support it within deoptimization targets and runtime-compiled methods.
          */
         return method.isOriginalMethod();
-    }
-
-    public FieldValueComputer createFieldValueComputer(@SuppressWarnings("unused") AnalysisField field) {
-        return null;
     }
 }

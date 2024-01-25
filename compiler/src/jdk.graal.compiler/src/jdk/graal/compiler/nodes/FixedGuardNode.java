@@ -103,7 +103,7 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
                  * are required to be anchored. After guard lowering it might be possible to replace
                  * the ValueAnchorNode with the Begin of the current block.
                  */
-                graph().replaceFixedWithFixed(this, graph().add(new ValueAnchorNode(null)));
+                graph().replaceFixedWithFixed(this, graph().add(new ValueAnchorNode()));
             } else {
                 graph().removeFixed(this);
             }
@@ -211,7 +211,7 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
 
     @Override
     public int intKeyAt(int i) {
-        assert i == 0;
+        assert i == 0 : i;
         return ((IntegerEqualsNode) condition()).getY().asJavaConstant().asInt();
     }
 

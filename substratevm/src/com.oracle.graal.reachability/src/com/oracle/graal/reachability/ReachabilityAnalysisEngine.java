@@ -25,6 +25,7 @@
 package com.oracle.graal.reachability;
 
 import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Deque;
@@ -32,6 +33,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
+import com.oracle.graal.pointsto.ClassInclusionPolicy;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -80,8 +82,8 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     @SuppressWarnings("this-escape")
     public ReachabilityAnalysisEngine(OptionValues options, AnalysisUniverse universe, HostVM hostVM, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
                     ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, UnsupportedFeatures unsupportedFeatures, DebugContext debugContext, TimerCollection timerCollection,
-                    ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler) {
-        super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, unsupportedFeatures, debugContext, timerCollection);
+                    ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler, ClassInclusionPolicy classInclusionPolicy) {
+        super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, unsupportedFeatures, debugContext, timerCollection, classInclusionPolicy);
         this.executor.init(getTiming());
         this.reachabilityTimer = timerCollection.createTimer("(reachability)");
 
@@ -107,6 +109,11 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     @Override
     public AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
         return addRootMethod(metaAccess.lookupJavaMethod(method), invokeSpecial, reason, otherRoots);
+    }
+
+    @Override
+    public AnalysisMethod forcedAddRootMethod(Executable method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
+        return addRootMethod(method, invokeSpecial, reason, otherRoots);
     }
 
     @SuppressWarnings("try")
@@ -141,6 +148,13 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
             }
         }
         throw AnalysisError.userError("Field not found: " + fieldName);
+    }
+
+    @Override
+    public AnalysisType addRootField(Field field) {
+        AnalysisField analysisField = getMetaAccess().lookupJavaField(field);
+        analysisField.registerAsAccessed("root field");
+        return analysisField.getType();
     }
 
     @Override
@@ -198,28 +212,10 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
         }
     }
 
+    /* Method is overwritten so that other classes in this package can invoke it. */
     @Override
-    public boolean registerTypeAsInHeap(AnalysisType t, Object reason) {
-        ReachabilityAnalysisType type = (ReachabilityAnalysisType) t;
-        if (!type.registerAsInHeap(reason)) {
-            return false;
-        }
-        if (type.registerAsInstantiated()) {
-            schedule(() -> onTypeInstantiated(type, reason));
-        }
-        return true;
-    }
-
-    @Override
-    public boolean registerTypeAsAllocated(AnalysisType t, Object reason) {
-        ReachabilityAnalysisType type = (ReachabilityAnalysisType) t;
-        if (!type.registerAsAllocated(reason)) {
-            return false;
-        }
-        if (type.registerAsInstantiated()) {
-            schedule(() -> onTypeInstantiated(type, reason));
-        }
-        return true;
+    protected void schedule(Runnable task) {
+        super.schedule(task);
     }
 
     /**
@@ -267,7 +263,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
      * NUMBER_OF_INVOKED_METHODS_ON_TYPE). and is one of the places that we should try to optimize
      * in near future.
      */
-    private void onTypeInstantiated(ReachabilityAnalysisType type, Object reason) {
+    protected void onTypeInstantiated(ReachabilityAnalysisType type, Object reason) {
         type.forAllSuperTypes(current -> {
             Set<ReachabilityAnalysisMethod> invokedMethods = ((ReachabilityAnalysisType) current).getInvokedVirtualMethods();
             for (ReachabilityAnalysisMethod curr : invokedMethods) {
@@ -358,10 +354,6 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     }
 
     @Override
-    public void forceUnsafeUpdate(AnalysisField field) {
-    }
-
-    @Override
     public void registerAsJNIAccessed(AnalysisField field, boolean writable) {
     }
 
@@ -384,4 +376,8 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
         reachabilityMethodProcessingHandler.processGraph(this, graph);
     }
 
+    @Override
+    public boolean trackPrimitiveValues() {
+        return false;
+    }
 }

@@ -95,7 +95,7 @@ public abstract class CompilationWrapper<T> {
          * least verbose action.
          */
         ExceptionAction quieter() {
-            assert ExceptionAction.Silent.ordinal() == 0;
+            assert ExceptionAction.Silent.ordinal() == 0 : "Silent must be first";
             int index = Math.max(ordinal() - 1, 0);
             return VALUES[index];
         }
@@ -236,17 +236,17 @@ public abstract class CompilationWrapper<T> {
             for (ExceptionAction action : alternatives) {
                 String option = GraalCompilerOptions.CompilationFailureAction.getName();
                 if (action == ExceptionAction.Silent) {
-                    ps.printf("- To disable compilation failure notifications, set %s to %s (e.g., -Dgraal.%s=%s).%n",
+                    ps.printf("- To disable compilation failure notifications, set %s to %s (e.g., -Djdk.graal.%s=%s).%n",
                                     option, action,
                                     option, action);
                 } else if (action == ExceptionAction.Print) {
                     ps.printf("- To print a message for a compilation failure without retrying the compilation, " +
-                                    "set %s to %s (e.g., -Dgraal.%s=%s).%n",
+                                    "set %s to %s (e.g., -Djdk.graal.%s=%s).%n",
                                     option, action,
                                     option, action);
                 } else if (action == ExceptionAction.Diagnose) {
                     ps.printf("- To capture more information for diagnosing or reporting a compilation failure, " +
-                                    "set %s to %s or %s (e.g., -Dgraal.%s=%s).%n",
+                                    "set %s to %s or %s (e.g., -Djdk.graal.%s=%s).%n",
                                     option, action,
                                     ExceptionAction.ExitVM,
                                     option, action);
@@ -335,8 +335,16 @@ public abstract class CompilationWrapper<T> {
                 TTY.printf("Error writing to %s: %s%n", retryLogFile, ioe);
             }
 
+            String diagnoseLevel = DebugOptions.DiagnoseDumpLevel.getValue(initialOptions);
+
+            // pre GR-51012 this was just a number - we still want to support the old numeric values
+            boolean isOldLevel = diagnoseLevel.matches("-?\\d+");
+            if (isOldLevel) {
+                diagnoseLevel = ":" + diagnoseLevel;
+            }
+
             OptionValues retryOptions = new OptionValues(initialOptions,
-                            Dump, ":" + DebugOptions.DiagnoseDumpLevel.getValue(initialOptions),
+                            Dump, diagnoseLevel,
                             MethodFilter, null,
                             Count, "",
                             Time, "",

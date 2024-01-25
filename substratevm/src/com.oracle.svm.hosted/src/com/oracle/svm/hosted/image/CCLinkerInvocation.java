@@ -36,8 +36,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionStability;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -45,7 +43,6 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.macho.MachOSymtab;
 import com.oracle.svm.core.BuildDirectoryProvider;
 import com.oracle.svm.core.LinkerInvocation;
-import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.libc.BionicLibC;
 import com.oracle.svm.core.c.libc.LibCBase;
@@ -58,6 +55,9 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
+
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionStability;
 
 public abstract class CCLinkerInvocation implements LinkerInvocation {
 
@@ -280,9 +280,11 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 StringBuilder exportedSymbols = new StringBuilder();
                 exportedSymbols.append("{\n");
                 /* Only exported symbols are global ... */
-                exportedSymbols.append("global:\n");
-                Stream.concat(getImageSymbols(true).stream(), JNIRegistrationSupport.getShimLibrarySymbols())
-                                .forEach(symbol -> exportedSymbols.append('\"').append(symbol).append("\";\n"));
+                Set<String> globalSymbols = Stream.concat(getImageSymbols(true).stream(), JNIRegistrationSupport.getShimLibrarySymbols()).collect(Collectors.toSet());
+                if (!globalSymbols.isEmpty()) {
+                    exportedSymbols.append("global:\n");
+                    globalSymbols.forEach(symbol -> exportedSymbols.append('\"').append(symbol).append("\";\n"));
+                }
                 /* ... everything else is local. */
                 exportedSymbols.append("local: *;\n");
                 exportedSymbols.append("};");
@@ -451,7 +453,8 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         protected void setOutputKind(List<String> cmd) {
             switch (imageKind) {
                 case STATIC_EXECUTABLE:
-                    throw UserError.abort("%s does not support building static executable images.", OS.getCurrent().name());
+                    // checked in the definition of --static
+                    throw VMError.shouldNotReachHereUnexpectedInput(imageKind);
                 case SHARED_LIBRARY:
                     cmd.add("-shared");
                     if (Platform.includedIn(Platform.DARWIN.class)) {
@@ -584,7 +587,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         }
 
         Path outputFile = outputDirectory.resolve(imageName + imageKind.getFilenameSuffix());
-        UserError.guarantee(!Files.isDirectory(outputFile), "Cannot write image to %s. Path exists as directory. (Use -H:Name=<image name>)", outputFile);
+        UserError.guarantee(!Files.isDirectory(outputFile), "Cannot write image to %s. Path exists as directory (use '-o /path/to/image').", outputFile);
         inv.setOutputFile(outputFile);
         inv.setTempDirectory(tempDirectory);
 

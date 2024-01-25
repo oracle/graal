@@ -107,7 +107,7 @@ public class LoopNodePartialEvaluationTest extends PartialEvaluationTest {
 
         List<LoopBeginNode> loopBegins = graph.getNodes().filter(LoopBeginNode.class).snapshot();
         Assert.assertEquals(loopBegins.toString(), 1, loopBegins.size());
-        ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, false, false, false);
+        ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeFrequency(true).build();
         for (LoopBeginNode loopBegin : loopBegins) {
             Assert.assertEquals("Expected loop frequency", 10.0, cfg.localLoopFrequency(loopBegin), 0.01);
         }
@@ -131,7 +131,7 @@ public class LoopNodePartialEvaluationTest extends PartialEvaluationTest {
 
         List<LoopBeginNode> loopBegins = graph.getNodes().filter(LoopBeginNode.class).snapshot();
         Assert.assertEquals(loopBegins.toString(), 1, loopBegins.size());
-        ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, false, false, false);
+        ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeFrequency(true).build();
         for (LoopBeginNode loopBegin : loopBegins) {
             Assert.assertEquals("Expected loop frequency", 2.0, cfg.localLoopFrequency(loopBegin), 0.01);
         }
@@ -267,7 +267,7 @@ public class LoopNodePartialEvaluationTest extends PartialEvaluationTest {
 
         List<LoopBeginNode> loopBegins = graph.getNodes().filter(LoopBeginNode.class).snapshot();
         Assert.assertEquals(loopBegins.toString(), 1, loopBegins.size());
-        ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, false, false, false);
+        ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeFrequency(true).build();
         for (LoopBeginNode loopBegin : loopBegins) {
             Assert.assertEquals("Expected loop frequency", 10.0, cfg.localLoopFrequency(loopBegin), 0.01);
         }

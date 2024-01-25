@@ -30,14 +30,15 @@ import java.util.SortedSet;
 
 import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeMap;
 import jdk.graal.compiler.hightiercodegen.CodeGenTool;
-import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.StackifierScopeComputation;
 import jdk.graal.compiler.hightiercodegen.reconstruction.ReconstructionData;
 import jdk.graal.compiler.hightiercodegen.reconstruction.StackifierData;
+import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.StackifierScopeComputation;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlock;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlockGeneration;
 import jdk.graal.compiler.hightiercodegen.reconstruction.stackifier.scopes.CatchScopeContainer;
@@ -67,7 +68,6 @@ import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.java.TypeSwitchNode;
 import jdk.graal.compiler.replacements.nodes.BasicArrayCopyNode;
-
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -295,7 +295,7 @@ public class StackifierIRWalker extends IRWalker {
                      * from lowerLoop and as such the node can be ignored since lowerLoop already
                      * emitted the loop header.
                      */
-                    assert currentBlock == blocks[0];
+                    assert currentBlock == blocks[0] : Assertions.errorMessage(currentBlock, blocks[0]);
                 } else if (!(node instanceof LoopExitNode)) {
                     lowerNode(node);
                 }
@@ -633,57 +633,39 @@ public class StackifierIRWalker extends IRWalker {
      * @param switchNode node to be lowered
      */
     protected void lowerSwitch(IntegerSwitchNode switchNode) {
-
         codeGenTool.genSwitchHeader(switchNode.value());
-
-        boolean hasdefault = switchNode.defaultSuccessor() != null;
 
         SwitchScopeContainer switchScopeEntry = (SwitchScopeContainer) stackifierData.getScopeEntry(switchNode);
         Scope[] caseScopes = switchScopeEntry.getCaseScopes();
         assert caseScopes != null;
 
         for (int i = 0; i < switchNode.blockSuccessorCount(); i++) {
-            // one successor
             AbstractBeginNode succ = switchNode.blockSuccessor(i);
-            // the default case must be lowered at the end
-            if (hasdefault) {
-                if (succ.equals(switchNode.defaultSuccessor())) {
-                    continue;
+            if (succ.equals(switchNode.defaultSuccessor())) {
+                lowerSwitchDefaultCase(switchNode);
+            } else {
+                ArrayList<Integer> succKeys = new ArrayList<>();
+                // query all keys that have the succ as block succ
+                for (int keyIndex = 0; keyIndex < switchNode.keyCount(); keyIndex++) {
+                    // the key
+                    int key = switchNode.intKeyAt(keyIndex);
+                    AbstractBeginNode keySucc = switchNode.keySuccessor(keyIndex);
+                    if (succ.equals(keySucc)) {
+                        succKeys.add(key);
+                    }
                 }
-            }
-            ArrayList<Integer> succKeys = new ArrayList<>();
-            // query all keys that have the succ as block succ
-            for (int keyIndex = 0; keyIndex < switchNode.keyCount(); keyIndex++) {
-                // the key
-                int key = switchNode.intKeyAt(keyIndex);
-                AbstractBeginNode keySucc = switchNode.keySuccessor(keyIndex);
-                if (succ.equals(keySucc)) {
-                    succKeys.add(key);
+                assert succKeys.size() > 0 : "no keys of " + switchNode + " have " + succ + " as block successor";
+                int[] succk = new int[succKeys.size()];
+                for (int s = 0; s < succKeys.size(); s++) {
+                    succk[s] = succKeys.get(s);
                 }
+                lowerSwitchCase(switchNode, succ, succk);
             }
-            assert succKeys.size() > 0 : "no keys of " + switchNode + " have " + succ + " as block successor";
-            int[] succk = new int[succKeys.size()];
-            for (int s = 0; s < succKeys.size(); s++) {
-                succk[s] = succKeys.get(s);
-            }
-            lowerSwitchCase(switchNode, succ, succk);
             if (caseScopes[i] != null) {
                 lowerBlocks(caseScopes[i].getSortedBlocks());
             } else {
                 generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(succ));
             }
-            codeGenTool.genBlockEndBreak();
-            codeGenTool.genScopeEnd();
-        }
-        if (hasdefault) {
-            lowerSwitchDefaultCase(switchNode);
-            int defaultIndex = switchNode.defaultSuccessorIndex();
-            if (caseScopes[defaultIndex] != null) {
-                lowerBlocks(caseScopes[defaultIndex].getSortedBlocks());
-            } else {
-                generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(switchNode.defaultSuccessor()));
-            }
-            codeGenTool.genBlockEndBreak();
             codeGenTool.genScopeEnd();
         }
         codeGenTool.genScopeEnd();
@@ -778,34 +760,24 @@ public class StackifierIRWalker extends IRWalker {
      * @param switchNode node to be lowered
      */
     protected void lowerTypeSwitch(TypeSwitchNode switchNode) {
-        boolean hasdefault = switchNode.defaultSuccessor() != null;
         for (int i = 0; i < switchNode.blockSuccessorCount(); i++) {
-            // one successor
             AbstractBeginNode succ = switchNode.blockSuccessor(i);
-            // the default case must be lowered at the end
-            if (hasdefault) {
-                if (succ.equals(switchNode.defaultSuccessor())) {
-                    continue;
+            if (succ.equals(switchNode.defaultSuccessor())) {
+                lowerTypeSwitchDefaultCase(switchNode);
+            } else {
+                ArrayList<ResolvedJavaType> succKeys = new ArrayList<>();
+                // query all keys that have the succ as block succ
+                for (int keyIndex = 0; keyIndex < switchNode.keyCount(); keyIndex++) {
+                    ResolvedJavaType key = switchNode.typeAt(keyIndex);
+                    AbstractBeginNode keySucc = switchNode.keySuccessor(keyIndex);
+                    if (succ.equals(keySucc)) {
+                        succKeys.add(key);
+                    }
                 }
+                assert succKeys.size() > 0 : "no keys of " + switchNode + " have " + succ + " as block successor";
+                lowerTypeSwitchCase(switchNode, succ, i, succKeys);
             }
-            ArrayList<ResolvedJavaType> succKeys = new ArrayList<>();
-            // query all keys that have the succ as block succ
-            for (int keyIndex = 0; keyIndex < switchNode.keyCount(); keyIndex++) {
-                ResolvedJavaType key = switchNode.typeAt(keyIndex);
-                AbstractBeginNode keySucc = switchNode.keySuccessor(keyIndex);
-                if (succ.equals(keySucc)) {
-                    succKeys.add(key);
-                }
-            }
-            assert succKeys.size() > 0 : "no keys of " + switchNode + " have " + succ + " as block successor";
-            lowerTypeSwitchCase(switchNode, succ, i, succKeys);
             generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(succ));
-            codeGenTool.genBlockEndBreak();
-            codeGenTool.genScopeEnd();
-        }
-        if (hasdefault) {
-            lowerTypeSwitchDefaultCase(switchNode);
-            generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(switchNode.defaultSuccessor()));
             codeGenTool.genBlockEndBreak();
             codeGenTool.genScopeEnd();
         }

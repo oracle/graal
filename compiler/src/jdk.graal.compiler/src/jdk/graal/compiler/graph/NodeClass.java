@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import static jdk.graal.compiler.core.common.Fields.translateInto;
 import static jdk.graal.compiler.debug.GraalError.shouldNotReachHere;
 import static jdk.graal.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
 import static jdk.graal.compiler.graph.Edges.translateInto;
+import static jdk.graal.compiler.graph.Graph.isNodeModificationCountsEnabled;
 import static jdk.graal.compiler.graph.InputEdges.translateInto;
 import static jdk.graal.compiler.graph.Node.WithAllEdges;
 
@@ -43,16 +44,13 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import jdk.graal.compiler.graph.iterators.NodeIterable;
-import jdk.graal.compiler.graph.spi.BinaryCommutativeMarker;
-import jdk.graal.compiler.graph.spi.CanonicalizableMarker;
-import jdk.graal.compiler.graph.spi.NodeWithIdentity;
-import jdk.graal.compiler.graph.spi.SimplifiableMarker;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.core.common.FieldIntrospection;
 import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.FieldsScanner;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
@@ -62,13 +60,17 @@ import jdk.graal.compiler.graph.Node.EdgeVisitor;
 import jdk.graal.compiler.graph.Node.Input;
 import jdk.graal.compiler.graph.Node.OptionalInput;
 import jdk.graal.compiler.graph.Node.Successor;
+import jdk.graal.compiler.graph.iterators.NodeIterable;
+import jdk.graal.compiler.graph.spi.BinaryCommutativeMarker;
+import jdk.graal.compiler.graph.spi.CanonicalizableMarker;
+import jdk.graal.compiler.graph.spi.NodeWithIdentity;
+import jdk.graal.compiler.graph.spi.SimplifiableMarker;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.serviceprovider.GraalUnsafeAccess;
-
 import sun.misc.Unsafe;
 
 /**
@@ -468,8 +470,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             super(calc);
             this.debug = debug;
             if (superNodeClass != null) {
-                InputEdges.translateInto(superNodeClass.inputs, inputs);
-                Edges.translateInto(superNodeClass.successors, successors);
+                translateInto(superNodeClass.inputs, inputs);
+                translateInto(superNodeClass.successors, successors);
                 translateInto(superNodeClass.data, data);
                 directInputs = superNodeClass.inputs.getDirectCount();
                 directSuccessors = superNodeClass.successors.getDirectCount();
@@ -663,7 +665,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     public boolean dataEquals(Node a, Node b) {
-        assert a.getClass() == b.getClass();
+        assert a.getClass() == b.getClass() : Assertions.errorMessageContext("a", a, "b", b);
         if (a == b) {
             return true;
         } else if (isNodeWithIdentity) {
@@ -922,8 +924,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                     newNodes.put(node, replacement);
                 } else {
                     Node newNode = node.clone(graph, WithAllEdges);
-                    assert newNode.getNodeClass().isLeafNode() || newNode.hasNoUsages();
-                    assert newNode.getClass() == node.getClass();
+                    assert newNode.getNodeClass().isLeafNode() || newNode.hasNoUsages() : Assertions.errorMessageContext("newNode", newNode);
+                    assert newNode.getClass() == node.getClass() : Assertions.errorMessageContext("newNode", newNode, "node", node);
                     newNodes.put(node, newNode);
                 }
             }
@@ -1097,7 +1099,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
         private RawEdgesWithModCountIterator(Node node, long mask) {
             super(node, mask);
-            assert Graph.isNodeModificationCountsEnabled();
+            assert isNodeModificationCountsEnabled();
             this.modCount = node.modCount();
         }
 
@@ -1124,7 +1126,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             try {
                 return super.nextPosition();
             } finally {
-                assert modCount == node.modCount();
+                int modCount2 = node.modCount();
+                assert modCount == modCount2 : Assertions.errorMessageContext("modCount", modCount, "node", node, "node.modCount", modCount2);
             }
         }
     }
@@ -1135,7 +1138,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
             @Override
             public Iterator<Node> iterator() {
-                if (Graph.isNodeModificationCountsEnabled()) {
+                if (isNodeModificationCountsEnabled()) {
                     return new RawEdgesWithModCountIterator(node, mask);
                 } else {
                     return new RawEdgesIterator(node, mask);
@@ -1169,7 +1172,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
             @Override
             public Iterator<Node> iterator() {
-                if (Graph.isNodeModificationCountsEnabled()) {
+                if (isNodeModificationCountsEnabled()) {
                     return new RawEdgesWithModCountIterator(node, mask);
                 } else {
                     return new RawEdgesIterator(node, mask);
@@ -1207,7 +1210,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     private boolean equalEdges(Node node, Node other, long mask) {
         long myMask = mask;
-        assert other.getNodeClass() == this;
+        assert other.getNodeClass() == this : Assertions.errorMessageContext("other", other, "this", this);
         while (myMask != 0) {
             long offset = (myMask & OFFSET_MASK);
             if ((myMask & LIST_MASK) == 0) {
@@ -1337,7 +1340,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             if ((myMask & LIST_MASK) == 0) {
                 Node curNode = Edges.getNodeUnsafe(node, offset);
                 if (curNode != null) {
-                    assert curNode.isAlive() : "Successor not alive";
+                    GraalError.guarantee(curNode.isAlive(), "Adding %s to the graph but its successor %s is not alive", node, curNode);
                     node.updatePredecessor(null, curNode);
                 }
             } else {
@@ -1353,7 +1356,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             for (int i = 0; i < list.size(); ++i) {
                 Node curNode = list.get(i);
                 if (curNode != null) {
-                    assert curNode.isAlive() : "Successor not alive";
+                    GraalError.guarantee(curNode.isAlive(), "Adding %s to the graph but its successor %s is not alive", node, curNode);
                     node.updatePredecessor(null, curNode);
                 }
             }
@@ -1369,7 +1372,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
      * @return {@code true} if a replacement was made, {@code false} if {@code key} was not an input
      */
     public boolean replaceFirstInput(Node node, Node key, Node replacement) {
-        assert node.getNodeClass() == this;
+        assert node.getNodeClass() == this : Assertions.errorMessageContext("node", node, "this", this);
         return replaceFirstEdge(node, key, replacement, this.inputsIteration, inputs);
     }
 
@@ -1382,7 +1385,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
      * @return {@code true} if a replacement was made, {@code false} if {@code key} was not an input
      */
     public boolean replaceFirstSuccessor(Node node, Node key, Node replacement) {
-        assert node.getNodeClass() == this;
+        assert node.getNodeClass() == this : Assertions.errorMessageContext("node", node, "this", this);
         return replaceFirstEdge(node, key, replacement, this.successorIteration, successors);
     }
 
@@ -1416,7 +1419,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             if ((myMask & LIST_MASK) == 0) {
                 Node curNode = Edges.getNodeUnsafe(node, offset);
                 if (curNode != null) {
-                    assert curNode.isAlive() : "Input " + curNode + " of node " + node + " is not alive";
+                    GraalError.guarantee(curNode.isAlive(), "Adding %s to the graph but its input %s is not alive", node, curNode);
                     curNode.addUsage(node);
                 }
             } else {
@@ -1432,7 +1435,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             for (int i = 0; i < list.size(); ++i) {
                 Node curNode = list.get(i);
                 if (curNode != null) {
-                    assert curNode.isAlive() : "Input not alive " + curNode;
+                    GraalError.guarantee(curNode.isAlive(), "Adding %s to the graph but its input %s is not alive", node, curNode);
                     curNode.addUsage(node);
                 }
             }

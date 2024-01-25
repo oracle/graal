@@ -32,10 +32,12 @@ import static jdk.graal.compiler.nodes.Invoke.SIZE_UNKNOWN_RATIONALE;
 
 import java.util.Arrays;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
-import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
@@ -46,8 +48,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.MultiMemoryKill;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -62,13 +62,11 @@ public final class StubForeignCallNode extends FixedWithNextNode implements LIRL
 
     public static final NodeClass<StubForeignCallNode> TYPE = NodeClass.create(StubForeignCallNode.class);
     @Input NodeInputList<ValueNode> arguments;
-    private final ForeignCallsProvider foreignCalls;
 
     protected final ForeignCallDescriptor descriptor;
 
-    public StubForeignCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, @InjectedNodeParameter Stamp stamp, ForeignCallDescriptor descriptor, ValueNode... arguments) {
+    public StubForeignCallNode(@InjectedNodeParameter Stamp stamp, ForeignCallDescriptor descriptor, ValueNode... arguments) {
         super(TYPE, stamp);
-        this.foreignCalls = foreignCalls;
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
     }
@@ -91,8 +89,8 @@ public final class StubForeignCallNode extends FixedWithNextNode implements LIRL
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        assert graph().start() instanceof StubStartNode;
-        ForeignCallLinkage linkage = foreignCalls.lookupForeignCall(descriptor);
+        assert graph().start() instanceof StubStartNode : Assertions.errorMessage(graph().start());
+        ForeignCallLinkage linkage = gen.getLIRGeneratorTool().getForeignCalls().lookupForeignCall(descriptor);
         Value[] operands = operands(gen);
         Value result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null, operands);
         if (result != null) {

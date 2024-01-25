@@ -246,13 +246,16 @@ import java.util.function.ToIntFunction;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.BytecodeLookupSwitch;
 import jdk.graal.compiler.bytecode.BytecodeStream;
 import jdk.graal.compiler.bytecode.BytecodeSwitch;
 import jdk.graal.compiler.bytecode.BytecodeTableSwitch;
 import jdk.graal.compiler.bytecode.Bytecodes;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.PermanentBailoutException;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Scope;
 import jdk.graal.compiler.debug.GraalError;
@@ -261,7 +264,6 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.JavaMethod;
@@ -441,6 +443,12 @@ public class BciBlockMapping implements JavaMethodContext {
             } catch (CloneNotSupportedException e) {
                 throw new RuntimeException(e);
             }
+        }
+
+        private BciBlock duplicateAsNoExceptionHandlerEntry() {
+            BciBlock dup = this.duplicate();
+            dup.isExceptionEntry = false;
+            return dup;
         }
 
         @Override
@@ -741,6 +749,12 @@ public class BciBlockMapping implements JavaMethodContext {
     protected EconomicMap<Integer, BciBlock> branchTargetBlocksOOB;
     public final Bytecode code;
     public boolean hasJsrBytecodes;
+    /*
+     * Indicates whether the bytecode contains patterns where exception handler entries are
+     * reachable from normal control flow. Such patterns need to be resolved by duplicating the
+     * reachable exception handler entry blocks.
+     */
+    private boolean unresolvedExceptionHandlerReachability = false;
 
     protected final ExceptionHandler[] exceptionHandlers;
     protected BitSet[] bciExceptionHandlerIDs;
@@ -805,6 +819,8 @@ public class BciBlockMapping implements JavaMethodContext {
         computeBciExceptionHandlerIDs(stream);
         makeExceptionEntries(splitExceptionRanges);
         iterateOverBytecodes(stream);
+        resolveExceptionHandlerReachability();
+
         startBlock = blockMap[0];
         if (debug.isDumpEnabled(DebugContext.INFO_LEVEL)) {
             debug.dump(DebugContext.INFO_LEVEL, this, code.getMethod().format("After iterateOverBytecodes %f %R %H.%n(%P)"));
@@ -834,9 +850,80 @@ public class BciBlockMapping implements JavaMethodContext {
         }
     }
 
+    /**
+     * Duplicates exception handler entry blocks if they are directly reachable from other blocks.
+     * Such patterns can be created by code shrinking or obfuscation tools. For example:
+     *
+     * <pre>
+     * try{
+     *   foo()
+     * } catch (Exception e) {
+     *   x = baz(x);
+     *   return x;
+     * }
+     * (...)
+     * try{
+     *   bar()
+     * } catch (Exception e) {
+     *   doSomething()
+     *   x = baz(x);
+     *   return x;
+     * }
+     * </pre>
+     *
+     * On bytecode level, the second exception handler can re-use the first handler:
+     *
+     * <pre>
+     * try{
+     *   bar()
+     * } catch (Exception e) {
+     *   doSomething()
+     *   goto handlerFoo
+     * }
+     * </pre>
+     *
+     * After duplicating the exception handler entry for {@code foo} and marking the duplicate as
+     * non-exception handler entry, it can be used normal control flow as well.
+     */
+    private void resolveExceptionHandlerReachability() {
+        if (!unresolvedExceptionHandlerReachability) {
+            return;
+        }
+        assert exceptionHandlers != null : "Cannot resolve exception handler reachability without exception handlers.";
+
+        /*
+         * Duplicate exception handler entry blocks if they are directly reachable from other
+         * blocks.
+         */
+        EconomicMap<BciBlock, BciBlock> duplicates = EconomicMap.create();
+        for (BciBlock b : blockMap) {
+            if (b == null) {
+                continue;
+            }
+            for (int i = 0; i < b.successors.size(); i++) {
+                BciBlock sux = b.successors.get(i);
+                if (sux.isExceptionEntry) {
+                    BciBlock dup = duplicates.get(sux);
+                    if (dup == null) {
+                        dup = sux.duplicateAsNoExceptionHandlerEntry();
+                        duplicates.put(sux, dup);
+                        blocksNotYetAssignedId++;
+                    }
+                    b.successors.set(i, dup);
+
+                    if (duplicates.get(b) != null) {
+                        // Patch successor of own duplicate.
+                        duplicates.get(b).successors.set(i, dup);
+                    }
+                }
+            }
+        }
+    }
+
     protected boolean verify() {
         for (BciBlock block : blocks) {
-            assert blocks[block.getId()] == block;
+            BciBlock idBlock = blocks[block.getId()];
+            assert idBlock == block : "Id block must match block " + Assertions.errorMessageContext("idBlock", idBlock, "block", block);
             for (int i = 0; i < block.getSuccessorCount(); i++) {
                 BciBlock sux = block.getSuccessor(i);
                 if (sux instanceof ExceptionDispatchBlock) {
@@ -940,7 +1027,7 @@ public class BciBlockMapping implements JavaMethodContext {
              */
             if (splitRanges) {
                 int startBci = findConcreteBci(h.getStartBCI());
-                assert startBci < bciExceptionHandlerIDs.length;
+                assert startBci < bciExceptionHandlerIDs.length : Assertions.errorMessageContext("startBCI", startBci, "bciExcpHandlers", bciExceptionHandlerIDs);
                 requestedBlockStarts.add(startNewBlock(startBci));
                 int endBci = findConcreteBci(h.getEndBCI());
                 if (endBci < bciExceptionHandlerIDs.length) {
@@ -1351,7 +1438,11 @@ public class BciBlockMapping implements JavaMethodContext {
     private void addSuccessor(int predBci, BciBlock sux) {
         BciBlock predecessor = getInstructionBlock(predBci);
         if (sux.isExceptionEntry()) {
-            throw new PermanentBailoutException("Exception handler can be reached by both normal and exceptional control flow");
+            /*
+             * Indicates that exception handler entries are reachable from normal control flow.
+             * Setting this flag to true triggers a dedicated handling after all blocks are created.
+             */
+            unresolvedExceptionHandlerReachability = true;
         }
         predecessor.addSuccessor(sux);
     }
@@ -1372,7 +1463,8 @@ public class BciBlockMapping implements JavaMethodContext {
         if (block.endsWithRet()) {
             block.setRetSuccessor(blockMap[scope.nextReturnAddress()]);
             block.addSuccessor(block.getRetSuccessor());
-            assert block.getRetSuccessor() != block.getJsrSuccessor();
+            assert block.getRetSuccessor() != block.getJsrSuccessor() : Assertions.errorMessageContext("block", block, "block.retSucc", block.getRetSuccessor(), "lock.jsrSucc",
+                            block.getJsrSuccessor());
         }
         debug.log("JSR alternatives block %s  sux %s  jsrSux %s  retSux %s  jsrScope %s", block, block.getSuccessors(), block.getJsrSuccessor(), block.getRetSuccessor(), block.getJsrScope());
 
@@ -1496,7 +1588,7 @@ public class BciBlockMapping implements JavaMethodContext {
                 }
             }
         }
-        assert next == newBlocks.length - 1;
+        assert next == newBlocks.length - 1 : Assertions.errorMessageContext("nextId", next, "newBlocks.length", newBlocks.length);
 
         // Add unwind block.
         ExceptionDispatchBlock unwindBlock = new ExceptionDispatchBlock(BytecodeFrame.AFTER_EXCEPTION_BCI);
@@ -1602,7 +1694,7 @@ public class BciBlockMapping implements JavaMethodContext {
      * Returns the smallest power of 2, strictly greater than value.
      */
     private static int nextPowerOfTwo(int value) {
-        assert value >= 0;
+        assert NumUtil.assertNonNegativeInt(value);
         return 1 << (32 - Integer.numberOfLeadingZeros(value));
     }
 
@@ -1730,7 +1822,7 @@ public class BciBlockMapping implements JavaMethodContext {
                             }
                         }
                         if (outermostInactiveLoopId != -1) {
-                            assert !(step instanceof DuplicationTraversalStep);
+                            assert !(step instanceof DuplicationTraversalStep) : step;
                             // we need to duplicate until we can merge with this loop's header
                             successor.predecessorCount--;
                             BciBlock duplicate = successor.duplicate();
@@ -1778,10 +1870,11 @@ public class BciBlockMapping implements JavaMethodContext {
                     BciBlock[] newBlocks = new BciBlock[blocks.length + newDuplicateBlocks];
                     for (int i = 0; i < blocks.length; i++) {
                         newBlocks[i + newDuplicateBlocks] = blocks[i];
-                        assert blocks[i].id == UNASSIGNED_ID;
+                        int id = blocks[i].id;
+                        assert id == UNASSIGNED_ID : id;
                     }
                     blocksNotYetAssignedId += newDuplicateBlocks;
-                    assert blocksNotYetAssignedId >= 0;
+                    assert NumUtil.assertNonNegativeInt(blocksNotYetAssignedId);
                     newDuplicateBlocks = 0;
                     blocks = newBlocks;
                 }

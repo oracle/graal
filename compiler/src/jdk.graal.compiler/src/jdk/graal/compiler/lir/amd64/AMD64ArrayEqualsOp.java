@@ -50,6 +50,7 @@ import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.StrideUtil;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.LIRValueUtil;
@@ -122,7 +123,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         this.constLength = constLength;
         this.elementKind = elementKind;
         if (StrideUtil.useConstantStrides(dynamicStrides)) {
-            assert elementKind.isNumericInteger() || strideA == strideB;
+            assert elementKind.isNumericInteger() || strideA == strideB : Assertions.errorMessage(elementKind, strideA, strideB);
             this.argStrideA = strideA;
             this.argStrideB = strideB;
             this.argStrideMask = strideMask;
@@ -318,12 +319,15 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
                 // the length
                 masm.align(preferredBranchTargetAlignment(crb));
                 masm.bind(variants[StrideUtil.getDirectStubCallIndex(Stride.S4, Stride.S4)]);
+                masm.maybeEmitIndirectTargetMarker();
                 masm.shll(length, 1);
                 masm.align(preferredBranchTargetAlignment(crb));
                 masm.bind(variants[StrideUtil.getDirectStubCallIndex(Stride.S2, Stride.S2)]);
+                masm.maybeEmitIndirectTargetMarker();
                 masm.shll(length, 1);
                 masm.align(preferredBranchTargetAlignment(crb));
                 masm.bind(variants[StrideUtil.getDirectStubCallIndex(Stride.S1, Stride.S1)]);
+                masm.maybeEmitIndirectTargetMarker();
                 emitArrayCompare(crb, masm, Stride.S1, Stride.S1, Stride.S1, result, arrayA, arrayB, mask, length, done, false);
                 masm.jmp(done);
 
@@ -337,12 +341,14 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
                             // use the same implementation for e.g. stride 1-2 and 2-1 by swapping
                             // the arguments in one variant
                             masm.bind(variants[StrideUtil.getDirectStubCallIndex(strideB, strideA)]);
+                            masm.maybeEmitIndirectTargetMarker();
                             masm.movq(tmp, arrayA);
                             masm.movq(arrayA, arrayB);
                             masm.movq(arrayB, tmp);
                         }
                         masm.align(crb.target.wordSize * 2);
                         masm.bind(variants[StrideUtil.getDirectStubCallIndex(strideA, strideB)]);
+                        masm.maybeEmitIndirectTargetMarker();
                         emitArrayCompare(crb, masm, strideA, strideB, strideB, result, arrayA, arrayB, mask, length, done, false);
                         masm.jmp(done);
                     }
@@ -489,7 +495,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
     private void emit8ByteCompare(CompilationResultBuilder crb, AMD64MacroAssembler masm,
                     Stride strideA, Stride strideB, Stride strideMask,
                     Register result, Register arrayA, Register arrayB, Register mask, Register length, Label trueLabel, Label falseLabel) {
-        assert strideA == strideB && strideA == strideMask;
+        assert strideA == strideB && strideA == strideMask : Assertions.errorMessage(strideA, strideB, strideMask);
         Label loop = new Label();
         Label compareTail = new Label();
 
@@ -569,7 +575,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
     private void emitTailCompares(AMD64MacroAssembler masm,
                     Stride strideA, Stride strideB, Stride strideMask,
                     Register result, Register arrayA, Register arrayB, Register mask, Register length, Label trueLabel, Label falseLabel) {
-        assert strideA == strideB && strideA == strideMask;
+        assert strideA == strideB && strideA == strideMask : Assertions.errorMessage(strideA, strideB, strideMask);
         Label compare2Bytes = new Label();
         Label compare1Byte = new Label();
 
@@ -639,7 +645,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
     private void emitDifferentKindsElementWiseCompare(CompilationResultBuilder crb, AMD64MacroAssembler masm,
                     Stride strideA, Stride strideB, Stride strideMask,
                     Register result, Register array1, Register array2, Register mask, Register length, Label trueLabel, Label falseLabel) {
-        assert strideA != strideB || strideA != strideMask;
+        assert strideA != strideB || strideA != strideMask : Assertions.errorMessage(strideA, strideB, strideMask);
         assert elementKind.isNumericInteger();
         Label loop = new Label();
         Label compareTail = new Label();
@@ -784,7 +790,7 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
         }
         int elementsPerVector = getElementsPerVector(vSize, maxStride);
         if (elementsPerVector > constantLength()) {
-            assert argStrideA == argStrideB && argStrideA == argStrideMask;
+            assert argStrideA == argStrideB && argStrideA == argStrideMask : Assertions.errorMessage(argStrideA, argStrideB, argStrideMask);
             int byteLength = constantLength() << argStrideA.log2;
             // array is shorter than any vector register, use regular XOR instructions
             Stride movStride = (byteLength < 2) ? Stride.S1 : ((byteLength < 4) ? Stride.S2 : ((byteLength < 8) ? Stride.S4 : Stride.S8));

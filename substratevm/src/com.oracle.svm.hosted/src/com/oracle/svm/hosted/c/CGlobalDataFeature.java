@@ -130,7 +130,7 @@ public class CGlobalDataFeature implements InternalFeature {
                 JavaConstant nonConstantRegistryJavaConstant = snippetReflection.forObject(nonConstantRegistry);
                 ValueNode cGlobalDataNode = receiver.get();
                 if (cGlobalDataNode.isConstant()) {
-                    CGlobalDataImpl<?> data = providers.getSnippetReflection().asObject(CGlobalDataImpl.class, cGlobalDataNode.asJavaConstant());
+                    CGlobalDataImpl<?> data = snippetReflection.asObject(CGlobalDataImpl.class, cGlobalDataNode.asJavaConstant());
                     CGlobalDataInfo info = CGlobalDataFeature.this.map.get(data);
                     b.addPush(targetMethod.getSignature().getReturnKind(), new CGlobalDataLoadAddressNode(info));
                 } else {

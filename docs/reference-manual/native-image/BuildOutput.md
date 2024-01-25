@@ -128,6 +128,12 @@ A list of all active experimental options, including their origin and possible A
 Using experimental options should be avoided in production and can change in any release.
 If you rely on experimental features and would like an option to be considered stable, please file an issue.
 
+#### <a name="glossary-picked-up-ni-options"></a>Picked up `NATIVE_IMAGE_OPTIONS`
+Additional build options picked up via the `NATIVE_IMAGE_OPTIONS` environment variable.
+Similar to `JAVA_TOOL_OPTIONS`, the value of the environment variable is prepended to the options supplied to `native-image`.
+Argument files are not allowed to be passed via `NATIVE_IMAGE_OPTIONS`.
+The `NATIVE_IMAGE_OPTIONS` environment variable is designed to be used by users, build environments, or tools to inject additional build options.
+
 #### <a name="glossary-build-resources"></a>Build Resources
 The memory limit and number of threads used by the build process.
 
@@ -136,6 +142,7 @@ Please check the [peak RSS](#glossary-peak-rss) reported at the end of the build
 By default, the build process tries to only use free memory (to avoid memory pressure on the build machine), and never more than 32GB of memory.
 If less than 8GB of memory are free, the build process falls back to use 85% of total memory.
 Therefore, consider freeing up memory if your machine is slow during a build, for example, by closing applications that you do not need.
+It is possible to overwrite the default behavior, for example with `-J-XX:MaxRAMPercentage=60.0` or `-J-Xmx16g`.
 
 By default, the build process uses all available processors to maximize speed, but not more than 32 threads.
 Use the `--parallelism` option to set the number of threads explicitly (for example, `--parallelism=4`).
@@ -251,8 +258,12 @@ Use `--enable-sbom` to include an SBOM in the native executable.
 For more information, see [Inspection Tool](InspectTool.md)
 
 #### <a name="glossary-backwards-edge-cfi"></a>Backwards-Edge Control-Flow Integrity (CFI)
-Control-Flow Integrity (CFI) can be enforced with the experimental `-H:+EnableCFI` option.
+Control-Flow Integrity (CFI) can be enforced with the experimental `-H:CFI=HW` option.
 This feature is currently only available for Linux AArch64 and leverages pointer authentication codes (PAC) to ensure integrity of a function's return address.
+
+#### <a name="glossary-sw-cfi"></a>Software Control-Flow Integrity (CFI)
+Control-Flow Integrity (CFI) can be enforced in software with the experimental `-H:CFI=SW_NONATIVE` or `-H:CFI=SW` option.
+This feature is currently only available for Linux AMD64 and validates targets of indirect branches and method returns.
 
 ## Recommendations
 
