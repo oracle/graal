@@ -98,6 +98,14 @@ public abstract class VirtualFrameAccessorNode extends FixedWithNextNode impleme
         return accessTag;
     }
 
+    /**
+     * Ensures that static-ness of slots is consistent. That means that static slots should only be
+     * accessed statically, and non-static slots accessed non-statically.
+     */
+    protected final void ensureStaticSlotAccessConsistency() {
+        assert getFrame().isStatic(getFrameSlotIndex()) == accessFlags.isStatic() : "Inconsistent Static slot usage.";
+    }
+
     protected final void insertDeoptimization(VirtualizerTool tool) {
         /*
          * Escape analysis does not allow insertion of a DeoptimizeNode. We work around this
