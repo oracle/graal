@@ -871,6 +871,10 @@ public class CodeTreeBuilder {
         return tree(var).string(" instanceof ").type(type);
     }
 
+    public CodeTreeBuilder instanceOf(String var, TypeMirror type) {
+        return string(var).string(" instanceof ").type(type);
+    }
+
     public CodeTreeBuilder instanceOf(TypeMirror type) {
         return string(" instanceof ").type(type);
     }
