@@ -1224,9 +1224,6 @@ class SvmSupport(object):
     def is_pgo_supported(self):
         return self.is_ee_supported()
 
-    search_tool = 'strings'
-    has_search_tool = shutil.which(search_tool) is not None
-
     def native_image(self, build_args, output_file, out=None, err=None, find_bad_strings=False):
         assert self._svm_supported
         stage1 = get_stage1_graalvm_distribution()
@@ -1240,19 +1237,13 @@ class SvmSupport(object):
 
         mx.run(native_image_command, nonZeroIsFatal=True, out=out, err=err)
 
-        if find_bad_strings and not mx.is_windows():
-            if not self.__class__.has_search_tool:
-                mx.abort(f"Searching for strings requires '{self.__class__.search_tool}' executable.")
-            try:
-                strings_in_image = subprocess.check_output([self.__class__.search_tool, output_file], stderr=None).decode().strip().split('\n')
-                bad_strings = (output_directory, dirname(native_image_bin))
-                for entry in strings_in_image:
-                    for bad_string in bad_strings:
-                        if bad_string in entry:
-                            mx.abort(f"Found forbidden string '{bad_string}' in native image {output_file}.")
-
-            except subprocess.CalledProcessError:
-                mx.abort(f"Using '{self.__class__.search_tool}' to search for strings in native image {output_file} failed.")
+        if find_bad_strings:
+            tool_path = join(_suite.dir, 'src/org.graalvm.nativeimage.test/src/org/graalvm/nativeimage/test/FindPathsInBinary.java'.replace('/', os.sep))
+            cmd = [_src_jdk.java, tool_path, output_file, output_directory, dirname(native_image_bin)]
+            mx.logv(' '.join(cmd))
+            matches = subprocess.check_output(cmd, text=True).strip()
+            if len(matches) != 0:
+                mx.abort(f" Found illegal strings in native image {output_file}:\n{matches}")
 
     def is_debug_supported(self):
         return self._debug_supported
