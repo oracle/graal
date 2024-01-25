@@ -1330,12 +1330,20 @@ libgraal_build_args = [
     # No need for container support in libgraal as HotSpot already takes care of it
     '-H:-UseContainerSupport',
 ] + ([
-   # Force page size to support libgraal on AArch64 machines with a page size up to 64K.
-   '-H:PageSize=64K'
+    # Force page size to support libgraal on AArch64 machines with a page size up to 64K.
+    '-H:PageSize=64K'
 ] if mx.get_arch() == 'aarch64' else []) + ([
-   # Build libgraal with 'Full RELRO' to prevent GOT overwriting exploits on Linux (GR-46838)
-   '-H:NativeLinkerOption=-Wl,-z,relro,-z,now',
-] if mx.is_linux() else []))
+    # Build libgraal with 'Full RELRO' to prevent GOT overwriting exploits on Linux (GR-46838)
+    '-H:NativeLinkerOption=-Wl,-z,relro,-z,now',
+    # Ensure shared library name in binary does not use fully qualified build-path (GR-46837)
+    '-H:NativeLinkerOption=-Wl,-soname=libjvmcicompiler.so',
+] if mx.is_linux() else [
+    # Ensure shared library name in binary does not use fully qualified build-path (GR-46837)
+    '-H:NativeLinkerOption=-Wl,-install_name,@rpath/libjvmcicompiler.dylib'
+] if mx.is_darwin() else [
+    # Ensure shared library name in binary does not use fully qualified build-path (GR-46837)
+    '-H:NativeLinkerOption=-pdbaltpath:%_PDB%'
+] if mx.is_windows() else []))
 
 libgraal = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
