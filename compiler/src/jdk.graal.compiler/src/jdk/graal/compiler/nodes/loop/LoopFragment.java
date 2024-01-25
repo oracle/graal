@@ -36,6 +36,7 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Graph.DuplicationReplacement;
@@ -62,6 +63,7 @@ import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.java.MonitorEnterNode;
 import jdk.graal.compiler.nodes.spi.NodeWithState;
+import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.vm.ci.meta.TriState;
@@ -518,20 +520,37 @@ public abstract class LoopFragment {
                 LoopExitNode earlyLoopExit = (LoopExitNode) earlyExit;
                 exitState = earlyLoopExit.stateAfter();
                 if (exitState != null) {
+
+                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Before creating states for %s", earlyLoopExit);
                     FrameState originalExitState = exitState;
                     exitState = exitState.duplicateWithVirtualState();
                     earlyLoopExit.setStateAfter(exitState);
                     merge.setStateAfter(originalExitState);
+                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Before creating states for %s for %s and merge gets %s", exitState, earlyLoopExit, originalExitState);
                     /*
                      * Using the old exit's state as the merge's state is necessary because some of
                      * the VirtualState nodes contained in the old exit's state may be shared by
                      * other dominated VirtualStates. Those dominated virtual states need to see the
                      * proxy->phi update that are applied below.
                      *
-                     * We now update the original fragment's nodes accordingly:
+                     * We now update the original fragment's nodes accordingly: however we have to
+                     * take caution here: when using the original exit state as merge state the
+                     * merge state might still reference virtual object nodes that are used by other
+                     * states inside the loop. Thus, we have to compute the transitive closure from
+                     * the merge state and only delete (clear in the original loop) those nodes only
+                     * reachable by the merge.
+                     *
+                     * To simplify this we do the following: we duplicate the state for the merge to
+                     * have a fresh state for the merge. We mark the new nodes from the new exit
+                     * state and then we kill all nodes reachable only from the old state that are
+                     * no longer reachable, by using a call back when killing floating nodes.
                      */
-                    originalExitState.applyToVirtual(node -> original.nodes.clearAndGrow(node));
                     exitState.applyToVirtual(node -> original.nodes.markAndGrow(node));
+                    FrameState oldMergeState = merge.stateAfter();
+                    merge.setStateAfter(oldMergeState.duplicateWithVirtualState());
+                    if (originalExitState.hasNoUsages()) {
+                        GraphUtil.killWithUnusedFloatingInputs(originalExitState, false, x -> original.nodes.clearAndGrow(x));
+                    }
                 }
             }
 
