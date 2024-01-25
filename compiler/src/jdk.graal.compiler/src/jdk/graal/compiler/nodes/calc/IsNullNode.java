@@ -43,7 +43,6 @@ import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.nodes.type.NarrowOopStamp;
 import jdk.graal.compiler.nodes.type.StampTool;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.TriState;
 
@@ -95,10 +94,10 @@ public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable {
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         assertTrue(getValue() != null, "is null input must not be null");
         assertTrue(getValue().stamp(NodeView.DEFAULT).isPointerStamp(), "input must be a pointer not %s", getValue().stamp(NodeView.DEFAULT));
-        return super.verify();
+        return super.verifyNode();
     }
 
     @Override

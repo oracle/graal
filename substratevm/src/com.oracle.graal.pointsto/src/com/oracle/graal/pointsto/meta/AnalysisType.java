@@ -37,10 +37,10 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.word.WordBase;
 
@@ -49,6 +49,7 @@ import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
+import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.flow.context.object.ConstantContextSensitiveObject;
 import com.oracle.graal.pointsto.heap.TypeData;
@@ -63,6 +64,7 @@ import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.UnsafePartitionKind;
 
+import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
@@ -94,6 +96,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> instantiatedNotificationsUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "typeInstantiatedNotifications");
+
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> objectReachableCallbacksUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisType.class, Object.class, "objectReachableCallbacks");
 
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> isAllocatedUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisType.class, Object.class, "isAllocated");
@@ -218,6 +223,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      */
     @SuppressWarnings("unused") private volatile Object typeInstantiatedNotifications;
 
+    /**
+     * Contains callbacks that are executed when an object of this type is marked as reachable.
+     */
+    @SuppressWarnings("unused") private volatile Object objectReachableCallbacks;
+
     @SuppressWarnings("this-escape")
     public AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
         this.universe = universe;
@@ -228,6 +238,12 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         isArray = wrapped.isArray();
         isJavaLangObject = wrapped.isJavaLangObject();
         this.storageKind = storageKind;
+
+        if (!(isPrimitive() || isWordType())) {
+            this.instantiatedTypes = new AllInstantiatedTypeFlow(this, true);
+            this.instantiatedTypesNonNull = new AllInstantiatedTypeFlow(this, false);
+        }
+
         if (universe.analysisPolicy().needsConstantCache()) {
             this.constantObjectsCache = new ConcurrentHashMap<>();
         }
@@ -422,15 +438,17 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * type is marked as instantiated, e.g., a saturated field access type flow needs to be notified
      * when a sub-type of its declared type is marked as instantiated.
      */
-    public AllInstantiatedTypeFlow instantiatedTypes = new AllInstantiatedTypeFlow(this, true);
-    public AllInstantiatedTypeFlow instantiatedTypesNonNull = new AllInstantiatedTypeFlow(this, false);
+    public AllInstantiatedTypeFlow instantiatedTypes;
+    public AllInstantiatedTypeFlow instantiatedTypesNonNull;
 
     /*
      * Returns a type flow containing all types that are assignable from this type and are also
      * instantiated.
      */
-    public AllInstantiatedTypeFlow getTypeFlow(@SuppressWarnings("unused") BigBang bb, boolean includeNull) {
-        if (includeNull) {
+    public TypeFlow<?> getTypeFlow(@SuppressWarnings("unused") BigBang bb, boolean includeNull) {
+        if (isPrimitive() || isWordType()) {
+            return ((PointsToAnalysis) bb).getAnyPrimitiveSourceTypeFlow();
+        } else if (includeNull) {
             return instantiatedTypes;
         } else {
             return instantiatedTypesNonNull;
@@ -558,8 +576,16 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public boolean registerAsReachable(Object reason) {
         assert isValidReason(reason) : "Registering a type as reachable needs to provide a valid reason.";
         if (!AtomicUtils.isSet(this, isReachableUpdater)) {
-            /* Mark this type and all its super types as reachable. */
-            forAllSuperTypes(type -> AtomicUtils.atomicSetAndRun(type, reason, isReachableUpdater, type::onReachable));
+            /* First mark all super types as reachable. */
+            forAllSuperTypes(type -> type.registerAsReachable(reason), false);
+            /*
+             * Only mark this type itself as reachable after marking all supertypes. This ensures
+             * that, e.g., a type is never seen as reachable by another thread before all of its
+             * supertypes are already marked as reachable too. Note that this does *not* guarantee
+             * that the onReachable hook for all supertypes is already finished, because they can
+             * still be running in another thread.
+             */
+            AtomicUtils.atomicSetAndRun(this, reason, isReachableUpdater, this::onReachable);
             return true;
         }
         return false;
@@ -603,6 +629,21 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     public Set<MethodOverrideReachableNotification> getOverrideReachabilityNotifications(AnalysisMethod method) {
         return ConcurrentLightHashMap.getOrDefault(this, overrideReachableNotificationsUpdater, method, Collections.emptySet());
+    }
+
+    public <T> void registerObjectReachableCallback(BiConsumer<DuringAnalysisAccess, T> callback) {
+        ConcurrentLightHashSet.addElement(this, objectReachableCallbacksUpdater, callback);
+        /* Register the callback with already discovered subtypes too. */
+        for (AnalysisType subType : subTypes) {
+            /* Subtypes include this type itself. */
+            if (!subType.equals(this)) {
+                subType.registerObjectReachableCallback(callback);
+            }
+        }
+    }
+
+    public <T> void notifyObjectReachable(DuringAnalysisAccess access, T object) {
+        ConcurrentLightHashSet.forEach(this, objectReachableCallbacksUpdater, (BiConsumer<DuringAnalysisAccess, T> c) -> c.accept(access, object));
     }
 
     public void registerInstantiatedCallback(Consumer<DuringAnalysisAccess> callback) {
@@ -890,7 +931,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     @Override
-    public final AnalysisType resolve(ResolvedJavaType accessingClass) {
+    public final ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
         return this;
     }
 
@@ -999,6 +1040,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     private void addSubType(AnalysisType subType) {
         boolean result = this.subTypes.add(subType);
+        /* Register the object reachability callbacks with the newly discovered subtype. */
+        if (!subType.equals(this)) {
+            /* Subtypes include this type itself. */
+            ConcurrentLightHashSet.forEach(this, objectReachableCallbacksUpdater, (BiConsumer<DuringAnalysisAccess, Object> callback) -> subType.registerObjectReachableCallback(callback));
+        }
         assert result : "Tried to add a " + subType + " which is already registered";
     }
 

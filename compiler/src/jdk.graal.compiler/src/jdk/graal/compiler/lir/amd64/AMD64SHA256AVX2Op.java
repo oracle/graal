@@ -136,6 +136,9 @@ public final class AMD64SHA256AVX2Op extends AMD64LIRInstruction {
                         xmm8.asValue(),
                         xmm9.asValue(),
                         xmm10.asValue(),
+                        xmm11.asValue(),
+                        xmm12.asValue(),
+                        xmm13.asValue(),
         };
     }
 

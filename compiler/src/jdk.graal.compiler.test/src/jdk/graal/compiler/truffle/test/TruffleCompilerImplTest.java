@@ -33,6 +33,8 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.TruffleCompilation;
 import jdk.graal.compiler.truffle.TruffleCompilerImpl;
+import jdk.vm.ci.meta.SpeculationLog;
+
 import org.graalvm.polyglot.Context;
 import org.junit.After;
 import org.junit.Assume;
@@ -82,6 +84,12 @@ public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
             return super.getBackend();
         }
         return getTruffleCompiler().getConfig().lastTier().backend();
+    }
+
+    @Override
+    protected SpeculationLog createSpeculationLog() {
+        // SharedCodeCacheProvider does not implement createSpeculationLog
+        return null;
     }
 
     public KnownTruffleTypes getTypes() {

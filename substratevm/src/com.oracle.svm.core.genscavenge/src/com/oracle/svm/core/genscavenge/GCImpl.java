@@ -191,7 +191,12 @@ public final class GCImpl implements GC {
         data.setRequestingNanoTime(System.nanoTime());
         data.setForceFullGC(forceFullGC);
         enqueueCollectOperation(data);
-        return data.getOutOfMemory();
+
+        boolean outOfMemory = data.getOutOfMemory();
+        if (outOfMemory && SerialGCOptions.IgnoreMaxHeapSizeWhileInVMOperation.getValue() && VMOperation.isInProgress()) {
+            outOfMemory = false;
+        }
+        return outOfMemory;
     }
 
     @Uninterruptible(reason = "Used as a transition between uninterruptible and interruptible code", calleeMustBe = false)
@@ -328,7 +333,7 @@ public final class GCImpl implements GC {
                 if (!success) {
                     String kind = getGCKind();
                     Log.log().string("Heap verification failed before ").string(kind).string(" garbage collection.").newline();
-                    VMError.shouldNotReachHereAtRuntime();
+                    VMError.shouldNotReachHere("Heap verification failed");
                 }
             } finally {
                 verifyBeforeTimer.close();
@@ -347,7 +352,7 @@ public final class GCImpl implements GC {
                 if (!success) {
                     String kind = getGCKind();
                     Log.log().string("Heap verification failed after ").string(kind).string(" garbage collection.").newline();
-                    VMError.shouldNotReachHereAtRuntime();
+                    VMError.shouldNotReachHere("Heap verification failed");
                 }
             } finally {
                 verifyAfterTime.close();
@@ -872,14 +877,11 @@ public final class GCImpl implements GC {
 
             if (RuntimeCompilation.isEnabled() && codeInfo != CodeInfoTable.getImageCodeInfo()) {
                 /*
-                 * For runtime-compiled code that is currently on the stack, we need to treat all
-                 * the references to Java heap objects as strong references. It is important that we
-                 * really walk *all* those references here. Otherwise, RuntimeCodeCacheWalker might
-                 * decide to invalidate too much code, depending on the order in which the CodeInfo
-                 * objects are visited.
+                 * Runtime-compiled code that is currently on the stack must be kept alive. So, we
+                 * mark the tether as strongly reachable. The RuntimeCodeCacheWalker will handle all
+                 * other object references later on.
                  */
-                RuntimeCodeInfoAccess.walkStrongReferences(codeInfo, greyToBlackObjRefVisitor);
-                RuntimeCodeInfoAccess.walkWeakReferences(codeInfo, greyToBlackObjRefVisitor);
+                RuntimeCodeInfoAccess.walkTether(codeInfo, greyToBlackObjRefVisitor);
             }
 
             if (!JavaStackWalker.continueWalk(walk, queryResult, deoptFrame)) {
@@ -912,13 +914,14 @@ public final class GCImpl implements GC {
 
         Timer blackenImageHeapRootsTimer = timers.blackenImageHeapRoots.open();
         try {
-            ImageHeapInfo info = HeapImpl.getImageHeapInfo();
-            blackenDirtyImageHeapChunkRoots(info.getFirstWritableAlignedChunk(), info.getFirstWritableUnalignedChunk());
+            for (ImageHeapInfo info = HeapImpl.getFirstImageHeapInfo(); info != null; info = info.next) {
+                blackenDirtyImageHeapChunkRoots(info.getFirstWritableAlignedChunk(), info.getFirstWritableUnalignedChunk(), info.getLastWritableUnalignedChunk());
+            }
 
             if (AuxiliaryImageHeap.isPresent()) {
                 ImageHeapInfo auxInfo = AuxiliaryImageHeap.singleton().getImageHeapInfo();
                 if (auxInfo != null) {
-                    blackenDirtyImageHeapChunkRoots(auxInfo.getFirstWritableAlignedChunk(), auxInfo.getFirstWritableUnalignedChunk());
+                    blackenDirtyImageHeapChunkRoots(auxInfo.getFirstWritableAlignedChunk(), auxInfo.getFirstWritableUnalignedChunk(), auxInfo.getLastWritableUnalignedChunk());
                 }
             }
         } finally {
@@ -927,7 +930,7 @@ public final class GCImpl implements GC {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private void blackenDirtyImageHeapChunkRoots(AlignedHeader firstAligned, UnalignedHeader firstUnaligned) {
+    private void blackenDirtyImageHeapChunkRoots(AlignedHeader firstAligned, UnalignedHeader firstUnaligned, UnalignedHeader lastUnaligned) {
         /*
          * We clean and remark cards of the image heap only during complete collections when we also
          * collect the old generation and can easily remark references into it. It also only makes a
@@ -944,6 +947,9 @@ public final class GCImpl implements GC {
         UnalignedHeader unaligned = firstUnaligned;
         while (unaligned.isNonNull()) {
             RememberedSet.get().walkDirtyObjects(unaligned, greyToBlackObjectVisitor, clean);
+            if (unaligned.equal(lastUnaligned)) {
+                break;
+            }
             unaligned = HeapChunk.getNext(unaligned);
         }
     }
@@ -959,7 +965,10 @@ public final class GCImpl implements GC {
 
         Timer blackenImageHeapRootsTimer = timers.blackenImageHeapRoots.open();
         try {
-            blackenImageHeapRoots(HeapImpl.getImageHeapInfo());
+            for (ImageHeapInfo info = HeapImpl.getFirstImageHeapInfo(); info != null; info = info.next) {
+                blackenImageHeapRoots(info);
+            }
+
             if (AuxiliaryImageHeap.isPresent()) {
                 ImageHeapInfo auxImageHeapInfo = AuxiliaryImageHeap.singleton().getImageHeapInfo();
                 if (auxImageHeapInfo != null) {
@@ -973,7 +982,7 @@ public final class GCImpl implements GC {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void blackenImageHeapRoots(ImageHeapInfo imageHeapInfo) {
-        ImageHeapWalker.walkPartitionInline(imageHeapInfo.firstWritableReferenceObject, imageHeapInfo.lastWritableReferenceObject, greyToBlackObjectVisitor, true);
+        ImageHeapWalker.walkPartitionInline(imageHeapInfo.firstWritableRegularObject, imageHeapInfo.lastWritableRegularObject, greyToBlackObjectVisitor, true);
         ImageHeapWalker.walkPartitionInline(imageHeapInfo.firstWritableHugeObject, imageHeapInfo.lastWritableHugeObject, greyToBlackObjectVisitor, false);
     }
 

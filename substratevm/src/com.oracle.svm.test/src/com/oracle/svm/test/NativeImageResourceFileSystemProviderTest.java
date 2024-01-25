@@ -26,6 +26,7 @@
 package com.oracle.svm.test;
 
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_DIR;
+import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_DIR_WITH_SPACE;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_EMPTY_DIR;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_1;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_2;
@@ -227,6 +228,20 @@ public class NativeImageResourceFileSystemProviderTest {
         try (Stream<Path> stream = Files.walk(emptyDirPath)) {
             Assert.assertEquals(1, stream.count());
         } catch (IOException e) {
+            Assert.fail("IOException occurred during file system walk, starting from the root.");
+        }
+    }
+
+    /**
+     * Query a directory with spaces in its name.
+     */
+    @Test
+    public void queryDirWithSpaces() {
+        Path dirWithSpaces = fileSystem.getPath(RESOURCE_DIR_WITH_SPACE);
+        try (Stream<Path> stream = Files.walk(dirWithSpaces)) {
+            Assert.assertEquals(1, stream.count());
+        } catch (IOException e) {
+            e.printStackTrace();
             Assert.fail("IOException occurred during file system walk, starting from the root.");
         }
     }

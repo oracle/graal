@@ -180,7 +180,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
                 initFlowsGraph(bb, builder.postInitFlows);
             } catch (Throwable t) {
-                /* Wrap all other errors as parsing errors. */
+                /* Wrap all errors as parsing errors. */
                 throw AnalysisError.parsingError(method, t);
             }
         }
@@ -233,6 +233,10 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
     public TypeFlow<?> getParameter(int idx) {
         return flowsGraph == null ? null : flowsGraph.getParameter(idx);
+    }
+
+    public TypeFlow<?> getReturn() {
+        return flowsGraph == null ? null : flowsGraph.getReturnFlow();
     }
 
     /** Check if the type flow is saturated, i.e., any of its clones is saturated. */
@@ -338,7 +342,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
                 }
             }
         } catch (Throwable t) {
-            /* Wrap all other errors as parsing errors. */
+            /* Wrap all errors as parsing errors. */
             throw AnalysisError.parsingError(method, t);
         }
         return true;

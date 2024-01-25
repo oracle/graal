@@ -87,12 +87,15 @@ final class GreyObjectsWalker {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void walkAlignedGreyObjects() {
         AlignedHeapChunk.AlignedHeader aChunk;
+        Pointer aStart;
         if (alignedHeapChunk.isNull() && alignedTop.isNull()) {
             /* If the snapshot is empty, then I have to walk from the beginning of the Space. */
             aChunk = space.getFirstAlignedHeapChunk();
+            aStart = (aChunk.isNonNull() ? AlignedHeapChunk.getObjectsStart(aChunk) : WordFactory.nullPointer());
         } else {
             /* Otherwise walk Objects that arrived after the snapshot. */
             aChunk = alignedHeapChunk;
+            aStart = alignedTop;
         }
         /* Visit Objects in the AlignedChunks. */
         GreyToBlackObjectVisitor visitor = GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
@@ -100,10 +103,11 @@ final class GreyObjectsWalker {
             AlignedHeapChunk.AlignedHeader lastChunk;
             do {
                 lastChunk = aChunk;
-                if (!AlignedHeapChunk.walkObjectsInline(aChunk, visitor)) {
+                if (!AlignedHeapChunk.walkObjectsFromInline(aChunk, aStart, visitor)) {
                     throw VMError.shouldNotReachHereAtRuntime();
                 }
                 aChunk = HeapChunk.getNext(aChunk);
+                aStart = (aChunk.isNonNull() ? AlignedHeapChunk.getObjectsStart(aChunk) : WordFactory.nullPointer());
             } while (aChunk.isNonNull());
 
             /* Move the scan point. */

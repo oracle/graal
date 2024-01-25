@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes to GraalVM Native Image.
 
+## GraalVM for JDK 23 (Internal Version 24.1.0)
+* (GR-51106) Fields that are accessed via a `VarHandle` or `MethodHandle` are no longer marked as "unsafe accessed" when the `VarHandle`/`MethodHandle` can be fully intrinsified.
+* (GR-49996) Ensure explicitly set image name (e.g., via `-o imagename`) is not accidentally overwritten by `-jar jarfile` option.
+
 ## GraalVM for JDK 22 (Internal Version 24.0.0)
 * (GR-48304) Red Hat added support for the JFR event ThreadAllocationStatistics.
 * (GR-48343) Red Hat added support for the JFR events AllocationRequiringGC and SystemGC.
@@ -14,6 +18,11 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-47937) Make the lambda-class name format in Native-Image consistent with the JDK name format.
 * (GR-45651) Methods, fields and constructors of `Object`, primitive classes and array classes are now registered by default for reflection.
 * (GR-45651) The Native Image agent now tracks calls to `ClassLoader.findSystemClass`, `ObjectInputStream.resolveClass` and `Bundles.of`, and registers resource bundles as bundle name-locale pairs.
+* (GR-49807) Before this change the function `System#setSecurityManager` was always halting program execution with a VM error. This was inconvenient as the VM error prints an uncomprehensible error message and prevents further continuation of the program. For cases where the program is expected to throw an exception when  `System#setSecurityManager` is called, execution on Native Image was not possible. Now, `System#setSecurityManager` throws an `java.lang.UnsupportedOperationException` by default. If the property `java.security.manager` is set to anything but `disallow` at program startup this function will throw a `java.lang.SecurityException` according to the Java spec.
+* (GR-30433) Disallow the deprecated environment variable USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM=false.
+* (GR-49655) Experimental support for parts of the [Foreign Function & Memory API](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/ForeignInterface.md) (part of "Project Panama", [JEP 454](https://openjdk.org/jeps/454)) on AMD64. Must be enabled with `-H:+ForeignAPISupport` (requiring `-H:+UnlockExperimentalVMOptions`).
+* (GR-46407) Correctly rethrow build-time linkage errors at run-time for registered reflection queries.
+* (GR-51002) Improve intrinsification of method handles. This especially improves the performance of `equals` and `hashCode` methods for records, which use method handles that are now intrinsified.
 
 ## GraalVM for JDK 21 (Internal Version 23.1.0)
 * (GR-35746) Lower the default aligned chunk size from 1 MB to 512 KB for the serial and epsilon GCs, reducing memory usage and image size in many cases.

@@ -1668,10 +1668,11 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Returns the home location for this language. This corresponds to the directory in which the
-     * Jar file is located, if run from a Jar file. For an AOT compiled binary, this corresponds to
-     * the location of the language files in the default GraalVM distribution layout. executable or
-     * shared library.
+     * Returns the home location for this language or {@code null} if the language home is not set.
+     * Languages consumed from the Maven repository typically don't have a language home. For legacy
+     * graalvm or standalone builds the language home corresponds to the directory in which the Jar
+     * file is located, if run from a Jar file. For an AOT compiled binary, this corresponds to the
+     * location of the language files in the default GraalVM distribution layout.
      *
      * @since 19.0
      */

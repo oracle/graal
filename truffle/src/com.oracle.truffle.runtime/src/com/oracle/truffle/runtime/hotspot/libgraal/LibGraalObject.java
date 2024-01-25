@@ -92,7 +92,8 @@ public class LibGraalObject {
     /**
      * Gets the raw JNI handle wrapped by this object.
      *
-     * @throw {@link DestroyedIsolateException} if the isolate context for the handle has destroyed.
+     * @throws {@link DestroyedIsolateException} if the isolate context for the handle has
+     *             destroyed.
      */
     public long getHandle() {
         if (!isolate.isValid()) {

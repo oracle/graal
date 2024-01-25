@@ -32,7 +32,6 @@ import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.util.EnumSet;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -44,8 +43,11 @@ import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.code.RuntimeCodeCache;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 public abstract class AbstractCommittedMemoryProvider implements CommittedMemoryProvider {
     @Fold
@@ -57,7 +59,6 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
     @Uninterruptible(reason = "Still being initialized.")
     protected static int protectSingleIsolateImageHeap() {
         assert !SubstrateOptions.SpawnIsolates.getValue() : "Must be handled by ImageHeapProvider when SpawnIsolates is enabled";
-        assert Heap.getHeap().getImageHeapNullRegionSize() == 0 : "A null region only makes sense with a heap base.";
         Pointer heapBegin = IMAGE_HEAP_BEGIN.get();
         if (Heap.getHeap().getImageHeapOffsetInAddressSpace() != 0) {
             return CEntryPointErrors.MAP_HEAP_FAILED;
@@ -75,9 +76,10 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
             if (VirtualMemoryProvider.get().protect(heapBegin, heapSize, VirtualMemoryProvider.Access.READ) != 0) {
                 return CEntryPointErrors.PROTECT_HEAP_FAILED;
             }
-            Pointer writableBegin = IMAGE_HEAP_WRITABLE_BEGIN.get();
-            UnsignedWord writableSize = IMAGE_HEAP_WRITABLE_END.get().subtract(writableBegin);
-            if (VirtualMemoryProvider.get().protect(writableBegin, writableSize, VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE) != 0) {
+            UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
+            Pointer writableBoundary = PointerUtils.roundDown(IMAGE_HEAP_WRITABLE_BEGIN.get(), pageSize);
+            UnsignedWord writableSize = IMAGE_HEAP_WRITABLE_END.get().subtract(writableBoundary);
+            if (VirtualMemoryProvider.get().protect(writableBoundary, writableSize, VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE) != 0) {
                 return CEntryPointErrors.PROTECT_HEAP_FAILED;
             }
         }

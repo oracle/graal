@@ -24,12 +24,11 @@
  */
 package com.oracle.graal.pointsto.infrastructure;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.heap.ImageHeap;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
@@ -58,7 +57,7 @@ public interface Universe {
 
     JavaMethod lookupAllowUnresolved(JavaMethod method);
 
-    WrappedSignature lookup(Signature signature, ResolvedJavaType defaultAccessingClass);
+    ResolvedSignature<?> lookup(Signature signature, ResolvedJavaType defaultAccessingClass);
 
     WrappedConstantPool lookup(ConstantPool constantPool, ResolvedJavaType defaultAccessingClass);
 

@@ -35,11 +35,10 @@ import subprocess
 import tempfile
 import csv
 
-import mx_java_benchmarks
+import mx
 import mx_truffle
 import mx_sdk_vm
 
-import mx
 import mx_gate
 from mx_gate import Task
 
@@ -50,14 +49,19 @@ from mx_javamodules import as_java_module
 import mx_sdk_vm_impl
 
 import mx_benchmark
-import mx_graal_benchmark #pylint: disable=unused-import
-import mx_graal_tools #pylint: disable=unused-import
 
 import argparse
 import shlex
 import json
 
+import mx_graal_tools #pylint: disable=unused-import
+
 _suite = mx.suite('compiler')
+
+if 'java-benchmarks' in (s.name for s in _suite.suite_imports):
+    # allows removing the static import of `java-benchmarks` from source code bundles
+    import mx_java_benchmarks
+    import mx_graal_benchmark #pylint: disable=unused-import
 
 """ Prefix for running the VM. """
 _vm_prefix = None
@@ -162,11 +166,6 @@ def _run_jvmci_version_check(args=None, jdk=jdk, **kwargs):
 
 if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore':
     _check_jvmci_version(jdk)
-
-mx_gate.add_jacoco_includes(['org.graalvm.*'])
-mx_gate.add_jacoco_includes(['jdk.graal.compiler.*'])
-mx_gate.add_jacoco_excludes(['com.oracle.truffle'])
-mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution', '@ExcludeFromJacocoInstrumentation'])
 
 def _get_graal_option(vmargs, name, default=None, prefix='-Djdk.graal.'):
     """
@@ -774,52 +773,58 @@ def _remove_redundant_entries(cp):
                         redundantClasspathEntries.add(path)
     return os.pathsep.join([e for e in cp if e not in redundantClasspathEntries])
 
-def _unittest_config_participant(config):
-    vmArgs, mainClass, mainClassArgs = config
-    cpIndex, cp = mx.find_classpath_arg(vmArgs)
-    if cp:
-        cp = _remove_redundant_entries(cp)
 
-        vmArgs[cpIndex] = cp
-        # JVMCI is dynamically exported to Graal when JVMCI is initialized. This is too late
-        # for the junit harness which uses reflection to find @Test methods. In addition, the
-        # tests widely use JVMCI classes so JVMCI needs to also export all its packages to
-        # ALL-UNNAMED.
-        mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/*=org.graalvm.truffle.runtime,jdk.graal.compiler,ALL-UNNAMED'])
+class GraalUnittestConfig(mx_unittest.MxUnittestConfig):
 
-        limited_modules = None
-        for arg in vmArgs:
-            if arg.startswith('--limit-modules'):
-                assert arg.startswith('--limit-modules='), ('--limit-modules must be separated from its value by "="')
-                limited_modules = arg[len('--limit-modules='):].split(',')
+    def __init__(self):
+        super(GraalUnittestConfig, self).__init__('graal')
 
-        # Export packages in all Graal modules and their dependencies
-        for dist in _graal_config().dists:
-            jmd = as_java_module(dist, jdk)
-            if limited_modules is None or jmd.name in limited_modules:
-                mainClassArgs.extend(['-JUnitOpenPackages', jmd.name + '/*'])
-                vmArgs.append('--add-modules=' + jmd.name)
+    def apply(self, config):
+        vmArgs, mainClass, mainClassArgs = config
+        cpIndex, cp = mx.find_classpath_arg(vmArgs)
+        if cp:
+            cp = _remove_redundant_entries(cp)
 
-    vmArgs.append('-Djdk.graal.TrackNodeSourcePosition=true')
-    vmArgs.append('-esa')
+            vmArgs[cpIndex] = cp
+            # JVMCI is dynamically exported to Graal when JVMCI is initialized. This is too late
+            # for the junit harness which uses reflection to find @Test methods. In addition, the
+            # tests widely use JVMCI classes so JVMCI needs to also export all its packages to
+            # ALL-UNNAMED.
+            mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/*=org.graalvm.truffle.runtime,jdk.graal.compiler,ALL-UNNAMED'])
 
-    # Always run unit tests without UseJVMCICompiler unless explicitly requested
-    if _get_XX_option_value(vmArgs, 'UseJVMCICompiler', None) is None:
-        vmArgs.append('-XX:-UseJVMCICompiler')
+            limited_modules = None
+            for arg in vmArgs:
+                if arg.startswith('--limit-modules'):
+                    assert arg.startswith('--limit-modules='), ('--limit-modules must be separated from its value by "="')
+                    limited_modules = arg[len('--limit-modules='):].split(',')
 
-    # The type-profile width 8 is the default when using the JVMCI compiler.
-    # This value must be forced, because we do not used the JVMCI compiler
-    # in the unit tests by default.
-    if _get_XX_option_value(vmArgs, 'TypeProfileWidth', None) is None:
-        vmArgs.append('-XX:TypeProfileWidth=8')
+            # Export packages in all Graal modules and their dependencies
+            for dist in _graal_config().dists:
+                jmd = as_java_module(dist, jdk)
+                if limited_modules is None or jmd.name in limited_modules:
+                    mainClassArgs.extend(['-JUnitOpenPackages', jmd.name + '/*'])
+                    vmArgs.append('--add-modules=' + jmd.name)
 
-    # TODO: GR-31197, this should be removed.
-    vmArgs.append('-Dpolyglot.engine.DynamicCompilationThresholds=false')
-    vmArgs.append('-Dpolyglot.engine.AllowExperimentalOptions=true')
+        vmArgs.append('-Djdk.graal.TrackNodeSourcePosition=true')
+        vmArgs.append('-esa')
 
-    return (vmArgs, mainClass, mainClassArgs)
+        # Always run unit tests without UseJVMCICompiler unless explicitly requested
+        if _get_XX_option_value(vmArgs, 'UseJVMCICompiler', None) is None:
+            vmArgs.append('-XX:-UseJVMCICompiler')
 
-mx_unittest.add_config_participant(_unittest_config_participant)
+        # The type-profile width 8 is the default when using the JVMCI compiler.
+        # This value must be forced, because we do not used the JVMCI compiler
+        # in the unit tests by default.
+        if _get_XX_option_value(vmArgs, 'TypeProfileWidth', None) is None:
+            vmArgs.append('-XX:TypeProfileWidth=8')
+
+        # TODO: GR-31197, this should be removed.
+        vmArgs.append('-Dpolyglot.engine.DynamicCompilationThresholds=false')
+        vmArgs.append('-Dpolyglot.engine.AllowExperimentalOptions=true')
+        return (vmArgs, mainClass, mainClassArgs)
+
+
+mx_unittest.register_unittest_config(GraalUnittestConfig())
 
 _use_graalvm = False
 
@@ -1534,6 +1539,8 @@ mx.update_commands(_suite, {
     'profdiff': [profdiff, '[options] proftool_output1 optimization_log1 proftool_output2 optimization_log2'],
 })
 
+mx.add_argument('--no-jacoco-exclude-truffle', action='store_false', dest='jacoco_exclude_truffle', help="Don't exclude Truffle classes from jacoco annotations.")
+
 def mx_post_parse_cmd_line(opts):
     mx.addJDKFactory(_JVMCI_JDK_TAG, jdk.javaCompliance, GraalJDKFactory())
     mx.add_ide_envvar('JVMCI_VERSION_CHECK')
@@ -1543,3 +1550,9 @@ def mx_post_parse_cmd_line(opts):
 
     global _vm_prefix
     _vm_prefix = opts.vm_prefix
+
+    mx_gate.add_jacoco_includes(['org.graalvm.*'])
+    mx_gate.add_jacoco_includes(['jdk.graal.compiler.*'])
+    mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution', '@ExcludeFromJacocoInstrumentation'])
+    if opts.jacoco_exclude_truffle:
+        mx_gate.add_jacoco_excludes(['com.oracle.truffle'])

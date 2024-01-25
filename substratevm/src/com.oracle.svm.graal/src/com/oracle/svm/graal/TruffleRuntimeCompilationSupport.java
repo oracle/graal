@@ -56,14 +56,12 @@ import jdk.graal.compiler.debug.DiagnosticsOutputDirectory;
 import jdk.graal.compiler.debug.GlobalMetrics;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.phases.LIRSuites;
-import jdk.graal.compiler.loop.phases.SpeculativeGuardMovementPhase;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.GraphDecoder;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.FloatingGuardPhase;
 import jdk.graal.compiler.phases.Speculative;
-import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 
@@ -136,8 +134,6 @@ public class TruffleRuntimeCompilationSupport {
         effectiveSuites.getHighTier().removeSubTypePhases(Speculative.class);
         effectiveSuites.getMidTier().removeSubTypePhases(Speculative.class);
         effectiveSuites.getLowTier().removeSubTypePhases(Speculative.class);
-        // remove after GR-49600 is resolved:
-        effectiveSuites.getMidTier().replaceAllPhases(SpeculativeGuardMovementPhase.class, () -> new SpeculativeGuardMovementPhase(CanonicalizerPhase.create(), false, false));
         return effectiveSuites;
     }
 
@@ -149,8 +145,6 @@ public class TruffleRuntimeCompilationSupport {
         effectiveSuites.getHighTier().removeSubTypePhases(Speculative.class);
         effectiveSuites.getMidTier().removeSubTypePhases(Speculative.class);
         effectiveSuites.getLowTier().removeSubTypePhases(Speculative.class);
-        // remove after GR-49600 is resolved:
-        effectiveSuites.getMidTier().replaceAllPhases(SpeculativeGuardMovementPhase.class, () -> new SpeculativeGuardMovementPhase(CanonicalizerPhase.create(), false, false));
         return effectiveSuites;
     }
 

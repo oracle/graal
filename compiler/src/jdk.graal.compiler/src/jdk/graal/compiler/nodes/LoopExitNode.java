@@ -149,7 +149,7 @@ public final class LoopExitNode extends BeginStateSplitNode implements IterableN
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         /*
          * State verification for loop exits is special in that loop exits with exception handling
          * BCIs must not survive until code generation, thus they are cleared shortly before frame
@@ -162,6 +162,6 @@ public final class LoopExitNode extends BeginStateSplitNode implements IterableN
         // in the wrong place in the earliest local schedule. Ensuring there's a BeginNode before
         // the LoopExitNode creates an earlier location where those nodes can be scheduled.
         assert !(predecessor() instanceof InvokeWithExceptionNode) : Assertions.errorMessageContext("pred", predecessor());
-        return super.verify();
+        return super.verifyNode();
     }
 }

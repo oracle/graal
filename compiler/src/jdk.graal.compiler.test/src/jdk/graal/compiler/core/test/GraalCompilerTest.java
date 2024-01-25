@@ -25,10 +25,10 @@
 package jdk.graal.compiler.core.test;
 
 import static java.lang.reflect.Modifier.isStatic;
-import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
 import static jdk.graal.compiler.nodes.ConstantNode.getConstantNodes;
 import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
 import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
+import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -57,6 +57,13 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.internal.AssumptionViolatedException;
+
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.api.test.Graal;
 import jdk.graal.compiler.api.test.ModuleSupport;
@@ -79,6 +86,7 @@ import jdk.graal.compiler.graph.NodeMap;
 import jdk.graal.compiler.hotspot.HotSpotGraphBuilderPhase;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
+import jdk.graal.compiler.java.StableMethodNameFormatter;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
@@ -136,13 +144,6 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.graal.compiler.test.GraalTest;
-import jdk.graal.compiler.loop.phases.SpeculativeGuardMovementPhase;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.internal.AssumptionViolatedException;
-
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -281,11 +282,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
 
         if (getSpeculationLog() == null) {
-            ret.getHighTier().removeSubTypePhases(Speculative.class);
-            ret.getMidTier().removeSubTypePhases(Speculative.class);
-            ret.getLowTier().removeSubTypePhases(Speculative.class);
-            // remove after GR-49600 is resolved:
-            ret.getMidTier().replaceAllPhases(SpeculativeGuardMovementPhase.class, () -> new SpeculativeGuardMovementPhase(CanonicalizerPhase.create(), false, false));
+            removeSpeculativePhases(ret);
         }
 
         ListIterator<BasePhase<? super HighTierContext>> iter = ret.getHighTier().findPhase(ConvertDeoptimizeToGuardPhase.class, true);
@@ -347,6 +344,12 @@ public abstract class GraalCompilerTest extends GraalTest {
         return ret;
     }
 
+    private static void removeSpeculativePhases(Suites suites) {
+        suites.getHighTier().removeSubTypePhases(Speculative.class);
+        suites.getMidTier().removeSubTypePhases(Speculative.class);
+        suites.getLowTier().removeSubTypePhases(Speculative.class);
+    }
+
     private void testPhasePlanSerialization(Suites originalSuites, OptionValues opts) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         Suites newSuites;
@@ -377,8 +380,25 @@ public abstract class GraalCompilerTest extends GraalTest {
     private static final ThreadLocal<HashMap<ResolvedJavaMethod, InstalledCode>> cache = ThreadLocal.withInitial(HashMap::new);
 
     @BeforeClass
-    public static void resetCache() {
+    public static void resetCodeCache() {
         cache.get().clear();
+    }
+
+    /**
+     * Overwrites the current speculation log by the result from calling
+     * {@code createSpeculationLog}. The speculation log is reset before each test.
+     */
+    @Before
+    public void resetSpeculationLog() {
+        this.speculationLog = createSpeculationLog();
+    }
+
+    /**
+     * Resets the code cache and the speculation log.
+     */
+    public void resetCache() {
+        resetCodeCache();
+        resetSpeculationLog();
     }
 
     @SuppressWarnings("this-escape")
@@ -467,6 +487,11 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     /**
+     * Asserts that two graphs are equal.
+     * <p>
+     * If the {@link jdk.graal.compiler.nodes.OptimizationLog} is enabled, the logs of the "actual"
+     * graph are emitted.
+     *
      * @param addGaphsToDebugContext if true, a scope is opened that contains {@code expected} and
      *            {@code actual} in its context so that these graphs are dumped when the comparison
      *            fails and {@code DumpOnError=true}
@@ -477,12 +502,14 @@ public abstract class GraalCompilerTest extends GraalTest {
                     boolean excludeVirtual,
                     boolean checkConstants,
                     boolean addGaphsToDebugContext) {
+        DebugContext debug = actual.getDebug();
+        actual.getOptimizationLog().emit(new StableMethodNameFormatter(getDefaultGraphBuilderPhase(), getProviders(), debug));
+
         String expectedString = getCanonicalGraphString(expected, excludeVirtual, checkConstants);
         String actualString = getCanonicalGraphString(actual, excludeVirtual, checkConstants);
         String mismatchString = compareGraphStrings(expected, expectedString, actual, actualString);
 
         // Open a scope so that `expected` and `actual` are dumped if DumpOnError=true
-        DebugContext debug = actual.getDebug();
         try (DebugContext.Scope scope = addGaphsToDebugContext ? debug.scope("GraphEqualsTest", expected, actual) : null) {
             if (!excludeVirtual && getNodeCountExcludingUnusedConstants(expected) != getNodeCountExcludingUnusedConstants(actual)) {
                 debug.dump(DebugContext.BASIC_LEVEL, expected, "Node count not matching - expected");
@@ -1210,6 +1237,9 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     /**
      * Compiles a given method.
+     * <p>
+     * Emits the {@link jdk.graal.compiler.nodes.OptimizationLog} of the compilation if the log is
+     * enabled.
      *
      * @param installedCodeOwner the method the compiled code will be associated with when installed
      * @param graph the graph to be compiled for {@code installedCodeOwner}. If null, a graph will
@@ -1224,9 +1254,17 @@ public abstract class GraalCompilerTest extends GraalTest {
         DebugContext debug = graphToCompile.getDebug();
         try (DebugContext.Scope s = debug.scope("Compile", graphToCompile)) {
             assert options != null;
+
+            Suites suites = createSuites(options);
+            if (graphToCompile.getSpeculationLog() == null) {
+                removeSpeculativePhases(suites);
+            }
+
             Request<CompilationResult> request = new Request<>(graphToCompile, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), getOptimisticOptimizations(),
-                            graphToCompile.getProfilingInfo(), createSuites(options), createLIRSuites(options), compilationResult, CompilationResultBuilderFactory.Default, null, true);
-            return GraalCompiler.compile(request);
+                            graphToCompile.getProfilingInfo(), suites, createLIRSuites(options), compilationResult, CompilationResultBuilderFactory.Default, null, true);
+            CompilationResult result = GraalCompiler.compile(request);
+            graphToCompile.getOptimizationLog().emit(new StableMethodNameFormatter(getDefaultGraphBuilderPhase(), getProviders(), graphToCompile.getDebug()));
+            return result;
         } catch (Throwable e) {
             throw debug.handle(e);
         }
@@ -1260,12 +1298,23 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected StructuredGraph lastCompiledGraph;
 
+    private SpeculationLog speculationLog;
+
     /**
-     * This method needs to be overwritten by tests that want to use {@link Speculative} phases. It
-     * may be called multiple times before a compilation is started.
+     * Updates and returns the speculation log for this test. It may be called multiple times before
+     * a compilation is started. Per default, each test has its own speculation log. Use
+     * {@link GraalCompilerTest#resetSpeculationLog} in tests which perform multiple compilations to
+     * avoid side effects between compilations.
      */
     protected SpeculationLog getSpeculationLog() {
-        return null;
+        if (speculationLog != null) {
+            speculationLog.collectFailedSpeculations();
+        }
+        return speculationLog;
+    }
+
+    protected SpeculationLog createSpeculationLog() {
+        return getCodeCache().createSpeculationLog();
     }
 
     protected InstalledCode addMethod(DebugContext debug, final ResolvedJavaMethod method, final CompilationResult compilationResult) {
@@ -1559,6 +1608,14 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected PhaseSuite<HighTierContext> getDefaultGraphBuilderSuite() {
         // defensive copying
         return backend.getSuites().getDefaultGraphBuilderSuite().copy();
+    }
+
+    protected GraphBuilderPhase getDefaultGraphBuilderPhase() {
+        return (GraphBuilderPhase) getDefaultGraphBuilderSuite().findPhase(GraphBuilderPhase.class).previous();
+    }
+
+    protected GraphBuilderPhase getDefaultGraphBuilderPhase(GraphBuilderConfiguration config) {
+        return getDefaultGraphBuilderPhase().copyWithConfig(config);
     }
 
     /**

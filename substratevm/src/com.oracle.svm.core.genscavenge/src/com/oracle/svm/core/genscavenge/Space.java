@@ -36,7 +36,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
@@ -399,7 +398,7 @@ public final class Space {
         UnsignedWord originalSize = LayoutEncoding.getSizeFromObjectInlineInGC(originalObj, false);
         UnsignedWord copySize = originalSize;
         boolean addIdentityHashField = false;
-        if (!ConfigurationValues.getObjectLayout().hasFixedIdentityHashField()) {
+        if (ConfigurationValues.getObjectLayout().isIdentityHashFieldOptional()) {
             Word header = ObjectHeader.readHeaderFromObject(originalObj);
             if (probability(SLOW_PATH_PROBABILITY, ObjectHeaderImpl.hasIdentityHashFromAddressInline(header))) {
                 addIdentityHashField = true;
@@ -424,7 +423,7 @@ public final class Space {
         if (probability(SLOW_PATH_PROBABILITY, addIdentityHashField)) {
             // Must do first: ensures correct object size below and in other places
             int value = IdentityHashCodeSupport.computeHashCodeFromAddress(originalObj);
-            int offset = LayoutEncoding.getOptionalIdentityHashOffset(copy);
+            int offset = LayoutEncoding.getIdentityHashOffset(copy);
             ObjectAccess.writeInt(copy, offset, value, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
             ObjectHeaderImpl.getObjectHeaderImpl().setIdentityHashInField(copy);
         }
@@ -508,21 +507,6 @@ public final class Space {
             appendUnalignedHeapChunk(uChunk);
             uChunk = next;
         }
-    }
-
-    boolean walkHeapChunks(MemoryWalker.Visitor visitor) {
-        boolean continueVisiting = true;
-        AlignedHeapChunk.AlignedHeader aChunk = getFirstAlignedHeapChunk();
-        while (continueVisiting && aChunk.isNonNull()) {
-            continueVisiting = visitor.visitHeapChunk(aChunk, AlignedHeapChunk.getMemoryWalkerAccess());
-            aChunk = HeapChunk.getNext(aChunk);
-        }
-        UnalignedHeapChunk.UnalignedHeader uChunk = getFirstUnalignedHeapChunk();
-        while (continueVisiting && uChunk.isNonNull()) {
-            continueVisiting = visitor.visitHeapChunk(uChunk, UnalignedHeapChunk.getMemoryWalkerAccess());
-            uChunk = HeapChunk.getNext(uChunk);
-        }
-        return continueVisiting;
     }
 
     /**

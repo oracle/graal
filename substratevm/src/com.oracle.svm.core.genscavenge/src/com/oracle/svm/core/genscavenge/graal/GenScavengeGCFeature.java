@@ -43,7 +43,6 @@ import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.HeapImplMemoryMXBean;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
 import com.oracle.svm.core.genscavenge.IncrementalGarbageCollectorMXBean;
-import com.oracle.svm.core.genscavenge.LinearImageHeapLayouter;
 import com.oracle.svm.core.genscavenge.jvmstat.EpsilonGCPerfData;
 import com.oracle.svm.core.genscavenge.jvmstat.SerialGCPerfData;
 import com.oracle.svm.core.genscavenge.remset.CardTableBasedRememberedSet;
@@ -91,7 +90,7 @@ class GenScavengeGCFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        HeapImpl heap = new HeapImpl(SubstrateOptions.getPageSize());
+        HeapImpl heap = new HeapImpl();
         ImageSingletons.add(Heap.class, heap);
         ImageSingletons.add(GCAllocationSupport.class, new GenScavengeAllocationSupport());
 
@@ -143,19 +142,13 @@ class GenScavengeGCFeature implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        ImageHeapLayouter heapLayouter;
-        int imageHeapNullRegionSize = Heap.getHeap().getImageHeapNullRegionSize();
-        if (HeapImpl.usesImageHeapChunks()) { // needs CommittedMemoryProvider: registered late
-            heapLayouter = new ChunkedImageHeapLayouter(HeapImpl.getImageHeapInfo(), 0, imageHeapNullRegionSize);
-        } else {
-            heapLayouter = new LinearImageHeapLayouter(HeapImpl.getImageHeapInfo(), 0, imageHeapNullRegionSize);
-        }
+        ImageHeapLayouter heapLayouter = new ChunkedImageHeapLayouter(HeapImpl.getFirstImageHeapInfo(), Heap.getHeap().getImageHeapOffsetInAddressSpace());
         ImageSingletons.add(ImageHeapLayouter.class, heapLayouter);
     }
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
-        ImageHeapInfo imageHeapInfo = HeapImpl.getImageHeapInfo();
+        ImageHeapInfo imageHeapInfo = HeapImpl.getFirstImageHeapInfo();
         access.registerAsImmutable(imageHeapInfo);
     }
 

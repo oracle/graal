@@ -29,6 +29,8 @@ import java.lang.reflect.Modifier;
 import org.graalvm.nativeimage.c.constant.CEnumLookup;
 import org.graalvm.nativeimage.c.constant.CEnumValue;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
@@ -72,15 +74,13 @@ public class CEnumCallWrapperMethod extends CustomSubstitutionMethod {
     }
 
     @Override
-    public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-
+    public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
-        StructuredGraph graph = kit.getGraph();
 
-        ResolvedJavaType returnType = (ResolvedJavaType) method.getSignature().getReturnType(null);
-        ValueNode arg = kit.loadArguments(method.toParameterTypes()).get(0);
+        AnalysisType returnType = method.getSignature().getReturnType();
+        ValueNode arg = kit.getInitialArguments().get(0);
 
-        CInterfaceEnumTool tool = new CInterfaceEnumTool(providers.getMetaAccess(), providers.getSnippetReflection());
+        CInterfaceEnumTool tool = new CInterfaceEnumTool(kit.getMetaAccess(), kit.getSnippetReflection());
 
         JavaKind pushKind = CInterfaceInvocationPlugin.pushKind(method);
         ValueNode returnValue;
@@ -93,9 +93,9 @@ public class CEnumCallWrapperMethod extends CustomSubstitutionMethod {
             EnumInfo enumInfo = (EnumInfo) nativeLibraries.findElementInfo(declaringType);
             ValueNode invoke = tool.createEnumValueInvoke(kit, enumInfo, returnType.getJavaKind(), arg);
 
-            ValueNode adapted = CInterfaceInvocationPlugin.adaptPrimitiveType(graph, invoke, invoke.stamp(NodeView.DEFAULT).getStackKind(), returnType.getJavaKind(), false);
+            ValueNode adapted = CInterfaceInvocationPlugin.adaptPrimitiveType(kit.getGraph(), invoke, invoke.stamp(NodeView.DEFAULT).getStackKind(), returnType.getJavaKind(), false);
             Stamp originalStamp = StampFactory.forKind(returnType.getJavaKind());
-            returnValue = CInterfaceInvocationPlugin.adaptPrimitiveType(graph, adapted, returnType.getJavaKind(), originalStamp.getStackKind(), false);
+            returnValue = CInterfaceInvocationPlugin.adaptPrimitiveType(kit.getGraph(), adapted, returnType.getJavaKind(), originalStamp.getStackKind(), false);
         } else {
             throw VMError.shouldNotReachHereUnexpectedInput(method); // ExcludeFromJacocoGeneratedReport
         }

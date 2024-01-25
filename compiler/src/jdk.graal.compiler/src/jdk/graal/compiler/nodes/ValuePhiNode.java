@@ -196,7 +196,7 @@ public class ValuePhiNode extends PhiNode {
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         Stamp s = null;
         for (ValueNode input : values()) {
             assert input != null;
@@ -209,7 +209,7 @@ public class ValuePhiNode extends PhiNode {
                 }
             }
         }
-        return super.verify();
+        return super.verifyNode();
     }
 
     @Override

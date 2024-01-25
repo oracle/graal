@@ -24,6 +24,12 @@
  */
 package jdk.graal.compiler.core.test;
 
+import org.junit.Test;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -31,12 +37,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugi
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
-import org.junit.Test;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
-
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -90,7 +90,7 @@ public class UnbalancedMonitorsTest extends GraalCompilerTest {
             GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true).withUnresolvedIsError(true);
             OptimisticOptimizations optimisticOpts = OptimisticOptimizations.NONE;
 
-            GraphBuilderPhase.Instance graphBuilder = new GraphBuilderPhase.Instance(getProviders(), graphBuilderConfig, optimisticOpts, null);
+            GraphBuilderPhase.Instance graphBuilder = new TestGraphBuilderPhase.Instance(getProviders(), graphBuilderConfig, optimisticOpts, null);
             graphBuilder.apply(graph);
         } catch (BailoutException e) {
             if (e.getMessage().contains("unbalanced monitors") ||

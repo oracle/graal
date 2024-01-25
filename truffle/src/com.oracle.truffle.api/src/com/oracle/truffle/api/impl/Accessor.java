@@ -512,6 +512,8 @@ public abstract class Accessor {
 
         public abstract LogRecord createLogRecord(Object loggerCache, Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown);
 
+        public abstract boolean isContextBoundLogger(Object loggerCache);
+
         public abstract Object getOuterContext(Object polyglotContext);
 
         public abstract boolean isCharacterBasedSource(Object fsEngineObject, String language, String mimeType);

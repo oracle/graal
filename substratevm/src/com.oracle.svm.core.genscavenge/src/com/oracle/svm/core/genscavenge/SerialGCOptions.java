@@ -25,16 +25,16 @@
 package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionType;
-import jdk.graal.compiler.options.OptionValues;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
+
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.options.OptionValues;
 
 /** Options that are only valid for the serial GC (and not for the epsilon GC). */
 public final class SerialGCOptions {
@@ -79,9 +79,6 @@ public final class SerialGCOptions {
     @Option(help = "Print the time for each of the phases of each collection, if +VerboseGC. Serial GC only.", type = OptionType.Debug)//
     public static final RuntimeOptionKey<Boolean> PrintGCTimes = new RuntimeOptionKey<>(false, SerialGCOptions::serialGCOnly);
 
-    @Option(help = "Instrument write barriers with counters. Serial GC only.", type = OptionType.Debug)//
-    public static final HostedOptionKey<Boolean> CountWriteBarriers = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly);
-
     @Option(help = "Verify the heap before doing a garbage collection if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyBeforeGC = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly);
 
@@ -106,12 +103,15 @@ public final class SerialGCOptions {
     @Option(help = "Develop demographics of the object references visited. Serial GC only.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> GreyToBlackObjRefDemographics = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly);
 
+    @Option(help = "Ignore the maximum heap size while a VM operation is executed.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> IgnoreMaxHeapSizeWhileInVMOperation = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly);
+
     private SerialGCOptions() {
     }
 
     private static void serialGCOnly(OptionKey<?> optionKey) {
         if (!SubstrateOptions.UseSerialGC.getValue()) {
-            throw new InterruptImageBuilding("The option '" + optionKey.getName() + "' can only be used together with the serial garbage collector ('--gc=serial').");
+            throw UserError.abort("The option '" + optionKey.getName() + "' can only be used together with the serial garbage collector ('--gc=serial').");
         }
     }
 }

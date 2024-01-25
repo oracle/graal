@@ -79,6 +79,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
@@ -378,7 +379,7 @@ public class NativeImageGeneratorRunner {
         }
 
         ProgressReporter reporter = new ProgressReporter(parsedHostedOptions);
-        Throwable vmError = null;
+        Throwable unhandledThrowable = null;
         boolean wasSuccessfulBuild = false;
         try (StopTimer ignored = totalTimer.start()) {
             Timer classlistTimer = timerCollection.get(TimerCollection.Registry.CLASSLIST);
@@ -472,7 +473,8 @@ public class NativeImageGeneratorRunner {
                                  *
                                  * MainMethodFinder will perform all the necessary checks
                                  */
-                                Class<?> mainMethodFinder = ReflectionUtil.lookupClass(false, "jdk.internal.misc.MainMethodFinder");
+                                String mainMethodFinderClassName = JavaVersionUtil.JAVA_SPEC >= 22 ? "jdk.internal.misc.MethodFinder" : "jdk.internal.misc.MainMethodFinder";
+                                Class<?> mainMethodFinder = ReflectionUtil.lookupClass(false, mainMethodFinderClassName);
                                 Method findMainMethod = ReflectionUtil.lookupMethod(mainMethodFinder, "findMainMethod", Class.class);
                                 javaMainMethod = (Method) findMainMethod.invoke(null, mainClass);
                             } catch (InvocationTargetException ex) {
@@ -569,18 +571,18 @@ public class NativeImageGeneratorRunner {
             }
             return ExitStatus.BUILDER_ERROR.getValue();
         } catch (Throwable e) {
-            vmError = e;
+            unhandledThrowable = e;
             return ExitStatus.BUILDER_ERROR.getValue();
         } finally {
-            reportEpilog(imageName, reporter, classLoader, vmError, parsedHostedOptions);
+            reportEpilog(imageName, reporter, classLoader, wasSuccessfulBuild, unhandledThrowable, parsedHostedOptions);
             NativeImageGenerator.clearSystemPropertiesForImage();
             ImageSingletonsSupportImpl.HostedManagement.clear();
         }
         return ExitStatus.OK.getValue();
     }
 
-    protected void reportEpilog(String imageName, ProgressReporter reporter, ImageClassLoader classLoader, Throwable vmError, OptionValues parsedHostedOptions) {
-        reporter.printEpilog(Optional.ofNullable(imageName), Optional.ofNullable(generator), classLoader, Optional.ofNullable(vmError), parsedHostedOptions);
+    protected void reportEpilog(String imageName, ProgressReporter reporter, ImageClassLoader classLoader, boolean wasSuccessfulBuild, Throwable unhandledThrowable, OptionValues parsedHostedOptions) {
+        reporter.printEpilog(Optional.ofNullable(imageName), Optional.ofNullable(generator), classLoader, wasSuccessfulBuild, Optional.ofNullable(unhandledThrowable), parsedHostedOptions);
     }
 
     protected NativeImageGenerator createImageGenerator(ImageClassLoader classLoader, HostedOptionParser optionParser, Pair<Method, CEntryPointData> mainEntryPointData, ProgressReporter reporter) {

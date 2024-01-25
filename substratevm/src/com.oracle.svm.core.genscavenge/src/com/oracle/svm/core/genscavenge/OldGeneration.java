@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
@@ -150,10 +149,6 @@ public final class OldGeneration extends Generation {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void emptyFromSpaceIntoToSpace() {
         getToSpace().absorb(getFromSpace());
-    }
-
-    boolean walkHeapChunks(MemoryWalker.Visitor visitor) {
-        return getFromSpace().walkHeapChunks(visitor) && getToSpace().walkHeapChunks(visitor);
     }
 
     /**

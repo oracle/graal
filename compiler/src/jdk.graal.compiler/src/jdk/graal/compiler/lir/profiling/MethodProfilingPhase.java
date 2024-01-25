@@ -86,7 +86,7 @@ public class MethodProfilingPhase extends PostAllocationOptimizationPhase {
 
             LIRInstruction op = diagnosticLirGenTool.createBenchmarkCounter(lirGenRes.getCompilationUnitName(), group, increment);
             buffer.init(instructions);
-            int insertionIndex = lirGenRes.getFirstInsertPosition(block);
+            int insertionIndex = lirGenRes.getFirstInsertPosition();
             buffer.append(insertionIndex, op);
             buffer.finish();
         }

@@ -24,9 +24,8 @@
  */
 package jdk.graal.compiler.hotspot.test;
 
-import static jdk.graal.compiler.debug.DebugOptions.Dump;
-import static jdk.graal.compiler.debug.DebugOptions.MethodFilter;
-import static jdk.graal.compiler.debug.DebugOptions.PrintGraph;
+import static jdk.graal.compiler.core.common.GraalOptions.InlineMegamorphicCalls;
+import static jdk.graal.compiler.core.common.GraalOptions.MaximumDesiredSize;
 import static jdk.graal.compiler.test.SubprocessUtil.getVMCommandLine;
 import static jdk.graal.compiler.test.SubprocessUtil.withoutDebuggerArguments;
 
@@ -36,12 +35,12 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.List;
 
-import jdk.graal.compiler.core.test.GraalCompilerTest;
-import jdk.graal.compiler.debug.DebugOptions.PrintGraphTarget;
-import jdk.graal.compiler.test.SubprocessUtil;
-import jdk.graal.compiler.test.SubprocessUtil.Subprocess;
 import org.junit.Assert;
 import org.junit.Test;
+
+import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.test.SubprocessUtil;
+import jdk.graal.compiler.test.SubprocessUtil.Subprocess;
 
 /**
  * Tests reading options from a file specified by the {@code graal.options.file}.
@@ -49,18 +48,16 @@ import org.junit.Test;
 public class OptionsInFileTest extends GraalCompilerTest {
     @Test
     public void test() throws IOException, InterruptedException {
-        String methodFilterValue = "a very unlikely method name";
-        String debugFilterValue = "a very unlikely debug scope";
+        Boolean inlineMegamorphic = false;
+        Integer maximumDesiredSize = 10000;
         File optionsFile = File.createTempFile("options", ".properties").getAbsoluteFile();
         try {
-            Assert.assertFalse(methodFilterValue.equals(MethodFilter.getDefaultValue()));
-            Assert.assertFalse(debugFilterValue.equals(Dump.getDefaultValue()));
-            Assert.assertEquals(PrintGraphTarget.File, PrintGraph.getDefaultValue());
+            Assert.assertFalse(inlineMegamorphic.equals(InlineMegamorphicCalls.getDefaultValue()));
+            Assert.assertFalse(maximumDesiredSize.equals(MaximumDesiredSize.getDefaultValue()));
 
             try (PrintStream out = new PrintStream(new FileOutputStream(optionsFile))) {
-                out.println(MethodFilter.getName() + "=" + methodFilterValue);
-                out.println(Dump.getName() + "=" + debugFilterValue);
-                out.println(PrintGraph.getName() + " = Network");
+                out.println(InlineMegamorphicCalls.getName() + "=" + inlineMegamorphic);
+                out.println(MaximumDesiredSize.getName() + "=" + maximumDesiredSize);
             }
 
             List<String> vmArgs = withoutDebuggerArguments(getVMCommandLine());
@@ -68,10 +65,10 @@ public class OptionsInFileTest extends GraalCompilerTest {
             vmArgs.add("-Djdk.graal.options.file=" + optionsFile);
             vmArgs.add("-XX:+JVMCIPrintProperties");
             Subprocess proc = SubprocessUtil.java(vmArgs);
+
             String[] expected = {
-                            "graal.MethodFilter := \"a very unlikely method name\"",
-                            "graal.Dump := \"a very unlikely debug scope\"",
-                            "graal.PrintGraph := Network"};
+                            "graal.InlineMegamorphicCalls := false",
+                            "graal.MaximumDesiredSize := 10000"};
             for (String line : proc.output) {
                 for (int i = 0; i < expected.length; i++) {
                     if (expected[i] != null && line.contains(expected[i])) {

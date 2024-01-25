@@ -61,14 +61,17 @@ local common_json = import "../common.json";
     [name]: jdk_base + common_json.jdks[name] + { jdk_version:: parse_labsjdk_version(self), jdk_name:: "jdk-latest"}
     for name in ["oraclejdk-latest"] + variants("labsjdk-ce-latest") + variants("labsjdk-ee-latest")
   },
-  assert std.assertEqual(std.objectFields(common_json.jdks), std.objectFields(jdks_data)),
+  # We do not want to expose galahad-jdk
+  assert std.assertEqual([x for x in std.objectFields(common_json.jdks) if x != "galahad-jdk"], std.objectFields(jdks_data)),
   # Verify oraclejdk-latest and labsjdk-ee-latest versions match
   assert
     local _labsjdk = common_json.jdks["labsjdk-ee-latest"];
     local _oraclejdk = common_json.jdks["oraclejdk-latest"];
     local _ov = "ee-%s+%s" % [_oraclejdk.version, _oraclejdk.build_id];
     local _lv = _labsjdk.version;
-    assert std.startsWith(_lv, _ov) : "update oraclejdk-latest to match labsjdk-ee-latest: %s+%s vs %s" % [_oraclejdk.version, _oraclejdk.build_id, _labsjdk.version];
+    # Skip the check if we are not using a labsjdk. This can happen on JDK integration branches.
+    local no_labsjdk = _labsjdk.name != "labsjdk";
+    assert no_labsjdk || std.startsWith(_lv, _ov) : "update oraclejdk-latest to match labsjdk-ee-latest: %s+%s vs %s" % [_oraclejdk.version, _oraclejdk.build_id, _labsjdk.version];
     true,
 
   # The raw jdk data, the same as common_json.jdks + { jdk_version:: }
@@ -113,11 +116,47 @@ local common_json = import "../common.json";
     "linux-jdk19": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
     "linux-jdk20": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
     "linux-jdk21": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
+    "linux-jdk-latest": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
+    "linux-jdkLatest": self["linux-jdk-latest"],
   },
 
   # Dependencies
   # ************
   deps: {
+    # These dependencies are included in Build GraalVM platforms, but not in bare platforms
+
+    mx: {
+      environment+: {
+        MX_PYTHON: "python3.8",
+      },
+      packages+: {
+        python3: "==3.8.10",
+        "pip:ninja_syntax": common_json.pip.ninja_syntax,
+        mx: common_json.mx_version,
+      },
+      python_version: "3", # To use the correct virtualenv
+    },
+
+    common_catch_files: {
+      catch_files+: [
+        # Keep in sync with jdk.graal.compiler.debug.StandardPathUtilitiesProvider#DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP
+        "Graal diagnostic output saved in '(?P<filename>[^']+)'",
+        # Keep in sync with jdk.graal.compiler.debug.DebugContext#DUMP_FILE_MESSAGE_REGEXP
+        "Dumping debug output to '(?P<filename>[^']+)'",
+        # Keep in sync with com.oracle.svm.hosted.NativeImageOptions#DEFAULT_ERROR_FILE_NAME
+        " (?P<filename>.+/svm_err_b_\\d+T\\d+\\.\\d+_pid\\d+\\.md)",
+      ],
+    },
+
+    common_env: {
+      environment+: {
+        # Enforce experimental option checking in CI (GR-47922)
+        NATIVE_IMAGE_EXPERIMENTAL_OPTIONS_ARE_FATAL: "true",
+      },
+    },
+
+    # These dependencies are not included by default in any platform object
+
     eclipse: {
       downloads+: {
         ECLIPSE: {
@@ -177,7 +216,7 @@ local common_json = import "../common.json";
 
     truffleruby:: {
       packages+: (if self.os == "linux" && self.arch == "amd64" then {
-        ruby: "==3.1.2", # Newer version, also used for benchmarking
+        ruby: "==3.2.2", # Newer version, also used for benchmarking
       } else {
         ruby: "==3.0.2",
       }) + (if self.os == "linux" then {
@@ -192,6 +231,9 @@ local common_json = import "../common.json";
     },
 
     svm:: {
+      packages+: {
+        cmake: "==3.22.2",
+      },
       environment+: {
         DEFAULT_VM: "server",
         LANG: "en_US.UTF-8",
@@ -238,46 +280,7 @@ local common_json = import "../common.json";
     }
   },
 
-  # Hardware definitions and common fields
-  # **************************************
-  # Note that only platforms (os-arch) are exposed (not os and arch separately),
-  # because this is the simplest way to ensure correct usage and dependencies (e.g. ol7 in linux_amd64).
-  #
-  # To add extra "common" fields for your CI:
-  # * If you already have platforms objects, you could extend them like:
-  #   linux_amd64: common.linux_amd64 + self.my_common,
-  # * Otherwise, just include your common object as well as one of the os-arch objects below in each job:
-  #   { name: "myjob" } + common.linux_amd64 + self.my_common + ...
-  #
-  # This also means self.my_common should no longer include mx, etc as it is already included by the os-arch objects.
-  local mx = {
-    environment+: {
-      MX_PYTHON: "python3.8",
-    },
-    packages+: {
-      python3: "==3.8.10",
-      "pip:ninja_syntax": common_json.pip.ninja_syntax,
-      mx: common_json.mx_version,
-    },
-    python_version: "3", # To use the correct virtualenv
-  },
-
-  local common = mx + {
-    catch_files+: [
-      # Keep in sync with jdk.graal.compiler.debug.StandardPathUtilitiesProvider#DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP
-      "Graal diagnostic output saved in '(?P<filename>[^']+)'",
-      # Keep in sync with jdk.graal.compiler.debug.DebugContext#DUMP_FILE_MESSAGE_REGEXP
-      "Dumping debug output to '(?P<filename>[^']+)'",
-      # Keep in sync with com.oracle.svm.hosted.NativeImageOptions#DEFAULT_ERROR_FILE_NAME
-      " (?P<filename>.+/svm_err_b_\\d+T\\d+\\.\\d+_pid\\d+\\.md)",
-    ],
-    environment+: {
-      # Enforce experimental option checking in CI (GR-47922)
-      NATIVE_IMAGE_EXPERIMENTAL_OPTIONS_ARE_FATAL: "true",
-    },
-  },
-
-  // OS specific file handling
+  # OS specific file handling
   os_utils:: {
     local lib_format = {
       "windows": "%s.dll",
@@ -295,36 +298,85 @@ local common_json = import "../common.json";
     os_lib(name)::      lib_format[self.os] % name,
   },
 
-  local ol7 = {
-    docker+: {
-      image: "buildslave_ol7",
-      mount_modules: true,
+  # Utils
+  disable_proxies: {
+    setup+: [
+      ["unset", "HTTP_PROXY", "HTTPS_PROXY", "FTP_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "ftp_proxy", "no_proxy"],
+    ],
+  },
+
+  # Hardware definitions and common fields
+  # **************************************
+  # Note that only platforms (os-arch) are exposed (not os and arch separately),
+  # because this is the simplest way to ensure correct usage and dependencies (e.g. ol7 in linux_amd64).
+  #
+  # To add extra "common" fields for your CI:
+  # * If you already have platforms objects, you could extend them like:
+  #   linux_amd64: common.linux_amd64 + self.my_common,
+  # * Otherwise, just include your common object as well as one of the os-arch objects below in each job:
+  #   { name: "myjob" } + common.linux_amd64 + self.my_common + ...
+  #
+  # This also means self.my_common should no longer include mx, etc as it is already included by the os-arch objects.
+
+  # Bare platforms, just the bare minimum and nothing else. Also see Build GraalVM platforms below.
+  bare:: {
+    local ol7 = {
+      docker+: {
+        image: "buildslave_ol7",
+        mount_modules: true,
+      },
     },
-  },
-  local ol8 = {
-    docker+: {
-      image: "buildslave_ol8",
-      mount_modules: true,
+    local ol8 = {
+      docker+: {
+        image: "buildslave_ol8",
+        mount_modules: true,
+      },
     },
-  },
-  local ol9 = {
-    docker+: {
-      image: "buildslave_ol9",
-      mount_modules: true,
+    local ol9 = {
+      docker+: {
+        image: "buildslave_ol9",
+        mount_modules: true,
+      },
     },
-  },
-  local ubuntu22 = {
-    docker+: {
-      image: "buildslave_ubuntu22",
-      mount_modules: true,
+    local ubuntu22 = {
+      docker+: {
+        image: "buildslave_ubuntu22",
+        mount_modules: true,
+      },
     },
+
+    local linux   = { os:: "linux",   capabilities+: [self.os] },
+    # Run darwin jobs on Big Sur or later by excluding all older versions
+    local darwin  = { os:: "darwin",  capabilities+: [self.os, "!darwin_sierra", "!darwin_mojave", "!darwin_catalina"] },
+    local windows = { os:: "windows", capabilities+: [self.os] },
+
+    local amd64   = { arch:: "amd64",   capabilities+: [self.arch] },
+    local aarch64 = { arch:: "aarch64", capabilities+: [self.arch] },
+
+    local ol_distro = { os_distro:: "ol" },
+
+    linux_amd64: self.linux_amd64_ol7,
+    linux_amd64_ol7: linux + amd64 + ol7 + ol_distro,
+    linux_amd64_ol8: linux + amd64 + ol8 + ol_distro,
+    linux_amd64_ol9: linux + amd64 + ol9 + ol_distro,
+
+    linux_aarch64: self.linux_aarch64_ol7,
+    linux_aarch64_ol7: linux + aarch64 + ol7 + ol_distro,
+    linux_aarch64_ol8: linux + aarch64 + ol8 + ol_distro,
+    linux_aarch64_ol9: linux + aarch64 + ol9 + ol_distro,
+
+    linux_amd64_ubuntu: linux + amd64 + ubuntu22 + { os_distro:: "ubuntu" },
+
+    darwin_amd64: darwin + amd64,
+    darwin_aarch64: darwin + aarch64,
+
+    windows_amd64: windows + amd64,
+    windows_server_2016_amd64: windows + amd64 + { capabilities+: ["windows_server_2016"] },
   },
-  local deps_linux = {
-  },
-  local deps_darwin = {
-  },
-  local deps_windows = {
-  },
+
+  # Build GraalVM platforms, they include the dependencies listed in `local common =` just below.
+  # They also include a devtoolset on Oracle Linux, to use the same system toolchain for all builds.
+  local common = self.deps.mx + self.deps.common_catch_files + self.deps.common_env,
 
   local ol_devtoolset = {
     packages+: (if self.arch == "aarch64" then {
@@ -334,35 +386,21 @@ local common_json = import "../common.json";
     }),
   },
 
-  local linux   = deps_linux   + common + { os:: "linux",   capabilities+: [self.os] },
-  local darwin  = deps_darwin  + common + { os:: "darwin",  capabilities+: [self.os] },
-  local windows = deps_windows + common + { os:: "windows", capabilities+: [self.os] },
-  local windows_server_2016 = windows + { capabilities+: ["windows_server_2016"] },
+  linux_amd64: self.linux_amd64_ol7,
+  linux_amd64_ol7: self.bare.linux_amd64_ol7 + common + ol_devtoolset,
+  linux_amd64_ol8: self.bare.linux_amd64_ol8 + common + ol_devtoolset,
+  linux_amd64_ol9: self.bare.linux_amd64_ol9 + common + ol_devtoolset,
 
-  local amd64   = { arch:: "amd64",   capabilities+: [self.arch] },
-  local aarch64 = { arch:: "aarch64", capabilities+: [self.arch] },
-  # Always include the devtoolset on Oracle Linux to use the same system toolchain for all builds
-  local ol_distro = { os_distro:: "ol" } + ol_devtoolset,
+  linux_aarch64: self.linux_aarch64_ol7,
+  linux_aarch64_ol7: self.bare.linux_aarch64_ol7 + common + ol_devtoolset,
+  linux_aarch64_ol8: self.bare.linux_aarch64_ol8 + common + ol_devtoolset,
+  linux_aarch64_ol9: self.bare.linux_aarch64_ol9 + common + ol_devtoolset,
 
-  linux_amd64: linux + amd64 + ol7 + ol_distro,
-  linux_amd64_ol8: linux + amd64 + ol8 + ol_distro,
-  linux_amd64_ol9: linux + amd64 + ol9 + ol_distro,
-  linux_aarch64: linux + aarch64 + ol_distro,
-  linux_aarch64_ol8: linux + aarch64 + ol8 + ol_distro,
-  linux_aarch64_ol9: linux + aarch64 + ol9 + ol_distro,
+  linux_amd64_ubuntu: self.bare.linux_amd64_ubuntu + common,
 
-  linux_amd64_ubuntu: linux + amd64 + ubuntu22 + { os_distro:: "ubuntu" },
+  darwin_amd64: self.bare.darwin_amd64 + common,
+  darwin_aarch64: self.bare.darwin_aarch64 + common,
 
-  darwin_amd64: darwin + amd64,
-  darwin_aarch64: darwin + aarch64,
-
-  windows_amd64: windows + amd64,
-  windows_server_2016_amd64: windows_server_2016 + amd64,
-
-  # Utils
-  disable_proxies: {
-    setup+: [
-      ["unset", "HTTP_PROXY", "HTTPS_PROXY", "FTP_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "ftp_proxy", "no_proxy"],
-    ],
-  },
+  windows_amd64: self.bare.windows_amd64 + common,
+  windows_server_2016_amd64: self.bare.windows_server_2016_amd64 + common,
 }

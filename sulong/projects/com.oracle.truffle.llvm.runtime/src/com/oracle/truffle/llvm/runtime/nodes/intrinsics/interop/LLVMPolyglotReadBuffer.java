@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -59,7 +59,7 @@ public abstract class LLVMPolyglotReadBuffer extends LLVMNode {
     }
 
     protected boolean inBounds(LLVMPointer receiver, long byteOffset, int length) {
-        return byteOffset >= 0 && byteOffset + length <= ((LLVMInteropType.Buffer) receiver.getExportType()).getSize();
+        return length >= 0 && byteOffset >= 0 && byteOffset + length <= ((LLVMInteropType.Buffer) receiver.getExportType()).getSize();
     }
 
     protected boolean isNativeOrder(ByteOrder order) {
@@ -67,6 +67,11 @@ public abstract class LLVMPolyglotReadBuffer extends LLVMNode {
     }
 
     protected void throwUnsupported(@SuppressWarnings("unused") LLVMPointer receiver, @SuppressWarnings("unused") long byteOffset) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    protected void throwUnsupported(@SuppressWarnings("unused") LLVMPointer receiver, @SuppressWarnings("unused") long byteOffset, @SuppressWarnings("unused") byte[] destination,
+                    @SuppressWarnings("unused") int destinationOffset, @SuppressWarnings("unused") int length) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 
@@ -104,6 +109,46 @@ public abstract class LLVMPolyglotReadBuffer extends LLVMNode {
         public byte unsupported(LLVMPointer receiver, long byteOffset) throws UnsupportedMessageException {
             throwUnsupported(receiver, byteOffset);
             return 0;
+        }
+    }
+
+    @GenerateUncached
+    public abstract static class LLVMPolyglotReadBufferNode extends LLVMPolyglotReadBuffer {
+        public abstract void execute(LLVMPointer receiver, long byteOffset, byte[] destination, int destinationOffset, int length) throws UnsupportedMessageException, InvalidBufferOffsetException;
+
+        @Specialization(guards = "isBufferPointer(receiver)")
+        public void doNative(LLVMNativePointer receiver, long byteOffset, byte[] destination, int destinationOffset, int length,
+                        @Cached BranchProfile exception,
+                        @Cached LLVMI8OffsetLoadNode loadOffset) throws InvalidBufferOffsetException {
+            if (inBounds(receiver, byteOffset, length)) {
+                for (long offset = byteOffset; offset < byteOffset + length; offset++) {
+                    destination[destinationOffset + (int) (offset - byteOffset)] = loadOffset.executeWithTarget(receiver, offset);
+                }
+            } else {
+                exception.enter();
+                throw InvalidBufferOffsetException.create(byteOffset, length);
+            }
+        }
+
+        @GenerateAOT.Exclude
+        @Specialization(guards = {"isBufferPointer(pointer)", "!foreignsLib.isForeign(pointer)"}, limit = "3")
+        public void nonForeignRead(LLVMManagedPointer pointer, long byteOffset, byte[] destination, int destinationOffset, int length,
+                        @Cached LLVMI8OffsetLoadNode loadOffset,
+                        @Cached BranchProfile exception,
+                        @SuppressWarnings("unused") @CachedLibrary("pointer") LLVMAsForeignLibrary foreignsLib) throws InvalidBufferOffsetException {
+            if (inBounds(pointer, byteOffset, length)) {
+                for (long offset = byteOffset; offset < byteOffset + length; offset++) {
+                    destination[destinationOffset + (int) (offset - byteOffset)] = loadOffset.executeWithTarget(pointer, offset);
+                }
+            } else {
+                exception.enter();
+                throw InvalidBufferOffsetException.create(byteOffset, length);
+            }
+        }
+
+        @Fallback
+        public void unsupported(LLVMPointer receiver, long byteOffset, byte[] destination, int destinationOffset, int length) throws UnsupportedMessageException {
+            throwUnsupported(receiver, byteOffset, destination, destinationOffset, length);
         }
     }
 

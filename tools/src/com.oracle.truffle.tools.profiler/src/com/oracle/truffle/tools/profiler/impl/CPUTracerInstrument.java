@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
+import java.io.File;
 import java.io.PrintStream;
 import java.lang.reflect.Method;
 
@@ -58,11 +59,19 @@ public class CPUTracerInstrument extends TruffleInstrument {
      * @since 0.30
      */
     public static final String ID = "cputracer";
+    private static final ProfilerToolFactory<CPUTracer> factory = getDefaultFactory();
 
     static final String VERSION = "0.3.0";
     private boolean enabled;
     private CPUTracer tracer;
-    private static final ProfilerToolFactory<CPUTracer> factory = getDefaultFactory();
+    /*
+     * Guest languages could change the working directory of the current process, The JVM assumes
+     * that the working directory does not change. When this assumption is broken relative file
+     * paths no longer work correctly. For this reason we save the absolute path to the output file
+     * at the very start so that we avoid issues of broken relative paths See GR-36526 for more
+     * context.
+     */
+    String absoluteOutputPath;
 
     @SuppressWarnings("unchecked")
     private static ProfilerToolFactory<CPUTracer> getDefaultFactory() {
@@ -111,6 +120,10 @@ public class CPUTracerInstrument extends TruffleInstrument {
                 return;
             }
             tracer.setCollecting(true);
+            if (CPUTracerCLI.OUTPUT_FILE.hasBeenSet(env.getOptions())) {
+                final String outputPath = CPUTracerCLI.OUTPUT_FILE.getValue(env.getOptions());
+                absoluteOutputPath = new File(outputPath).getAbsolutePath();
+            }
         }
         env.registerService(tracer);
     }
@@ -145,7 +158,7 @@ public class CPUTracerInstrument extends TruffleInstrument {
     @Override
     protected void onFinalize(Env env) {
         if (enabled) {
-            CPUTracerCLI.handleOutput(env, tracer);
+            CPUTracerCLI.handleOutput(env, tracer, absoluteOutputPath);
         }
     }
 

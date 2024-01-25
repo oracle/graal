@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -281,12 +281,12 @@ public final class ResourcesFeature implements InternalFeature {
                     }
                 }
 
-                InputStream is = module.getResourceAsStream(resourcePath);
                 boolean isDirectory = Files.isDirectory(Path.of(resourcePath));
                 if (isDirectory) {
                     String content = getDirectoryContent(resourcePath, false);
                     Resources.singleton().registerDirectoryResource(module, resourcePath, content, false);
                 } else {
+                    InputStream is = module.getResourceAsStream(resourcePath);
                     registerResource(module, resourcePath, false, is);
                 }
             } catch (IOException e) {
@@ -317,13 +317,13 @@ public final class ResourcesFeature implements InternalFeature {
 
                 alreadyProcessedResources.add(url.toString());
                 try {
-                    InputStream is = url.openStream();
                     boolean fromJar = url.getProtocol().equalsIgnoreCase("jar");
                     boolean isDirectory = resourceIsDirectory(url, fromJar, resourcePath);
                     if (isDirectory) {
                         String content = getDirectoryContent(fromJar ? url.toString() : Paths.get(url.toURI()).toString(), fromJar);
                         Resources.singleton().registerDirectoryResource(null, resourcePath, content, fromJar);
                     } else {
+                        InputStream is = url.openStream();
                         registerResource(null, resourcePath, fromJar, is);
                     }
                 } catch (IOException e) {
@@ -352,8 +352,8 @@ public final class ResourcesFeature implements InternalFeature {
         /* Util functions for resource attributes calculations */
         private String urlToJarPath(URL url) {
             try {
-                return ((JarURLConnection) url.openConnection()).getJarFileURL().getFile();
-            } catch (IOException e) {
+                return ((JarURLConnection) url.openConnection()).getJarFileURL().toURI().getPath();
+            } catch (IOException | URISyntaxException e) {
                 throw new RuntimeException(e);
             }
         }

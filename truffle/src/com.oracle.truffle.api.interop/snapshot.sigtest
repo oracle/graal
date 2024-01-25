@@ -160,6 +160,7 @@ meth public static boolean isValidValue(java.lang.Object)
 meth public static com.oracle.truffle.api.interop.InteropLibrary getUncached()
 meth public static com.oracle.truffle.api.interop.InteropLibrary getUncached(java.lang.Object)
 meth public static com.oracle.truffle.api.library.LibraryFactory<com.oracle.truffle.api.interop.InteropLibrary> getFactory()
+meth public void readBuffer(java.lang.Object,long,byte[],int,int) throws com.oracle.truffle.api.interop.InvalidBufferOffsetException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public void removeArrayElement(java.lang.Object,long) throws com.oracle.truffle.api.interop.InvalidArrayIndexException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public void removeHashEntry(java.lang.Object,java.lang.Object) throws com.oracle.truffle.api.interop.UnknownKeyException,com.oracle.truffle.api.interop.UnsupportedMessageException
 meth public void removeMember(java.lang.Object,java.lang.String) throws com.oracle.truffle.api.interop.UnknownIdentifierException,com.oracle.truffle.api.interop.UnsupportedMessageException

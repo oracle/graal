@@ -25,24 +25,24 @@
  */
 package jdk.graal.compiler.nodes.gc;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.ArrayRangeWrite;
 import jdk.graal.compiler.nodes.extended.RawStoreNode;
 import jdk.graal.compiler.nodes.java.AbstractCompareAndSwapNode;
 import jdk.graal.compiler.nodes.java.LoweredAtomicReadAndWriteNode;
-import jdk.graal.compiler.nodes.type.StampTool;
-import jdk.graal.compiler.nodes.NodeView;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.FixedAccessNode;
 import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
-import org.graalvm.word.LocationIdentity;
-
+import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -137,7 +137,7 @@ public class G1BarrierSet implements BarrierSet {
     }
 
     private static void addReadNodeBarriers(ReadNode node) {
-        if (node.getBarrierType() == BarrierType.REFERENCE_GET || node.getBarrierType() == BarrierType.PHANTOM_REFERS_TO) {
+        if (node.getBarrierType() == BarrierType.REFERENCE_GET) {
             StructuredGraph graph = node.graph();
             G1ReferentFieldReadBarrier barrier = graph.add(new G1ReferentFieldReadBarrier(node.getAddress(), node));
             graph.addAfterFixed(node, barrier);

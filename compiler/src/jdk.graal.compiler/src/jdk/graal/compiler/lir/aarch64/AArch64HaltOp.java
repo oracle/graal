@@ -30,9 +30,9 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 
 /**
- * Emits a pause.
+ * Emits a halt.
  */
-@Opcode("PAUSE")
+@Opcode("HALT")
 public final class AArch64HaltOp extends AArch64LIRInstruction {
     public static final LIRInstructionClass<AArch64HaltOp> TYPE = LIRInstructionClass.create(AArch64HaltOp.class);
 

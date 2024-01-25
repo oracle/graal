@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package jdk.graal.compiler.hotspot.meta;
 
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
+import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
 
@@ -33,14 +34,32 @@ public class HotSpotPlatformConfigurationProvider implements PlatformConfigurati
 
     private final boolean canVirtualizeLargeByteArrayAccess;
 
+    private final boolean useLightweightLocking;
+
     public HotSpotPlatformConfigurationProvider(GraalHotSpotVMConfig config, BarrierSet barrierSet) {
         this.barrierSet = barrierSet;
         this.canVirtualizeLargeByteArrayAccess = config.deoptimizationSupportLargeAccessByteArrayVirtualization;
+        this.useLightweightLocking = HotSpotReplacementsUtil.useLightweightLocking(config);
     }
 
     @Override
     public boolean canVirtualizeLargeByteArrayAccess() {
         return canVirtualizeLargeByteArrayAccess;
+    }
+
+    @Override
+    public boolean requiresStrictLockOrder() {
+        return useLightweightLocking;
+    }
+
+    @Override
+    public boolean areLocksSideEffectFree() {
+        // Starting in 21 the JVM tracks lock entry and exit in JavaThread::_held_monitor_count.
+        // This means it's not safe to pick up locks during PEA and materialize them at an
+        // arbitrary point since the FrameState might be before those locks were acquired so they
+        // will never be unlocked. Additionally lightweight locking maintains an explicit lock stack
+        // which will also be out of sync after a deopt.
+        return false;
     }
 
     @Override

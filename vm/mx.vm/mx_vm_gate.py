@@ -288,15 +288,16 @@ def _test_libgraal_oome_dumping():
     }
     if mx.is_windows():
         # GR-39501
-        mx.log('-Djdk.libgraal.HeapDumpOnOutOfMemoryError=true is not supported on Windows')
+        mx.log('-Djdk.libgraal.internal.HeapDumpOnOutOfMemoryError=true is not supported on Windows')
         return
 
     for n, v in inputs.items():
         vmargs = ['-Djdk.libgraal.CrashAt=*',
                   '-Djdk.libgraal.Xmx128M',
-                  '-Djdk.libgraal.PrintGC=true',
-                  '-Djdk.libgraal.HeapDumpOnOutOfMemoryError=true',
-                  f'-Djdk.libgraal.HeapDumpPath={n}',
+                  '-Djdk.libgraal.internal.PrintGC=true',
+                  '-Djdk.libgraal.internal.HeapDumpOnOutOfMemoryError=true',
+                  f'-Djdk.libgraal.internal.HeapDumpPath={n}',
+                  '-Djdk.libgraal.SystemicCompilationFailureRate=0',
                   '-Djdk.libgraal.CrashAtThrowsOOME=true']
         cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + _get_CountUppercase_vmargs()
         mx.run(cmd, cwd=scratch_dir)
@@ -465,17 +466,6 @@ def _test_libgraal_ctw(extra_vm_arguments):
         ], extra_vm_arguments)
 
 def _test_libgraal_truffle(extra_vm_arguments):
-    def _unittest_config_participant(config):
-        vmArgs, mainClass, mainClassArgs = config
-        def is_truffle_fallback(arg):
-            fallback_args = [
-                "-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime",
-                "-Dgraalvm.ForcePolyglotInvalid=true"
-            ]
-            return arg in fallback_args
-        newVmArgs = [arg for arg in vmArgs if not is_truffle_fallback(arg)]
-        return (newVmArgs, mainClass, mainClassArgs)
-    mx_unittest.add_config_participant(_unittest_config_participant)
     excluded_tests = environ.get("TEST_LIBGRAAL_EXCLUDE")
     if excluded_tests:
         with NamedTemporaryFile(prefix='blacklist.', mode='w', delete=False) as fp:
@@ -489,6 +479,7 @@ def _test_libgraal_truffle(extra_vm_arguments):
         "-Dpolyglot.engine.CompileImmediately=true",
         "-Dpolyglot.engine.BackgroundCompilation=false",
         "-Dpolyglot.engine.CompilationFailureAction=Throw",
+        "-Djdk.graal.CompilationFailureAction=ExitVM",
         "-Dgraalvm.locatorDisabled=true",
         "truffle", "LibGraalCompilerTest"])
 
@@ -719,12 +710,14 @@ def gate_svm_truffle_tck_smoke_test(tasks):
                     mx.abort("Expected failure, log:\n" + result)
                 if not 'UnsafeCallNode.doUnsafeAccess' in result:
                     mx.abort("Missing UnsafeCallNode.doUnsafeAccess call in the log, log:\n" + result)
-                if not 'UnsafeCallNode.doUnsafeAccessBehindBoundary' in result:
-                    mx.abort("Missing UnsafeCallNode.doUnsafeAccessBehindBoundary call in the log, log:\n" + result)
-                if not 'PrivilegedCallNode.doPrivilegedCall' in result:
-                    mx.abort("Missing PrivilegedCallNode.doPrivilegedCall call in the log, log:\n" + result)
-                if not 'PrivilegedCallNode.doPrivilegedCallBehindBoundary' in result:
-                    mx.abort("Missing PrivilegedCallNode.doPrivilegedCallBehindBoundary call in the log, log:\n" + result)
+                if not 'UnsafeCallNode.doBehindBoundaryUnsafeAccess' in result:
+                    mx.abort("Missing UnsafeCallNode.doBehindBoundaryUnsafeAccess call in the log, log:\n" + result)
+                if not 'PrivilegedCallNode.execute' in result:
+                    mx.abort("Missing PrivilegedCallNode.execute call in the log, log:\n" + result)
+                if not 'PrivilegedCallNode.doBehindBoundaryPrivilegedCall' in result:
+                    mx.abort("Missing PrivilegedCallNode.doBehindBoundaryPrivilegedCall call in the log, log:\n" + result)
+                if not 'PrivilegedCallNode.doInterrupt' in result:
+                    mx.abort("Missing PrivilegedCallNode.doInterrupt call in the log, log:\n" + result)
 
 
 def gate_svm_truffle_tck_js(tasks):

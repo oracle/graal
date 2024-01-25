@@ -38,14 +38,6 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import jdk.graal.compiler.code.CompilationResult;
-import jdk.graal.compiler.core.common.LIRKind;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.core.common.type.CompressibleConstant;
-import jdk.graal.compiler.core.common.util.FrequencyEncoder;
-import jdk.graal.compiler.core.common.util.TypeConversion;
-import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
-import jdk.graal.compiler.nodes.FrameState;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
@@ -55,6 +47,7 @@ import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfoEncoder.Counters;
 import com.oracle.svm.core.code.CodeInfoEncoder.Encoders;
+import com.oracle.svm.core.code.FrameInfoDecoder.ConstantAccess;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -63,13 +56,20 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.sampler.CallStackFrameMethodData;
 import com.oracle.svm.core.sampler.CallStackFrameMethodInfo;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
+import jdk.graal.compiler.core.common.util.FrequencyEncoder;
+import jdk.graal.compiler.core.common.util.TypeConversion;
+import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
+import jdk.graal.compiler.nodes.FrameState;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.Register;
@@ -444,20 +444,26 @@ public class FrameInfoEncoder {
     private final List<FrameData> allDebugInfos;
     private final Encoders encoders;
     private final CompressedFrameInfoEncodingMetadata frameMetadata;
+    private final ConstantAccess constantAccess;
 
     private final CalleeSavedRegisters calleeSavedRegisters;
 
-    protected FrameInfoEncoder(Customization customization, Encoders encoders) {
+    protected FrameInfoEncoder(Customization customization, Encoders encoders, ConstantAccess constantAccess) {
         this.customization = customization;
         this.encoders = encoders;
         this.allDebugInfos = new ArrayList<>();
         this.frameMetadata = new CompressedFrameInfoEncodingMetadata();
+        this.constantAccess = constantAccess;
 
         if (CalleeSavedRegisters.supportedByPlatform()) {
             calleeSavedRegisters = CalleeSavedRegisters.singleton();
         } else {
             calleeSavedRegisters = null;
         }
+    }
+
+    public ConstantAccess getConstantAccess() {
+        return constantAccess;
     }
 
     protected FrameData addDebugInfo(ResolvedJavaMethod method, CompilationResult compilation, Infopoint infopoint, int totalFrameSize) {
@@ -564,7 +570,7 @@ public class FrameInfoEncoder {
         if (needLocalValues) {
             if (customization.storeDeoptTargetMethod()) {
                 frameInfo.deoptMethod = method;
-                encoders.objectConstants.addObject(SubstrateObjectConstant.forObject(method));
+                encoders.objectConstants.addObject(constantAccess.forObject(method, false));
             }
             frameInfo.deoptMethodOffset = method.getDeoptOffsetInImage();
 
@@ -714,7 +720,7 @@ public class FrameInfoEncoder {
         ArrayList<ValueInfo> valueList = new ArrayList<>(virtualObject.getValues().length + 4);
         SharedType type = (SharedType) virtualObject.getType();
         /* The first element is the hub of the virtual object. */
-        valueList.add(makeValueInfo(data, JavaKind.Object, SubstrateObjectConstant.forObject(type.getHub()), isDeoptEntry));
+        valueList.add(makeValueInfo(data, JavaKind.Object, constantAccess.forObject(type.getHub(), false), isDeoptEntry));
 
         ObjectLayout objectLayout = ConfigurationValues.getObjectLayout();
         assert type.isArray() == LayoutEncoding.isArray(type.getHub().getLayoutEncoding()) : "deoptimization code uses layout encoding to determine if type is an array";
@@ -923,7 +929,7 @@ public class FrameInfoEncoder {
 
             int deoptMethodIndex;
             if (cur.deoptMethod != null) {
-                deoptMethodIndex = -1 - encoders.objectConstants.getIndex(SubstrateObjectConstant.forObject(cur.deoptMethod));
+                deoptMethodIndex = -1 - encoders.objectConstants.getIndex(constantAccess.forObject(cur.deoptMethod, false));
                 assert deoptMethodIndex < 0 : cur;
                 assert cur.getDeoptMethodOffset() == cur.deoptMethod.getDeoptOffsetInImage() : cur;
             } else {
@@ -1046,7 +1052,7 @@ public class FrameInfoEncoder {
     void verifyEncoding(CodeInfo info) {
         for (FrameData expectedData : allDebugInfos) {
             ReusableTypeReader reader = new ReusableTypeReader(CodeInfoAccess.getFrameInfoEncodings(info), expectedData.encodedFrameInfoIndex);
-            FrameInfoQueryResult actualFrame = FrameInfoDecoder.decodeFrameInfo(expectedData.frame.isDeoptEntry, reader, info);
+            FrameInfoQueryResult actualFrame = FrameInfoDecoder.decodeFrameInfo(expectedData.frame.isDeoptEntry, reader, info, constantAccess);
             FrameInfoVerifier.verifyFrames(expectedData, expectedData.frame, actualFrame);
         }
     }

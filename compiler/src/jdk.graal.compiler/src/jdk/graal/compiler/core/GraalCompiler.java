@@ -50,7 +50,6 @@ import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.tiers.TargetProvider;
 import jdk.graal.compiler.phases.util.Providers;
-
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -285,6 +284,7 @@ public class GraalCompiler {
                 try (CompilerPhaseScope cps = debug.enterCompilerPhase("Parsing")) {
                     graphBuilderSuite.apply(graph, highTierContext);
                     new DeadCodeEliminationPhase(DeadCodeEliminationPhase.Optionality.Optional).apply(graph);
+                    assert graph.verifySourcePositions(true);
                     debug.dump(DebugContext.BASIC_LEVEL, graph, "After parsing");
                 }
             } else {

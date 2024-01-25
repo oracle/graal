@@ -619,6 +619,28 @@ public final class SpecializationData extends TemplateMethod {
         return sinks;
     }
 
+    public boolean needsState(ProcessorContext context) {
+        if (needsRewrite(context)) {
+            /*
+             * If there is a rewrite we need at least one state bit. This covers most cases for
+             * state.
+             */
+            return true;
+        }
+        if (!getCaches().isEmpty()) {
+            for (CacheExpression cache : getCaches()) {
+                if (!cache.isAlwaysInitialized()) { // @Bind
+                    return true;
+                }
+                /*
+                 * This is reachable typically for inlined cached values. They do not require a
+                 * rewrite, but need state.
+                 */
+            }
+        }
+        return false;
+    }
+
     public boolean needsRewrite(ProcessorContext context) {
         if (!getExceptions().isEmpty()) {
             return true;
@@ -629,7 +651,6 @@ public final class SpecializationData extends TemplateMethod {
         if (!getAssumptionExpressions().isEmpty()) {
             return true;
         }
-
         if (!getCaches().isEmpty()) {
             for (CacheExpression cache : getCaches()) {
                 if (cache.isEagerInitialize()) {
@@ -658,7 +679,6 @@ public final class SpecializationData extends TemplateMethod {
 
             NodeChildData child = parameter.getSpecification().getExecution().getChild();
             if (child != null) {
-
                 ExecutableTypeData type = child.findExecutableType(parameter.getType());
                 if (type == null) {
                     type = child.findAnyGenericExecutableType(context);
@@ -670,6 +690,7 @@ public final class SpecializationData extends TemplateMethod {
                     return true;
                 }
             }
+
             signatureIndex++;
         }
         return false;

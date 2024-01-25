@@ -1393,10 +1393,14 @@ public final class DebuggerSession implements Closeable {
 
     private List<DebuggerNode> collectDebuggerNodes(Node iNode, SuspendAnchor suspendAnchor) {
         List<DebuggerNode> nodes = new ArrayList<>();
-        for (EventBinding<?> binding : allBindings) {
-            DebuggerNode node = (DebuggerNode) debugger.getInstrumenter().lookupExecutionEventNode(iNode, binding);
-            if (node != null && node.isActiveAt(suspendAnchor)) {
-                nodes.add(node);
+        synchronized (allBindings) {
+            // allBindings is a synchronized set, but we still need to synchronize
+            // iteration against manipulations, to avoid ConcurrentModificationExceptions
+            for (EventBinding<?> binding : allBindings) {
+                DebuggerNode node = (DebuggerNode) debugger.getInstrumenter().lookupExecutionEventNode(iNode, binding);
+                if (node != null && node.isActiveAt(suspendAnchor)) {
+                    nodes.add(node);
+                }
             }
         }
         return nodes;

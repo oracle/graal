@@ -24,21 +24,21 @@
  */
 package com.oracle.svm.hosted.heap;
 
+import java.util.Map;
+
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
-import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.ImageHeap;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
-import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 
 public class SVMImageHeapVerifier extends HeapSnapshotVerifier {
@@ -47,8 +47,8 @@ public class SVMImageHeapVerifier extends HeapSnapshotVerifier {
     }
 
     @Override
-    public boolean checkHeapSnapshot(UniverseMetaAccess metaAccess, CompletionExecutor executor, String phase, boolean forAnalysis) {
-        return super.checkHeapSnapshot(metaAccess, executor, phase, forAnalysis) || imageStateModified();
+    public boolean checkHeapSnapshot(UniverseMetaAccess metaAccess, CompletionExecutor executor, String phase, boolean forAnalysis, Map<Constant, Object> embeddedConstants) {
+        return super.checkHeapSnapshot(metaAccess, executor, phase, forAnalysis, embeddedConstants) || imageStateModified();
     }
 
     /**
@@ -57,14 +57,14 @@ public class SVMImageHeapVerifier extends HeapSnapshotVerifier {
      * - an image heap map, e.g., via an object replacer like
      * com.oracle.svm.enterprise.core.stringformat.StringFormatFeature.collectZeroDigits(). Signal
      * this by returning true to make sure that
-     * com.oracle.graal.pointsto.heap.ImageHeapMapFeature.duringAnalysis() is run to properly patch
-     * all ImageHeapMaps.
+     * com.oracle.graal.pointsto.heap.ImageHeapCollectionFeature.duringAnalysis() is run to properly
+     * patch all ImageHeapMaps.
      * 
      * - runtime reflection registration.
      * 
      */
     private static boolean imageStateModified() {
-        return ImageSingletons.lookup(ImageHeapMapFeature.class).imageHeapMapNeedsUpdate();
+        return ImageSingletons.lookup(ImageHeapCollectionFeature.class).needsUpdate();
     }
 
     @Override
@@ -77,30 +77,6 @@ public class SVMImageHeapVerifier extends HeapSnapshotVerifier {
     private void verifyHub(SVMHost svmHost, ObjectScanner objectScanner, AnalysisType type) {
         JavaConstant hubConstant = bb.getSnippetReflectionProvider().forObject(svmHost.dynamicHub(type));
         objectScanner.scanConstant(hubConstant, ObjectScanner.OtherReason.HUB);
-    }
-
-    @Override
-    protected ObjectScanner installObjectScanner(UniverseMetaAccess metaAccess, CompletionExecutor executor) {
-        return new VerifierObjectScanner(bb, metaAccess, executor, scannedObjects, new ScanningObserver());
-    }
-
-    private static final class VerifierObjectScanner extends ObjectScanner {
-        private final UniverseMetaAccess metaAccess;
-
-        VerifierObjectScanner(BigBang bb, UniverseMetaAccess metaAccess, CompletionExecutor executor, ReusableSet scannedObjects, ObjectScanningObserver scanningObserver) {
-            super(bb, executor, scannedObjects, scanningObserver);
-            this.metaAccess = metaAccess;
-        }
-
-        @Override
-        protected JavaConstant readFieldValue(AnalysisField field, JavaConstant receiver) {
-            AnalysisConstantReflectionProvider constantReflectionProvider = (AnalysisConstantReflectionProvider) bb.getConstantReflectionProvider();
-            /*
-             * The verifier compares the hosted values with the ones from the shadow heap, so the
-             * constant reflection must not return shadow heap values.
-             */
-            return constantReflectionProvider.readValue(metaAccess, field, receiver, true, false);
-        }
     }
 
     private SVMHost svmHost() {

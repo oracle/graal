@@ -286,7 +286,15 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean isByteSequence(Object origin);
 
+        public abstract Class<?> getByteSequenceClass();
+
         public abstract ByteSequence asByteSequence(Object origin);
+
+        public abstract Object toByteSequence(Object origin);
+
+        public abstract int byteSequenceLength(Object origin);
+
+        public abstract byte byteSequenceByteAt(Object origin, int index);
 
         public abstract boolean isProxyArray(Object proxy);
 
@@ -576,6 +584,10 @@ public abstract class AbstractPolyglotImpl {
 
     public boolean copyResources(Path targetFolder, String... components) throws IOException {
         return getNext().copyResources(targetFolder, components);
+    }
+
+    public String getTruffleVersion() {
+        return null;
     }
 
     /**
@@ -953,6 +965,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract <T> List<T> toList(Object internalContext, Object guestValue, boolean implementFunction, Class<T> elementClass, Type elementType);
 
+        public abstract Object toByteSequence(Object internalContext, Object guestValue);
+
         public abstract <K, V> Map<K, V> toMap(Object internalContext, Object foreignObject, boolean implementsFunction, Class<K> keyClass, Type keyType, Class<V> valueClass, Type valueType);
 
         public abstract <K, V> Map.Entry<K, V> toMapEntry(Object internalContext, Object foreignObject, boolean implementsFunction,
@@ -1111,6 +1125,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract long getBufferSize(Object context, Object receiver);
 
         public abstract byte readBufferByte(Object context, Object receiver, long byteOffset);
+
+        public abstract void readBuffer(Object context, Object receiver, long byteOffset, byte[] destination, int destinationOffset, int length);
 
         public abstract void writeBufferByte(Object context, Object receiver, long byteOffset, byte value);
 
@@ -1399,6 +1415,10 @@ public abstract class AbstractPolyglotImpl {
 
     public FileSystem newNIOFileSystem(java.nio.file.FileSystem fileSystem) {
         return getNext().newNIOFileSystem(fileSystem);
+    }
+
+    public ByteSequence asByteSequence(Object object) {
+        return getNext().asByteSequence(object);
     }
 
     public ProcessHandler newDefaultProcessHandler() {

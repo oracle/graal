@@ -61,6 +61,8 @@ public class ValidationErrors {
                 return "f32";
             case WasmType.F64_TYPE:
                 return "f64";
+            case WasmType.V128_TYPE:
+                return "v128";
             case WasmType.FUNCREF_TYPE:
                 return "funcref";
             case WasmType.EXTERNREF_TYPE:

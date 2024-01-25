@@ -197,11 +197,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         assertTrue(condition() != null, "missing condition");
         assertTrue(trueSuccessor() != null, "missing trueSuccessor");
         assertTrue(falseSuccessor() != null, "missing falseSuccessor");
-        return super.verify();
+        return super.verifyNode();
     }
 
     public void eliminateNegation() {

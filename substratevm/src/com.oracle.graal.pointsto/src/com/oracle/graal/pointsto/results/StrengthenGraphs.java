@@ -45,14 +45,18 @@ import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.Universe;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.graal.pointsto.typestate.PrimitiveConstantTypeState;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.svm.util.ImageBuildStatistics;
 
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
+import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -89,6 +93,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
+import jdk.graal.compiler.nodes.extended.FieldOffsetProvider;
 import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
 import jdk.graal.compiler.nodes.java.ClassIsAssignableFromNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
@@ -111,6 +116,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.TriState;
@@ -399,7 +405,7 @@ public abstract class StrengthenGraphs {
                          * anchor the PiNode at the BeginNode of the preceding block, because at
                          * that point the condition is not proven yet.
                          */
-                        ValueAnchorNode anchor = graph.add(new ValueAnchorNode(null));
+                        ValueAnchorNode anchor = graph.add(new ValueAnchorNode());
                         graph.addAfterFixed(survivingBegin, anchor);
                         survivingBegin.replaceAtUsages(anchor, InputType.Guard, InputType.Anchor);
                     }
@@ -447,15 +453,20 @@ public abstract class StrengthenGraphs {
 
             } else if (n instanceof FrameState) {
                 /*
-                 * We do not want a type to be reachable only to be used for debugging purposes in a
-                 * FrameState. We could just null out the frame slot, but to leave as much
-                 * information as possible we replace the java.lang.Class with the type name.
+                 * We do not want a constant to be reachable only to be used for debugging purposes
+                 * in a FrameState.
                  */
                 FrameState node = (FrameState) n;
                 for (int i = 0; i < node.values().size(); i++) {
-                    AnalysisType nonReachableType = asConstantNonReachableType(node.values().get(i), tool);
-                    if (nonReachableType != null) {
-                        node.values().set(i, ConstantNode.forConstant(tool.getConstantReflection().forString(getTypeName(nonReachableType)), tool.getMetaAccess(), graph));
+                    if (node.values().get(i) instanceof ConstantNode constantNode && constantNode.getValue() instanceof ImageHeapConstant imageHeapConstant && !imageHeapConstant.isReachable()) {
+                        node.values().set(i, ConstantNode.defaultForKind(JavaKind.Object, graph));
+                    }
+                    if (node.values().get(i) instanceof FieldOffsetProvider fieldOffsetProvider && !((AnalysisField) fieldOffsetProvider.getField()).isUnsafeAccessed()) {
+                        /*
+                         * We use a unique marker constant as the replacement value, so that a
+                         * search in the code base for the value leads us to here.
+                         */
+                        node.values().set(i, ConstantNode.forIntegerKind(fieldOffsetProvider.asNode().getStackKind(), 0xDEA51106, graph));
                     }
                 }
 
@@ -723,13 +734,13 @@ public abstract class StrengthenGraphs {
                 return null;
             }
 
-            ValueAnchorNode anchor = graph.add(new ValueAnchorNode(null));
+            ValueAnchorNode anchor = graph.add(new ValueAnchorNode());
             graph.addAfterFixed(anchorPoint, anchor);
             return graph.unique(new PiNode(input, piStamp, anchor));
         }
 
         private Object strengthenStampFromTypeFlow(ValueNode node, TypeFlow<?> nodeFlow, FixedWithNextNode anchorPoint, SimplifierTool tool) {
-            if (nodeFlow == null || node.getStackKind() != JavaKind.Object) {
+            if (nodeFlow == null || !((PointsToAnalysis) bb).isSupportedJavaKind(node.getStackKind())) {
                 return null;
             }
             if (methodFlow.isSaturated((PointsToAnalysis) bb, nodeFlow)) {
@@ -757,7 +768,12 @@ public abstract class StrengthenGraphs {
             }
 
             node.inferStamp();
-            ObjectStamp oldStamp = (ObjectStamp) node.stamp(NodeView.DEFAULT);
+            Stamp s = node.stamp(NodeView.DEFAULT);
+            if (s.isIntegerStamp() || nodeTypeState.isPrimitive()) {
+                return getIntegerStamp(node, s, nodeTypeState);
+            }
+
+            ObjectStamp oldStamp = (ObjectStamp) s;
             AnalysisType oldType = (AnalysisType) oldStamp.type();
             boolean nonNull = oldStamp.nonNull() || !nodeTypeState.canBeNull();
 
@@ -845,6 +861,27 @@ public abstract class StrengthenGraphs {
                 return oldStamp.asNonNull();
             }
             /* Nothing to strengthen. */
+            return null;
+        }
+
+        private IntegerStamp getIntegerStamp(ValueNode node, Stamp stamp, TypeState nodeTypeState) {
+            assert bb.trackPrimitiveValues() : nodeTypeState + "," + node + " in " + node.graph();
+            assert nodeTypeState != null && (nodeTypeState.isEmpty() || nodeTypeState.isPrimitive()) : nodeTypeState + "," + node + " in " + node.graph();
+            if (nodeTypeState instanceof PrimitiveConstantTypeState constantTypeState) {
+                long constantValue = constantTypeState.getValue();
+                if (node instanceof ConstantNode constant) {
+                    /*
+                     * Sanity check, verify that what was proven by the analysis is consistent with
+                     * the constant node in the graph.
+                     */
+                    Constant value = constant.getValue();
+                    assert value instanceof PrimitiveConstant : "Node " + value + " should be a primitive constant when extracting an integer stamp, method " + node.graph().method();
+                    assert ((PrimitiveConstant) value).asLong() == constantValue : "The actual value of node: " + value + " is different than the value " + constantValue +
+                                    " computed by points-to analysis, method in " + node.graph().method();
+                } else {
+                    return IntegerStamp.createConstant(((IntegerStamp) stamp).getBits(), constantValue);
+                }
+            }
             return null;
         }
 

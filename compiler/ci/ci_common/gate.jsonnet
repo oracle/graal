@@ -5,6 +5,7 @@
   local s = self,
   local t(limit) = {timelimit: limit},
   local utils = import '../../../ci/ci_common/common-utils.libsonnet',
+  local galahad = import '../../../ci/ci_common/galahad-common.libsonnet',
 
   local jmh_benchmark_test = {
     run+: [
@@ -56,7 +57,7 @@
       JVM_CONFIG: jvm_config + jvm_config_suffix
     } else {},
     logs+: [
-        "*/gcutils_heapdump_*.hprof",
+        "*/gcutils_heapdump_*.hprof.gz",
     ],
     targets: ["gate"],
     python_version: "3"
@@ -159,7 +160,7 @@
   bootstrap_full_zgc:: s.base("build,bootstrapfullverify", no_warning_as_error=true, extra_vm_args="-XX:+UseZGC"),
   bootstrap_economy:: s.base("build,bootstrapeconomy", no_warning_as_error=true, extra_vm_args="-Djdk.graal.CompilerConfiguration=economy"),
 
-  style:: c.deps.eclipse + c.deps.jdt + s.base("style,fullbuild,javadoc"),
+  style:: c.deps.eclipse + c.deps.jdt + s.base("style,fullbuild,javadoc") + galahad.include,
 
   avx3:: {
     capabilities+: ["avx512"],
@@ -207,14 +208,12 @@
   local gates = {
     "gate-compiler-test-labsjdk-latest-linux-amd64": t("1:00:00") + c.mach5_target,
     "gate-compiler-test-labsjdk-latest-linux-aarch64": t("1:50:00") + s.avoid_xgene3,
-    # JDK latest only works on MacOS Ventura (GR-49652)
-    # "gate-compiler-test-labsjdk-latest-darwin-amd64": t("1:00:00") + c.mach5_target + s.ram16gb,
+    "gate-compiler-test-labsjdk-latest-darwin-amd64": t("1:00:00") + c.mach5_target + s.ram16gb,
     "gate-compiler-test-labsjdk-latest-darwin-aarch64": t("1:00:00"),
     "gate-compiler-test-labsjdk-latest-windows-amd64": t("1:30:00"),
     "gate-compiler-test_zgc-labsjdk-latest-linux-amd64": t("1:00:00") + c.mach5_target,
     "gate-compiler-test_zgc-labsjdk-latest-linux-aarch64": t("1:50:00") + s.avoid_xgene3,
-    # JDK latest only works on MacOS Ventura (GR-49652)
-    # "gate-compiler-test_zgc-labsjdk-latest-darwin-amd64": t("1:00:00") + c.mach5_target + s.ram16gb,
+    "gate-compiler-test_zgc-labsjdk-latest-darwin-amd64": t("1:00:00") + c.mach5_target + s.ram16gb,
     "gate-compiler-test_zgc-labsjdk-latest-darwin-aarch64": t("1:00:00"),
 
     # Style jobs need to stay on a JDK compatible with all the style
@@ -235,8 +234,7 @@
     "gate-compiler-truffle_xcomp-labsjdk-latest-linux-amd64": t("1:30:00"),
     "gate-compiler-truffle_xcomp_zgc-labsjdk-latest-linux-amd64": t("1:30:00"),
 
-    # JDK latest only works on MacOS Ventura (GR-49652)
-    # "gate-compiler-bootstrap_lite-labsjdk-latest-darwin-amd64": t("1:00:00") + c.mach5_target,
+    "gate-compiler-bootstrap_lite-labsjdk-latest-darwin-amd64": t("1:00:00") + c.mach5_target,
 
     "gate-compiler-bootstrap_full-labsjdk-latest-linux-amd64": s.many_cores + c.mach5_target,
     "gate-compiler-bootstrap_full_zgc-labsjdk-latest-linux-amd64": s.many_cores + c.mach5_target
@@ -344,6 +342,7 @@
       (if is_weekly then s.weekly else {}) +
       (if is_monthly then s.monthly else {}) +
       (if is_windows then c.devkits["windows-jdk%s" % jdk] else {}) +
+      (if std.startsWith(jdk, "Latest") then galahad.include else {} ) +
       extra,
   },
 

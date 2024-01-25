@@ -37,7 +37,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import jdk.graal.compiler.debug.Assertions;
-
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
@@ -114,7 +113,6 @@ public class GraalHotSpotVMConfigAccess {
     }
 
     public static final int JDK = Runtime.version().feature();
-    public static final int JDK_BUILD = Runtime.version().build().orElse(0);
     public static final JVMCIVersionCheck.Version JVMCI_VERSION;
     public static final boolean JVMCI;
     public static final boolean JDK_PRERELEASE;

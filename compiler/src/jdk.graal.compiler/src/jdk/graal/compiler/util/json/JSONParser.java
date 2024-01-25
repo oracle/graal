@@ -57,6 +57,13 @@ public class JSONParser {
     }
 
     /**
+     * @return retrieves the length of the source (e.g. file) received by the JSON parser.
+     */
+    public int getSourceLength() {
+        return length;
+    }
+
+    /**
      * Public parse method. Parse a string into a JSON object.
      *
      * @return the parsed JSON Object

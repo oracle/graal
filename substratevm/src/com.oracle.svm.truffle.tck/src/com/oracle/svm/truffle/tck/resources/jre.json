@@ -222,6 +222,28 @@
     ]
   },
   {
+    "name": "java.lang.runtime.ObjectMethods",
+    "methods":[
+      {
+        "name": "bootstrap",
+        "justification": "Bootstrap method for record's toString, hashCode and equals methods."
+      }
+    ]
+  },
+  {
+    "name": "java.lang.runtime.SwitchBootstraps",
+    "methods":[
+      {
+        "name": "typeSwitch",
+        "justification": "Bootstrap method for switch on a reference type."
+      },
+      {
+        "name": "enumSwitch",
+        "justification": "Bootstrap method for switch on enum constants."
+      }
+    ]
+  },
+  {
     "name": "java.math.BigInteger",
     "methods": [
       {

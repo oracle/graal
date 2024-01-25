@@ -30,7 +30,6 @@ import org.graalvm.collections.Equivalence;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.CompilationIdentifier.Verbosity;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
-import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRInstruction;
@@ -161,13 +160,16 @@ public class LIRGenerationResult {
     }
 
     /**
-     * Given a block, return the first position to insert a LIR instruction. No instruction should
-     * be inserted before this position.
+     * Return the first position to insert a LIR instruction. No instruction should be inserted
+     * before this position.
      *
-     * @param block the basic block
      * @return index of the first insert position
      */
-    public int getFirstInsertPosition(BasicBlock<?> block) {
+    public final int getFirstInsertPosition() {
         return 1;
+    }
+
+    public boolean emitIndirectTargetBranchMarkers() {
+        return false;
     }
 }

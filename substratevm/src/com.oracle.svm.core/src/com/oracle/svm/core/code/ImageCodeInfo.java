@@ -26,8 +26,6 @@ package com.oracle.svm.core.code;
 
 import java.util.List;
 
-import jdk.graal.compiler.word.Word;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -35,7 +33,6 @@ import org.graalvm.word.ComparableWord;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CIsolateData;
 import com.oracle.svm.core.c.CIsolateDataFactory;
@@ -45,6 +42,8 @@ import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.word.Word;
 
 public class ImageCodeInfo {
     public static final String CODE_INFO_NAME = "image code";
@@ -120,10 +119,6 @@ public class ImageCodeInfo {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public NonmovableArray<Byte> getStackReferenceMapEncoding() {
         return NonmovableArrays.fromImageHeap(referenceMapEncoding);
-    }
-
-    public boolean walkImageCode(MemoryWalker.Visitor visitor) {
-        return visitor.visitCode(CodeInfoTable.getImageCodeInfo(), ImageSingletons.lookup(CodeInfoMemoryWalker.class));
     }
 
     public HostedImageCodeInfo getHostedImageCodeInfo() {

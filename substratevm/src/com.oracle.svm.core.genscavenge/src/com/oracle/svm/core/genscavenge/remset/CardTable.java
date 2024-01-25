@@ -26,9 +26,6 @@ package com.oracle.svm.core.genscavenge.remset;
 
 import java.lang.ref.Reference;
 
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -47,6 +44,10 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UnsignedUtils;
+
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.word.Word;
 
 /**
  * A card table is a remembered set that summarizes pointer stores into a region. A card is "dirty"
@@ -173,23 +174,26 @@ final class CardTable {
     }
 
     private static boolean verifyReference(Object parentObject, Pointer cardTableStart, Pointer objectsStart, Pointer reference, Pointer referencedObject) {
-        if (referencedObject.isNonNull() && !HeapImpl.getHeapImpl().isInImageHeap(referencedObject)) {
-            Object obj = referencedObject.toObject();
-            HeapChunk.Header<?> objChunk = HeapChunk.getEnclosingHeapChunk(obj);
-            // Fail if we find a reference from the image heap to the runtime heap, or from the
-            // old generation (which is the only one with remembered sets) to the young generation.
-            boolean fromImageHeap = HeapImpl.usesImageHeapCardMarking() && HeapImpl.getHeapImpl().isInImageHeap(parentObject);
-            if (fromImageHeap || HeapChunk.getSpace(objChunk).isYoungSpace()) {
-                UnsignedWord cardTableIndex = memoryOffsetToIndex(Word.objectToUntrackedPointer(parentObject).subtract(objectsStart));
-                Pointer cardTableAddress = cardTableStart.add(cardTableIndex);
-                Log.log().string("Object ").zhex(Word.objectToUntrackedPointer(parentObject)).string(" (").string(parentObject.getClass().getName()).character(')')
-                                .string(fromImageHeap ? ", which is in the image heap, " : " ")
-                                .string("has an object reference at ")
-                                .zhex(reference).string(" that points to ").zhex(referencedObject).string(" (").string(obj.getClass().getName()).string("), ")
-                                .string("which is in the ").string(fromImageHeap ? "runtime heap" : "young generation").string(". ")
-                                .string("However, the card table at ").zhex(cardTableAddress).string(" is clean.").newline();
-                return false;
-            }
+        if (referencedObject.isNull() ||
+                        HeapImpl.getHeapImpl().isInImageHeap(referencedObject) ||
+                        HeapImpl.getHeapImpl().isInImageHeap(parentObject) && !HeapImpl.usesImageHeapCardMarking()) {
+            return true;
+        }
+
+        Object obj = referencedObject.toObject();
+        HeapChunk.Header<?> objChunk = HeapChunk.getEnclosingHeapChunk(obj);
+        /* Fail if we find a reference to the young generation. */
+        boolean fromImageHeap = HeapImpl.getHeapImpl().isInImageHeap(parentObject);
+        if (fromImageHeap || HeapChunk.getSpace(objChunk).isYoungSpace()) {
+            UnsignedWord cardTableIndex = memoryOffsetToIndex(Word.objectToUntrackedPointer(parentObject).subtract(objectsStart));
+            Pointer cardTableAddress = cardTableStart.add(cardTableIndex);
+            Log.log().string("Object ").zhex(Word.objectToUntrackedPointer(parentObject)).string(" (").string(parentObject.getClass().getName()).character(')')
+                            .string(fromImageHeap ? ", which is in the image heap, " : " ")
+                            .string("has an object reference at ")
+                            .zhex(reference).string(" that points to ").zhex(referencedObject).string(" (").string(obj.getClass().getName()).string("), ")
+                            .string("which is in the ").string(fromImageHeap ? "runtime heap" : "young generation").string(". ")
+                            .string("However, the card table at ").zhex(cardTableAddress).string(" is clean.").newline();
+            return false;
         }
         return true;
     }

@@ -138,7 +138,6 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
-import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.OS;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -155,7 +154,6 @@ import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.threads.Transition;
 import com.oracle.truffle.espresso.vm.npe.ExtendedNPEMessage;
 import com.oracle.truffle.espresso.vm.structs.JavaVMAttachArgs;
-import com.oracle.truffle.espresso.vm.structs.JdkVersionInfo;
 import com.oracle.truffle.espresso.vm.structs.Structs;
 import com.oracle.truffle.espresso.vm.structs.StructsAccess;
 
@@ -249,36 +247,9 @@ public final class VM extends NativeEnv {
         return getNativeAccess().loadLibrary(bootLibraryPath, "java", true);
     }
 
-    private JavaVersion findJavaVersion(TruffleObject libJava) {
-        // void JDK_GetVersionInfo0(jdk_version_info* info, size_t info_size);
-        TruffleObject jdkGetVersionInfo = getNativeAccess().lookupAndBindSymbol(libJava, "JDK_GetVersionInfo0", NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.LONG));
-        if (jdkGetVersionInfo == null) {
-            return null;
-        }
-        JdkVersionInfo.JdkVersionInfoWrapper wrapper = getStructs().jdkVersionInfo.allocate(getNativeAccess(), jni());
-        try {
-            getUncached().execute(jdkGetVersionInfo, wrapper.pointer(), getStructs().jdkVersionInfo.structSize());
-        } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
-            throw EspressoError.shouldNotReachHere(e);
-        }
-        int versionInfo = wrapper.jdkVersion();
-        wrapper.free(getNativeAccess());
-
-        int major = (versionInfo & 0xFF000000) >> 24;
-        if (major == 1) {
-            // Version 1.X
-            int minor = (versionInfo & 0x00FF0000) >> 16;
-            return JavaVersion.forVersion(minor);
-        } else {
-            // Version X.Y
-            return JavaVersion.forVersion(major);
-        }
-    }
-
-    public JavaVersion loadJavaLibrary(List<Path> searchPaths) {
+    public void loadJavaLibrary(List<Path> searchPaths) {
         assert javaLibrary == null : "java library already initialized";
         this.javaLibrary = loadJavaLibraryImpl(searchPaths);
-        return findJavaVersion(this.javaLibrary);
     }
 
     public void initializeJavaLibrary() {

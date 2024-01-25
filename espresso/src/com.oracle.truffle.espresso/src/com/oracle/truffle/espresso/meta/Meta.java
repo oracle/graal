@@ -857,6 +857,7 @@ public final class Meta extends ContextAccessImpl {
         java_util_List_set = java_util_List.requireDeclaredMethod(Name.set, Signature.Object_int_Object);
         java_util_List_size = java_util_List.requireDeclaredMethod(Name.size, Signature._int);
         java_util_List_add = java_util_List.requireDeclaredMethod(Name.add, Signature._boolean_Object);
+        java_util_List_remove = java_util_List.requireDeclaredMethod(Name.remove, Signature.Object_int);
         assert java_util_List.isInterface();
 
         java_util_Set = knownKlass(Type.java_util_Set);
@@ -881,6 +882,7 @@ public final class Meta extends ContextAccessImpl {
 
         java_math_BigInteger = knownKlass(Type.java_math_BigInteger);
         java_math_BigInteger_init = java_math_BigInteger.requireDeclaredMethod(Name._init_, Signature._void_byte_array);
+        java_math_BigInteger_toByteArray = java_math_BigInteger.requireDeclaredMethod(Name.toByteArray, Signature._byte_array);
 
         java_math_BigDecimal = knownKlass(Type.java_math_BigDecimal);
         java_math_BigDecimal_init = java_math_BigDecimal.requireDeclaredMethod(Name._init_, Signature._void_BigInteger_int_MathContext);
@@ -1561,6 +1563,7 @@ public final class Meta extends ContextAccessImpl {
     public final Method java_util_List_set;
     public final Method java_util_List_size;
     public final Method java_util_List_add;
+    public final Method java_util_List_remove;
 
     public final ObjectKlass java_util_Set;
     public final Method java_util_Set_add;
@@ -1581,6 +1584,7 @@ public final class Meta extends ContextAccessImpl {
 
     public final ObjectKlass java_math_BigInteger;
     public final Method java_math_BigInteger_init;
+    public final Method java_math_BigInteger_toByteArray;
 
     public final ObjectKlass java_math_BigDecimal;
     public final Method java_math_BigDecimal_init;
@@ -1676,6 +1680,8 @@ public final class Meta extends ContextAccessImpl {
         public final ObjectKlass EspressoForeignMap;
         public final ObjectKlass EspressoForeignSet;
 
+        public final ObjectKlass EspressoForeignNumber;
+
         private PolyglotSupport() {
             boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
             EspressoError.guarantee(polyglotSupport, "--java.Polyglot must be enabled");
@@ -1743,6 +1749,8 @@ public final class Meta extends ContextAccessImpl {
             EspressoForeignIterator = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignIterator);
             EspressoForeignMap = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignMap);
             EspressoForeignSet = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignSet);
+
+            EspressoForeignNumber = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_impl_EspressoForeignNumber);
         }
     }
 

@@ -66,7 +66,6 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
     public void generateTransitions(PureNFAState state) {
         this.curState = state;
         Term root = state.getAstNode(ast);
-        setCanTraverseCaret(state.isAnchoredInitialState() || state.canMatchZeroWidth());
         transitionBuffer.clear();
         run(root);
         curState.setSuccessors(transitionBuffer.toArray(new PureNFATransition[transitionBuffer.length()]));
@@ -82,14 +81,11 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
 
         PureNFAState targetState;
         if (target instanceof MatchFound) {
-            targetState = dollarsOnPath() ? nfaGen.getAnchoredFinalState() : nfaGen.getUnAnchoredFinalState();
+            targetState = (isReverse() && caretsOnPath() || !isReverse() && dollarsOnPath()) ? nfaGen.getAnchoredFinalState() : nfaGen.getUnAnchoredFinalState();
         } else {
             targetState = nfaGen.getOrCreateState((Term) target);
         }
-        targetState.incPredecessors();
-        transitionBuffer.add(new PureNFATransition(nfaGen.getTransitionIdCounter().inc(), curState, targetState, getGroupBoundaries(),
-                        curState.canMatchZeroWidth() || target.isGroup() ? caretsOnPath() : false,
-                        target.isCharacterClass() ? false : dollarsOnPath(), getQuantifierGuardsOnPath()));
+        transitionBuffer.add(new PureNFATransition(nfaGen.getTransitionIdCounter().inc(), curState, targetState, getGroupBoundaries(), caretsOnPath(), dollarsOnPath(), getQuantifierGuardsOnPath()));
     }
 
     @Override
@@ -101,15 +97,29 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
     }
 
     private boolean pruneLookarounds(RegexASTNode target) {
-        if (curState.isLookAhead(ast) && target.isCharacterClass()) {
-            LookAheadAssertion la = curState.getAstNode(ast).asLookAheadAssertion();
-            if (!la.isNegated() && la.startsWithCharClass()) {
-                return !la.getGroup().getFirstAlternative().getFirstTerm().asCharacterClass().getCharSet().intersects(target.asCharacterClass().getCharSet());
+        if (isReverse()) {
+            if (curState.isLookBehind(ast) && target.isCharacterClass()) {
+                LookBehindAssertion lb = curState.getAstNode(ast).asLookBehindAssertion();
+                if (!lb.isNegated() && lb.endsWithCharClass()) {
+                    return !lb.getGroup().getFirstAlternative().getLastTerm().asCharacterClass().getCharSet().intersects(target.asCharacterClass().getCharSet());
+                }
+            } else if (curState.isCharacterClass() && target instanceof LookAheadAssertion) {
+                LookAheadAssertion la = (LookAheadAssertion) target;
+                if (!la.isNegated() && la.startsWithCharClass()) {
+                    return !la.getGroup().getFirstAlternative().getFirstTerm().asCharacterClass().getCharSet().intersects(curState.getCharSet());
+                }
             }
-        } else if (curState.isCharacterClass() && target instanceof LookBehindAssertion) {
-            LookBehindAssertion lb = (LookBehindAssertion) target;
-            if (!lb.isNegated() && lb.endsWithCharClass()) {
-                return !lb.getGroup().getFirstAlternative().getLastTerm().asCharacterClass().getCharSet().intersects(curState.getCharSet());
+        } else {
+            if (curState.isLookAhead(ast) && target.isCharacterClass()) {
+                LookAheadAssertion la = curState.getAstNode(ast).asLookAheadAssertion();
+                if (!la.isNegated() && la.startsWithCharClass()) {
+                    return !la.getGroup().getFirstAlternative().getFirstTerm().asCharacterClass().getCharSet().intersects(target.asCharacterClass().getCharSet());
+                }
+            } else if (curState.isCharacterClass() && target instanceof LookBehindAssertion) {
+                LookBehindAssertion lb = (LookBehindAssertion) target;
+                if (!lb.isNegated() && lb.endsWithCharClass()) {
+                    return !lb.getGroup().getFirstAlternative().getLastTerm().asCharacterClass().getCharSet().intersects(curState.getCharSet());
+                }
             }
         }
         return false;
@@ -118,5 +128,10 @@ public final class PureNFATransitionGenerator extends NFATraversalRegexASTVisito
     @Override
     protected boolean isBuildingDFA() {
         return false;
+    }
+
+    @Override
+    protected boolean canPruneAfterUnconditionalFinalState() {
+        return true;
     }
 }

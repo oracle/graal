@@ -28,7 +28,6 @@ import re
 import tempfile
 from glob import glob
 from contextlib import contextmanager
-from distutils.dir_util import mkpath  # pylint: disable=no-name-in-module
 from os.path import join, exists, dirname
 import pipes
 from argparse import ArgumentParser
@@ -494,9 +493,9 @@ def native_unittests_task(extra_build_args=None):
     resources_from_dir = join(cp_entry_name, 'resourcesFromDir')
     simple_dir = join(cp_entry_name, 'simpleDir')
 
-    mkpath(cp_entry_name)
-    mkpath(resources_from_dir)
-    mkpath(simple_dir)
+    os.makedirs(cp_entry_name)
+    os.makedirs(resources_from_dir)
+    os.makedirs(simple_dir)
 
     for i in range(4):
         with open(join(cp_entry_name, "resourcesFromDir", f'cond-resource{i}.txt'), 'w') as out:
@@ -982,7 +981,7 @@ def benchmark(args):
 
 def mx_post_parse_cmd_line(opts):
     for dist in suite.dists:
-        if not dist.isTARDistribution():
+        if dist.isJARDistribution():
             dist.set_archiveparticipant(GraalArchiveParticipant(dist, isTest=dist.name.endswith('_TEST')))
 
 def native_image_context_run(func, func_args=None, config=None, build_if_missing=False):
@@ -990,7 +989,7 @@ def native_image_context_run(func, func_args=None, config=None, build_if_missing
     with native_image_context(config=config, build_if_missing=build_if_missing) as native_image:
         func(native_image, func_args)
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+svm = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='SubstrateVM',
     short_name='svm',
@@ -1005,14 +1004,16 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         'substratevm:OBJECTFILE',
         'substratevm:POINTSTO',
         'substratevm:NATIVE_IMAGE_BASE',
-    ],
+    ] + (['substratevm:SVM_FOREIGN'] if mx_sdk_vm.base_jdk().javaCompliance >= '22' else []),
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
+    extra_native_targets=['linux-default-glibc', 'linux-default-musl'] if mx.is_linux() else None,
     stability="earlyadopter",
     jlink=False,
     installable=False,
-))
+)
+mx_sdk_vm.register_graalvm_component(svm)
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+svm_nfi = mx_sdk_vm.GraalVmLanguage(
     suite=suite,
     name='SVM Truffle NFI Support',
     short_name='svmnfi',
@@ -1025,9 +1026,10 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     builder_jar_distributions=[],
     support_distributions=['substratevm:SVM_NFI_GRAALVM_SUPPORT'],
     installable=False,
-))
+)
+mx_sdk_vm.register_graalvm_component(svm_nfi)
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+svm_static_libs = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='SubstrateVM Static Libraries',
     short_name='svmsl',
@@ -1037,7 +1039,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     support_distributions=['substratevm:SVM_STATIC_LIBRARIES_SUPPORT'],
     installable=False,
-))
+)
+mx_sdk_vm.register_graalvm_component(svm_static_libs)
 
 def _native_image_launcher_main_class():
     """
@@ -1071,23 +1074,7 @@ driver_exe_build_args = driver_build_args + svm_experimental_options([
 
 additional_ni_dependencies = []
 
-if mx.get_jdk(tag='default').javaCompliance >= '21':
-    mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
-        suite=suite,
-        name='SubstrateVM Foreign API Preview Feature',
-        short_name='svmforeign',
-        dir_name='svm-preview',
-        installable_id='native-image',
-        license_files=[],
-        third_party_license_files=[],
-        dependencies=['SubstrateVM'],
-        builder_jar_distributions=['substratevm:SVM_FOREIGN'],
-        installable=False,
-        jlink=False,
-    ))
-    additional_ni_dependencies += ['svmforeign']
-
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+native_image = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='Native Image',
     short_name='ni',
@@ -1145,7 +1132,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     installable=True,
     stability="earlyadopter",
     jlink=False,
-))
+)
+mx_sdk_vm.register_graalvm_component(native_image)
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
@@ -1219,7 +1207,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     stability="supported",
 ))
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
+truffle_runtime_svm = mx_sdk_vm.GraalVmTruffleLibrary(
     suite=suite,
     name='Truffle Runtime SVM',
     short_name='svmt',
@@ -1233,7 +1221,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     support_distributions=[],
     stability="supported",
     jlink=False,
-))
+)
+mx_sdk_vm.register_graalvm_component(truffle_runtime_svm)
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
@@ -1327,7 +1316,7 @@ libgraal_build_args = [
     '-H:+PreserveFramePointer',
     '-H:-DeleteLocalSymbols',
 
-    # Configure -Djdk.libgraal.HeapDumpOnOutOfMemoryError=true
+    # Configure -Djdk.libgraal.internal.HeapDumpOnOutOfMemoryError=true
     '--enable-monitoring=heapdump',
     '-H:HeapDumpDefaultFilenamePrefix=libgraal_pid',
 
@@ -1921,12 +1910,17 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
         required_exports = mx_javamodules.requiredExports(distributions_transitive, get_jdk())
         exports_flags = mx_sdk_vm.AbstractNativeImageConfig.get_add_exports_list(required_exports)
 
-        graal_compiler_flags_map['21'] = exports_flags
-        # Currently JDK 22 has the same flags
-        graal_compiler_flags_map['22'] = graal_compiler_flags_map['21']
+        min_version = 21
+        graal_compiler_flags_map[str(min_version)] = exports_flags
+
+        feature_version = get_jdk().javaCompliance.value
+        if str(feature_version) not in graal_compiler_flags_map and feature_version > min_version:
+            # Unless specified otherwise, newer JDK versions use the same flags as JDK 21
+            graal_compiler_flags_map[str(feature_version)] = graal_compiler_flags_map[str(min_version)]
+
         # DO NOT ADD ANY NEW ADD-OPENS OR ADD-EXPORTS HERE!
         #
-        # Instead provide the correct requiresConcealed entries in the moduleInfo
+        # Instead, provide the correct requiresConcealed entries in the moduleInfo
         # section of org.graalvm.nativeimage.builder in the substratevm suite.py.
 
         graal_compiler_flags_base = [

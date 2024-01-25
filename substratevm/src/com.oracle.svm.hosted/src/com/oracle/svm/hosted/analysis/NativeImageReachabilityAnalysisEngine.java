@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.analysis;
 
+import com.oracle.graal.pointsto.ClassInclusionPolicy;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -32,6 +33,7 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.graal.reachability.ReachabilityAnalysisEngine;
 import com.oracle.graal.reachability.ReachabilityMethodProcessingHandler;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.ameta.CustomTypeFieldHandler;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -49,9 +51,9 @@ public class NativeImageReachabilityAnalysisEngine extends ReachabilityAnalysisE
     @SuppressWarnings("this-escape")
     public NativeImageReachabilityAnalysisEngine(OptionValues options, AnalysisUniverse universe, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
                     ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, AnnotationSubstitutionProcessor annotationSubstitutionProcessor, DebugContext debugContext,
-                    TimerCollection timerCollection, ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler) {
+                    TimerCollection timerCollection, ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler, ClassInclusionPolicy classInclusionPolicy) {
         super(options, universe, universe.hostVM(), metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, new SubstrateUnsupportedFeatures(), debugContext, timerCollection,
-                        reachabilityMethodProcessingHandler);
+                        reachabilityMethodProcessingHandler, classInclusionPolicy);
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
         this.dynamicHubInitializer = new DynamicHubInitializer(this);
         this.unknownFieldHandler = new CustomTypeFieldHandler(this, metaAccess) {

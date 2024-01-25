@@ -24,15 +24,14 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import java.lang.reflect.Field;
-
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.meta.SharedField;
-import com.oracle.svm.hosted.ameta.ReadableJavaField;
+import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * Store the compile-time information for a field in the Substrate VM, such as the field offset.
@@ -112,7 +111,7 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
 
     @Override
     public boolean isValueAvailable() {
-        return ReadableJavaField.isValueAvailable(wrapped);
+        return FieldValueInterceptionSupport.singleton().isValueAvailable(wrapped);
     }
 
     @Override
@@ -166,7 +165,7 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
     }
 
     @Override
-    public Field getJavaField() {
-        return wrapped.getJavaField();
+    public ResolvedJavaField unwrapTowardsOriginalField() {
+        return wrapped;
     }
 }

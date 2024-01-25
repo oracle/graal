@@ -31,11 +31,11 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.graal.compiler.debug.DebugContext;
 
 /**
  * Interfaces used to allow a native image to communicate details of types, code and data to the
@@ -355,8 +355,6 @@ public interface DebugInfoProvider {
         String getPartition();
 
         long getOffset();
-
-        long getAddress();
 
         long getSize();
     }

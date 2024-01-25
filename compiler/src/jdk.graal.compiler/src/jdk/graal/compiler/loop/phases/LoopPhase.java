@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.loop.phases;
 
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.loop.LoopPolicies;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
@@ -40,5 +41,10 @@ public abstract class LoopPhase<P extends LoopPolicies> extends PostRunCanonical
 
     protected P getPolicies() {
         return policies;
+    }
+
+    @Override
+    public boolean shouldApply(StructuredGraph graph) {
+        return graph.hasLoops();
     }
 }

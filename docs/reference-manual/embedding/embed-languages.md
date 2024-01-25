@@ -30,12 +30,12 @@ The GraalVM Polyglot API lets you embed and run code from guest languages in JVM
 Throughout this section, you will learn how to create a host application in Java that runs on GraalVM and directly calls a guest language.
 You can use the tabs beneath each code example to choose between JavaScript, R, Ruby, and Python.
 
-> Note: The usage description for polyglot embeddings was revised with the GraalVM for JDK 21 (23.1.0) release. If you are still using an older GraalVM version, ensure the correct version of the documentation is displayed. More information on the change can be found in the [release notes](https://www.graalvm.org/release-notes/JDK_21/).
+> Note: The usage description for polyglot embeddings was revised with the GraalVM for JDK 21 (23.1.1) release. If you are still using an older GraalVM version, ensure the correct version of the documentation is displayed. More information on the change can be found in the [release notes](https://www.graalvm.org/release-notes/JDK_21/).
 
 
 ## Dependency Setup
 
-Since Polyglot version 23.1, all necessary artifacts can be downloaded directly from Maven Central.
+Since GraalVM Polyglot API version 23.1.0, all necessary artifacts can be downloaded directly from Maven Central.
 All artifacts relevant to embedders can be found in the Maven dependency group [`org.graalvm.polyglot`](https://central.sonatype.com/namespace/org.graalvm.polyglot).
 See the [polyglot embedding demonstration](https://github.com/graalvm/polyglot-embedding-demo) on GitHub for a complete runnable example.
 
@@ -45,13 +45,13 @@ Here is an example Maven dependency setup that you can put into your project:
 <dependency> 
 	<groupId>org.graalvm.polyglot</groupId> 
 	<artifactId>polyglot</artifactId> 
-	<version>23.1.0</version> 
+	<version>23.1.1</version> 
 </dependency>
 <dependency> 
 	<groupId>org.graalvm.polyglot</groupId> 
 	<!-- Select language: js, ruby, python, java, llvm, wasm, languages-->
 	<artifactId>js</artifactId> 
-	<version>23.1.0</version> 
+	<version>23.1.1</version> 
 	<type>pom</type>
 </dependency>
 <!-- add additional languages if needed -->
@@ -59,18 +59,20 @@ Here is an example Maven dependency setup that you can put into your project:
 	<groupId>org.graalvm.polyglot</groupId> 
 	<!-- Select tools: profiler, inspect, coverage, dap, tools -->
 	<artifactId>tools</artifactId> 
-	<version>23.1.0</version> 
+	<version>23.1.1</version> 
 	<type>pom</type>
 </dependency>
-<!-- add additional tools if needed -->
+<!-- add specific tools if needed -->
 ```
 
 Language and tool dependencies use the [GraalVM Free Terms and Conditions (GFTC)](https://www.oracle.com/downloads/licenses/graal-free-license.html) license
 To use community-licensed versions instead, add the `-community` suffix to each artifact (e.g., `js-community`).
 To access [polyglot isolate](#polyglot-isolates) artifacts, use the `-isolate` suffix instead (e.g. `js-isolate`).
 
-The artifacts `languages` and `tools` include all available languages and tools as dependencies. 
-This artifact might grow or shrink between major releases. We recommend selecting only the needed languages for a production deployment.
+The artifacts `polyglot` and `tools` include all available languages and tools as dependencies. 
+This artifact might grow or shrink between major releases. We recommend selecting only the needed language(s) for a production deployment.
+
+> The `pom` type is a requirement for language or tool dependencies.
 
 Additionally, your _module-info.java_ file should require `org.graalvm.polyglot` when using Java modules.
 
@@ -81,7 +83,21 @@ module com.mycompany.app {
 ```
 
 Whether your configuration can run with a Truffle runtime optimization depends on the GraalVM JDK you use.
-For further details, refer to the [Runtime Compilation section](#Runtime-Optimization-Support).
+For further details, refer to the [Runtime Compilation section](#runtime-optimization-support).
+
+We recommend configuring polyglot embeddings using modules and the module-path whenever possible. 
+Be aware that using polyglot from the class-path instead will enable access to unsafe APIs for all libraries on the class-path.
+If the application is not yet modularized, hybrid use of the class and module-path is possible.
+For example:
+```
+$JAVA_HOME/bin/java -classpath=lib --module-path=lib/polyglot --add-modules=org.graalvm.polyglot ...
+```
+In this example, `lib/polyglot` folder should contain all polyglot and language jars.
+In order to access polyglot classes from the class-path you also need to specify the `--add-modules=org.graalvm.polyglot` JVM option.
+If you are using [native-image](https://www.graalvm.org/latest/reference-manual/embed-languages/#build-native-executables-from-polyglot-applications) polyglot modules on the class-path will be automatically upgraded to the module-path.
+
+While we do support creating single uber Jars from polyglot libraries, e.g. using the Maven Assembly plugin, we do not recommend it.
+Also note that uber jars are not supported in combination with creating native-images.
 
 
 ## Compile and Run a Polyglot Application
@@ -713,7 +729,7 @@ public class PolyglotIsolate {
 			  .allowHostAccess(HostAccess.SCOPED)
 			  .option("engine.SpawnIsolate", "true").build()) {
 			  
-			Value function = context.eval("js", "x => x+1")
+			Value function = context.eval("js", "x => x+1");
 			assert function.canExecute();
 			int x = function.execute(41).asInt();
 			assert x == 42;

@@ -27,9 +27,9 @@ package jdk.graal.compiler.phases.util;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.graal.compiler.phases.graph.ReentrantBlockIterator;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
@@ -58,6 +58,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.VirtualState.NodePositionClosure;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
+import jdk.graal.compiler.phases.graph.ReentrantBlockIterator;
 import jdk.graal.compiler.phases.graph.StatelessPostOrderNodeIterator;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
@@ -159,7 +160,6 @@ public final class GraphOrder {
             // no longer use assertSchedulableGraph after the floating reads phase
             SchedulePhase.runWithoutContextOptimizations(g, SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS, true);
         }
-        assert g.verify();
         return true;
     }
 

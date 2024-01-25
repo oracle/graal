@@ -33,6 +33,8 @@ import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
+import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.c.function.CEntryPointOptions.AutomaticPrologueBailout;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
@@ -45,19 +47,15 @@ import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.EntryPointCallStubMethod;
-import com.oracle.svm.hosted.code.SimpleSignature;
 
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.java.FrameStateBuilder;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.MergeNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -148,11 +146,11 @@ public final class JNIPrimitiveArrayOperationMethod extends EntryPointCallStubMe
         return sb.toString();
     }
 
-    private static SimpleSignature createSignature(Operation operation, MetaAccessProvider metaAccess) {
+    private static ResolvedSignature<ResolvedJavaType> createSignature(Operation operation, MetaAccessProvider metaAccess) {
         ResolvedJavaType objectHandleType = metaAccess.lookupJavaType(JNIObjectHandle.class);
         ResolvedJavaType intType = metaAccess.lookupJavaType(int.class);
         ResolvedJavaType returnType;
-        List<JavaType> args = new ArrayList<>();
+        List<ResolvedJavaType> args = new ArrayList<>();
         args.add(metaAccess.lookupJavaType(JNIEnvironment.class));
         args.add(objectHandleType); // j<PrimitiveType>Array array;
         if (operation == Operation.GET_ELEMENTS) {
@@ -170,20 +168,16 @@ public final class JNIPrimitiveArrayOperationMethod extends EntryPointCallStubMe
         } else {
             throw VMError.shouldNotReachHereUnexpectedInput(operation); // ExcludeFromJacocoGeneratedReport
         }
-        return new SimpleSignature(args, returnType);
+        return ResolvedSignature.fromList(args, returnType);
     }
 
     @Override
-    public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
+    public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         JNIGraphKit kit = new JNIGraphKit(debug, providers, method);
-        StructuredGraph graph = kit.getGraph();
-        FrameStateBuilder state = new FrameStateBuilder(null, method, graph);
-        state.initializeForMethodStart(null, true, providers.getGraphBuilderPlugins());
 
-        ValueNode vmThread = kit.loadLocal(0, getSignature().getParameterKind(0));
+        List<ValueNode> arguments = kit.getInitialArguments();
+        ValueNode vmThread = arguments.get(0);
         kit.append(CEntryPointEnterNode.enter(vmThread));
-
-        List<ValueNode> arguments = kit.loadArguments(getSignature().toParameterTypes(null));
 
         ValueNode result = null;
         switch (operation) {
@@ -215,14 +209,14 @@ public final class JNIPrimitiveArrayOperationMethod extends EntryPointCallStubMe
                 }
                 if (fwn instanceof MergeNode) {
                     MergeNode merge = (MergeNode) fwn;
-                    ((MergeNode) fwn).setStateAfter(state.create(kit.bci(), merge));
+                    ((MergeNode) fwn).setStateAfter(kit.getFrameState().create(kit.bci(), merge));
                 }
                 break;
             }
             default:
                 throw VMError.shouldNotReachHereUnexpectedInput(operation); // ExcludeFromJacocoGeneratedReport
         }
-        kit.appendStateSplitProxy(state);
+        kit.appendStateSplitProxy();
         CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.Leave);
         kit.append(leave);
         kit.createReturn(result, (result != null) ? result.getStackKind() : JavaKind.Void);

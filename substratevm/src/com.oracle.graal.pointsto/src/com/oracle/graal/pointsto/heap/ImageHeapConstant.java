@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -84,7 +85,7 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
         ConstantData(AnalysisType type, JavaConstant object, int identityHashCode) {
             Objects.requireNonNull(type);
             this.type = type;
-            this.hostedObject = object;
+            this.hostedObject = CompressibleConstant.uncompress(object);
             this.identityHashCode = identityHashCode;
         }
 
@@ -176,6 +177,7 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
     }
 
     public JavaConstant getHostedObject() {
+        AnalysisError.guarantee(!CompressibleConstant.isCompressed(constantData.hostedObject), "References to hosted objects should never be compressed.");
         return constantData.hostedObject;
     }
 
@@ -199,7 +201,12 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
     }
 
     @Override
+    @Deprecated
     public AnalysisType getType(MetaAccessProvider provider) {
+        return constantData.type;
+    }
+
+    public AnalysisType getType() {
         return constantData.type;
     }
 
@@ -257,18 +264,19 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
              * the previous behavior where the raw object was extracted and used as a key when
              * constructing the image heap map.
              */
-            return this.constantData == other.constantData;
+            return this.constantData == other.constantData && this.compressed == other.compressed;
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return constantData.hashCode();
+        return constantData.hashCode() + (compressed ? 1 : 0);
     }
 
     @Override
     public String toString() {
-        return "ImageHeapConstant< " + constantData.type.toJavaName() + ", reachable: " + isReachable() + ", reader installed: " + isReaderInstalled() + ">";
+        return "ImageHeapConstant<" + constantData.type.toJavaName() + ", reachable: " + isReachable() + ", reader installed: " + isReaderInstalled() +
+                        ", compressed: " + compressed + ", backed: " + isBackedByHostedObject() + ">";
     }
 }

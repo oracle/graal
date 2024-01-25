@@ -8,12 +8,26 @@ redirect_from: /reference-manual/native-image/DebugInfo/
 
 # Debug Info Feature
 
-To add debug information to a generated native image, provide the `-g` option to the `native-image` builder:
+### Table of Contents
+
+- [Introduction](#introduction)
+- [Source File Caching](#source-file-caching)
+- [Special Considerations for Debugging Java from GDB](#special-considerations-for-debugging-java-from-gdb)
+- [Identifying Source Code Location](#identifying-source-code-location)
+- [Configuring Source Paths in GNU Debugger](#configuring-source-paths-in-gnu-debugger)
+- [Checking Debug Info on Linux](#checking-debug-info-on-linux)
+- [Debugging with Isolates](#debugging-with-isolates)
+- [Debugging Helper Methods](#debugging-helper-methods)
+- [Special Considerations for using perf and valgrind](#special-considerations-for-using-perf-and-valgrind)
+
+## Introduction
+
+To build a native executable with debug information, provide the `-g` command-line option for `javac` when compiling the application, and then to the `native-image` builder:
 ```shell
+javac -g Hello.java
 native-image -g Hello
 ```
-
-The `-g` flag instructs `native-image` to generate debug information.
+This enables source-level debugging, and the debugger (GDB) then correlates machine instructions with specific source lines in Java files.
 The resulting image will contain debug records in a format the GNU Debugger (GDB) understands.
 Additionally, you can pass `-O0` to the builder which specifies that no compiler optimizations should be performed.
 Disabling all optimizations is not required, but in general it makes the debugging experience better.
@@ -22,10 +36,7 @@ Debug information is not just useful to the debugger. It can also be used by the
 
 By default, debug info will only include details of some of the values of parameters and local variables.
 This means that the debugger will report many parameters and local variables as being undefined. If you pass `-O0` to the builder then full debug information will be included.
-If you
-want more parameter and local variable information to be included when employing higher
-levels of optimization (`-O1` or, the default, `-O2`) you need to pass an extra command
-line flag to the `native-image` command
+If you want more parameter and local variable information to be included when employing higher levels of optimization (`-O1` or, the default, `-O2`) you need to pass an extra command line flag to the `native-image` command:
 
 ```shell
 native-image -g -H:+SourceLevelDebug Hello
@@ -53,17 +64,6 @@ resulting image file.
 
 > Note: Debug info support for `perf` and `valgrind` on Linux is an experimental feature.
 
-### Table of Contents
-
-- [Source File Caching](#source-file-caching)
-- [Special Considerations for Debugging Java from GDB](#special-considerations-for-debugging-java-from-gdb)
-- [Identifying Source Code Location](#identifying-source-code-location)
-- [Configuring Source Paths in GNU Debugger](#configuring-source-paths-in-gnu-debugger)
-- [Checking Debug Info on Linux](#checking-debug-info-on-linux)
-- [Debugging with Isolates](#debugging-with-isolates)
-- [Debugging Helper Methods](#debugging-helper-methods)
-- [Special Considerations for using perf and valgrind](#special-considerations-for-using-perf-and-valgrind)
-
 ## Source File Caching
 
 The `-g` option also enables caching of sources for any JDK runtime classes, GraalVM classes, and application classes which can be located when generating a native executable.
@@ -87,7 +87,6 @@ javac -cp apps/greeter/classes \
     --source-path apps/hello/src \
     -d apps/hello/classes org/my/hello/Hello.java
 native-image -g \
-    -H:-SpawnIsolates \
     -H:DebugInfoSourceSearchPath=apps/hello/src \
     -H:DebugInfoSourceSearchPath=apps/greeter/src \
     -cp apps/hello/classes:apps/greeter/classes org.my.hello.Hello
@@ -113,7 +112,6 @@ As an example, the following variant of the previous command specifies an absolu
 ```shell
 SOURCE_CACHE_ROOT=/tmp/$$/sources
 native-image -g \
-    -H:-SpawnIsolates \
     -H:DebugInfoSourceCacheRoot=$SOURCE_CACHE_ROOT \
     -H:DebugInfoSourceSearchPath=apps/hello/target/hello-sources.jar,apps/greeter/target/greeter-sources.jar \
     -cp apps/target/hello.jar:apps/target/greeter.jar \
@@ -156,10 +154,10 @@ So, for example in the DWARF debug info model `java.lang.String` identifies a C+
 This class layout type declares the expected fields like `hash` of type `int` and `value` of type `byte[]` and methods like `String(byte[])`, `charAt(int)`, etc. However, the copy constructor which appears in Java as `String(String)` appears in `gdb` with the signature `String(java.lang.String *)`.
 
 The C++ layout class inherits fields and methods from class (layout) type `java.lang.Object` using C++ public inheritance.
-The latter in turn inherits standard oop (ordinary object pointer) header fields from a special struct class named `_objhdr` which includes two fields. The first field is called
-`hub` and its type is `java.lang.Class *` i.e. it is a pointer to the object's
-class. The second field is called `idHash` and has type `int`. It stores an
-identity hashcode for the object.
+The latter in turn inherits standard oop (ordinary object pointer) header fields from a special struct class named `_objhdr` which includes up to two fields (depending on the VM configuration).
+The first field is called `hub` and its type is `java.lang.Class *` i.e. it is a pointer to the object's class.
+The second field (optional) is called `idHash` and has type `int`.
+It stores an identity hashcode for the object.
 
 The `ptype` command can be used to print details of a specific type.
 Note that the Java type name must be specified in quotes because to escape the embedded `.` characters.
@@ -702,20 +700,20 @@ Windows support is still under development.
 
 ## Debugging with Isolates
 
-Enabling the use of [isolates](https://medium.com/graalvm/isolates-and-compressed-references-more-flexible-and-efficient-memory-management-for-graalvm-a044cc50b67e), by passing command line option `-H:-SpawnIsolates` to the `native-image` builder, affects the way ordinary object pointers (oops) are encoded.
+The use of [isolates](https://medium.com/graalvm/isolates-and-compressed-references-more-flexible-and-efficient-memory-management-for-graalvm-a044cc50b67e) in native image affects the way ordinary object pointers (oops) are encoded.
 In turn, that means the debug info generator has to provide `gdb` with information about how to translate an encoded oop to the address in memory, where the object data is stored.
 This sometimes requires care when asking `gdb` to process encoded oops vs decoded raw addresses.
 
-When isolates are disabled, oops are essentially raw addresses pointing directly at the object contents.
+If isolates were disabled, oops would essentially be raw addresses pointing directly at the object contents.
 This is generally the same whether the oop is embedded in a static/instance field or is referenced from a local or parameter variable located in a register or saved to the stack.
 It is not quite that simple because the bottom 3 bits of some oops may be used to hold "tags" that record certain transient properties of an object.
 However, the debug info provided to `gdb` means that it will remove these tag bits before dereferencing the oop as an address.
 
-By contrast, when isolates are enabled, oops references stored in static or instance fields are actually relative addresses, offsets from a dedicated heap base register (r14 on x86_64, r29 on AArch64), rather than direct addresses (in a few special cases the offset may also have some low tag bits set).
+With the use of isolates, oops references stored in static or instance fields are actually relative addresses, offsets from a dedicated heap base register (r14 on x86_64, r29 on AArch64), rather than direct addresses (in a few special cases the offset may also have some low tag bits set).
 When an "indirect" oop of this kind gets loaded during execution, it is almost always immediately converted to a "raw" address by adding the offset to the heap base register value.
 So, oops which occur as the value of local or parameter vars are actually raw addresses.
 
-> Note that on some operating systems enabling isolates causes problems with printing of objects when using a `gdb` release version 10 or earlier. It is currently recommended to disable use of isolates, by passing command line option `-H:-SpawnIsolates`, when generating debug info if your operating system includes one of these earlier releases. Alternatively, you may be able to upgrade your debugger to a later version.
+> Note that on some operating systems enabling isolates causes problems with printing of objects when using a `gdb` release version 10 or earlier. It is strongly recommended to upgrade your debugger to a later version.
 
 The DWARF info encoded into the image, when isolates are enabled, tells `gdb` to rebase indirect oops whenever it tries to dereference them to access underlying object data.
 This is normally automatic and transparent, but it is visible in the underlying type model that `gdb` displays when you ask for the type of objects.

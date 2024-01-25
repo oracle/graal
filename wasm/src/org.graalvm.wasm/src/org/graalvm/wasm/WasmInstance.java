@@ -227,6 +227,8 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
                 return Float.intBitsToFloat(globals.loadAsInt(address));
             case WasmType.F64_TYPE:
                 return Double.longBitsToDouble(globals.loadAsLong(address));
+            case WasmType.V128_TYPE:
+                return globals.loadAsVector128(address);
             case WasmType.FUNCREF_TYPE:
             case WasmType.EXTERNREF_TYPE:
                 return globals.loadAsReference(address);

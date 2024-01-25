@@ -828,6 +828,10 @@ class PointsToJsonObject extends JsonObject {
      */
     private static ArrayList<String> serializeTypeState(BigBang bb, TypeState typeState) {
         ArrayList<String> types = new ArrayList<>();
+        if (typeState.isPrimitive()) {
+            /* No types available in primitive type states */
+            return types;
+        }
         for (AnalysisType type : typeState.types(bb)) {
             types.add(type.toJavaName());
         }

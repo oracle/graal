@@ -30,8 +30,10 @@ import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.util.HashMap;
 
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.extended.LoadHubNode;
@@ -42,9 +44,6 @@ import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
-import org.junit.Assert;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.Assumptions.LeafType;
@@ -81,7 +80,7 @@ public class FinalizableSubclassTest extends GraalCompilerTest {
         StructuredGraph graph = new StructuredGraph.Builder(options, debug, allowAssumptions).method(javaMethod).build();
         try (DebugContext.Scope s = debug.scope("FinalizableSubclassTest", graph)) {
             GraphBuilderConfiguration conf = GraphBuilderConfiguration.getSnippetDefault(getDefaultGraphBuilderPlugins());
-            new GraphBuilderPhase.Instance(getProviders(), conf, OptimisticOptimizations.ALL, null).apply(graph);
+            new TestGraphBuilderPhase.Instance(getProviders(), conf, OptimisticOptimizations.ALL, null).apply(graph);
 
             HighTierContext context = new HighTierContext(getProviders(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
             createInliningPhase().apply(graph, context);

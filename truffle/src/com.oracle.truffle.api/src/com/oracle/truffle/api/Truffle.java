@@ -105,6 +105,9 @@ public final class Truffle {
     }
 
     private static TruffleRuntime createRuntime() throws InternalError {
+        if (Boolean.getBoolean("truffle.UseFallbackRuntime")) {
+            return new DefaultTruffleRuntime("The fallback runtime was explicitly selected using the -Dtruffle.UseFallbackRuntime option.");
+        }
         String runtimeClassName = System.getProperty("truffle.TruffleRuntime");
         if (runtimeClassName != null && !runtimeClassName.isEmpty()) {
             if (runtimeClassName.equals(DefaultTruffleRuntime.class.getName())) {

@@ -250,12 +250,6 @@ public class SubstrateJVM {
         JfrTeardownOperation vmOp = new JfrTeardownOperation();
         vmOp.enqueue();
 
-        try {
-            recorderThread.join();
-        } catch (InterruptedException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
-
         return true;
     }
 

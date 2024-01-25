@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,7 +36,6 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.function.Function;
 import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -56,8 +55,6 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
-import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.nodes.UnsafePartitionLoadNode;
 import com.oracle.graal.pointsto.nodes.UnsafePartitionStoreNode;
@@ -75,7 +72,7 @@ import com.oracle.svm.core.graal.GraalEdgeUnsafePartition;
 import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneWithExceptionNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.FarReturnNode;
-import com.oracle.svm.core.graal.nodes.LazyConstantNode;
+import com.oracle.svm.core.graal.nodes.FieldOffsetNode;
 import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
 import com.oracle.svm.core.graal.nodes.ReadReservedRegister;
 import com.oracle.svm.core.graal.nodes.ReadReturnAddressNode;
@@ -83,14 +80,15 @@ import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
 import com.oracle.svm.core.graal.nodes.SubstrateReflectionGetCallerClassNode;
 import com.oracle.svm.core.graal.nodes.TestDeoptimizeNode;
+import com.oracle.svm.core.graal.stackvalue.LateStackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
+import com.oracle.svm.core.graal.stackvalue.UnsafeLateStackValue;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceAccessImpl;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.identityhashcode.SubstrateIdentityHashCodeNode;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
-import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
@@ -115,6 +113,7 @@ import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.BeginNode;
+import jdk.graal.compiler.nodes.ComputeObjectAddressNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DynamicPiNode;
 import jdk.graal.compiler.nodes.FixedNode;
@@ -141,7 +140,6 @@ import jdk.graal.compiler.nodes.java.InstanceOfDynamicNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 import jdk.graal.compiler.nodes.spi.ArrayLengthProvider;
-import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.nodes.type.NarrowOopStamp;
 import jdk.graal.compiler.nodes.type.StampTool;
@@ -159,6 +157,8 @@ import jdk.graal.compiler.replacements.nodes.AESNode;
 import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode.MacroParams;
+import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
+import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
 import jdk.graal.compiler.word.WordCastNode;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -196,7 +196,7 @@ public class SubstrateGraphBuilderPlugins {
         registerSerializationPlugins(loader, snippetReflection, plugins, parsingReason);
         registerAtomicUpdaterPlugins(snippetReflection, plugins);
         registerObjectPlugins(plugins);
-        registerUnsafePlugins(plugins, snippetReflection, parsingReason);
+        registerUnsafePlugins(plugins, snippetReflection);
         registerKnownIntrinsicsPlugins(plugins);
         registerStackValuePlugins(snippetReflection, plugins);
         registerArrayPlugins(plugins, snippetReflection, parsingReason);
@@ -209,6 +209,7 @@ public class SubstrateGraphBuilderPlugins {
         registerReferenceAccessPlugins(plugins);
         if (supportsStubBasedPlugins) {
             registerAESPlugins(plugins, replacements, architecture);
+            registerArraysSupportPlugins(plugins, replacements, architecture);
         }
     }
 
@@ -708,12 +709,12 @@ public class SubstrateGraphBuilderPlugins {
             String fieldName = snippetReflection.asObject(String.class, fieldNameNode.asJavaConstant());
             try {
                 Field field = tclass.getDeclaredField(fieldName);
-                // register the holder class and the field for reflection
+                /*
+                 * Register the holder class and the field for reflection. This also registers the
+                 * field for unsafe access.
+                 */
                 RuntimeReflection.register(tclass);
                 RuntimeReflection.register(field);
-
-                // register the field for unsafe access
-                registerAsUnsafeAccessed(b, field);
             } catch (NoSuchFieldException e) {
                 /*
                  * Ignore the exception. If the field does not exist, there will be an error at run
@@ -724,13 +725,6 @@ public class SubstrateGraphBuilderPlugins {
                  */
             }
         }
-    }
-
-    private static void registerAsUnsafeAccessed(GraphBuilderContext b, Field field) {
-        AnalysisField targetField = (AnalysisField) b.getMetaAccess().lookupJavaField(field);
-        Object reason = nonNullReason(b.getGraph().currentNodeSourcePosition());
-        targetField.registerAsAccessed(reason);
-        targetField.registerAsUnsafeAccessed(reason);
     }
 
     private static void registerObjectPlugins(InvocationPlugins plugins) {
@@ -754,10 +748,10 @@ public class SubstrateGraphBuilderPlugins {
         });
     }
 
-    private static void registerUnsafePlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, ParsingReason reason) {
-        registerUnsafePlugins(new Registration(plugins, "sun.misc.Unsafe"), snippetReflection, reason, true);
+    private static void registerUnsafePlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection) {
+        registerUnsafePlugins(new Registration(plugins, "sun.misc.Unsafe"), snippetReflection, true);
         Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe");
-        registerUnsafePlugins(r, snippetReflection, reason, false);
+        registerUnsafePlugins(r, snippetReflection, false);
 
         r.register(new RequiredInvocationPlugin("objectFieldOffset", Receiver.class, Class.class, String.class) {
             @Override
@@ -771,7 +765,7 @@ public class SubstrateGraphBuilderPlugins {
                     String fieldName = snippetReflection.asObject(String.class, nameNode.asJavaConstant());
                     try {
                         Field targetField = clazz.getDeclaredField(fieldName);
-                        return processFieldOffset(b, targetField, reason, false);
+                        return processFieldOffset(b, targetField, false);
                     } catch (NoSuchFieldException | LinkageError e) {
                         return false;
                     }
@@ -787,7 +781,7 @@ public class SubstrateGraphBuilderPlugins {
         r.register(new AllocateUninitializedArrayPlugin("allocateUninitializedArray", true));
     }
 
-    private static void registerUnsafePlugins(Registration r, SnippetReflectionProvider snippetReflection, ParsingReason reason, boolean isSunMiscUnsafe) {
+    private static void registerUnsafePlugins(Registration r, SnippetReflectionProvider snippetReflection, boolean isSunMiscUnsafe) {
         r.register(new RequiredInvocationPlugin("staticFieldOffset", Receiver.class, Field.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode fieldNode) {
@@ -796,7 +790,7 @@ public class SubstrateGraphBuilderPlugins {
                     receiver.get();
 
                     Field targetField = snippetReflection.asObject(Field.class, fieldNode.asJavaConstant());
-                    return processFieldOffset(b, targetField, reason, isSunMiscUnsafe);
+                    return processFieldOffset(b, targetField, isSunMiscUnsafe);
                 }
                 return false;
             }
@@ -823,7 +817,7 @@ public class SubstrateGraphBuilderPlugins {
                     receiver.get();
 
                     Field targetField = snippetReflection.asObject(Field.class, fieldNode.asJavaConstant());
-                    return processFieldOffset(b, targetField, reason, isSunMiscUnsafe);
+                    return processFieldOffset(b, targetField, isSunMiscUnsafe);
                 }
                 return false;
             }
@@ -842,41 +836,22 @@ public class SubstrateGraphBuilderPlugins {
                 ensureInitialized.setStateAfter(b.getInvocationPluginBeforeState());
                 DynamicNewInstanceNode.createAndPush(b, clazzNonNull);
                 /* Capture the correct state after these operations. */
-                b.add(new StateSplitProxyNode(null));
+                b.add(new StateSplitProxyNode());
                 return true;
             }
         });
     }
 
-    private static class FieldOffsetConstantProvider implements Function<CoreProviders, JavaConstant> {
-
-        private final Field javaField;
-
-        FieldOffsetConstantProvider(Field javaField) {
-            this.javaField = javaField;
-        }
-
-        @Override
-        public JavaConstant apply(CoreProviders providers) {
-            ResolvedJavaField rField = providers.getMetaAccess().lookupJavaField(javaField);
-            if (rField instanceof SharedField) {
-                long fieldOffset = ((SharedField) rField).getLocation();
-                assert fieldOffset > 0;
-                return JavaConstant.forLong(fieldOffset);
-            }
-            return null;
-        }
-    }
-
-    private static boolean processFieldOffset(GraphBuilderContext b, Field targetField, ParsingReason reason, boolean isSunMiscUnsafe) {
-        if (!isValidField(targetField, isSunMiscUnsafe) || reason == ParsingReason.JITCompilation) {
+    private static boolean processFieldOffset(GraphBuilderContext b, Field targetField, boolean isSunMiscUnsafe) {
+        if (!isValidField(targetField, isSunMiscUnsafe)) {
             return false;
         }
 
-        /* Register the field for unsafe access. */
-        registerAsUnsafeAccessed(b, targetField);
-
-        b.addPush(JavaKind.Long, LazyConstantNode.create(StampFactory.forKind(JavaKind.Long), new FieldOffsetConstantProvider(targetField), b));
+        /*
+         * The static analysis registers the field for unsafe access if the node remains in the
+         * graph until then.
+         */
+        b.addPush(JavaKind.Long, FieldOffsetNode.create(JavaKind.Long, b.getMetaAccess().lookupJavaField(targetField)));
         return true;
     }
 
@@ -1031,7 +1006,7 @@ public class SubstrateGraphBuilderPlugins {
     private static void checkNeverInline(GraphBuilderContext b) {
         if (!AnnotationAccess.isAnnotationPresent(b.getMethod(), NeverInline.class)) {
             throw VMError.shouldNotReachHere("Accessing the stack pointer or instruction pointer of the caller frame is only safe and deterministic if the method is not inlined. " +
-                            "Therefore, the method " + b.getMethod().format("%H.%n(%p)") + " must be annoated with @" + NeverInline.class.getSimpleName());
+                            "Therefore, the method " + b.getMethod().format("%H.%n(%p)") + " must be annotated with @" + NeverInline.class.getSimpleName());
         }
     }
 
@@ -1042,6 +1017,15 @@ public class SubstrateGraphBuilderPlugins {
     private static void registerStackValuePlugins(SnippetReflectionProvider snippetReflection, InvocationPlugins plugins) {
         registerStackValuePlugins(snippetReflection, new Registration(plugins, StackValue.class), true);
         registerStackValuePlugins(snippetReflection, new Registration(plugins, UnsafeStackValue.class), false);
+
+        Registration unsafeLateStackValue = new Registration(plugins, UnsafeLateStackValue.class);
+        unsafeLateStackValue.register(new RequiredInvocationPlugin("get", int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sizeNode) {
+                b.addPush(JavaKind.Object, LateStackValueNode.create(sizeNode, b.getGraph().method(), b.bci(), false));
+                return true;
+            }
+        });
     }
 
     private static void registerStackValuePlugins(SnippetReflectionProvider snippetReflection, Registration r, boolean disallowVirtualThread) {
@@ -1250,7 +1234,7 @@ public class SubstrateGraphBuilderPlugins {
                     ValueNode compressedValue = b.add(WordCastNode.narrowOopToUntrackedWord(compressedObj, compressedIntKind));
                     b.addPush(JavaKind.Object, ZeroExtendNode.convertUnsigned(compressedValue, FrameAccess.getWordStamp(), NodeView.DEFAULT));
                 } else {
-                    b.addPush(JavaKind.Object, WordCastNode.objectToUntrackedPointer(objectNode, FrameAccess.getWordKind()));
+                    b.addPush(JavaKind.Object, WordCastNode.objectToUntrackedPointer(objectNode, ConfigurationValues.getWordKind()));
                 }
                 return true;
             }
@@ -1267,11 +1251,27 @@ public class SubstrateGraphBuilderPlugins {
                     WordCastNode compressedObj = b.add(WordCastNode.wordToNarrowObject(narrowNode, compressedStamp));
                     b.addPush(JavaKind.Object, SubstrateCompressionNode.uncompress(b.getGraph(), compressedObj, encoding));
                 } else {
-                    b.addPush(JavaKind.Object, WordCastNode.wordToObject(wordNode, FrameAccess.getWordKind()));
+                    b.addPush(JavaKind.Object, WordCastNode.wordToObject(wordNode, ConfigurationValues.getWordKind()));
                 }
                 return true;
             }
         });
+    }
+
+    private static void registerArraysSupportPlugins(InvocationPlugins plugins, Replacements replacements, Architecture arch) {
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "jdk.internal.util.ArraysSupport", replacements);
+        r.registerConditional(VectorizedMismatchNode.isSupported(arch), new InvocationPlugin("vectorizedMismatch", Object.class, long.class, Object.class, long.class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                            ValueNode aObject, ValueNode aOffset, ValueNode bObject, ValueNode bOffset, ValueNode length, ValueNode log2ArrayIndexScale) {
+                ValueNode aAddr = b.add(new ComputeObjectAddressNode(aObject, aOffset));
+                ValueNode bAddr = b.add(new ComputeObjectAddressNode(bObject, bOffset));
+                b.addPush(JavaKind.Int, new VectorizedMismatchNode(aAddr, bAddr, length, log2ArrayIndexScale));
+                return true;
+            }
+        });
+        r.registerConditional(VectorizedHashCodeNode.isSupported(arch),
+                        new StandardGraphBuilderPlugins.VectorizedHashCodeInvocationPlugin("vectorizedHashCode"));
     }
 
     private static class SubstrateCipherBlockChainingCryptPlugin extends StandardGraphBuilderPlugins.CipherBlockChainingCryptPlugin {
@@ -1306,10 +1306,7 @@ public class SubstrateGraphBuilderPlugins {
 
             @Override
             protected ValueNode getFieldOffset(GraphBuilderContext b, ResolvedJavaField field) {
-                if (field instanceof AnalysisField) {
-                    ((AnalysisField) field).registerAsUnsafeAccessed(nonNullReason(b.getGraph().currentNodeSourcePosition()));
-                }
-                return LazyConstantNode.create(StampFactory.forKind(JavaKind.Long), new FieldOffsetConstantProvider(((OriginalFieldProvider) field).getJavaField()), b);
+                return FieldOffsetNode.create(JavaKind.Long, field);
             }
 
             @Override

@@ -43,15 +43,12 @@ To see which resources are included in the native executable, use the option `-H
 
 Given this project structure:
 ```
-my-app-root
+app-root
 └── src
-    ├── main
-    │   └── com.my.app
-    │       ├── Resource0.txt
-    │       └── Resource1.txt
-    └── resources
-        ├── Resource2.txt
-        └── Resource3.txt
+    └── main
+        └── resources
+            ├── Resource0.txt
+            └── Resource1.txt
 ```
 Then:
 

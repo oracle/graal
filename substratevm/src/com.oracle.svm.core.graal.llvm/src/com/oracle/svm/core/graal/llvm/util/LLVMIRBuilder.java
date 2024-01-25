@@ -1121,6 +1121,10 @@ public class LLVMIRBuilder implements AutoCloseable {
         return buildIntrinsicOp("bswap", a);
     }
 
+    public LLVMValueRef buildBitReverse(LLVMValueRef a) {
+        return buildIntrinsicOp("bitreverse", a);
+    }
+
     // LLVM fptosi instruction returns poison if the input is NaN or outside the integer range.
     // However, LLVM llvm.fptosi.sat.* intrinsic functions follow the Java semantics.
     public LLVMValueRef buildSaturatingFloatingPointToInteger(FloatConvert op, LLVMValueRef a) {

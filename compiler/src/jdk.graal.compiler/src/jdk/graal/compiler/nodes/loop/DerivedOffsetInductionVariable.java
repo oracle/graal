@@ -69,7 +69,15 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 
     @Override
     public boolean isConstantInit() {
-        return offset.isConstant() && base.isConstantInit();
+        try {
+            if (offset.isConstant() && base.isConstantInit()) {
+                constantInitSafe();
+                return true;
+            }
+        } catch (ArithmeticException e) {
+            // fall through to return false
+        }
+        return false;
     }
 
     @Override
@@ -79,15 +87,45 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 
     @Override
     public long constantInit() {
-        return op(base.constantInit(), offset.asJavaConstant().asLong());
+        return constantInitSafe();
+    }
+
+    private long constantInitSafe() throws ArithmeticException {
+        return opSafe(base.constantInit(), offset.asJavaConstant().asLong());
     }
 
     @Override
     public long constantStride() {
+        return constantStrideSafe();
+    }
+
+    private long constantStrideSafe() throws ArithmeticException {
         if (value instanceof SubNode && base.valueNode() == value.getY()) {
-            return -base.constantStride();
+            return Math.multiplyExact(base.constantStride(), -1);
         }
         return base.constantStride();
+    }
+
+    @Override
+    public boolean isConstantExtremum() {
+        try {
+            if (offset.isConstant() && base.isConstantExtremum()) {
+                constantExtremumSafe();
+                return true;
+            }
+        } catch (ArithmeticException e) {
+            // fall through to return false
+        }
+        return false;
+    }
+
+    @Override
+    public long constantExtremum() {
+        return constantExtremumSafe();
+    }
+
+    private long constantExtremumSafe() throws ArithmeticException {
+        return opSafe(base.constantExtremum(), offset.asJavaConstant().asLong());
     }
 
     @Override
@@ -118,26 +156,16 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
         return op(base.exitValueNode(), offset);
     }
 
-    @Override
-    public boolean isConstantExtremum() {
-        return offset.isConstant() && base.isConstantExtremum();
-    }
-
-    @Override
-    public long constantExtremum() {
-        return op(base.constantExtremum(), offset.asJavaConstant().asLong());
-    }
-
-    private long op(long b, long o) {
+    private long opSafe(long b, long o) throws ArithmeticException {
         if (value instanceof AddNode) {
-            return b + o;
+            return Math.addExact(b, o);
         }
         if (value instanceof SubNode) {
             if (base.valueNode() == value.getX()) {
-                return b - o;
+                return Math.subtractExact(b, o);
             } else {
                 assert base.valueNode() == value.getY() : Assertions.errorMessage(base, base.valueNode(), value, value.getY());
-                return o - b;
+                return Math.subtractExact(b, o);
             }
         }
         throw GraalError.shouldNotReachHereUnexpectedValue(value); // ExcludeFromJacocoGeneratedReport
