@@ -3027,7 +3027,7 @@ public class FlatNodeGenFactory {
         builder.tree(execution);
 
         if (group.hasFallthrough()) {
-            builder.tree(createThrowUnsupported(builder, originalFrameState));
+            builder.tree(createThrowUnsupported(builder, originalFrameState, inlined && node.isGenerateUncached()));
         }
 
         if (reportPolymorphismAction.required()) {
@@ -3274,7 +3274,7 @@ public class FlatNodeGenFactory {
      * Throws an UnsupportedSpecializationException, optionally outlining the allocations when
      * called from an uncached node execute method.
      */
-    private CodeTree createThrowUnsupported(CodeTreeBuilder parent, FrameState frameState, boolean uncachedExecute) {
+    private CodeTree createThrowUnsupported(CodeTreeBuilder parent, FrameState frameState, boolean outlineIfPossible) {
         List<String> nodes = new ArrayList<>();
         List<LocalVariable> locals = new ArrayList<>();
         for (NodeExecutionData execution : node.getChildExecutions()) {
@@ -3294,7 +3294,7 @@ public class FlatNodeGenFactory {
         boolean isStaticMethod = parentMethod != null && parentMethod.getModifiers().contains(STATIC);
         boolean allNodesNull = nodes.stream().allMatch("null"::equals);
 
-        boolean outline = uncachedExecute && parentMethod != null && allNodesNull;
+        boolean outline = outlineIfPossible && parentMethod != null && allNodesNull;
         if (outline) {
             boolean hasPrimitives = locals.stream().anyMatch(local -> local.getTypeMirror().getKind().isPrimitive());
             String signatureId = locals.size() +
