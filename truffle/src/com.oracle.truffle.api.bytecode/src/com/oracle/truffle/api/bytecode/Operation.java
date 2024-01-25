@@ -54,28 +54,39 @@ import com.oracle.truffle.api.instrumentation.Tag;
  * An operation class is declared the same way as a regular Truffle AST node, with a few
  * differences:
  * <ul>
- * <li>The class should be nested inside the top-level {@link BytecodeRootNode} class.
+ * <li>The class should be nested inside the bytecode root node class.
  * <li>The class should be declared {@code public static final}. It should not extend/implement any
  * other class/interface.
  * <li>The class should not contain instance members.
  * <li>The class's specializations also have some differences:
  * <ul>
  * <li>Specializations must all have the same arity (with respect to non-special parameters). The
- * parameters of any {@link Fallback} specialization must be of type {@link Object}.
+ * parameters of any {@link com.oracle.truffle.api.dsl.Fallback} specialization must be of type
+ * {@link Object}.
  * <li>Specializations should be {@code public static}. Any members referenced in DSL expressions
  * (e.g., {@link Cached @Cached} parameters) should also be {@code static} and visible to the
- * top-level bytecode class.
+ * bytecode root node class.
  * <li>Specializations can declare additional special parameters (e.g., {@link LocalSetter}). They
- * can also bind some special parameters (e.g., {@code @Bind("$root")}). Refer to the documentation
- * for more details.
+ * can also bind some special parameters (e.g., {@code @Bind("$root")}).
  * </ul>
  * </ul>
+ *
+ * Refer to the <a href=
+ * "https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/UserGuide.md">user
+ * guide</a> for more details.
+ *
+ * @since 24.1
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface Operation {
 
     // TODO (chumer) implement
+    /**
+     * The instrumentation tags that should always be associated with the given operation.
+     *
+     * @since 24.1
+     */
     Class<? extends Tag>[] tags() default {};
 
 }

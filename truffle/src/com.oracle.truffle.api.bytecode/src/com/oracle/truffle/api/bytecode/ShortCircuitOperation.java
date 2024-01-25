@@ -52,15 +52,15 @@ import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Repeat;
  * Declares a short-circuiting operation. A short-circuiting operation serves as a specification for
  * a short-circuiting bytecode instruction in the generated interpreter. Whereas regular operations
  * evaluate all of their operands eagerly, short-circuiting operations evaluate them one at a time.
- *
+ * <p>
  * A short-circuiting operation {@link #booleanConverter converts} each operand to a {@code boolean}
  * to determine whether to continue execution. An OR operation continues until it encounters
  * {@code true}; an AND operation continue until it encounters {@code false}.
- *
+ * <p>
  * A short-circuiting operation produces either the last operand evaluated, or the {@code boolean}
  * it converted to. Both the boolean operator and the return semantics are specified by the
  * {@link #operator}.
- *
+ * <p>
  * For example, the following code declares a short-circuiting "Or" operation that continues to
  * evaluate operands as long as they coerce to {@code false}:
  *
@@ -101,6 +101,8 @@ import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Repeat;
  *
  * Since the operand value itself is returned, this operation can be used to implement
  * null-coalescing operations (e.g., {@code someArray or []} in Python).
+ *
+ * @since 24.1
  */
 @Retention(RetentionPolicy.SOURCE)
 @Target(ElementType.TYPE)
@@ -108,9 +110,16 @@ import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Repeat;
 public @interface ShortCircuitOperation {
     /**
      * The name of this operation.
+     *
+     * @since 24.1
      */
     String name();
 
+    /**
+     * Defines the behaviour of a {@link ShortCircuitOperation}.
+     *
+     * @since 24.1
+     */
     enum Operator {
         /** AND operator that produces the operand value. */
         AND_RETURN_VALUE,
@@ -126,6 +135,8 @@ public @interface ShortCircuitOperation {
      * The short-circuit operator to use for this operation. The operator decides whether to perform
      * a boolean AND or OR. It also determines whether the operation produces the original operand
      * or the boolean that results from conversion.
+     *
+     * @since 24.1
      */
     Operator operator();
 
@@ -141,12 +152,24 @@ public @interface ShortCircuitOperation {
      * <li>Only have specializations returning {@code boolean}.
      * <li>Only have specializations that take a single parameter.
      * </ul>
+     *
+     * @since 24.1
      */
     Class<?> booleanConverter() default void.class;
 
+    /**
+     * Repeat annotation for {@link ShortCircuitOperation}.
+     *
+     * @since 24.1
+     */
     @Retention(RetentionPolicy.SOURCE)
     @Target(ElementType.TYPE)
     public @interface Repeat {
+        /**
+         * Repeat value for {@link ShortCircuitOperation}.
+         *
+         * @since 24.1
+         */
         ShortCircuitOperation[] value();
     }
 }

@@ -41,7 +41,8 @@
 package com.oracle.truffle.api.bytecode;
 
 /**
- * Functional interface containing a method to parse one or more nodes using a {@code builder}.
+ * Functional interface containing a method to parse one or more nodes using a
+ * {@link BytecodeBuilder}.
  *
  * Implementations are commonly written as anonymous functions that perform a traversal over a given
  * tree representation. For example:
@@ -55,16 +56,23 @@ package com.oracle.truffle.api.bytecode;
  *
  * In the above example, the visitor uses the builder {@code b} to emit bytecode.
  *
- * Note that a parser can be invoked multiple times in order to {@link BytecodeNodes#reparse} nodes
- * (e.g., to add source information). Thus, the parse operation should be idempotent.
+ * Note that a parser can be invoked multiple times in order to <a href=
+ * "https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/UserGuide.md#reparsing-metadata">reparse</a>
+ * nodes (e.g., to add source information). Thus, the parse operation should be idempotent.
  *
  * Since the parser is kept alive for reparsing, it can also prevent garbage collection of any input
  * data stored on it (e.g. source code or ASTs). It may be preferable to construct the input data on
  * the fly (e.g., by reading it from disk) instead of storing it on the parser.
  *
- * @param <T> the builder class of the bytecode node
+ * @param <T> the builder class of the bytecode root node
+ * @since 24.1
  */
 @FunctionalInterface
 public interface BytecodeParser<T extends BytecodeBuilder> {
+    /**
+     * The parse method. Should be idempotent.
+     *
+     * @since 24.1
+     */
     void parse(T builder);
 }

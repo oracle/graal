@@ -49,20 +49,39 @@ import java.lang.annotation.Target;
 import com.oracle.truffle.api.bytecode.OperationProxy.Repeat;
 import com.oracle.truffle.api.instrumentation.Tag;
 
+/**
+ * Defines an operation using an existing {@link com.oracle.truffle.api.nodes.Node}. The node class
+ * should be annotated {@link Proxyable} in order to validate the class for use as an operation.
+ *
+ * Refer to the <a href=
+ * "https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/UserGuide.md">user
+ * guide</a> for more details.
+ *
+ * @since 24.1
+ */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 @Repeatable(Repeat.class)
 public @interface OperationProxy {
     /**
-     * The class of the {@link com.oracle.truffle.api.nodes.Node} to proxy.
+     * The {@link com.oracle.truffle.api.nodes.Node} class to proxy.
+     *
+     * @since 24.1
      */
     Class<?> value();
 
     /**
      * The name to use for the operation.
+     *
+     * @since 24.1
      */
     String name() default "";
 
+    /**
+     * Designates a {@link com.oracle.truffle.api.nodes.Node} class as eligible for proxying.
+     *
+     * @since 24.1
+     */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
     @interface Proxyable {
@@ -74,13 +93,25 @@ public @interface OperationProxy {
      * @see GenerateBytecode#enableInstrumentation()
      * @see GenerateBytecode#enableRootTagging()
      * @see OperationProxy#tags()
+     *
+     * @since 24.1
      */
     // TODO (chumer) implement
     Class<? extends Tag>[] tags() default {};
 
+    /**
+     * Repeat annotation for {@link OperationProxy}.
+     *
+     * @since 24.1
+     */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
     public @interface Repeat {
+        /**
+         * Repeat value for {@link OperationProxy}.
+         *
+         * @since 24.1
+         */
         OperationProxy[] value();
     }
 }

@@ -51,9 +51,9 @@ import com.oracle.truffle.api.dsl.Specialization;
 
 /**
  * Forces quickening for an {@link Operation} {@link Specialization specialization}. To quicken a
- * combination of specializations use the same {@link #value() name} . If no name is specified then
- * only this one specialization is quickened. It is possible to specify multiple quickenings per
- * specialization (e.g., if a specialization is quickened individually and in a group of
+ * combination of specializations, use the same {@link #value() name}. If no name is specified then
+ * only the annotated specialization is quickened. It is possible to specify multiple quickenings
+ * per specialization (e.g., if a specialization is quickened individually and in a group of
  * specializations).
  *
  * For example, the following code declares two quickenings: one that supports only {@code ints}
@@ -84,6 +84,7 @@ import com.oracle.truffle.api.dsl.Specialization;
  * }
  * </pre>
  *
+ * @since 24.1
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
@@ -96,12 +97,24 @@ public @interface ForceQuickening {
      *
      * By default, this value is empty, which signifies that a specialization should have its own
      * quickened instruction.
+     *
+     * @since 24.1
      */
     String value() default "";
 
+    /**
+     * Repeat annotation for {@link ForceQuickening}.
+     *
+     * @since 24.1
+     */
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.METHOD})
     public @interface Repeat {
+        /**
+         * Repeat value for {@link ForceQuickening}.
+         *
+         * @since 24.1
+         */
         ForceQuickening[] value();
     }
 

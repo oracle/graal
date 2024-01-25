@@ -47,10 +47,10 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 
 /**
  * Represents a class that can deserialize constants from a byte stream.
- *
+ * <p>
  * A {@link BytecodeSerializer} establishes a byte encoding for objects. The
  * {@link BytecodeDeserializer} used to deserialize an interpreter should follow the same encoding.
- *
+ * <p>
  * For example:
  *
  * <pre>
@@ -68,22 +68,36 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNode;
  * </pre>
  *
  * @see com.oracle.truffle.api.bytecode.GenerateBytecode#enableSerialization
+ * @since 24.1
  */
 @FunctionalInterface
 public interface BytecodeDeserializer {
 
+    /**
+     * Interface for a generated class that can deserialize a {@link BytecodeRootNode} from a byte
+     * input.
+     *
+     * @since 24.1
+     */
     interface DeserializerContext {
+        /**
+         * Deserializes a {@link BytecodeRootNode} from the byte input.
+         *
+         * @since 24.1
+         */
         BytecodeRootNode readBytecodeNode(DataInput buffer) throws IOException;
     }
 
     /**
      * The deserialization process. An {@code object} should be decoded from the {@code buffer} and
      * returned.
-     *
+     * <p>
      * The {@code context} is supplied so that a {@link BytecodeDeserializer} can transitively
      * deserialize other {@link BytecodeRootNode root nodes} (e.g., inner functions) if necessary.
+     * <p>
+     * Must be idempotent.
      *
-     * Must not be dependent on any side-effects of the language.
+     * @since 24.1
      */
     Object deserialize(DeserializerContext context, DataInput buffer) throws IOException;
 }

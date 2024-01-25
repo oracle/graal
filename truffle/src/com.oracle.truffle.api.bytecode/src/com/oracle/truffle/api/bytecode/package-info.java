@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,24 +38,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode;
 
 /**
- * Abstract definition of a label. Labels can be used to implement forward branches (for backward
- * branches, use a {@code While} operation).
- *
- * The language parser can allocate labels using the builder's {@code createLabel} method, and
- * subsequently emit it using {@code emitLabel}. Labels are specified as parameters to branch
- * operations.
+ * Bytecode DSL is a DSL and runtime support component of Truffle that makes it easier to implement
+ * bytecode interpreters. Start {@link com.oracle.truffle.api.bytecode.GenerateBytecode here}.
  *
  * @since 24.1
  */
-public abstract class BytecodeLabel {
-    /**
-     * Default constructor for a {@link BytecodeLabel}.
-     *
-     * @since 24.1
-     */
-    public BytecodeLabel() {
-    }
-}
+package com.oracle.truffle.api.bytecode;

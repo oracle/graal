@@ -49,11 +49,23 @@ import com.oracle.truffle.api.nodes.RootNode;
  * This class should not be subclassed directly. If a bytecode interpreter
  * {@link GenerateBytecode#enableYield supports continuations}, the DSL will generate a concrete
  * implementation of this subclass.
+ *
+ * @since 24.1
  */
 public abstract class ContinuationLocation {
 
     /**
+     * Default constructor for a {@link ContinuationLocation}.
+     *
+     * @since 24.1
+     */
+    public ContinuationLocation() {
+    }
+
+    /**
      * Returns the root node that resumes execution from the given location.
+     *
+     * @since 24.1
      */
     public abstract RootNode getRootNode();
 
@@ -61,6 +73,8 @@ public abstract class ContinuationLocation {
      * Creates a closure out of this location and the given interpreter frame and result.
      *
      * This method is invoked by the generated code and should not be called directly.
+     *
+     * @since 24.1
      */
     public final ContinuationResult createResult(VirtualFrame frame, Object result) {
         return new ContinuationResult(this, frame.materialize(), result);

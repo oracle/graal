@@ -49,6 +49,11 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
 //TODO (chumer) investigate whether this works with boxing elimination
+/**
+ * Operation parameter that allows an operation to update the value of a local.
+ *
+ * @since 24.1
+ */
 public final class LocalSetter {
 
     /**
@@ -67,6 +72,13 @@ public final class LocalSetter {
         }
     }
 
+    /**
+     * Creates a new {@link LocalSetter}.
+     *
+     * This method is invoked by the generated code and should not be called directly.
+     *
+     * @since 24.1
+     */
     public static LocalSetter create(int index) {
         CompilerAsserts.neverPartOfCompilation("use #get in compiled code");
         if (index < 0 || index >= Short.MAX_VALUE) {
@@ -85,6 +97,13 @@ public final class LocalSetter {
         return result;
     }
 
+    /**
+     * Obtains an existing {@link LocalSetter}.
+     *
+     * This method is invoked by the generated code and should not be called directly.
+     *
+     * @since 24.1
+     */
     public static LocalSetter get(int index) {
         return localSetters[index];
     }
@@ -130,25 +149,49 @@ public final class LocalSetter {
         this.index = index;
     }
 
+    /**
+     * Returns a string representation of a {@link LocalSetter}.
+     *
+     * @since 24.1
+     */
     @Override
     public String toString() {
         return String.format("LocalSetter[%d]", index);
     }
 
+    /**
+     * Stores an object into the local.
+     *
+     * @since 24.1
+     */
     public void setObject(VirtualFrame frame, Object value) {
         setObject(frame, index, value);
     }
 
+    /**
+     * Stores an int into the local.
+     *
+     * @since 24.1
+     */
     public void setInt(VirtualFrame frame, int value) {
         setInt(frame, index, value);
     }
 
+    /**
+     * Stores a long into the local.
+     *
+     * @since 24.1
+     */
     public void setLong(VirtualFrame frame, long value) {
         setLong(frame, index, value);
     }
 
+    /**
+     * Stores a double into the local.
+     *
+     * @since 24.1
+     */
     public void setDouble(VirtualFrame frame, double value) {
         setDouble(frame, index, value);
     }
-    // todo: other primitives
 }

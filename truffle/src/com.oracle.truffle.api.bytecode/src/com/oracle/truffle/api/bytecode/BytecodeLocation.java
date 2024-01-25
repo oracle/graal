@@ -54,12 +54,14 @@ import com.oracle.truffle.api.source.SourceSection;
  * A materialized bytecode location.
  * <p>
  * The current bytecode location can be bound using
- * <code>@Bind("$location") BytecodeLocation location</code> from {@link Operation operations}. In
+ * <code>@Bind("$location") BytecodeLocation location</code> in {@link Operation operations}. In
  * order to avoid the overhead of the BytecodeLocation allocation, e.g. for exceptional cases, it is
  * possible to create the bytecode location lazily from two fields:
  * <code>@Bind("$bytecode") BytecodeNode bytecode</code> and <code>@Bind("$bci") int bci</code>.
- * this avoids the eager allocation of the bytecode location. To create a bytecode location when it
+ * This avoids the eager allocation of the bytecode location. To create a bytecode location when it
  * is needed the {@link BytecodeLocation#get(Node, int)} method can be used.
+ *
+ * @since 24.1
  */
 public final class BytecodeLocation {
 
@@ -72,19 +74,27 @@ public final class BytecodeLocation {
     }
 
     /**
-     * Returns the bci object. The bci is only valid for a given bytecodes location. Should only be
-     * used for debugging purposes. A bytecode index is only valid for a given
-     * {@link BytecodeLocation} or {@link #getBytecodeNode() bytecode node}.
+     * Returns the bytecode index. This index is not stable and should only be used for debugging
+     * purposes. The bytecode index is only valid for a given {@link #getBytecodeNode() bytecode
+     * node}.
+     *
+     * @since 24.1
      */
     public int getBytecodeIndex() {
         return internalBci;
     }
 
+    /**
+     * @since 24.1
+     */
     @Override
     public int hashCode() {
         return Objects.hash(bytecodes, internalBci);
     }
 
+    /**
+     * @since 24.1
+     */
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
@@ -96,22 +106,49 @@ public final class BytecodeLocation {
         }
     }
 
+    /**
+     * TODO
+     *
+     * @since 24.1
+     */
     public int getIndex() {
         return internalBci;
     }
 
+    /**
+     * Dumps the bytecode, highlighting this location in the result.
+     *
+     * @return dump string
+     * @see BytecodeNode#dump(BytecodeLocation)
+     * @since 24.1
+     */
     public String dump() {
         return bytecodes.dump(this);
     }
 
+    /**
+     * Computes the source location of this bytecode location.
+     *
+     * @since 24.1
+     */
     public SourceSection getSourceLocation() {
         return bytecodes.findSourceLocation(internalBci);
     }
 
+    /**
+     * Computes the bytecode instruction at this location.
+     *
+     * @since 24.1
+     */
     public Instruction getInstruction() {
         return bytecodes.findInstruction(internalBci);
     }
 
+    /**
+     * Computes the list of exception handlers guarding this location.
+     *
+     * @since 24.1
+     */
     public List<ExceptionHandler> getExceptionHandlers() {
         var handlers = bytecodes.getIntrospectionData().getExceptionHandlers();
         if (handlers == null) {
@@ -119,6 +156,7 @@ public final class BytecodeLocation {
         }
         for (ExceptionHandler handler : handlers) {
             if (internalBci >= handler.getStartIndex() && internalBci < handler.getEndIndex()) {
+                // TODO: this implementation is incomplete
                 // multiple handlers? inner most?
                 return List.of(handler);
             }
@@ -126,6 +164,11 @@ public final class BytecodeLocation {
         return null;
     }
 
+    /**
+     * Computes the source information at this location.
+     *
+     * @since 24.1
+     */
     public SourceInformation getSourceInformation() {
         var sourceInfos = bytecodes.getIntrospectionData().getSourceInformation();
         if (sourceInfos == null) {
@@ -141,6 +184,12 @@ public final class BytecodeLocation {
 
     }
 
+    /**
+     * Returns the {@link BytecodeNode} associated with this location. The
+     * {@link #getBytecodeIndex() bytecode index} is only valid for the returned node.
+     *
+     * @since 24.1
+     */
     public BytecodeNode getBytecodeNode() {
         return bytecodes;
     }
@@ -153,6 +202,7 @@ public final class BytecodeLocation {
      *
      * @param frameInstance the frame instance
      * @return the corresponding bytecode location or null if no location can be found.
+     * @since 24.1
      */
     public static BytecodeLocation get(FrameInstance frameInstance) {
         /*
@@ -185,6 +235,15 @@ public final class BytecodeLocation {
         return new BytecodeLocation(foundBytecodeNode, internalBci);
     }
 
+    /**
+     * Creates a {@link BytecodeLocation} associated with the given node and bci.
+     *
+     * @param location a node in the interpreter (can be bound using {@code @Bind("$bytecode")})
+     * @param internalBci a bytecode index (can be bound using {@code @Bind("$bci")})
+     * @return the {@link BytecodeLocation} or {@code null} if {@code location} is not adopted by a
+     *         {@link BytecodeNode}.
+     * @since 24.1
+     */
     public static BytecodeLocation get(Node location, int internalBci) {
         Objects.requireNonNull(location);
         for (Node current = location; current != null; current = current.getParent()) {

@@ -50,6 +50,8 @@ import java.lang.annotation.Target;
  *
  * An operation can define its last parameter to be variadic, in which case 0 or more values will be
  * collected into an {@code Object[]} and used as the last argument to the operation.
+ *
+ * @since 24.1
  */
 @Retention(RetentionPolicy.SOURCE)
 @Target(ElementType.PARAMETER)
