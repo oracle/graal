@@ -3934,22 +3934,6 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         frameState.push(kind, value);
     }
 
-    @SuppressWarnings("try")
-    public void loadLocalObject(int index) {
-        ValueNode value = frameState.loadLocal(index, JavaKind.Object);
-
-        int nextBCI = stream.nextBCI();
-        int nextBC = stream.readUByte(nextBCI);
-        if (nextBCI <= currentBlock.getEndBci() && nextBC == Bytecodes.GETFIELD) {
-            stream.next();
-            try (DebugCloseable ignored = openNodeContext()) {
-                genGetField(stream.readCPI(), Bytecodes.GETFIELD, value);
-            }
-        } else {
-            frameState.push(JavaKind.Object, value);
-        }
-    }
-
     public void storeLocal(JavaKind kind, int index) {
         ValueNode value = frameState.pop(kind);
         frameState.storeLocal(index, kind, value);
@@ -5169,7 +5153,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             case LLOAD          : loadLocal(stream.readLocalIndex(), JavaKind.Long); break;
             case FLOAD          : loadLocal(stream.readLocalIndex(), JavaKind.Float); break;
             case DLOAD          : loadLocal(stream.readLocalIndex(), JavaKind.Double); break;
-            case ALOAD          : loadLocalObject(stream.readLocalIndex()); break;
+            case ALOAD          : loadLocal(stream.readLocalIndex(), JavaKind.Object); break;
             case ILOAD_0        : // fall through
             case ILOAD_1        : // fall through
             case ILOAD_2        : // fall through
@@ -5189,7 +5173,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             case ALOAD_0        : // fall through
             case ALOAD_1        : // fall through
             case ALOAD_2        : // fall through
-            case ALOAD_3        : loadLocalObject(opcode - ALOAD_0); break;
+            case ALOAD_3        : loadLocal(opcode - ALOAD_0, JavaKind.Object); break;
             case IALOAD         : genLoadIndexed(JavaKind.Int   ); break;
             case LALOAD         : genLoadIndexed(JavaKind.Long  ); break;
             case FALOAD         : genLoadIndexed(JavaKind.Float ); break;
