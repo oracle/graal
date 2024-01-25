@@ -32,8 +32,6 @@ import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -65,6 +63,8 @@ import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -101,6 +101,9 @@ public class StackTraceUtils {
     @NeverInline("Potentially starting a stack walk in the caller frame")
     public static StackTraceElement[] getStackTraceAtSafepoint(Thread thread) {
         assert VMOperation.isInProgressAtSafepoint();
+        if (thread == null) {
+            return NO_ELEMENTS;
+        }
         return JavaThreads.getStackTraceAtSafepoint(thread, readCallerStackPointer());
     }
 
@@ -228,7 +231,7 @@ public class StackTraceUtils {
     }
 
     public static StackTraceElement[] asyncGetStackTrace(Thread thread) {
-        if (!thread.isAlive()) {
+        if (thread == null || !thread.isAlive()) {
             /* Avoid triggering a safepoint operation below if the thread is not even alive. */
             return NO_ELEMENTS;
         }
