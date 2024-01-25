@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,6 +88,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
@@ -2843,7 +2844,7 @@ public class FlatNodeGenFactory {
             FrameState originalFrameState = frameState.copy();
             builder.tree(visitSpecializationGroup(builder, null, group, forType, frameState, allSpecializations));
             if (group.hasFallthrough()) {
-                builder.tree(createThrowUnsupported(builder, originalFrameState));
+                builder.tree(createThrowUnsupported(builder, originalFrameState, true));
             }
             generateTraceOnExceptionEnd(builder);
         }
@@ -3034,7 +3035,7 @@ public class FlatNodeGenFactory {
         builder.tree(execution);
 
         if (group.hasFallthrough()) {
-            builder.tree(createThrowUnsupported(builder, originalFrameState));
+            builder.tree(createThrowUnsupported(builder, originalFrameState, inlined && node.isGenerateUncached()));
         }
 
         if (reportPolymorphismAction.required()) {
@@ -3273,35 +3274,86 @@ public class FlatNodeGenFactory {
         return "new" + ElementUtils.firstLetterUpperCase(bitSet.getName());
     }
 
-    private CodeTree createThrowUnsupported(final CodeTreeBuilder parent, final FrameState frameState) {
-        CodeTreeBuilder builder = parent.create();
-        builder.startThrow().startNew(types.UnsupportedSpecializationException);
-        ExecutableElement method = parent.findMethod();
-        if (method != null && method.getModifiers().contains(STATIC)) {
-            builder.string("null");
-        } else {
-            builder.string("this");
-        }
-        builder.startNewArray(new ArrayCodeTypeMirror(types.Node), null);
-        List<CodeTree> values = new ArrayList<>();
+    private CodeTree createThrowUnsupported(CodeTreeBuilder parent, FrameState frameState) {
+        return createThrowUnsupported(parent, frameState, false);
+    }
 
+    /**
+     * Throws an UnsupportedSpecializationException, optionally outlining the allocations when
+     * called from an uncached node execute method.
+     */
+    private CodeTree createThrowUnsupported(CodeTreeBuilder parent, FrameState frameState, boolean outlineIfPossible) {
+        List<String> nodes = new ArrayList<>();
+        List<LocalVariable> locals = new ArrayList<>();
         for (NodeExecutionData execution : node.getChildExecutions()) {
             NodeChildData child = execution.getChild();
             LocalVariable var = frameState.getValue(execution);
             if (child != null && !frameState.getMode().isUncached()) {
-                builder.string(accessNodeField(execution));
+                nodes.add(accessNodeField(execution));
             } else {
-                builder.string("null");
+                nodes.add("null");
             }
             if (var != null) {
-                values.add(var.createReference());
+                locals.add(var);
             }
         }
-        builder.end();
-        builder.trees(values.toArray(new CodeTree[0]));
-        builder.end().end();
-        return builder.build();
 
+        CodeExecutableElement parentMethod = (CodeExecutableElement) parent.findMethod();
+        boolean isStaticMethod = parentMethod != null && parentMethod.getModifiers().contains(STATIC);
+        boolean allNodesNull = nodes.stream().allMatch("null"::equals);
+
+        boolean outline = outlineIfPossible && parentMethod != null && allNodesNull;
+        if (outline) {
+            boolean hasPrimitives = locals.stream().anyMatch(local -> local.getTypeMirror().getKind().isPrimitive());
+            String signatureId = locals.size() +
+                            (hasPrimitives ? locals.stream().map(l -> ElementUtils.basicTypeId(l.typeMirror)).collect(Collectors.joining()) : "");
+            String throwMethodName = "newUnsupportedSpecializationException" + signatureId;
+
+            nodeConstants.addHelperMethod(throwMethodName, () -> {
+                CodeExecutableElement throwMethod = new CodeExecutableElement(modifiers(PRIVATE, STATIC), types.UnsupportedSpecializationException, throwMethodName);
+                String thisNodeParamName = "thisNode_";
+                throwMethod.addParameter(new LocalVariable(types.Node, thisNodeParamName, null).createParameter());
+                for (LocalVariable local : locals) {
+                    TypeMirror erasedType = ElementUtils.isPrimitive(local.getTypeMirror()) ? local.getTypeMirror() : context.getType(Object.class);
+                    throwMethod.addParameter(local.newType(erasedType).createParameter());
+                }
+
+                CodeTreeBuilder builder = throwMethod.createBuilder();
+                GeneratorUtils.addBoundaryOrTransferToInterpreter(throwMethod, builder);
+                builder.startReturn();
+                newUnsupportedSpecializationException(builder, nodes, locals, thisNodeParamName, var -> CodeTreeBuilder.singleString(var.getName()));
+                builder.end();
+                return throwMethod;
+            });
+
+            CodeTreeBuilder callBuilder = parent.create();
+            callBuilder.startThrow().startCall(throwMethodName);
+            callBuilder.string(isStaticMethod ? "null" : "this");
+            callBuilder.trees(locals.stream().map(var -> var.createReference()).toArray(CodeTree[]::new));
+            callBuilder.end().end();
+            return callBuilder.build();
+        } else {
+            CodeTreeBuilder builder = parent.create();
+            builder.startThrow();
+            newUnsupportedSpecializationException(builder, nodes, locals, isStaticMethod ? "null" : "this", var -> var.createReference());
+            builder.end();
+            return builder.build();
+        }
+    }
+
+    private void newUnsupportedSpecializationException(CodeTreeBuilder builder, List<String> nodes, List<LocalVariable> locals, String nodeRef, Function<LocalVariable, CodeTree> localMapper) {
+        builder.startNew(types.UnsupportedSpecializationException);
+        builder.string(nodeRef);
+        boolean allNodesNull = nodes.stream().allMatch("null"::equals);
+        if (allNodesNull) {
+            builder.nullLiteral();
+        } else {
+            builder.startNewArray(new ArrayCodeTypeMirror(types.Node), null);
+            builder.trees(nodes.stream().map(CodeTreeBuilder::singleString).toArray(CodeTree[]::new));
+            builder.end();
+        }
+        builder.trees(locals.stream().map(localMapper).toArray(CodeTree[]::new));
+        builder.end();
     }
 
     private CodeTree createFastPath(CodeTreeBuilder parent, List<SpecializationData> allSpecializations, SpecializationGroup originalGroup, final ExecutableTypeData currentType,
