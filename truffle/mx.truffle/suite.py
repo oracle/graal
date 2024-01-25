@@ -1405,6 +1405,7 @@ suite = {
           "META-INF/MANIFEST.MF",
           "META-INF/services/java.nio.charset.spi.CharsetProvider",
           "META-INF/maven/org.jruby.jcodings/jcodings/*", # pom.xml, pom.properties
+          "org/jcodings/spi/*.java", # CharsetProvider implementation classes (Charsets.java, ISO_8859_16.java)
         ],
         "include" : {
           "tables/*.bin" : {
