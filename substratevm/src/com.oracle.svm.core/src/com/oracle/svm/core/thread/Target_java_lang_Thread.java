@@ -69,8 +69,8 @@ import com.oracle.svm.core.util.VMError;
 public final class Target_java_lang_Thread {
 
     // Checkstyle: stop
-    @Delete //
-    static StackTraceElement[] EMPTY_STACK_TRACE;
+    @Alias //
+    public static StackTraceElement[] EMPTY_STACK_TRACE;
 
     @Alias //
     @TargetElement(onlyWith = JDK19OrLater.class) //
