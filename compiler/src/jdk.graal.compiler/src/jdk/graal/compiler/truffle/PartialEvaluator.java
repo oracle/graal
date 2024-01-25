@@ -44,6 +44,7 @@ import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.SourceLanguagePosition;
 import jdk.graal.compiler.graph.SourceLanguagePositionProvider;
+import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.EncodedGraph;
@@ -60,7 +61,9 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.ParameterPlugin;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.contract.NodeCostUtil;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.CachingPEGraphDecoder;
@@ -409,10 +412,14 @@ public abstract class PartialEvaluator {
         Providers compilationUnitProviders = config.lastTier().providers().copyWith(constantFieldProvider);
 
         assert !allowAssumptionsDuringParsing || !persistentEncodedGraphCache;
-        return new CachingPEGraphDecoder(config.architecture(), context.graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations,
+        return new CachingPEGraphDecoder(config.architecture(), context.graph, compilationUnitProviders, newConfig,
                         loopExplosionPlugin, decodingPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, types.OptimizedCallTarget_callInlined,
-                        sourceLanguagePositionProvider, postParsingPhase, graphCache, createCachedGraphScope, allowAssumptionsDuringParsing, false, true);
+                        sourceLanguagePositionProvider, postParsingPhase, graphCache, createCachedGraphScope,
+                        createGraphBuilderPhaseInstance(compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations),
+                        allowAssumptionsDuringParsing, false, true);
     }
+
+    protected abstract GraphBuilderPhase.Instance createGraphBuilderPhaseInstance(CoreProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts);
 
     @SuppressWarnings("try")
     public void doGraphPE(TruffleTierContext context, InlineInvokePlugin inlineInvokePlugin, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {

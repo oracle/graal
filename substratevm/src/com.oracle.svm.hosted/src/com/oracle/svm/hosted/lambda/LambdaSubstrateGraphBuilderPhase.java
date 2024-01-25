@@ -44,12 +44,17 @@ public class LambdaSubstrateGraphBuilderPhase extends GraphBuilderPhase {
     }
 
     @Override
+    public GraphBuilderPhase copyWithConfig(GraphBuilderConfiguration config) {
+        return new LambdaSubstrateGraphBuilderPhase(config);
+    }
+
+    @Override
     protected Instance createInstance(CoreProviders providers, GraphBuilderConfiguration instanceGBConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
         return new LambdaSubstrateGraphBuilderInstance(providers, instanceGBConfig, optimisticOpts, initialIntrinsicContext);
     }
 
     public static class LambdaSubstrateGraphBuilderInstance extends GraphBuilderPhase.Instance {
-        LambdaSubstrateGraphBuilderInstance(CoreProviders theProviders, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
+        public LambdaSubstrateGraphBuilderInstance(CoreProviders theProviders, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
                         IntrinsicContext initialIntrinsicContext) {
             super(theProviders, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
         }

@@ -73,7 +73,6 @@ import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.PhiNode;
@@ -140,6 +139,10 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         }
 
         return true;
+    }
+
+    public static void main(String[] args) {
+
     }
 
     public static String relativeFileName(String absolutePath) {
@@ -242,7 +245,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         Plugins plugins = new Plugins(new InvocationPlugins());
         plugins.setClassInitializationPlugin(new DoNotInitializeClassInitializationPlugin());
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true).withUnresolvedIsError(true);
-        graphBuilderSuite.appendPhase(new GraphBuilderPhase(config));
+        graphBuilderSuite.appendPhase(new TestGraphBuilderPhase(config));
         HighTierContext context = new HighTierContext(providers, graphBuilderSuite, OptimisticOptimizations.NONE);
 
         Assume.assumeTrue(VerifyPhase.class.desiredAssertionStatus());

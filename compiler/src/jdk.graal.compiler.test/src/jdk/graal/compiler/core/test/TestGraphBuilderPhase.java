@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Alibaba Group Holding Limited. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,8 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
-package com.oracle.graal.pointsto.standalone.plugins;
+package jdk.graal.compiler.core.test;
 
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
@@ -35,14 +33,18 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class StandaloneGraphBuilderPhase extends GraphBuilderPhase {
-    public StandaloneGraphBuilderPhase(GraphBuilderConfiguration config) {
+/**
+ * This is used when a platform independent instance of {@link BytecodeParser} is needed. In normal
+ * usage the proper parser from the platform suites should be used instead.
+ */
+public class TestGraphBuilderPhase extends GraphBuilderPhase {
+    public TestGraphBuilderPhase(GraphBuilderConfiguration config) {
         super(config);
     }
 
     @Override
     public GraphBuilderPhase copyWithConfig(GraphBuilderConfiguration config) {
-        return new StandaloneGraphBuilderPhase(config);
+        return new TestGraphBuilderPhase(config);
     }
 
     @Override
@@ -58,16 +60,15 @@ public class StandaloneGraphBuilderPhase extends GraphBuilderPhase {
 
         @Override
         protected BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
-            return new StandaloneBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext);
+            return new TestBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext);
         }
     }
 
     /**
-     * A non-abstract subclass of {@link BytecodeParser}. This exists mainly the use of non-platform
-     * specific {@link BytecodeParser} can be audited.
+     * A non-abstract subclass of {@link BytecodeParser} for testing purposes.
      */
-    static class StandaloneBytecodeParser extends BytecodeParser {
-        protected StandaloneBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
+    static class TestBytecodeParser extends BytecodeParser {
+        protected TestBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
                         IntrinsicContext intrinsicContext) {
             super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
         }

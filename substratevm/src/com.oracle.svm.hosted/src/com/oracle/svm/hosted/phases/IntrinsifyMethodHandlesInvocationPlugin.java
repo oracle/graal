@@ -71,6 +71,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeMap;
+import jdk.graal.compiler.hotspot.HotSpotGraphBuilderInstance;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
@@ -541,7 +542,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         graphBuilderPlugins.setClassInitializationPlugin(new NoClassInitializationPlugin());
 
         GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getSnippetDefault(graphBuilderPlugins);
-        GraphBuilderPhase.Instance graphBuilder = new GraphBuilderPhase.Instance(parsingProviders, graphBuilderConfig, OptimisticOptimizations.NONE, null);
+        GraphBuilderPhase.Instance graphBuilder = new HotSpotGraphBuilderInstance(parsingProviders, graphBuilderConfig, OptimisticOptimizations.NONE, null);
 
         DebugContext debug = b.getDebug();
         StructuredGraph graph = new StructuredGraph.Builder(b.getOptions(), debug)

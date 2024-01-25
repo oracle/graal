@@ -463,7 +463,7 @@ import jdk.vm.ci.meta.TriState;
 /**
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
  */
-public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilderContext {
+public abstract class BytecodeParser extends CoreProvidersDelegate implements GraphBuilderContext {
 
     /**
      * The minimum value to which {@link BytecodeParserOptions#TraceBytecodeParserLevel} must be set
