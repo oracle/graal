@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 24.1.0
+* GR-51253 Extend allowed DynamicObject shape flags from 8 to 16 bits.
+
 ## Version 24.0.0
 
 * GR-45863 Yield and resume events added to the instrumentation:

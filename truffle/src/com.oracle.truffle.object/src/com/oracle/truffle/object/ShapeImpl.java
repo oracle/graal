@@ -1126,7 +1126,7 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /** Bits available to API users. */
-    protected static final int OBJECT_FLAGS_MASK = 0x0000_00ff;
+    protected static final int OBJECT_FLAGS_MASK = 0x0000_ffff;
     protected static final int OBJECT_FLAGS_SHIFT = 0;
 
     protected static int getObjectFlags(int flags) {
@@ -1135,7 +1135,7 @@ public abstract class ShapeImpl extends Shape {
 
     protected static int checkObjectFlags(int flags) {
         if ((flags & ~OBJECT_FLAGS_MASK) != 0) {
-            throw new IllegalArgumentException("flags must be in the range [0, 255]");
+            throw new IllegalArgumentException("flags must be in the range [0, 0xffff]");
         }
         return flags;
     }
