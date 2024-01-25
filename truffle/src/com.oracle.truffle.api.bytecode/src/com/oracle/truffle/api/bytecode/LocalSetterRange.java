@@ -48,6 +48,11 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
 //TODO (chumer)investigate whether this works with boxing elimination
+/**
+ * Operation parameter that allows an operation to update a contiguous range of locals.
+ *
+ * @since 24.1
+ */
 public final class LocalSetterRange {
     /**
      * LocalSetterRanges are not specific to any {@link BytecodeRootNode}, since they just
@@ -93,8 +98,15 @@ public final class LocalSetterRange {
         return target;
     }
 
-    public static final LocalSetterRange EMPTY = new LocalSetterRange(0, 0);
+    private static final LocalSetterRange EMPTY = new LocalSetterRange(0, 0);
 
+    /**
+     * Creates a new {@link LocalSetterRange}.
+     *
+     * This method is invoked by the generated code and should not be called directly.
+     *
+     * @since 24.1
+     */
     public static LocalSetterRange create(int[] indices) {
         CompilerAsserts.neverPartOfCompilation("use #get from compiled code");
         if (indices.length == 0) {
@@ -105,16 +117,13 @@ public final class LocalSetterRange {
         }
     }
 
-    private static boolean checkContiguous(int[] indices) {
-        int start = indices[0];
-        for (int i = 1; i < indices.length; i++) {
-            if (start + i != indices[i]) {
-                return false;
-            }
-        }
-        return true;
-    }
-
+    /**
+     * Creates a new {@link LocalSetterRange}.
+     *
+     * This method is invoked by the generated code and should not be called directly.
+     *
+     * @since 24.1
+     */
     public static LocalSetterRange create(int start, int length) {
         CompilerAsserts.neverPartOfCompilation("use #get from compiled code");
         if (start < 0 || start > Short.MAX_VALUE) {
@@ -147,11 +156,43 @@ public final class LocalSetterRange {
         return result;
     }
 
+    private static boolean checkContiguous(int[] indices) {
+        int start = indices[0];
+        for (int i = 1; i < indices.length; i++) {
+            if (start + i != indices[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Obtains an existing {@link LocalSetterRange}.
+     *
+     * This method is invoked by the generated code and should not be called directly.
+     *
+     * @since 24.1
+     */
     public static LocalSetterRange get(int start, int length) {
         return localSetterRuns[length][start];
     }
 
+    /**
+     * Defines the start index of the range.
+     *
+     * This field is used internally and should not be used directly.
+     *
+     * @since 24.1
+     */
     public final int start;
+
+    /**
+     * Defines the length of the range.
+     *
+     * This field is used internally and should not be used directly.
+     *
+     * @since 24.1
+     */
     public final int length;
 
     private LocalSetterRange(int start, int length) {
@@ -159,16 +200,17 @@ public final class LocalSetterRange {
         this.length = length;
     }
 
+    /**
+     * Returns a string representation of a {@link LocalSetterRange}.
+     *
+     * @since 24.1
+     */
     @Override
     public String toString() {
         if (length == 0) {
             return "LocalSetterRange[]";
         }
         return String.format("LocalSetterRange[%d...%d]", start, start + length - 1);
-    }
-
-    public int length() {
-        return length;
     }
 
     private void checkBounds(int offset) {
@@ -178,21 +220,41 @@ public final class LocalSetterRange {
         }
     }
 
+    /**
+     * Stores an object into the local at the given offset into the range.
+     *
+     * @since 24.1
+     */
     public void setObject(VirtualFrame frame, int offset, Object value) {
         checkBounds(offset);
         LocalSetter.setObject(frame, start + offset, value);
     }
 
+    /**
+     * Stores an int into the local at the given offset into the range.
+     *
+     * @since 24.1
+     */
     public void setInt(VirtualFrame frame, int offset, int value) {
         checkBounds(offset);
         LocalSetter.setInt(frame, start + offset, value);
     }
 
+    /**
+     * Stores a long into the local at the given offset into the range.
+     *
+     * @since 24.1
+     */
     public void setLong(VirtualFrame frame, int offset, long value) {
         checkBounds(offset);
         LocalSetter.setLong(frame, start + offset, value);
     }
 
+    /**
+     * Stores a double into the local at the given offset into the range.
+     *
+     * @since 24.1
+     */
     public void setDouble(VirtualFrame frame, int offset, double value) {
         checkBounds(offset);
         LocalSetter.setDouble(frame, start + offset, value);

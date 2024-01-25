@@ -40,10 +40,12 @@
  */
 package com.oracle.truffle.api.bytecode;
 
+/**
+ * Represents the tier of a given {@link BytecodeNode}.
+ *
+ * @since 24.1
+ */
 public enum BytecodeTier {
-
     UNCACHED,
-
     CACHED;
-
 }

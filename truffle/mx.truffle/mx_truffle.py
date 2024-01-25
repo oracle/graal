@@ -106,6 +106,7 @@ def javadoc(args, vm=None):
         'org.graalvm.polyglot',
         'com.oracle.svm.core.annotate',
         'com.oracle.truffle.api',
+        'com.oracle.truffle.api.bytecode',
         'com.oracle.truffle.api.dsl',
         'com.oracle.truffle.api.profiles',
         'com.oracle.truffle.api.utilities',

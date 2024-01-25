@@ -51,6 +51,7 @@ import java.nio.ByteBuffer;
  * A {@link DataInput} backed by a {@link ByteBuffer}.
  *
  * @see SerializationUtils#createDataInput(ByteBuffer)
+ * @since 24.1
  */
 final class ByteBufferDataInput implements DataInput {
 
@@ -67,10 +68,12 @@ final class ByteBufferDataInput implements DataInput {
         return eof;
     }
 
+    @Override
     public void readFully(byte[] b) throws IOException {
         readFully(b, 0, b.length);
     }
 
+    @Override
     public void readFully(byte[] b, int off, int len) throws IOException {
         try {
             buffer.get(b, 0, len);
@@ -79,12 +82,14 @@ final class ByteBufferDataInput implements DataInput {
         }
     }
 
+    @Override
     public int skipBytes(int n) throws IOException {
         int skip = buffer.remaining() > n ? buffer.remaining() : n;
         buffer.position(buffer.position() + skip);
         return skip;
     }
 
+    @Override
     public boolean readBoolean() throws IOException {
         try {
             return buffer.get() != 0;
@@ -93,6 +98,7 @@ final class ByteBufferDataInput implements DataInput {
         }
     }
 
+    @Override
     public byte readByte() throws IOException {
         try {
             return buffer.get();
@@ -101,6 +107,7 @@ final class ByteBufferDataInput implements DataInput {
         }
     }
 
+    @Override
     public int readUnsignedByte() throws IOException {
         try {
             return buffer.get() & 0xff;
@@ -109,6 +116,7 @@ final class ByteBufferDataInput implements DataInput {
         }
     }
 
+    @Override
     public short readShort() throws IOException {
         try {
             return buffer.getShort();
@@ -117,6 +125,7 @@ final class ByteBufferDataInput implements DataInput {
         }
     }
 
+    @Override
     public int readUnsignedShort() throws IOException {
         try {
             return buffer.getShort() & 0xffff;
@@ -125,6 +134,7 @@ final class ByteBufferDataInput implements DataInput {
         }
     }
 
+    @Override
     public char readChar() throws IOException {
         try {
             return buffer.getChar();
@@ -133,6 +143,7 @@ final class ByteBufferDataInput implements DataInput {
         }
     }
 
+    @Override
     public int readInt() throws IOException {
         try {
             return buffer.getInt();
@@ -141,6 +152,7 @@ final class ByteBufferDataInput implements DataInput {
         }
     }
 
+    @Override
     public long readLong() throws IOException {
         try {
             return buffer.getLong();
@@ -149,6 +161,7 @@ final class ByteBufferDataInput implements DataInput {
         }
     }
 
+    @Override
     public float readFloat() throws IOException {
         try {
             return buffer.getFloat();
@@ -157,6 +170,7 @@ final class ByteBufferDataInput implements DataInput {
         }
     }
 
+    @Override
     public double readDouble() throws IOException {
         try {
             return buffer.getDouble();
@@ -176,6 +190,7 @@ final class ByteBufferDataInput implements DataInput {
     /**
      * Modified from {@link DataInputStream#readLine()}.
      */
+    @Override
     @Deprecated
     public String readLine() throws IOException {
         char[] buf = lineBuffer;
@@ -218,6 +233,7 @@ final class ByteBufferDataInput implements DataInput {
         return String.copyValueOf(buf, 0, offset);
     }
 
+    @Override
     public String readUTF() throws IOException {
         return DataInputStream.readUTF(this);
     }

@@ -46,6 +46,9 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
 
 // TODO (chumer): implement / remove with instrumentation
+/**
+ * @since 24.1
+ */
 public class BytecodeInstrumentTreeNode extends Node implements InstrumentableNode {
 
     private static class Wrapper extends BytecodeInstrumentTreeNode implements WrapperNode {
@@ -74,22 +77,37 @@ public class BytecodeInstrumentTreeNode extends Node implements InstrumentableNo
 
     private final Class<? extends Tag> tag;
 
+    /**
+     * @since 24.1
+     */
     public BytecodeInstrumentTreeNode(Class<? extends Tag> tag) {
         this.tag = tag;
     }
 
+    /**
+     * @since 24.1
+     */
     public boolean isInstrumentable() {
         return true;
     }
 
+    /**
+     * @since 24.1
+     */
     public WrapperNode createWrapper(ProbeNode probe) {
         return new Wrapper(this, probe);
     }
 
+    /**
+     * @since 24.1
+     */
     public ProbeNode getTreeProbeNode() {
         return null;
     }
 
+    /**
+     * @since 24.1
+     */
     public boolean hasTag(Class<? extends Tag> other) {
         return tag == other;
     }

@@ -48,48 +48,86 @@ import com.oracle.truffle.api.source.SourceSection;
  * Subclass of {@link AbstractTruffleException} that can be used for operations interpreters.
  *
  * Operations interpreters do not necessarily have {@link Node nodes} to use as source location
- * markers. Instead, when possible, this class uses the {@code bci} to {@link getSourceSection
+ * markers. Instead, when possible, this class uses bytecode locations to {@link getSourceSection
  * compute source sections}.
  *
- * @since 24.0
+ * @since 24.1
  */
 public abstract class AbstractBytecodeTruffleException extends AbstractTruffleException {
 
     private static final long serialVersionUID = -534184847100559365L;
     private static final int INVALID_BCI = -1;
 
+    // TODO: use BytecodeLocation
     private final int bci;
 
+    /**
+     * Creates an exception with no message or bytecode location.
+     *
+     * @since 24.1
+     */
     public AbstractBytecodeTruffleException() {
         super();
         bci = INVALID_BCI;
     }
 
+    /**
+     * Creates an exception with no bytecode location.
+     *
+     * @since 24.1
+     */
     public AbstractBytecodeTruffleException(String message) {
         super(message);
         this.bci = INVALID_BCI;
     }
 
+    /**
+     * Creates an exception from an existing exception.
+     *
+     * @since 24.1
+     */
     public AbstractBytecodeTruffleException(AbstractBytecodeTruffleException prototype) {
         super(prototype);
         this.bci = prototype.bci;
     }
 
+    /**
+     * Creates an exception with the given location.
+     *
+     * @since 24.1
+     */
     public AbstractBytecodeTruffleException(Node location, int bci) {
         super(location);
         this.bci = bci;
     }
 
+    /**
+     * Creates an exception with the given location and message.
+     *
+     * @since 24.1
+     */
     public AbstractBytecodeTruffleException(String message, Node location, int bci) {
         super(message, location);
         this.bci = bci;
     }
 
+    /**
+     * Creates an exception with the given location and message. Limits the length of the captured
+     * stack trace.
+     *
+     * @since 24.1
+     */
     public AbstractBytecodeTruffleException(String message, Throwable cause, int stackTraceElementLimit, Node location, int bci) {
         super(message, cause, stackTraceElementLimit, location);
         this.bci = bci;
     }
 
+    /**
+     * Returns a source section associated with the exception. When a bytecode location is
+     * available, uses it to provide a more precise location.
+     *
+     * @since 24.1
+     */
     @Override
     public SourceSection getSourceSection() {
         if (bci == INVALID_BCI) {

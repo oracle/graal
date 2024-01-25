@@ -43,19 +43,27 @@ package com.oracle.truffle.api.bytecode;
 /**
  * The configuration to use while generating bytecode. To reduce interpreter footprint, source
  * sections and instrumentation information can be lazily re-parsed when it is needed.
+ *
+ * @since 24.1
  */
 public final class BytecodeConfig {
 
     /**
      * Retain no sources or instrumentation information.
+     *
+     * @since 24.1
      */
     public static final BytecodeConfig DEFAULT = new BytecodeConfig(false, false);
     /**
      * Retain source information.
+     *
+     * @since 24.1
      */
     public static final BytecodeConfig WITH_SOURCE = new BytecodeConfig(true, false);
     /**
      * Retain source and instrumentation information.
+     *
+     * @since 24.1
      */
     public static final BytecodeConfig COMPLETE = new BytecodeConfig(true, true);
 
@@ -67,38 +75,76 @@ public final class BytecodeConfig {
         this.withInstrumentation = withInstrumentation;
     }
 
+    /**
+     * Produces a new {@link Builder} that can be used to programmatically build a
+     * {@link BytecodeConfig}.
+     *
+     * @since 24.1
+     */
     public static Builder newBuilder() {
         return new Builder();
     }
 
+    /**
+     * Returns whether sources are included in the config.
+     *
+     * @since 24.1
+     */
     public boolean isWithSource() {
         return withSource;
     }
 
+    /**
+     * Returns whether instrumentation tags are included in the config.
+     *
+     * @since 24.1
+     */
     public boolean isWithInstrumentation() {
         return withInstrumentation;
     }
 
     /**
      * Builder to generate a {@link BytecodeConfig} programmatically.
+     *
+     * @since 24.1
      */
     public static class Builder {
         private boolean withSource;
         private boolean withInstrumentation;
 
+        /**
+         * Default constructor.
+         *
+         * @since 24.1
+         */
         Builder() {
         }
 
+        /**
+         * Sets whether the config should include sources.
+         *
+         * @since 24.1
+         */
         public Builder withSource(boolean value) {
             this.withSource = value;
             return this;
         }
 
+        /**
+         * Sets whether the config should include instrumentation tags.
+         *
+         * @since 24.1
+         */
         public Builder withInstrumentation(boolean value) {
             this.withInstrumentation = value;
             return this;
         }
 
+        /**
+         * Builds the config.
+         *
+         * @since 24.1
+         */
         public BytecodeConfig build() {
             return new BytecodeConfig(withSource, withInstrumentation);
         }

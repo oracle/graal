@@ -45,10 +45,10 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
- * Representation of a continuation closure, consisting of a {@link #location}, {@link #frame
- * interpreter state}, and a {@link #result}. A {@link ContinuationResult} is returned when the
+ * Representation of a continuation closure, consisting of a {@link ContinuationLocation}, the
+ * interpreter state, and a yielded result. A {@link ContinuationResult} is returned when the
  * interpreter yields.
- *
+ * <p>
  * Below illustrates an example usage of {@link ContinuationResult}.
  *
  * <pre>
@@ -73,6 +73,11 @@ import com.oracle.truffle.api.nodes.RootNode;
  * locations. In such a case, they should not call {@link #continueWith}, but instead cache and call
  * the {@link #getContinuationRootNode root node} or {@link #getContinuationCallTarget call target}
  * directly. Be careful to conform to the {@link #getContinuationCallTarget calling convention}.
+ *
+ * @see <a href=
+ *      "https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/Continuations.md">Continuations
+ *      tutorial</a>
+ * @since 24.1
  */
 public final class ContinuationResult {
 
@@ -87,8 +92,10 @@ public final class ContinuationResult {
     }
 
     /**
-     * Resumes the continuation. The {@link #value} becomes the value produced by the yield
-     * operation in the resumed execution.
+     * Resumes the continuation.
+     *
+     * @param value the value produced by the yield operation in the resumed execution.
+     * @since 24.1
      */
     public Object continueWith(Object value) {
         return getContinuationCallTarget().call(frame, value);
@@ -96,12 +103,13 @@ public final class ContinuationResult {
 
     /**
      * Returns the root node that resumes execution.
-     *
+     * <p>
      * Note that the continuation root node has a specific calling convention. See
      * {@link #getContinuationCallTarget} for more details, or invoke the root node directly using
      * {@link #continueWith}.
      *
      * @see #getContinuationCallTarget()
+     * @since 24.1
      */
     public RootNode getContinuationRootNode() {
         return location.getRootNode();
@@ -110,14 +118,16 @@ public final class ContinuationResult {
     /**
      * Returns the call target for the {@link #getContinuationRootNode continuation root node}. The
      * call target can be invoked to resume the continuation.
-     *
+     * <p>
      * Languages can invoke this call target directly via {@link #continueWith}. However, they may
      * instead choose to access and call this call target directly (e.g., to register it in an
      * inline cache).
-     *
+     * <p>
      * The call target takes two parameters: the interpreter {@link #getFrame frame} and an
      * {@code Object} to resume execution with. The {@code Object} becomes the value produced by the
      * yield operation in the resumed execution.
+     *
+     * @since 24.1
      */
     public RootCallTarget getContinuationCallTarget() {
         return location.getRootNode().getCallTarget();
@@ -125,18 +135,27 @@ public final class ContinuationResult {
 
     /**
      * Returns the state of the interpreter at the point that it was suspended.
+     *
+     * @since 24.1
      */
     public MaterializedFrame getFrame() {
         return frame;
     }
 
     /**
-     * Returns the value computed by the yield operation.
+     * Returns the value yielded by the yield operation.
+     *
+     * @since 24.1
      */
     public Object getResult() {
         return result;
     }
 
+    /**
+     * Returns a string representation of a {@link ContinuationResult}.
+     *
+     * @since 24.1
+     */
     @Override
     public String toString() {
         return String.format("ContinuationResult [location=%s, result=%s]", location, result);

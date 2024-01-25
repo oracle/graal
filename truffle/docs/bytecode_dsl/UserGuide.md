@@ -207,7 +207,7 @@ The non-frame and non-DSL parameters define a "signature" for the operation; thi
 Parameters must be declared in the following order:
 
 * An optional `Frame` or `VirtualFrame` parameter.
-* The value parameters. All specializations within an operation must have the same number of value parameters, but their types can change.
+* The value parameters. All specializations within an operation must have the same number of value parameters, but their types can change. For any `@Fallback` specialization, these parameters must have type `Object`.
 * An optional `@Variadic`-annotated parameter with the type `Object[]` can be the last value parameter (see [Variadic operations](#variadic-operations)). Either all or none of the specializations must have this parameter.
 * Zero or more `LocalSetter` parameters. All specializations within an operation must have the same number of `LocalSetter` parameters (see [Producing multiple results with LocalSetter](#producing-multiple-results-with-localsetter))
 * Zero or more `LocalSetterRange` parameters. Similar to `LocalSetter`, but for a contiguous range of locals.

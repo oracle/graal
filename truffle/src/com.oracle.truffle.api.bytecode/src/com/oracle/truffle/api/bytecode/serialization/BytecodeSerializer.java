@@ -47,10 +47,10 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 
 /**
  * Represents a class that can serialize constants in a bytecode interpreter.
- *
+ * <p>
  * A {@link BytecodeSerializer} establishes a byte encoding for objects. The
  * {@link BytecodeDeserializer} used to deserialize an interpreter should follow the same encoding.
- *
+ * <p>
  * For example:
  *
  * <pre>
@@ -69,22 +69,36 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNode;
  * </pre>
  *
  * @see com.oracle.truffle.api.bytecode.GenerateBytecode#enableSerialization
+ * @since 24.1
  */
 @FunctionalInterface
 public interface BytecodeSerializer {
 
+    /**
+     * Interface for a generated class that can serialize a {@link BytecodeRootNode} to a byte
+     * buffer.
+     *
+     * @since 24.1
+     */
     interface SerializerContext {
+        /**
+         * Serializes a {@link BytecodeRootNode} to the byte buffer.
+         *
+         * @since 24.1
+         */
         void writeBytecodeNode(DataOutput buffer, BytecodeRootNode node) throws IOException;
     }
 
     /**
      * The serialization process. The byte encoding of {@code object} should be written to
      * {@code buffer}.
-     *
+     * <p>
      * The {@code context} is supplied so that a {@link BytecodeSerializer} can transitively
      * serialize other {@link BytecodeRootNode root nodes} (e.g., inner functions) if necessary.
-     *
+     * <p>
      * Must not be dependent on any side-effects of the language.
+     *
+     * @since 24.1
      */
     void serialize(SerializerContext context, DataOutput buffer, Object object) throws IOException;
 }
