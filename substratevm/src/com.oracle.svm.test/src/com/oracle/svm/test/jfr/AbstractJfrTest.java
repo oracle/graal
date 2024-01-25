@@ -39,7 +39,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.function.BooleanSupplier;
 
-import jdk.jfr.Unsigned;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeProxyCreation;
@@ -53,6 +52,7 @@ import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.test.jfr.utils.JfrFileParser;
 
 import jdk.jfr.Configuration;
+import jdk.jfr.Unsigned;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordingFile;
 
@@ -191,13 +191,7 @@ public abstract class AbstractJfrTest {
 class JfrTestFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        /*
-         * Register proxies for event data assertion
-         *
-         * Unsigned added to be able to query RecordedObject.getLong() method, and this method
-         * checks if the value returned has the jdk.jfr.Unsigned. The jfr layer in HotSpot creates a
-         * proxy to query this information.
-         */
+        /* Needed so that the tests can call RecordedObject.getLong(). */
         RuntimeProxyCreation.register(Unsigned.class);
     }
 }

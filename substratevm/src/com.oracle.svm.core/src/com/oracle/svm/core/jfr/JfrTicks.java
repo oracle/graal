@@ -24,9 +24,8 @@
  */
 package com.oracle.svm.core.jfr;
 
-import java.util.concurrent.TimeUnit;
-
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.util.TimeUtils;
 
 /**
  * Utility class to manage ticks for event timestamps based on an initial start point when the
@@ -59,10 +58,10 @@ public final class JfrTicks {
     }
 
     public static long getTicksFrequency() {
-        return TimeUnit.SECONDS.toNanos(1);
+        return TimeUtils.nanosPerSecond;
     }
 
     public static long currentTimeNanos() {
-        return TimeUnit.MILLISECONDS.toNanos(System.currentTimeMillis());
+        return TimeUtils.millisToNanos(System.currentTimeMillis());
     }
 }

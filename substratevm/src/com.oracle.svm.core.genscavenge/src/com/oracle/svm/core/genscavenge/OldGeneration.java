@@ -175,10 +175,4 @@ public final class OldGeneration extends Generation {
         RememberedSet.get().enableRememberedSetForChunk(chunk);
         return chunk;
     }
-
-    UnsignedWord getUncheckedChunkBytes() {
-        UnsignedWord fromBytes = getFromSpace().getUncheckedChunkBytes();
-        UnsignedWord toBytes = getToSpace().getUncheckedChunkBytes();
-        return fromBytes.add(toBytes);
-    }
 }

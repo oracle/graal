@@ -26,83 +26,112 @@
 
 package com.oracle.svm.test.jfr.oldobject;
 
-import com.oracle.svm.core.jfr.JfrEvent;
-import com.oracle.svm.test.jfr.JfrRecordingTest;
-import jdk.jfr.Recording;
-import jdk.jfr.ValueDescriptor;
-import jdk.jfr.consumer.RecordedEvent;
-import jdk.jfr.consumer.RecordedFrame;
-import jdk.jfr.consumer.RecordedObject;
-import org.junit.After;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.graalvm.word.WordFactory;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.rules.TestName;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.test.jfr.JfrRecordingTest;
+
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordedEvent;
+import jdk.jfr.consumer.RecordedFrame;
+import jdk.jfr.consumer.RecordedObject;
+import jdk.jfr.consumer.RecordedThread;
 
 public abstract class JfrOldObjectTest extends JfrRecordingTest {
-    static Object leak;
-
     @Rule public TestName name = new TestName();
 
     @Before
-    public void triggerUpdateOfLastKnownHeapUsage() {
-        // Trigger GC before tests to get a reading of last known heap usage for the first executed
-        // test.
+    public void updateMemoryUsedAfterLastGC() {
         System.gc();
     }
 
-    @After
-    public void garbageCollectLeak() {
-        // Force previous tests objects to be garbage collected.
-        // The scavenge logic in the sampler should clear those from the queue.
-        leak = null;
-        System.gc();
-        System.gc();
-    }
-
-    Recording startRecording() throws Throwable {
-        final String[] events = {JfrEvent.OldObjectSample.getName()};
+    protected Recording startRecording() throws Throwable {
+        String[] events = {JfrEvent.OldObjectSample.getName()};
         Map<String, String> settings = new HashMap<>();
         settings.put("old-objects-stack-trace", "true");
         return startRecording(events, getDefaultConfiguration(), settings);
     }
 
-    Collection<RecordedEvent> filterEventsByType(Class<?> type, List<RecordedEvent> events) {
-        return filterEventsByTypeName(type.getName(), events);
+    /**
+     * A normal slow-path allocation is not enough to trigger the sampling reliably because some
+     * other thread may already be sampling (only one thread can sample at a time).
+     */
+    protected void testSampling(Object obj, int arrayLength, EventValidator validator) throws Throwable {
+        if (!HasJfrSupport.get()) {
+            /* Prevent that the code below is reachable on platforms that don't support JFR. */
+            Assert.fail("JFR is not supported on this platform.");
+            return;
+        }
+
+        Recording recording = startRecording();
+
+        boolean success;
+        long endTime = System.currentTimeMillis() + TimeUtils.secondsToMillis(5);
+        do {
+            success = SubstrateJVM.getJfrOldObjectProfiler().sample(obj, WordFactory.unsigned(1024 * 1024 * 1024), arrayLength);
+        } while (!success && System.currentTimeMillis() < endTime);
+
+        Assert.assertTrue("Timed out waiting for sampling to complete", success);
+
+        stopRecording(recording, validator);
     }
 
-    Collection<RecordedEvent> filterEventsByTypeName(String typeName, List<RecordedEvent> events) {
-        final List<RecordedEvent> filteredEvents = events.stream().filter(e -> typeName.equals(e.<RecordedObject> getValue("object").getClass("type").getName())).toList();
-        Assert.assertFalse(filteredEvents.isEmpty());
-        return filteredEvents;
-    }
+    protected List<RecordedEvent> validateEvents(List<RecordedEvent> events, Class<?> expectedSampledType, int expectedArrayLength) {
+        assertTrue(events.size() > 0);
 
-    void assertOldObjectEvent(RecordedEvent event) {
-        final List<ValueDescriptor> fields = event.getFields();
-        Assert.assertEquals(11, fields.size());
-        Assert.assertEquals(0, event.getDuration().toMillis());
-        Assert.assertTrue(event.getLong("lastKnownHeapUsage") > 0);
-        Assert.assertTrue(event.getLong("objectAge") > 0);
-        Assert.assertNull(event.getValue("root"));
+        ArrayList<RecordedEvent> matchingEvents = new ArrayList<>();
+        String expectedTypeName = expectedSampledType.getName();
+        for (RecordedEvent event : events) {
+            RecordedObject object = event.getValue("object");
+            assertNotNull(object);
 
-        final List<RecordedFrame> frames = event.getStackTrace().getFrames();
-        Assert.assertTrue(frames.size() > 0);
-        Assert.assertTrue(frames.stream().anyMatch(e -> name.getMethodName().equals(e.getMethod().getName())));
+            if (object.getClass("type").getName().equals(expectedTypeName)) {
+                long startTime = event.getLong("startTime");
+                assertTrue(startTime > 0);
 
-        final long allocationTime = event.getLong("allocationTime");
-        Assert.assertTrue(allocationTime > 0);
+                assertEquals(0, event.getDuration().toMillis());
 
-        final long objectSize = event.getLong("objectSize");
-        Assert.assertTrue(objectSize > 0);
+                String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
+                assertNotNull("No event thread", eventThread);
 
-        final long startTime = event.getLong("startTime");
-        Assert.assertTrue(startTime > 0);
-        Assert.assertTrue(String.format("Allocation time (%d) should be earlier or same time as event start time (%d)", allocationTime, startTime), allocationTime <= startTime);
+                List<RecordedFrame> frames = event.getStackTrace().getFrames();
+                assertTrue(frames.size() > 0);
+                assertTrue(frames.stream().anyMatch(e -> name.getMethodName().equals(e.getMethod().getName())));
 
+                long allocationTime = event.getLong("allocationTime");
+                assertTrue(allocationTime > 0);
+                assertTrue(allocationTime <= startTime);
+
+                assertTrue(event.getLong("objectSize") > 0);
+                assertTrue(event.getLong("objectAge") > 0);
+                assertTrue(event.getLong("lastKnownHeapUsage") > 0);
+                assertEquals(expectedArrayLength, event.getInt("arrayElements"));
+
+                /* GC root is not supported at the moment. */
+                assertNull(event.getValue("root"));
+
+                matchingEvents.add(event);
+            }
+        }
+
+        assertTrue(matchingEvents.size() > 0);
+        return matchingEvents;
     }
 }

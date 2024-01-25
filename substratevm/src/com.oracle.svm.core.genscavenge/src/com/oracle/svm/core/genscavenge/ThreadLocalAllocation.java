@@ -27,12 +27,6 @@ package com.oracle.svm.core.genscavenge;
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_END_IDENTITY;
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_TOP_IDENTITY;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.replacements.AllocationSnippets.FillContent;
-import jdk.graal.compiler.word.Word;
-import com.oracle.svm.core.jfr.HasJfrSupport;
-import com.oracle.svm.core.jfr.JfrEvent;
-import com.oracle.svm.core.jfr.SubstrateJVM;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -64,7 +58,9 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrTicks;
+import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.ObjectAllocationInNewTLABEvent;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -79,7 +75,9 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.util.VMError;
 
-import java.lang.ref.WeakReference;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.replacements.AllocationSnippets.FillContent;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Bump-pointer allocation from thread-local top and end Pointers. Many of these methods are called
@@ -225,9 +223,10 @@ public final class ThreadLocalAllocation {
 
             UnsignedWord size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding());
             Object result = slowPathNewInstanceWithoutAllocating(hub, size);
-            runSlowPathHooks();
 
-            sampleSlowPathAllocation(result, size.rawValue(), Integer.MIN_VALUE);
+            runSlowPathHooks();
+            sampleSlowPathAllocation(result, size, Integer.MIN_VALUE);
+
             return result;
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
@@ -290,9 +289,10 @@ public final class ThreadLocalAllocation {
             }
 
             Object result = slowPathNewArrayLikeObject0(hub, length, size, podReferenceMap);
-            runSlowPathHooks();
 
-            sampleSlowPathAllocation(result, size.rawValue(), length);
+            runSlowPathHooks();
+            sampleSlowPathAllocation(result, size, length);
+
             return result;
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
@@ -538,16 +538,9 @@ public final class ThreadLocalAllocation {
         return tlab;
     }
 
-    private static boolean sampleSlowPathAllocation(Object obj, long allocatedSize, int arrayLength) {
-        if (HasJfrSupport.get() && shouldEmitOldObjectSample()) {
-            // Instantiate weak reference before allocations are forbidden
-            return SubstrateJVM.getJfrOldObjectProfiler().sample(new WeakReference<>(obj), allocatedSize, arrayLength);
+    private static void sampleSlowPathAllocation(Object obj, UnsignedWord allocatedSize, int arrayLength) {
+        if (HasJfrSupport.get()) {
+            SubstrateJVM.getJfrOldObjectProfiler().sample(obj, allocatedSize, arrayLength);
         }
-        return false;
-    }
-
-    @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.")
-    private static boolean shouldEmitOldObjectSample() {
-        return JfrEvent.OldObjectSample.shouldEmit();
     }
 }

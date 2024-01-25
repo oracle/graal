@@ -26,37 +26,24 @@
 
 package com.oracle.svm.test.jfr.oldobject;
 
-import jdk.jfr.Recording;
-import jdk.jfr.consumer.RecordedEvent;
-import org.junit.Assert;
 import org.junit.Test;
 
-public class TestRecordingArrayLeak extends JfrOldObjectTest {
+public class TestOldObjectSampleEvent extends JfrOldObjectTest {
     @Test
-    public void testArrayLeak() throws Throwable {
-        Recording recording = startRecording();
-
-        Object[] node = new Object[3];
-        leak = node;
-        for (int i = 0; i < 10_000; i++) {
-            Object[] value = new Object[100];
-            node[0] = value;
-            Object[] left = new Object[3];
-            node[1] = left;
-            Object[] right = new Object[3];
-            node[2] = right;
-            node = right;
-        }
-        // Trigger a GC so that last sweep gets updated,
-        // and the objects above are considered older than last GC sweep time.
-        System.gc();
-
-        stopRecording(recording, events -> filterEventsByTypeName("[Ljava.lang.Object;", events).forEach(this::assertRecordedEvent));
+    public void testObjectLeak() throws Throwable {
+        int arrayLength = Integer.MIN_VALUE;
+        testSampling(new TinyObject(43), arrayLength, events -> validateEvents(events, TinyObject.class, arrayLength));
     }
 
-    private void assertRecordedEvent(RecordedEvent event) {
-        assertOldObjectEvent(event);
-        final int arraySize = event.getInt("arrayElements");
-        Assert.assertTrue("Unexpected array size: " + arraySize, arraySize == 100 || arraySize == 3);
+    @Test
+    public void testSmallArrayLeak() throws Throwable {
+        int arrayLength = 3;
+        testSampling(new TinyObject[arrayLength], arrayLength, events -> validateEvents(events, TinyObject.class.arrayType(), arrayLength));
+    }
+
+    @Test
+    public void testLargeArrayLeak() throws Throwable {
+        int arrayLength = 1024 * 1024;
+        testSampling(new TinyObject[arrayLength], arrayLength, events -> validateEvents(events, TinyObject.class.arrayType(), arrayLength));
     }
 }

@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,31 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.collections;
 
-package com.oracle.svm.test.jfr.utils.poolparsers;
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import static org.junit.Assert.assertTrue;
+import com.oracle.svm.core.Uninterruptible;
 
-import java.io.IOException;
-
-import com.oracle.svm.core.jfr.JfrType;
-import com.oracle.svm.test.jfr.utils.JfrFileParser;
-import com.oracle.svm.test.jfr.utils.RecordingInput;
-
-public final class OldObjectConstantPoolParser extends AbstractRepositoryParser {
-    public OldObjectConstantPoolParser(JfrFileParser parser) {
-        super(parser);
-    }
-
-    @Override
-    public void parse(RecordingInput input) throws IOException {
-        int numOldObjects = input.readInt();
-        for (int i = 0; i < numOldObjects; i++) {
-            addFoundId(input.readLong());
-            assertTrue("Address can't be 0", input.readLong() != 0);
-            addExpectedId(JfrType.Class, input.readLong());
-            input.readUTF(); // description
-            input.readLong(); // GC root
-        }
-    }
+public interface UninterruptibleComparable {
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    int compareTo(UninterruptibleComparable other);
 }

@@ -26,9 +26,6 @@ package com.oracle.svm.core.jfr;
 
 import java.util.List;
 
-import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.jfr.oldobject.JfrOldObjectRepository;
-import com.oracle.svm.core.jfr.oldobject.JfrOldObjectProfiler;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -40,7 +37,10 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jfr.logging.JfrLogging;
+import com.oracle.svm.core.jfr.oldobject.JfrOldObjectProfiler;
+import com.oracle.svm.core.jfr.oldobject.JfrOldObjectRepository;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.sampler.SamplerBufferPool;
 import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 import com.oracle.svm.core.thread.JavaThreads;
@@ -72,20 +72,22 @@ public class SubstrateJVM {
     private final List<Configuration> knownConfigurations;
     private final JfrOptionSet options;
     private final JfrNativeEventSetting[] eventSettings;
+
     private final JfrSymbolRepository symbolRepo;
     private final JfrTypeRepository typeRepo;
     private final JfrThreadRepository threadRepo;
     private final JfrStackTraceRepository stackTraceRepo;
     private final JfrMethodRepository methodRepo;
     private final JfrOldObjectRepository oldObjectRepo;
+
     private final JfrThreadLocal threadLocal;
     private final JfrGlobalMemory globalMemory;
     private final SamplerBufferPool samplerBufferPool;
     private final JfrUnlockedChunkWriter unlockedChunkWriter;
     private final JfrRecorderThread recorderThread;
+    private final JfrOldObjectProfiler oldObjectProfiler;
 
     private final JfrLogging jfrLogging;
-    private final JfrOldObjectProfiler oldObjectProfiler;
 
     private boolean initialized;
     /*
@@ -108,10 +110,10 @@ public class SubstrateJVM {
             eventSettings[i] = new JfrNativeEventSetting();
         }
 
-        stackTraceRepo = new JfrStackTraceRepository();
         symbolRepo = new JfrSymbolRepository();
         typeRepo = new JfrTypeRepository();
         threadRepo = new JfrThreadRepository();
+        stackTraceRepo = new JfrStackTraceRepository();
         methodRepo = new JfrMethodRepository();
         oldObjectRepo = new JfrOldObjectRepository();
 
@@ -120,9 +122,9 @@ public class SubstrateJVM {
         samplerBufferPool = new SamplerBufferPool();
         unlockedChunkWriter = writeFile ? new JfrChunkFileWriter(globalMemory, stackTraceRepo, methodRepo, typeRepo, symbolRepo, threadRepo, oldObjectRepo) : new JfrChunkNoWriter();
         recorderThread = new JfrRecorderThread(globalMemory, unlockedChunkWriter);
+        oldObjectProfiler = new JfrOldObjectProfiler();
 
         jfrLogging = new JfrLogging();
-        oldObjectProfiler = new JfrOldObjectProfiler();
 
         initialized = false;
         recording = false;
@@ -213,8 +215,6 @@ public class SubstrateJVM {
      * triggered yet. So, we don't need to take any precautions here.
      */
     public boolean createJFR(boolean simulateFailure) {
-        SubstrateJVM.getJfrOldObjectProfiler().initialize();
-
         if (simulateFailure) {
             throw new IllegalStateException("Unable to start JFR");
         } else if (initialized) {
@@ -605,9 +605,8 @@ public class SubstrateJVM {
     /**
      * See {@link JVM#emitOldObjectSamples(long, boolean, boolean)}.
      */
-    void emitOldObjectSamples(long cutoff, boolean emitAll, @SuppressWarnings("unused") boolean skipBFS) {
-        // todo support skipBFS=true which means using DFS (path-to-gc-roots)
-        oldObjectProfiler.emit(cutoff);
+    void emitOldObjectSamples(long cutoff, boolean emitAll, boolean skipBFS) {
+        oldObjectProfiler.emit(cutoff, emitAll, skipBFS);
     }
 
     public long getChunkStartNanos() {
@@ -720,6 +719,8 @@ public class SubstrateJVM {
 
         @Override
         protected void operate() {
+            SubstrateJVM.getJfrOldObjectProfiler().initialize();
+
             SubstrateJVM.get().recording = true;
             /* Recording is enabled, so JFR events can be triggered at any time. */
             SubstrateJVM.getThreadRepo().registerRunningThreads();
@@ -759,6 +760,7 @@ public class SubstrateJVM {
             SubstrateJVM.getThreadLocal().teardown();
             SubstrateJVM.getSamplerBufferPool().teardown();
             SubstrateJVM.getGlobalMemory().clear();
+            SubstrateJVM.getJfrOldObjectProfiler().teardown();
         }
     }
 

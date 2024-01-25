@@ -84,7 +84,7 @@ public class JfrManager {
         return ImageSingletons.lookup(JfrManager.class);
     }
 
-    public RuntimeSupport.Hook startupHook() {
+    public static RuntimeSupport.Hook startupHook() {
         return isFirstIsolate -> {
             parseFlightRecorderLogging(SubstrateOptions.FlightRecorderLogging.getValue());
             periodicEventSetup();
@@ -95,7 +95,7 @@ public class JfrManager {
         };
     }
 
-    public RuntimeSupport.Hook shutdownHook() {
+    public static RuntimeSupport.Hook shutdownHook() {
         return isFirstIsolate -> {
             /*
              * Everything should already have been torn down by JVM.destroyJFR(), which is called in
@@ -107,8 +107,8 @@ public class JfrManager {
     }
 
     private static void parseFlightRecorderOptions() {
-        final Map<JfrRecorderOptionArgument, String> options = parseArguments(SubstrateOptions.FlightRecorderOptions, JfrRecorderOptionArgument.values());
-        final String oldObjectQueueSizeArg = options.get(JfrRecorderOptionArgument.OldObjectQueueSize);
+        Map<JfrRecorderOptionArgument, String> options = parseArguments(SubstrateOptions.FlightRecorderOptions, JfrRecorderOptionArgument.values());
+        String oldObjectQueueSizeArg = options.get(JfrRecorderOptionArgument.OldObjectQueueSize);
         if (oldObjectQueueSizeArg != null) {
             try {
                 SubstrateJVM.getJfrOldObjectProfiler().configure(Integer.parseInt(oldObjectQueueSizeArg));
@@ -130,7 +130,7 @@ public class JfrManager {
     }
 
     private static void initRecording() {
-        Map<JfrStartArgument, String> args = parseStartFlightRecording();
+        Map<JfrStartArgument, String> args = parseArguments(SubstrateOptions.StartFlightRecording, JfrStartArgument.values());
         String name = args.get(JfrStartArgument.Name);
         String[] settings = parseSettings(args);
         Long delay = parseDuration(args, JfrStartArgument.Delay);
@@ -310,10 +310,6 @@ public class JfrManager {
             // fall back on filename
             return path.toString();
         }
-    }
-
-    private static Map<JfrStartArgument, String> parseStartFlightRecording() {
-        return parseArguments(SubstrateOptions.StartFlightRecording, JfrStartArgument.values());
     }
 
     private static <T extends JfrCmdLineArgument> Map<T, String> parseArguments(RuntimeOptionKey<String> runtimeOptionKey, T[] possibleArguments) {

@@ -590,38 +590,27 @@ public class UninterruptibleUtils {
             return result + (addNullTerminator ? 1 : 0);
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static int modifiedUTF8Length(char[] chars, int length) {
-            int result = 0;
-            for (int index = 0; index < length; index++) {
-                char ch = chars[index];
-                result += modifiedUTF8Length(ch);
-            }
-
-            return result;
-        }
-
         /**
          * Writes the encoded {@code string} into the given {@code buffer} using the modified UTF8
          * encoding (null characters that are present in the input will be encoded in a way that
          * they do not interfere with the null terminator).
-         * 
+         *
          * @return pointer on new position in buffer.
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static Pointer toModifiedUTF8(java.lang.String string, Pointer buffer, Pointer bufferEnd, boolean addNullTerminator) {
-            return toModifiedUTF8(string.length(), string, buffer, bufferEnd, addNullTerminator, null);
+            return toModifiedUTF8(string, buffer, bufferEnd, addNullTerminator, null);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static Pointer toModifiedUTF8(java.lang.String string, Pointer buffer, Pointer bufferEnd, boolean addNullTerminator, CharReplacer replacer) {
-            return toModifiedUTF8(string.length(), string, buffer, bufferEnd, addNullTerminator, replacer);
+            return toModifiedUTF8(string, string.length(), buffer, bufferEnd, addNullTerminator, replacer);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static Pointer toModifiedUTF8(int length, java.lang.String string, Pointer buffer, Pointer bufferEnd, boolean addNullTerminator, CharReplacer replacer) {
+        public static Pointer toModifiedUTF8(java.lang.String string, int stringLength, Pointer buffer, Pointer bufferEnd, boolean addNullTerminator, CharReplacer replacer) {
             Pointer pos = buffer;
-            for (int index = 0; index < length; index++) {
+            for (int index = 0; index < stringLength; index++) {
                 char ch = StringUtil.charAt(string, index);
                 if (replacer != null) {
                     ch = replacer.replace(ch);
@@ -633,18 +622,6 @@ public class UninterruptibleUtils {
                 pos.writeByte(0, (byte) 0);
                 pos = pos.add(1);
             }
-            VMError.guarantee(pos.belowOrEqual(bufferEnd), "Must not write out of bounds.");
-            return pos;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static Pointer toModifiedUTF8(int length, char[] chars, Pointer buffer, Pointer bufferEnd) {
-            Pointer pos = buffer;
-            for (int index = 0; index < length; index++) {
-                char ch = chars[index];
-                pos = writeModifiedUTF8(pos, ch);
-            }
-
             VMError.guarantee(pos.belowOrEqual(bufferEnd), "Must not write out of bounds.");
             return pos;
         }

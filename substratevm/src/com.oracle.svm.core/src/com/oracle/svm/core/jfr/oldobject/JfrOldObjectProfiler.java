@@ -26,125 +26,93 @@
 
 package com.oracle.svm.core.jfr.oldobject;
 
+import org.graalvm.word.UnsignedWord;
+
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.jfr.JfrEvent;
-import com.oracle.svm.core.jfr.JfrTicks;
-import com.oracle.svm.core.jfr.SubstrateJVM;
-import com.oracle.svm.core.jfr.events.OldObjectSampleEvent;
 import com.oracle.svm.core.thread.JavaSpinLockUtils;
-import com.oracle.svm.core.thread.JavaThreads;
+
 import jdk.internal.misc.Unsafe;
 import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
 import jdk.jfr.internal.Logger;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
-import java.lang.ref.WeakReference;
-
+/**
+ * This class is used in the allocation slow-path for object sampling and keeps track of objects
+ * that are potential memory leaks (i.e., objects that are alive for a long time span).
+ */
 public final class JfrOldObjectProfiler {
     private static final int DEFAULT_SAMPLER_SIZE = 256;
-
-    /*
-     * Moving locking to OldObjectProfiler class cannot easily be done. For starters Unsafe needs to
-     * be accessible there, but there might be other issues.
-     */
     private static final Unsafe U = Unsafe.getUnsafe();
     private static final long LOCK_OFFSET = U.objectFieldOffset(JfrOldObjectProfiler.class, "lock");
+
     @SuppressWarnings("unused") private volatile int lock;
 
     private int queueSize;
-    private OldObjectSampler sampler;
-    private OldObjectEventEmitter eventEmitter;
+    private JfrOldObjectSampler sampler;
 
-    @Platforms(Platform.HOSTED_ONLY.class)
     public JfrOldObjectProfiler() {
-        this.queueSize = JfrOldObjectProfiler.DEFAULT_SAMPLER_SIZE;
+        this.queueSize = DEFAULT_SAMPLER_SIZE;
     }
 
     public void configure(int oldObjectQueueSize) {
+        if (Logger.shouldLog(LogTag.JFR, LogLevel.DEBUG)) {
+            Logger.log(LogTag.JFR, LogLevel.DEBUG, "Initialize old object sampler: old-object-queue-size=" + oldObjectQueueSize);
+        }
         this.queueSize = oldObjectQueueSize;
     }
 
     public void initialize() {
-        if (Logger.shouldLog(LogTag.JFR, LogLevel.DEBUG)) {
-            Logger.log(LogTag.JFR, LogLevel.DEBUG, "Initialize old object sampler: old-object-queue-size=" + queueSize);
-        }
-        OldObjectEffects effects = new DefaultEffects();
-        OldObjectList list = new OldObjectList();
-        this.sampler = new OldObjectSampler(queueSize, list, effects);
-        this.eventEmitter = new OldObjectEventEmitter(list, effects);
+        this.sampler = new JfrOldObjectSampler(queueSize);
     }
 
-    @Uninterruptible(reason = "Access protected by lock.")
-    public boolean sample(WeakReference<Object> ref, long allocatedSize, int arrayLength) {
-        final boolean success = JavaSpinLockUtils.tryLock(this, LOCK_OFFSET);
+    public void teardown() {
+        this.sampler = null;
+    }
+
+    @Uninterruptible(reason = "Needed for shouldEmit().")
+    public boolean sample(Object obj, UnsignedWord allocatedSize, int arrayLength) {
+        if (!JfrEvent.OldObjectSample.shouldEmit()) {
+            return false;
+        }
+        return sample0(obj, allocatedSize, arrayLength);
+    }
+
+    @Uninterruptible(reason = "Must not safepoint while holding the lock.")
+    private boolean sample0(Object obj, UnsignedWord allocatedSize, int arrayLength) {
+        assert allocatedSize.aboveThan(0);
+        assert arrayLength >= 0 || arrayLength == Integer.MIN_VALUE;
+
+        boolean success = JavaSpinLockUtils.tryLock(this, LOCK_OFFSET);
         if (!success) {
+            /* Give up if some other thread is currently sampling. */
             return false;
         }
 
         try {
-            return sampler.sample(ref, allocatedSize, arrayLength);
+            return sampler.sample(obj, allocatedSize, arrayLength);
         } finally {
             JavaSpinLockUtils.unlock(this, LOCK_OFFSET);
         }
     }
 
-    @Uninterruptible(reason = "Access protected by lock.")
-    public void emit(long cutoff) {
+    @Uninterruptible(reason = "Must not safepoint while holding the lock.")
+    public void emit(long cutoff, boolean emitAll, boolean skipBFS) {
         JavaSpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
-
         try {
-            eventEmitter.emit(cutoff);
+            sampler.emit(cutoff, emitAll, skipBFS);
         } finally {
             JavaSpinLockUtils.unlock(this, LOCK_OFFSET);
         }
     }
 
-    private static final class DefaultEffects implements OldObjectEffects {
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public long elapsedTicks() {
-            return JfrTicks.elapsedTicks();
+    public static class TestingBackdoor {
+        public static JfrOldObject getOldestObject(JfrOldObjectProfiler profiler) {
+            return profiler.sampler.getOldestObject();
         }
 
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public Object getWeakReferent(WeakReference<?> ref) {
-            return ReferenceInternals.getReferent(ref);
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public void emit(Object aliveObject, long timestamp, long objectSize, long allocationTime, long threadId, long stackTraceId, long heapUsedAtLastGC, int arrayLength) {
-            final long objectId = SubstrateJVM.getJfrOldObjectRepository().serializeOldObject(aliveObject);
-            OldObjectSampleEvent.emit(timestamp, objectId, objectSize, allocationTime, threadId, stackTraceId, heapUsedAtLastGC, arrayLength);
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public boolean isDead(WeakReference<?> ref) {
-            return ReferenceInternals.refersTo(ref, null);
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public long getStackTraceId() {
-            return SubstrateJVM.get().getStackTraceId(JfrEvent.OldObjectSample, 0);
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public long getThreadId(Thread thread) {
-            return JavaThreads.getThreadId(thread);
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public long getHeapUsedAtLastGC() {
-            return Heap.getHeap().getUsedAtLastGC();
+        public static boolean sample(JfrOldObjectProfiler profiler, Object obj, UnsignedWord allocatedSize, int arrayLength) {
+            return profiler.sample0(obj, allocatedSize, arrayLength);
         }
     }
 }

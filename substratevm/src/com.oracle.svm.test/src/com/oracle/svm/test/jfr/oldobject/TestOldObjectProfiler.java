@@ -26,457 +26,201 @@
 
 package com.oracle.svm.test.jfr.oldobject;
 
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.heap.ReferenceInternals;
-import com.oracle.svm.core.jfr.oldobject.OldObjectEffects;
-import com.oracle.svm.core.jfr.oldobject.OldObjectEventEmitter;
-import com.oracle.svm.core.jfr.oldobject.OldObjectList;
-import com.oracle.svm.core.jfr.oldobject.OldObjectSampler;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import org.graalvm.word.WordFactory;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.lang.ref.WeakReference;
-import java.util.Arrays;
-import java.util.stream.IntStream;
-import java.util.stream.LongStream;
-import java.util.stream.Stream;
+import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.jfr.oldobject.JfrOldObject;
+import com.oracle.svm.core.jfr.oldobject.JfrOldObjectProfiler;
+import com.oracle.svm.test.jfr.AbstractJfrTest;
 
-public class TestOldObjectProfiler {
+import jdk.graal.compiler.api.directives.GraalDirectives;
+
+public class TestOldObjectProfiler extends AbstractJfrTest {
     @Test
     public void testScavenge() {
-        final int size = 10;
-        final MutableBoolean isDead = new MutableBoolean(false);
-        final TestEffects effects = new TestEffects(20L, size) {
-            @Override
-            @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-            public boolean isDead(WeakReference<?> ref) {
-                final int value = (int) getWeakReferent(ref);
-                if (value < 10) {
-                    return isDead.get();
-                }
+        int count = 10;
+        JfrOldObjectProfiler profiler = newProfiler(count);
+        List<TinyObject> objectsA = sampleObjects(profiler, 1, count);
+        validate(profiler, objectsA);
 
-                return false;
+        /* Free all existing samples. */
+        GraalDirectives.blackhole(objectsA);
+        objectsA = null;
+        System.gc();
+
+        /*
+         * Queue is full but the old samples will be scavenged because the referenced objects are no
+         * longer alive.
+         */
+        List<TinyObject> objectsB = sampleObjects(profiler, 100, count);
+        validate(profiler, objectsB);
+        GraalDirectives.blackhole(objectsB);
+    }
+
+    @Test
+    public void testEmitSkipMiddle() {
+        testEmitSkip(4);
+    }
+
+    @Test
+    public void testEmitSkipYoungest() {
+        testEmitSkip(9);
+    }
+
+    @Test
+    public void testEmitSkipOldest() {
+        testEmitSkip(0);
+    }
+
+    private static void testEmitSkip(int index) {
+        int count = 10;
+        JfrOldObjectProfiler profiler = newProfiler(count);
+        List<TinyObject> a = sampleObjects(profiler, 1, count);
+        validate(profiler, a);
+
+        /* Free one specific sample. */
+        a.remove(index);
+        System.gc();
+
+        validate(profiler, a);
+        GraalDirectives.blackhole(a);
+    }
+
+    @Test
+    public void testEmitSkipAll() {
+        int count = 10;
+        JfrOldObjectProfiler profiler = newProfiler(count);
+        List<TinyObject> objects = sampleObjects(profiler, 1, count);
+        validate(profiler, objects);
+
+        /* Free all samples. */
+        GraalDirectives.blackhole(objects);
+        objects = null;
+        System.gc();
+
+        validate(profiler, Collections.emptyList());
+    }
+
+    @Test
+    public void testEvictYoungest() {
+        int count = 10;
+        JfrOldObjectProfiler profiler = newProfiler(count);
+
+        /* Add samples until there is only space for one more sample. */
+        List<TinyObject> objectsA = sampleObjects(profiler, 10, count - 1);
+        validate(profiler, objectsA);
+
+        /* Add one sample with a small allocation size. */
+        List<TinyObject> objectsB = sampleObjects(profiler, 1, 1);
+        objectsB.addAll(objectsA);
+        validate(profiler, objectsB);
+
+        /* Add one sample with a large allocation size. */
+        List<TinyObject> objectsC = sampleObjects(profiler, 100, 1);
+        objectsC.addAll(objectsA);
+        validate(profiler, objectsC);
+
+        /* Keep all objects alive. */
+        GraalDirectives.blackhole(objectsA);
+        GraalDirectives.blackhole(objectsB);
+        GraalDirectives.blackhole(objectsC);
+    }
+
+    @Test
+    public void testEvictMiddle() {
+        int count = 10;
+        JfrOldObjectProfiler profiler = newProfiler(count);
+
+        /* Add a few samples. */
+        List<TinyObject> objectsA = sampleObjects(profiler, 10, count / 2);
+        validate(profiler, objectsA);
+
+        /* Add one sample with a small allocation size. */
+        List<TinyObject> objectsB = sampleObjects(profiler, 1, 1);
+        objectsB.addAll(objectsA);
+        validate(profiler, objectsB);
+
+        /* Add a few more samples. */
+        List<TinyObject> objectsC = sampleObjects(profiler, 100, count / 2);
+        objectsC.addAll(objectsA);
+        validate(profiler, objectsC);
+
+        /* Keep all objects alive. */
+        GraalDirectives.blackhole(objectsA);
+        GraalDirectives.blackhole(objectsB);
+        GraalDirectives.blackhole(objectsC);
+    }
+
+    @Test
+    public void testEvictOldest() {
+        int count = 10;
+        JfrOldObjectProfiler profiler = newProfiler(count);
+
+        /* Add one sample with a small allocation size. */
+        List<TinyObject> objectsA = sampleObjects(profiler, 1, 1);
+        validate(profiler, objectsA);
+
+        /* Add samples with a higher allocation size. */
+        List<TinyObject> objectsB = sampleObjects(profiler, 100, count);
+        validate(profiler, objectsB);
+
+        /* Keep all objects alive. */
+        GraalDirectives.blackhole(objectsA);
+        GraalDirectives.blackhole(objectsB);
+    }
+
+    private static JfrOldObjectProfiler newProfiler(int queueSize) {
+        JfrOldObjectProfiler profiler = new JfrOldObjectProfiler();
+        profiler.configure(queueSize);
+        profiler.initialize();
+        return profiler;
+    }
+
+    private static List<TinyObject> sampleObjects(JfrOldObjectProfiler profiler, int initialValue, int count) {
+        if (!HasJfrSupport.get()) {
+            /* Prevent that the code below is reachable on platforms that don't support JFR. */
+            Assert.fail("JFR is not supported on this platform.");
+            return null;
+        }
+
+        ArrayList<TinyObject> result = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            int value = initialValue + i;
+            TinyObject obj = new TinyObject(value);
+            result.add(obj);
+
+            boolean success = JfrOldObjectProfiler.TestingBackdoor.sample(profiler, obj, WordFactory.unsigned(value), Integer.MIN_VALUE);
+            assertTrue(success);
+        }
+        return result;
+    }
+
+    private static void validate(JfrOldObjectProfiler profiler, List<TinyObject> objects) {
+        List<TinyObject> remainingObjects = new ArrayList<>(objects);
+
+        JfrOldObject cur = JfrOldObjectProfiler.TestingBackdoor.getOldestObject(profiler);
+        while (cur != null) {
+            Object obj = cur.getReferent();
+            if (obj != null) {
+                assertTrue(obj instanceof TinyObject);
+                assertTrue(remainingObjects.remove((TinyObject) obj));
+                assertTrue(cur.getObjectSize().aboveThan(0));
+                assertTrue(cur.getAllocationTicks() > 0);
+                assertEquals(Thread.currentThread().threadId(), cur.getThreadId());
+                assertEquals(Integer.MIN_VALUE, cur.getArrayLength());
             }
-        };
-        final OldObjectList list = new OldObjectList();
-        final OldObjectSampler sampler = new OldObjectSampler(size, list, effects);
-        final OldObjectEventEmitter eventEmitter = new OldObjectEventEmitter(list, effects);
-
-        for (int i = 0; i < size; i++) {
-            sampler.sample(new WeakReference<>(i), (i + 1) * 10_000, -1);
+            cur = (JfrOldObject) cur.getNext();
         }
 
-        // Set is-alive check for samples in first round to be false.
-        // Scavenging should kick in when lower-span objects are sampled.
-        isDead.set(true);
-
-        for (int i = 0; i < size; i++) {
-            sampler.sample(new WeakReference<>(10 + i), (i + 1) * 100, -1);
-        }
-
-        // Make sure that lower-span objects are inserted as a result of scavenging higher-span
-        // objects,
-        // and not as a result of checking that high-span objects are not alive at emit time.
-        isDead.set(false);
-
-        eventEmitter.emit(0);
-        assertStreamEquals(IntStream.rangeClosed(10, 19).boxed(), effects.objects());
-    }
-
-    @Test
-    public void testEvictUponFull() {
-        final int size = 10;
-        final TestEffects effects = new TestEffects(20L, size);
-        final OldObjectList list = new OldObjectList();
-        final OldObjectSampler sampler = new OldObjectSampler(size, list, effects);
-        final OldObjectEventEmitter eventEmitter = new OldObjectEventEmitter(list, effects);
-
-        for (int i = 0; i < size; i++) {
-            sampler.sample(new WeakReference<>(i), (i + 1) * 100, -1);
-        }
-
-        eventEmitter.emit(0);
-        assertStreamEquals(IntStream.rangeClosed(0, 9).boxed(), effects.objects());
-
-        // Clear accumulated samples and see what gets emitted now.
-        effects.clearSamples();
-
-        // Queue is full and objects to sample have bigger span than initial ones.
-        // So sampling these new objects should result in evicting previously sampled ones.
-        for (int i = 0; i < size; i++) {
-            sampler.sample(new WeakReference<>(10 + i), (i + 1) * 10_000, -1);
-        }
-
-        eventEmitter.emit(0);
-        assertStreamEquals(IntStream.rangeClosed(10, 19).boxed(), effects.objects());
-    }
-
-    @Test
-    public void testEmitSkippingMiddle() {
-        final int size = 8;
-        final TestEffects effects = new TestEffects(20L, size) {
-            @Override
-            @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-            public boolean isDead(WeakReference<?> ref) {
-                final Object value = super.getWeakReferent(ref);
-                return "4".equals(value);
-            }
-        };
-        final OldObjectList list = new OldObjectList();
-        final OldObjectSampler sampler = new OldObjectSampler(size, list, effects);
-        final OldObjectEventEmitter eventEmitter = new OldObjectEventEmitter(list, effects);
-
-        for (int i = 0; i < size; i++) {
-            sampler.sample(new WeakReference<>(String.valueOf(i)), i * 100, -1);
-        }
-
-        eventEmitter.emit(0);
-        assertLongStreamEquals(LongStream.concat(LongStream.rangeClosed(20L, 23L), LongStream.rangeClosed(25L, 27L)), effects.allocationTimes());
-    }
-
-    @Test
-    public void testEmitSkippingYoungest() {
-        final int size = 8;
-        final TestEffects effects = new TestEffects(20L, size) {
-            @Override
-            @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-            public boolean isDead(WeakReference<?> ref) {
-                final Object value = super.getWeakReferent(ref);
-                return "7".equals(value);
-            }
-        };
-        final OldObjectList list = new OldObjectList();
-        final OldObjectSampler sampler = new OldObjectSampler(size, list, effects);
-        final OldObjectEventEmitter eventEmitter = new OldObjectEventEmitter(list, effects);
-
-        for (int i = 0; i < size; i++) {
-            sampler.sample(new WeakReference<>(String.valueOf(i)), i * 100, -1);
-        }
-
-        eventEmitter.emit(0);
-        assertLongStreamEquals(LongStream.rangeClosed(20L, 26L), effects.allocationTimes());
-    }
-
-    @Test
-    public void testEmitSkippingOldest() {
-        final int size = 8;
-        final TestEffects effects = new TestEffects(20L, size) {
-            @Override
-            @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-            public boolean isDead(WeakReference<?> ref) {
-                final Object value = super.getWeakReferent(ref);
-                return "0".equals(value);
-            }
-        };
-        final OldObjectList list = new OldObjectList();
-        final OldObjectSampler sampler = new OldObjectSampler(size, list, effects);
-        final OldObjectEventEmitter eventEmitter = new OldObjectEventEmitter(list, effects);
-
-        for (int i = 0; i < size; i++) {
-            sampler.sample(new WeakReference<>(String.valueOf(i)), i * 100, -1);
-        }
-
-        eventEmitter.emit(0);
-        assertLongStreamEquals(LongStream.rangeClosed(21L, 27L), effects.allocationTimes());
-    }
-
-    @Test
-    public void testEmitSkippingAll() {
-        final int size = 8;
-        final TestEffects effects = new TestEffects(20L, size) {
-            @Override
-            @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-            public boolean isDead(WeakReference<?> ref) {
-                return true;
-            }
-        };
-        final OldObjectList list = new OldObjectList();
-        final OldObjectSampler sampler = new OldObjectSampler(size, list, effects);
-        final OldObjectEventEmitter eventEmitter = new OldObjectEventEmitter(list, effects);
-
-        for (int i = 0; i < size; i++) {
-            sampler.sample(new WeakReference<>(String.valueOf(i)), i * 100, -1);
-        }
-
-        eventEmitter.emit(0);
-        Assert.assertEquals(0, effects.sizeSamples());
-    }
-
-    @Test
-    public void testSampleManyEmitQueueSize() {
-        final int size = 256;
-        final TestEffects effects = new TestEffects(20L, size);
-        final OldObjectList list = new OldObjectList();
-        final OldObjectSampler sampler = new OldObjectSampler(size, list, effects);
-        final OldObjectEventEmitter eventEmitter = new OldObjectEventEmitter(list, effects);
-
-        for (int i = 0; i < 1_000_000; i++) {
-            sampler.sample(new WeakReference<>(String.valueOf(i)), i, -1);
-        }
-
-        eventEmitter.emit(0);
-        Assert.assertEquals(256, effects.sizeSamples());
-    }
-
-    @Test
-    public void testSampleOverflowEvictYoungest() {
-        final int size = 8;
-        final TestEffects effects = new TestEffects(20L, size);
-        final OldObjectList list = new OldObjectList();
-        final OldObjectSampler sampler = new OldObjectSampler(size, list, effects);
-        final OldObjectEventEmitter eventEmitter = new OldObjectEventEmitter(list, effects);
-
-        for (int i = 0; i < size + 1; i++) {
-            // Evict youngest because that's the one with the lowest span.
-            final int allocatedSize = i == (size - 1) ? 100 : 200;
-            sampler.sample(new WeakReference<>(String.valueOf(i)), allocatedSize, -1);
-        }
-
-        eventEmitter.emit(0);
-        assertLongStreamEquals(LongStream.concat(LongStream.rangeClosed(20L, 26L), LongStream.rangeClosed(28L, 28L)), effects.allocationTimes());
-    }
-
-    @Test
-    public void testSampleOverflowEvictMiddle() {
-        final int size = 8;
-        final TestEffects effects = new TestEffects(20L, size);
-        final OldObjectList list = new OldObjectList();
-        final OldObjectSampler sampler = new OldObjectSampler(size, list, effects);
-        final OldObjectEventEmitter eventEmitter = new OldObjectEventEmitter(list, effects);
-
-        for (int i = 0; i < size + 1; i++) {
-            // Evict middle because that's the one with the lowest span.
-            final int allocatedSize = i == (size / 2) ? 100 : 200;
-            sampler.sample(new WeakReference<>(String.valueOf(i)), allocatedSize, -1);
-        }
-
-        eventEmitter.emit(0);
-        assertLongStreamEquals(LongStream.concat(LongStream.rangeClosed(20L, 23L), LongStream.rangeClosed(25L, 28L)), effects.allocationTimes());
-    }
-
-    @Test
-    public void testSampleOverflowEvictOldest() {
-        final int size = 8;
-        final TestEffects effects = new TestEffects(20L, size);
-        final OldObjectList list = new OldObjectList();
-        final OldObjectSampler sampler = new OldObjectSampler(size, list, effects);
-        final OldObjectEventEmitter eventEmitter = new OldObjectEventEmitter(list, effects);
-
-        for (int i = 0; i < size + 1; i++) {
-            // Evict oldest because that's the one with the lowest span.
-            sampler.sample(new WeakReference<>(String.valueOf(i)), i * 100, -1);
-        }
-
-        eventEmitter.emit(0);
-        assertLongStreamEquals(LongStream.rangeClosed(21L, 28L), effects.allocationTimes());
-    }
-
-    @Test
-    public void testSampleFullEmit() {
-        final int size = 8;
-        final TestEffects effects = new TestEffects(20L, size);
-        final OldObjectList list = new OldObjectList();
-        final OldObjectSampler sampler = new OldObjectSampler(size, list, effects);
-        final OldObjectEventEmitter eventEmitter = new OldObjectEventEmitter(list, effects);
-
-        for (int i = 0; i < size; i++) {
-            sampler.sample(new WeakReference<>(String.valueOf(i)), i * 100, -1);
-        }
-
-        eventEmitter.emit(0);
-        assertLongStreamEquals(LongStream.rangeClosed(20L, 27L), effects.allocationTimes());
-    }
-
-    @Test
-    public void testSampleNotFullEmit() {
-        final int size = 8;
-        final TestEffects effects = new TestEffects(20L, size);
-        final OldObjectList list = new OldObjectList();
-        final OldObjectSampler sampler = new OldObjectSampler(size, list, effects);
-        final OldObjectEventEmitter eventEmitter = new OldObjectEventEmitter(list, effects);
-
-        for (int i = 0; i < size - 1; i++) {
-            sampler.sample(new WeakReference<>(String.valueOf(i)), i * 100, -1);
-        }
-
-        eventEmitter.emit(0);
-        assertLongStreamEquals(LongStream.rangeClosed(20L, 26L), effects.allocationTimes());
-    }
-
-    @Test
-    public void testSingleSample() {
-        final int size = 3;
-        final TestEffects effects = new TestEffects(20L, 3);
-        final OldObjectList list = new OldObjectList();
-        final OldObjectSampler sampler = new OldObjectSampler(size, list, effects);
-        final OldObjectEventEmitter eventEmitter = new OldObjectEventEmitter(list, effects);
-
-        sampler.sample(new WeakReference<>("a-sample"), 10, -1);
-        eventEmitter.emit(0);
-        final TestSample testSample = effects.peekLastSample();
-        Assert.assertNotNull(testSample);
-        Assert.assertEquals("a-sample", testSample.obj);
-        Assert.assertEquals(21, testSample.timestamp);
-        Assert.assertEquals(10, testSample.objectSize);
-        Assert.assertEquals(20, testSample.allocationTime);
-        Assert.assertEquals(50, testSample.threadId);
-        Assert.assertEquals(40, testSample.stackTraceId);
-        Assert.assertEquals(60, testSample.heapUsedAtLastGC);
-        Assert.assertEquals(-1, testSample.arrayLength);
-        Assert.assertEquals(1, effects.sizeSamples());
-    }
-
-    static void assertLongStreamEquals(LongStream expected, Stream<?> actual) {
-        assertStreamEquals(expected.boxed(), actual);
-    }
-
-    static void assertStreamEquals(Stream<?> expected, Stream<?> actual) {
-        Assert.assertEquals(expected.toList(), actual.toList());
-    }
-
-    private static class TestEffects implements OldObjectEffects {
-        private final TestSample[] testSamples;
-        private int head = 0;
-        private int tail = 0;
-        private long ticks;
-
-        TestEffects(long initialTicks, int size) {
-            this.ticks = initialTicks;
-            this.testSamples = new TestSample[size];
-            for (int i = 0; i < size; i++) {
-                this.testSamples[i] = new TestSample();
-            }
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public long elapsedTicks() {
-            return ticks++;
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public Object getWeakReferent(WeakReference<?> ref) {
-            try {
-                return ReferenceInternals.getReferent(ref);
-            } catch (ClassCastException e) {
-                // A class cast occurs when running this test as a plain Java unit test.
-                // Fallback to a mechanism that works in that environment.
-                return getWeakReferent0(ref);
-            }
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public boolean isDead(WeakReference<?> ref) {
-            try {
-                return ReferenceInternals.refersTo(ref, null);
-            } catch (NullPointerException e) {
-                // A NPE occurs when running this test as a plain Java unit test.
-                // Fallback to a mechanism that works in that environment.
-                return getWeakReferent0(ref) == null;
-            }
-        }
-
-        @Uninterruptible(reason = "A fallback for when this test is run in JVM mode", calleeMustBe = false)
-        private static Object getWeakReferent0(WeakReference<?> ref) {
-            return ref.get();
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public void emit(Object aliveObject, long timestamp, long allocatedSize, long allocationTime, long threadId, long stackTraceId, long heapUsedAtLastGC, int arrayLength) {
-            testSamples[tail++].set(aliveObject, timestamp, allocatedSize, allocationTime, threadId, stackTraceId, heapUsedAtLastGC, arrayLength);
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public long getStackTraceId() {
-            return 40;
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public long getThreadId(Thread thread) {
-            return 50;
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public long getHeapUsedAtLastGC() {
-            return 60;
-        }
-
-        TestSample peekLastSample() {
-            return testSamples[head];
-        }
-
-        int sizeSamples() {
-            return tail - head;
-        }
-
-        Stream<Long> allocationTimes() {
-            return Arrays.stream(testSamples).filter(s -> s.allocationTime != 0).map(TestSample::getAllocationTime);
-        }
-
-        Stream<Object> objects() {
-            return Arrays.stream(testSamples).filter(s -> s.allocationTime != 0).map(TestSample::getObject);
-        }
-
-        public void clearSamples() {
-            head = 0;
-            tail = 0;
-            for (TestSample testSample : testSamples) {
-                testSample.set(null, 0, 0, 0, 0, 0, 0, 0);
-            }
-        }
-    }
-
-    private static final class TestSample {
-        Object obj;
-        long timestamp;
-        long objectSize;
-        long allocationTime;
-        long threadId;
-        long stackTraceId;
-        long heapUsedAtLastGC;
-        int arrayLength;
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        void set(Object obj, long timestamp, long allocatedSize, long allocationTime, long threadId, long stackTraceId, long heapUsedAtLastGC, int arrayLength) {
-            this.obj = obj;
-            this.timestamp = timestamp;
-            this.objectSize = allocatedSize;
-            this.allocationTime = allocationTime;
-            this.threadId = threadId;
-            this.stackTraceId = stackTraceId;
-            this.heapUsedAtLastGC = heapUsedAtLastGC;
-            this.arrayLength = arrayLength;
-        }
-
-        long getAllocationTime() {
-            return allocationTime;
-        }
-
-        Object getObject() {
-            return obj;
-        }
-    }
-
-    private static final class MutableBoolean {
-        private boolean value;
-
-        MutableBoolean(boolean value) {
-            this.value = value;
-        }
-
-        void set(boolean newValue) {
-            value = newValue;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        boolean get() {
-            return value;
-        }
+        assertEquals(0, remainingObjects.size());
     }
 }

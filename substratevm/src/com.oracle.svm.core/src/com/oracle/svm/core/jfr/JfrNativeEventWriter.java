@@ -224,18 +224,18 @@ public final class JfrNativeEventWriter {
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
-    public static void putChars(JfrNativeEventWriterData data, char[] chars, int length) {
-        if (chars == null) {
-            putByte(data, JfrChunkFileWriter.StringEncoding.NULL.getValue());
-        } else if (length == 0) {
+    public static void putString(JfrNativeEventWriterData data, Pointer utf8Buffer, int numBytes) {
+        assert utf8Buffer.isNonNull();
+        assert numBytes >= 0;
+
+        if (numBytes == 0) {
             putByte(data, JfrChunkFileWriter.StringEncoding.EMPTY_STRING.getValue());
         } else {
-            int mUTF8Length = UninterruptibleUtils.String.modifiedUTF8Length(chars, length);
             putByte(data, JfrChunkFileWriter.StringEncoding.UTF8_BYTE_ARRAY.getValue());
-            putInt(data, mUTF8Length);
-            if (ensureSize(data, mUTF8Length)) {
-                Pointer newPosition = UninterruptibleUtils.String.toModifiedUTF8(length, chars, data.getCurrentPos(), data.getEndPos());
-                data.setCurrentPos(newPosition);
+            putInt(data, numBytes);
+            if (ensureSize(data, numBytes)) {
+                UnmanagedMemoryUtil.copy(utf8Buffer, data.getCurrentPos(), WordFactory.unsigned(numBytes));
+                data.setCurrentPos(data.getCurrentPos().add(numBytes));
             }
         }
     }

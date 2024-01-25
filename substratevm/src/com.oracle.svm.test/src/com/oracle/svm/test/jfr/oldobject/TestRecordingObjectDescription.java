@@ -26,86 +26,62 @@
 
 package com.oracle.svm.test.jfr.oldobject;
 
-import com.oracle.svm.core.jfr.SubstrateJVM;
-import jdk.jfr.Recording;
-import jdk.jfr.consumer.RecordedEvent;
-import jdk.jfr.consumer.RecordedObject;
+import java.util.List;
+
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.lang.ref.WeakReference;
-import java.util.concurrent.TimeUnit;
+import jdk.jfr.consumer.RecordedEvent;
+import jdk.jfr.consumer.RecordedObject;
 
 public class TestRecordingObjectDescription extends JfrOldObjectTest {
     @Test
     public void testThreadGroupName() throws Throwable {
-        Recording recording = startRecording();
-        sample(new MyThreadGroup("My Thread Group"));
-        stopRecording(recording, events -> filterEventsByType(MyThreadGroup.class, events).forEach(e -> assertDescription("Thread Group: My Thread Group", e)));
+        String name = "My Thread Group";
+        String expectedDescription = "Thread Group: " + name;
+        testDescription(new MyThreadGroup(name), expectedDescription);
     }
 
     @Test
     public void testThreadGroupEllipsis() throws Throwable {
-        final int objectDescriptionMaxSize = 100;
-        final String threadGroupName = "x".repeat(2 * objectDescriptionMaxSize);
-
-        Recording recording = startRecording();
-        sample(new MyThreadGroup(threadGroupName));
-        stopRecording(recording, events -> filterEventsByType(MyThreadGroup.class, events).forEach(e -> assertDescriptionLimit("xxx...", objectDescriptionMaxSize, e)));
+        String name = "abcdef".repeat(20);
+        String expectedDescription = "Thread Group: " + name.substring(0, 83) + "...";
+        testDescription(new MyThreadGroup(name), expectedDescription);
     }
 
     @Test
     public void testThreadName() throws Throwable {
-        Recording recording = startRecording();
-        sample(new MyThread("My Thread"));
-        stopRecording(recording, events -> filterEventsByType(MyThread.class, events).forEach(e -> assertDescription("Thread Name: My Thread", e)));
+        String name = "My Thread";
+        String expectedDescription = "Thread Name: My Thread";
+        testDescription(new MyThread(name), expectedDescription);
     }
 
     @Test
     public void testClassName() throws Throwable {
-        Recording recording = startRecording();
-        sample(String.class);
-        stopRecording(recording, events -> filterEventsByType(Class.class, events).forEach(e -> assertDescription("Class Name: java.lang.String", e)));
+        String expectedDescription = "Class Name: " + String.class.getName();
+        testDescription(String.class, expectedDescription);
     }
 
-    private static void sample(Object obj) {
-        // For single-shot sampling attempts, loop until sampling in successful.
-        // This is needed because other internal threads could be trying to sample too,
-        // e.g. JFR Periodic Tasks.
-        long waitTimeSec = 5;
-        long endTime = System.nanoTime() + TimeUnit.SECONDS.toNanos(waitTimeSec);
-        boolean success;
-        long sleepTime;
-        do {
-            success = SubstrateJVM.getJfrOldObjectProfiler().sample(new WeakReference<>(obj), 1_000, Integer.MIN_VALUE);
-            sleepTime = endTime - System.nanoTime();
-        } while (!success && sleepTime > 0);
+    private void testDescription(Object obj, String expectedDescription) throws Throwable {
+        testSampling(obj, Integer.MIN_VALUE, events -> validateEvents(events, obj.getClass(), expectedDescription));
+    }
 
-        if (!success) {
-            throw new AssertionError("Timed out waiting for sampling to complete");
+    private void validateEvents(List<RecordedEvent> events, Class<?> expectedSampledType, String expectedDescription) {
+        List<RecordedEvent> matchingEvents = validateEvents(events, expectedSampledType, Integer.MIN_VALUE);
+        for (RecordedEvent event : matchingEvents) {
+            String description = event.<RecordedObject> getValue("object").getValue("description");
+            Assert.assertEquals(expectedDescription, description);
         }
     }
 
-    private static void assertDescription(String expected, RecordedEvent event) {
-        final String description = event.<RecordedObject> getValue("object").getValue("description");
-        Assert.assertEquals(expected, description);
-    }
-
-    private static void assertDescriptionLimit(String expected, int expectedSize, RecordedEvent event) {
-        final String description = event.<RecordedObject> getValue("object").getValue("description");
-        Assert.assertEquals(expectedSize, description.length());
-        Assert.assertTrue(description.contains(expected));
-        Assert.assertTrue(description.contains("Thread Group: x"));
-    }
-
-    public static final class MyThreadGroup extends ThreadGroup {
-        public MyThreadGroup(String name) {
+    private static final class MyThreadGroup extends ThreadGroup {
+        MyThreadGroup(String name) {
             super(name);
         }
     }
 
-    public static final class MyThread extends Thread {
-        public MyThread(String name) {
+    private static final class MyThread extends Thread {
+        MyThread(String name) {
             super(name);
         }
     }

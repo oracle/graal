@@ -26,8 +26,17 @@
 
 package com.oracle.svm.core.jfr.oldobject;
 
-import jdk.graal.compiler.word.Word;
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
+
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.JfrBuffer;
 import com.oracle.svm.core.jfr.JfrBufferAccess;
 import com.oracle.svm.core.jfr.JfrBufferType;
@@ -40,25 +49,21 @@ import com.oracle.svm.core.jfr.JfrType;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.locks.VMMutex;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.StackValue;
-import org.graalvm.word.WordFactory;
+
+import jdk.graal.compiler.word.Word;
 
 public final class JfrOldObjectRepository implements JfrRepository {
+    private static final int OBJECT_DESCRIPTION_MAX_LENGTH = 100;
 
     private final VMMutex mutex;
     private final JfrOldObjectEpochData epochData0;
     private final JfrOldObjectEpochData epochData1;
-    private final JfrOldObjectDescriptionWriter descriptionWriter;
-    private long nextId = 1;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrOldObjectRepository() {
         this.mutex = new VMMutex("jfrOldObjectRepository");
         this.epochData0 = new JfrOldObjectEpochData();
         this.epochData1 = new JfrOldObjectEpochData();
-        this.descriptionWriter = new JfrOldObjectDescriptionWriter();
     }
 
     public void teardown() {
@@ -75,59 +80,75 @@ public final class JfrOldObjectRepository implements JfrRepository {
                 epochData.buffer = JfrBufferAccess.allocate(JfrBufferType.C_HEAP);
             }
 
-            final Word pointer = Word.objectToUntrackedPointer(obj);
+            long id = JfrOldObjectEpochData.nextId;
+            Word pointer = Word.objectToUntrackedPointer(obj);
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initialize(data, epochData.buffer);
-            final long objectId = nextId;
-            JfrNativeEventWriter.putLong(data, objectId);
-            nextId++;
+            JfrNativeEventWriter.putLong(data, id);
             JfrNativeEventWriter.putLong(data, pointer.rawValue());
             JfrNativeEventWriter.putLong(data, SubstrateJVM.getTypeRepository().getClassId(obj.getClass()));
             writeDescription(obj, data);
-            // todo parent address (path-to-gc-roots)
-            JfrNativeEventWriter.putLong(data, WordFactory.zero().rawValue());
+            JfrNativeEventWriter.putLong(data, 0L); // GC root
             if (!JfrNativeEventWriter.commit(data)) {
                 return 0L;
             }
 
+            JfrOldObjectEpochData.nextId++;
             epochData.unflushedEntries++;
             /* The buffer may have been replaced with a new one. */
             epochData.buffer = data.getJfrBuffer();
-            return objectId;
+            return id;
         } finally {
             mutex.unlock();
         }
     }
 
-    @Uninterruptible(reason = "Locking without transition and result is only valid until epoch changes.", callerMustBe = true)
-    private void writeDescription(Object obj, JfrNativeEventWriterData data) {
-        if (obj instanceof ThreadGroup) {
-            String prefix = "Thread Group: ";
-            String threadGroupName = ((ThreadGroup) obj).getName();
-            descriptionWriter.write(prefix);
-            descriptionWriter.write(threadGroupName);
-            descriptionWriter.finish(data);
-            return;
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static void writeDescription(Object obj, JfrNativeEventWriterData data) {
+        if (obj instanceof ThreadGroup group) {
+            writeDescription(data, "Thread Group: ", group.getName());
+        } else if (obj instanceof Thread thread) {
+            writeDescription(data, "Thread Name: ", thread.getName());
+        } else if (obj instanceof Class<?> clazz) {
+            writeDescription(data, "Class Name: ", clazz.getName());
+        } else {
+            // Size description not implemented since that relies on runtime reflection.
+            JfrNativeEventWriter.putString(data, null);
         }
-        if (obj instanceof Thread) {
-            String prefix = "Thread Name: ";
-            String threadName = ((Thread) obj).getName();
-            descriptionWriter.write(prefix);
-            descriptionWriter.write(threadName);
-            descriptionWriter.finish(data);
-            return;
-        }
-        if (obj instanceof Class) {
-            String prefix = "Class Name: ";
-            String className = ((Class<?>) obj).getName();
-            descriptionWriter.write(prefix);
-            descriptionWriter.write(className);
-            descriptionWriter.finish(data);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static void writeDescription(JfrNativeEventWriterData data, String prefix, String text) {
+        if (text == null || text.isEmpty()) {
+            JfrNativeEventWriter.putString(data, text);
             return;
         }
 
-        // Size description not implemented since that relies on runtime reflection.
-        JfrNativeEventWriter.putLong(data, 0L);
+        Pointer buffer = UnsafeStackValue.get(OBJECT_DESCRIPTION_MAX_LENGTH);
+        Pointer bufferEnd = buffer.add(OBJECT_DESCRIPTION_MAX_LENGTH);
+
+        int prefixLength = UninterruptibleUtils.String.modifiedUTF8Length(prefix, false);
+        int textLength = UninterruptibleUtils.String.modifiedUTF8Length(text, false);
+        assert prefixLength < OBJECT_DESCRIPTION_MAX_LENGTH - 3;
+
+        boolean tooLong = false;
+        int totalLength = prefixLength + textLength;
+        if (totalLength > OBJECT_DESCRIPTION_MAX_LENGTH) {
+            totalLength = OBJECT_DESCRIPTION_MAX_LENGTH;
+            textLength = OBJECT_DESCRIPTION_MAX_LENGTH - prefixLength - 3;
+            tooLong = true;
+        }
+
+        Pointer pos = UninterruptibleUtils.String.toModifiedUTF8(prefix, buffer, bufferEnd, false);
+        pos = UninterruptibleUtils.String.toModifiedUTF8(text, textLength, pos, bufferEnd, false, null);
+
+        if (tooLong) {
+            pos.writeByte(0, (byte) '.');
+            pos.writeByte(1, (byte) '.');
+            pos.writeByte(2, (byte) '.');
+        }
+
+        JfrNativeEventWriter.putString(data, buffer, totalLength);
     }
 
     @Override
@@ -135,14 +156,14 @@ public final class JfrOldObjectRepository implements JfrRepository {
     public int write(JfrChunkWriter writer, boolean flushpoint) {
         mutex.lockNoTransition();
         try {
-            JfrOldObjectEpochData epochData = getEpochData(true);
+            JfrOldObjectEpochData epochData = getEpochData(!flushpoint);
             int count = epochData.unflushedEntries;
             if (count != 0) {
                 writer.writeCompressedLong(JfrType.OldObject.getId());
                 writer.writeCompressedInt(count);
                 writer.write(epochData.buffer);
             }
-            epochData.clear();
+            epochData.clear(flushpoint);
             return count == 0 ? EMPTY : NON_EMPTY;
         } finally {
             mutex.unlock();
@@ -156,6 +177,8 @@ public final class JfrOldObjectRepository implements JfrRepository {
     }
 
     private static class JfrOldObjectEpochData {
+        private static long nextId = 1;
+
         private int unflushedEntries;
         private JfrBuffer buffer;
 
@@ -165,7 +188,8 @@ public final class JfrOldObjectRepository implements JfrRepository {
         }
 
         @Uninterruptible(reason = "May write current epoch data.")
-        void clear() {
+        void clear(@SuppressWarnings("unused") boolean flushpoint) {
+            /* Flushpoint/epoch change can use same code. */
             unflushedEntries = 0;
             JfrBufferAccess.reinitialize(buffer);
         }

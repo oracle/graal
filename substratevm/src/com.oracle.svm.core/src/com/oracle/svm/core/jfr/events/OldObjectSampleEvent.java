@@ -26,32 +26,34 @@
 
 package com.oracle.svm.core.jfr.events;
 
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.word.UnsignedWord;
+
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
-import org.graalvm.nativeimage.StackValue;
 
 public class OldObjectSampleEvent {
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public static void emit(long timestamp, long objectId, long objectSize, long allocationTime, long threadId, long stackTraceId, long heapUsedAtLastGC, int arrayLength) {
+    public static void emit(long startTicks, long objectId, UnsignedWord objectSize, long allocationTicks, long threadId, long stackTraceId, UnsignedWord heapUsedAfterLastGC, int arrayLength) {
         if (JfrEvent.OldObjectSample.shouldEmit()) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.OldObjectSample);
-            JfrNativeEventWriter.putLong(data, timestamp); // start time
+            JfrNativeEventWriter.putLong(data, startTicks); // start time
             JfrNativeEventWriter.putLong(data, 0); // duration
-            JfrNativeEventWriter.putLong(data, threadId); // thread id
-            JfrNativeEventWriter.putLong(data, stackTraceId); // stack trace id
-            JfrNativeEventWriter.putLong(data, allocationTime); // allocation time
-            JfrNativeEventWriter.putLong(data, objectSize); // object size
-            JfrNativeEventWriter.putLong(data, timestamp - allocationTime); // object age
-            JfrNativeEventWriter.putLong(data, heapUsedAtLastGC); // used memory at last gc
-            JfrNativeEventWriter.putLong(data, objectId); // object id
-            JfrNativeEventWriter.putInt(data, arrayLength); // array length
-            JfrNativeEventWriter.putLong(data, 0); // todo gc root address (path-to-gc-roots)
+            JfrNativeEventWriter.putLong(data, threadId);
+            JfrNativeEventWriter.putLong(data, stackTraceId);
+            JfrNativeEventWriter.putLong(data, allocationTicks); // allocation time
+            JfrNativeEventWriter.putLong(data, objectSize.rawValue());
+            JfrNativeEventWriter.putLong(data, startTicks - allocationTicks); // object age
+            JfrNativeEventWriter.putLong(data, heapUsedAfterLastGC.rawValue());
+            JfrNativeEventWriter.putLong(data, objectId);
+            JfrNativeEventWriter.putInt(data, arrayLength);
+            JfrNativeEventWriter.putLong(data, 0); // GC root
             JfrNativeEventWriter.endSmallEvent(data);
         }
     }

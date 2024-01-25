@@ -1,6 +1,6 @@
 Usage: -XX:FlightRecorderOptions=old-object-queue-size[=size]
 
-The JFR old object sample sample queue is initialized with a fixed-size array at runtime.
+The JFR old object sample queue is initialized with a fixed-size array at runtime.
 The default size is 256 elements, but this can be configured at runtime using this option.
 For example:
 
