@@ -452,7 +452,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             ObjectLayout ol = ConfigurationValues.getObjectLayout();
             assert ol.hasFixedIdentityHashField() ? (optionalIdentityHashOffset == ol.getFixedIdentityHashOffset()) : (optionalIdentityHashOffset > 0);
         } else {
-            assert optionalIdentityHashOffset == -1;
+            assert optionalIdentityHashOffset == 0;
         }
         VMError.guarantee(monitorOffset == (char) monitorOffset, "Class %s has an invalid monitor field offset. Most likely, its objects are larger than supported.", name);
         VMError.guarantee(optionalIdentityHashOffset == (char) optionalIdentityHashOffset, "Class %s has an invalid identity hash code field offset. Most likely, its objects are larger than supported.", name);
