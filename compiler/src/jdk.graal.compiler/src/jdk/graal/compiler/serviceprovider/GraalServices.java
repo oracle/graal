@@ -40,7 +40,6 @@ import java.util.Map;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 
-import jdk.graal.compiler.core.common.BootstrapMethodIntrospection;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.EncodedSpeculationReason;
@@ -62,12 +61,10 @@ public final class GraalServices {
 
     private static final Method constantPoolLookupMethodWithCaller;
     private static final Method constantPoolLookupConstantWithResolve;
-    private static final Method constantPoolLookupBootstrapMethodInvocation;
 
     static {
         Method lookupMethodWithCaller = null;
         Method lookupConstantWithResolve = null;
-        Method lookupBootstrapMethodInvocation = null;
 
         try {
             lookupMethodWithCaller = ConstantPool.class.getDeclaredMethod("lookupMethod", Integer.TYPE, Integer.TYPE, ResolvedJavaMethod.class);
@@ -79,14 +76,8 @@ public final class GraalServices {
         } catch (NoSuchMethodException e) {
         }
 
-        try {
-            lookupBootstrapMethodInvocation = ConstantPool.class.getDeclaredMethod("lookupBootstrapMethodInvocation", Integer.TYPE, Integer.TYPE);
-        } catch (NoSuchMethodException e) {
-        }
-
         constantPoolLookupMethodWithCaller = lookupMethodWithCaller;
         constantPoolLookupConstantWithResolve = lookupConstantWithResolve;
-        constantPoolLookupBootstrapMethodInvocation = lookupBootstrapMethodInvocation;
     }
 
     private GraalServices() {
@@ -485,22 +476,6 @@ public final class GraalServices {
             }
         }
         return constantPool.lookupConstant(cpi);
-    }
-
-    public static BootstrapMethodIntrospection lookupBootstrapMethodIntrospection(ConstantPool constantPool, int cpi, int opcode) {
-        if (constantPoolLookupBootstrapMethodInvocation != null) {
-            try {
-                Object bootstrapMethodInvocation = constantPoolLookupBootstrapMethodInvocation.invoke(constantPool, cpi, opcode);
-                if (bootstrapMethodInvocation != null) {
-                    return new BootstrapMethodIntrospectionImpl(bootstrapMethodInvocation);
-                }
-            } catch (InvocationTargetException e) {
-                throw rethrow(e.getCause());
-            } catch (IllegalAccessException e) {
-                throw GraalError.shouldNotReachHere(e, "The method lookupBootstrapMethodInvocation should be accessible");
-            }
-        }
-        return null;
     }
 
     @SuppressWarnings("unchecked")
