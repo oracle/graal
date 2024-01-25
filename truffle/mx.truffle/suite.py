@@ -646,7 +646,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.profiles",
-        "org.graalvm.shadowed.org.jcodings",
+        "TRUFFLE_JCODINGS",
       ],
       "requires" : [
         "jdk.unsupported", # sun.misc.Unsafe
@@ -1733,6 +1733,7 @@ suite = {
         "sdk:COLLECTIONS",
         "sdk:NATIVEIMAGE",
         "sdk:POLYGLOT",
+        "TRUFFLE_JCODINGS",
       ],
       "description" : "Truffle is a multi-language framework for executing dynamic languages\nthat achieves high performance when combined with Graal.",
       "javadocType": "api",
@@ -2408,6 +2409,45 @@ suite = {
         "artifactId" : "antlr4",
         "tag": ["default", "public"],
       },
+      "graalCompilerSourceEdition": "ignore",
+    },
+
+    "TRUFFLE_JCODINGS" : {
+      # JCODINGS library shadowed for Truffle.
+      # This distribution defines a module.
+      "moduleInfo" : {
+        "name" : "org.graalvm.shadowed.jcodings",
+        "exports" : [
+          # Unqualified exports
+          "org.graalvm.shadowed.org.jcodings",
+          "org.graalvm.shadowed.org.jcodings.ascii",
+          "org.graalvm.shadowed.org.jcodings.constants",
+          "org.graalvm.shadowed.org.jcodings.exception",
+          "org.graalvm.shadowed.org.jcodings.specific",
+          "org.graalvm.shadowed.org.jcodings.transcode",
+          "org.graalvm.shadowed.org.jcodings.transcode.specific",
+          "org.graalvm.shadowed.org.jcodings.unicode",
+          "org.graalvm.shadowed.org.jcodings.util",
+        ],
+      },
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "spotbugs" : "false",
+      "dependencies" : [
+        "org.graalvm.shadowed.org.jcodings",
+      ],
+      "distDependencies" : [],
+      "description" : "JCodings module shadowed for Truffle.",
+      "allowsJavadocWarnings" : True,
+      "license" : ["MIT"],
+      "useModulePath": True,
+      "maven" : {
+        "groupId" : "org.graalvm.shadowed",
+        "artifactId" : "jcodings",
+        "tag": ["default", "public"],
+      },
+      "compress" : True,
       "graalCompilerSourceEdition": "ignore",
     },
   },
