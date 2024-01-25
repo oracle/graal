@@ -108,18 +108,33 @@ public final class PosixPlatformThreads extends PlatformThreads {
                 }
             }
 
-            ThreadStartData startData = prepareStart(thread, SizeOf.get(ThreadStartData.class));
+            /*
+             * Prevent stack overflow errors so that starting the thread and reverting back to a
+             * safe state (in case of an error) works reliably.
+             */
+            StackOverflowCheck.singleton().makeYellowZoneAvailable();
+            try {
+                return doStartThread0(thread, attributes);
+            } finally {
+                StackOverflowCheck.singleton().protectYellowZone();
+            }
+        } finally {
+            Pthread.pthread_attr_destroy(attributes);
+        }
+    }
 
+    /** Starts a thread to the point so that it is executing. */
+    private boolean doStartThread0(Thread thread, pthread_attr_t attributes) {
+        ThreadStartData startData = prepareStart(thread, SizeOf.get(ThreadStartData.class));
+        try {
             Pthread.pthread_tPointer newThread = UnsafeStackValue.get(Pthread.pthread_tPointer.class);
             if (Pthread.pthread_create(newThread, attributes, threadStartRoutine.getFunctionPointer(), startData) != 0) {
                 undoPrepareStartOnError(thread, startData);
                 return false;
             }
-
-            setPthreadIdentifier(thread, newThread.read());
             return true;
-        } finally {
-            Pthread.pthread_attr_destroy(attributes);
+        } catch (Throwable e) {
+            throw VMError.shouldNotReachHere("No exception must be thrown after creating the thread start data.", e);
         }
     }
 
@@ -145,8 +160,8 @@ public final class PosixPlatformThreads extends PlatformThreads {
     protected void setNativeName(Thread thread, String name) {
         if (!hasThreadIdentifier(thread)) {
             /*
-             * The thread was not started from Java code, but started from C code and attached
-             * manually to SVM. We do not want to interfere with such threads.
+             * The thread was a. not started yet, b. not started from Java code (i.e., only attached
+             * to SVM). We do not want to interfere with such threads.
              */
             return;
         }
@@ -177,6 +192,11 @@ public final class PosixPlatformThreads extends PlatformThreads {
         Sched.sched_yield();
     }
 
+    /**
+     * Note that this method is only executed for Java threads that are started via
+     * {@link Thread#start()}. It is not executed if an existing native thread is attached to an
+     * isolate.
+     */
     @Override
     protected void beforeThreadRun(Thread thread) {
         /* Complete the initialization of the thread, now that it is (nearly) running. */

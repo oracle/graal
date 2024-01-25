@@ -46,7 +46,7 @@ import jdk.internal.misc.Unsafe;
 
 /**
  * {@link JavaMonitor} is based on the code of {@link java.util.concurrent.locks.ReentrantLock} as
- * of JDK 19 (git commit hash: f640fc5a1eb876a657d0de011dcd9b9a42b88eec, JDK tag: jdk-19+30).
+ * of JDK 21+26.
  *
  * Only the relevant methods from the JDK sources have been kept. Some additional Native
  * Image-specific functionality has been added.
@@ -91,7 +91,7 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
             return existingCondition;
         }
         JavaMonitorConditionObject newCondition = new JavaMonitorConditionObject();
-        if (!U.compareAndSetObject(this, CONDITION_FIELD_OFFSET, null, newCondition)) {
+        if (!U.compareAndSetReference(this, CONDITION_FIELD_OFFSET, null, newCondition)) {
             newCondition = condition;
         }
         return newCondition;

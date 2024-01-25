@@ -163,6 +163,7 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
         }
     }
 
+    @Override
     @Uninterruptible(reason = "Prevent VM operations that modify thread-local execution sampler state.")
     protected void uninstall(IsolateThread thread) {
         assert thread == CurrentIsolate.getCurrentThread() || VMOperation.isInProgressAtSafepoint();
