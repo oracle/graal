@@ -40,8 +40,7 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
     @TruffleBoundary
     static void suspend0(@Inject EspressoLanguage language, @Inject Meta meta) {
         if (language.getThreadLocalState().isContinuationSuspensionBlocked()) {
-            new Throwable("suspend blocked").printStackTrace();
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalStateException, "Suspension is currently blocked by the presence of non-regular Java methods on the stack. Check for native frames and intrinsics in the stack trace of this exception.");
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalStateException, "Suspension is currently blocked by the presence of unsupported frames on the stack. Check for synchronized blocks, native calls and VM intrinsics in the stack trace of this exception.");
         }
         // This internal exception will be caught in BytecodeNode's interpreter loop. Frame records
         // will be added to the exception object in a linked list until it's caught in resume below.

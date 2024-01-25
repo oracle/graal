@@ -247,6 +247,9 @@ public final class Continuation {
         /**
          * Suspends the continuation, unwinding the stack to the point at which it was previously
          * resumed.
+         *
+         * @throws IllegalStateException if you try to call this outside a continuation, or if
+         * there are native frames on the stack, or if the thread is inside a synchronized block.
          */
         public void suspend() {
             if (!insideContinuation.get())
