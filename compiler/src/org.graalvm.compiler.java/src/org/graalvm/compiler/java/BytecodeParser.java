@@ -1229,9 +1229,8 @@ public class BytecodeParser implements GraphBuilderContext {
 
     /**
      * @param type the type of the array being instantiated
-     * @param length the length of the array
      */
-    protected void handleUnresolvedNewObjectArray(JavaType type, ValueNode length) {
+    protected void handleUnresolvedNewObjectArray(JavaType type) {
         assert !graphBuilderConfig.unresolvedIsError();
         DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
         deopt.updateNodeSourcePosition(() -> createBytecodePosition());
@@ -1239,9 +1238,8 @@ public class BytecodeParser implements GraphBuilderContext {
 
     /**
      * @param type the type being instantiated
-     * @param dims the dimensions for the multi-array
      */
-    protected void handleUnresolvedNewMultiArray(JavaType type, ValueNode[] dims) {
+    protected void handleUnresolvedNewMultiArray(JavaType type) {
         assert !graphBuilderConfig.unresolvedIsError();
         DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
         deopt.updateNodeSourcePosition(() -> createBytecodePosition());
@@ -1249,9 +1247,8 @@ public class BytecodeParser implements GraphBuilderContext {
 
     /**
      * @param field the unresolved field
-     * @param receiver the object containing the field or {@code null} if {@code field} is static
      */
-    protected void handleUnresolvedLoadField(JavaField field, ValueNode receiver) {
+    protected void handleUnresolvedLoadField(JavaField field) {
         assert !graphBuilderConfig.unresolvedIsError();
         DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
         deopt.updateNodeSourcePosition(() -> createBytecodePosition());
@@ -1259,17 +1256,15 @@ public class BytecodeParser implements GraphBuilderContext {
 
     /**
      * @param field the unresolved field
-     * @param value the value being stored to the field
-     * @param receiver the object containing the field or {@code null} if {@code field} is static
      */
-    protected void handleUnresolvedStoreField(JavaField field, ValueNode value, ValueNode receiver) {
+    protected void handleUnresolvedStoreField(JavaField field) {
         assert !graphBuilderConfig.unresolvedIsError();
         DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
         deopt.updateNodeSourcePosition(() -> createBytecodePosition());
     }
 
     /**
-     * @param type
+     * @param type the unresolved type of the exception
      */
     protected void handleUnresolvedExceptionType(JavaType type) {
         assert !graphBuilderConfig.unresolvedIsError();
@@ -1278,8 +1273,8 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     /**
-     * @param javaMethod
-     * @param invokeKind
+     * @param javaMethod the unresolved target method
+     * @param invokeKind the kind of the unresolved invoke
      */
     protected void handleUnresolvedInvoke(JavaMethod javaMethod, InvokeKind invokeKind) {
         assert !graphBuilderConfig.unresolvedIsError();
@@ -4644,8 +4639,7 @@ public class BytecodeParser implements GraphBuilderContext {
         if (typeIsResolved(type)) {
             genNewObjectArray((ResolvedJavaType) type);
         } else {
-            ValueNode length = frameState.pop(JavaKind.Int);
-            handleUnresolvedNewObjectArray(type, length);
+            handleUnresolvedNewObjectArray(type);
         }
     }
 
@@ -4705,21 +4699,17 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected void genGetField(int cpi, int opcode) {
-        genGetField(cpi, opcode, frameState.pop(JavaKind.Object));
-    }
-
-    protected void genGetField(int cpi, int opcode, ValueNode receiverInput) {
         JavaField field = lookupField(cpi, opcode);
-        genGetField(field, receiverInput);
+        genGetField(field);
     }
 
-    private void genGetField(JavaField field, ValueNode receiverInput) {
-        if (field instanceof ResolvedJavaField) {
-            ValueNode receiver = maybeEmitExplicitNullCheck(receiverInput);
-            ResolvedJavaField resolvedField = (ResolvedJavaField) field;
+    private void genGetField(JavaField field) {
+        if (field instanceof ResolvedJavaField resolvedField) {
+            // Only pop receiver from frame state if we are not going to deopt.
+            ValueNode receiver = maybeEmitExplicitNullCheck(frameState.pop(JavaKind.Object));
             genGetField(resolvedField, receiver);
         } else {
-            handleUnresolvedLoadField(field, receiverInput);
+            handleUnresolvedLoadField(field);
         }
     }
 
@@ -4820,33 +4810,27 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected void genPutField(JavaField field) {
-        genPutField(field, frameState.pop(field.getJavaKind()));
+        if (field instanceof ResolvedJavaField resolvedField) {
+            // Only pop value from frame state if we are not going to deopt.
+            genPutField(resolvedField, frameState.pop(field.getJavaKind()));
+        } else {
+            handleUnresolvedStoreField(field);
+        }
     }
 
-    private void genPutField(JavaField field, ValueNode value) {
+    private void genPutField(ResolvedJavaField field, ValueNode value) {
         ValueNode receiverInput = frameState.pop(JavaKind.Object);
 
-        if (field instanceof ResolvedJavaField) {
-            ValueNode receiver = maybeEmitExplicitNullCheck(receiverInput);
-            ResolvedJavaField resolvedField = (ResolvedJavaField) field;
-
-            if (!parsingIntrinsic() && GeneratePIC.getValue(getOptions())) {
-                graph.recordField(resolvedField);
+        ValueNode receiver = maybeEmitExplicitNullCheck(receiverInput);
+        for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
+            if (plugin.handleStoreField(this, receiver, field, value)) {
+                return;
             }
-
-            for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
-                if (plugin.handleStoreField(this, receiver, resolvedField, value)) {
-                    return;
-                }
-            }
-
-            if (resolvedField.isFinal() && method.isConstructor()) {
-                finalBarrierRequired = true;
-            }
-            genStoreField(receiver, resolvedField, value);
-        } else {
-            handleUnresolvedStoreField(field, value, receiverInput);
         }
+        if (field.isFinal() && method.isConstructor()) {
+            finalBarrierRequired = true;
+        }
+        genStoreField(receiver, field, value);
     }
 
     protected void genGetStatic(int cpi, int opcode) {
@@ -4855,8 +4839,9 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private void genGetStatic(JavaField field) {
-        ResolvedJavaField resolvedField = resolveStaticFieldAccess(field, null);
+        ResolvedJavaField resolvedField = resolveStaticFieldAccess(field);
         if (resolvedField == null) {
+            handleUnresolvedLoadField(field);
             return;
         }
 
@@ -4910,7 +4895,7 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
-    private ResolvedJavaField resolveStaticFieldAccess(JavaField field, ValueNode value) {
+    private ResolvedJavaField resolveStaticFieldAccess(JavaField field) {
         if (field instanceof ResolvedJavaField) {
             ResolvedJavaField resolvedField = (ResolvedJavaField) field;
             ResolvedJavaType resolvedType = resolvedField.getDeclaringClass();
@@ -4932,12 +4917,6 @@ public class BytecodeParser implements GraphBuilderContext {
                 }
             }
         }
-        if (value == null) {
-            handleUnresolvedLoadField(field, null);
-        } else {
-            handleUnresolvedStoreField(field, value, null);
-
-        }
         return null;
     }
 
@@ -4948,9 +4927,9 @@ public class BytecodeParser implements GraphBuilderContext {
 
     protected void genPutStatic(JavaField field) {
         int stackSizeBefore = frameState.stackSize();
-        ValueNode value = frameState.pop(field.getJavaKind());
-        ResolvedJavaField resolvedField = resolveStaticFieldAccess(field, value);
+        ResolvedJavaField resolvedField = resolveStaticFieldAccess(field);
         if (resolvedField == null) {
+            handleUnresolvedStoreField(field);
             return;
         }
 
@@ -4958,6 +4937,8 @@ public class BytecodeParser implements GraphBuilderContext {
             graph.recordField(resolvedField);
         }
 
+        // Only pop value from frame state if we are not going to deopt.
+        ValueNode value = frameState.pop(field.getJavaKind());
         ClassInitializationPlugin classInitializationPlugin = this.graphBuilderConfig.getPlugins().getClassInitializationPlugin();
         ResolvedJavaType holder = resolvedField.getDeclaringClass();
         if (classInitializationPlugin != null) {
