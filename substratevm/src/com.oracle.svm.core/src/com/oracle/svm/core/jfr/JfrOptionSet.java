@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.jfr;
 
-import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.jfr.internal.Options;
 
 /**
@@ -37,8 +37,8 @@ import jdk.jfr.internal.Options;
  * the option values as needed.
  *
  * Similar to OpenJDK, the options available by -XX:FlightRecorderOptions cannot be set after JFR is
- * initialized. This means this that after {@link SubstrateJVM#createJFR(boolean)} is called, this
- * class is no longer needed.
+ * initialized. This means that after {@link SubstrateJVM#createJFR(boolean)} is called, this class
+ * is no longer needed.
  *
  * This class is used to store options set at the OpenJDK Java-level which propagate down to the VM
  * level via {@link jdk.jfr.internal.JVM}. The option values are stored here until they are

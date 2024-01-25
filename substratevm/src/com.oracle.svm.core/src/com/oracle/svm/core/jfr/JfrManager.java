@@ -36,8 +36,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -49,6 +47,8 @@ import com.oracle.svm.core.jfr.events.EveryChunkNativePeriodicEvents;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.jfr.FlightRecorder;
 import jdk.jfr.Recording;
 import jdk.jfr.internal.LogLevel;
@@ -57,9 +57,9 @@ import jdk.jfr.internal.Logger;
 import jdk.jfr.internal.OldObjectSample;
 import jdk.jfr.internal.Options;
 import jdk.jfr.internal.PrivateAccess;
+import jdk.jfr.internal.Repository;
 import jdk.jfr.internal.SecuritySupport;
 import jdk.jfr.internal.jfc.JFC;
-import jdk.jfr.internal.Repository;
 
 /**
  * Called during VM startup and teardown. Also triggers the JFR argument parsing.
@@ -75,10 +75,6 @@ public class JfrManager {
         this.hostedEnabled = hostedEnabled;
     }
 
-    public static boolean shouldBeginRecordingAtLaunch() {
-        return SubstrateOptions.FlightRecorder.getValue() || !SubstrateOptions.StartFlightRecording.getValue().isEmpty();
-    }
-
     @Fold
     public static JfrManager get() {
         return ImageSingletons.lookup(JfrManager.class);
@@ -88,7 +84,9 @@ public class JfrManager {
         return isFirstIsolate -> {
             parseFlightRecorderLogging(SubstrateOptions.FlightRecorderLogging.getValue());
             periodicEventSetup();
-            if (shouldBeginRecordingAtLaunch()) {
+
+            boolean startRecording = SubstrateOptions.FlightRecorder.getValue() || !SubstrateOptions.StartFlightRecording.getValue().isEmpty();
+            if (startRecording) {
                 initRecording();
             }
         };
