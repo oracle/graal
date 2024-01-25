@@ -227,50 +227,14 @@ final class Target_java_lang_Throwable {
     // Checkstyle: resume
 
     /**
-     * Fills in the execution stack trace. {@link Throwable#fillInStackTrace()} cannot be
-     * {@code synchronized}, because it might be called in a {@link VMOperation} (via one of the
-     * {@link Throwable} constructors), where we are not allowed to block. To work around that, we
-     * do the following:
-     * <ul>
-     * <li>If we are not in a {@link VMOperation}, it executes {@link #fillInStackTrace(int)} in a
-     * block {@code synchronized} by the supplied {@link Throwable}. This is the default case.
-     * <li>If we are in a {@link VMOperation}, it checks if the {@link Throwable} is currently
-     * locked. If not, {@link #fillInStackTrace(int)} is called without synchronization, which is
-     * safe in a {@link VMOperation}. If it is locked, we do not do any filling (and thus do not
-     * collect the stack trace).
-     * </ul>
+     * Fills in the execution stack trace. Our {@link Throwable#fillInStackTrace()} cannot be
+     * declared {@code synchronized} because it might be called in a {@link VMOperation} (via one of
+     * the {@link Throwable} constructors), where we are not allowed to block. We work around that
+     * in {@link #fillInStackTrace(int)}.
      */
     @Substitute
-    @NeverInline("Starting a stack walk in the caller frame")
     public Target_java_lang_Throwable fillInStackTrace() {
-        if (VMOperation.isInProgress()) {
-            if (MonitorSupport.singleton().isLockedByAnyThread(this)) {
-                /*
-                 * The Throwable is locked. We cannot safely fill in the stack trace. Do nothing and
-                 * accept that we will not get a stack track.
-                 */
-            } else {
-                /*
-                 * The Throwable is not locked. We can safely fill the stack trace without
-                 * synchronization because we VMOperation is single threaded.
-                 */
-
-                /* Copy of `Throwable#fillInStackTrace()` */
-                if (stackTrace != null || backtrace != null) {
-                    fillInStackTrace(0);
-                    stackTrace = UNASSIGNED_STACK;
-                }
-            }
-        } else {
-            synchronized (this) {
-                /* Copy of `Throwable#fillInStackTrace()` */
-                if (stackTrace != null || backtrace != null) {
-                    fillInStackTrace(0);
-                    stackTrace = UNASSIGNED_STACK;
-                }
-            }
-        }
-        return this;
+        return fillInStackTrace(0);
     }
 
     /**
@@ -283,15 +247,42 @@ final class Target_java_lang_Throwable {
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
     Target_java_lang_Throwable fillInStackTrace(int dummy) {
-        /*
-         * Start out by clearing the backtrace for this object, in case the VM runs out of memory
-         * while allocating the stack trace.
-         */
-        backtrace = null;
+        if (VMOperation.isInProgress()) {
+            if (MonitorSupport.singleton().isLockedByAnyThread(this)) {
+                /*
+                 * The Throwable is locked. We cannot safely fill in the stack trace. Do nothing and
+                 * accept that we will not get a stack trace.
+                 */
+            } else {
+                /*
+                 * The Throwable is not locked. We can safely fill the stack trace without
+                 * synchronization because we VMOperation is single threaded.
+                 */
 
-        BacktraceVisitor visitor = new BacktraceVisitor();
-        JavaThreads.visitCurrentStackFrames(visitor);
-        backtrace = visitor.getArray();
+                if (stackTrace != null || backtrace != null) {
+                    backtrace = null;
+
+                    BacktraceVisitor visitor = new BacktraceVisitor();
+                    JavaThreads.visitCurrentStackFrames(visitor);
+                    backtrace = visitor.getArray();
+
+                    stackTrace = UNASSIGNED_STACK;
+                }
+            }
+        } else {
+            /* Execute with synchronization. This is the default case. */
+            synchronized (this) {
+                if (stackTrace != null || backtrace != null) {
+                    backtrace = null;
+
+                    BacktraceVisitor visitor = new BacktraceVisitor();
+                    JavaThreads.visitCurrentStackFrames(visitor);
+                    backtrace = visitor.getArray();
+
+                    stackTrace = UNASSIGNED_STACK;
+                }
+            }
+        }
         return this;
     }
 }
@@ -558,6 +549,17 @@ final class Target_java_lang_ClassValue {
 
 @TargetClass(java.lang.NullPointerException.class)
 final class Target_java_lang_NullPointerException {
+
+    /**
+     * {@link NullPointerException} overrides {@link Throwable#fillInStackTrace()} with a
+     * {@code synchronized} method which is not permitted in a {@link VMOperation}. We hand over to
+     * {@link Target_java_lang_Throwable#fillInStackTrace(int)} which already handles this properly.
+     */
+    @Substitute
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
+    Target_java_lang_Throwable fillInStackTrace() {
+        return SubstrateUtil.cast(this, Target_java_lang_Throwable.class).fillInStackTrace(0);
+    }
 
     @Substitute
     @SuppressWarnings("static-method")
