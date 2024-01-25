@@ -432,6 +432,13 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     protected List<MessageContainer> findChildContainers() {
         ArrayList<MessageContainer> result = new ArrayList<>(customRegularOperations.values());
         result.addAll(customShortCircuitOperations);
+
+        for (InstructionModel model : instructions.values()) {
+            if (model.nodeData != null) {
+                result.add(model.nodeData);
+            }
+        }
+
         return Collections.unmodifiableList(result);
     }
 

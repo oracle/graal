@@ -45,12 +45,17 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.List;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeLocation;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeNodes;
+import com.oracle.truffle.api.bytecode.introspection.Instruction;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -82,15 +87,19 @@ public class BytecodeDSLExampleSourcesTest extends AbstractBytecodeDSLExampleTes
         assertEquals(node.getSourceSection().getCharIndex(), 0);
         assertEquals(node.getSourceSection().getCharLength(), 8);
 
-        // load constant
-        assertEquals(node.findSourceSectionAtBci(0).getSource(), source);
-        assertEquals(node.findSourceSectionAtBci(0).getCharIndex(), 7);
-        assertEquals(node.findSourceSectionAtBci(0).getCharLength(), 1);
+        BytecodeNode bytecode = node.getBytecodeNode();
+        List<Instruction> instructions = bytecode.getIntrospectionData().getInstructions();
+        BytecodeLocation location1 = instructions.get(0).getLocation();
+        BytecodeLocation location2 = instructions.get(1).getLocation();
+
+        assertEquals(location1.getSourceLocation().getSource(), source);
+        assertEquals(location1.getSourceLocation().getCharIndex(), 7);
+        assertEquals(location1.getSourceLocation().getCharLength(), 1);
 
         // return
-        assertEquals(node.findSourceSectionAtBci(2).getSource(), source);
-        assertEquals(node.findSourceSectionAtBci(2).getCharIndex(), 0);
-        assertEquals(node.findSourceSectionAtBci(2).getCharLength(), 8);
+        assertEquals(location2.getSourceLocation().getSource(), source);
+        assertEquals(location2.getSourceLocation().getCharIndex(), 0);
+        assertEquals(location2.getSourceLocation().getCharLength(), 8);
     }
 
     @Test
@@ -196,18 +205,20 @@ public class BytecodeDSLExampleSourcesTest extends AbstractBytecodeDSLExampleTes
                         null,
         };
 
+        List<Instruction> instructions = root.getBytecodeNode().getIntrospectionData().getInstructions();
         for (int i = 0; i < expected.length; i++) {
-            // Each Void operation is encoded as two shorts: the Void opcode, and a node index.
-            // The source section for both should match the expected value.
-            for (int j = i * 2; j < i * 2 + 2; j++) {
-                if (expected[i] == null) {
-                    assertEquals("Mismatch at bci " + j, null, root.findSourceSectionAtBci(j));
-                } else {
-                    assertNotNull("Mismatch at bci " + j, root.findSourceSectionAtBci(j));
-                    assertEquals("Mismatch at bci " + j, sources[expected[i][0]], root.findSourceSectionAtBci(j).getSource());
-                    assertEquals("Mismatch at bci " + j, expected[i][1], root.findSourceSectionAtBci(j).getCharIndex());
-                    assertEquals("Mismatch at bci " + j, expected[i][2], root.findSourceSectionAtBci(j).getCharLength());
-                }
+            BytecodeLocation location = instructions.get(i).getLocation();
+            SourceSection sourceSection = location.getSourceLocation();
+            if (expected[i] == null) {
+                assertEquals("Mismatch at bci " + location, null, sourceSection);
+            } else {
+                assertNotNull("Mismatch at bci " + location, sourceSection);
+                assertEquals("Mismatch at bci " + location, sources[expected[i][0]],
+                                sourceSection.getSource());
+                assertEquals("Mismatch at bci " + location, expected[i][1],
+                                sourceSection.getCharIndex());
+                assertEquals("Mismatch at bci " + location, expected[i][2],
+                                sourceSection.getCharLength());
             }
         }
     }
@@ -353,14 +364,18 @@ public class BytecodeDSLExampleSourcesTest extends AbstractBytecodeDSLExampleTes
         assertEquals(node.getSourceSection().getCharIndex(), 0);
         assertEquals(node.getSourceSection().getCharLength(), 8);
 
+        List<Instruction> instructions = node.getBytecodeNode().getIntrospectionData().getInstructions();
+        SourceSection sourceSection0 = instructions.get(0).getLocation().getSourceLocation();
+        SourceSection sourceSection1 = instructions.get(1).getLocation().getSourceLocation();
+
         // load constant
-        assertEquals(node.findSourceSectionAtBci(0).getSource(), source);
-        assertEquals(node.findSourceSectionAtBci(0).getCharIndex(), 7);
-        assertEquals(node.findSourceSectionAtBci(0).getCharLength(), 1);
+        assertEquals(sourceSection0.getSource(), source);
+        assertEquals(sourceSection0.getCharIndex(), 7);
+        assertEquals(sourceSection0.getCharLength(), 1);
 
         // return
-        assertEquals(node.findSourceSectionAtBci(2).getSource(), source);
-        assertEquals(node.findSourceSectionAtBci(2).getCharIndex(), 0);
-        assertEquals(node.findSourceSectionAtBci(2).getCharLength(), 8);
+        assertEquals(sourceSection1.getSource(), source);
+        assertEquals(sourceSection1.getCharIndex(), 0);
+        assertEquals(sourceSection1.getCharLength(), 8);
     }
 }

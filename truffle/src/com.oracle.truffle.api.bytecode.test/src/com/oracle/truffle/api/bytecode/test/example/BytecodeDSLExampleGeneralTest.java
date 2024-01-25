@@ -1117,7 +1117,7 @@ public class BytecodeDSLExampleGeneralTest extends AbstractBytecodeDSLExampleTes
 
             b.endRoot();
         });
-        node.setUncachedInterpreterThreshold(16);
+        node.getBytecodeNode().setUncachedThreshold(16);
         RootCallTarget root = node.getCallTarget();
 
         // Run enough times to trigger cached execution.

@@ -334,7 +334,7 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
         });
         BenchmarkLanguage.registerName(NAME_BYTECODE_DSL_UNCACHED, BytecodeBenchmarkRootNodeWithUncached.class, (lang, b) -> {
             bytecodeUncachedRootNode = createSimpleLoop(lang, b);
-            bytecodeUncachedRootNode.setUncachedInterpreterThreshold(Integer.MAX_VALUE);
+            bytecodeUncachedRootNode.getBytecodeNode().setUncachedThreshold(Integer.MAX_VALUE);
         });
         BenchmarkLanguage.registerName(NAME_BYTECODE_DSL_UNSAFE, BytecodeBenchmarkRootNodeUnsafe.class, (lang, b) -> {
             createSimpleLoop(lang, b);
@@ -540,7 +540,7 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
          * the cached interpreter.
          */
         if (bytecodeUncachedRootNode != null) {
-            bytecodeUncachedRootNode.setUncachedInterpreterThreshold(Integer.MAX_VALUE);
+            bytecodeUncachedRootNode.getBytecodeNode().setUncachedThreshold(Integer.MAX_VALUE);
         }
     }
 

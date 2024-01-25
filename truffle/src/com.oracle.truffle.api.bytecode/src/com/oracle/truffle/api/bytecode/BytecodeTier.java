@@ -38,19 +38,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.test.subpackage;
+package com.oracle.truffle.api.bytecode;
 
-import com.oracle.truffle.api.bytecode.OperationProxy;
-import com.oracle.truffle.api.dsl.Specialization;
+public enum BytecodeTier {
 
-@OperationProxy.Proxyable
-public final class NonPublicGuardExpressionOperationProxy {
-    @Specialization(guards = "guardCondition()")
-    public static int addGuarded(int x, int y) {
-        return x + y;
-    }
+    UNCACHED,
 
-    public static boolean guardCondition() {
-        return true;
-    }
+    CACHED;
+
 }

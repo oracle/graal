@@ -54,6 +54,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.ChildExecutionResult;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
@@ -98,7 +99,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             result.add(new CodeVariableElement(context.getTypes().VirtualFrame, "$stackFrame"));
         }
         result.addAll(List.of(
-                        new CodeVariableElement(nodeType, "$root"),
+                        new CodeVariableElement(nodeType, "$bytecode"),
                         new CodeVariableElement(context.getType(short[].class), "$bc"),
                         new CodeVariableElement(context.getType(int.class), "$bci"),
                         new CodeVariableElement(context.getType(int.class), "$sp")));
@@ -193,9 +194,10 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         return quickenMethod;
     }
 
+    @Override
     public void notifySpecialize(FlatNodeGenFactory nodeFactory, CodeTreeBuilder builder, FrameState frameState, SpecializationData specialization) {
         if (model.specializationDebugListener) {
-            bytecodeFactory.emitOnSpecialize(builder, "$root", "$bci", "$bc[$bci]", specialization.getNode().getNodeId() + "$" + specialization.getId());
+            bytecodeFactory.emitOnSpecialize(builder, "$bytecode", "$bci", "$bc[$bci]", specialization.getNode().getNodeId() + "$" + specialization.getId());
         }
 
         if (instruction.hasQuickenings()) {
@@ -212,13 +214,55 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         }
     }
 
+    public CodeTree bindExpressionValue(FrameState frameState, Variable variable) {
+        String name = variable.getName();
+        if (frameState.getMode().isUncached()) {
+            switch (name) {
+                case "this":
+                case "$node":
+                case "$bytecode":
+                    return CodeTreeBuilder.singleString("$bytecode");
+                case "$root":
+                    return CodeTreeBuilder.singleString("$bytecode.getRoot()");
+                case "$bci":
+                    return CodeTreeBuilder.singleString("$bci");
+                case "$location":
+                    CodeTreeBuilder b = new CodeTreeBuilder(null);
+                    b.startStaticCall(nodeType, "findLocation").string("$bytecode").string("$bci").end();
+                    return b.build();
+                default:
+                    return null;
+            }
+        } else {
+            switch (name) {
+                case "this":
+                case "$node":
+                    // use default handling (which could resolve to the specialization class)
+                    return null;
+                case "$bytecode":
+                    return CodeTreeBuilder.singleString("$bytecode");
+                case "$root":
+                    return CodeTreeBuilder.singleString("$bytecode.getRoot()");
+                case "$bci":
+                    return CodeTreeBuilder.singleString("$bci");
+                case "$location":
+                    CodeTreeBuilder b = new CodeTreeBuilder(null);
+                    b.startStaticCall(nodeType, "findLocation").string("$bytecode").string("$bci").end();
+                    return b.build();
+                default:
+                    return null;
+
+            }
+        }
+    }
+
     private CodeExecutableElement createQuickenMethod(FlatNodeGenFactory factory, FrameState frameState) {
         CodeExecutableElement method = new CodeExecutableElement(Set.of(Modifier.PRIVATE, Modifier.STATIC),
                         context.getType(void.class), "quicken");
 
         factory.addSpecializationStateParametersTo(method, frameState);
         if (model.specializationDebugListener) {
-            method.addParameter(new CodeVariableElement(bytecodeFactory.getBytecodeNodeGen().asType(), "$root"));
+            method.addParameter(new CodeVariableElement(bytecodeFactory.getAbstractBytecodeNode().asType(), "$bytecode"));
         }
         method.addParameter(new CodeVariableElement(context.getType(short[].class), "$bc"));
         method.addParameter(new CodeVariableElement(context.getType(int.class), "$bci"));
@@ -361,14 +405,14 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         for (int valueIndex : boxingEliminated) {
             if (instruction.isShortCircuitConverter()) {
                 b.startIf().string("newOperand" + valueIndex).string(" != -1").end().startBlock();
-                bytecodeFactory.emitQuickeningOperand(b, "$root", "$bc", "$bci", null, valueIndex, "oldOperandIndex" + valueIndex, "oldOperand" + valueIndex, "newOperand" + valueIndex);
+                bytecodeFactory.emitQuickeningOperand(b, "$bytecode", "$bc", "$bci", null, valueIndex, "oldOperandIndex" + valueIndex, "oldOperand" + valueIndex, "newOperand" + valueIndex);
                 b.end(); // if
             } else {
-                bytecodeFactory.emitQuickeningOperand(b, "$root", "$bc", "$bci", null, valueIndex, "oldOperandIndex" + valueIndex, "oldOperand" + valueIndex, "newOperand" + valueIndex);
+                bytecodeFactory.emitQuickeningOperand(b, "$bytecode", "$bc", "$bci", null, valueIndex, "oldOperandIndex" + valueIndex, "oldOperand" + valueIndex, "newOperand" + valueIndex);
             }
         }
 
-        bytecodeFactory.emitQuickening(b, "$root", "$bc", "$bci", null, "newInstruction");
+        bytecodeFactory.emitQuickening(b, "$bytecode", "$bc", "$bci", null, "newInstruction");
 
         return method;
     }

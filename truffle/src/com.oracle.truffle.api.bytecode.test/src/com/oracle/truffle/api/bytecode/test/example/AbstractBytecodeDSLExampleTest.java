@@ -67,6 +67,7 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
@@ -284,11 +285,13 @@ public abstract class AbstractBytecodeDSLExampleTest {
         for (int i = 0; i < expectedNodes.size(); i++) {
             BytecodeDSLExample expectedNode = expectedNodes.get(i);
             BytecodeDSLExample actualNode = actualNodes.get(i);
+            BytecodeNode expectedBytecode = expectedNodes.get(i).getBytecodeNode();
+            BytecodeNode actualBytecode = actualNodes.get(i).getBytecodeNode();
 
             assertEquals(expectedNode.name, actualNode.name);
-            assertArrayEquals((short[]) readField(expectedNode, "bc"), (short[]) readField(actualNode, "bc"));
-            assertConstantsEqual((Object[]) readField(expectedNode, "constants"), (Object[]) readField(actualNode, "constants"));
-            assertArrayEquals((int[]) readField(expectedNode, "handlers"), (int[]) readField(actualNode, "handlers"));
+            assertArrayEquals((short[]) readField(expectedBytecode, "bytecodes"), (short[]) readField(actualBytecode, "bytecodes"));
+            assertConstantsEqual((Object[]) readField(expectedBytecode, "constants"), (Object[]) readField(actualBytecode, "constants"));
+            assertArrayEquals((int[]) readField(expectedBytecode, "handlers"), (int[]) readField(actualBytecode, "handlers"));
         }
     }
 
@@ -310,9 +313,9 @@ public abstract class AbstractBytecodeDSLExampleTest {
         }
     }
 
-    private static Object readField(BytecodeDSLExample node, String name) {
+    private static Object readField(BytecodeNode node, String name) {
         try {
-            Field field = node.getClass().getDeclaredField(name);
+            Field field = node.getClass().getSuperclass().getDeclaredField(name);
             field.setAccessible(true);
             return field.get(node);
         } catch (ReflectiveOperationException ex) {

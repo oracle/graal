@@ -42,6 +42,7 @@ package com.oracle.truffle.api.bytecode.test.example;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
@@ -53,6 +54,7 @@ import org.junit.runners.Parameterized;
 
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNodes;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -98,7 +100,7 @@ public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTes
             // collectBcis
             b.beginRoot(LANGUAGE);
                 b.beginReturn();
-                b.emitCollectBcis();
+                b.emitCollectBytecodeLocations();
                 b.endReturn();
             BytecodeDSLExample collectBcis = b.endRoot();
             collectBcis.setName("collectBcis");
@@ -197,16 +199,16 @@ public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTes
             assertTrue(result instanceof List<?>);
 
             @SuppressWarnings("unchecked")
-            List<Integer> bytecodeIndices = (List<Integer>) result;
+            List<BytecodeLocation> bytecodeLocations = (List<BytecodeLocation>) result;
 
-            assertEquals(4, bytecodeIndices.size());
+            assertEquals(4, bytecodeLocations.size());
 
             // skip the helper
 
             // baz
-            int bazBci = bytecodeIndices.get(1);
-            assertNotEquals(-1, bazBci);
-            SourceSection bazSourceSection = baz.findSourceSectionAtBci(bazBci);
+            BytecodeLocation bazLocation = bytecodeLocations.get(1);
+            assertNotNull(bazLocation);
+            SourceSection bazSourceSection = bazLocation.getSourceLocation();
             assertEquals(bazSource, bazSourceSection.getSource());
             if (fooArgument) {
                 assertEquals("<trace1>", bazSourceSection.getCharacters());
@@ -215,16 +217,16 @@ public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTes
             }
 
             // bar
-            int barBci = bytecodeIndices.get(2);
-            assertNotEquals(-1, barBci);
-            SourceSection barSourceSection = bar.findSourceSectionAtBci(barBci);
+            BytecodeLocation barLocation = bytecodeLocations.get(2);
+            assertNotNull(barLocation);
+            SourceSection barSourceSection = barLocation.getSourceLocation();
             assertEquals(barSource, barSourceSection.getSource());
             assertEquals("baz(arg0)", barSourceSection.getCharacters());
 
             // foo
-            int fooBci = bytecodeIndices.get(3);
-            assertNotEquals(-1, fooBci);
-            SourceSection fooSourceSection = foo.findSourceSectionAtBci(fooBci);
+            BytecodeLocation fooLocation = bytecodeLocations.get(3);
+            assertNotNull(fooLocation);
+            SourceSection fooSourceSection = fooLocation.getSourceLocation();
             assertEquals(fooSource, fooSourceSection.getSource());
             assertEquals("bar(arg0)", fooSourceSection.getCharacters());
         }
@@ -258,7 +260,7 @@ public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTes
             // collectBcis
             b.beginRoot(LANGUAGE);
                 b.beginReturn();
-                b.emitCollectBcis();
+                b.emitCollectBytecodeLocations();
                 b.endReturn();
             BytecodeDSLExample collectBcis = b.endRoot();
             collectBcis.setName("collectBcis");
@@ -351,28 +353,29 @@ public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTes
         });
 
         List<BytecodeDSLExample> nodeList = nodes.getNodes();
-        assert nodeList.size() == 4;
+        assertEquals(4, nodeList.size());
         BytecodeDSLExample foo = nodeList.get(3);
-        assert foo.getName().equals("foo");
+        assertEquals("foo", foo.getName());
         BytecodeDSLExample bar = nodeList.get(2);
-        assert bar.getName().equals("bar");
+        assertEquals("bar", bar.getName());
         BytecodeDSLExample baz = nodeList.get(1);
-        assert baz.getName().equals("baz");
+        assertEquals("baz", baz.getName());
 
         for (boolean continuationArgument : List.of(true, false)) {
             Object result = foo.getCallTarget().call(continuationArgument);
             assertTrue(result instanceof List<?>);
 
             @SuppressWarnings("unchecked")
-            List<Integer> bytecodeIndices = (List<Integer>) result;
-            assertEquals(4, bytecodeIndices.size());
+            List<BytecodeLocation> locations = (List<BytecodeLocation>) result;
+            assertEquals(4, locations.size());
 
             // skip the helper
 
             // baz
-            int bazBci = bytecodeIndices.get(1);
-            assertNotEquals(-1, bazBci);
-            SourceSection bazSourceSection = baz.findSourceSectionAtBci(bazBci);
+            BytecodeLocation bazLocation = locations.get(1);
+            assertNotNull(bazLocation);
+            assertNotEquals(-1, bazLocation);
+            SourceSection bazSourceSection = bazLocation.getSourceLocation();
             assertEquals(bazSource, bazSourceSection.getSource());
             if (continuationArgument) {
                 assertEquals("<trace1>", bazSourceSection.getCharacters());
@@ -381,16 +384,16 @@ public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTes
             }
 
             // bar
-            int barBci = bytecodeIndices.get(2);
-            assertNotEquals(-1, barBci);
-            SourceSection barSourceSection = bar.findSourceSectionAtBci(barBci);
+            BytecodeLocation barLocation = locations.get(2);
+            assertNotNull(barLocation);
+            SourceSection barSourceSection = barLocation.getSourceLocation();
             assertEquals(barSource, barSourceSection.getSource());
             assertEquals("baz(x)", barSourceSection.getCharacters());
 
             // foo
-            int fooBci = bytecodeIndices.get(3);
-            assertNotEquals(-1, fooBci);
-            SourceSection fooSourceSection = foo.findSourceSectionAtBci(fooBci);
+            BytecodeLocation fooLocation = locations.get(3);
+            assertNotNull(fooLocation);
+            SourceSection fooSourceSection = fooLocation.getSourceLocation();
             assertEquals(fooSource, fooSourceSection.getSource());
             assertEquals("continue(c, arg0)", fooSourceSection.getCharacters());
         }

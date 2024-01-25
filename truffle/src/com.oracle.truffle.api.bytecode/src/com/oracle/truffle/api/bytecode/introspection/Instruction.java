@@ -44,9 +44,12 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.bytecode.BytecodeLocation;
+
 public final class Instruction {
 
-    // [int bci, String name, short[] bytes, Object[][] arguments, Object[][] subinstructions?]
+    // [BytecodeLocation location, String name, short[] bytes, Object[][] arguments, Object[][]
+    // subinstructions?]
     private final Object[] data;
 
     public Instruction(Object[] data) {
@@ -54,7 +57,11 @@ public final class Instruction {
     }
 
     public int getBci() {
-        return (int) data[0];
+        return getLocation().getBytecodeIndex();
+    }
+
+    public BytecodeLocation getLocation() {
+        return (BytecodeLocation) data[0];
     }
 
     public String getName() {

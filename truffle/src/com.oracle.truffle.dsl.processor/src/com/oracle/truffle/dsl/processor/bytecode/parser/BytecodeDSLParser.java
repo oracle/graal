@@ -195,7 +195,6 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
     @SuppressWarnings("unchecked")
     private void parseBytecodeDSLModel(TypeElement typeElement, BytecodeDSLModel model, AnnotationMirror generateBytecodeMirror) {
         model.languageClass = (DeclaredType) ElementUtils.getAnnotationValue(generateBytecodeMirror, "languageClass").getValue();
-        model.storeBciInFrame = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableUncachedInterpreter");
         model.enableUncachedInterpreter = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableUncachedInterpreter");
         model.enableSerialization = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableSerialization");
         model.allowUnsafe = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "allowUnsafe");
@@ -287,11 +286,6 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         ElementUtils.findMethod(types.BytecodeOSRNode, "setOSRMetadata"),
                         ElementUtils.findMethod(types.BytecodeOSRNode, "storeParentFrameInArguments"),
                         ElementUtils.findMethod(types.BytecodeOSRNode, "restoreParentFrameFromArguments"),
-                        ElementUtils.findMethod(types.BytecodeRootNode, "setUncachedInterpreterThreshold"),
-                        ElementUtils.findMethod(types.BytecodeRootNode, "materializeInstrumentTree"),
-                        ElementUtils.findMethod(types.BytecodeRootNode, "findSourceSectionAtBci"),
-                        ElementUtils.findMethod(types.BytecodeRootNode, "findBciOfOperationNode"),
-                        ElementUtils.findMethod(types.BytecodeRootNode, "readBciFromFrame"),
                         ElementUtils.findMethod(types.BytecodeRootNode, "getLocalIndex"),
                         ElementUtils.findMethod(types.BytecodeRootNode, "getLocal"),
                         ElementUtils.findMethod(types.BytecodeRootNode, "getLocals"),
