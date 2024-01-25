@@ -36,7 +36,7 @@ import jdk.jfr.internal.Options;
  * Holds all JFR-related options that can be set by the user. It is also used to validate and adjust
  * the option values as needed.
  *
- * Similar to OpenJDK, the options available by -XX:FlightRecorderOptions cannot be set after JFR is
+ * Similar to OpenJDK, the options set via -XX:FlightRecorderOptions cannot be changed after JFR is
  * initialized. This means that after {@link SubstrateJVM#createJFR(boolean)} is called, this class
  * is no longer needed.
  *
