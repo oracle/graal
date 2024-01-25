@@ -435,7 +435,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.util.ValueMergeUtil;
 import jdk.graal.compiler.replacements.nodes.MacroInvokable;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
@@ -4393,14 +4392,11 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     }
 
     protected JavaMethod lookupMethodInPool(int cpi, int opcode) {
-        if (GraalServices.hasLookupMethodWithCaller()) {
-            try {
-                return GraalServices.lookupMethodWithCaller(constantPool, cpi, opcode, method);
-            } catch (IllegalAccessError e) {
-                throw new PermanentBailoutException(e, "cannot link call from %s", method.format("%H.%n(%p)"));
-            }
+        try {
+            return constantPool.lookupMethod(cpi, opcode, method);
+        } catch (IllegalAccessError e) {
+            throw new PermanentBailoutException(e, "cannot link call from %s", method.format("%H.%n(%p)"));
         }
-        return constantPool.lookupMethod(cpi, opcode);
     }
 
     protected JavaField lookupField(int cpi, int opcode) {
@@ -4436,7 +4432,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
      */
     protected Object lookupConstant(int cpi, int opcode, boolean allowBootstrapMethodInvocation) {
         maybeEagerlyResolve(cpi, opcode);
-        Object result = GraalServices.lookupConstant(constantPool, cpi, allowBootstrapMethodInvocation);
+        Object result = constantPool.lookupConstant(cpi, allowBootstrapMethodInvocation);
         if (result != null) {
             assert !graphBuilderConfig.unresolvedIsError() || !(result instanceof JavaType) || (result instanceof ResolvedJavaType) : result;
         }

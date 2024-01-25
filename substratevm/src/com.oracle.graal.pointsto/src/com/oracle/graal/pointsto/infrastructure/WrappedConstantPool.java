@@ -26,18 +26,14 @@ package com.oracle.graal.pointsto.infrastructure;
 
 import static jdk.vm.ci.common.JVMCIError.unimplemented;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.graal.pointsto.util.GraalAccess;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
@@ -87,12 +83,6 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
         return constant;
     }
 
-    /**
-     * {@code jdk.vm.ci.meta.ConstantPool.lookupMethod(int cpi, int opcode, ResolvedJavaMethod caller)}
-     * was introduced in JVMCI 22.3.
-     */
-    private static final Method lookupMethodWithCaller = ReflectionUtil.lookupMethod(true, ConstantPool.class, "lookupMethod", int.class, int.class, ResolvedJavaMethod.class);
-
     @Override
     public void loadReferencedType(int cpi, int opcode, boolean initialize) {
         GraalError.guarantee(!initialize, "Must not initialize classes");
@@ -127,10 +117,6 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
     @Override
     public JavaMethod lookupMethod(int cpi, int opcode, ResolvedJavaMethod caller) {
-        if (lookupMethodWithCaller == null) {
-            /* Resort to version without caller. */
-            return lookupMethod(cpi, opcode);
-        }
         try {
             /* Unwrap the caller method. */
             ResolvedJavaMethod substCaller = universe.resolveSubstitution(((WrappedJavaMethod) caller).getWrapped());
@@ -138,12 +124,10 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
              * Delegate to the lookup with caller method of the wrapped constant pool (via
              * reflection).
              */
-            return universe.lookupAllowUnresolved((JavaMethod) lookupMethodWithCaller.invoke(wrapped, cpi, opcode, substCaller));
+            return universe.lookupAllowUnresolved(wrapped.lookupMethod(cpi, opcode, substCaller));
         } catch (Throwable ex) {
             Throwable cause = ex;
-            if (ex instanceof InvocationTargetException && ex.getCause() != null) {
-                cause = ex.getCause();
-            } else if (ex instanceof ExceptionInInitializerError && ex.getCause() != null) {
+            if (ex instanceof ExceptionInInitializerError && ex.getCause() != null) {
                 cause = ex.getCause();
             }
             throw new UnresolvedElementException("Error loading a referenced type: " + cause.toString(), cause);
@@ -177,7 +161,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
     @Override
     public Object lookupConstant(int cpi, boolean resolve) {
-        Object con = GraalServices.lookupConstant(wrapped, cpi, resolve);
+        Object con = wrapped.lookupConstant(cpi, resolve);
         if (con instanceof JavaType) {
             if (con instanceof ResolvedJavaType) {
                 return universe.lookup((ResolvedJavaType) con);
