@@ -334,12 +334,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        protected void handleUnresolvedNewObjectArray(JavaType type, ValueNode length) {
+        protected void handleUnresolvedNewObjectArray(JavaType type) {
             handleUnresolvedType(type);
         }
 
         @Override
-        protected void handleUnresolvedNewMultiArray(JavaType type, ValueNode[] dims) {
+        protected void handleUnresolvedNewMultiArray(JavaType type) {
             handleUnresolvedType(type.getElementalType());
         }
 
@@ -394,12 +394,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        protected void handleUnresolvedStoreField(JavaField field, ValueNode value, ValueNode receiver) {
+        protected void handleUnresolvedStoreField(JavaField field) {
             handleUnresolvedField(field);
         }
 
         @Override
-        protected void handleUnresolvedLoadField(JavaField field, ValueNode receiver) {
+        protected void handleUnresolvedLoadField(JavaField field) {
             handleUnresolvedField(field);
         }
 
