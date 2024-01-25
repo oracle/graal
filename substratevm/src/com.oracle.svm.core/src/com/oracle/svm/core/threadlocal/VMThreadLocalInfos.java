@@ -37,6 +37,7 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
+import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
@@ -61,33 +62,43 @@ public class VMThreadLocalInfos {
 
     public static void dumpToLog(Log log, IsolateThread thread, boolean isJavaHeapAccessAllowed) {
         for (VMThreadLocalInfo info : ImageSingletons.lookup(VMThreadLocalInfos.class).infos) {
-            log.signed(info.offset).string(" (").signed(info.sizeInBytes).string(" bytes): ").string(info.name).string(" = ");
+            log.signed(info.offset).string(": ").string(info.name).string(" = ");
             if (info.threadLocalClass == FastThreadLocalInt.class) {
                 int value = primitiveData(thread).readInt(WordFactory.signed(info.offset));
-                log.string("(int) ").signed(value).string(" (").zhex(value).string(")");
+                log.string("(int) ").zhex(value).string(" (").signed(value).string(")");
             } else if (info.threadLocalClass == FastThreadLocalLong.class) {
                 long value = primitiveData(thread).readLong(WordFactory.signed(info.offset));
-                log.string("(long) ").signed(value).string(" (").zhex(value).string(")");
+                log.string("(long) ").zhex(value).string(" (").signed(value).string(")");
             } else if (info.threadLocalClass == FastThreadLocalWord.class) {
                 WordBase value = primitiveData(thread).readWord(WordFactory.signed(info.offset));
-                log.string("(Word) ").signed(value).string(" (").zhex(value).string(")");
+                log.string("(Word) ").zhex(value).string(" (").signed(value).string(")");
             } else if (info.threadLocalClass == FastThreadLocalObject.class) {
                 if (isJavaHeapAccessAllowed) {
                     Object value = ObjectAccess.readObject(objectData(thread), WordFactory.signed(info.offset));
-                    log.string("(Object) ");
-                    if (value == null) {
-                        log.string("null");
-                    } else {
-                        log.string(value.getClass().getName()).string(" (").zhex(Word.objectToUntrackedPointer(value)).string(")");
+                    log.string("(Object) ").zhex(Word.objectToUntrackedPointer(value));
+                    if (value != null) {
+                        log.indent(true);
+                        SubstrateDiagnostics.printObjectInfo(log, value);
+                        log.redent(false);
                     }
                 } else {
                     Word value = ReferenceAccess.singleton().readObjectAsUntrackedPointer(Word.objectToUntrackedPointer(objectData(thread)).add(info.offset), true);
                     log.string("(Object) ").zhex(value);
                 }
             } else if (info.threadLocalClass == FastThreadLocalBytes.class) {
-                log.string("(bytes) ").indent(true);
-                log.hexdump(primitiveData(thread).add(WordFactory.signed(info.offset)), 8, info.sizeInBytes / 8);
-                log.redent(false);
+                log.string("(bytes) ");
+                Pointer data = primitiveData(thread).add(WordFactory.signed(info.offset));
+                if (info.sizeInBytes == 8) {
+                    log.zhex(data.readWord(0));
+                } else {
+                    log.indent(true);
+                    if (info.sizeInBytes % 8 == 0) {
+                        log.hexdump(data, 8, info.sizeInBytes / 8);
+                    } else {
+                        log.hexdump(data, 1, info.sizeInBytes);
+                    }
+                    log.redent(false);
+                }
             } else {
                 log.string("unknown class ").string(info.threadLocalClass.getName());
             }

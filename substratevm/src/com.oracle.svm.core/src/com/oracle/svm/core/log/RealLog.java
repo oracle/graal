@@ -92,6 +92,14 @@ public class RealLog extends Log {
         return this;
     }
 
+    @Override
+    @NeverInline("Logging is always slow-path code")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
+    public Log string(String value, int maxLen) {
+        rawString(value, maxLen);
+        return this;
+    }
+
     private static final char[] NULL_CHARS = "null".toCharArray();
 
     @Override
@@ -661,7 +669,6 @@ public class RealLog extends Log {
                 printRemainingFramesCount(remaining);
             }
         }
-        newline();
         return this;
     }
 
