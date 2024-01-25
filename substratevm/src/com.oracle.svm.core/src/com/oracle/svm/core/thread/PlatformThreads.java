@@ -837,7 +837,7 @@ public abstract class PlatformThreads {
 
     static StackTraceElement[] getStackTrace(boolean filterExceptions, Thread thread, Pointer callerSP) {
         assert !isVirtual(thread);
-        if (thread == currentThread.get()) {
+        if (thread != null && thread == currentThread.get()) {
             return StackTraceUtils.getStackTrace(filterExceptions, callerSP, WordFactory.nullPointer());
         }
         assert !filterExceptions : "exception stack traces can be taken only for the current thread";
@@ -845,7 +845,7 @@ public abstract class PlatformThreads {
     }
 
     public static StackTraceElement[] getStackTraceAtSafepoint(Thread thread, Pointer callerSP) {
-        assert !isVirtual(thread);
+        assert thread != null && !isVirtual(thread);
         IsolateThread isolateThread = getIsolateThread(thread);
         if (isolateThread == CurrentIsolate.getCurrentThread()) {
             /*
@@ -1059,7 +1059,9 @@ public abstract class PlatformThreads {
         protected void operate() {
             for (IsolateThread cur = VMThreads.firstThread(); cur.isNonNull(); cur = VMThreads.nextThread(cur)) {
                 Thread thread = PlatformThreads.fromVMThread(cur);
-                result.put(thread, StackTraceUtils.getStackTraceAtSafepoint(thread));
+                if (thread != null) {
+                    result.put(thread, StackTraceUtils.getStackTraceAtSafepoint(thread));
+                }
             }
         }
     }
