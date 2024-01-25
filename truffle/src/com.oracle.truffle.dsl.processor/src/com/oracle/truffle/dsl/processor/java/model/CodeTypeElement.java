@@ -75,6 +75,7 @@ public class CodeTypeElement extends CodeElement<Element> implements TypeElement
     private Name qualifiedName;
 
     private final List<TypeMirror> implementsInterfaces = new ArrayList<>();
+    private final List<TypeMirror> permittedSubclasses = new ArrayList<>();
     private final List<TypeParameterElement> typeParameters = parentableList(this, new ArrayList<>());
     private ElementKind kind;
     private TypeMirror superClass;
@@ -106,6 +107,10 @@ public class CodeTypeElement extends CodeElement<Element> implements TypeElement
 
     public void setKind(ElementKind kind) {
         this.kind = kind;
+    }
+
+    public List<TypeMirror> getPermittedSubclasses() {
+        return permittedSubclasses;
     }
 
     @Override
@@ -245,6 +250,7 @@ public class CodeTypeElement extends CodeElement<Element> implements TypeElement
         copy.getTypeParameters().addAll(typeElement.getTypeParameters());
         copy.getImplements().addAll(typeElement.getInterfaces());
         copy.getAnnotationMirrors().addAll(typeElement.getAnnotationMirrors());
+        copy.getPermittedSubclasses().addAll(typeElement.getPermittedSubclasses());
         copy.getEnclosedElements().addAll(CompilerFactory.getCompiler(typeElement).getEnclosedElementsInDeclarationOrder(typeElement));
         return copy;
     }

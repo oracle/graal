@@ -234,6 +234,18 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
             }
         }
 
+        if (e.getKind() == ElementKind.INTERFACE || e.getKind() == ElementKind.CLASS) {
+            if (e.getModifiers().contains(Modifier.SEALED)) {
+                write(" permits ");
+                String sep = "";
+                for (TypeMirror permitSubclass : e.getPermittedSubclasses()) {
+                    write(sep);
+                    write(useImport(e, permitSubclass, false));
+                    sep = ", ";
+                }
+            }
+        }
+
         write(" {").writeLn();
         writeEmptyLn();
         indent(1);
