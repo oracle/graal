@@ -46,9 +46,6 @@ public class TestRecordingPlainObjectLeak extends JfrOldObjectTest {
             node.right = new Node();
             node = node.right;
         }
-        // Trigger a GC so that last sweep gets updated,
-        // and the objects above are considered older than last GC sweep time.
-        System.gc();
 
         stopRecording(recording, events -> {
             Assert.assertTrue(events.size() < DEFAULT_OLD_OBJECT_QUEUE_SIZE);

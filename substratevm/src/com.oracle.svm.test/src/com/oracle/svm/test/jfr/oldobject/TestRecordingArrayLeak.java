@@ -47,9 +47,6 @@ public class TestRecordingArrayLeak extends JfrOldObjectTest {
             node[2] = right;
             node = right;
         }
-        // Trigger a GC so that last sweep gets updated,
-        // and the objects above are considered older than last GC sweep time.
-        System.gc();
 
         stopRecording(recording, events -> filterEventsByTypeName("[Ljava.lang.Object;", events).forEach(this::assertRecordedEvent));
     }
