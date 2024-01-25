@@ -4,6 +4,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 24.1.0
 * GR-51253 Extend allowed DynamicObject shape flags from 8 to 16 bits.
+* GR-42882 Changed behavior: Java host interop no longer exposes bridge methods.
 
 ## Version 24.0.0
 
