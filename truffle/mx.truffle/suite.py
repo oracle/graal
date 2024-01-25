@@ -1441,7 +1441,13 @@ suite = {
   private static int utf8Decode3ByteSequence(byte[] bytes, int p) {
     return ((bytes[p] & 0xF) << 12) | ((bytes[p + 1] & 0xff & 0x3f) << 6) | (bytes[p + 2] & 0xff & 0x3f);
   }
-"""
+""",
+          },
+          "org/jcodings/Encoding.java" : {
+            "(public static Encoding load\\([^()]*\\) \\{\\s*)[^{}]*(?:\\{[^{}]*\\}[^{}]*)*(\\s*\\})" : "\\1throw new InternalException(ErrorMessages.ERR_ENCODING_CLASS_DEF_NOT_FOUND, name);\\2"
+          },
+          "org/jcodings/transcode/Transcoder.java" : {
+            "(public static Transcoder load\\([^()]*\\) \\{\\s*)[^{}]*(?:\\{[^{}]*\\}[^{}]*)*(\\s*\\})" : "\\1throw new InternalException(ErrorMessages.ERR_TRANSCODER_CLASS_DEF_NOT_FOUND, name);\\2"
           },
         },
       },
