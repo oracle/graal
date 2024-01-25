@@ -3297,9 +3297,7 @@ public class FlatNodeGenFactory {
         boolean outline = uncachedExecute && parentMethod != null && allNodesNull;
         if (outline) {
             boolean hasPrimitives = locals.stream().anyMatch(local -> local.getTypeMirror().getKind().isPrimitive());
-            boolean needsBoundary = ElementUtils.findAnnotationMirror(parentMethod, types.CompilerDirectives_TruffleBoundary) == null;
-            String signatureId = (needsBoundary ? "Boundary" : "") +
-                            locals.size() +
+            String signatureId = locals.size() +
                             (hasPrimitives ? locals.stream().map(l -> ElementUtils.basicTypeId(l.typeMirror)).collect(Collectors.joining()) : "");
             String throwMethodName = "newUnsupportedSpecializationException" + signatureId;
 
@@ -3313,9 +3311,7 @@ public class FlatNodeGenFactory {
                 }
 
                 CodeTreeBuilder builder = throwMethod.createBuilder();
-                if (needsBoundary) {
-                    GeneratorUtils.addBoundaryOrTransferToInterpreter(throwMethod, builder);
-                }
+                GeneratorUtils.addBoundaryOrTransferToInterpreter(throwMethod, builder);
                 builder.startReturn();
                 newUnsupportedSpecializationException(builder, nodes, locals, thisNodeParamName, var -> CodeTreeBuilder.singleString(var.getName()));
                 builder.end();
