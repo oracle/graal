@@ -39,6 +39,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.JDK20OrEarlier;
 import com.oracle.svm.core.jdk.JDK20OrLater;
 import com.oracle.svm.core.jdk.JDK21OrLater;
@@ -251,8 +252,8 @@ public final class Target_java_lang_VirtualThread {
 
 /** Always apply JVMTI-related substitutions to avoid linking problems. */
 @SuppressWarnings({"static-method", "unused"})
-@TargetClass(className = "java.lang.VirtualThread")
-final class Target_java_lang_VirtualThreadJVMTI {
+@TargetClass(className = "java.lang.VirtualThread", onlyWith = JDK19OrLater.class)
+final class Target_java_lang_VirtualThread_JVMTI {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     @TargetElement(onlyWith = JDK20OrEarlier.class)//
     private static boolean notifyJvmtiEvents;
