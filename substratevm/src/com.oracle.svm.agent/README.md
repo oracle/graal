@@ -10,9 +10,7 @@ To do that, execute:
 $ native-image -g --macro:native-image-agent-library
 ```
 
-Next, in order to debug the agent,
-the java process that runs agent needs to be executed from within GDB,
-assuming that the `java` executable is located in the same `JAVA_HOME` as `native-image`, the agent and its debug symbols:
+Next, in order to debug the agent, the Java process that runs agent needs to be executed from within GDB, assuming that the `java` executable is located in the same `JAVA_HOME` as `native-image`, the agent and its debug symbols:
 
 ```bash
 $ gdb java --args -agentlib:native-image-agent=config-output-dir=./native-image-config -jar app.jar
@@ -51,7 +49,7 @@ Put a breakpoint:
 Breakpoint 2 at 0x7ffff4cdf550: file com/oracle/svm/agent/NativeImageAgent.java, line 134.
 ```
 
-Optionally, disabling `SIGSEGV` signal is recommended to avoid signal handlers that HotSpot uses for safepoints:
+Disabling handling `SIGSEGV` signals in the debugger is highly recommended because HotSpot intentionally and frequently uses them for safepoints:
 
 ```bash
 (gdb) handle SIGSEGV nostop noprint
