@@ -60,8 +60,6 @@ import java.util.stream.Stream;
 import com.oracle.truffle.api.impl.asm.ClassWriter;
 import com.oracle.truffle.api.impl.asm.MethodVisitor;
 import com.oracle.truffle.api.impl.asm.Opcodes;
-import com.oracle.truffle.runtime.ModulesAccessor.DirectImpl;
-import com.oracle.truffle.runtime.ModulesAccessor.IsolatedImpl;
 
 import jdk.internal.module.Modules;
 
@@ -69,7 +67,7 @@ import jdk.internal.module.Modules;
  * We want to avoid exporting the Modules class to all classes in the unnamed module. So instead we
  * load it in an isolated class loader and module layer.
  */
-abstract sealed class ModulesAccessor permits DirectImpl, IsolatedImpl {
+abstract sealed class ModulesAccessor permits ModulesAccessor.DirectImpl, ModulesAccessor.IsolatedImpl {
 
     /**
      * @see Modules#addExports(Module, String, Module)

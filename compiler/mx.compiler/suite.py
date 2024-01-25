@@ -316,6 +316,9 @@ suite = {
         "java.base" : [
           "jdk.internal.util",
         ],
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.meta",
+        ],
       },
       "checkstyle": "jdk.graal.compiler",
       "javaCompliance" : "21+",

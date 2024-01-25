@@ -703,6 +703,7 @@ public class SubstrateGraphBuilderPlugins {
      * Intercept the invoke to newUpdater. If the holder class and field name are constant register
      * them for reflection/unsafe access.
      */
+    @SuppressWarnings("unused")
     private static void interceptUpdaterInvoke(GraphBuilderContext b, SnippetReflectionProvider snippetReflection, ValueNode tclassNode, ValueNode fieldNameNode) {
         if (tclassNode.isConstant() && fieldNameNode.isConstant()) {
             Class<?> tclass = snippetReflection.asObject(Class.class, tclassNode.asJavaConstant());
@@ -879,6 +880,7 @@ public class SubstrateGraphBuilderPlugins {
         return true;
     }
 
+    @SuppressWarnings("unused")
     private static void registerArrayPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, ParsingReason reason) {
         Registration r = new Registration(plugins, Array.class).setAllowOverwrite(true);
         r.register(new RequiredInvocationPlugin("newInstance", Class.class, int[].class) {
@@ -1292,6 +1294,7 @@ public class SubstrateGraphBuilderPlugins {
         }
     }
 
+    @SuppressWarnings("unused")
     private static Object nonNullReason(NodeSourcePosition position) {
         return position == null ? "Unknown graph builder location." : position;
     }

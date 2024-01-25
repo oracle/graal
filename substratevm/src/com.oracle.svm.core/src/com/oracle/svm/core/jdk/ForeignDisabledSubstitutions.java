@@ -51,6 +51,7 @@ final class ForeignDisabled implements BooleanSupplier {
 @TargetClass(className = "jdk.internal.foreign.MemorySessionImpl", onlyWith = ForeignDisabled.class)
 final class Target_jdk_internal_foreign_MemorySessionImpl {
     @Substitute
+    @SuppressWarnings("static-method")
     Target_java_lang_foreign_Arena asArena() {
         throw ForeignDisabledSubstitutions.fail();
     }
@@ -67,6 +68,7 @@ final class Target_java_lang_foreign_Linker {
 @TargetClass(className = "jdk.internal.foreign.abi.SharedUtils", onlyWith = ForeignDisabled.class)
 final class Target_jdk_internal_foreign_abi_SharedUtils {
     @Substitute
+    @SuppressWarnings("unused")
     static Target_java_lang_foreign_Arena newBoundedArena(long size) {
         throw ForeignDisabledSubstitutions.fail();
     }
@@ -89,6 +91,7 @@ final class Target_java_lang_foreign_MemoryLayout {
 @TargetClass(className = "jdk.internal.foreign.FunctionDescriptorImpl", onlyWith = ForeignDisabled.class)
 final class Target_jdk_internal_foreign_FunctionDescriptorImpl {
     @Substitute
+    @SuppressWarnings("unused")
     Target_jdk_internal_foreign_FunctionDescriptorImpl(Target_java_lang_foreign_MemoryLayout resLayout, List<Target_java_lang_foreign_MemoryLayout> argLayouts) {
         throw ForeignDisabledSubstitutions.fail();
     }
@@ -106,6 +109,7 @@ final class Target_jdk_internal_foreign_SegmentFactories {
 @TargetClass(className = "sun.nio.ch.FileChannelImpl", onlyWith = ForeignDisabled.class)
 final class Target_sun_nio_ch_FileChannelImpl {
     @Substitute
+    @SuppressWarnings({"unused", "static-method"})
     Target_java_lang_foreign_MemorySegment map(FileChannel.MapMode mode, long offset, long size, Target_java_lang_foreign_Arena arena) throws IOException {
         throw ForeignDisabledSubstitutions.fail();
     }
@@ -123,11 +127,13 @@ final class Target_java_lang_foreign_MemoryLayout_PathElement {
 final class Target_jdk_internal_foreign_layout_AbstractLayout {
     @Substitute
     @AlwaysInline("Make remaining code in callers unreachable.")
+    @SuppressWarnings({"unused", "static-method"})
     VarHandle varHandle(Target_java_lang_foreign_MemoryLayout_PathElement... elements) {
         throw ForeignDisabledSubstitutions.fail();
     }
 
     @Substitute
+    @SuppressWarnings("unused")
     static <Z> Z computePathOp(Target_jdk_internal_foreign_LayoutPath path, Function<Target_jdk_internal_foreign_LayoutPath, Z> finalizer,
                     Set<?> badKinds, Target_java_lang_foreign_MemoryLayout_PathElement... elements) {
         throw ForeignDisabledSubstitutions.fail();

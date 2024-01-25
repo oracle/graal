@@ -66,6 +66,7 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
 
     private static final Method registerMirror = JavaVersionUtil.JAVA_SPEC < 22 ? ReflectionUtil.lookupMethod(SecuritySupport.class, "registerMirror", Class.class) : null;
 
+    @SuppressWarnings("unused")
     JfrEventSubstitution(MetaAccessProvider metaAccess) {
         baseEventType = metaAccess.lookupJavaType(jdk.internal.event.Event.class);
         ResolvedJavaType jdkJfrEventWriter = metaAccess.lookupJavaType(EventWriter.class);

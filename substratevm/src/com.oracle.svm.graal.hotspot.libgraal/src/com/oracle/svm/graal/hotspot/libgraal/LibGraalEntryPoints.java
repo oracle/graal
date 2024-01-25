@@ -62,7 +62,7 @@ import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkageImpl.CodeInfo;
 import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
 import jdk.graal.compiler.hotspot.HotSpotGraalServices;
-import jdk.graal.compiler.hotspot.ProfileReplaySupport;
+import jdk.graal.compiler.hotspot.ProfileReplaySupport.Options;
 import jdk.graal.compiler.hotspot.stubs.Stub;
 import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
@@ -342,7 +342,7 @@ public final class LibGraalEntryPoints {
      * @param timeAndMemBufferAddress 16-byte native buffer to store result of time and memory
      *            measurements of the compilation
      * @param profilePathBufferAddress native buffer containing a 0-terminated C string representing
-     *            {@link ProfileReplaySupport.Options#LoadProfiles} path.
+     *            {@link Options#LoadProfiles} path.
      * @return a handle to a {@link InstalledCode} in HotSpot's heap or 0 if compilation failed
      */
     @SuppressWarnings({"unused", "try"})
@@ -377,7 +377,7 @@ public final class LibGraalEntryPoints {
                 CompilationTask task = new CompilationTask(runtime, compiler, request, useProfilingInfo, false, eagerResolving, installAsDefault);
                 if (profilePathBufferAddress > 0) {
                     String profileLoadPath = CTypeConversion.toJavaString(WordFactory.pointer(profilePathBufferAddress));
-                    options = new OptionValues(options, ProfileReplaySupport.Options.LoadProfiles, profileLoadPath);
+                    options = new OptionValues(options, Options.LoadProfiles, profileLoadPath);
                 }
                 long allocatedBytesBefore = 0;
                 ThreadMXBean threadMXBean = null;

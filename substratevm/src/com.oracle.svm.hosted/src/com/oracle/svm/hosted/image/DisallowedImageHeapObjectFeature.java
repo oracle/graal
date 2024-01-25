@@ -123,6 +123,7 @@ public class DisallowedImageHeapObjectFeature implements InternalFeature {
         }).toArray(String[]::new);
     }
 
+    @SuppressWarnings("unused")
     private void onStringReachable(DuringAnalysisAccess a, String string) {
         if (disallowedSubstrings != null) {
             for (String disallowedSubstring : disallowedSubstrings) {
@@ -137,6 +138,7 @@ public class DisallowedImageHeapObjectFeature implements InternalFeature {
         }
     }
 
+    @SuppressWarnings("unused")
     private void onByteArrayReachable(DuringAnalysisAccess a, byte[] bytes) {
         if (disallowedByteSubstrings != null) {
             for (Map.Entry<byte[], Charset> entry : disallowedByteSubstrings.entrySet()) {
@@ -156,6 +158,7 @@ public class DisallowedImageHeapObjectFeature implements InternalFeature {
     /**
      * See {@link ManagementSupport} for details why these objects are not allowed.
      */
+    @SuppressWarnings("unused")
     private void onMBeanServerConnectionReachable(DuringAnalysisAccess a, MBeanServerConnection serverConnection) {
         throw error("Detected a MBean server in the image heap. This is currently not supported, but could be changed in the future. " +
                         "Management beans are registered in many global caches that would need to be cleared and properly re-built at image build time. " +
@@ -166,6 +169,7 @@ public class DisallowedImageHeapObjectFeature implements InternalFeature {
     /**
      * See {@link ManagementSupport} for details why these objects are not allowed.
      */
+    @SuppressWarnings("unused")
     private void onPlatformManagedObjectReachable(DuringAnalysisAccess a, PlatformManagedObject platformManagedObject) {
         if (!ManagementSupport.getSingleton().isAllowedPlatformManagedObject(platformManagedObject)) {
             throw error("Detected a PlatformManagedObject (a MXBean defined by the virtual machine) in the image heap. " +

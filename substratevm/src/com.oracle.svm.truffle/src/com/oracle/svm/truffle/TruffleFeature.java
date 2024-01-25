@@ -782,7 +782,7 @@ public class TruffleFeature implements InternalFeature {
     }
 
     private record BlocklistViolationInfo(RuntimeCompilationCandidate candidate, String[] callTrace) {
-    };
+    }
 
     private void checkBlockList(CallTreeInfo treeInfo) {
         RuntimeCompilationFeature runtimeCompilation = RuntimeCompilationFeature.singleton();

@@ -197,6 +197,7 @@ final class Target_jdk_internal_jimage_BasicImageReader {
 @Substitute
 final class Target_jdk_internal_jimage_NativeImageBuffer {
     @Substitute
+    @SuppressWarnings("unused")
     static ByteBuffer getNativeMap(String imagePath) {
         throw VMError.unsupportedFeature("Using jdk.internal.jimage.NativeImageBuffer is not supported");
     }

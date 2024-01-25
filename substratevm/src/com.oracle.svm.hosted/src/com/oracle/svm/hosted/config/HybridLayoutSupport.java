@@ -47,6 +47,7 @@ public class HybridLayoutSupport {
         return clazz.isAnnotationPresent(Hybrid.class);
     }
 
+    @SuppressWarnings("unused")
     public boolean isHybridField(HostedField field) {
         return false;
     }

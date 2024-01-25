@@ -24,14 +24,14 @@
  */
 package jdk.graal.compiler.replacements;
 
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static jdk.graal.compiler.core.common.GraalOptions.UseSnippetGraphCache;
 import static jdk.graal.compiler.debug.DebugOptions.DebugStubsAndSnippets;
 import static jdk.graal.compiler.debug.DebugOptions.DumpOnError;
 import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createIntrinsicInlineInfo;
 import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 import static jdk.graal.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
+import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import java.util.BitSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,6 +41,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.Pair;
+
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -76,6 +77,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.Replacements;
@@ -89,7 +91,6 @@ import jdk.graal.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
 import jdk.graal.compiler.word.Word;
 import jdk.graal.compiler.word.WordOperationPlugin;
 import jdk.graal.compiler.word.WordTypes;
-
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -353,16 +354,16 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
      * @param nonNullParameters
      * @param original XXX always null?
      * @param trackNodeSourcePosition record source information
-     * @param context {@link IntrinsicContext.CompilationContext compilation context} for the graph
+     * @param context {@link CompilationContext compilation context} for the graph
      */
     public StructuredGraph makeGraph(DebugContext debug, BytecodeProvider bytecodeProvider, ResolvedJavaMethod method, Object[] args, BitSet nonNullParameters, ResolvedJavaMethod original,
-                    boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, IntrinsicContext.CompilationContext context) {
+                    boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, CompilationContext context) {
         return createGraphMaker(method, original).makeGraph(debug, bytecodeProvider, args, nonNullParameters, trackNodeSourcePosition, replaceePosition, context);
     }
 
     /**
      * Creates a preprocessed graph for a snippet or method substitution with a context of .
-     * {@link IntrinsicContext.CompilationContext#INLINE_AFTER_PARSING} .
+     * {@link CompilationContext#INLINE_AFTER_PARSING} .
      *
      * @param bytecodeProvider how to access the bytecode of {@code method}
      * @param method the snippet or method substitution for which a graph will be created
@@ -409,7 +410,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
 
         @SuppressWarnings("try")
         public StructuredGraph makeGraph(DebugContext debug, BytecodeProvider bytecodeProvider, Object[] args, BitSet nonNullParameters, boolean trackNodeSourcePosition,
-                        NodeSourcePosition replaceePosition, IntrinsicContext.CompilationContext context) {
+                        NodeSourcePosition replaceePosition, CompilationContext context) {
             try (DebugContext.Scope s = debug.scope("BuildSnippetGraph", method)) {
                 assert method.hasBytecodes() : method;
                 StructuredGraph graph = buildInitialGraph(debug, bytecodeProvider, method, args, nonNullParameters, trackNodeSourcePosition, replaceePosition, context);
@@ -513,7 +514,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
          */
         @SuppressWarnings("try")
         protected StructuredGraph buildInitialGraph(DebugContext debug, BytecodeProvider bytecodeProvider, final ResolvedJavaMethod methodToParse, Object[] args, BitSet nonNullParameters,
-                        boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, IntrinsicContext.CompilationContext context) {
+                        boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, CompilationContext context) {
             // @formatter:off
             // Replacements cannot have optimistic assumptions since they have
             // to be valid for the entire run of the VM.

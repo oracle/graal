@@ -424,6 +424,7 @@ final class Target_java_lang_System {
      * @see SecurityManager
      */
     @Substitute
+    @SuppressWarnings({"removal", "javadoc"})
     private static void setSecurityManager(SecurityManager sm) {
         if (sm != null) {
             /* Read the property collected at isolate creation as that is what happens on the JVM */

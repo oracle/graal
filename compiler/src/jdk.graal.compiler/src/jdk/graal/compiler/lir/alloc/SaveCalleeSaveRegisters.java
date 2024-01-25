@@ -38,7 +38,6 @@ import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.MoveFactory;
 import jdk.graal.compiler.lir.phases.PreAllocationOptimizationPhase;
 import jdk.graal.compiler.lir.util.RegisterMap;
-
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;

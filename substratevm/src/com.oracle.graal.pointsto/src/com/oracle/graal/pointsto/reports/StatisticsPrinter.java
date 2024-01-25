@@ -31,7 +31,6 @@ import java.util.function.Consumer;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -180,12 +179,11 @@ public final class StatisticsPrinter {
                 continue;
             }
 
-            boolean runtimeMethod = isRuntimeLibraryType(method.getDeclaringClass());
             MethodTypeFlow methodFlow = PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();
             if (!methodFlow.flowsGraphCreated()) {
                 continue;
             }
-            MethodFlowsGraph originalFlows = methodFlow.getMethodFlowsGraph();
+            methodFlow.getMethodFlowsGraph();
         }
 
         return new long[]{totalFilters, totalRemovableFilters, appTotalFilters, appTotalRemovableFilters};

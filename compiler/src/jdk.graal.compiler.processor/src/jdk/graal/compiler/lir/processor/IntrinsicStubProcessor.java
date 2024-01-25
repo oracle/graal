@@ -331,8 +331,8 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
                     out.printf("        super(linkage.getDescriptor().getName(), options, providers, linkage);\n");
                     out.printf("    }\n");
                 } else {
-                    out.printf("    private static final EnumSet<AMD64.CPUFeature> EMPTY_CPU_FEATURES_AMD64 = EnumSet.noneOf(AMD64.CPUFeature.class);\n");
-                    out.printf("    private static final EnumSet<AArch64.CPUFeature> EMPTY_CPU_FEATURES_AARCH64 = EnumSet.noneOf(AArch64.CPUFeature.class);\n");
+                    out.printf("    @SuppressWarnings(\"unused\") private static final EnumSet<AMD64.CPUFeature> EMPTY_CPU_FEATURES_AMD64 = EnumSet.noneOf(AMD64.CPUFeature.class);\n");
+                    out.printf("    @SuppressWarnings(\"unused\") private static final EnumSet<AArch64.CPUFeature> EMPTY_CPU_FEATURES_AARCH64 = EnumSet.noneOf(AArch64.CPUFeature.class);\n");
                 }
                 out.printf("\n");
                 for (GenerateStubClass genClass : classes) {

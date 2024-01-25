@@ -74,10 +74,10 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
 
     @Override
     protected Providers createProviders(CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, ForeignCallsProvider foreignCalls,
-                    LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, SnippetReflectionProvider snippetReflection,
+                    LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, SnippetReflectionProvider reflectionProvider,
                     PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider, WordTypes wordTypes, LoopsDataProvider loopsDataProvider) {
         return new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, platformConfigurationProvider,
-                        metaAccessExtensionProvider, snippetReflection, wordTypes, loopsDataProvider);
+                        metaAccessExtensionProvider, reflectionProvider, wordTypes, loopsDataProvider);
     }
 
     @Override
@@ -96,9 +96,9 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
     }
 
     @Override
-    protected Replacements createReplacements(Providers p, SnippetReflectionProvider snippetReflection) {
+    protected Replacements createReplacements(Providers p, SnippetReflectionProvider reflectionProvider) {
         BytecodeProvider bytecodeProvider = new ResolvedJavaMethodBytecodeProvider();
-        return new SubstrateReplacements(p, snippetReflection, bytecodeProvider, ConfigurationValues.getTarget(), new SubstrateGraphMakerFactory());
+        return new SubstrateReplacements(p, reflectionProvider, bytecodeProvider, ConfigurationValues.getTarget(), new SubstrateGraphMakerFactory());
     }
 
     @Override
