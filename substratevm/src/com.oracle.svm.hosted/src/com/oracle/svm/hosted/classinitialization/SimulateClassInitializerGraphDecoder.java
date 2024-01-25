@@ -64,6 +64,7 @@ import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerPolicy.SimulateClassInitializerInlineScope;
 import com.oracle.svm.hosted.fieldfolding.IsStaticFinalFieldInitializedNode;
 import com.oracle.svm.hosted.fieldfolding.MarkStaticFinalFieldInitializedNode;
@@ -374,9 +375,10 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
     }
 
     private Node handleEnsureClassInitializedNode(EnsureClassInitializedNode node) {
-        var classInitType = (AnalysisType) node.constantTypeOrNull(providers.getConstantReflection());
+        var aConstantReflection = (AnalysisConstantReflectionProvider) providers.getConstantReflection();
+        var classInitType = (AnalysisType) node.constantTypeOrNull(aConstantReflection);
         if (classInitType != null) {
-            if (support.trySimulateClassInitializer(graph.getDebug(), classInitType, clusterMember)) {
+            if (support.trySimulateClassInitializer(graph.getDebug(), classInitType, clusterMember) && !aConstantReflection.initializationCheckRequired(classInitType)) {
                 /* Class is already simulated initialized, no need for a run-time check. */
                 return null;
             }

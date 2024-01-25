@@ -125,6 +125,11 @@ public final class ConfigurationFiles {
         @Option(help = "When configuration files do not match their schema, abort the image build instead of emitting a warning.")//
         public static final HostedOptionKey<Boolean> StrictConfiguration = new HostedOptionKey<>(false);
 
+        @Option(help = "Testing flag: the typeReachable condition is treated as typeReached so the semantics of programs can change.")//
+        public static final HostedOptionKey<Boolean> TreatAllReachableConditionsAsReached = new HostedOptionKey<>(false);
+
+        @Option(help = "Testing flag: every type is considered as it participates in a typeReachable condition.")//
+        public static final HostedOptionKey<Boolean> TreatAllUserSpaceTypesAsTrackedForTypeReached = new HostedOptionKey<>(false);
         @Option(help = "Warn when reflection and JNI configuration files have elements that could not be found on the classpath or modulepath.", type = OptionType.Expert)//
         public static final HostedOptionKey<Boolean> WarnAboutMissingReflectionOrJNIMetadataElements = new HostedOptionKey<>(false);
     }

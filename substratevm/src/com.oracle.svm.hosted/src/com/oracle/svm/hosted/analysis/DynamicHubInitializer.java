@@ -50,6 +50,7 @@ import com.oracle.svm.hosted.BootLoaderSupport;
 import com.oracle.svm.hosted.ClassLoaderFeature;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -211,10 +212,12 @@ public class DynamicHubInitializer {
         AnalysisError.guarantee(hub.getClassInitializationInfo() == null, "Class initialization info already computed for %s.", type.toJavaName(true));
         boolean initializedAtBuildTime = SimulateClassInitializerSupport.singleton().trySimulateClassInitializer(bb, type);
         ClassInitializationInfo info;
+        boolean typeReachedTracked = ClassInitializationSupport.singleton().requiresInitializationNodeForTypeReached(type);
         if (initializedAtBuildTime) {
-            info = type.getClassInitializer() == null ? ClassInitializationInfo.NO_INITIALIZER_INFO_SINGLETON : ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;
+            info = type.getClassInitializer() == null ? ClassInitializationInfo.forNoInitializerInfo(typeReachedTracked)
+                            : ClassInitializationInfo.forInitializedInfo(typeReachedTracked);
         } else {
-            info = buildRuntimeInitializationInfo(type);
+            info = buildRuntimeInitializationInfo(type, typeReachedTracked);
         }
         hub.setClassInitializationInfo(info);
         if (rescan) {
@@ -222,7 +225,7 @@ public class DynamicHubInitializer {
         }
     }
 
-    private ClassInitializationInfo buildRuntimeInitializationInfo(AnalysisType type) {
+    private ClassInitializationInfo buildRuntimeInitializationInfo(AnalysisType type, boolean typeReachedTracked) {
         assert !type.isInitialized();
         try {
             /*
@@ -235,13 +238,13 @@ public class DynamicHubInitializer {
             /* Synthesize a VerifyError to be thrown at run time. */
             AnalysisMethod throwVerifyError = metaAccess.lookupJavaMethod(ExceptionSynthesizer.throwExceptionMethod(VerifyError.class));
             bb.addRootMethod(throwVerifyError, true, "Class initialization error, registered in " + DynamicHubInitializer.class);
-            return new ClassInitializationInfo(new MethodPointer(throwVerifyError));
+            return new ClassInitializationInfo(new MethodPointer(throwVerifyError), typeReachedTracked);
         } catch (Throwable t) {
             /*
              * All other linking errors will be reported as NoClassDefFoundError when initialization
              * is attempted at run time.
              */
-            return ClassInitializationInfo.FAILED_INFO_SINGLETON;
+            return ClassInitializationInfo.forFailedInfo(typeReachedTracked);
         }
 
         /*
@@ -256,7 +259,7 @@ public class DynamicHubInitializer {
             bb.addRootMethod(classInitializer, true, "Class initialization, registered in " + DynamicHubInitializer.class);
             classInitializerFunction = new MethodPointer(classInitializer);
         }
-        return new ClassInitializationInfo(classInitializerFunction);
+        return new ClassInitializationInfo(classInitializerFunction, typeReachedTracked);
     }
 
     class InterfacesEncodingKey {

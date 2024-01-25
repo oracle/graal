@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.classinitialization;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.Node.NodeIntrinsicFactory;
@@ -42,8 +44,6 @@ import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.type.StampTool;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -109,9 +109,12 @@ public class EnsureClassInitializedNode extends WithExceptionNode implements Can
     public Node canonical(CanonicalizerTool tool) {
         ResolvedJavaType type = constantTypeOrNull(tool.getConstantReflection());
         if (type != null) {
-            for (FrameState cur = stateAfter; cur != null; cur = cur.outerFrameState()) {
-                if (!needsRuntimeInitialization(cur.getMethod().getDeclaringClass(), type)) {
-                    return null;
+            TypeReachedProvider typeReachedProvider = (TypeReachedProvider) tool.getConstantReflection();
+            if (!typeReachedProvider.initializationCheckRequired(type)) {
+                for (FrameState cur = stateAfter; cur != null; cur = cur.outerFrameState()) {
+                    if (!needsRuntimeInitialization(cur.getMethod().getDeclaringClass(), type)) {
+                        return null;
+                    }
                 }
             }
         }
