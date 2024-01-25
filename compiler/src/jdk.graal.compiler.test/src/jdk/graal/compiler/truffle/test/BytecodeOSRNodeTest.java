@@ -26,14 +26,9 @@ package jdk.graal.compiler.truffle.test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import com.oracle.truffle.api.test.SubprocessTestUtils;
-import com.oracle.truffle.runtime.BytecodeOSRMetadata;
-import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
-import com.oracle.truffle.runtime.OptimizedCallTarget;
-
-import jdk.graal.compiler.test.GraalTest;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;
@@ -54,10 +49,17 @@ import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.SubprocessTestUtils;
+import com.oracle.truffle.runtime.BytecodeOSRMetadata;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+
+import jdk.graal.compiler.test.GraalTest;
 
 public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
@@ -105,6 +107,20 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         boundaryCall();
         Assert.assertTrue(CompilerDirectives.inCompiledCode());
         boundaryCall();
+    }
+
+    private static boolean checkFrameAssertionsDisabled() {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        int slot = builder.addSlot(FrameSlotKind.Static, null, null);
+        FrameDescriptor desc = builder.build();
+        try {
+            FrameWithoutBoxing frame = new FrameWithoutBoxing(desc, new Object[0]);
+            frame.setIntStatic(slot, 1);
+            frame.getFloatStatic(slot);
+        } catch (AssertionError e) {
+            return false;
+        }
+        return true;
     }
 
     /*
@@ -407,6 +423,24 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testFrameTransferWithStaticAccesses() {
+        frameTransferWithStaticAccesses();
+    }
+
+    /*
+     * Test that the frame transfer helper works as expected, even with static accesses, both on OSR
+     * enter and exit, and even when assertions are disabled.
+     */
+    @Test
+    public void testFrameTransferWithStaticAccessesWithAssertionsDisabled() throws Throwable {
+        // Execute in a subprocess to disable assertion checking for frames.
+        SubprocessTestUtils.executeInSubprocessWithAssertionsDisabled(BytecodeOSRNodeTest.class,
+                        () -> {
+                            Assert.assertTrue(checkFrameAssertionsDisabled());
+                            frameTransferWithStaticAccesses();
+                        }, true, List.of(FrameWithoutBoxing.class));
+    }
+
+    public static void frameTransferWithStaticAccesses() {
         var frameBuilder = FrameDescriptor.newBuilder();
         RootNode rootNode = new Program(new FrameTransferringWithStaticAccessNode(frameBuilder), frameBuilder.build());
         OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
@@ -452,6 +486,40 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         Object defaultValue = new Object();
         frameBuilder.defaultValue(defaultValue);
         RootNode rootNode = new Program(new FrameTransferringNodeWithUninitializedSlots(frameBuilder, defaultValue), frameBuilder.build());
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
+        Assert.assertEquals(42, target.call());
+    }
+
+    /*
+     * Same as above, but with static slots.
+     *
+     * Note that uninitialized static slots differs from regular slots in that it may be read as any
+     * kind, and always return the default ('defaultValue' for Object, '0' for primitives).
+     */
+    @Test
+    public void testFrameTransferWithUninitializedStaticSlots() {
+        frameTransferWithUninitializedStaticSlots();
+    }
+
+    /*
+     * Same as above, but with assertion disabled.
+     */
+    @Test
+    public void testFrameTransferWithUninitializedStaticSlotsWithoutAssertions() throws Throwable {
+        // Execute in a subprocess to disable assertion checking for frames.
+        SubprocessTestUtils.executeInSubprocessWithAssertionsDisabled(BytecodeOSRNodeTest.class,
+                        () -> {
+                            Assert.assertTrue(checkFrameAssertionsDisabled());
+                            frameTransferWithStaticAccesses();
+                        }, true, List.of(FrameWithoutBoxing.class));
+    }
+
+    public static void frameTransferWithUninitializedStaticSlots() {
+        // use a non-null default value to make sure it gets copied properly.
+        var frameBuilder = FrameDescriptor.newBuilder();
+        Object defaultValue = new Object();
+        frameBuilder.defaultValue(defaultValue);
+        RootNode rootNode = new Program(new FrameTransferringNodeWithUninitializedStaticSlots(frameBuilder, defaultValue), frameBuilder.build());
         OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         Assert.assertEquals(42, target.call());
     }
@@ -1531,6 +1599,71 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                 assertEquals(defaultValue, frame.getObject(intSlot));
                 assertEquals(defaultValue, frame.getObject(longSlot));
                 assertEquals(defaultValue, frame.getObject(objectSlot));
+            } catch (FrameSlotTypeException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Error accessing index slot");
+            }
+        }
+    }
+
+    public static class FrameTransferringNodeWithUninitializedStaticSlots extends FrameTransferringWithStaticAccessNode {
+        final Object defaultValue;
+
+        public FrameTransferringNodeWithUninitializedStaticSlots(FrameDescriptor.Builder frameDescriptor, Object defaultValue) {
+            super(frameDescriptor);
+            this.defaultValue = defaultValue;
+        }
+
+        private void ensureUninitReturnsDefault(VirtualFrame frame, int index) {
+            assertEquals(defaultValue, frame.getObjectStatic(index));
+            assertEquals((byte) 0, frame.getByteStatic(index));
+            assertEquals(false, frame.getBooleanStatic(index));
+            assertEquals(0, frame.getIntStatic(index));
+            assertEquals(0L, frame.getLongStatic(index));
+            assertEquals(0f, frame.getFloatStatic(index));
+            assertEquals(0d, frame.getDoubleStatic(index));
+        }
+
+        @Override
+        public void setRegularState(VirtualFrame frame) {
+            frame.setBooleanStatic(booleanSlot, true);
+            // everything else is uninitialized
+        }
+
+        @Override
+        public void checkRegularState(VirtualFrame frame) {
+            try {
+                assertEquals(true, frame.getBooleanStatic(booleanSlot));
+                // these slots are uninitialized
+                ensureUninitReturnsDefault(frame, byteSlot);
+                ensureUninitReturnsDefault(frame, doubleSlot);
+                ensureUninitReturnsDefault(frame, floatSlot);
+                ensureUninitReturnsDefault(frame, intSlot);
+                ensureUninitReturnsDefault(frame, longSlot);
+                ensureUninitReturnsDefault(frame, objectSlot);
+            } catch (FrameSlotTypeException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Error accessing index slot");
+            }
+        }
+
+        @Override
+        public void setOSRState(VirtualFrame frame) {
+            frame.setBooleanStatic(booleanSlot, false);
+            // everything else is uninitialized
+        }
+
+        @Override
+        public void checkOSRState(VirtualFrame frame) {
+            try {
+                assertEquals(false, frame.getBooleanStatic(booleanSlot));
+                // these slots are uninitialized
+                ensureUninitReturnsDefault(frame, byteSlot);
+                ensureUninitReturnsDefault(frame, doubleSlot);
+                ensureUninitReturnsDefault(frame, floatSlot);
+                ensureUninitReturnsDefault(frame, intSlot);
+                ensureUninitReturnsDefault(frame, longSlot);
+                ensureUninitReturnsDefault(frame, objectSlot);
             } catch (FrameSlotTypeException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("Error accessing index slot");
