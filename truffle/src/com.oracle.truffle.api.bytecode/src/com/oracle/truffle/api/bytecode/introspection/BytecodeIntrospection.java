@@ -57,16 +57,6 @@ import java.util.List;
  */
 public final class BytecodeIntrospection {
 
-    public interface Provider {
-        default BytecodeIntrospection getIntrospectionData() {
-            throw new UnsupportedOperationException();
-        }
-
-        static BytecodeIntrospection create(Object... data) {
-            return new BytecodeIntrospection(data);
-        }
-    }
-
     private final Object[] data;
 
     // format: [int 0, Object[] instructions, Object[] exHandlers, Object[] sourceInfo or null]
@@ -75,7 +65,7 @@ public final class BytecodeIntrospection {
     // exHandler: [int startIndex, int endIndex, int handlerIndex, int exVariable]
     // sourceInfo: [int startIndex, int endIndex, SourceSection ss]
 
-    private BytecodeIntrospection(Object[] data) {
+    public BytecodeIntrospection(Object[] data) {
         if (data.length == 0 || (int) data[0] != 0) {
             throw new UnsupportedOperationException("Illegal bytecode introspection version");
         }

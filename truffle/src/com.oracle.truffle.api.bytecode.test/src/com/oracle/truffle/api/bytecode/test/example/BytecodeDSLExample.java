@@ -49,6 +49,8 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.AbstractBytecodeTruffleException;
+import com.oracle.truffle.api.bytecode.BytecodeLocation;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
@@ -195,7 +197,7 @@ public abstract class BytecodeDSLExample extends DebugBytecodeRootNode implement
         public static Object perform(long value,
                         // TODO: passing the actual bci breaks compiler tests because of how we
                         // instantiate a location node from the bci
-                        @SuppressWarnings("unused") @Bind("$bci") int bci,
+                        @SuppressWarnings("unused") @Bind("$location") BytecodeLocation bci,
                         @Bind("$root") Node node) {
             throw new TestException("fail", node, -1, value);
         }
@@ -347,8 +349,10 @@ public abstract class BytecodeDSLExample extends DebugBytecodeRootNode implement
     @Operation
     public static final class GetSourcePosition {
         @Specialization
-        public static Object doOperation(@Bind("$root") Node rootNode, @Bind("$bci") int bci) {
-            return ((BytecodeDSLExample) rootNode).findSourceSectionAtBci(bci);
+        public static Object doOperation(VirtualFrame frame,
+                        @Bind("$node") Node node,
+                        @Bind("$bytecode") BytecodeNode bytecode) {
+            return bytecode.getSourceLocation(frame, node);
         }
     }
 
@@ -370,12 +374,12 @@ public abstract class BytecodeDSLExample extends DebugBytecodeRootNode implement
     }
 
     @Operation
-    public static final class CollectBcis {
+    public static final class CollectBytecodeLocations {
         @Specialization
-        public static List<Integer> perform() {
-            List<Integer> bytecodeIndices = new ArrayList<>();
+        public static List<BytecodeLocation> perform() {
+            List<BytecodeLocation> bytecodeIndices = new ArrayList<>();
             Truffle.getRuntime().iterateFrames(f -> {
-                bytecodeIndices.add(BytecodeRootNode.findBci(f));
+                bytecodeIndices.add(BytecodeLocation.get(f));
                 return null;
             });
             return bytecodeIndices;
@@ -389,14 +393,14 @@ public abstract class BytecodeDSLExample extends DebugBytecodeRootNode implement
         @SuppressWarnings("unused")
         @Specialization(guards = {"result.getContinuationRootNode() == rootNode"}, limit = "LIMIT")
         public static Object invokeDirect(ContinuationResult result, Object value,
-                        @Cached(value = "result.getContinuationRootNode()", inline = false) RootNode rootNode,
-                        @Cached(value = "create(rootNode.getCallTarget())", inline = false) DirectCallNode callNode) {
+                        @Cached("result.getContinuationRootNode()") RootNode rootNode,
+                        @Cached("create(rootNode.getCallTarget())") DirectCallNode callNode) {
             return callNode.call(result.getFrame(), value);
         }
 
         @Specialization(replaces = "invokeDirect")
         public static Object invokeIndirect(ContinuationResult result, Object value,
-                        @Cached(inline = false) IndirectCallNode callNode) {
+                        @Cached IndirectCallNode callNode) {
             return callNode.call(result.getContinuationCallTarget(), result.getFrame(), value);
         }
     }

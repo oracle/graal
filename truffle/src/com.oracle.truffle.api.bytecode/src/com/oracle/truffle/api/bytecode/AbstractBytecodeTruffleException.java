@@ -92,9 +92,9 @@ public abstract class AbstractBytecodeTruffleException extends AbstractTruffleEx
 
     @Override
     public SourceSection getSourceSection() {
-        if (bci == INVALID_BCI || !(getLocation() instanceof BytecodeRootNode bytecodeRootNode)) {
+        if (bci == INVALID_BCI) {
             return super.getSourceSection();
         }
-        return bytecodeRootNode.findSourceSectionAtBci(bci);
+        return BytecodeLocation.get(getLocation(), bci).getSourceLocation();
     }
 }

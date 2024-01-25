@@ -68,6 +68,12 @@ public abstract class BytecodeNodes<T extends RootNode & BytecodeRootNode> {
         this.parse = parse;
     }
 
+    static void checkToken(Object token) {
+        if (token != BytecodeNodes.TOKEN) {
+            throw new IllegalArgumentException("Invalid usage token. Seriously, you shouldn't subclass this class manually.");
+        }
+    }
+
     @Override
     public String toString() {
         return String.format("BytecodeNodes %s", Arrays.toString(nodes));
@@ -138,7 +144,7 @@ public abstract class BytecodeNodes<T extends RootNode & BytecodeRootNode> {
     @SuppressWarnings("hiding")
     protected abstract void reparseImpl(BytecodeConfig config, BytecodeParser<? extends BytecodeBuilder> parse, T[] nodes);
 
-    private final void reparse(BytecodeConfig config) {
+    private void reparse(BytecodeConfig config) {
         CompilerAsserts.neverPartOfCompilation("parsing should never be compiled");
         reparseImpl(config, parse, nodes);
     }

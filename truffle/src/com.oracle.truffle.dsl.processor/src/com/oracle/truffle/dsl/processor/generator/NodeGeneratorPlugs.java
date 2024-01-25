@@ -48,6 +48,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeDSLNodeFactory;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.ChildExecutionResult;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.LocalVariable;
@@ -94,6 +95,11 @@ public interface NodeGeneratorPlugs {
     @SuppressWarnings("unused")
     default void notifySpecialize(FlatNodeGenFactory nodeFactory, CodeTreeBuilder builder, FrameState frameState, SpecializationData specialization) {
 
+    }
+
+    @SuppressWarnings("unused")
+    default CodeTree bindExpressionValue(FrameState frameState, Variable variable) {
+        return null;
     }
 
 }

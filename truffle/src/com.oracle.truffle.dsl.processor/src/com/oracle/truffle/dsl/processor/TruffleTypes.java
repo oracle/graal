@@ -124,6 +124,8 @@ public class TruffleTypes {
     public static final String ExplodeLoop_Name = "com.oracle.truffle.api.nodes.ExplodeLoop";
     public static final String ExplodeLoop_LoopExplosionKind_Name = "com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind";
     public static final String Frame_Name = "com.oracle.truffle.api.frame.Frame";
+    public static final String FrameInstance_Name = "com.oracle.truffle.api.frame.FrameInstance";
+    public static final String FrameInstance_FrameAccess_Name = "com.oracle.truffle.api.frame.FrameInstance.FrameAccess";
     public static final String FrameDescriptor_Name = "com.oracle.truffle.api.frame.FrameDescriptor";
     public static final String FrameDescriptor_Builder_Name = "com.oracle.truffle.api.frame.FrameDescriptor.Builder";
     public static final String FrameSlotKind_Name = "com.oracle.truffle.api.frame.FrameSlotKind";
@@ -180,6 +182,8 @@ public class TruffleTypes {
     public final DeclaredType ExplodeLoop = c.getDeclaredType(ExplodeLoop_Name);
     public final DeclaredType ExplodeLoop_LoopExplosionKind = c.getDeclaredType(ExplodeLoop_LoopExplosionKind_Name);
     public final DeclaredType Frame = c.getDeclaredType(Frame_Name);
+    public final DeclaredType FrameInstance = c.getDeclaredType(FrameInstance_Name);
+    public final DeclaredType FrameInstance_FrameAccess = c.getDeclaredType(FrameInstance_FrameAccess_Name);
     public final DeclaredType FrameDescriptor = c.getDeclaredType(FrameDescriptor_Name);
     public final DeclaredType FrameDescriptor_Builder = c.getDeclaredType(FrameDescriptor_Builder_Name);
     public final DeclaredType FrameSlotKind = c.getDeclaredType(FrameSlotKind_Name);
@@ -350,6 +354,9 @@ public class TruffleTypes {
     public static final String BytecodeNodes_Name = "com.oracle.truffle.api.bytecode.BytecodeNodes";
     public static final String BytecodeParser_Name = "com.oracle.truffle.api.bytecode.BytecodeParser";
     public static final String BytecodeRootNode_Name = "com.oracle.truffle.api.bytecode.BytecodeRootNode";
+    public static final String BytecodeNode_Name = "com.oracle.truffle.api.bytecode.BytecodeNode";
+    public static final String BytecodeLocation_Name = "com.oracle.truffle.api.bytecode.BytecodeLocation";
+    public static final String BytecodeTier_Name = "com.oracle.truffle.api.bytecode.BytecodeTier";
     public static final String BytecodeSupport_Name = "com.oracle.truffle.api.bytecode.BytecodeSupport";
     public static final String ContinuationLocation_Name = "com.oracle.truffle.api.bytecode.ContinuationLocation";
     public static final String ContinuationResult_Name = "com.oracle.truffle.api.bytecode.ContinuationResult";
@@ -371,7 +378,6 @@ public class TruffleTypes {
 
     public static final String Argument_ArgumentType_Name = "com.oracle.truffle.api.bytecode.introspection.Argument.ArgumentType";
     public static final String BytecodeIntrospection_Name = "com.oracle.truffle.api.bytecode.introspection.BytecodeIntrospection";
-    public static final String BytecodeIntrospection_Provider_Name = "com.oracle.truffle.api.bytecode.introspection.BytecodeIntrospection.Provider";
     public static final String Instruction_Name = "com.oracle.truffle.api.bytecode.introspection.Instruction";
 
     public static final String BytecodeSerializer_Name = "com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer";
@@ -393,6 +399,9 @@ public class TruffleTypes {
     public final DeclaredType BytecodeNodes = c.getDeclaredTypeOptional(BytecodeNodes_Name);
     public final DeclaredType BytecodeParser = c.getDeclaredTypeOptional(BytecodeParser_Name);
     public final DeclaredType BytecodeRootNode = c.getDeclaredTypeOptional(BytecodeRootNode_Name);
+    public final DeclaredType BytecodeNode = c.getDeclaredTypeOptional(BytecodeNode_Name);
+    public final DeclaredType BytecodeLocation = c.getDeclaredTypeOptional(BytecodeLocation_Name);
+    public final DeclaredType BytecodeTier = c.getDeclaredTypeOptional(BytecodeTier_Name);
     public final DeclaredType BytecodeSupport = c.getDeclaredTypeOptional(BytecodeSupport_Name);
     public final DeclaredType ContinuationLocation = c.getDeclaredTypeOptional(ContinuationLocation_Name);
     public final DeclaredType ContinuationResult = c.getDeclaredTypeOptional(ContinuationResult_Name);
@@ -414,7 +423,6 @@ public class TruffleTypes {
 
     public final DeclaredType Argument_ArgumentType = c.getDeclaredTypeOptional(Argument_ArgumentType_Name);
     public final DeclaredType BytecodeIntrospection = c.getDeclaredTypeOptional(BytecodeIntrospection_Name);
-    public final DeclaredType BytecodeIntrospection_Provider = c.getDeclaredTypeOptional(BytecodeIntrospection_Provider_Name);
     public final DeclaredType Instruction = c.getDeclaredTypeOptional(Instruction_Name);
 
     public final DeclaredType BytecodeSerializer = c.getDeclaredTypeOptional(BytecodeSerializer_Name);

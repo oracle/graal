@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.sl.bytecode;
 
+import java.io.IOException;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
@@ -66,8 +68,8 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
@@ -85,6 +87,7 @@ import com.oracle.truffle.sl.nodes.expression.SLSubNode;
 import com.oracle.truffle.sl.nodes.expression.SLWritePropertyNode;
 import com.oracle.truffle.sl.nodes.util.SLToBooleanNode;
 import com.oracle.truffle.sl.nodes.util.SLUnboxNode;
+import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
@@ -135,18 +138,17 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
     }
 
     @TruffleBoundary
-    private static void printDump(String dump) {
-        System.out.println(dump);
+    private void printDump(String dump) {
+        try {
+            SLContext.get(this).getEnv().out().write(dump.getBytes());
+        } catch (IOException e) {
+            throw new SLException("Failed printing dump", this);
+        }
     }
 
     @Override
     public SLExpressionNode getBodyNode() {
         return null;
-    }
-
-    @Override
-    public SourceSection getSourceSection() {
-        return findSourceSectionAtBci(0);
     }
 
     @Override
@@ -196,7 +198,7 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
                         Object function,
                         @Variadic Object[] arguments,
                         @CachedLibrary(limit = "3") InteropLibrary library,
-                        @Bind("$root") Node node,
+                        @Bind("$node") Node node,
                         @Bind("$bci") int bci) {
             try {
                 return library.execute(function, arguments);

@@ -48,13 +48,14 @@ import org.junit.Test;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.bytecode.test.BytecodeNodeWithStoredBci.BytecodeAndFrame;
 import com.oracle.truffle.api.bytecode.test.BytecodeNodeWithStoredBci.MyException;
-import com.oracle.truffle.api.bytecode.test.BytecodeNodeWithStoredBci.RootAndFrame;
 import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -62,11 +63,11 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 
-public class ReadBciFromFrameTest {
+public class ReadBytecodeLocationTest {
     /*
      * NB: The tests in this class test some undocumented behaviour.
      *
@@ -157,7 +158,7 @@ public class ReadBciFromFrameTest {
             b.endRoot();
         });
 
-        RootAndFrame result = (RootAndFrame) root.getCallTarget().call();
+        BytecodeAndFrame result = (BytecodeAndFrame) root.getCallTarget().call();
         assertEquals("return foo", result.getSourceCharacters());
     }
 
@@ -194,7 +195,7 @@ public class ReadBciFromFrameTest {
             root.getCallTarget().call();
             fail("Expected call to fail");
         } catch (MyException ex) {
-            RootAndFrame result = (RootAndFrame) ex.result;
+            BytecodeAndFrame result = (BytecodeAndFrame) ex.result;
             assertEquals("throw foo", result.getSourceCharacters());
         }
     }
@@ -237,7 +238,7 @@ public class ReadBciFromFrameTest {
         });
 
         ContinuationResult contResult = (ContinuationResult) root.getCallTarget().call();
-        RootAndFrame result = (RootAndFrame) contResult.getResult();
+        BytecodeAndFrame result = (BytecodeAndFrame) contResult.getResult();
         assertEquals("yield foo", result.getSourceCharacters());
         contResult.continueWith(null);
         assertEquals("return bar", result.getSourceCharacters());
@@ -263,34 +264,38 @@ abstract class BytecodeNodeWithStoredBci extends RootNode implements BytecodeRoo
         }
     }
 
-    public static final class RootAndFrame {
-        final BytecodeNodeWithStoredBci root;
+    public static final class BytecodeAndFrame {
+        final BytecodeNode bytecode;
+
+        // we need to capture a node even though it is not used for reading the location here
+        final Node node;
         final Frame frame;
 
-        RootAndFrame(BytecodeNodeWithStoredBci root, Frame frame) {
-            this.root = root;
+        BytecodeAndFrame(BytecodeNode bytecode, Node node, Frame frame) {
+            this.bytecode = bytecode;
+            this.node = node;
             this.frame = frame.materialize();
         }
 
         public String getSourceCharacters() {
-            int bci = root.readBciFromFrame(frame);
-            SourceSection section = root.findSourceSectionAtBci(bci);
-            return section.getCharacters().toString();
+            return bytecode.getSourceLocation(frame, node).getCharacters().toString();
         }
     }
 
     @Operation
     public static final class MakeRootAndFrame {
         @Specialization
-        public static RootAndFrame perform(VirtualFrame frame, @Bind("$root") BytecodeNodeWithStoredBci rootNode) {
-            return new RootAndFrame(rootNode, frame);
+        public static BytecodeAndFrame perform(VirtualFrame frame,
+                        @Bind("$bytecode") BytecodeNode bytecode,
+                        @Bind("$node") Node node) {
+            return new BytecodeAndFrame(bytecode, node, frame);
         }
     }
 
     @Operation
     public static final class GetSourceCharacters {
         @Specialization
-        public static String perform(@SuppressWarnings("unused") VirtualFrame frame, RootAndFrame rootAndFrame) {
+        public static String perform(@SuppressWarnings("unused") VirtualFrame frame, BytecodeAndFrame rootAndFrame) {
             return rootAndFrame.getSourceCharacters();
         }
     }

@@ -306,11 +306,14 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
                 if (isOperationProxyable) {
                     if (name.equals("$root")) {
                         return new CodeVariableElement(ProcessorContext.getInstance().getTypes().Node, "this");
+                    } else if (name.equals("$bytecode")) {
+                        return new CodeVariableElement(ProcessorContext.getInstance().getTypes().BytecodeNode, "null");
+                    } else if (name.equals("$location")) {
+                        return new CodeVariableElement(ProcessorContext.getInstance().getTypes().BytecodeLocation, "null");
                     } else if (name.equals("$bci")) {
-                        return new CodeVariableElement(new CodeTypeMirror(TypeKind.INT), "-1");
+                        return new CodeVariableElement(ProcessorContext.getInstance().getType(int.class), "-1");
                     }
                 }
-
                 return null;
         }
     }

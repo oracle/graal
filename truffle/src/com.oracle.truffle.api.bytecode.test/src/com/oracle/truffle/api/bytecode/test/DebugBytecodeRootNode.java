@@ -64,7 +64,7 @@ public abstract class DebugBytecodeRootNode extends RootNode implements Bytecode
     public void onQuicken(Instruction before, Instruction after) {
         if (traceQuickening) {
             System.out.printf("Quicken %s: %n     %s%n  -> %s%n", before.getName(), before, after);
-            System.out.println(this.dump(after.getBci()));
+            System.out.println(this.dump());
         }
         quickeningCount.incrementAndGet();
     }
@@ -73,7 +73,7 @@ public abstract class DebugBytecodeRootNode extends RootNode implements Bytecode
         if (traceQuickening) {
             System.out.printf("Quicken operand index %s for %s: %n     %s%n  -> %s%n", operandIndex, base.getName(),
                             operandBefore, operandAfter);
-            System.out.println(this.dump(operandBefore.getBci()));
+            System.out.println(this.dump());
         }
         quickeningCount.incrementAndGet();
     }

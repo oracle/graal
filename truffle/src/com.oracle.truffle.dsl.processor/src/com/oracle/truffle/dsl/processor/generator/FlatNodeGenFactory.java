@@ -7054,16 +7054,25 @@ public class FlatNodeGenFactory {
                 if (localVariable != null) {
                     bindings.put(variable, localVariable);
                 }
-            } else if (specialization.isNodeReceiverVariable(variable.getResolvedVariable())) {
-                CodeTree accessor = createNodeAccess(frameState, specialization);
-                if (substituteNodeWithSpecializationClass(specialization) && !frameState.mode.isUncached()) {
-                    String localName = createSpecializationLocalName(specialization);
-                    bindings.put(variable, new LocalVariable(types.Node, localName, accessor));
+            } else {
+                CodeTree tree = plugs.bindExpressionValue(frameState, variable);
+                if (tree != null) {
+                    bindings.put(variable, new LocalVariable(variable.getResolvedType(), "$bytecode", tree));
                 } else {
-                    bindings.put(variable, new LocalVariable(variable.getResolvedType(), "this", accessor));
+                    if (specialization.isNodeReceiverVariable(variable.getResolvedVariable())) {
+                        CodeTree accessor = createNodeAccess(frameState, specialization);
+                        if (substituteNodeWithSpecializationClass(specialization) && !frameState.mode.isUncached()) {
+                            String localName = createSpecializationLocalName(specialization);
+                            bindings.put(variable, new LocalVariable(types.Node, localName, accessor));
+                        } else {
+                            bindings.put(variable, new LocalVariable(variable.getResolvedType(), "this", accessor));
+                        }
+                    }
                 }
+
             }
         }
+
         return bindings;
     }
 

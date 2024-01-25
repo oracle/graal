@@ -169,7 +169,7 @@ public class ManualBytecodeInterpreter extends BaseBytecodeNode {
         }
     }
 
-    static abstract class AccessToken<T extends RootNode & BytecodeRootNode> extends BytecodeNodes<T> {
+    abstract static class AccessToken<T extends RootNode & BytecodeRootNode> extends BytecodeNodes<T> {
 
         protected AccessToken(BytecodeParser<? extends BytecodeBuilder> parse) {
             super(parse);

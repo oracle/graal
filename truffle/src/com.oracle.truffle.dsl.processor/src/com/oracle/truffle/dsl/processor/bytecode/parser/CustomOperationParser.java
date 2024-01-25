@@ -593,7 +593,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             result.setTypeSystem(parent.typeSystem);
         }
 
-        result.redirectMessages(parent);
         result.redirectMessagesOnGeneratedElements(parent);
 
         return result;

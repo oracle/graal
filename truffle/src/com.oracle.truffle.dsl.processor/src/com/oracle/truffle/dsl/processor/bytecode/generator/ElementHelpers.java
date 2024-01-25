@@ -105,6 +105,10 @@ interface ElementHelpers {
         return new CodeTypeMirror.DeclaredCodeTypeMirror(element(type), List.of(genericType1));
     }
 
+    static DeclaredType generic(TypeMirror type, TypeMirror... genericTypes) {
+        return new CodeTypeMirror.DeclaredCodeTypeMirror(element(type), List.of(genericTypes));
+    }
+
     static DeclaredType generic(Class<?> type, TypeMirror genericType1) {
         return new CodeTypeMirror.DeclaredCodeTypeMirror(element(type), List.of(genericType1));
     }
