@@ -27,8 +27,8 @@
 package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assume.assumeTrue;
 
 import java.util.Collections;
@@ -37,14 +37,14 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.Assume;
-import org.junit.Before;
+import jdk.jfr.Recording;
 import org.junit.Test;
+import org.junit.Before;
 
 import com.oracle.svm.core.jfr.JfrEvent;
 
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-import jdk.jfr.Recording;
+
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
@@ -68,7 +68,6 @@ public class TestVirtualThreadsBasic extends JfrRecordingTest {
 
     @Test
     public void test() throws Throwable {
-        Assume.assumeFalse("Currently broken on JDK 23+ (GR-51526)", JavaVersionUtil.JAVA_SPEC >= 23);
         String[] events = new String[]{JfrEvent.JavaMonitorWait.getName()};
         Recording recording = startRecording(events);
 
