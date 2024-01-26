@@ -107,9 +107,8 @@ Let's consider some of the possible code changes and how they affect the program
 - However, all of the above may have no performance impact
   if the method is *cold* (i.e. infrequently executed).
 
-In conclusion, it is always possible to use an outdated profile
-to build an optimized image.
-Moreover, if the code changes are small, or limited to the cold parts of the program,
+In conclusion, it is always possible to use an outdated profile to generate an optimized image.
+Moreover, if the code changes are sufficiently small, or limited to the cold parts of the program,
 then using the old profile will usually not compromise the performance of the optimized image.
 
 
@@ -130,7 +129,8 @@ in the application that you are running.
 Also, be aware that the benchmark should ideally be representative
 of the workload that you expect in production.
 The more the benchmark's workload corresponds to the production workload,
-the morely likely will PGO have a positive performance impact.
+the morely likely it is that PGO have a positive performance impact
+on the optimized image.
 
 In conclusion, if the benchmark accurately represents the workload that you will be running in production,
 then it is a good idea to collect the profiles on the instrumented benchmark image,
@@ -145,13 +145,33 @@ DRAFT:
 
 6. How does GraalVM generate a workload for profiling a web application?
 
-DRAFT:
-    - It does not and pretty much can not...  It's up to the developers
+GraalVM itself does not generate a workload for profiling a web application
+that was compiled with Native Image.
+Instead, you need to use a load-testing tool to generate the workload.
+
+For example, if your web application exposes several HTTP endpoints,
+then you need to use a load-tester such as `wrk`
+to generate a stream of requests to those HTTP endpoints.
+The setup for this would be as follows:
+you build the instrumented image of your web application,
+start it in one process, and start a load-tester such as `wrk` in another process.
+The duration of the load-test needs to be long enough to exercise the endpoints
+of your web application that will be most frequently exercised by the production users,
+using request payloads that you expect to encounter in production.
+For simple web applications, duration of 1 minute is typically sufficient
+to produce profiles of good quality (but again, this depends on your particular application).
+After the load-test completes and the web application exits,
+it will dump the profiles to a file.
 
 
 7. Why not collect profile in the production environment for a while?
-   For example, collect it only on one instance on Monday from 8:00 till 12:00.
+   For example, collect it only on one instance of the service on Monday from 8:00 till 12:00.
 
-DRAFT:
-    - If you can - DO! Those are the best profiles. Be mindful that the overhead of the instrumented image is currently quite high.
+Yes, that is a good way to collect profiles.
+
+As argued earlier, the instrumentation image has a certain overhead,
+which depends on the code patterns in a particular application.
+However, if only one instance uses the instrumentation image during a particular period,
+and all the other instances of your service use a normal or optimized build,
+then this is usually acceptable in practice.
 
