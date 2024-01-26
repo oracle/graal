@@ -85,6 +85,7 @@ public final class FieldOffsetNode extends FloatingNode implements FieldOffsetPr
         this.field = field;
     }
 
+    @Override
     public ResolvedJavaField getField() {
         return field;
     }

@@ -119,7 +119,6 @@ public final class ComputedValueField extends FieldValueTransformation implement
                 break;
             case StaticFieldBase:
                 f = getField(annotated, targetClass, targetName);
-                Object[] args = new Object[]{};
                 if (!Modifier.isStatic(f.getModifiers())) {
                     throw UserError.abort("Target field must be static for " + StaticFieldBase + " computation of field " + original.format("%H.%n") +
                                     (annotated != null ? " specified by alias " + annotated.format("%H.%n") : ""));

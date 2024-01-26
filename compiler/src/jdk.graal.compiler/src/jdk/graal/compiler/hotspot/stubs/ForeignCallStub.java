@@ -30,6 +30,7 @@ import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
+import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.nodes.StubForeignCallNode;
 import jdk.graal.compiler.nodes.ParameterNode;
@@ -38,16 +39,15 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.GraphKit;
 import jdk.graal.compiler.replacements.nodes.ReadRegisterNode;
 import jdk.graal.compiler.word.Word;
-
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
- * A {@linkplain #getGraph generated} stub for a {@link HotSpotForeignCallDescriptor.Transition
- * non-leaf} foreign call from compiled code. A stub is required for such calls as the caller may be
- * scheduled for deoptimization while the call is in progress. And since these are foreign/runtime
- * calls on slow paths, we don't want to force the register allocator to spill around the call. As
- * such, this stub saves and restores all allocatable registers. It also
+ * A {@linkplain #getGraph generated} stub for a {@link Transition non-leaf} foreign call from
+ * compiled code. A stub is required for such calls as the caller may be scheduled for
+ * deoptimization while the call is in progress. And since these are foreign/runtime calls on slow
+ * paths, we don't want to force the register allocator to spill around the call. As such, this stub
+ * saves and restores all allocatable registers. It also
  * {@linkplain ForeignCallSnippets#handlePendingException handles} any exceptions raised during the
  * foreign call.
  */

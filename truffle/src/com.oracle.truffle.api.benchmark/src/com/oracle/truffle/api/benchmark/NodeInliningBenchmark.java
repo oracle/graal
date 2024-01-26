@@ -52,10 +52,6 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.benchmark.NodeInliningBenchmarkFactory.CachedNodeGen;
-import com.oracle.truffle.api.benchmark.NodeInliningBenchmarkFactory.CachedSharedExclusiveNodeGen;
-import com.oracle.truffle.api.benchmark.NodeInliningBenchmarkFactory.InlinedNodeGen;
-import com.oracle.truffle.api.benchmark.NodeInliningBenchmarkFactory.InlinedSharedExclusiveNodeGen;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -87,11 +83,11 @@ public class NodeInliningBenchmark extends TruffleBenchmark {
         final CachedSharedExclusiveNode[] sharedExclusiveCachedNodes = new CachedSharedExclusiveNode[INNER_LOOP];
         {
             for (int i = 0; i < INNER_LOOP; i++) {
-                inlinedNodes[i] = InlinedNodeGen.create();
-                cachedNodes[i] = CachedNodeGen.create();
+                inlinedNodes[i] = NodeInliningBenchmarkFactory.InlinedNodeGen.create();
+                cachedNodes[i] = NodeInliningBenchmarkFactory.CachedNodeGen.create();
 
-                sharedExclusiveInlinedNodes[i] = InlinedSharedExclusiveNodeGen.create();
-                sharedExclusiveCachedNodes[i] = CachedSharedExclusiveNodeGen.create();
+                sharedExclusiveInlinedNodes[i] = NodeInliningBenchmarkFactory.InlinedSharedExclusiveNodeGen.create();
+                sharedExclusiveCachedNodes[i] = NodeInliningBenchmarkFactory.CachedSharedExclusiveNodeGen.create();
 
                 sharedExclusiveInlinedNodes[i].execute(0, 0, 0, 0);
                 sharedExclusiveInlinedNodes[i].execute(1, 0, 0, 0);
@@ -118,8 +114,8 @@ public class NodeInliningBenchmark extends TruffleBenchmark {
         @Setup(Level.Invocation)
         public void setup() {
             for (int i = 0; i < INNER_LOOP; i++) {
-                inlinedNodes[i] = InlinedNodeGen.create();
-                cachedNodes[i] = CachedNodeGen.create();
+                inlinedNodes[i] = NodeInliningBenchmarkFactory.InlinedNodeGen.create();
+                cachedNodes[i] = NodeInliningBenchmarkFactory.CachedNodeGen.create();
             }
         }
 
@@ -135,7 +131,7 @@ public class NodeInliningBenchmark extends TruffleBenchmark {
     public void createInlined(BenchmarkState state) {
         InlinedNode[] nodes = state.inlinedNodes;
         for (int i = 0; i < nodes.length; i++) {
-            nodes[i] = InlinedNodeGen.create();
+            nodes[i] = NodeInliningBenchmarkFactory.InlinedNodeGen.create();
         }
     }
 
@@ -144,7 +140,7 @@ public class NodeInliningBenchmark extends TruffleBenchmark {
     public void createCached(BenchmarkState state) {
         CachedNode[] nodes = state.cachedNodes;
         for (int i = 0; i < nodes.length; i++) {
-            nodes[i] = CachedNodeGen.create();
+            nodes[i] = NodeInliningBenchmarkFactory.CachedNodeGen.create();
         }
     }
 

@@ -97,17 +97,50 @@ suite = {
       "digest": "sha512:f92f976375421ef117a97cb4298b7478b849370334a1eaf2efb243bd510e79358f258f47327deb2b9441843e7061acc67add2d034259f3136d97da8a09e545a4",
     },
 
-    "TRUFFLE_JCODINGS": {
-      "digest" : "sha512:455f3dc287181c185ab87c03e88cc89615f3da262358f44ea01bb3cc9f04d8e3cee7911f8a14a6403d3285d9b54812aaa48ade093a0b3ec4e594adbbda1d5387",
-      "version" : "1.0.58.1",
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/graalvm-shadowed-jcodings-{version}.jar"],
-      "exports" : [],
+    "JCODINGS_1.0.58": {
+      "digest" : "sha512:625210aa07d1e08bf2f5fdc9da6c491a4e5a56e7db297cba1aa73636670ac1d62f3fd763716ef6ede862456b17169272ed9c8461d07100f95262163dc9c18ef8",
+      "sourceDigest" : "sha512:d0f883f658310f7ad091aea08df28f1f5fe12080d6cb266cd91aec7e34cda1d57736d32618e8632b329854367d6e4d5fc91b5eb8ac9b823b26113fae3f75f50c",
+      "maven": {
+        "groupId": "org.jruby.jcodings",
+        "artifactId": "jcodings",
+        "version": "1.0.58",
+      },
       "license": ["MIT"],
     },
 
-    "TRUFFLE_ASM_9.5" : {
-      "digest" : "sha512:7a49aaa0c4b513ca54ce684a74a3848ba4caf486320125f08cb8872720dc1e789538729f45c46d6ccf1b1ea54f7c3770dc9682d13a3f1813a348168ee5c40b82",
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/com.oracle.truffle.api.impl.asm-9.5.0.jar"],
+    "ASM_9.5": {
+      "digest": "sha512:9e65f2983783725bae196ca939b45246958731246df1c495089c8ea5ce646de77c4e01a5a9ba10642016bb3258e1727e9ebcece6e74d9e3c32f528025d76b955",
+      "sourceDigest": "sha512:64262b68c1acd473a49be3c8a89190200be66808034c55fb23ed08d8a977111c234b6dc77b6ca95310e1f1cbc43437cdc863aadb6217976cc1720d63ef01e937",
+      "maven": {
+        "groupId": "org.ow2.asm",
+        "artifactId": "asm",
+        "version": "9.5",
+      },
+      "license": "BSD-new",
+    },
+
+    "ASM_TREE_9.5": {
+      "digest": "sha512:816de8f84c216a7bd97b2458bde64a4b99a039b7b59fbd1ef52edf8bf869edabb93967736fe0c61e8eb3e1520e0cefe69ba59cda12df30f9f85db75fb6c064f3",
+      "sourceDigest": "sha512:a107043c05398091e3f3c614270c626be8ea5a1a547e30dc5709ef92069c8c8baa315c385a68f244c3a37bc148c3aeeec26adc8c00afc2a03a1d21a40e076a4c",
+      "maven": {
+        "groupId": "org.ow2.asm",
+        "artifactId": "asm-tree",
+        "version": "9.5",
+      },
+      "dependencies" : ["ASM_9.5"],
+      "license": "BSD-new",
+    },
+
+    "ASM_COMMONS_9.5": {
+      "digest": "sha512:6121a9d033627a33839d9bd264fce4a531b6a3f974720adc6150816f0316d1522c3d8caf7df039fdd46cb66bedd788e50f709d4a1f75d3525912ad7a4d87f7da",
+      "sourceDigest": "sha512:688d56a1b4fb6f7d86b79b7493a848851892910d00067a0c5effdaf7132266ec7a1ba57a8248c2fd6c0ebdef18a4918908a36e85f5927b9acb55448047a1e333",
+      "maven": {
+        "groupId": "org.ow2.asm",
+        "artifactId": "asm-commons",
+        "version": "9.5",
+      },
+      "dependencies" : ["ASM_9.5", "ASM_TREE_9.5"],
+      "license": "BSD-new",
     },
 
     "ICU4J" : {
@@ -308,7 +341,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.exception",
-        "truffle:TRUFFLE_ASM_9.5",
+        "com.oracle.truffle.api.impl.asm",
       ],
       "requires" : [
         "java.sql",
@@ -613,7 +646,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.profiles",
-        "TRUFFLE_JCODINGS",
+        "org.graalvm.shadowed.org.jcodings",
       ],
       "requires" : [
         "jdk.unsupported", # sun.misc.Unsafe
@@ -663,7 +696,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api",
-        "truffle:TRUFFLE_ASM_9.5",
+        "com.oracle.truffle.api.impl.asm",
       ],
       "requires" : [
         "jdk.unsupported", # sun.misc.Unsafe
@@ -873,6 +906,7 @@ suite = {
       ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "22+",
+      "forceJavac": True,
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
       # disable SpotBugs and Jacoco as long as JDK 22 is unsupported [GR-49566]
@@ -1156,6 +1190,8 @@ suite = {
           "META-INF/MANIFEST.MF",
           "META-INF/services/*", # deliberately excluding java.nio.charset.spi.CharsetProvider
           "**/*.html",
+          "**/pom.xml",
+          "**/pom.properties",
         ],
         "patch" : {
           "com/ibm/icu/ICUConfig.properties" : {
@@ -1317,6 +1353,111 @@ suite = {
       "description" : "ANTLR4 shaded library.",
       "allowsJavadocWarnings": True,
       "javac.lint.overrides" : 'none',
+      "jacoco" : "exclude",
+      "graalCompilerSourceEdition": "ignore",
+    },
+
+    "com.oracle.truffle.api.impl.asm" : {
+      # Shadowed ASM libraries (org.ow2.asm:asm,asm-tree,asm-commons)
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "spotbugs" : "false",
+      "shadedDependencies" : [
+        "truffle:ASM_9.5",
+        "truffle:ASM_TREE_9.5",
+        "truffle:ASM_COMMONS_9.5",
+      ],
+      "class" : "ShadedLibraryProject",
+      "shade" : {
+        "packages" : {
+          "org.objectweb.asm" : "com.oracle.truffle.api.impl.asm",
+        },
+        "exclude" : [
+          "META-INF/MANIFEST.MF",
+          "**/package.html",
+        ],
+      },
+      "description" : "ASM library shadowed for Truffle.",
+      "allowsJavadocWarnings": True,
+      # We need to force javac because the generated sources in this project produce warnings in JDT.
+      "forceJavac" : "true",
+      "javac.lint.overrides" : "none",
+      "jacoco" : "exclude",
+      "graalCompilerSourceEdition": "ignore",
+    },
+
+    "org.graalvm.shadowed.org.jcodings" : {
+      # Shadowed JCODINGS library (org.jruby.jcodings:jcodings)
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "spotbugs" : "false",
+      "shadedDependencies" : [
+        "truffle:JCODINGS_1.0.58",
+      ],
+      "class" : "ShadedLibraryProject",
+      "shade" : {
+        "packages" : {
+          "org.jcodings" : "org.graalvm.shadowed.org.jcodings",
+        },
+        "exclude" : [
+          "module-info.java",
+          "META-INF/MANIFEST.MF",
+          "META-INF/services/java.nio.charset.spi.CharsetProvider",
+          "META-INF/maven/org.jruby.jcodings/jcodings/*", # pom.xml, pom.properties
+          "org/jcodings/spi/*.java", # CharsetProvider implementation classes (Charsets.java, ISO_8859_16.java)
+        ],
+        "include" : {
+          "tables/*.bin" : {
+            "tables/" : "org/graalvm/shadowed/org/jcodings/tables/",
+          },
+        },
+        "patch" : {
+          "org/jcodings/util/ArrayReader.java" : {
+            "\"/tables/\"" : "\"/org/graalvm/shadowed/org/jcodings/tables/\"",
+          },
+          # Fix CESU8Encoding.leftAdjustCharHead by applying a stripped down version of:
+          # https://github.com/jruby/jcodings/pull/61/ (not in 1.0.58; remove when updating to a newer version).
+          "org/jcodings/specific/CESU8Encoding.java" : {
+"""
+  (public int leftAdjustCharHead\\(byte\\[\\] bytes, int p, int s, int end\\) {
+    if \\(s <= p\\)
+      return s;
+    int p_ = s;
+    while \\(!utf8IsLead\\(bytes\\[p_\\] & 0xff\\) && p_ > p\\)
+      p_--;)(
+    return p_;
+  })
+""" : """
+  \\1
+    if (p_ > p && s - p_ == 2 && Character.isLowSurrogate((char) utf8Decode3ByteSequence(bytes, p_))) {
+      int pSurrogatePair = p_ - 1;
+      while (!utf8IsLead(bytes[pSurrogatePair] & 0xff) && pSurrogatePair > p)
+        pSurrogatePair--;
+      if (p_ - pSurrogatePair == 3 && Character.isHighSurrogate((char) utf8Decode3ByteSequence(bytes, pSurrogatePair))) {
+        return pSurrogatePair;
+      }
+    }\\2
+
+  private static int utf8Decode3ByteSequence(byte[] bytes, int p) {
+    return ((bytes[p] & 0xF) << 12) | ((bytes[p + 1] & 0xff & 0x3f) << 6) | (bytes[p + 2] & 0xff & 0x3f);
+  }
+""",
+          },
+          "org/jcodings/Encoding.java" : {
+            "(public static Encoding load\\([^()]*\\) \\{\\s*)[^{}]*(?:\\{[^{}]*\\}[^{}]*)*(\\s*\\})" : "\\1throw new InternalException(ErrorMessages.ERR_ENCODING_CLASS_DEF_NOT_FOUND, name);\\2"
+          },
+          "org/jcodings/transcode/Transcoder.java" : {
+            "(public static Transcoder load\\([^()]*\\) \\{\\s*)[^{}]*(?:\\{[^{}]*\\}[^{}]*)*(\\s*\\})" : "\\1throw new InternalException(ErrorMessages.ERR_TRANSCODER_CLASS_DEF_NOT_FOUND, name);\\2"
+          },
+        },
+      },
+      "description" : "JCodings library shadowed for Truffle.",
+      "allowsJavadocWarnings": True,
+      # We need to force javac because the generated sources in this project produce warnings in JDT.
+      "forceJavac" : "true",
+      "javac.lint.overrides" : "none",
       "jacoco" : "exclude",
       "graalCompilerSourceEdition": "ignore",
     },
@@ -1686,6 +1827,7 @@ suite = {
       },
       "subDir" : "src",
       "javaCompliance" : "22+",
+      "forceJavac": True,
       "dependencies" : [
         "com.oracle.truffle.nfi.backend.panama",
       ],
@@ -2172,6 +2314,7 @@ suite = {
         "artifactId" : "icu4j",
         "tag": ["default", "public"],
       },
+      "compress" : True,
       "graalCompilerSourceEdition": "ignore",
     },
 

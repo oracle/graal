@@ -52,6 +52,7 @@ public class StringIntrinsicAVX3ThresholdTest extends SubprocessTest {
          */
     }
 
+    @SuppressWarnings("unused")
     public void testWithAVX3Threshold(String testSelector, Class<? extends GraalCompilerTest> testClass) {
         Runnable nopRunnable = () -> {
             /*

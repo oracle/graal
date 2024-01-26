@@ -299,7 +299,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return null;
         }
 
-        List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<TypeElement>(), templateType);
+        List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<>(), templateType);
 
         NodeData node = parseNodeData(templateType, lookupTypes);
 
@@ -1103,7 +1103,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
                 TypeMirror type = cache.getParameter().getType();
                 if (NodeCodeGenerator.isSpecializedNode(type)) {
-                    List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<TypeElement>(), ElementUtils.castTypeElement(type));
+                    List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<>(), ElementUtils.castTypeElement(type));
                     AnnotationMirror generateAOT = findFirstAnnotation(lookupTypes, types.GenerateAOT);
                     if (generateAOT == null) {
                         cache.addError("Failed to generate code for @%s: " + //
@@ -1844,7 +1844,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         TypeElement importElement = fromTypeMirror(context.reloadType(importType.asType()));
 
         List<Element> members = new ArrayList<>();
-        List<? extends Element> importMembers = context.getEnvironment().getElementUtils().getAllMembers(importType);
+        List<? extends Element> importMembers = CompilerFactory.getCompiler(importType).getAllMembersInDeclarationOrder(context.getEnvironment(), importType);
         // add default constructor
         if (includeConstructors && ElementUtils.isVisible(relativeTo, importElement) && ElementFilter.constructorsIn(importMembers).isEmpty()) {
             CodeExecutableElement executable = new CodeExecutableElement(modifiers(Modifier.PUBLIC), importElement.asType(), null);
@@ -2538,10 +2538,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return null;
         }
 
-        List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<TypeElement>(), templateType);
+        List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<>(), templateType);
 
         // Declaration order is not required for child nodes.
-        List<? extends Element> members = processingEnv.getElementUtils().getAllMembers(templateType);
+        List<? extends Element> members = CompilerFactory.getCompiler(templateType).getAllMembersInDeclarationOrder(processingEnv, templateType);
         NodeData node = parseNodeData(templateType, lookupTypes);
         if (node.hasErrors()) {
             return node;
@@ -2835,7 +2835,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
             // transitively resolve includes
             Set<SpecializationData> foundSpecializations = new LinkedHashSet<>();
-            collectIncludes(specialization, foundSpecializations, new HashSet<SpecializationData>());
+            collectIncludes(specialization, foundSpecializations, new HashSet<>());
             specialization.getReplaces().addAll(foundSpecializations);
         }
 

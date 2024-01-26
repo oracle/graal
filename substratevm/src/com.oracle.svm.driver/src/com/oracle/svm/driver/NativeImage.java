@@ -1554,8 +1554,8 @@ public class NativeImage {
         List<Path> finalImageClassPath = imagecp.stream().map(substituteClassPath).collect(Collectors.toList());
 
         Function<Path, Path> substituteModulePath = useBundle() ? bundleSupport::substituteModulePath : Function.identity();
-        List<Path> imageModulePath = imagemp.stream().map(substituteModulePath).collect(Collectors.toList());
-        Map<String, Path> applicationModules = getModulesFromPath(imageModulePath);
+        List<Path> localImageModulePath = imagemp.stream().map(substituteModulePath).collect(Collectors.toList());
+        Map<String, Path> applicationModules = getModulesFromPath(localImageModulePath);
 
         if (!applicationModules.isEmpty()) {
             // Remove modules that we already have built-in

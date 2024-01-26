@@ -137,6 +137,7 @@ public interface BigBang extends ReachabilityAnalysis {
         return null;
     }
 
+    @SuppressWarnings("unused")
     default void registerTypeForBaseImage(Class<?> cls) {
 
     }

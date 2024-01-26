@@ -139,6 +139,7 @@ public final class MonitorPEATest extends HotSpotGraalCompilerTest {
         Object o = new Object();
     }
 
+    @SuppressWarnings("unused")
     public static void snippet4(Object external, boolean flag, boolean flag1) {
         A escaped = new A();
 

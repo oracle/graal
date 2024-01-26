@@ -151,7 +151,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
 
     protected abstract Providers createProviders(CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
                     ForeignCallsProvider foreignCalls,
-                    LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, SnippetReflectionProvider snippetReflection,
+                    LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, SnippetReflectionProvider reflectionProvider,
                     PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider, WordTypes wordTypes, LoopsDataProvider loopsDataProvider);
 
     protected abstract ConstantReflectionProvider createConstantReflectionProvider();
@@ -168,7 +168,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
 
     protected abstract LoweringProvider createLoweringProvider(ForeignCallsProvider foreignCalls, MetaAccessExtensionProvider metaAccessExtensionProvider);
 
-    protected abstract Replacements createReplacements(Providers p, SnippetReflectionProvider snippetReflection);
+    protected abstract Replacements createReplacements(Providers p, SnippetReflectionProvider reflectionProvider);
 
     protected abstract CodeCacheProvider createCodeCacheProvider(RegisterConfig registerConfig);
 }

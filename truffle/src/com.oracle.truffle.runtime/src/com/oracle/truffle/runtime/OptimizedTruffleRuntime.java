@@ -1237,7 +1237,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
             final OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
             final StringBuilder messageBuilder = new StringBuilder();
             messageBuilder.append(reason).append(" at\n");
-            runtime.iterateFrames(new FrameInstanceVisitor<Object>() {
+            runtime.iterateFrames(new FrameInstanceVisitor<>() {
                 int frameIndex = 0;
 
                 @Override

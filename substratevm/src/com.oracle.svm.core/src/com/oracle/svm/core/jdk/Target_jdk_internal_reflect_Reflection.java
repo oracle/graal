@@ -41,6 +41,7 @@ final class Target_jdk_internal_reflect_Reflection {
     @TargetElement(onlyWith = ForeignDisabled.class)
     @Substitute
     @AlwaysInline("Make remaining code in callers unreachable.")
+    @SuppressWarnings("unused")
     static void ensureNativeAccess(Class<?> currentClass, Class<?> owner, String methodName) {
         throw ForeignDisabledSubstitutions.fail();
     }

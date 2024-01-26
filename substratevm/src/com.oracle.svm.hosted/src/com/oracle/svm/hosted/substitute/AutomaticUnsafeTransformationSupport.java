@@ -275,7 +275,7 @@ public class AutomaticUnsafeTransformationSupport {
      * we need to convert it to a {@link FieldValueTransformer}, because that is the only mechanism
      * we can install late while the analysis is already running.
      */
-    private void addTransformation(BigBang bb, ResolvedJavaField original, ComputedValueField transformation) {
+    private static void addTransformation(BigBang bb, ResolvedJavaField original, ComputedValueField transformation) {
         JavaKind returnKind = original.getType().getJavaKind();
 
         FieldValueTransformer transformer = switch (transformation.getRecomputeValueKind()) {
@@ -1086,10 +1086,7 @@ public class AutomaticUnsafeTransformationSupport {
         assert clinit.hasBytecodes();
 
         HighTierContext context = new HighTierContext(GraalAccess.getOriginalProviders(), null, OptimisticOptimizations.NONE);
-        StructuredGraph graph = new StructuredGraph.Builder(options, debug)
-                        .method(clinit)
-                        .recordInlinedMethods(false)
-                        .build();
+        StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(clinit).recordInlinedMethods(false).build();
         graph.getGraphState().configureExplicitExceptionsNoDeopt();
 
         GraphBuilderPhase.Instance builderPhase = new ClassInitializerGraphBuilderPhase(context, GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true),

@@ -304,24 +304,16 @@ public final class HeapImpl extends Heap {
         if (HeapParameters.getZapProducedHeapChunks() || HeapParameters.getZapConsumedHeapChunks()) {
             /* Padded with spaces so the columns line up between the int and word variants. */
             if (HeapParameters.getZapProducedHeapChunks()) {
-                log.string("producedHeapChunkZapInt: ")
-                                .string(" hex: ").spaces(8).hex(HeapParameters.getProducedHeapChunkZapInt())
-                                .string(" signed: ").spaces(9).signed(HeapParameters.getProducedHeapChunkZapInt())
-                                .string(" unsigned: ").spaces(10).unsigned(HeapParameters.getProducedHeapChunkZapInt()).newline();
-                log.string("producedHeapChunkZapWord:")
-                                .string(" hex: ").hex(HeapParameters.getProducedHeapChunkZapWord())
-                                .string(" signed: ").signed(HeapParameters.getProducedHeapChunkZapWord())
-                                .string(" unsigned: ").unsigned(HeapParameters.getProducedHeapChunkZapWord()).newline();
+                log.string("producedHeapChunkZapInt: ").string(" hex: ").spaces(8).hex(HeapParameters.getProducedHeapChunkZapInt()).string(" signed: ").spaces(9).signed(
+                                HeapParameters.getProducedHeapChunkZapInt()).string(" unsigned: ").spaces(10).unsigned(HeapParameters.getProducedHeapChunkZapInt()).newline();
+                log.string("producedHeapChunkZapWord:").string(" hex: ").hex(HeapParameters.getProducedHeapChunkZapWord()).string(" signed: ").signed(
+                                HeapParameters.getProducedHeapChunkZapWord()).string(" unsigned: ").unsigned(HeapParameters.getProducedHeapChunkZapWord()).newline();
             }
             if (HeapParameters.getZapConsumedHeapChunks()) {
-                log.string("consumedHeapChunkZapInt: ")
-                                .string(" hex: ").spaces(8).hex(HeapParameters.getConsumedHeapChunkZapInt())
-                                .string(" signed: ").spaces(10).signed(HeapParameters.getConsumedHeapChunkZapInt())
-                                .string(" unsigned: ").spaces(10).unsigned(HeapParameters.getConsumedHeapChunkZapInt()).newline();
-                log.string("consumedHeapChunkZapWord:")
-                                .string(" hex: ").hex(HeapParameters.getConsumedHeapChunkZapWord())
-                                .string(" signed: ").signed(HeapParameters.getConsumedHeapChunkZapWord())
-                                .string(" unsigned: ").unsigned(HeapParameters.getConsumedHeapChunkZapWord()).newline();
+                log.string("consumedHeapChunkZapInt: ").string(" hex: ").spaces(8).hex(HeapParameters.getConsumedHeapChunkZapInt()).string(" signed: ").spaces(10).signed(
+                                HeapParameters.getConsumedHeapChunkZapInt()).string(" unsigned: ").spaces(10).unsigned(HeapParameters.getConsumedHeapChunkZapInt()).newline();
+                log.string("consumedHeapChunkZapWord:").string(" hex: ").hex(HeapParameters.getConsumedHeapChunkZapWord()).string(" signed: ").signed(
+                                HeapParameters.getConsumedHeapChunkZapWord()).string(" unsigned: ").unsigned(HeapParameters.getConsumedHeapChunkZapWord()).newline();
             }
         }
     }

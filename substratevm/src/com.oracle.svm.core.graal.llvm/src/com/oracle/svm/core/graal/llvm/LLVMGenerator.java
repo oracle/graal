@@ -1383,7 +1383,7 @@ public class LLVMGenerator extends CoreProvidersDelegate implements LIRGenerator
         }
 
         @Override
-        public Value emitFloatConvert(FloatConvert op, Value inputVal) {
+        public Value emitFloatConvert(FloatConvert op, Value inputVal, boolean canBeNaN, boolean canOverflow) {
             LLVMTypeRef destType;
             switch (op) {
                 case F2I:

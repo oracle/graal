@@ -396,6 +396,7 @@ public abstract class ImageHeapScanner {
         return createFieldValue(field, null, rawValue, reason);
     }
 
+    @SuppressWarnings("unused")
     protected JavaConstant createFieldValue(AnalysisField field, ImageHeapInstance receiver, ValueSupplier<JavaConstant> rawValue, ScanReason reason) {
         /*
          * Check if the field value is available. If not, trying to access it is an error. This
@@ -545,6 +546,7 @@ public abstract class ImageHeapScanner {
         }
     }
 
+    @SuppressWarnings("unused")
     public boolean isValueAvailable(AnalysisField field) {
         return true;
     }

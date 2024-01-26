@@ -25,7 +25,7 @@
 package jdk.graal.compiler.core.phases;
 
 import jdk.graal.compiler.core.common.GraalOptions;
-import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.Node.ValueNumberable;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import jdk.graal.compiler.loop.phases.LoopFullUnrollPhase;
 import jdk.graal.compiler.loop.phases.LoopPartialUnrollPhase;
@@ -74,7 +74,7 @@ public enum CEOptimization {
      *
      * @see Canonicalizable#canonical(CanonicalizerTool)
      * @see Simplifiable#simplify(SimplifierTool)
-     * @see Node.ValueNumberable
+     * @see ValueNumberable
      *
      */
     Canonicalization(null, CanonicalizerPhase.class),

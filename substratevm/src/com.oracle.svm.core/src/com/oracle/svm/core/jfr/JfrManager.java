@@ -57,7 +57,9 @@ import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
 import jdk.jfr.internal.Logger;
 import jdk.jfr.internal.OldObjectSample;
+import jdk.jfr.internal.Options;
 import jdk.jfr.internal.PrivateAccess;
+import jdk.jfr.internal.Repository;
 import jdk.jfr.internal.SecuritySupport;
 import jdk.jfr.internal.jfc.JFC;
 
@@ -75,10 +77,6 @@ public class JfrManager {
         this.hostedEnabled = hostedEnabled;
     }
 
-    public static boolean isJFREnabled() {
-        return SubstrateOptions.FlightRecorder.getValue() || !SubstrateOptions.StartFlightRecording.getValue().isEmpty();
-    }
-
     @Fold
     public static JfrManager get() {
         return ImageSingletons.lookup(JfrManager.class);
@@ -88,8 +86,9 @@ public class JfrManager {
         return isFirstIsolate -> {
             parseFlightRecorderLogging(SubstrateOptions.FlightRecorderLogging.getValue());
             periodicEventSetup();
-            parseFlightRecorderOptions();
-            if (isJFREnabled()) {
+
+            boolean startRecording = SubstrateOptions.FlightRecorder.getValue() || !SubstrateOptions.StartFlightRecording.getValue().isEmpty();
+            if (startRecording) {
                 initRecording();
             }
         };
@@ -106,18 +105,6 @@ public class JfrManager {
         };
     }
 
-    private static void parseFlightRecorderOptions() {
-        Map<JfrRecorderOptionArgument, String> options = parseArguments(SubstrateOptions.FlightRecorderOptions, JfrRecorderOptionArgument.values());
-        String oldObjectQueueSizeArg = options.get(JfrRecorderOptionArgument.OldObjectQueueSize);
-        if (oldObjectQueueSizeArg != null) {
-            try {
-                SubstrateJVM.getJfrOldObjectProfiler().configure(Integer.parseInt(oldObjectQueueSizeArg));
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Unable to parse old object queue size argument", e);
-            }
-        }
-    }
-
     private static void parseFlightRecorderLogging(String option) {
         SubstrateJVM.getJfrLogging().parseConfiguration(option);
     }
@@ -130,17 +117,28 @@ public class JfrManager {
     }
 
     private static void initRecording() {
-        Map<JfrStartArgument, String> args = parseArguments(SubstrateOptions.StartFlightRecording, JfrStartArgument.values());
-        String name = args.get(JfrStartArgument.Name);
-        String[] settings = parseSettings(args);
-        Long delay = parseDuration(args, JfrStartArgument.Delay);
-        Long duration = parseDuration(args, JfrStartArgument.Duration);
-        Boolean disk = parseBoolean(args, JfrStartArgument.Disk);
-        String path = args.get(JfrStartArgument.Filename);
-        Long maxAge = parseDuration(args, JfrStartArgument.MaxAge);
-        Long maxSize = parseMaxSize(args, JfrStartArgument.MaxSize);
-        Boolean dumpOnExit = parseBoolean(args, JfrStartArgument.DumpOnExit);
-        Boolean pathToGcRoots = parseBoolean(args, JfrStartArgument.PathToGCRoots);
+        Map<JfrArgument, String> startArgs = parseJfrOptions(SubstrateOptions.StartFlightRecording, JfrStartArgument.values());
+        Map<JfrArgument, String> optionsArgs = parseJfrOptions(SubstrateOptions.FlightRecorderOptions, FlightRecorderOptionsArgument.values());
+
+        String name = startArgs.get(JfrStartArgument.Name);
+        String[] settings = parseSettings(startArgs);
+        Long delay = parseDuration(startArgs, JfrStartArgument.Delay);
+        Long duration = parseDuration(startArgs, JfrStartArgument.Duration);
+        Boolean disk = parseBoolean(startArgs, JfrStartArgument.Disk);
+        String path = startArgs.get(JfrStartArgument.Filename);
+        Long maxAge = parseDuration(startArgs, JfrStartArgument.MaxAge);
+        Long maxSize = parseMaxSize(startArgs, JfrStartArgument.MaxSize);
+        Boolean dumpOnExit = parseBoolean(startArgs, JfrStartArgument.DumpOnExit);
+        Boolean pathToGcRoots = parseBoolean(startArgs, JfrStartArgument.PathToGCRoots);
+        Integer stackDepth = parseInteger(optionsArgs, FlightRecorderOptionsArgument.StackDepth);
+        Long maxChunkSize = parseMaxSize(optionsArgs, FlightRecorderOptionsArgument.MaxChunkSize);
+        Long memorySize = parseMaxSize(optionsArgs, FlightRecorderOptionsArgument.MemorySize);
+        Long globalBufferSize = parseMaxSize(optionsArgs, FlightRecorderOptionsArgument.GlobalBufferSize);
+        Long globalBufferCount = parseMaxSize(optionsArgs, FlightRecorderOptionsArgument.GlobalBufferCount);
+        Long threadBufferSize = parseMaxSize(optionsArgs, FlightRecorderOptionsArgument.ThreadBufferSize);
+        Integer oldObjectQueueSize = parseInteger(optionsArgs, FlightRecorderOptionsArgument.OldObjectQueueSize);
+        Boolean preserveRepo = parseBoolean(optionsArgs, FlightRecorderOptionsArgument.PreserveRepository);
+        String repositoryPath = optionsArgs.get(FlightRecorderOptionsArgument.RepositoryPath);
 
         try {
             if (Logger.shouldLog(LogTag.JFR_DCMD, LogLevel.DEBUG)) {
@@ -195,6 +193,55 @@ public class JfrManager {
                     // to avoid typo, delay shorter than 1s makes no sense.
                     throw new Exception("Could not start recording, delay must be at least 1 second.");
                 }
+            }
+
+            if (stackDepth != null) {
+                try {
+                    Options.setStackDepth(Integer.valueOf(stackDepth));
+                } catch (Throwable e) {
+                    throw new Exception("Could not start recording, stack depth is not an integer.", e);
+                }
+            }
+
+            if (oldObjectQueueSizeArg != null) {
+                try {
+                    SubstrateJVM.getJfrOldObjectProfiler().configure(Integer.parseInt(oldObjectQueueSizeArg));
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException("Unable to parse old object queue size argument", e);
+                }
+            }
+            
+            if (repositoryPath != null) {
+                try {
+                    SecuritySupport.SafePath repositorySafePath = new SecuritySupport.SafePath(repositoryPath);
+                    Repository.getRepository().setBasePath(repositorySafePath);
+                } catch (Throwable e) {
+                    throw new Exception("Could not start recording, repository path is invalid.", e);
+                }
+            }
+
+            if (maxChunkSize != null) {
+                Options.setMaxChunkSize(maxChunkSize);
+            }
+
+            if (preserveRepo != null) {
+                Options.setPreserveRepository(preserveRepo);
+            }
+
+            if (threadBufferSize != null) {
+                Options.setThreadBufferSize(threadBufferSize);
+            }
+
+            if (globalBufferCount != null) {
+                Options.setGlobalBufferCount(globalBufferCount);
+            }
+
+            if (globalBufferSize != null) {
+                Options.setGlobalBufferSize(globalBufferSize);
+            }
+
+            if (memorySize != null) {
+                Options.setMemorySize(memorySize);
             }
 
             Recording recording = new Recording();
@@ -312,14 +359,14 @@ public class JfrManager {
         }
     }
 
-    private static <T extends JfrCmdLineArgument> Map<T, String> parseArguments(RuntimeOptionKey<String> runtimeOptionKey, T[] possibleArguments) {
-        Map<T, String> optionsMap = new HashMap<>();
+    private static Map<JfrArgument, String> parseJfrOptions(RuntimeOptionKey<String> runtimeOptionKey, JfrArgument[] possibleArguments) {
+        Map<JfrArgument, String> optionsMap = new HashMap<>();
         String text = runtimeOptionKey.getValue();
-        if (!text.isEmpty()) {
-            String[] options = text.split(",");
+        if (!userInput.isEmpty()) {
+            String[] options = userInput.split(",");
             for (String option : options) {
                 String[] keyVal = option.split("=");
-                T arg = findArgument(possibleArguments, keyVal[0]);
+                JfrArgument arg = findArgument(possibleArguments, keyVal[0]);
                 if (arg == null) {
                     throw VMError.shouldNotReachHere("Unknown argument '" + keyVal[0] + "' in " + runtimeOptionKey.getName());
                 }
@@ -329,7 +376,7 @@ public class JfrManager {
         return optionsMap;
     }
 
-    private static String[] parseSettings(Map<JfrStartArgument, String> args) throws UserException {
+    private static String[] parseSettings(Map<JfrArgument, String> args) throws UserException {
         String settings = args.get(JfrStartArgument.Settings);
         if (settings == null) {
             return new String[]{DEFAULT_JFC_NAME};
@@ -341,7 +388,7 @@ public class JfrManager {
     }
 
     @SuppressFBWarnings(value = "NP_BOOLEAN_RETURN_NULL", justification = "null allowed as return value")
-    private static Boolean parseBoolean(Map<JfrStartArgument, String> args, JfrStartArgument key) throws IllegalArgumentException {
+    private static Boolean parseBoolean(Map<JfrArgument, String> args, JfrArgument key) throws IllegalArgumentException {
         String value = args.get(key);
         if (value == null) {
             return null;
@@ -350,11 +397,11 @@ public class JfrManager {
         } else if ("false".equalsIgnoreCase(value)) {
             return false;
         } else {
-            throw VMError.shouldNotReachHere("Could not parse JFR argument '" + key.cmdLineKey + "=" + value + "'. Expected a boolean value.");
+            throw VMError.shouldNotReachHere("Could not parse JFR argument '" + key.getCmdLineKey() + "=" + value + "'. Expected a boolean value.");
         }
     }
 
-    private static Long parseDuration(Map<JfrStartArgument, String> args, JfrStartArgument key) {
+    private static Long parseDuration(Map<JfrArgument, String> args, JfrStartArgument key) {
         String value = args.get(key);
         if (value != null) {
             try {
@@ -398,7 +445,7 @@ public class JfrManager {
         return null;
     }
 
-    private static Long parseMaxSize(Map<JfrStartArgument, String> args, JfrStartArgument key) {
+    private static Long parseMaxSize(Map<JfrArgument, String> args, JfrArgument key) {
         final String value = args.get(key);
         if (value != null) {
             try {
@@ -431,7 +478,7 @@ public class JfrManager {
                         return number;
                 }
             } catch (IllegalArgumentException e) {
-                throw VMError.shouldNotReachHere("Could not parse JFR argument '" + key.cmdLineKey + "=" + value + "'. " + e.getMessage());
+                throw VMError.shouldNotReachHere("Could not parse JFR argument '" + key.getCmdLineKey() + "=" + value + "'. " + e.getMessage());
             }
         }
         return null;
@@ -445,8 +492,8 @@ public class JfrManager {
         return idx;
     }
 
-    private static <T extends JfrCmdLineArgument> T findArgument(T[] possibleArguments, String value) {
-        for (T arg : possibleArguments) {
+    private static JfrArgument findArgument(JfrArgument[] possibleArguments, String value) {
+        for (JfrArgument arg : possibleArguments) {
             if (arg.getCmdLineKey().equals(value)) {
                 return arg;
             }
@@ -454,11 +501,11 @@ public class JfrManager {
         return null;
     }
 
-    private interface JfrCmdLineArgument {
+    private interface JfrArgument {
         String getCmdLineKey();
     }
 
-    private enum JfrStartArgument implements JfrCmdLineArgument {
+    private enum JfrStartArgument implements JfrArgument {
         Name("name"),
         Settings("settings"),
         Delay("delay"),
@@ -478,16 +525,24 @@ public class JfrManager {
 
         @Override
         public String getCmdLineKey() {
-            return this.cmdLineKey;
+            return cmdLineKey;
         }
     }
 
-    private enum JfrRecorderOptionArgument implements JfrCmdLineArgument {
+    private enum FlightRecorderOptionsArgument implements JfrArgument {
+        GlobalBufferCount("globalbuffercount"),
+        GlobalBufferSize("globalbuffersize"),
+        MaxChunkSize("maxchunksize"),
+        MemorySize("memorysize"),
         OldObjectQueueSize("old-object-queue-size");
+        RepositoryPath("repositorypath"),
+        StackDepth("stackdepth"),
+        ThreadBufferSize("thread_buffer_size"),
+        PreserveRepository("preserve-repository");
 
         private final String cmdLineKey;
 
-        JfrRecorderOptionArgument(String key) {
+        FlightRecorderOptionsArgument(String key) {
             this.cmdLineKey = key;
         }
 

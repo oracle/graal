@@ -444,7 +444,7 @@ public class PermissionsFeature implements Feature {
      * @param maxReports maximal number of reports
      * @param callGraph call graph obtained from
      *            {@link PermissionsFeature#callGraph(BigBang, Set, DebugContext, SVMHost)}
-     * @param contextFilters filters removing known valid calls
+     * @param contextFiltersParam filters removing known valid calls
      * @param currentPath current path from a privileged method in a call graph
      * @param visited set of already visited methods, these methods are already part of an existing
      *            report or do not lead to language class
@@ -456,7 +456,7 @@ public class PermissionsFeature implements Feature {
                     int maxDepth,
                     int maxReports,
                     Map<BaseMethodNode, Set<BaseMethodNode>> callGraph,
-                    Set<CallGraphFilter> contextFilters,
+                    Set<CallGraphFilter> contextFiltersParam,
                     List<BaseMethodNode> currentPath,
                     Set<BaseMethodNode> visited,
                     int depth,
@@ -482,7 +482,7 @@ public class PermissionsFeature implements Feature {
                 Set<BaseMethodNode> callers = callGraph.get(mNode);
                 if (depth > maxDepth) {
                     if (!callers.isEmpty()) {
-                        numReports = collectViolations(report, callers.iterator().next(), maxDepth, maxReports, callGraph, contextFilters, currentPath, visited, depth + 1, numReports);
+                        numReports = collectViolations(report, callers.iterator().next(), maxDepth, maxReports, callGraph, contextFiltersParam, currentPath, visited, depth + 1, numReports);
                     }
                 } else if (!isSystemClass(mNode)) {
                     List<BaseMethodNode> callPath = new ArrayList<>(currentPath);
@@ -490,8 +490,8 @@ public class PermissionsFeature implements Feature {
                     numReports++;
                 } else {
                     for (BaseMethodNode caller : callers) {
-                        if (contextFilters.stream().noneMatch((f) -> f.test(mNode, caller, currentPath))) {
-                            numReports = collectViolations(report, caller, maxDepth, maxReports, callGraph, contextFilters, currentPath, visited, depth + 1, numReports);
+                        if (contextFiltersParam.stream().noneMatch((f) -> f.test(mNode, caller, currentPath))) {
+                            numReports = collectViolations(report, caller, maxDepth, maxReports, callGraph, contextFiltersParam, currentPath, visited, depth + 1, numReports);
                         }
                     }
                 }
@@ -737,7 +737,7 @@ public class PermissionsFeature implements Feature {
         /**
          * Finds an entry point to {@code PrivilegedAction} called by {@code doPrivilegedMethod}.
          */
-        private ResolvedJavaMethod findPrivilegedEntryPoint(ResolvedJavaMethod doPrivilegedMethod, List<BaseMethodNode> trace) {
+        private static ResolvedJavaMethod findPrivilegedEntryPoint(ResolvedJavaMethod doPrivilegedMethod, List<BaseMethodNode> trace) {
             ResolvedJavaMethod ep = null;
             for (BaseMethodNode mNode : trace) {
                 AnalysisMethod m = mNode.getMethod();

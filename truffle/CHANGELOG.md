@@ -4,6 +4,10 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 24.1.0
 * GR-51253 Extend allowed DynamicObject shape flags from 8 to 16 bits.
+* GR-42882 Changed behavior: Java host interop no longer exposes bridge methods.
+
+* GR-51385 Added an instrumentation filter to include available source sections only: `SourceSectionFilter.Builder#sourceSectionAvailableOnly(boolean)`
+* GR-51385 Added a debugger filter to suspend in available source sections only: `SuspensionFilter.Builder#sourceSectionAvailableOnly(boolean)`.
 
 ## Version 24.0.0
 

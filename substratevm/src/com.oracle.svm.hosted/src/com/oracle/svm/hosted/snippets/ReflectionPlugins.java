@@ -641,7 +641,7 @@ public final class ReflectionPlugins {
         return null;
     }
 
-    private boolean isAllowedConstant(Class<?> clazz) {
+    private static boolean isAllowedConstant(Class<?> clazz) {
         for (var allowed : ALLOWED_CONSTANT_CLASSES) {
             if (allowed.isAssignableFrom(clazz)) {
                 return true;

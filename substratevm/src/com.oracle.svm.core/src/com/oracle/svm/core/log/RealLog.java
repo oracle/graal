@@ -27,8 +27,6 @@ package com.oracle.svm.core.log;
 
 import java.nio.charset.StandardCharsets;
 
-import jdk.graal.compiler.core.common.calc.UnsignedMath;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -51,6 +49,9 @@ import com.oracle.svm.core.jdk.JDKUtils;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.core.common.calc.UnsignedMath;
+import jdk.graal.compiler.word.Word;
 
 public class RealLog extends Log {
 
@@ -187,6 +188,7 @@ public class RealLog extends Log {
         return this;
     }
 
+    @Override
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log string(CCharPointer bytes, int length) {
         if (length == 0) {

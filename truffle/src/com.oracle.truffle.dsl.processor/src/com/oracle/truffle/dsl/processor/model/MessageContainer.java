@@ -317,7 +317,7 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
     }
 
     private boolean visit(Predicate<MessageContainer> vistor) {
-        return visitImpl(new HashSet<MessageContainer>(), vistor);
+        return visitImpl(new HashSet<>(), vistor);
     }
 
     private boolean visitImpl(Set<MessageContainer> visited, Predicate<MessageContainer> visitor) {
