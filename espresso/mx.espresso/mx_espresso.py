@@ -35,6 +35,9 @@ from os.path import join, isabs
 
 _suite = mx.suite('espresso')
 
+# re-export custom mx project classes, so they can be used from suite.py
+from mx_sdk_shaded import ShadedLibraryProject # pylint: disable=unused-import
+
 # JDK compiled with the Sulong toolchain.
 espresso_llvm_java_home = mx.get_env('ESPRESSO_LLVM_JAVA_HOME') or mx.get_env('LLVM_JAVA_HOME')
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,36 +22,36 @@
  */
 package com.oracle.truffle.espresso.nodes.interop;
 
-import static com.oracle.truffle.api.impl.asm.Opcodes.AASTORE;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_FINAL;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_PUBLIC;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_SUPER;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_VARARGS;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ALOAD;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ANEWARRAY;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ARETURN;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ASTORE;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ATHROW;
-import static com.oracle.truffle.api.impl.asm.Opcodes.BIPUSH;
-import static com.oracle.truffle.api.impl.asm.Opcodes.CHECKCAST;
-import static com.oracle.truffle.api.impl.asm.Opcodes.DLOAD;
-import static com.oracle.truffle.api.impl.asm.Opcodes.DRETURN;
-import static com.oracle.truffle.api.impl.asm.Opcodes.DUP;
-import static com.oracle.truffle.api.impl.asm.Opcodes.FLOAD;
-import static com.oracle.truffle.api.impl.asm.Opcodes.FRETURN;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ICONST_0;
-import static com.oracle.truffle.api.impl.asm.Opcodes.ILOAD;
-import static com.oracle.truffle.api.impl.asm.Opcodes.INVOKESPECIAL;
-import static com.oracle.truffle.api.impl.asm.Opcodes.INVOKESTATIC;
-import static com.oracle.truffle.api.impl.asm.Opcodes.INVOKEVIRTUAL;
-import static com.oracle.truffle.api.impl.asm.Opcodes.IRETURN;
-import static com.oracle.truffle.api.impl.asm.Opcodes.LLOAD;
-import static com.oracle.truffle.api.impl.asm.Opcodes.LRETURN;
-import static com.oracle.truffle.api.impl.asm.Opcodes.NEW;
-import static com.oracle.truffle.api.impl.asm.Opcodes.POP;
-import static com.oracle.truffle.api.impl.asm.Opcodes.RETURN;
-import static com.oracle.truffle.api.impl.asm.Opcodes.SIPUSH;
-import static com.oracle.truffle.api.impl.asm.Opcodes.V1_8;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.AASTORE;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ACC_FINAL;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ACC_PUBLIC;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ACC_SUPER;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ACC_VARARGS;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ALOAD;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ANEWARRAY;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ARETURN;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ASTORE;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ATHROW;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.BIPUSH;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.CHECKCAST;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.DLOAD;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.DRETURN;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.DUP;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.FLOAD;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.FRETURN;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ICONST_0;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.ILOAD;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.INVOKESPECIAL;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.INVOKESTATIC;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.INVOKEVIRTUAL;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.IRETURN;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.LLOAD;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.LRETURN;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.NEW;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.POP;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.RETURN;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.SIPUSH;
+import static com.oracle.truffle.espresso.shadowed.asm.Opcodes.V1_8;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -66,10 +66,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.impl.asm.ClassWriter;
-import com.oracle.truffle.api.impl.asm.Label;
-import com.oracle.truffle.api.impl.asm.MethodVisitor;
-import com.oracle.truffle.api.impl.asm.Type;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
@@ -85,6 +81,10 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shadowed.asm.ClassWriter;
+import com.oracle.truffle.espresso.shadowed.asm.Label;
+import com.oracle.truffle.espresso.shadowed.asm.MethodVisitor;
+import com.oracle.truffle.espresso.shadowed.asm.Type;
 import com.oracle.truffle.espresso.vm.ModulesHelperVM;
 
 /**
