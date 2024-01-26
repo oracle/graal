@@ -221,7 +221,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         this.abstractBytecodeNode = bytecodeNodeGen.add(new AbstractBytecodeNodeFactory().create());
 
         CodeVariableElement bytecodeNode = new CodeVariableElement(Set.of(PRIVATE, VOLATILE), abstractBytecodeNode.asType(), "bytecode");
-        bytecodeNodeGen.add(bytecodeNode);
+        bytecodeNodeGen.add(compFinal(bytecodeNode));
         bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), bytecodeNodesImpl.asType(), "nodes"));
         bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "numLocals"));
         bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "numNodes"));
@@ -830,7 +830,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.statement("break");
         b.end().startElseBlock();
         b.lineComment("Bytecode or tier changed");
-        b.tree(createTransferToInterpreterAndInvalidate("this"));
+        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
         b.statement("bc = this.bytecode");
         b.end();
         b.end();
@@ -1258,6 +1258,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     private CodeExecutableElement createTransitionToCached() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "transitionToCached");
         CodeTreeBuilder b = ex.createBuilder();
+        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
         b.declaration(abstractBytecodeNode.asType(), "oldBytecode");
         b.declaration(abstractBytecodeNode.asType(), "newBytecode");
         b.startDoBlock();
@@ -1275,6 +1276,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "addSource");
         ex.addParameter(new CodeVariableElement(arrayOf(type(int.class)), "sourceInfo"));
         CodeTreeBuilder b = ex.createBuilder();
+        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
         b.declaration(abstractBytecodeNode.asType(), "oldBytecode");
         b.declaration(abstractBytecodeNode.asType(), "newBytecode");
         b.startDoBlock();
@@ -5417,7 +5419,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case BRANCH_BACKWARD:
                         if (tier.isUncached()) {
                             b.startIf().string("--uncachedExecuteCount <= 0").end().startBlock();
-                            b.tree(createTransferToInterpreterAndInvalidate("$root"));
+                            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                             b.statement("$root.transitionToCached()");
                             b.statement("return (sp << 16) | " + readBc("bci + 1"));
                             b.end();
@@ -5550,7 +5552,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             b.end(); // set frame
                             b.end(); // statement
                             b.end().startCatchBlock(types.UnexpectedResultException, "e"); // try
-                            b.tree(createTransferToInterpreterAndInvalidate("$root"));
+                            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                             emitQuickening(b, "this", "bc", "bci", null,
                                             b.create().tree(createInstructionConstant(instr.getQuickeningRoot())).build());
                             b.startStatement();
@@ -5892,7 +5894,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             b.statement("ex = ate");
                         b.end().startCatchBlock(throwable, "e");
                             b.startTryBlock();
-                                b.tree(createTransferToInterpreterAndInvalidate("$root"));
+                                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                                 b.startThrow().string("sneakyThrow(");
                                 if (model.interceptInternalException != null) {
                                     b.startCall("$root", model.interceptInternalException).string("e").string("bci").end();
@@ -5911,7 +5913,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 // @formatter:off
                 b.startElseBlock();
                     b.startTryBlock();
-                        b.tree(createTransferToInterpreterAndInvalidate("$root"));
+                        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                         if (model.interceptInternalException != null) {
                             if (model.interceptControlFlowException == null) {
                                 // If there was no handler, we need to ensure throwable is not a ControlFlowException
@@ -7067,7 +7069,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private void emitBeforeReturnProfiling(CodeTreeBuilder b) {
             if (tier.isUncached()) {
                 b.startIf().string("--uncachedExecuteCount <= 0").end().startBlock();
-                b.tree(createTransferToInterpreterAndInvalidate("$this"));
+                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                 b.statement("this.getRoot().transitionToCached()");
                 b.end().startElseBlock();
                 b.statement("this.uncachedExecuteCount_ = uncachedExecuteCount");
@@ -7447,16 +7449,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
         fld.addAnnotationMirror(mir);
         return fld;
-    }
-
-    private CodeTree createTransferToInterpreterAndInvalidate(String root) {
-        if (model.templateType.getSimpleName().toString().equals("BoxingOperations")) {
-            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-            b.statement(root + ".transferToInterpreterAndInvalidate()");
-            return b.build();
-        } else {
-            return GeneratorUtils.createTransferToInterpreterAndInvalidate();
-        }
     }
 
     private void emitFence(CodeTreeBuilder b) {
