@@ -64,7 +64,6 @@ import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
-import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.Node;
@@ -338,8 +337,8 @@ public class ShortCircuitTest {
 }
 
 @GenerateBytecodeTestVariants({
-                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class)),
-                @Variant(suffix = "WithBE", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableQuickening = true, boxingEliminationTypes = {boolean.class,
+                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)),
+                @Variant(suffix = "WithBE", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, boxingEliminationTypes = {boolean.class,
                                 int.class}))
 })
 @OperationProxy(value = BooleanConverterOperationProxy.class)

@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.truffle.test;
 
-import static com.oracle.truffle.api.bytecode.test.example.AbstractBytecodeDSLExampleTest.parseNode;
+import static com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest.parseNode;
 
 import java.util.List;
 import java.util.function.Supplier;
@@ -38,29 +38,29 @@ import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
-import com.oracle.truffle.api.bytecode.test.example.AbstractBytecodeDSLExampleTest;
-import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExample;
-import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleBuilder;
-import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleLanguage;
+import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
+import com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInterpreterTest;
+import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter;
+import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreterBuilder;
 import com.oracle.truffle.api.nodes.RootNode;
 
 @RunWith(Parameterized.class)
 public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
 
-    protected static final BytecodeDSLExampleLanguage LANGUAGE = null;
+    protected static final BytecodeDSLTestLanguage LANGUAGE = null;
 
     @Parameters(name = "{0}")
-    public static List<Class<? extends BytecodeDSLExample>> getInterpreterClasses() {
-        return AbstractBytecodeDSLExampleTest.allInterpreters();
+    public static List<Class<? extends BasicInterpreter>> getInterpreterClasses() {
+        return AbstractBasicInterpreterTest.allInterpreters();
     }
 
-    @Parameter(0) public Class<? extends BytecodeDSLExample> interpreterClass;
+    @Parameter(0) public Class<? extends BasicInterpreter> interpreterClass;
 
     @Test
     public void testAddTwoConstants() {
         // return 20 + 22;
 
-        BytecodeDSLExample root = parseNodeForPE(interpreterClass, "addTwoConstants", b -> {
+        BasicInterpreter root = parseNodeForPE(interpreterClass, "addTwoConstants", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -80,7 +80,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
     public void testAddThreeConstants() {
         // return 40 + 22 + - 20;
 
-        BytecodeDSLExample root = parseNodeForPE(interpreterClass, "addThreeConstants", b -> {
+        BasicInterpreter root = parseNodeForPE(interpreterClass, "addThreeConstants", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -115,7 +115,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
 
         long endValue = 10L;
 
-        BytecodeDSLExample root = parseNodeForPE(interpreterClass, "sum", b -> {
+        BasicInterpreter root = parseNodeForPE(interpreterClass, "sum", b -> {
             b.beginRoot(LANGUAGE);
 
             BytecodeLocal i = b.createLocal();
@@ -174,7 +174,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
         // }
         // return 3;
 
-        BytecodeDSLExample root = parseNodeForPE(interpreterClass, "sum", b -> {
+        BasicInterpreter root = parseNodeForPE(interpreterClass, "sum", b -> {
             b.beginRoot(LANGUAGE);
 
             BytecodeLocal ex = b.createLocal();
@@ -213,7 +213,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
     public void testConditionalTrue() {
         // return 20 + 22;
 
-        BytecodeDSLExample root = parseNodeForPE(interpreterClass, "conditionalTrue", b -> {
+        BasicInterpreter root = parseNodeForPE(interpreterClass, "conditionalTrue", b -> {
             b.beginRoot(LANGUAGE);
             b.beginReturn();
             b.beginConditional();
@@ -235,7 +235,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
     public void testConditionalFalse() {
         // return 20 + 22;
 
-        BytecodeDSLExample root = parseNodeForPE(interpreterClass, "conditionalFalse", b -> {
+        BasicInterpreter root = parseNodeForPE(interpreterClass, "conditionalFalse", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -257,7 +257,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
 
     @Test
     public void testEarlyReturn() {
-        BytecodeDSLExample root = parseNodeForPE(interpreterClass, "earlyReturn", b -> {
+        BasicInterpreter root = parseNodeForPE(interpreterClass, "earlyReturn", b -> {
             b.beginRoot(LANGUAGE);
             b.beginBlock();
 
@@ -280,9 +280,9 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
         return () -> result;
     }
 
-    private static <T extends BytecodeDSLExampleBuilder> BytecodeDSLExample parseNodeForPE(Class<? extends BytecodeDSLExample> interpreterClass, String rootName, BytecodeParser<T> builder) {
-        BytecodeDSLExample result = parseNode(interpreterClass, false, rootName, builder);
-        result.setUncachedInterpreterThreshold(0); // force interpreter to skip tier 0
+    private static <T extends BasicInterpreterBuilder> BasicInterpreter parseNodeForPE(Class<? extends BasicInterpreter> interpreterClass, String rootName, BytecodeParser<T> builder) {
+        BasicInterpreter result = parseNode(interpreterClass, false, rootName, builder);
+        result.getBytecodeNode().setUncachedThreshold(0); // force interpreter to skip tier 0
         return result;
     }
 

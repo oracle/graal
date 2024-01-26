@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,47 +38,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.test.example;
+package com.oracle.truffle.api.bytecode.test.error_tests.subpackage;
 
-import static org.junit.Assert.assertEquals;
+import com.oracle.truffle.api.bytecode.OperationProxy;
+import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.api.dsl.Specialization;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
-
-@RunWith(Parameterized.class)
-public class BytecodeDSLExampleInstrumentationTest extends AbstractBytecodeDSLExampleTest {
-
-    @Test
-    public void testInstrumentation() {
-        // goto lbl;
-        // return 0;
-        // lbl:
-        // return 1;
-
-        RootCallTarget root = parse("branchForward", b -> {
-            b.beginRoot(LANGUAGE);
-
-            b.beginReturn();
-            b.beginTag(ExpressionTag.class);
-            b.beginAddOperation();
-            b.beginTag(ExpressionTag.class);
-            b.emitLoadConstant(1L);
-            b.endTag();
-            b.beginTag(ExpressionTag.class);
-            b.emitLoadConstant(2L);
-            b.endTag();
-            b.endAddOperation();
-            b.endTag();
-            b.endReturn();
-
-            b.endRoot();
-        });
-
-        assertEquals(3L, root.call());
+@OperationProxy.Proxyable
+public final class NonPublicGuardExpressionOperationProxy {
+    @Specialization(guards = "guardCondition()")
+    public static int addGuarded(int x, int y) {
+        return x + y;
     }
 
+    @Idempotent
+    public static boolean guardCondition() {
+        return true;
+    }
 }

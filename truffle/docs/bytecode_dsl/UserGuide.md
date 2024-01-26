@@ -382,6 +382,10 @@ b.beginRoot(/* ... */);
 b.endRoot();
 ```
 
+### Introspecting locals
+
+TODO: getLocalIndex + getLocal, getLocals(Frame)
+
 ### Using materialized local reads and writes
 
 Load/StoreLocalMaterialized can be used to access the locals of other functions (e.g., to implement lexical scoping).

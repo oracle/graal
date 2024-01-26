@@ -56,7 +56,6 @@ import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.test.BytecodeNodeWithStoredBci.BytecodeAndFrame;
 import com.oracle.truffle.api.bytecode.test.BytecodeNodeWithStoredBci.MyException;
-import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -245,7 +244,7 @@ public class ReadBytecodeLocationTest {
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, storeBciInFrame = true, enableYield = true)
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, storeBciInFrame = true, enableYield = true)
 abstract class BytecodeNodeWithStoredBci extends RootNode implements BytecodeRootNode {
 
     protected BytecodeNodeWithStoredBci(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {

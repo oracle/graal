@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.test.example;
+package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertArrayEquals;
 
@@ -49,7 +49,7 @@ import org.junit.runners.Parameterized;
 import com.oracle.truffle.api.frame.Frame;
 
 @RunWith(Parameterized.class)
-public class BytecodeDSLExampleCopyLocalsTest extends AbstractBytecodeDSLExampleTest {
+public class CopyLocalsTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testCopyAllLocals() {
@@ -64,7 +64,7 @@ public class BytecodeDSLExampleCopyLocalsTest extends AbstractBytecodeDSLExample
          * @formatter:on
          */
 
-        BytecodeDSLExample foo = parseNode("foo", b -> {
+        BasicInterpreter foo = parseNode("foo", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginBlock();
@@ -110,7 +110,7 @@ public class BytecodeDSLExampleCopyLocalsTest extends AbstractBytecodeDSLExample
          * @formatter:on
          */
 
-        BytecodeDSLExample foo = parseNode("foo", b -> {
+        BasicInterpreter foo = parseNode("foo", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginBlock();

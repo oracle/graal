@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.test.example;
+package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -62,8 +62,12 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.bytecode.introspection.BytecodeIntrospection;
 import com.oracle.truffle.api.bytecode.introspection.ExceptionHandler;
 
+/**
+ * Tests basic features of the Bytecode DSL. Serves as a catch-all for functionality we just need a
+ * few tests (and not a separate test class) for.
+ */
 @RunWith(Parameterized.class)
-public class BytecodeDSLExampleGeneralTest extends AbstractBytecodeDSLExampleTest {
+public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     // @formatter:off
 
     private static void assertInstructionEquals(Instruction instr, int bci, String name) {
@@ -490,7 +494,7 @@ public class BytecodeDSLExampleGeneralTest extends AbstractBytecodeDSLExampleTes
 
                 emitReturn(b, 1);
 
-                BytecodeDSLExample innerRoot = b.endRoot();
+                BasicInterpreter innerRoot = b.endRoot();
 
                 b.emitLoadConstant(innerRoot);
 
@@ -534,7 +538,7 @@ public class BytecodeDSLExampleGeneralTest extends AbstractBytecodeDSLExampleTes
                 b.emitLoadArgument(0);
                 b.endLoadLocalMaterialized();
                 b.endReturn();
-                BytecodeDSLExample inner = b.endRoot();
+                BasicInterpreter inner = b.endRoot();
 
             b.beginCreateClosure();
             b.emitLoadConstant(inner);
@@ -578,7 +582,7 @@ public class BytecodeDSLExampleGeneralTest extends AbstractBytecodeDSLExampleTes
                 b.emitLoadConstant(null);
                 b.endReturn();
 
-                BytecodeDSLExample inner = b.endRoot();
+                BasicInterpreter inner = b.endRoot();
 
             b.beginCreateClosure();
             b.emitLoadConstant(inner);
@@ -942,7 +946,7 @@ public class BytecodeDSLExampleGeneralTest extends AbstractBytecodeDSLExampleTes
 
     @Test
     public void testIntrospectionDataInstructions() {
-        BytecodeDSLExample node = parseNode("introspectionDataInstructions", b -> {
+        BasicInterpreter node = parseNode("introspectionDataInstructions", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -970,7 +974,7 @@ public class BytecodeDSLExampleGeneralTest extends AbstractBytecodeDSLExampleTes
 
     @Test
     public void testIntrospectionDataExceptionHandlers() {
-        BytecodeDSLExample node = parseNode("introspectionDataExceptionHandlers", b -> {
+        BasicInterpreter node = parseNode("introspectionDataExceptionHandlers", b -> {
             // @formatter:off
             b.beginRoot(LANGUAGE);
             b.beginBlock();
@@ -1030,7 +1034,7 @@ public class BytecodeDSLExampleGeneralTest extends AbstractBytecodeDSLExampleTes
     @Test
     public void testIntrospectionDataSourceInformation() {
         Source source = Source.newBuilder("test", "return 1 + 2", "test.test").build();
-        BytecodeDSLExample node = parseNodeWithSource("introspectionDataSourceInformation", b -> {
+        BasicInterpreter node = parseNodeWithSource("introspectionDataSourceInformation", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(source);
             b.beginSourceSection(0, 12);
@@ -1105,7 +1109,7 @@ public class BytecodeDSLExampleGeneralTest extends AbstractBytecodeDSLExampleTes
     public void testCloneUninitializedAdd() {
         // return arg0 + arg1;
 
-        BytecodeDSLExample node = parseNode("cloneUninitializedAdd", b -> {
+        BasicInterpreter node = parseNode("cloneUninitializedAdd", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -1127,7 +1131,7 @@ public class BytecodeDSLExampleGeneralTest extends AbstractBytecodeDSLExampleTes
             assertEquals(100L, root.call(120L, -20L));
         }
 
-        BytecodeDSLExample cloned = node.doCloneUninitialized();
+        BasicInterpreter cloned = node.doCloneUninitialized();
         assertNotEquals(node.getCallTarget(), cloned.getCallTarget());
         root = cloned.getCallTarget();
 
@@ -1142,20 +1146,20 @@ public class BytecodeDSLExampleGeneralTest extends AbstractBytecodeDSLExampleTes
 
     @Test
     public void testCloneUninitializedFields() {
-        BytecodeDSLExample node = parseNode("cloneUninitializedFields", b -> {
+        BasicInterpreter node = parseNode("cloneUninitializedFields", b -> {
             b.beginRoot(LANGUAGE);
             emitReturn(b, 0);
             b.endRoot();
         });
 
-        BytecodeDSLExample cloned = node.doCloneUninitialized();
+        BasicInterpreter cloned = node.doCloneUninitialized();
         assertEquals("User field was not copied to the uninitialized clone.", node.name, cloned.name);
     }
 
     @Test
     @Ignore
     public void testDecisionQuicken() {
-        BytecodeDSLExample node = parseNode("decisionQuicken", b -> {
+        BasicInterpreter node = parseNode("decisionQuicken", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -1184,7 +1188,7 @@ public class BytecodeDSLExampleGeneralTest extends AbstractBytecodeDSLExampleTes
     @Test
     @Ignore
     public void testDecisionSuperInstruction() {
-        BytecodeDSLExample node = parseNode("decisionSuperInstruction", b -> {
+        BasicInterpreter node = parseNode("decisionSuperInstruction", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();

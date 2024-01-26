@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.test.example;
+package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertEquals;
 
@@ -48,7 +48,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 
-public class BytecodeDSLExampleBranchTest extends AbstractBytecodeDSLExampleTest {
+public class BranchTest extends AbstractBasicInterpreterTest {
     // @formatter:off
 
     @Test

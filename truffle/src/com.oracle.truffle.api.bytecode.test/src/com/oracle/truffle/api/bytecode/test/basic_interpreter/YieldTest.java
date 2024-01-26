@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.test.example;
+package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -50,7 +50,7 @@ import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 
-public class BytecodeDSLExampleYieldTest extends AbstractBytecodeDSLExampleTest {
+public class YieldTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testYield() {
@@ -302,7 +302,7 @@ public class BytecodeDSLExampleYieldTest extends AbstractBytecodeDSLExampleTest 
 
     @Test
     public void testYieldGetSourceRootNode() {
-        BytecodeDSLExample rootNode = parseNode("yieldGetSourceRootNode", b -> {
+        BasicInterpreter rootNode = parseNode("yieldGetSourceRootNode", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginYield();
@@ -314,7 +314,7 @@ public class BytecodeDSLExampleYieldTest extends AbstractBytecodeDSLExampleTest 
 
         ContinuationResult r1 = (ContinuationResult) rootNode.getCallTarget().call(42L);
         if (r1.getContinuationCallTarget().getRootNode() instanceof ContinuationRootNode continuationRootNode) {
-            BytecodeDSLExample sourceRootNode = (BytecodeDSLExample) continuationRootNode.getSourceRootNode();
+            BasicInterpreter sourceRootNode = (BasicInterpreter) continuationRootNode.getSourceRootNode();
             assertEquals(rootNode, sourceRootNode);
         } else {
             fail("yield did not return a continuation");

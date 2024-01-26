@@ -56,7 +56,6 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeTier;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
-import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -67,7 +66,7 @@ import com.oracle.truffle.api.nodes.Node;
 
 public class NodeBindingTest extends AbstractQuickeningTest {
 
-    protected static final BytecodeDSLExampleLanguage LANGUAGE = null;
+    protected static final BytecodeDSLTestLanguage LANGUAGE = null;
 
     @Test
     public void test() {
@@ -94,7 +93,7 @@ public class NodeBindingTest extends AbstractQuickeningTest {
         return nodes.getNode(nodes.count() - 1);
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, //
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                     enableYield = true, enableUncachedInterpreter = true, enableSerialization = true, //
                     enableQuickening = true, //
                     boxingEliminationTypes = {long.class, int.class, boolean.class})
