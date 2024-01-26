@@ -264,13 +264,33 @@ class GraalVMJDKConfig(mx.JDKConfig):
         return
 
 class GraalVMJDK(mx.JDKFactory):
+    def __init__(self, jdkConfig=None):
+        self.jdkConfig = jdkConfig
+
     def getJDKConfig(self):
-        return GraalVMJDKConfig()
+        if self.jdkConfig:
+            return self.jdkConfig
+        else:
+            return GraalVMJDKConfig()
 
     def description(self):
         return "GraalVM JDK"
 
-mx.addJDKFactory('graalvm', mx.get_jdk(tag='default').javaCompliance, GraalVMJDK())
+
+explicit_graalvm_home = mx.get_env('GRAALVM_HOME')
+if explicit_graalvm_home:
+    if os.path.isdir(explicit_graalvm_home):
+        jdkConfig = mx.JDKConfig(explicit_graalvm_home)
+        graalvm_java_compliance = jdkConfig.javaCompliance
+        graalvm_java_factory = GraalVMJDK(jdkConfig)
+    else:
+        mx.abort("Invalid value of a GRAALVM_HOME environment variable. "
+                 "To resolve this, set GRAALVM_HOME to point to graalvm installation folder or "
+                 "unset the environment variable.")
+else:
+    graalvm_java_compliance = mx.get_jdk(tag='default').javaCompliance
+    graalvm_java_factory = GraalVMJDK()
+mx.addJDKFactory('graalvm', graalvm_java_compliance, graalvm_java_factory)
 
 
 def maven_deploy_public_repo_dir():
