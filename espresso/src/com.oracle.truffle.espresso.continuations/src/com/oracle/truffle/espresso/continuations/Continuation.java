@@ -99,6 +99,8 @@ public final class Continuation {
 
     // We want a compact serialized representation, so use fields judiciously here.
 
+    // region Suspended state
+
     // This field is set by the VM after a suspend.
     public volatile FrameRecord stackFrameHead;
 
@@ -184,6 +186,16 @@ public final class Continuation {
 
     private final StateHolder stateHolder = new StateHolder();
 
+    // endregion State
+
+    // region Public API
+    /**
+     * Returns true if this VM supports the continuations feature, false otherwise.
+     */
+    public static boolean isSupported() {
+        return false;
+    }
+
     /**
      * <p>
      * Creates a new suspended continuation.
@@ -228,12 +240,6 @@ public final class Continuation {
          */
         void start(SuspendCapability suspendCapability);
     }
-
-    /**
-     * Tracks whether the current thread has passed through {@link #resume()}. If it hasn't then
-     * suspending is illegal.
-     */
-    private static final ThreadLocal<Boolean> insideContinuation = ThreadLocal.withInitial(() -> false);
 
     /**
      * An object provided by the system that lets you yield control and return from
@@ -307,6 +313,16 @@ public final class Continuation {
             insideContinuation.set(false);
         }
     }
+
+    // endregion
+
+    // region Implementation
+
+    /**
+     * Tracks whether the current thread has passed through {@link #resume()}. If it hasn't then
+     * suspending is illegal.
+     */
+    private static final ThreadLocal<Boolean> insideContinuation = ThreadLocal.withInitial(() -> false);
 
     /**
      * Invoked by the VM. This is the first frame in the continuation. We get here from inside the
@@ -388,7 +404,6 @@ public final class Continuation {
         return sb.toString();
     }
 
-    // region Intrinsics
     private void start0() {
         // Control passes from here to run() via the VM.
         throw notOnEspresso();
@@ -402,13 +417,6 @@ public final class Continuation {
     // implementation to determine it always fails and then its static analysis starts flagging
     // non-existent errors in the user's source code.
     private static native void suspend0();
-
-    /**
-     * Returns true if this VM supports the continuations feature, false otherwise.
-     */
-    public static boolean isSupported() {
-        return false;
-    }
 
     private static UnsupportedOperationException notOnEspresso() {
         // Caller should have been replaced by an intrinsic / substitution.
