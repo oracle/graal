@@ -1,0 +1,16 @@
+ {
+  "jdk-binaries": {
+    "labsjdk-ce-latest": {
+      "filename": "labsjdk-{version}-{platform}",
+      "url": "https://github.com/graalvm/labs-openjdk-22/releases/download/{version|jvmci-tag}/{filename}.tar.gz"
+    },
+    "labsjdk-ce-latest:-debug": {
+      "filename": "labsjdk-{version}-debug-{platform}",
+      "url": "https://github.com/graalvm/labs-openjdk-22/releases/download/{version|jvmci-tag}/{filename}.tar.gz"
+    },
+    "labsjdk-ce-latest:-llvm": {
+      "filename": "labsjdk-{version}-sulong-{platform}",
+      "url": "https://github.com/graalvm/labs-openjdk-22/releases/download/{version|jvmci-tag}/{filename}.tar.gz"
+    }
+  }
+}
