@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.test.example;
+package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -62,6 +62,7 @@ import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
 import com.oracle.truffle.api.bytecode.Variadic;
+import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
 import com.oracle.truffle.api.bytecode.test.DebugBytecodeRootNode;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -78,23 +79,29 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
+/**
+ * This class defines a set of interpreter variants with different configurations. Where possible,
+ * prefer to use this class when testing new functionality, because
+ * {@link AbstractBasicInterpreterTest} allows us to execute tests on each variant, increasing our
+ * test coverage.
+ */
 @GenerateBytecodeTestVariants({
-                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = false)),
-                @Variant(suffix = "Unsafe", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableSerialization = true)),
-                @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableSerialization = true, enableUncachedInterpreter = true)),
-                @Variant(suffix = "WithBE", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableSerialization = true, boxingEliminationTypes = {
-                                boolean.class, long.class}, decisionsFile = "bytecode_dsl_example_quickening_only.json")),
-                @Variant(suffix = "WithOptimizations", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableSerialization = true, decisionsFile = "bytecode_dsl_example_decisions.json")),
+                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = false)),
+                @Variant(suffix = "Unsafe", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true)),
+                @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableUncachedInterpreter = true)),
+                @Variant(suffix = "WithBE", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, boxingEliminationTypes = {
+                                boolean.class, long.class}, decisionsFile = "basic_interpreter_quickening_only.json")),
+                @Variant(suffix = "WithOptimizations", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, decisionsFile = "basic_interpreter_decisions.json")),
                 // A typical "production" configuration with all of the bells and whistles.
-                @Variant(suffix = "Production", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableSerialization = true, enableUncachedInterpreter = true, //
-                                boxingEliminationTypes = {long.class}, decisionsFile = "bytecode_dsl_example_decisions.json"))
+                @Variant(suffix = "Production", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableUncachedInterpreter = true, //
+                                boxingEliminationTypes = {long.class}, decisionsFile = "basic_interpreter_decisions.json"))
 })
 @GenerateAOT
-@ShortCircuitOperation(booleanConverter = BytecodeDSLExample.ToBoolean.class, name = "ScAnd", operator = Operator.AND_RETURN_VALUE)
-@ShortCircuitOperation(booleanConverter = BytecodeDSLExample.ToBoolean.class, name = "ScOr", operator = Operator.OR_RETURN_VALUE)
-public abstract class BytecodeDSLExample extends DebugBytecodeRootNode implements BytecodeRootNode {
+@ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScAnd", operator = Operator.AND_RETURN_VALUE)
+@ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScOr", operator = Operator.OR_RETURN_VALUE)
+public abstract class BasicInterpreter extends DebugBytecodeRootNode implements BytecodeRootNode {
 
-    protected BytecodeDSLExample(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected BasicInterpreter(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
@@ -115,8 +122,8 @@ public abstract class BytecodeDSLExample extends DebugBytecodeRootNode implement
     }
 
     // Expose the protected cloneUninitialized method for testing.
-    public BytecodeDSLExample doCloneUninitialized() {
-        return (BytecodeDSLExample) cloneUninitialized();
+    public BasicInterpreter doCloneUninitialized() {
+        return (BasicInterpreter) cloneUninitialized();
     }
 
     protected static class TestException extends AbstractBytecodeTruffleException {
@@ -269,12 +276,12 @@ public abstract class BytecodeDSLExample extends DebugBytecodeRootNode implement
     @Operation
     public static final class Invoke {
         @Specialization(guards = {"callTargetMatches(root.getCallTarget(), callNode.getCallTarget())"}, limit = "1")
-        public static Object doRootNode(BytecodeDSLExample root, @Variadic Object[] args, @Cached("create(root.getCallTarget())") DirectCallNode callNode) {
+        public static Object doRootNode(BasicInterpreter root, @Variadic Object[] args, @Cached("create(root.getCallTarget())") DirectCallNode callNode) {
             return callNode.call(args);
         }
 
         @Specialization(replaces = {"doRootNode"})
-        public static Object doRootNodeUncached(BytecodeDSLExample root, @Variadic Object[] args, @Cached IndirectCallNode callNode) {
+        public static Object doRootNodeUncached(BasicInterpreter root, @Variadic Object[] args, @Cached IndirectCallNode callNode) {
             return callNode.call(root.getCallTarget(), args);
         }
 
@@ -308,7 +315,7 @@ public abstract class BytecodeDSLExample extends DebugBytecodeRootNode implement
     @Operation
     public static final class CreateClosure {
         @Specialization
-        public static TestClosure materialize(VirtualFrame frame, BytecodeDSLExample root) {
+        public static TestClosure materialize(VirtualFrame frame, BasicInterpreter root) {
             return new TestClosure(frame.materialize(), root);
         }
     }
@@ -359,14 +366,14 @@ public abstract class BytecodeDSLExample extends DebugBytecodeRootNode implement
     @Operation
     public static final class CopyLocalsToFrame {
         @Specialization
-        public static Frame doSomeLocals(VirtualFrame frame, long length, @Bind("$root") BytecodeDSLExample rootNode) {
+        public static Frame doSomeLocals(VirtualFrame frame, long length, @Bind("$root") BasicInterpreter rootNode) {
             Frame newFrame = Truffle.getRuntime().createMaterializedFrame(frame.getArguments(), frame.getFrameDescriptor());
             rootNode.copyLocals(frame, newFrame, (int) length);
             return newFrame;
         }
 
         @Specialization(guards = {"length == null"})
-        public static Frame doAllLocals(VirtualFrame frame, @SuppressWarnings("unused") Object length, @Bind("$root") BytecodeDSLExample rootNode) {
+        public static Frame doAllLocals(VirtualFrame frame, @SuppressWarnings("unused") Object length, @Bind("$root") BasicInterpreter rootNode) {
             Frame newFrame = Truffle.getRuntime().createMaterializedFrame(frame.getArguments(), frame.getFrameDescriptor());
             rootNode.copyLocals(frame, newFrame);
             return newFrame;
@@ -411,7 +418,7 @@ class TestClosure {
     private final MaterializedFrame frame;
     private final RootCallTarget root;
 
-    TestClosure(MaterializedFrame frame, BytecodeDSLExample root) {
+    TestClosure(MaterializedFrame frame, BasicInterpreter root) {
         this.frame = frame;
         this.root = root.getCallTarget();
     }

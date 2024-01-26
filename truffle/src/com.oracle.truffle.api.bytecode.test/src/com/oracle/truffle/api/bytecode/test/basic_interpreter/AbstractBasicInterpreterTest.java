@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.test.example;
+package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -74,12 +74,13 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer;
 import com.oracle.truffle.api.bytecode.serialization.SerializationUtils;
+import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
 @RunWith(Parameterized.class)
-public abstract class AbstractBytecodeDSLExampleTest {
-    protected static final BytecodeDSLExampleLanguage LANGUAGE = null;
+public abstract class AbstractBasicInterpreterTest {
+    protected static final BytecodeDSLTestLanguage LANGUAGE = null;
 
     public static final BytecodeSerializer SERIALIZER = new BytecodeSerializer() {
         public void serialize(SerializerContext context, DataOutput buffer, Object object) throws IOException {
@@ -105,7 +106,7 @@ public abstract class AbstractBytecodeDSLExampleTest {
                 } else {
                     throw new AssertionError("Serializer does not handle array of type " + object.getClass());
                 }
-            } else if (object instanceof BytecodeDSLExample rootNode) {
+            } else if (object instanceof BasicInterpreter rootNode) {
                 buffer.writeByte(5);
                 context.writeBytecodeNode(buffer, rootNode);
             } else if (object instanceof Source source) {
@@ -165,23 +166,23 @@ public abstract class AbstractBytecodeDSLExampleTest {
         return result;
     }
 
-    @Parameter(0) public Class<? extends BytecodeDSLExample> interpreterClass;
+    @Parameter(0) public Class<? extends BasicInterpreter> interpreterClass;
     @Parameter(1) public Boolean testSerialize;
 
-    public <T extends BytecodeDSLExampleBuilder> RootCallTarget parse(String rootName, BytecodeParser<T> builder) {
+    public <T extends BasicInterpreterBuilder> RootCallTarget parse(String rootName, BytecodeParser<T> builder) {
         BytecodeRootNode rootNode = parseNode(interpreterClass, testSerialize, rootName, builder);
         return ((RootNode) rootNode).getCallTarget();
     }
 
-    public <T extends BytecodeDSLExampleBuilder> BytecodeDSLExample parseNode(String rootName, BytecodeParser<T> builder) {
+    public <T extends BasicInterpreterBuilder> BasicInterpreter parseNode(String rootName, BytecodeParser<T> builder) {
         return parseNode(interpreterClass, testSerialize, rootName, builder);
     }
 
-    public <T extends BytecodeDSLExampleBuilder> BytecodeDSLExample parseNodeWithSource(String rootName, BytecodeParser<T> builder) {
+    public <T extends BasicInterpreterBuilder> BasicInterpreter parseNodeWithSource(String rootName, BytecodeParser<T> builder) {
         return parseNodeWithSource(interpreterClass, testSerialize, rootName, builder);
     }
 
-    public <T extends BytecodeDSLExampleBuilder> BytecodeNodes<BytecodeDSLExample> createNodes(BytecodeConfig config, BytecodeParser<T> builder) {
+    public <T extends BasicInterpreterBuilder> BytecodeNodes<BasicInterpreter> createNodes(BytecodeConfig config, BytecodeParser<T> builder) {
         return createNodes(interpreterClass, testSerialize, config, builder);
     }
 
@@ -194,47 +195,47 @@ public abstract class AbstractBytecodeDSLExampleTest {
      * reflection.
      */
     @SuppressWarnings("unchecked")
-    public static <T extends BytecodeDSLExampleBuilder> BytecodeNodes<BytecodeDSLExample> createNodes(Class<? extends BytecodeDSLExample> interpreterClass, boolean testSerialize,
+    public static <T extends BasicInterpreterBuilder> BytecodeNodes<BasicInterpreter> createNodes(Class<? extends BasicInterpreter> interpreterClass, boolean testSerialize,
                     BytecodeConfig config,
                     BytecodeParser<T> builder) {
 
-        BytecodeNodes<BytecodeDSLExample> result = invokeCreate(interpreterClass, config, builder);
+        BytecodeNodes<BasicInterpreter> result = invokeCreate(interpreterClass, config, builder);
         if (testSerialize) {
             // Perform a serialize-deserialize round trip.
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             invokeSerialize(interpreterClass, config, new DataOutputStream(output), SERIALIZER, builder);
             Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(output.toByteArray()));
-            BytecodeNodes<BytecodeDSLExample> deserialized = invokeDeserialize(interpreterClass, LANGUAGE, config, input, DESERIALIZER);
+            BytecodeNodes<BasicInterpreter> deserialized = invokeDeserialize(interpreterClass, LANGUAGE, config, input, DESERIALIZER);
 
             assertBytecodeNodesEqual(result, deserialized);
         }
         return result;
     }
 
-    public static <T extends BytecodeDSLExampleBuilder> RootCallTarget parse(Class<? extends BytecodeDSLExample> interpreterClass, boolean testSerialize, String rootName, BytecodeParser<T> builder) {
+    public static <T extends BasicInterpreterBuilder> RootCallTarget parse(Class<? extends BasicInterpreter> interpreterClass, boolean testSerialize, String rootName, BytecodeParser<T> builder) {
         BytecodeRootNode rootNode = parseNode(interpreterClass, testSerialize, rootName, builder);
         return ((RootNode) rootNode).getCallTarget();
     }
 
-    public static <T extends BytecodeDSLExampleBuilder> BytecodeDSLExample parseNode(Class<? extends BytecodeDSLExample> interpreterClass, boolean testSerialize, String rootName,
+    public static <T extends BasicInterpreterBuilder> BasicInterpreter parseNode(Class<? extends BasicInterpreter> interpreterClass, boolean testSerialize, String rootName,
                     BytecodeParser<T> builder) {
-        BytecodeNodes<BytecodeDSLExample> nodes = createNodes(interpreterClass, testSerialize, BytecodeConfig.DEFAULT, builder);
-        BytecodeDSLExample op = nodes.getNode(nodes.count() - 1);
+        BytecodeNodes<BasicInterpreter> nodes = createNodes(interpreterClass, testSerialize, BytecodeConfig.DEFAULT, builder);
+        BasicInterpreter op = nodes.getNode(nodes.count() - 1);
         op.setName(rootName);
         return op;
     }
 
-    public static <T extends BytecodeDSLExampleBuilder> BytecodeDSLExample parseNodeWithSource(Class<? extends BytecodeDSLExample> interpreterClass, boolean testSerialize, String rootName,
+    public static <T extends BasicInterpreterBuilder> BasicInterpreter parseNodeWithSource(Class<? extends BasicInterpreter> interpreterClass, boolean testSerialize, String rootName,
                     BytecodeParser<T> builder) {
-        BytecodeNodes<BytecodeDSLExample> nodes = createNodes(interpreterClass, testSerialize, BytecodeConfig.WITH_SOURCE, builder);
-        BytecodeDSLExample op = nodes.getNode(nodes.count() - 1);
+        BytecodeNodes<BasicInterpreter> nodes = createNodes(interpreterClass, testSerialize, BytecodeConfig.WITH_SOURCE, builder);
+        BasicInterpreter op = nodes.getNode(nodes.count() - 1);
         op.setName(rootName);
         return op;
     }
 
     @SuppressWarnings("unchecked")
-    public static <T extends BytecodeDSLExample> BytecodeNodes<T> invokeCreate(Class<? extends BytecodeDSLExample> interpreterClass, BytecodeConfig config,
-                    BytecodeParser<? extends BytecodeDSLExampleBuilder> builder) {
+    public static <T extends BasicInterpreter> BytecodeNodes<T> invokeCreate(Class<? extends BasicInterpreter> interpreterClass, BytecodeConfig config,
+                    BytecodeParser<? extends BasicInterpreterBuilder> builder) {
         try {
             Method create = interpreterClass.getMethod("create", BytecodeConfig.class, BytecodeParser.class);
             return (BytecodeNodes<T>) create.invoke(null, config, builder);
@@ -248,7 +249,7 @@ public abstract class AbstractBytecodeDSLExampleTest {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T extends BytecodeDSLExample> BytecodeNodes<T> invokeDeserialize(Class<? extends BytecodeDSLExample> interpreterClass, TruffleLanguage<?> language, BytecodeConfig config,
+    public static <T extends BasicInterpreter> BytecodeNodes<T> invokeDeserialize(Class<? extends BasicInterpreter> interpreterClass, TruffleLanguage<?> language, BytecodeConfig config,
                     Supplier<DataInput> input, BytecodeDeserializer callback) {
         try {
             Method deserialize = interpreterClass.getMethod("deserialize", TruffleLanguage.class, BytecodeConfig.class, Supplier.class, BytecodeDeserializer.class);
@@ -263,7 +264,7 @@ public abstract class AbstractBytecodeDSLExampleTest {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T extends BytecodeDSLExampleBuilder> void invokeSerialize(Class<? extends BytecodeDSLExample> interpreterClass, BytecodeConfig config, DataOutput buffer,
+    public static <T extends BasicInterpreterBuilder> void invokeSerialize(Class<? extends BasicInterpreter> interpreterClass, BytecodeConfig config, DataOutput buffer,
                     BytecodeSerializer callback,
                     BytecodeParser<T> parser) {
         try {
@@ -278,13 +279,13 @@ public abstract class AbstractBytecodeDSLExampleTest {
         }
     }
 
-    private static void assertBytecodeNodesEqual(BytecodeNodes<BytecodeDSLExample> expectedBytecodeNodes, BytecodeNodes<BytecodeDSLExample> actualBytecodeNodes) {
-        List<BytecodeDSLExample> expectedNodes = expectedBytecodeNodes.getNodes();
-        List<BytecodeDSLExample> actualNodes = actualBytecodeNodes.getNodes();
+    private static void assertBytecodeNodesEqual(BytecodeNodes<BasicInterpreter> expectedBytecodeNodes, BytecodeNodes<BasicInterpreter> actualBytecodeNodes) {
+        List<BasicInterpreter> expectedNodes = expectedBytecodeNodes.getNodes();
+        List<BasicInterpreter> actualNodes = actualBytecodeNodes.getNodes();
         assertEquals(expectedNodes.size(), actualNodes.size());
         for (int i = 0; i < expectedNodes.size(); i++) {
-            BytecodeDSLExample expectedNode = expectedNodes.get(i);
-            BytecodeDSLExample actualNode = actualNodes.get(i);
+            BasicInterpreter expectedNode = expectedNodes.get(i);
+            BasicInterpreter actualNode = actualNodes.get(i);
             BytecodeNode expectedBytecode = expectedNodes.get(i).getBytecodeNode();
             BytecodeNode actualBytecode = actualNodes.get(i).getBytecodeNode();
 
@@ -301,7 +302,7 @@ public abstract class AbstractBytecodeDSLExampleTest {
             Object expected = expectedConstants[i];
             Object actual = actualConstants[i];
 
-            if (expected instanceof BytecodeDSLExample expectedRoot && actual instanceof BytecodeDSLExample actualRoot) {
+            if (expected instanceof BasicInterpreter expectedRoot && actual instanceof BasicInterpreter actualRoot) {
                 // We don't implement equals for root nodes (that's what we're trying to test). Make
                 // sure it's at least the same name.
                 assertEquals(expectedRoot.name, actualRoot.name);
@@ -324,32 +325,32 @@ public abstract class AbstractBytecodeDSLExampleTest {
         throw new AssertionError("unreachable");
     }
 
-    protected static void emitReturn(BytecodeDSLExampleBuilder b, long value) {
+    protected static void emitReturn(BasicInterpreterBuilder b, long value) {
         b.beginReturn();
         b.emitLoadConstant(value);
         b.endReturn();
     }
 
-    protected static void emitAppend(BytecodeDSLExampleBuilder b, long value) {
+    protected static void emitAppend(BasicInterpreterBuilder b, long value) {
         b.beginAppenderOperation();
         b.emitLoadArgument(0);
         b.emitLoadConstant(value);
         b.endAppenderOperation();
     }
 
-    protected static void emitThrow(BytecodeDSLExampleBuilder b, long value) {
+    protected static void emitThrow(BasicInterpreterBuilder b, long value) {
         b.beginThrowOperation();
         b.emitLoadConstant(value);
         b.endThrowOperation();
     }
 
-    public static List<Class<? extends BytecodeDSLExample>> allInterpreters() {
-        return List.of(BytecodeDSLExampleBase.class, BytecodeDSLExampleUnsafe.class, BytecodeDSLExampleWithUncached.class, BytecodeDSLExampleWithBE.class, BytecodeDSLExampleWithOptimizations.class,
-                        BytecodeDSLExampleProduction.class);
+    public static List<Class<? extends BasicInterpreter>> allInterpreters() {
+        return List.of(BasicInterpreterBase.class, BasicInterpreterUnsafe.class, BasicInterpreterWithUncached.class, BasicInterpreterWithBE.class, BasicInterpreterWithOptimizations.class,
+                        BasicInterpreterProduction.class);
     }
 
-    public static boolean hasBE(Class<? extends BytecodeDSLExample> c) {
-        return c == BytecodeDSLExampleWithBE.class || c == BytecodeDSLExampleProduction.class;
+    public static boolean hasBE(Class<? extends BasicInterpreter> c) {
+        return c == BasicInterpreterWithBE.class || c == BasicInterpreterProduction.class;
     }
 
 }

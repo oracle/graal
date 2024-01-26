@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.test.example;
+package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -52,7 +52,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 
-public class BytecodeDSLExampleFinallyTryTest extends AbstractBytecodeDSLExampleTest {
+public class FinallyTryTest extends AbstractBasicInterpreterTest {
     // @formatter:off
 
     private static void testOrdering(boolean expectException, RootCallTarget root, Long... order) {
@@ -210,7 +210,7 @@ public class BytecodeDSLExampleFinallyTryTest extends AbstractBytecodeDSLExample
         //   if (ex) arg0.append(3) else arg0.append(4);
         // }
 
-        BytecodeDSLExample root = parseNode("finallyTryBindException", b -> {
+        BasicInterpreter root = parseNode("finallyTryBindException", b -> {
             b.beginRoot(LANGUAGE);
             BytecodeLocal ex = b.createLocal();
             b.beginFinallyTry(ex);
@@ -482,7 +482,7 @@ public class BytecodeDSLExampleFinallyTryTest extends AbstractBytecodeDSLExample
         // }
         // arg0.append(6);
 
-        BytecodeDSLExample root = parseNode("finallyTryIfThenWithinHandler", b -> {
+        BasicInterpreter root = parseNode("finallyTryIfThenWithinHandler", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry(b.createLocal());

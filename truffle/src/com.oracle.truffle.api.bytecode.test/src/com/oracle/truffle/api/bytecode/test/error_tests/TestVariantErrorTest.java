@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.test;
+package com.oracle.truffle.api.bytecode.test.error_tests;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;

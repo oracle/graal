@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.test;
+package com.oracle.truffle.api.bytecode.test.error_tests;
 
 import java.util.Set;
 
@@ -52,9 +52,9 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
 import com.oracle.truffle.api.bytecode.Variadic;
-import com.oracle.truffle.api.bytecode.test.subpackage.NonPublicGuardExpressionOperationProxy;
-import com.oracle.truffle.api.bytecode.test.subpackage.NonPublicSpecializationOperationProxy;
-import com.oracle.truffle.api.bytecode.test.subpackage.NestedNodeOperationProxy;
+import com.oracle.truffle.api.bytecode.test.error_tests.subpackage.NonPublicGuardExpressionOperationProxy;
+import com.oracle.truffle.api.bytecode.test.error_tests.subpackage.NonPublicSpecializationOperationProxy;
+import com.oracle.truffle.api.bytecode.test.error_tests.subpackage.NestedNodeOperationProxy;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -182,7 +182,7 @@ public class ErrorTests {
 
     }
 
-    @ExpectError("The used type system 'com.oracle.truffle.api.bytecode.test.ErrorTests.ErroredTypeSystem' is invalid. Fix errors in the type system first.")
+    @ExpectError("The used type system 'com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.ErroredTypeSystem' is invalid. Fix errors in the type system first.")
     @GenerateBytecode(languageClass = ErrorLanguage.class)
     @TypeSystemReference(ErroredTypeSystem.class)
     public abstract class BadTypeSystem extends RootNode implements BytecodeRootNode {
@@ -209,7 +209,7 @@ public class ErrorTests {
     }
 
     @GenerateBytecode(languageClass = ErrorLanguage.class)
-    @ExpectError("Encountered errors using com.oracle.truffle.api.bytecode.test.ErrorTests.NoCachedProxyType.NodeWithNoCache as an OperationProxy. These errors must be resolved before the DSL can proceed.")
+    @ExpectError("Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.NoCachedProxyType.NodeWithNoCache as an OperationProxy. These errors must be resolved before the DSL can proceed.")
     @OperationProxy(NoCachedProxyType.NodeWithNoCache.class)
     public abstract class NoCachedProxyType extends RootNode implements BytecodeRootNode {
         protected NoCachedProxyType(TruffleLanguage<?> language, FrameDescriptor builder) {
@@ -218,7 +218,7 @@ public class ErrorTests {
 
         @GenerateCached(false)
         @OperationProxy.Proxyable
-        @ExpectError("Class com.oracle.truffle.api.bytecode.test.ErrorTests.NoCachedProxyType.NodeWithNoCache does not generate a cached node, so it cannot be used as an OperationProxy. " +
+        @ExpectError("Class com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.NoCachedProxyType.NodeWithNoCache does not generate a cached node, so it cannot be used as an OperationProxy. " +
                         "Enable cached node generation using @GenerateCached(true) or delegate to this node using a regular Operation.")
         public static final class NodeWithNoCache extends Node {
             @Specialization
@@ -231,14 +231,14 @@ public class ErrorTests {
 
     @GenerateBytecode(languageClass = ErrorLanguage.class)
     @ExpectError({
-                    "Encountered errors using com.oracle.truffle.api.bytecode.test.ErrorTests.NonFinalOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
-                    "Encountered errors using com.oracle.truffle.api.bytecode.test.ErrorTests.NonStaticInnerOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
-                    "Encountered errors using com.oracle.truffle.api.bytecode.test.ErrorTests.PrivateOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
-                    "Encountered errors using com.oracle.truffle.api.bytecode.test.ErrorTests.CloneableOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
-                    "Encountered errors using com.oracle.truffle.api.bytecode.test.ErrorTests.NonStaticMemberOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
-                    "Encountered errors using com.oracle.truffle.api.bytecode.test.ErrorTests.BadSignatureOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
-                    "Encountered errors using com.oracle.truffle.api.bytecode.test.ErrorTests.Underscored_Operation_Proxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
-                    "Could not use com.oracle.truffle.api.bytecode.test.ErrorTests.UnproxyableOperationProxy as an operation proxy: the class must be annotated with @OperationProxy.Proxyable.",
+                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.NonFinalOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.NonStaticInnerOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.PrivateOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.CloneableOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.NonStaticMemberOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.BadSignatureOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.Underscored_Operation_Proxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Could not use com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.UnproxyableOperationProxy as an operation proxy: the class must be annotated with @OperationProxy.Proxyable.",
     })
     @OperationProxy(NonFinalOperationProxy.class)
     @OperationProxy(NonStaticInnerOperationProxy.class)
@@ -509,7 +509,7 @@ public class ErrorTests {
     }
 
     @GenerateBytecode(languageClass = ErrorLanguage.class, enableUncachedInterpreter = true)
-    @ExpectError({"Could not use com.oracle.truffle.api.bytecode.test.ErrorTests.NoUncachedOperationProxy as an operation proxy: the class must be annotated with @GenerateUncached when an uncached interpreter is requested."})
+    @ExpectError({"Could not use com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.NoUncachedOperationProxy as an operation proxy: the class must be annotated with @GenerateUncached when an uncached interpreter is requested."})
     @OperationProxy(UncachedOperationProxy.class)
     @OperationProxy(NoUncachedOperationProxy.class)
     public abstract static class OperationErrorUncachedTests extends RootNode implements BytecodeRootNode {

@@ -72,7 +72,7 @@ public class TruffleTypes {
     public static final String EXPECT_WARNING_CLASS_NAME1 = "com.oracle.truffle.api.dsl.test.ExpectWarning";
     public static final String EXPECT_ERROR_CLASS_NAME1 = "com.oracle.truffle.api.dsl.test.ExpectError";
     public static final String EXPECT_ERROR_CLASS_NAME2 = "com.oracle.truffle.api.test.ExpectError";
-    public static final String EXPECT_ERROR_CLASS_NAME3 = "com.oracle.truffle.api.bytecode.test.ExpectError";
+    public static final String EXPECT_ERROR_CLASS_NAME3 = "com.oracle.truffle.api.bytecode.test.error_tests.ExpectError";
     public static final List<String> TEST_PACKAGES = List.of("com.oracle.truffle.api.test", "com.oracle.truffle.api.instrumentation.test");
 
     public static final String SlowPathListener_Name = "com.oracle.truffle.api.dsl.test.SlowPathListener";

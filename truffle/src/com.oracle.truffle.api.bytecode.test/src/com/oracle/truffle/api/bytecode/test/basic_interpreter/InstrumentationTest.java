@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,21 +38,47 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.test.example;
+package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.instrumentation.ProvidedTags;
+import static org.junit.Assert.assertEquals;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
-import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
-import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 
-@ProvidedTags({RootBodyTag.class, ExpressionTag.class, StatementTag.class})
-@TruffleLanguage.Registration(id = BytecodeDSLExampleLanguage.ID)
-public class BytecodeDSLExampleLanguage extends TruffleLanguage<Object> {
-    public static final String ID = "OperationsExampleLanguage";
+@RunWith(Parameterized.class)
+public class InstrumentationTest extends AbstractBasicInterpreterTest {
 
-    @Override
-    protected Object createContext(Env env) {
-        return new Object();
+    @Test
+    public void testInstrumentation() {
+        // goto lbl;
+        // return 0;
+        // lbl:
+        // return 1;
+
+        RootCallTarget root = parse("branchForward", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginTag(ExpressionTag.class);
+            b.beginAddOperation();
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadConstant(1L);
+            b.endTag();
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadConstant(2L);
+            b.endTag();
+            b.endAddOperation();
+            b.endTag();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals(3L, root.call());
     }
+
 }

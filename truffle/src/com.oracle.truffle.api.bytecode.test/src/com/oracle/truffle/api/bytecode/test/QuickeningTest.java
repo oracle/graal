@@ -52,14 +52,14 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ForceQuickening;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
-import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleLanguage;
+import com.oracle.truffle.api.bytecode.test.error_tests.ExpectError;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class QuickeningTest extends AbstractQuickeningTest {
 
-    protected static final BytecodeDSLExampleLanguage LANGUAGE = null;
+    protected static final BytecodeDSLTestLanguage LANGUAGE = null;
 
     @Test
     public void testAbs() {
@@ -201,7 +201,7 @@ public class QuickeningTest extends AbstractQuickeningTest {
         return nodes.getNode(nodes.count() - 1);
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableQuickening = true)
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true)
     public abstract static class QuickeningTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected QuickeningTestRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
@@ -249,7 +249,7 @@ public class QuickeningTest extends AbstractQuickeningTest {
 
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableQuickening = true)
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true)
     public abstract static class QuickeningTestError1 extends RootNode implements BytecodeRootNode {
 
         protected QuickeningTestError1(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
@@ -281,7 +281,7 @@ public class QuickeningTest extends AbstractQuickeningTest {
 
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableQuickening = true)
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true)
     public abstract static class QuickeningTestError2 extends RootNode implements BytecodeRootNode {
 
         protected QuickeningTestError2(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
@@ -305,7 +305,7 @@ public class QuickeningTest extends AbstractQuickeningTest {
 
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableQuickening = true)
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true)
     public abstract static class QuickeningTestError3 extends RootNode implements BytecodeRootNode {
 
         protected QuickeningTestError3(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
@@ -327,7 +327,7 @@ public class QuickeningTest extends AbstractQuickeningTest {
 
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableQuickening = true)
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true)
     public abstract static class QuickeningTestError4 extends RootNode implements BytecodeRootNode {
 
         protected QuickeningTestError4(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
@@ -355,7 +355,7 @@ public class QuickeningTest extends AbstractQuickeningTest {
 
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableQuickening = true)
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true)
     public abstract static class QuickeningTestError5 extends RootNode implements BytecodeRootNode {
 
         protected QuickeningTestError5(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {

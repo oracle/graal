@@ -56,7 +56,6 @@ import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.test.BytecodeNodeWithHooks.MyException;
 import com.oracle.truffle.api.bytecode.test.BytecodeNodeWithHooks.ThrowStackOverflow;
-import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -402,7 +401,7 @@ public class HookTest {
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class)
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
 abstract class BytecodeNodeWithHooks extends RootNode implements BytecodeRootNode {
     // Used to validate whether hooks get called.
     private Object[] refs;
@@ -568,7 +567,7 @@ abstract class BytecodeNodeWithHooks extends RootNode implements BytecodeRootNod
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class)
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
 abstract class BytecodeNodeInterceptsNothing extends RootNode implements BytecodeRootNode {
 
     protected BytecodeNodeInterceptsNothing(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
@@ -594,7 +593,7 @@ abstract class BytecodeNodeInterceptsNothing extends RootNode implements Bytecod
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class)
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
 abstract class BytecodeNodeInterceptsCF extends RootNode implements BytecodeRootNode {
 
     protected BytecodeNodeInterceptsCF(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
@@ -625,7 +624,7 @@ abstract class BytecodeNodeInterceptsCF extends RootNode implements BytecodeRoot
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class)
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
 abstract class BytecodeNodeInterceptsInternal extends RootNode implements BytecodeRootNode {
 
     protected BytecodeNodeInterceptsInternal(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {

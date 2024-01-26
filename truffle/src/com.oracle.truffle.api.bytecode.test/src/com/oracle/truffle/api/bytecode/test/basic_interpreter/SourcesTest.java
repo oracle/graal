@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.test.example;
+package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -60,12 +60,12 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 @RunWith(Parameterized.class)
-public class BytecodeDSLExampleSourcesTest extends AbstractBytecodeDSLExampleTest {
+public class SourcesTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testSource() {
         Source source = Source.newBuilder("test", "return 1", "test.test").build();
-        BytecodeDSLExample node = parseNodeWithSource("source", b -> {
+        BasicInterpreter node = parseNodeWithSource("source", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(source);
             b.beginSourceSection(0, 8);
@@ -127,7 +127,7 @@ public class BytecodeDSLExampleSourcesTest extends AbstractBytecodeDSLExampleTes
     public void testSourceMultipleSources() {
         Source source1 = Source.newBuilder("test", "This is just a piece of test source.", "test1.test").build();
         Source source2 = Source.newBuilder("test", "This is another test source.", "test2.test").build();
-        BytecodeDSLExample root = parseNodeWithSource("sourceMultipleSources", b -> {
+        BasicInterpreter root = parseNodeWithSource("sourceMultipleSources", b -> {
             b.beginRoot(LANGUAGE);
 
             b.emitVoidOperation(); // no source
@@ -226,7 +226,7 @@ public class BytecodeDSLExampleSourcesTest extends AbstractBytecodeDSLExampleTes
     @Test
     public void testGetSourcePosition() {
         Source source = Source.newBuilder("test", "return 1", "testGetSourcePosition").build();
-        BytecodeDSLExample node = parseNodeWithSource("source", b -> {
+        BasicInterpreter node = parseNodeWithSource("source", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(source);
             b.beginSourceSection(0, 8);
@@ -267,7 +267,7 @@ public class BytecodeDSLExampleSourcesTest extends AbstractBytecodeDSLExampleTes
          */
 
         Source source = Source.newBuilder("test", "try finally", "testGetSourcePosition").build();
-        BytecodeDSLExample node = parseNodeWithSource("source", b -> {
+        BasicInterpreter node = parseNodeWithSource("source", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(source);
             b.beginSourceSection(0, 11);
@@ -336,7 +336,7 @@ public class BytecodeDSLExampleSourcesTest extends AbstractBytecodeDSLExampleTes
     public void testSourceReparse() {
         // Test input taken from testSource above.
         Source source = Source.newBuilder("test", "return 1", "test.test").build();
-        BytecodeNodes<BytecodeDSLExample> nodes = createNodes(BytecodeConfig.DEFAULT, b -> {
+        BytecodeNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.DEFAULT, b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(source);
             b.beginSourceSection(0, 8);
@@ -358,7 +358,7 @@ public class BytecodeDSLExampleSourcesTest extends AbstractBytecodeDSLExampleTes
         nodes.updateConfiguration(BytecodeConfig.WITH_SOURCE);
         assertTrue(nodes.hasSources());
 
-        BytecodeDSLExample node = nodes.getNode(0);
+        BasicInterpreter node = nodes.getNode(0);
 
         assertEquals(node.getSourceSection().getSource(), source);
         assertEquals(node.getSourceSection().getCharIndex(), 0);

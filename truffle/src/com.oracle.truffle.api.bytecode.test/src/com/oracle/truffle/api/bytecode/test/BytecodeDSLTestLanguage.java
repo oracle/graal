@@ -38,27 +38,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.test.subpackage;
+package com.oracle.truffle.api.bytecode.test;
 
-import com.oracle.truffle.api.bytecode.OperationProxy;
-import com.oracle.truffle.api.bytecode.test.ErrorTests;
-import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.instrumentation.ProvidedTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 
 /**
- * This node is used in {@link ErrorTests}. Since it is declared in a separate package, the
- * non-public specializations are not visible and should cause an error.
+ * Placeholder language for Bytecode DSL test interpreters.
  */
-@OperationProxy.Proxyable
-public final class NonPublicSpecializationOperationProxy {
-    @Specialization
-    static int add(int x, int y) {
-        return x + y;
-    }
+@ProvidedTags({RootBodyTag.class, ExpressionTag.class, StatementTag.class})
+@TruffleLanguage.Registration(id = BytecodeDSLTestLanguage.ID)
+public class BytecodeDSLTestLanguage extends TruffleLanguage<Object> {
+    public static final String ID = "BytecodeDSLTestLanguage";
 
-    @Fallback
-    @SuppressWarnings("unused")
-    static Object fallback(Object a, Object b) {
-        return a;
+    @Override
+    protected Object createContext(Env env) {
+        return new Object();
     }
 }

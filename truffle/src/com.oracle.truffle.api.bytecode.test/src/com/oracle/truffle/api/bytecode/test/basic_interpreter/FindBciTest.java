@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.test.example;
+package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -60,7 +60,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 @RunWith(Parameterized.class)
-public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTest {
+public class FindBciTest extends AbstractBasicInterpreterTest {
     public void assumeTestIsApplicable() {
         /*
          * TODO: BytecodeRootNode#findBci does not check for ContinuationRootNodes in the uncached
@@ -69,7 +69,7 @@ public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTes
          * a findBytecodeIndex method on the generated node anyway (and it can reference a specific
          * ContinuationRootNode).
          */
-        assumeTrue(interpreterClass != BytecodeDSLExampleWithUncached.class && interpreterClass != BytecodeDSLExampleProduction.class);
+        assumeTrue(interpreterClass != BasicInterpreterWithUncached.class && interpreterClass != BasicInterpreterProduction.class);
     }
 
     @Test
@@ -95,14 +95,14 @@ public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTes
         Source bazSource = Source.newBuilder("test", "if (arg0) <trace1> else <trace2>", "baz").build();
         Source barSource = Source.newBuilder("test", "baz(arg0)", "bar").build();
         Source fooSource = Source.newBuilder("test", "c = bar(arg0); c", "foo").build();
-        BytecodeNodes<BytecodeDSLExample> nodes = createNodes(BytecodeConfig.WITH_SOURCE, b -> {
+        BytecodeNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.WITH_SOURCE, b -> {
             // @formatter:off
             // collectBcis
             b.beginRoot(LANGUAGE);
                 b.beginReturn();
                 b.emitCollectBytecodeLocations();
                 b.endReturn();
-            BytecodeDSLExample collectBcis = b.endRoot();
+            BasicInterpreter collectBcis = b.endRoot();
             collectBcis.setName("collectBcis");
 
             // baz
@@ -134,7 +134,7 @@ public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTes
 
                 b.endBlock();
                 b.endSource();
-            BytecodeDSLExample baz = b.endRoot();
+            BasicInterpreter baz = b.endRoot();
             baz.setName("baz");
 
             // bar
@@ -153,7 +153,7 @@ public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTes
                 b.endReturn();
 
                 b.endSource();
-            BytecodeDSLExample bar = b.endRoot();
+            BasicInterpreter bar = b.endRoot();
             bar.setName("bar");
 
             // foo
@@ -181,17 +181,17 @@ public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTes
 
                 b.endBlock();
                 b.endSource();
-            BytecodeDSLExample foo = b.endRoot();
+            BasicInterpreter foo = b.endRoot();
             foo.setName("foo");
         });
 
-        List<BytecodeDSLExample> nodeList = nodes.getNodes();
+        List<BasicInterpreter> nodeList = nodes.getNodes();
         assert nodeList.size() == 4;
-        BytecodeDSLExample foo = nodeList.get(3);
+        BasicInterpreter foo = nodeList.get(3);
         assert foo.getName().equals("foo");
-        BytecodeDSLExample bar = nodeList.get(2);
+        BasicInterpreter bar = nodeList.get(2);
         assert bar.getName().equals("bar");
-        BytecodeDSLExample baz = nodeList.get(1);
+        BasicInterpreter baz = nodeList.get(1);
         assert baz.getName().equals("baz");
 
         for (boolean fooArgument : List.of(true, false)) {
@@ -255,14 +255,14 @@ public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTes
         Source bazSource = Source.newBuilder("test", "if (arg0) <trace1> else <trace2>", "baz").build();
         Source barSource = Source.newBuilder("test", "x = yield 1; baz(x)", "bar").build();
         Source fooSource = Source.newBuilder("test", "c = bar(); continue(c, arg0)", "foo").build();
-        BytecodeNodes<BytecodeDSLExample> nodes = createNodes(BytecodeConfig.WITH_SOURCE, b -> {
+        BytecodeNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.WITH_SOURCE, b -> {
             // @formatter:off
             // collectBcis
             b.beginRoot(LANGUAGE);
                 b.beginReturn();
                 b.emitCollectBytecodeLocations();
                 b.endReturn();
-            BytecodeDSLExample collectBcis = b.endRoot();
+            BasicInterpreter collectBcis = b.endRoot();
             collectBcis.setName("collectBcis");
 
             // baz
@@ -294,7 +294,7 @@ public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTes
 
                 b.endBlock();
                 b.endSource();
-            BytecodeDSLExample baz = b.endRoot();
+            BasicInterpreter baz = b.endRoot();
             baz.setName("baz");
 
             // bar
@@ -320,7 +320,7 @@ public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTes
 
                 b.endBlock();
                 b.endSource();
-            BytecodeDSLExample bar = b.endRoot();
+            BasicInterpreter bar = b.endRoot();
             bar.setName("bar");
 
             // foo
@@ -347,18 +347,18 @@ public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTes
 
                 b.endBlock();
                 b.endSource();
-            BytecodeDSLExample foo = b.endRoot();
+            BasicInterpreter foo = b.endRoot();
             foo.setName("foo");
             // @formatter:off
         });
 
-        List<BytecodeDSLExample> nodeList = nodes.getNodes();
+        List<BasicInterpreter> nodeList = nodes.getNodes();
         assertEquals(4, nodeList.size());
-        BytecodeDSLExample foo = nodeList.get(3);
+        BasicInterpreter foo = nodeList.get(3);
         assertEquals("foo", foo.getName());
-        BytecodeDSLExample bar = nodeList.get(2);
+        BasicInterpreter bar = nodeList.get(2);
         assertEquals("bar", bar.getName());
-        BytecodeDSLExample baz = nodeList.get(1);
+        BasicInterpreter baz = nodeList.get(1);
         assertEquals("baz", baz.getName());
 
         for (boolean continuationArgument : List.of(true, false)) {

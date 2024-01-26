@@ -73,7 +73,6 @@ import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.Variadic;
-import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -620,10 +619,10 @@ public class LocalHelpersTest {
 }
 
 @GenerateBytecodeTestVariants({
-                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true)),
-                @Variant(suffix = "WithBoxingElimination", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableQuickening = true, boxingEliminationTypes = {
+                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true)),
+                @Variant(suffix = "WithBoxingElimination", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, boxingEliminationTypes = {
                                 boolean.class, long.class}, enableYield = true)),
-                @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableUncachedInterpreter = true))
+                @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableUncachedInterpreter = true))
 })
 abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode implements BytecodeRootNode {
     // Used for testGetLocalUsingBytecodeLocalIndex
@@ -704,14 +703,14 @@ abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode 
         @SuppressWarnings("unused")
         @Specialization(guards = {"result.getContinuationRootNode() == rootNode"}, limit = "LIMIT")
         public static Object invokeDirect(ContinuationResult result, Object value,
-                        @Cached(value = "result.getContinuationRootNode()", inline = false) RootNode rootNode,
-                        @Cached(value = "create(rootNode.getCallTarget())", inline = false) DirectCallNode callNode) {
+                        @Cached(value = "result.getContinuationRootNode()") RootNode rootNode,
+                        @Cached(value = "create(rootNode.getCallTarget())") DirectCallNode callNode) {
             return callNode.call(result.getFrame(), value);
         }
 
         @Specialization(replaces = "invokeDirect")
         public static Object invokeIndirect(ContinuationResult result, Object value,
-                        @Cached(inline = false) IndirectCallNode callNode) {
+                        @Cached IndirectCallNode callNode) {
             return callNode.call(result.getContinuationCallTarget(), result.getFrame(), value);
         }
     }

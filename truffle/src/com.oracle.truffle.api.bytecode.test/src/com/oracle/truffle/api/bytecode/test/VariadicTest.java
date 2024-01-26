@@ -58,22 +58,11 @@ import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class VariadicTest {
-
-    private static boolean TRACE = false;
-
-    private static final ObjectSizeEstimate ROOT_OVERHEAD = ObjectSizeEstimate.forObject(new RootNode(null) {
-        @Override
-        public Object execute(VirtualFrame frame) {
-            return null;
-        }
-    });
-
     @Test
     public void testVariadic0Arguments() {
         for (int i = 0; i < 32; i++) {
@@ -129,13 +118,7 @@ public class VariadicTest {
     }
 
     VariadicOperationsNode parse(BytecodeParser<VariadicOperationsNodeGen.Builder> builder) {
-        VariadicOperationsNode root = VariadicOperationsNodeGen.create(BytecodeConfig.COMPLETE, builder).getNode(0);
-        if (TRACE) {
-            System.out.println(root.dump());
-            System.out.println(ROOT_OVERHEAD);
-            System.out.println(ObjectSizeEstimate.forObject(root).subtract(ROOT_OVERHEAD));
-        }
-        return root;
+        return VariadicOperationsNodeGen.create(BytecodeConfig.COMPLETE, builder).getNode(0);
     }
 
     @ProvidedTags(ExpressionTag.class)

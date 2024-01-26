@@ -58,7 +58,6 @@ import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
 import com.oracle.truffle.api.bytecode.test.BoxingEliminationTest.BoxingEliminationTestRootNode.ToBoolean;
-import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -67,7 +66,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 public class BoxingEliminationTest extends AbstractQuickeningTest {
 
-    protected static final BytecodeDSLExampleLanguage LANGUAGE = null;
+    protected static final BytecodeDSLTestLanguage LANGUAGE = null;
 
     @Test
     public void testArgumentAbs() {
@@ -1340,7 +1339,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
         return nodes.getNode(nodes.count() - 1);
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, //
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                     enableYield = true, enableSerialization = true, //
                     enableQuickening = true, //
                     boxingEliminationTypes = {long.class, int.class, boolean.class})
