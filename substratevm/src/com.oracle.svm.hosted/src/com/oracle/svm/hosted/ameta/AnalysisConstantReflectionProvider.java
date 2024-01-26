@@ -249,23 +249,11 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
 
     @Override
     public ResolvedJavaType asJavaType(Constant constant) {
-        if (constant instanceof SubstrateObjectConstant substrateConstant) {
-            return extractJavaType(substrateConstant);
-        } else if (constant instanceof ImageHeapConstant imageHeapConstant) {
-            if (metaAccess.isInstanceOf((JavaConstant) constant, Class.class)) {
-                /* All constants of type DynamicHub/java.lang.Class must have a hosted object. */
-                return extractJavaType(Objects.requireNonNull(imageHeapConstant.getHostedObject()));
-            }
-        }
-        return null;
-    }
-
-    private ResolvedJavaType extractJavaType(JavaConstant constant) {
-        Object obj = universe.getHostedValuesProvider().asObject(Object.class, constant);
-        if (obj instanceof DynamicHub hub) {
-            return getHostVM().lookupType(hub);
-        } else if (obj instanceof Class) {
-            throw VMError.shouldNotReachHere("Must not have java.lang.Class object: " + obj);
+        if (constant instanceof JavaConstant javaConstant && metaAccess.isInstanceOf(javaConstant, Class.class)) {
+            /* All type constants must have a hosted object. */
+            Object hostedObject = Objects.requireNonNull(universe.getSnippetReflection().asObject(Object.class, javaConstant));
+            VMError.guarantee(!(hostedObject instanceof Class<?>), "Must not have java.lang.Class object: %s", hostedObject);
+            return getHostVM().lookupType((DynamicHub) hostedObject);
         }
         return null;
     }
