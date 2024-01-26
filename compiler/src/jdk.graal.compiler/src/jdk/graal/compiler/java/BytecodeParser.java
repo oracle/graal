@@ -4746,6 +4746,10 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         if (typeIsResolved(type)) {
             genNewObjectArray((ResolvedJavaType) type);
         } else {
+            /*
+             * The link time effects of an unresolved bytecode always occur before any runtime exception checks,
+             * meaning there is no need to check if the length is positive.
+             */
             handleUnresolvedNewObjectArray(type);
         }
     }
@@ -4774,6 +4778,10 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             ValueNode[] dims = new ValueNode[rank];
             genNewMultiArray((ResolvedJavaType) type, rank, dims);
         } else {
+            /*
+             * The link time effects of an unresolved bytecode always occur before any runtime exception checks,
+             * meaning there is no need to check if the dims are positive.
+             */
             handleUnresolvedNewMultiArray(type);
         }
     }
