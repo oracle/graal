@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -978,17 +978,8 @@ public class HostAccessTest extends AbstractHostAccessTest {
         // when calling a functional interface implementation, only dispatch to implementations of
         // the single abstract method and not other methods with the same name in the subclass.
         assertFails(() -> function.execute(42), Exception.class, e -> {
-            // TODO GR-42882 investigate why this fails differently depending on Java compiler
-            if (e instanceof PolyglotException) {
-                // javac
-                PolyglotException p = (PolyglotException) e;
-                assertTrue(p.toString(), p.isHostException());
-                assertTrue(p.asHostException().toString(), p.asHostException() instanceof ClassCastException);
-            } else {
-                // jdt
-                assertTrue(e instanceof IllegalArgumentException);
-                assertTrue(e.getMessage(), e.getMessage().contains("Cannot convert '42'(language: Java, type: java.lang.Integer)"));
-            }
+            assertTrue(e instanceof IllegalArgumentException);
+            assertTrue(e.getMessage(), e.getMessage().contains("Cannot convert '42'(language: Java, type: java.lang.Integer)"));
         });
         assertFails(() -> function.execute("ok", "not ok"), IllegalArgumentException.class);
 
@@ -996,6 +987,20 @@ public class HostAccessTest extends AbstractHostAccessTest {
         assertEquals("ok", function.invokeMember("apply", "ok").asString());
         assertEquals(42, function.invokeMember("apply", 42).asInt());
         assertEquals("also ok", function.invokeMember("apply", "ok", "also ok").asString());
+
+        // explicitly invoke overloads using qualified parameter types
+        for (String methodNameWithParams : new String[]{
+                        "apply(java.lang.String)",
+                        "apply(int)",
+                        "apply(java.lang.String,java.lang.Object)"}) {
+            assertTrue(methodNameWithParams, function.canInvokeMember(methodNameWithParams));
+        }
+        assertEquals("ok", function.invokeMember("apply(java.lang.String)", "ok").asString());
+        assertEquals(42, function.invokeMember("apply(int)", 42).asInt());
+        assertEquals("also ok", function.invokeMember("apply(java.lang.String,java.lang.Object)", "ok", "also ok").asString());
+
+        // [GR-42882] bridge method apply(Object) for Function.apply(T) not exposed anymore.
+        assertFalse("apply(java.lang.Object)", function.hasMember("apply(java.lang.Object)"));
     }
 
     static class CountingPredicate implements Predicate<Value> {
