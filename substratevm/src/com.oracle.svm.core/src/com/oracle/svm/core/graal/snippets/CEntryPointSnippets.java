@@ -88,6 +88,7 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.Safepoint;
+import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
@@ -155,8 +156,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, CEntryPointCreateIsolateParameters parameters);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate,
-                    boolean startedByIsolate, boolean ensuringJavaThread);
+    public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate, boolean startedByIsolate, boolean ensuringJavaThread);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate);
@@ -202,7 +202,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             writeCurrentVMThread(WordFactory.nullPointer());
         }
         int result = runtimeCall(CREATE_ISOLATE, parameters);
-
         if (result != CEntryPointErrors.NO_ERROR) {
             return result;
         }
@@ -269,8 +268,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
-
-        PlatformThreads.singleton().initializeIsolate();
+        PlatformThreads.singleton().assignMainThread();
         return CEntryPointErrors.NO_ERROR;
     }
 
@@ -405,6 +403,14 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
         }
 
+        /* The isolate is now initialized, so we can finally finish initializing the main thread. */
+        try {
+            ThreadListenerSupport.get().beforeThreadRun();
+        } catch (Throwable t) {
+            System.err.println("Uncaught exception in beforeThreadRun():");
+            t.printStackTrace();
+            return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
+        }
         return CEntryPointErrors.NO_ERROR;
     }
 
@@ -421,8 +427,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (MultiThreaded.getValue()) {
             Safepoint.transitionNativeToJava(false);
         }
+
         if (ensureJavaThread) {
-            runtimeCallEnsureJavaThread(ENSURE_JAVA_THREAD);
+            return runtimeCallEnsureJavaThread(ENSURE_JAVA_THREAD);
         }
         return CEntryPointErrors.NO_ERROR;
     }
@@ -530,11 +537,22 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     }
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    public static native void runtimeCallEnsureJavaThread(@ConstantNodeParameter ForeignCallDescriptor descriptor);
+    public static native int runtimeCallEnsureJavaThread(@ConstantNodeParameter ForeignCallDescriptor descriptor);
 
+    @Uninterruptible(reason = "Prevent stack overflow errors; thread is no longer attached in error case.", calleeMustBe = false)
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static void ensureJavaThread() {
-        PlatformThreads.ensureCurrentAssigned();
+    private static int ensureJavaThread() {
+        try {
+            PlatformThreads.ensureCurrentAssigned();
+            return CEntryPointErrors.NO_ERROR;
+        } catch (Throwable e) {
+            int result = CEntryPointErrors.UNCAUGHT_EXCEPTION;
+            if (e instanceof OutOfMemoryError) {
+                result = CEntryPointErrors.ALLOCATION_FAILED;
+            }
+            CEntryPointActions.leaveDetachThread();
+            return result;
+        }
     }
 
     @Snippet(allowMissingProbabilities = true)
@@ -544,12 +562,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             IsolateThread thread = CurrentIsolate.getCurrentThread();
             result = runtimeCall(DETACH_THREAD_MT, thread);
         }
-
-        /*
-         * Note that we do not reset the fixed registers used for the thread and isolate to null:
-         * Since these values are not copied to different registers when they are used, we need to
-         * keep the registers intact until the last possible point where we are in Java code.
-         */
         return result;
     }
 
