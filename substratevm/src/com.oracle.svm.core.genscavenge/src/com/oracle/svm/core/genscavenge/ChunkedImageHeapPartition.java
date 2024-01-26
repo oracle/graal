@@ -120,18 +120,18 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
         }
     }
 
-    private ImageHeapObject dequeueBestFit(NavigableMap<Long, Queue<ImageHeapObject>> objectsParam, long nbytes) {
+    private ImageHeapObject dequeueBestFit(NavigableMap<Long, Queue<ImageHeapObject>> sortedObjects, long nbytes) {
         if (nbytes < minimumObjectSize) {
             return null;
         }
-        Map.Entry<Long, Queue<ImageHeapObject>> entry = objectsParam.floorEntry(nbytes);
+        Map.Entry<Long, Queue<ImageHeapObject>> entry = sortedObjects.floorEntry(nbytes);
         if (entry == null) {
             return null;
         }
         Queue<ImageHeapObject> queue = entry.getValue();
         ImageHeapObject info = queue.remove();
         if (queue.isEmpty()) {
-            objectsParam.remove(entry.getKey());
+            sortedObjects.remove(entry.getKey());
         }
         return info;
     }

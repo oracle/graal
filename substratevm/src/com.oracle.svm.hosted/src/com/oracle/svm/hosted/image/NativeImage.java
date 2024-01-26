@@ -185,8 +185,10 @@ public abstract class NativeImage extends AbstractImage {
 
     void writeHeaderFiles(Path outputDir, String imageName, boolean dynamic) {
         /* Group methods by header files. */
-        Map<? extends Class<? extends Header>, List<HostedMethod>> hostedMethods = uniqueEntryPoints.stream().filter(this::shouldWriteHeader).map(m -> Pair.create(cHeader(m), m)).collect(
-                        Collectors.groupingBy(Pair::getLeft, Collectors.mapping(Pair::getRight, Collectors.toList())));
+        Map<? extends Class<? extends Header>, List<HostedMethod>> hostedMethods = uniqueEntryPoints.stream() //
+                        .filter(this::shouldWriteHeader) //
+                        .map(m -> Pair.create(cHeader(m), m)) //
+                        .collect(Collectors.groupingBy(Pair::getLeft, Collectors.mapping(Pair::getRight, Collectors.toList())));
 
         hostedMethods.forEach((headerClass, methods) -> {
             methods.sort(NativeImage::sortMethodsByFileNameAndPosition);
@@ -207,7 +209,9 @@ public abstract class NativeImage extends AbstractImage {
 
         writer.writeCStandardHeaders();
 
-        List<String> dependencies = header.dependsOn().stream().map(NativeImage::instantiateCHeader).map(depHeader -> "<" + depHeader.name() + dynamicSuffix + ">").collect(Collectors.toList());
+        List<String> dependencies = header.dependsOn().stream() //
+                        .map(NativeImage::instantiateCHeader) //
+                        .map(depHeader -> "<" + depHeader.name() + dynamicSuffix + ">").collect(Collectors.toList());
         writer.includeFiles(dependencies);
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();

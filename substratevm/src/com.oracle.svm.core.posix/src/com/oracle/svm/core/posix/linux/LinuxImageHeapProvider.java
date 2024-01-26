@@ -162,13 +162,12 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
     }
 
     @Uninterruptible(reason = "Called during isolate initialization.")
-    private static int initializeImageHeap(Pointer imageHeapParam, UnsignedWord reservedSize, WordPointer endPointer, WordPointer cachedFd, WordPointer cachedOffsetInFile,
+    private static int initializeImageHeap(Pointer imageHeap, UnsignedWord reservedSize, WordPointer endPointer, WordPointer cachedFd, WordPointer cachedOffsetInFile,
                     Pointer magicAddress, Word heapBeginSym, Word heapEndSym, Word heapRelocsSym, Pointer heapAnyRelocPointer, Word heapRelocsEndSym, Word heapWritableSym, Word heapWritableEndSym) {
         assert heapBeginSym.belowOrEqual(heapWritableSym) && heapWritableSym.belowOrEqual(heapWritableEndSym) && heapWritableEndSym.belowOrEqual(heapEndSym);
         assert heapBeginSym.belowOrEqual(heapRelocsSym) && heapRelocsSym.belowOrEqual(heapRelocsEndSym) && heapRelocsEndSym.belowOrEqual(heapEndSym);
         assert heapAnyRelocPointer.isNull() || (heapRelocsSym.belowOrEqual(heapAnyRelocPointer) && heapAnyRelocPointer.belowThan(heapRelocsEndSym));
 
-        Pointer imageHeap = imageHeapParam;
         SignedWord fd = cachedFd.read();
 
         /*
@@ -206,8 +205,8 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
 
         // Create memory mappings from the image file.
         UnsignedWord fileOffset = cachedOffsetInFile.read();
-        imageHeap = VirtualMemoryProvider.get().mapFile(imageHeap, imageHeapSize, fd, fileOffset, Access.READ);
-        if (imageHeap.isNull()) {
+        Pointer mappedImageHeap = VirtualMemoryProvider.get().mapFile(imageHeap, imageHeapSize, fd, fileOffset, Access.READ);
+        if (mappedImageHeap.isNull() || mappedImageHeap != imageHeap) {
             return CEntryPointErrors.MAP_HEAP_FAILED;
         }
 

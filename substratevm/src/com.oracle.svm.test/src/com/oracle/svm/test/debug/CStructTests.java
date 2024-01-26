@@ -39,6 +39,8 @@ import org.graalvm.word.SignedWord;
 
 import com.oracle.svm.core.NeverInline;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
+
 @CContext(CInterfaceDebugTestDirectives.class)
 public class CStructTests {
     @CPointerTo(nameOfCType = "int")
@@ -116,7 +118,7 @@ public class CStructTests {
             ]}
         ])
      */
-    public void weird() {
+    public static void weird() {
         Weird wd = UnmanagedMemory.malloc(SizeOf.get(Weird.class));
 
         wd.setf_short((short) 42);
@@ -205,7 +207,7 @@ public class CStructTests {
             ]}
         ])
      */
-    public void composite() {
+    public static void composite() {
         CompositeStruct cs = UnmanagedMemory.malloc(3 * SizeOf.get(CompositeStruct.class));
         cs.setC1((byte) 7);
         cs.setC3(13);
@@ -217,7 +219,7 @@ public class CStructTests {
         free(cs);
     }
 
-    public void mixedArguments() {
+    public static void mixedArguments() {
         SimpleStruct ss1 = UnmanagedMemory.malloc(SizeOf.get(SimpleStruct.class));
         SimpleStruct2 ss2 = UnmanagedMemory.malloc(SizeOf.get(SimpleStruct2.class));
         String m1 = "a message in a bottle";
@@ -232,17 +234,19 @@ public class CStructTests {
         free(ss2);
     }
 
-    @SuppressWarnings("unused")
-    public void testMixedArguments(String m1, short s, SimpleStruct ss1, long l, String m2, SimpleStruct2 ss2, String m3) {
+    private static void testMixedArguments(String m1, short s, SimpleStruct ss1, long l, String m2, SimpleStruct2 ss2, String m3) {
         System.out.println("You find " + m1);
         System.out.println("You find " + m2);
         System.out.println("You find " + m3);
+        GraalDirectives.blackhole(s);
+        GraalDirectives.blackhole(ss1);
+        GraalDirectives.blackhole(l);
+        GraalDirectives.blackhole(ss2);
     }
 
     public static void main(String[] args) {
-        CStructTests tests = new CStructTests();
-        tests.composite();
-        tests.weird();
+        CStructTests.composite();
+        CStructTests.weird();
     }
 
     @NeverInline("Used as a hook to inspect the caller frame in GDB")

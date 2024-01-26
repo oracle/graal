@@ -46,7 +46,6 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.util.GraalAccess;
-import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
@@ -173,7 +172,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
-    @SuppressWarnings("unused") private final ParsingReason reason;
     private final Providers parsingProviders;
     private final HostedProviders universeProviders;
     private final AnalysisUniverse aUniverse;
@@ -185,9 +183,8 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     private final ResolvedJavaType methodHandleType;
     private final ResolvedJavaType varHandleType;
 
-    public IntrinsifyMethodHandlesInvocationPlugin(ParsingReason reason, HostedSnippetReflectionProvider hostedSnippetReflection, HostedProviders providers, AnalysisUniverse aUniverse,
+    public IntrinsifyMethodHandlesInvocationPlugin(HostedSnippetReflectionProvider hostedSnippetReflection, HostedProviders providers, AnalysisUniverse aUniverse,
                     HostedUniverse hUniverse) {
-        this.reason = reason;
         this.aUniverse = aUniverse;
         this.hUniverse = hUniverse;
         this.universeProviders = providers;
@@ -545,7 +542,9 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         GraphBuilderPhase.Instance graphBuilder = new HotSpotGraphBuilderInstance(parsingProviders, graphBuilderConfig, OptimisticOptimizations.NONE, null);
 
         DebugContext debug = b.getDebug();
-        StructuredGraph graph = new StructuredGraph.Builder(b.getOptions(), debug).method(toOriginal(methodHandleMethod)).recordInlinedMethods(false).build();
+        StructuredGraph graph = new StructuredGraph.Builder(b.getOptions(), debug) //
+                        .method(toOriginal(methodHandleMethod)) //
+                        .recordInlinedMethods(false).build();
         try (DebugContext.Scope s = debug.scope("IntrinsifyMethodHandles", graph)) {
             graphBuilder.apply(graph);
             /*
