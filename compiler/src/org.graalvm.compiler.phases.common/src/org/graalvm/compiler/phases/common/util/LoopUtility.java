@@ -102,13 +102,15 @@ public class LoopUtility {
     public static long abs(long l, int bits) throws ArithmeticException {
         if (bits == 32) {
             if (l == Integer.MIN_VALUE) {
-                throw new ArithmeticException("Abs on Integer.MIN_VALUE would cause an overflow because abs(Integer.MIN_VALUE) = Integer.MAX_VALUE + 1 which does not fit in int (32 bits)");            } else {
+                throw new ArithmeticException("Abs on Integer.MIN_VALUE would cause an overflow because abs(Integer.MIN_VALUE) = Integer.MAX_VALUE + 1 which does not fit in int (32 bits)");
+            } else {
                 final int i = (int) l;
                 return Math.abs(i);
             }
         } else if (bits == 64) {
             if (l == Long.MIN_VALUE) {
-                throw new ArithmeticException("Abs on Long.MIN_VALUE would cause an overflow because abs(Long.MIN_VALUE) = Long.MAX_VALUE + 1 which does not fit in long (64 bits)");            } else {
+                throw new ArithmeticException("Abs on Long.MIN_VALUE would cause an overflow because abs(Long.MIN_VALUE) = Long.MAX_VALUE + 1 which does not fit in long (64 bits)");
+            } else {
                 return Math.abs(l);
             }
         } else {
