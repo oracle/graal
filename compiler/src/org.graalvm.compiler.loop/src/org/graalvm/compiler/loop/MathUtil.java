@@ -25,7 +25,6 @@
 package org.graalvm.compiler.loop;
 
 import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -42,7 +41,6 @@ import java.util.function.BiFunction;
  * Utility methods to perform integer math with some obvious constant folding first.
  */
 public class MathUtil {
-
     private static boolean isConstantOne(ValueNode v1) {
         return v1.isConstant() && v1.stamp(NodeView.DEFAULT) instanceof IntegerStamp && v1.asJavaConstant().asLong() == 1;
     }
