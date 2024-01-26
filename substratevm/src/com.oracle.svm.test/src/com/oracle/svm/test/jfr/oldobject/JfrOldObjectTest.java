@@ -55,7 +55,7 @@ import jdk.jfr.consumer.RecordedObject;
 import jdk.jfr.consumer.RecordedThread;
 
 public abstract class JfrOldObjectTest extends JfrRecordingTest {
-    @Rule public TestName name = new TestName();
+    @Rule public TestName testName = new TestName();
 
     @Before
     public void updateMemoryUsedAfterLastGC() {
@@ -113,7 +113,7 @@ public abstract class JfrOldObjectTest extends JfrRecordingTest {
 
                 List<RecordedFrame> frames = event.getStackTrace().getFrames();
                 assertTrue(frames.size() > 0);
-                assertTrue(frames.stream().anyMatch(e -> name.getMethodName().equals(e.getMethod().getName())));
+                assertTrue(frames.stream().anyMatch(e -> testName.getMethodName().equals(e.getMethod().getName())));
 
                 long allocationTime = event.getLong("allocationTime");
                 assertTrue(allocationTime > 0);

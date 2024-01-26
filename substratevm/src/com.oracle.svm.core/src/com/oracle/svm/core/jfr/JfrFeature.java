@@ -186,6 +186,7 @@ public class JfrFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         RuntimeSupport runtime = RuntimeSupport.getRuntimeSupport();
+        runtime.addInitializationHook(JfrManager.initializationHook());
         runtime.addStartupHook(JfrManager.startupHook());
         runtime.addShutdownHook(JfrManager.shutdownHook());
     }

@@ -59,6 +59,7 @@ public final class JfrOldObject implements UninterruptibleComparable, Uninterrup
         this.reference = new WeakReference<>(null);
     }
 
+    @SuppressWarnings("hiding")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void initialize(Object obj, UnsignedWord allocatedSize, long threadId, long stackTraceId, UnsignedWord heapUsedAfterLastGC, int arrayLength) {
         ReferenceInternals.setReferent(reference, obj);

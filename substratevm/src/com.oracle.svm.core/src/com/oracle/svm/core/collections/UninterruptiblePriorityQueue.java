@@ -134,6 +134,7 @@ public class UninterruptiblePriorityQueue {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @SuppressWarnings("all")
     private static void siftUp(int k, UninterruptibleComparable x, UninterruptibleComparable[] es) {
         while (k > 0) {
             int parent = (k - 1) >>> 1;
@@ -148,6 +149,7 @@ public class UninterruptiblePriorityQueue {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @SuppressWarnings("all")
     private static void siftDown(int k, UninterruptibleComparable x, UninterruptibleComparable[] es, int n) {
         // assert n > 0;
         int half = n >>> 1;           // loop while a non-leaf

@@ -212,7 +212,7 @@ public class TestOldObjectProfiler extends AbstractJfrTest {
             Object obj = cur.getReferent();
             if (obj != null) {
                 assertTrue(obj instanceof TinyObject);
-                assertTrue(remainingObjects.remove((TinyObject) obj));
+                assertTrue(remainingObjects.remove(obj));
                 assertTrue(cur.getObjectSize().aboveThan(0));
                 assertTrue(cur.getAllocationTicks() > 0);
                 assertEquals(Thread.currentThread().threadId(), cur.getThreadId());
