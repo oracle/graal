@@ -1275,6 +1275,34 @@ libgraal_jar_distributions = [
     'sdk:JNIUTILS',
     'substratevm:GRAAL_HOTSPOT_LIBRARY']
 
+def allow_build_path_in_libgraal():
+    """
+    Determines if the ALLOW_ABSOLUTE_PATHS_IN_OUTPUT env var is any other value than ``false``.
+    """
+    return mx.get_env('ALLOW_ABSOLUTE_PATHS_IN_OUTPUT', None) != 'false'
+
+def prevent_build_path_in_libgraal():
+    """
+    If `allow_build_path_in_libgraal() == False`, returns linker
+    options to prevent the build path from showing up in a string in libgraal.
+    """
+    if not allow_build_path_in_libgraal():
+        if mx.is_linux():
+            return ['-H:NativeLinkerOption=-Wl,-soname=libjvmcicompiler.so']
+        if mx.is_darwin():
+            return [
+                '-H:NativeLinkerOption=-Wl,-install_name,@rpath/libjvmcicompiler.dylib',
+
+                # native-image doesn't support generating debug info on Darwin
+                # but the helper C libraries are built with debug info which
+                # can include the build path. Use the -S to strip the debug info
+                # info from the helper C libraries to avoid these paths.
+                '-H:NativeLinkerOption=-Wl,-S'
+            ]
+        if mx.is_windows():
+            return ['-H:NativeLinkerOption=-pdbaltpath:%_PDB%']
+    return []
+
 libgraal_build_args = [
     ## Pass via JVM args opening up of packages needed for image builder early on
     '-J--add-exports=jdk.graal.compiler/jdk.graal.compiler.hotspot=ALL-UNNAMED',
@@ -1335,15 +1363,7 @@ libgraal_build_args = [
 ] if mx.get_arch() == 'aarch64' else []) + ([
     # Build libgraal with 'Full RELRO' to prevent GOT overwriting exploits on Linux (GR-46838)
     '-H:NativeLinkerOption=-Wl,-z,relro,-z,now',
-    # Ensure shared library name in binary does not use fully qualified build-path (GR-46837)
-    '-H:NativeLinkerOption=-Wl,-soname=libjvmcicompiler.so',
-] if mx.is_linux() else [
-    # Ensure shared library name in binary does not use fully qualified build-path (GR-46837)
-    '-H:NativeLinkerOption=-Wl,-install_name,@rpath/libjvmcicompiler.dylib'
-] if mx.is_darwin() else [
-    # Ensure shared library name in binary does not use fully qualified build-path (GR-46837)
-    '-H:NativeLinkerOption=-pdbaltpath:%_PDB%'
-] if mx.is_windows() else []))
+] if mx.is_linux() else [])) + prevent_build_path_in_libgraal()
 
 libgraal = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
@@ -1366,7 +1386,7 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
             add_to_module='java.base',
             headers=False,
             home_finder=False,
-            find_bad_strings=True,
+            find_bad_strings=not allow_build_path_in_libgraal(),
         ),
     ],
     support_libraries_distributions=[],
