@@ -1013,7 +1013,8 @@ public abstract class RegexLexer {
         int startPos = position - 1;
         final long min;
         final long max;
-        if (c == '{') {
+        final boolean braces = c == '{';
+        if (braces) {
             if (lookahead("}")) {
                 return handleBoundedQuantifierEmptyOrMissingMin();
             }
@@ -1075,7 +1076,7 @@ public abstract class RegexLexer {
             possessive = true;
         }
 
-        return Token.createQuantifier((int) min, (int) max, greedy, possessive, pattern.substring(startPos, position));
+        return Token.createQuantifier((int) min, (int) max, greedy, possessive, !braces);
     }
 
     private boolean isQuantifierOutOfOrder(long parsedMin, long parsedMax, int startMin, int lengthMin, int lengthMax) {

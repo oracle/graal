@@ -117,12 +117,12 @@ public class JavaRegexValidator implements RegexValidator {
                 case quantifier:
                     Token.Quantifier quantifier = (Token.Quantifier) token;
                     // quantifiers of type *, + or ? cannot directly follow another quantifier
-                    if (last instanceof Token.Quantifier && isDanglingMetaCharacterCandidate(quantifier)) {
-                        throw syntaxErrorHere(JavaErrorMessages.danglingMetaCharacter(quantifier.getRaw().charAt(0)));
+                    if (last instanceof Token.Quantifier && quantifier.isSingleChar()) {
+                        throw syntaxErrorHere(JavaErrorMessages.danglingMetaCharacter(quantifier));
                     }
 
-                    if (curTermState == CurTermState.Null && isDanglingMetaCharacterCandidate(quantifier)) {
-                        throw syntaxErrorHere(JavaErrorMessages.danglingMetaCharacter(quantifier.getRaw().charAt(0)));
+                    if (curTermState == CurTermState.Null && quantifier.isSingleChar()) {
+                        throw syntaxErrorHere(JavaErrorMessages.danglingMetaCharacter(quantifier));
                     }
 
                     if (quantifier.isPossessive()) {
@@ -177,10 +177,4 @@ public class JavaRegexValidator implements RegexValidator {
         return RegexSyntaxException.createPattern(source, message, lexer.getLastTokenPosition());
     }
 
-    private static boolean isDanglingMetaCharacterCandidate(Token.Quantifier quantifier) {
-        return switch (quantifier.getRaw().charAt(0)) {
-            case '*', '+', '?' -> true;
-            default -> false;
-        };
-    }
 }

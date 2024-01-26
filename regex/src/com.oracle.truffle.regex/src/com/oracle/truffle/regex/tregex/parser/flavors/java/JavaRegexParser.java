@@ -116,8 +116,8 @@ public final class JavaRegexParser implements RegexParser {
                 case Z:
                     pushGroup(); // (?:
                     lineTerminators();
+                    nextSequence();
                     popGroup(); // )
-                    addQuantifier(Token.createQuantifier(0, 1, true));
                     addDollar();
                     break;
                 case z:
@@ -149,8 +149,8 @@ public final class JavaRegexParser implements RegexParser {
                 case quantifier:
                     Token.Quantifier quantifier = (Token.Quantifier) token;
                     // quantifiers of type *, + or ? cannot directly follow another quantifier
-                    if (last instanceof Token.Quantifier && isDanglingMetaCharacterCandidate(quantifier)) {
-                        throw syntaxErrorHere(JavaErrorMessages.danglingMetaCharacter(quantifier.getRaw().charAt(0)));
+                    if (last instanceof Token.Quantifier && quantifier.isSingleChar()) {
+                        throw syntaxErrorHere(JavaErrorMessages.danglingMetaCharacter(quantifier));
                     }
 
                     if (astBuilder.getCurTerm() != null) {
@@ -160,8 +160,8 @@ public final class JavaRegexParser implements RegexParser {
 
                         addQuantifier((Token.Quantifier) token);
                     } else {
-                        if (isDanglingMetaCharacterCandidate(quantifier)) {
-                            throw syntaxErrorHere(JavaErrorMessages.danglingMetaCharacter(quantifier.getRaw().charAt(0)));
+                        if (quantifier.isSingleChar()) {
+                            throw syntaxErrorHere(JavaErrorMessages.danglingMetaCharacter(quantifier));
                         }
                     }
                     break;
@@ -264,7 +264,7 @@ public final class JavaRegexParser implements RegexParser {
         addCharClass(notWordNorNsm);
         popGroup();
         addCharClass(nsm);
-        addQuantifier(Token.createQuantifier(0, Token.Quantifier.INFINITY, true));
+        addQuantifier(Token.createQuantifier(0, Token.Quantifier.INFINITY, true, false, true));
         popGroup();
 
         // after (any word character)
@@ -279,7 +279,7 @@ public final class JavaRegexParser implements RegexParser {
         pushLookBehindAssertion();
         addCharClass(wordChars);
         addCharClass(nsm);
-        addQuantifier(Token.createQuantifier(0, Token.Quantifier.INFINITY, true));
+        addQuantifier(Token.createQuantifier(0, Token.Quantifier.INFINITY, true, false, true));
         popGroup();
 
         // after (any character that's not an accent nor a word character, or EOI)
@@ -408,12 +408,11 @@ public final class JavaRegexParser implements RegexParser {
         } else {
             addCharClass(CodePointSet.create('\r'));
             addCharClass(CodePointSet.create('\n'));
-            addQuantifier(Token.createQuantifier(0, 1, true));
 
             nextSequence(); // |
 
             addCharClass(CodePointSet.createNoDedup(
-                            '\n', '\n', 0x0085, 0x0085, 0x2028, 0x2029));
+                            '\n', '\n', '\r', '\r', 0x0085, 0x0085, 0x2028, 0x2029));
         }
     }
 
@@ -453,13 +452,6 @@ public final class JavaRegexParser implements RegexParser {
 
     private void addQuantifier(Token.Quantifier quantifier) {
         astBuilder.addQuantifier(quantifier);
-    }
-
-    private static boolean isDanglingMetaCharacterCandidate(Token.Quantifier quantifier) {
-        return switch (quantifier.getRaw().charAt(0)) {
-            case '*', '+', '?' -> true;
-            default -> false;
-        };
     }
 
 }
