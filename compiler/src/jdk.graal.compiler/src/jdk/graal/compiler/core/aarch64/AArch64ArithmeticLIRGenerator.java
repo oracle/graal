@@ -63,7 +63,6 @@ import jdk.graal.compiler.lir.aarch64.AArch64ReinterpretOp;
 import jdk.graal.compiler.lir.aarch64.AArch64RoundFloatToIntegerOp;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGenerator;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
-
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
@@ -242,7 +241,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public Value emitFloatConvert(FloatConvert op, Value inputVal) {
+    public Value emitFloatConvert(FloatConvert op, Value inputVal, boolean canBeNaN, boolean canOverflow) {
         PlatformKind resultPlatformKind = getFloatConvertResultKind(op);
         LIRKind resultLirKind = LIRKind.combine(inputVal).changeType(resultPlatformKind);
         Variable result = getLIRGen().newVariable(resultLirKind);
