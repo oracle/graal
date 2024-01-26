@@ -2008,7 +2008,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         Quantifier quantifier = parseQuantifier(ch);
         if (quantifier != null) {
             if (canHaveQuantifier) {
-                addQuantifier(Token.createQuantifier(quantifier.lower, quantifier.upper, quantifier.greedy, quantifier.possessive));
+                addQuantifier(Token.createQuantifier(quantifier.lower, quantifier.upper, quantifier.greedy, quantifier.possessive, ch != '{'));
             } else {
                 throw syntaxErrorAt(RbErrorMessages.NOTHING_TO_REPEAT, start);
             }

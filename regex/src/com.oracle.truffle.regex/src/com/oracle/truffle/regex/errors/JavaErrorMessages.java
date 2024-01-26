@@ -41,6 +41,8 @@
 
 package com.oracle.truffle.regex.errors;
 
+import com.oracle.truffle.regex.tregex.parser.Token;
+
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public interface JavaErrorMessages {
@@ -142,7 +144,7 @@ public interface JavaErrorMessages {
     }
 
     @TruffleBoundary
-    static String danglingMetaCharacter(char quantifier) {
+    static String danglingMetaCharacter(Token.Quantifier quantifier) {
         return "Dangling meta character '" + quantifier + "'";
     }
 }

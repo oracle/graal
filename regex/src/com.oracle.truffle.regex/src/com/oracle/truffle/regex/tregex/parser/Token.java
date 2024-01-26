@@ -178,20 +178,8 @@ public class Token implements JsonConvertible {
         return new BackReference(Kind.backReference, groupNumbers, namedReference);
     }
 
-    public static Quantifier createQuantifier(int min, int max, boolean greedy) {
-        return new Quantifier(min, max, greedy);
-    }
-
-    public static Quantifier createQuantifier(int min, int max, boolean greedy, boolean possessive) {
-        return new Quantifier(min, max, greedy, possessive);
-    }
-
-    public static Quantifier createQuantifier(int min, int max, boolean greedy, String raw) {
-        return new Quantifier(min, max, greedy, raw);
-    }
-
-    public static Quantifier createQuantifier(int min, int max, boolean greedy, boolean possessive, String raw) {
-        return new Quantifier(min, max, greedy, possessive, raw);
+    public static Quantifier createQuantifier(int min, int max, boolean greedy, boolean possessive, boolean singleChar) {
+        return new Quantifier(min, max, greedy, possessive, singleChar);
     }
 
     public static LiteralCharacter createLiteralCharacter(int codePoint) {
@@ -276,29 +264,17 @@ public class Token implements JsonConvertible {
         private final int max;
         private final boolean greedy;
         private final boolean possessive;
-        private final String raw;
+        private final boolean singleChar;
         @CompilationFinal private int index = -1;
         @CompilationFinal private int zeroWidthIndex = -1;
 
-        public Quantifier(int min, int max, boolean greedy, boolean possessive, String raw) {
+        public Quantifier(int min, int max, boolean greedy, boolean possessive, boolean singleChar) {
             super(Kind.quantifier);
             this.min = min;
             this.max = max;
             this.greedy = greedy;
             this.possessive = possessive;
-            this.raw = raw;
-        }
-
-        public Quantifier(int min, int max, boolean greedy) {
-            this(min, max, greedy, false, null);
-        }
-
-        public Quantifier(int min, int max, boolean greedy, boolean possessive) {
-            this(min, max, greedy, possessive, null);
-        }
-
-        public Quantifier(int min, int max, boolean greedy, String raw) {
-            this(min, max, greedy, false, raw);
+            this.singleChar = singleChar;
         }
 
         public boolean isInfiniteLoop() {
@@ -319,16 +295,20 @@ public class Token implements JsonConvertible {
             return max;
         }
 
-        public String getRaw() {
-            return raw;
-        }
-
         public boolean isGreedy() {
             return greedy;
         }
 
         public boolean isPossessive() {
             return possessive;
+        }
+
+        /**
+         * Returns {@code true} iff the quantifier was created from a shorthand character, i.e. one
+         * of {@code '?'}, {@code '*'} or {@code '+'}.
+         */
+        public boolean isSingleChar() {
+            return singleChar;
         }
 
         public boolean hasIndex() {
@@ -414,14 +394,16 @@ public class Token implements JsonConvertible {
         }
 
         private String minMaxToString() {
-            if (min == 0 && max == 1) {
-                return "?";
-            }
-            if (min == 0 && isInfiniteLoop()) {
-                return "*";
-            }
-            if (min == 1 && isInfiniteLoop()) {
-                return "+";
+            if (isSingleChar()) {
+                if (min == 0 && max == 1) {
+                    return "?";
+                }
+                if (min == 0 && isInfiniteLoop()) {
+                    return "*";
+                }
+                if (min == 1 && isInfiniteLoop()) {
+                    return "+";
+                }
             }
             return String.format("{%d,%s}", min, isInfiniteLoop() ? "" : String.valueOf(max));
         }

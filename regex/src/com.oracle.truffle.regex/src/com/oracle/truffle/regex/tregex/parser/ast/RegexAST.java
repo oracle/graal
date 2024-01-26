@@ -583,7 +583,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
      * counterparts.</li>
      * <li>Nodes inserted as substitutions for e.g. {@code \b} will simply point to the source
      * section they are substituting.</li>
-     * <li>Source sections of {@link Token#createQuantifier(int, int, boolean)} quantifiers} are
+     * <li>Source sections of {@link Token#createQuantifier(int, int, boolean, boolean, boolean)} quantifiers} are
      * mapped to their respective {@link Term}.</li>
      * </ul>
      */
