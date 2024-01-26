@@ -917,6 +917,7 @@ public final class ArithmeticOpTable {
          * Determine if this is a floating-point to integer conversion whose result may be outside
          * the range of the target type.
          */
+        @SuppressWarnings("unused")
         public boolean canOverflowInteger(Stamp inputStamp) {
             if (op.getCategory().equals(FloatConvertCategory.FloatingPointToInteger)) {
                 throw GraalError.unimplementedOverride();

@@ -906,6 +906,7 @@ suite = {
       ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "22+",
+      "forceJavac": True,
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
       # disable SpotBugs and Jacoco as long as JDK 22 is unsupported [GR-49566]
@@ -1826,6 +1827,7 @@ suite = {
       },
       "subDir" : "src",
       "javaCompliance" : "22+",
+      "forceJavac": True,
       "dependencies" : [
         "com.oracle.truffle.nfi.backend.panama",
       ],

@@ -84,7 +84,7 @@ public final class DeferredCommonPool extends ForkJoinPool {
         return ForkJoinPool.commonPool().submit(task);
     }
 
-    @SuppressWarnings({"unchecked", "static-method"})
+    @SuppressWarnings({"unchecked", "static-method", "all"})
     public <T> List<Future<T>> invokeAllUninterruptibly(Collection<? extends Callable<T>> tasks) {
         VMError.guarantee(JavaVersionUtil.JAVA_SPEC >= 22, "invokeAllUninterruptibly only exists in JDK 22+");
         var m = ReflectionUtil.lookupMethod(ForkJoinPool.class, "invokeAllUninterruptibly", Collection.class);
