@@ -85,16 +85,11 @@ final class AnalysisMethodHandleAccessProvider implements MethodHandleAccessProv
         return analysisUniverse.lookup(method);
     }
 
-    private JavaConstant toOriginalConstant(JavaConstant c) {
-        JavaConstant constant = c;
-        if (constant instanceof ImageHeapConstant imageHeapConstant) {
-            constant = imageHeapConstant.getHostedObject();
-        }
-
-        if (constant == null) {
+    private JavaConstant toOriginalConstant(JavaConstant constant) {
+        if (constant instanceof ImageHeapConstant imageHeapConstant && !imageHeapConstant.isBackedByHostedObject()) {
             return null;
         }
-        Object obj = analysisUniverse.getHostedValuesProvider().asObject(Object.class, constant);
+        Object obj = analysisUniverse.getSnippetReflection().asObject(Object.class, constant);
         return originalSnippetReflection.forObject(obj);
     }
 }

@@ -33,12 +33,10 @@ import java.util.List;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
-import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.bootstrap.BootstrapMethodConfiguration;
-import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.util.ModuleSupport;
@@ -182,12 +180,10 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
             MethodType methodType = getSnippetReflection().asObject(MethodType.class, bootstrap.getType());
 
             for (JavaConstant argument : staticArgumentsList) {
-                if (argument instanceof ImageHeapInstance imageHeapInstance) {
-                    Object arg = ((DirectSubstrateObjectConstant) imageHeapInstance.getHostedObject()).getObject();
-                    if (arg instanceof UnresolvedJavaType unresolvedJavaType) {
-                        handleUnresolvedType(unresolvedJavaType);
-                        return;
-                    }
+                Object arg = getSnippetReflection().asObject(Object.class, argument);
+                if (arg instanceof UnresolvedJavaType unresolvedJavaType) {
+                    handleUnresolvedType(unresolvedJavaType);
+                    return;
                 }
             }
 
