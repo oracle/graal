@@ -93,7 +93,7 @@ class AbstractNativeImageConfig(object, metaclass=ABCMeta):
         :type home_finder: bool
         :type build_time: int
         :type build_args_enterprise: list[str] | None
-        :param bool find_bad_strings: If true, check that the native image does not contain 'bad strings' (e.g., absolute paths)
+        :param bool find_bad_strings: If true, check that the native image does not contain strings whose prefix is the absolute path of the SDK suite
         """
         self.destination = mx_subst.path_substitutions.substitute(destination)
         self.jar_distributions = jar_distributions

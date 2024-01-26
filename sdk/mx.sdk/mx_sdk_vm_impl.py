@@ -1237,13 +1237,14 @@ class SvmSupport(object):
 
         mx.run(native_image_command, nonZeroIsFatal=True, out=out, err=err)
 
+        # Ensure there are no strings in the native image whose prefix is the absolute path of the SDK suite
         if find_bad_strings:
             tool_path = join(_suite.dir, 'src/org.graalvm.nativeimage.test/src/org/graalvm/nativeimage/test/FindPathsInBinary.java'.replace('/', os.sep))
-            cmd = [_src_jdk.java, tool_path, output_file, output_directory, dirname(native_image_bin)]
+            cmd = [_src_jdk.java, tool_path, output_file, _suite.dir]
             mx.logv(' '.join(cmd))
             matches = subprocess.check_output(cmd, text=True).strip()
             if len(matches) != 0:
-                mx.abort(f" Found illegal strings in native image {output_file}:\n{matches}")
+                mx.abort(f"Found strings in native image {output_file} with illegal prefix \"{_suite.dir}\":\n{matches}\n\nRe-run: {' '.join(cmd)}")
 
     def is_debug_supported(self):
         return self._debug_supported
