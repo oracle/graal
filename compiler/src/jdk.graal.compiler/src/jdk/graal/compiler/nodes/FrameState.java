@@ -931,8 +931,12 @@ public final class FrameState extends VirtualState implements IterableNodeType {
             }
             if (stackState == StackState.BeforePop && Assertions.detailedAssertionsEnabled(graph().getOptions())) {
                 EconomicMap<VirtualObjectNode, EscapeObjectState> objectToState = EconomicMap.create();
-                for (EscapeObjectState state : virtualObjectMappings()) {
-                    objectToState.put(state.object(), state);
+                FrameState current = this;
+                while (current != null && current.virtualObjectMappingCount() > 0) {
+                    for (EscapeObjectState state : current.virtualObjectMappings()) {
+                        objectToState.put(state.object(), state);
+                    }
+                    current = current.outerFrameState;
                 }
                 for (VirtualObjectNode object : values().filter(VirtualObjectNode.class)) {
                     if (object.entryCount() > 0) {
