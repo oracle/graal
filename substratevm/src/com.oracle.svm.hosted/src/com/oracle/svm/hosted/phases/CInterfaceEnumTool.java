@@ -33,7 +33,6 @@ import com.oracle.svm.core.c.enums.EnumRuntimeData;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.info.EnumInfo;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
@@ -65,13 +64,11 @@ public class CInterfaceEnumTool {
         }
     }
 
-    private final SnippetReflectionProvider snippetReflection;
     private final AnalysisMethod convertJavaToCLongMethod;
     private final AnalysisMethod convertJavaToCIntMethod;
     private final AnalysisMethod convertCToJavaMethod;
 
-    public CInterfaceEnumTool(AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflection) {
-        this.snippetReflection = snippetReflection;
+    public CInterfaceEnumTool(AnalysisMetaAccess metaAccess) {
         try {
             convertJavaToCLongMethod = metaAccess.lookupJavaMethod(EnumRuntimeData.class.getDeclaredMethod("convertJavaToCLong", Enum.class));
             convertJavaToCIntMethod = metaAccess.lookupJavaMethod(EnumRuntimeData.class.getDeclaredMethod("convertJavaToCInt", Enum.class));
@@ -101,7 +98,7 @@ public class CInterfaceEnumTool {
         AnalysisMethod valueMethod = getValueMethodForKind(resultKind);
         AnalysisType returnType = valueMethod.getSignature().getReturnType();
         ValueNode[] args = new ValueNode[2];
-        args[0] = ConstantNode.forConstant(snippetReflection.forObject(enumInfo.getRuntimeData()), b.getMetaAccess(), b.getGraph());
+        args[0] = ConstantNode.forConstant(b.getSnippetReflection().forObject(enumInfo.getRuntimeData()), b.getMetaAccess(), b.getGraph());
         args[1] = arg;
 
         StampPair returnStamp = StampFactory.forDeclaredType(null, returnType, false);
@@ -126,7 +123,7 @@ public class CInterfaceEnumTool {
 
     private MethodCallTargetNode invokeEnumLookup(GraphBuilderTool b, CallTargetFactory callTargetFactory, int bci, EnumInfo enumInfo, JavaKind parameterKind, ValueNode arg) {
         ValueNode[] args = new ValueNode[2];
-        args[0] = ConstantNode.forConstant(snippetReflection.forObject(enumInfo.getRuntimeData()), b.getMetaAccess(), b.getGraph());
+        args[0] = ConstantNode.forConstant(b.getSnippetReflection().forObject(enumInfo.getRuntimeData()), b.getMetaAccess(), b.getGraph());
         assert !Modifier.isStatic(convertCToJavaMethod.getModifiers()) && convertCToJavaMethod.getSignature().getParameterCount(false) == 1;
         JavaKind expectedKind = convertCToJavaMethod.getSignature().getParameterType(0).getJavaKind();
         args[1] = CInterfaceInvocationPlugin.adaptPrimitiveType(b.getGraph(), arg, parameterKind, expectedKind, false);

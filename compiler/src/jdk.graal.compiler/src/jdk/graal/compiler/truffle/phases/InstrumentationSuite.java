@@ -24,19 +24,17 @@
  */
 package jdk.graal.compiler.truffle.phases;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.truffle.TruffleTierContext;
 
 public class InstrumentationSuite extends PhaseSuite<TruffleTierContext> {
     @SuppressWarnings("this-escape")
-    public InstrumentationSuite(InstrumentPhase.InstrumentationConfiguration instrumentationCfg, SnippetReflectionProvider snippetReflection,
-                    InstrumentPhase.Instrumentation instrumentation) {
+    public InstrumentationSuite(InstrumentPhase.InstrumentationConfiguration instrumentationCfg, InstrumentPhase.Instrumentation instrumentation) {
         if (instrumentationCfg.instrumentBranches) {
-            appendPhase(new InstrumentBranchesPhase(snippetReflection, instrumentation, instrumentationCfg.instrumentBranchesPerInlineSite));
+            appendPhase(new InstrumentBranchesPhase(instrumentation, instrumentationCfg.instrumentBranchesPerInlineSite));
         }
         if (instrumentationCfg.instrumentBoundaries) {
-            appendPhase(new InstrumentTruffleBoundariesPhase(snippetReflection, instrumentation, instrumentationCfg.instrumentBoundariesPerInlineSite));
+            appendPhase(new InstrumentTruffleBoundariesPhase(instrumentation, instrumentationCfg.instrumentBoundariesPerInlineSite));
         }
     }
 }

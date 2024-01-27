@@ -125,7 +125,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
          * Use the snippet reflection provider during image building replacement. It will be
          * replaced by the GraalGraphObjectReplacer for run time compilation.
          */
-        Replacements replacements = createReplacements(p, snippetReflection);
+        Replacements replacements = createReplacements(p);
         p = (Providers) replacements.getProviders();
 
         EnumMap<ConfigKind, SubstrateBackend> backends = new EnumMap<>(ConfigKind.class);
@@ -146,7 +146,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
             }
         }
 
-        return new RuntimeConfiguration(p, snippetReflection, backends, handlers);
+        return new RuntimeConfiguration(p, backends, handlers);
     }
 
     protected abstract Providers createProviders(CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
@@ -168,7 +168,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
 
     protected abstract LoweringProvider createLoweringProvider(ForeignCallsProvider foreignCalls, MetaAccessExtensionProvider metaAccessExtensionProvider);
 
-    protected abstract Replacements createReplacements(Providers p, SnippetReflectionProvider reflectionProvider);
+    protected abstract Replacements createReplacements(Providers p);
 
     protected abstract CodeCacheProvider createCodeCacheProvider(RegisterConfig registerConfig);
 }

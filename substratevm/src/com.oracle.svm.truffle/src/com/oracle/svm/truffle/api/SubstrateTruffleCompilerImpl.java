@@ -27,6 +27,18 @@ package com.oracle.svm.truffle.api;
 import java.io.PrintStream;
 import java.util.Map;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
+import com.oracle.svm.core.option.RuntimeOptionValues;
+import com.oracle.svm.graal.SubstrateGraalUtils;
+import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
+import com.oracle.svm.truffle.SubstrateTruffleCompilationIdentifier;
+import com.oracle.svm.truffle.TruffleSupport;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.CompilationWrapper;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
@@ -44,18 +56,6 @@ import jdk.graal.compiler.truffle.TruffleCompilerOptions;
 import jdk.graal.compiler.truffle.TruffleTierConfiguration;
 import jdk.graal.compiler.truffle.phases.InstrumentationSuite;
 import jdk.graal.compiler.truffle.phases.TruffleTier;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
-import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
-import com.oracle.svm.core.option.RuntimeOptionValues;
-import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
-import com.oracle.svm.graal.SubstrateGraalUtils;
-import com.oracle.svm.truffle.SubstrateTruffleCompilationIdentifier;
-import com.oracle.svm.truffle.TruffleSupport;
-import com.oracle.truffle.compiler.TruffleCompilable;
-import com.oracle.truffle.compiler.TruffleCompilationTask;
-
 import jdk.vm.ci.code.InstalledCode;
 
 public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements SubstrateTruffleCompiler {
@@ -82,7 +82,7 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
     @Override
     protected TruffleTier newTruffleTier(OptionValues options) {
         return new TruffleTier(options, partialEvaluator,
-                        new InstrumentationSuite(partialEvaluator.instrumentationCfg, config.snippetReflection(), partialEvaluator.getInstrumentation()),
+                        new InstrumentationSuite(partialEvaluator.instrumentationCfg, partialEvaluator.getInstrumentation()),
                         new SubstratePostPartialEvaluationSuite(getGraalOptions(), TruffleCompilerOptions.IterativePartialEscape.getValue(options)));
     }
 
