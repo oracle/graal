@@ -43,11 +43,10 @@ package com.oracle.truffle.api.bytecode;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
 
 /**
  * A {@link BytecodeNodes} instance encapsulates one or more bytecode root nodes produced from a
@@ -60,20 +59,6 @@ import com.oracle.truffle.api.source.Source;
  * @since 24.1
  */
 public abstract class BytecodeNodes<T extends RootNode & BytecodeRootNode> {
-    private final BytecodeParser<? extends BytecodeBuilder> parse;
-    /**
-     * The array of parsed nodes.
-     *
-     * @since 24.1
-     */
-    @CompilationFinal(dimensions = 1) protected T[] nodes;
-    /**
-     * The source information.
-     *
-     * @since 24.1
-     */
-    @CompilationFinal(dimensions = 1) protected volatile Source[] sources;
-    @CompilationFinal private boolean hasInstrumentation;
 
     /**
      * A singleton object used to ensure certain Bytecode DSL APIs are only used by generated code.
@@ -82,13 +67,16 @@ public abstract class BytecodeNodes<T extends RootNode & BytecodeRootNode> {
      */
     protected static final Object TOKEN = new Object();
 
+    private final BytecodeParser<? extends BytecodeBuilder> parser;
     /**
-     * Constructs a {@link BytecodeNodes} instance.
+     * The array of parsed nodes.
      *
      * @since 24.1
      */
-    protected BytecodeNodes(BytecodeParser<? extends BytecodeBuilder> parse) {
-        this.parse = parse;
+    @CompilationFinal(dimensions = 1) protected T[] nodes;
+
+    protected BytecodeNodes(BytecodeParser<? extends BytecodeBuilder> parser) {
+        this.parser = parser;
     }
 
     static void checkToken(Object token) {
@@ -103,7 +91,6 @@ public abstract class BytecodeNodes<T extends RootNode & BytecodeRootNode> {
      *
      * @since 24.1
      */
-    @SuppressWarnings({"unchecked", "cast", "rawtypes"})
     public final List<T> getNodes() {
         return List.of(nodes);
     }
@@ -128,41 +115,27 @@ public abstract class BytecodeNodes<T extends RootNode & BytecodeRootNode> {
     }
 
     /**
-     * Returns whether source information has been parsed.
-     *
-     * @since 24.1
-     */
-    public final boolean hasSources() {
-        return sources != null;
-    }
-
-    /**
-     * Returns whether instrumentation tags have been parsed.
-     *
-     * @since 24.1
-     */
-    public final boolean hasInstrumentation() {
-        return hasInstrumentation;
-    }
-
-    // TODO: remove
-    /**
      * Returns the parser used to parse the root nodes.
      *
      * @since 24.1
      */
-    public final BytecodeParser<? extends BytecodeBuilder> getParser() {
-        return parse;
+    protected final BytecodeParser<? extends BytecodeBuilder> getParser() {
+        return parser;
     }
 
-    private boolean checkNeedsWork(BytecodeConfig config) {
-        if (config.isWithSource() && !hasSources()) {
-            return true;
-        }
-        if (config.isWithInstrumentation() && !hasInstrumentation()) {
-            return true;
-        }
-        return false;
+    @SuppressWarnings("static-method")
+    protected final boolean isAddSource(BytecodeConfig config) {
+        return config.addSource;
+    }
+
+    @SuppressWarnings("static-method")
+    protected final Class<?>[] getAddInstrumentations(BytecodeConfig config) {
+        return config.addInstrumentations;
+    }
+
+    @SuppressWarnings("static-method")
+    protected final Class<?>[] getRemoveInstrumentations(BytecodeConfig config) {
+        return config.removeInstrumentations;
     }
 
     /**
@@ -173,14 +146,14 @@ public abstract class BytecodeNodes<T extends RootNode & BytecodeRootNode> {
      *
      * @since 24.1
      */
-    public final boolean updateConfiguration(BytecodeConfig config) {
-        if (!checkNeedsWork(config)) {
-            return false;
-        }
+    @TruffleBoundary
+    public final void reparse(BytecodeConfig config) {
+        reparseImpl(config);
+    }
 
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        reparse(config);
-        return true;
+    @SuppressWarnings("static-method")
+    protected final Class<?>[] getAddTags(BytecodeConfig config) {
+        return config.addTags;
     }
 
     /**
@@ -190,36 +163,27 @@ public abstract class BytecodeNodes<T extends RootNode & BytecodeRootNode> {
      *
      * @since 24.1
      */
-    @SuppressWarnings("hiding")
-    protected abstract void reparseImpl(BytecodeConfig config, BytecodeParser<? extends BytecodeBuilder> parse, T[] nodes);
-
-    private void reparse(BytecodeConfig config) {
-        CompilerAsserts.neverPartOfCompilation("parsing should never be compiled");
-        reparseImpl(config, parse, nodes);
-    }
+    protected abstract boolean reparseImpl(BytecodeConfig config);
 
     /**
      * Checks if the sources are present, and if not, reparses to get them.
      *
      * @since 24.1
      */
-    public final void ensureSources() {
-        if (sources == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            reparse(BytecodeConfig.WITH_SOURCE);
-        }
+    public final boolean ensureSources() {
+        return reparseImpl(BytecodeConfig.WITH_SOURCE);
     }
 
-    /**
-     * Checks if instrumentation tags are present, and if not, reparses to get them.
-     *
-     * @since 24.1
-     */
-    public final void ensureInstrumentation() {
-        if (!hasInstrumentation) {
-            CompilerDirectives.transferToInterpreter();
-            reparse(BytecodeConfig.COMPLETE);
-        }
+    public final boolean enableInstrumentations(Class<?>... instrumentations) {
+        return reparseImpl(BytecodeConfig.newBuilder().addInstrumentations(instrumentations).build());
+    }
+
+    public final boolean ensureTags(@SuppressWarnings("unchecked") Class<? extends Tag>... tags) {
+        return reparseImpl(BytecodeConfig.newBuilder().addTags(tags).build());
+    }
+
+    public final boolean disableInstrumentations(Class<?>... instrumentations) {
+        return reparseImpl(BytecodeConfig.newBuilder().removeInstrumentations(instrumentations).build());
     }
 
     /**

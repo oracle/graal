@@ -48,11 +48,11 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.bytecode.GenerateBytecode;
-import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.Variadic;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -118,7 +118,7 @@ public class VariadicTest {
     }
 
     VariadicOperationsNode parse(BytecodeParser<VariadicOperationsNodeGen.Builder> builder) {
-        return VariadicOperationsNodeGen.create(BytecodeConfig.COMPLETE, builder).getNode(0);
+        return VariadicOperationsNodeGen.create(BytecodeConfig.WITH_SOURCE, builder).getNode(0);
     }
 
     @ProvidedTags(ExpressionTag.class)
