@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,18 +64,18 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotW
     private final Method functionMethod;
     private final CallTarget target;
 
-    PolyglotFunctionProxyHandler(Object obj, Method functionMethod, PolyglotLanguageContext languageContext) {
+    PolyglotFunctionProxyHandler(Object obj, Method functionMethod, Type genericType, PolyglotLanguageContext languageContext) {
         this.functionObj = obj;
         this.languageContext = languageContext;
         this.functionMethod = functionMethod;
-        this.target = FunctionProxyNode.lookup(languageContext, obj.getClass(), functionMethod);
+        this.target = FunctionProxyNode.lookup(languageContext, obj.getClass(), functionMethod, genericType);
     }
 
     @CompilerDirectives.TruffleBoundary
-    static <T> T create(Class<T> functionalType, Object function, PolyglotLanguageContext languageContext) {
+    static <T> T create(Class<T> functionalType, Type genericType, Object function, PolyglotLanguageContext languageContext) {
         assert isFunctionalInterface(functionalType);
         Method functionalInterfaceMethod = functionalInterfaceMethod(functionalType);
-        final PolyglotFunctionProxyHandler handler = new PolyglotFunctionProxyHandler(function, functionalInterfaceMethod, languageContext);
+        final PolyglotFunctionProxyHandler handler = new PolyglotFunctionProxyHandler(function, functionalInterfaceMethod, genericType, languageContext);
         Object obj = Proxy.newProxyInstance(functionalType.getClassLoader(), new Class<?>[]{functionalType}, handler);
         return functionalType.cast(obj);
     }
@@ -195,11 +195,13 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotW
 
         final Class<?> receiverClass;
         final Method method;
+        final Type genericType;
 
-        FunctionProxyNode(PolyglotLanguageInstance languageInstance, Class<?> receiverType, Method method) {
+        FunctionProxyNode(PolyglotLanguageInstance languageInstance, Class<?> receiverType, Method method, Type genericType) {
             super(languageInstance);
-            this.receiverClass = receiverType;
-            this.method = method;
+            this.receiverClass = Objects.requireNonNull(receiverType);
+            this.method = Objects.requireNonNull(method);
+            this.genericType = genericType;
         }
 
         @SuppressWarnings("unchecked")
@@ -214,10 +216,12 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotW
         }
 
         @Specialization
-        protected Object doCached(PolyglotLanguageContext languageContext, TruffleObject function, Object[] args,
-                        @Cached("getMethodReturnType(method)") Class<?> returnClass,
-                        @Cached("getMethodGenericReturnType(method)") Type returnType,
+        protected final Object doCached(PolyglotLanguageContext languageContext, TruffleObject function, Object[] args,
+                        @Cached("getMethodGenericReturnType(method, genericType)") Type returnType,
+                        @Cached("getMethodReturnType(method, returnType)") Class<?> returnClass,
                         @Cached PolyglotExecuteNode executeNode) {
+            assert Objects.equals(ProxyInvokeNode.getMethodGenericReturnType(method, genericType), returnType) &&
+                            Objects.equals(ProxyInvokeNode.getMethodReturnType(method, returnType), returnClass);
             return executeNode.execute(languageContext, function, args[ARGUMENT_OFFSET], returnClass, returnType, Object[].class, Object[].class);
         }
 
@@ -226,6 +230,7 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotW
             int result = 1;
             result = 31 * result + Objects.hashCode(receiverClass);
             result = 31 * result + Objects.hashCode(method);
+            result = 31 * result + Objects.hashCode(genericType);
             return result;
         }
 
@@ -235,11 +240,11 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotW
                 return false;
             }
             FunctionProxyNode other = (FunctionProxyNode) obj;
-            return receiverClass == other.receiverClass && method.equals(other.method);
+            return receiverClass == other.receiverClass && method.equals(other.method) && Objects.equals(genericType, other.genericType);
         }
 
-        static CallTarget lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Method method) {
-            FunctionProxyNode node = FunctionProxyNodeGen.create(languageContext.getLanguageInstance(), receiverClass, method);
+        static CallTarget lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Method method, Type genericType) {
+            FunctionProxyNode node = FunctionProxyNodeGen.create(languageContext.getLanguageInstance(), receiverClass, method, genericType);
             CallTarget target = lookupHostCodeCache(languageContext, node, CallTarget.class);
             if (target == null) {
                 target = installHostCodeCache(languageContext, node, node.getCallTarget(), CallTarget.class);

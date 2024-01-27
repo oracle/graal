@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,10 +76,10 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
     final PolyglotLanguageContext languageContext;
     final CallTarget invoke;
 
-    PolyglotObjectProxyHandler(Object obj, PolyglotLanguageContext languageContext, Class<?> interfaceClass) {
+    PolyglotObjectProxyHandler(Object obj, PolyglotLanguageContext languageContext, Class<?> interfaceClass, Type genericType) {
         this.obj = obj;
         this.languageContext = languageContext;
-        this.invoke = ObjectProxyNode.lookup(languageContext, obj.getClass(), interfaceClass);
+        this.invoke = ObjectProxyNode.lookup(languageContext, obj.getClass(), interfaceClass, genericType);
     }
 
     @Override
@@ -114,19 +114,21 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
     }
 
     @TruffleBoundary
-    static Object newProxyInstance(Class<?> clazz, Object obj, PolyglotLanguageContext languageContext) throws IllegalArgumentException {
-        return Proxy.newProxyInstance(clazz.getClassLoader(), new Class<?>[]{clazz}, new PolyglotObjectProxyHandler(obj, languageContext, clazz));
+    static Object newProxyInstance(Class<?> clazz, Type genericType, Object obj, PolyglotLanguageContext languageContext) throws IllegalArgumentException {
+        return Proxy.newProxyInstance(clazz.getClassLoader(), new Class<?>[]{clazz}, new PolyglotObjectProxyHandler(obj, languageContext, clazz, genericType));
     }
 
     abstract static class ObjectProxyNode extends HostToGuestRootNode {
 
         final Class<?> receiverClass;
         final Class<?> interfaceType;
+        final Type genericType;
 
-        ObjectProxyNode(PolyglotLanguageInstance languageInstance, Class<?> receiverType, Class<?> interfaceType) {
+        ObjectProxyNode(PolyglotLanguageInstance languageInstance, Class<?> receiverType, Class<?> interfaceType, Type genericType) {
             super(languageInstance);
-            this.receiverClass = receiverType;
-            this.interfaceType = interfaceType;
+            this.receiverClass = Objects.requireNonNull(receiverType);
+            this.interfaceType = Objects.requireNonNull(interfaceType);
+            this.genericType = genericType;
         }
 
         @SuppressWarnings("unchecked")
@@ -141,13 +143,13 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
         }
 
         @Specialization
-        static Object doDefault(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
+        final Object doDefault(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
                         @Bind("this") Node node,
                         @Cached ProxyInvokeNode proxyInvoke,
                         @Cached ToGuestValuesNode toGuests) {
             Method method = (Method) args[ARGUMENT_OFFSET];
             Object[] arguments = toGuests.execute(node, languageContext, (Object[]) args[ARGUMENT_OFFSET + 1]);
-            return proxyInvoke.execute(languageContext, receiver, method, arguments);
+            return proxyInvoke.execute(languageContext, receiver, method, genericType, arguments);
         }
 
         @Override
@@ -155,6 +157,7 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
             int result = 1;
             result = 31 * result + Objects.hashCode(receiverClass);
             result = 31 * result + Objects.hashCode(interfaceType);
+            result = 31 * result + Objects.hashCode(genericType);
             return result;
         }
 
@@ -164,11 +167,11 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
                 return false;
             }
             ObjectProxyNode other = (ObjectProxyNode) obj;
-            return receiverClass == other.receiverClass && interfaceType == other.interfaceType;
+            return receiverClass == other.receiverClass && interfaceType == other.interfaceType && Objects.equals(genericType, other.genericType);
         }
 
-        static CallTarget lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Class<?> interfaceClass) {
-            ObjectProxyNode node = ObjectProxyNodeGen.create(languageContext.getLanguageInstance(), receiverClass, interfaceClass);
+        static CallTarget lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Class<?> interfaceClass, Type genericType) {
+            ObjectProxyNode node = ObjectProxyNodeGen.create(languageContext.getLanguageInstance(), receiverClass, interfaceClass, genericType);
             CallTarget target = lookupHostCodeCache(languageContext, node, CallTarget.class);
             if (target == null) {
                 target = installHostCodeCache(languageContext, node, node.getCallTarget(), CallTarget.class);
@@ -179,7 +182,7 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
 
     abstract static class ProxyInvokeNode extends Node {
 
-        public abstract Object execute(PolyglotLanguageContext languageContext, Object receiver, Method method, Object[] arguments);
+        public abstract Object execute(PolyglotLanguageContext languageContext, Object receiver, Method method, Type genericType, Object[] arguments);
 
         /*
          * The limit of the proxy node is unbounded. There are only so many methods a Java interface
@@ -200,35 +203,37 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
          * this method static even though it is recommended.
          */
         @SuppressWarnings({"unused", "truffle-static-method"})
-        protected Object doCachedMethod(PolyglotLanguageContext languageContext, Object receiver, Method method, Object[] arguments,
+        protected Object doCachedMethod(PolyglotLanguageContext languageContext, Object receiver, Method method, Type genericType, Object[] arguments,
                         @Bind("this") Node node,
                         @Cached("method") Method cachedMethod,
                         @Cached("method.getName()") String name,
-                        @Cached("getMethodReturnType(method)") Class<?> returnClass,
-                        @Cached("getMethodGenericReturnType(method)") Type returnType,
+                        @Cached("getMethodGenericReturnType(method, genericType)") Type returnType,
+                        @Cached("getMethodReturnType(method, returnType)") Class<?> returnClass,
                         @CachedLibrary("receiver") InteropLibrary receivers,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary members,
                         @Cached InlinedConditionProfile branchProfile,
                         @Cached PolyglotToHostNode toHost,
                         @Cached InlinedBranchProfile error) {
+            assert Objects.equals(ProxyInvokeNode.getMethodGenericReturnType(method, genericType), returnType) &&
+                            Objects.equals(ProxyInvokeNode.getMethodReturnType(method, returnType), returnClass);
             Object result = invokeOrExecute(node, languageContext, receiver, arguments, name, receivers, members, branchProfile, error);
             return toHost.execute(node, languageContext, result, returnClass, returnType);
         }
 
         @NeverDefault
-        static Class<?> getMethodReturnType(Method method) {
+        static Class<?> getMethodReturnType(Method method, Type genericReturnType) {
             if (method == null || method.getReturnType() == void.class) {
                 return Object.class;
             }
-            return method.getReturnType();
+            return EngineAccessor.HOST.getRawTypeFromGenericType(genericReturnType, method.getReturnType());
         }
 
         @NeverDefault
-        static Type getMethodGenericReturnType(Method method) {
+        static Type getMethodGenericReturnType(Method method, Type genericTargetType) {
             if (method == null || method.getReturnType() == void.class) {
                 return Object.class;
             }
-            return method.getGenericReturnType();
+            return EngineAccessor.HOST.findActualTypeArgument(method.getGenericReturnType(), genericTargetType);
         }
 
         private Object invokeOrExecute(Node node, PolyglotLanguageContext polyglotContext, Object receiver, Object[] arguments, String member, InteropLibrary receivers,

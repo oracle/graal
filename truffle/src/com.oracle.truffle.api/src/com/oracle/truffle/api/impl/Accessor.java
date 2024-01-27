@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
@@ -315,6 +316,10 @@ public abstract class Accessor {
         public abstract boolean bigIntegerFitsInFloat(BigInteger b);
 
         public abstract boolean bigIntegerFitsInDouble(BigInteger b);
+
+        public abstract Class<?> getRawTypeFromGenericType(Type genericType, Class<?> defaultRawType);
+
+        public abstract Type findActualTypeArgument(Type typeOrTypeVar, Type genericTargetType);
     }
 
     public abstract static class EngineSupport extends Support {
