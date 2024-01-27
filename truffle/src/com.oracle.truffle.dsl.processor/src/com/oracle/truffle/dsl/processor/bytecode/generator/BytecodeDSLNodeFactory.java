@@ -278,6 +278,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         bytecodeNodeGen.add(createAddSource());
         bytecodeNodeGen.add(createEnsureSources());
 
+        bytecodeNodeGen.add(createEncodeInstrumentation());
+        bytecodeNodeGen.add(createEncodeTags());
+
         // Define a loop counter class to track how many back-edges have been taken.
         bytecodeNodeGen.add(createLoopCounter());
 
@@ -288,26 +291,26 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         if (model.enableSerialization) {
             bytecodeNodeGen.add(createSerialize());
             bytecodeNodeGen.add(createDeserialize());
+        }
 
-            // Our serialized representation encodes Tags as shorts.
-            // Construct mappings to/from these shorts for serialization/deserialization.
-            if (!model.getProvidedTags().isEmpty()) {
-                CodeVariableElement classToTag = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL),
-                                generic(ConcurrentHashMap.class,
-                                                type(Integer.class),
-                                                arrayOf(generic(context.getDeclaredType(Class.class), wildcard(types.Tag, null)))),
-                                "TAG_MASK_TO_TAGS");
-                classToTag.createInitBuilder().string("new ConcurrentHashMap<>()");
-                bytecodeNodeGen.add(classToTag);
-                CodeExecutableElement classToTagMethod = createMapTagMaskToTagsArray();
-                bytecodeNodeGen.add(classToTagMethod);
+        // Our serialized representation encodes Tags as shorts.
+        // Construct mappings to/from these shorts for serialization/deserialization.
+        if (!model.getProvidedTags().isEmpty()) {
+            CodeVariableElement classToTag = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL),
+                            generic(ConcurrentHashMap.class,
+                                            type(Integer.class),
+                                            arrayOf(generic(context.getDeclaredType(Class.class), wildcard(types.Tag, null)))),
+                            "TAG_MASK_TO_TAGS");
+            classToTag.createInitBuilder().string("new ConcurrentHashMap<>()");
+            bytecodeNodeGen.add(classToTag);
+            CodeExecutableElement classToTagMethod = createMapTagMaskToTagsArray();
+            bytecodeNodeGen.add(classToTagMethod);
 
-                CodeExecutableElement initializeTagIndexToClass = bytecodeNodeGen.add(createInitializeTagIndexToClass());
-                CodeVariableElement tagToClass = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), generic(context.getDeclaredType(ClassValue.class), context.getType(Short.class)),
-                                "CLASS_TO_TAG_MASK");
-                tagToClass.createInitBuilder().startStaticCall(initializeTagIndexToClass).end();
-                bytecodeNodeGen.add(tagToClass);
-            }
+            CodeExecutableElement initializeTagIndexToClass = bytecodeNodeGen.add(createInitializeTagIndexToClass());
+            CodeVariableElement tagToClass = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), generic(context.getDeclaredType(ClassValue.class), context.getType(Short.class)),
+                            "CLASS_TO_TAG_MASK");
+            tagToClass.createInitBuilder().startStaticCall(initializeTagIndexToClass).end();
+            bytecodeNodeGen.add(tagToClass);
         }
 
         // Generate a {@link @TracingConfiguration} annotation, if tracing is enabled.
@@ -715,6 +718,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         ctor.addParameter(new CodeVariableElement(type(Object[].class), "constants"));
         ctor.addParameter(new CodeVariableElement(type(int[].class), "handlers"));
         ctor.addParameter(new CodeVariableElement(type(int[].class), "sourceInfo"));
+        ctor.addParameter(new CodeVariableElement(generic(type(List.class), types.Source), "sources"));
         ctor.addParameter(new CodeVariableElement(type(int.class), "numLocals"));
         ctor.addParameter(new CodeVariableElement(type(int.class), "numNodes"));
         ctor.addParameter(new CodeVariableElement(type(int.class), "buildIndex"));
@@ -743,6 +747,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.string("constants");
         b.string("handlers");
         b.string("sourceInfo");
+        b.string("sources");
         b.end(); // new
         b.end(); // insert
         b.end(); // statement
@@ -916,7 +921,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.declaration("BytecodeNodesImpl", "nodes", "new BytecodeNodesImpl(parser)");
         b.startAssign("Builder builder").startNew(builder.getSimpleName().toString());
         b.string("nodes");
-        b.string("false");
         b.string("config");
         b.end(2);
 
@@ -953,8 +957,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
             index++;
         }
-        b.startThrow().startNew(type(IllegalArgumentException.class)).startCall("String.format").doubleQuote(
-                        "Invalid tag specified. Tag '%s' not provided by language '" + ElementUtils.getQualifiedName(model.languageClass) + "'.").string("type.getName()").end().end().end();
+        createFailInvalidTag(b, "type");
 
         b.end();
 
@@ -962,6 +965,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.end();
 
         return method;
+    }
+
+    private void createFailInvalidTag(CodeTreeBuilder b, String tagLocal) {
+        b.startThrow().startNew(type(IllegalArgumentException.class)).startCall("String.format").doubleQuote(
+                        "Invalid tag specified. Tag '%s' not provided by language '" + ElementUtils.getQualifiedName(model.languageClass) + "'.").string(tagLocal, ".getName()").end().end().end();
     }
 
     private CodeExecutableElement createSerialize() {
@@ -987,7 +995,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         init.startNew(bytecodeNodesImpl.asType());
         init.string("parser");
         init.end(2);
-        init.string("false");
         init.string("config");
         init.end();
 
@@ -1275,6 +1282,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     private CodeExecutableElement createAddSource() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "addSource");
         ex.addParameter(new CodeVariableElement(arrayOf(type(int.class)), "sourceInfo"));
+        ex.addParameter(new CodeVariableElement(generic(type(List.class), types.Source), "sources"));
+
         CodeTreeBuilder b = ex.createBuilder();
         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
         b.declaration(abstractBytecodeNode.asType(), "oldBytecode");
@@ -1284,7 +1293,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.startIf().string("oldBytecode.sourceInfo != null").end().startBlock();
         b.returnStatement();
         b.end();
-        b.statement("newBytecode = insert(oldBytecode.addSource(sourceInfo))");
+        b.statement("newBytecode = insert(oldBytecode.addSource(sourceInfo, sources))");
         emitFence(b);
         b.end().startDoWhile().startCall("BYTECODE_UPDATER", "compareAndSet").string("this").string("oldBytecode").string("newBytecode").end().end();
         return ex;
@@ -1297,6 +1306,45 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.declaration(abstractBytecodeNode.asType(), "newBytecode", "this.bytecode");
         b.statement("assert newBytecode.sourceInfo != null");
         b.startReturn().string("newBytecode").end();
+        return ex;
+    }
+
+    private static CodeExecutableElement createEncodeInstrumentation() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(int.class), "encodeInstrumentation");
+        ex.addParameter(new CodeVariableElement(arrayOf(type(Class.class)), "instrumentations"));
+        ex.setVarArgs(true);
+        CodeTreeBuilder b = ex.createBuilder();
+        b.startIf().string("instrumentations == null").end().startBlock();
+        b.statement("return 0");
+        b.end();
+
+        // this needs to be implemented still
+        b.startReturn().string("0").end();
+        return ex;
+    }
+
+    private CodeExecutableElement createEncodeTags() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(int.class), "encodeTags");
+        ex.addParameter(new CodeVariableElement(arrayOf(type(Class.class)), "tags"));
+        ex.setVarArgs(true);
+        CodeTreeBuilder b = ex.createBuilder();
+        b.startIf().string("tags == null").end().startBlock();
+        b.statement("return 0");
+        b.end();
+
+        if (model.getProvidedTags().isEmpty()) {
+            b.startIf().string("tags.length != 0").end().startBlock();
+            createFailInvalidTag(b, "tags[0]");
+            b.end();
+            b.startReturn().string("0").end();
+        } else {
+            b.statement("int tagMask = 0");
+            b.startFor().string("Class<?> tag : tags").end().startBlock();
+            b.statement("tagMask |= CLASS_TO_TAG_MASK.get(tag)");
+            b.end();
+            b.startReturn().string("tagMask").end();
+        }
+
         return ex;
     }
 
@@ -1936,8 +1984,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), bytecodeNodesImpl.asType(), "nodes"));
             builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(boolean.class), "isReparse"));
-            builder.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean.class), "withSource"));
-            builder.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean.class), "withInstrumentation"));
+            builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(boolean.class), "parseBytecodes"));
+            builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "tags"));
+            builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "instrumentations"));
+            builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(boolean.class), "parseSources"));
+
             builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(ArrayList.class, bytecodeNodeGen.asType()), "builtNodes"));
 
             builder.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "buildIndex"));
@@ -1951,7 +2002,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 builder.add(new DeserializerContextImplFactory().create());
             }
 
-            builder.add(createConstructor());
+            builder.add(createReparseConstructor());
+            builder.add(createParseConstructor());
 
             builder.addAll(builderState);
 
@@ -2012,11 +2064,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             if (model.serializedFields.size() == 0) {
                 // Simplify generated code: just one call
-                b.startStatement().startCall(castParser(method, "nodes.getParser()"), "parse").string("this").end(2);
+                b.startStatement().startCall(castParser(method, "nodes.getParserImpl()"), "parse").string("this").end(2);
                 serializationElements.writeShort(b, serializationElements.codeEndSerialize);
             } else {
                 b.lineComment("1. Serialize the root nodes and their constants.");
-                b.startStatement().startCall(castParser(method, "nodes.getParser()"), "parse").string("this").end(2);
+                b.startStatement().startCall(castParser(method, "nodes.getParserImpl()"), "parse").string("this").end(2);
 
                 b.lineComment("2. Serialize the fields stored on each root node.");
                 b.statement("short[][] nodeFields = new short[builtNodes.size()][]");
@@ -2229,15 +2281,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startIf().string("!isReparse").end().startBlock();
             b.startStatement().string("nodes.setNodes(builtNodes.toArray(new ").type(bytecodeNodeGen.asType()).string("[0]))").end();
-            b.end();
-
-            b.startIf().string("withSource").end().startBlock();
-
-            TypeMirror sourceArray = arrayOf(types.Source);
-            CodeTree toArray = CodeTreeBuilder.createBuilder().string("sources.toArray(new ").type(types.Source).string("[0])").build();
-            b.declaration(sourceArray, "sourceArray", toArray);
-            emitFence(b);
-            b.startStatement().string("nodes.setSources(sourceArray)").end();
             b.end();
 
             return ex;
@@ -2547,7 +2590,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             if (operation.isSourceOnly()) {
-                b.startIf().string("!withSource").end().startBlock();
+                b.startIf().string("!parseSources").end().startBlock();
                 b.returnStatement();
                 b.end();
             }
@@ -2680,7 +2723,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("numConditionalBranches = 0");
             b.statement("constantPool = new ConstantPool()");
 
-            b.startIf().string("withSource").end().startBlock();
+            b.startIf().string("parseSources").end().startBlock();
             b.statement("sourceIndexStack = new int[1]");
             b.statement("sourceIndexSp = 0");
             b.statement("sourceLocationStack = new int[12]");
@@ -2716,13 +2759,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     } else if (ElementUtils.typeEquals(argType, context.getType(int.class))) {
                         serializationElements.writeInt(after, argumentName);
                     } else if (operation.kind == OperationKind.INSTRUMENT_TAG && i == 0) {
-
-                        after.declaration("int", "tagMask", "0");
-                        after.startFor().string("Class<?> tag : ").string(operation.getOperationArgumentName(0)).end().startBlock();
-                        after.statement("tagMask |= CLASS_TO_TAG_MASK.get(tag)");
-                        after.end();
-
-                        serializationElements.writeInt(after, "tagMask");
+                        serializationElements.writeInt(after, "encodeTags(" + operation.getOperationArgumentName(0) + ")");
                     } else if (ElementUtils.isObject(argType) || ElementUtils.typeEquals(argType, types.Source)) {
                         String index = argumentName + "_index";
                         b.statement("short ", index, " = ", "serialization.serializeObject(", argumentName, ")");
@@ -2886,7 +2923,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             if (operation.isSourceOnly()) {
-                b.startIf().string("!withSource").end().startBlock();
+                b.startIf().string("!parseSources").end().startBlock();
                 b.returnStatement();
                 b.end();
             }
@@ -3052,7 +3089,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     constructorCallBuilder.string("null"); // bc
                     constructorCallBuilder.string("null"); // constants
                     constructorCallBuilder.string("null"); // handlers
-                    constructorCallBuilder.string("null"); // source
+                    constructorCallBuilder.string("null"); // sourceInfo
+                    constructorCallBuilder.string("null"); // sources
                     constructorCallBuilder.string("0"); // numLocals
                     constructorCallBuilder.string("0"); // numNodes
                     constructorCallBuilder.string("buildIndex++");
@@ -3074,10 +3112,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startIf().string("isReparse").end().startBlock(); // {
             b.statement("result = builtNodes.get(buildIndex)");
 
-            b.startIf().string("withSource").end().startBlock();
+            b.startIf().string("parseSources").end().startBlock();
             CodeTree copyOf = CodeTreeBuilder.createBuilder().startStaticCall(type(Arrays.class), "copyOf").string("sourceInfo").string("sourceInfoIndex").end().build();
             b.declaration(arrayOf(context.getType(int.class)), "sourceInfoArray", copyOf);
-            b.statement("result.addSource(sourceInfoArray)");
+            b.statement("result.addSource(sourceInfoArray, sources)");
             b.end();
 
             b.startAssert().string("result.buildIndex == buildIndex").end();
@@ -3098,7 +3136,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(2);
 
             b.declaration(arrayOf(context.getType(int.class)), "sourceInfoArray", "null");
-            b.startIf().string("withSource").end().startBlock();
+            b.startIf().string("parseSources").end().startBlock();
             b.startAssign("sourceInfoArray").startStaticCall(type(Arrays.class), "copyOf").string("sourceInfo").string("sourceInfoIndex").end().end();
             b.end();
 
@@ -3110,6 +3148,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.string("constantPool.toArray()"); // constants
             b.string("Arrays.copyOf(exHandlers, exHandlerCount)"); // handlers
             b.string("sourceInfoArray");
+            b.string("sources");
             b.string("numLocals");
             b.string("numNodes");
             b.string("buildIndex");
@@ -3754,7 +3793,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.startStatement().startCall("finallyTryContext", "setHandler");
                         b.string("Arrays.copyOf(bc, bci)");
                         b.string("maxStackHeight");
-                        b.string("withSource ? Arrays.copyOf(sourceInfo, sourceInfoIndex) : null");
+                        b.string("parseSources ? Arrays.copyOf(sourceInfo, sourceInfoIndex) : null");
                         b.string("Arrays.copyOf(exHandlers, exHandlerCount)");
                         b.string("unresolvedBranchLabels");
                         b.string("unresolvedBranchStackHeights");
@@ -3896,7 +3935,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
             b.end();
 
-            b.startIf().string("withSource && sourceInfoIndex + context.handlerSourceInfo.length > sourceInfo.length").end().startBlock();
+            b.startIf().string("parseSources && sourceInfoIndex + context.handlerSourceInfo.length > sourceInfo.length").end().startBlock();
             buildCalculateNewLengthOfArray(b, "sourceInfo.length", "sourceInfoIndex + context.handlerSourceInfo.length ");
             b.statement("sourceInfo = Arrays.copyOf(sourceInfo, resultLength)");
             b.end();
@@ -3985,7 +4024,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("maxStackHeight = currentStackHeight + context.handlermaxStackHeight");
             b.end();
 
-            b.startIf().string("withSource").end().startBlock();
+            b.startIf().string("parseSources").end().startBlock();
             b.startFor().string("int idx = 0; idx < context.handlerSourceInfo.length; idx += 3").end().startBlock();
             b.statement("sourceInfo[sourceInfoIndex + idx] = context.handlerSourceInfo[idx] + offsetBci");
             b.statement("sourceInfo[sourceInfoIndex + idx + 1] = context.handlerSourceInfo[idx + 1]");
@@ -4310,7 +4349,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.startAssert().string("withSource").end();
+            b.startAssert().string("parseSources").end();
 
             b.startIf().string("sourceInfoIndex == 0 && start == -1").end().startBlock();
             b.returnStatement();
@@ -4477,19 +4516,52 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
         }
 
-        private CodeExecutableElement createConstructor() {
+        private CodeExecutableElement createReparseConstructor() {
             CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, "Builder");
             ctor.addParameter(new CodeVariableElement(bytecodeNodesImpl.asType(), "nodes"));
-            ctor.addParameter(new CodeVariableElement(context.getType(boolean.class), "isReparse"));
-            ctor.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
+            ctor.addParameter(new CodeVariableElement(context.getType(boolean.class), "parseBytecodes"));
+            ctor.addParameter(new CodeVariableElement(context.getType(int.class), "tags"));
+            ctor.addParameter(new CodeVariableElement(context.getType(int.class), "instrumentations"));
+            ctor.addParameter(new CodeVariableElement(context.getType(boolean.class), "parseSources"));
+
+            CodeTreeBuilder javadoc = ctor.createDocBuilder();
+            javadoc.startJavadoc();
+            javadoc.string("Constructor for reparsing.");
+            javadoc.end();
 
             CodeTreeBuilder b = ctor.createBuilder();
 
             b.statement("this.nodes = nodes");
-            b.statement("this.isReparse = isReparse");
-            b.statement("this.withSource = config.isWithSource()");
-            b.statement("this.withInstrumentation = config.isWithInstrumentation()");
-            b.statement("this.sources = this.withSource ? new ArrayList<>() : null");
+            b.statement("this.isReparse = true");
+            b.statement("this.parseBytecodes = parseBytecodes");
+            b.statement("this.tags = tags");
+            b.statement("this.instrumentations = instrumentations");
+            b.statement("this.parseSources = parseSources");
+            b.statement("this.sources = parseSources ? new ArrayList<>(4) : null");
+            b.statement("this.builtNodes = new ArrayList<>()");
+
+            return ctor;
+        }
+
+        private CodeExecutableElement createParseConstructor() {
+            CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, "Builder");
+            ctor.addParameter(new CodeVariableElement(bytecodeNodesImpl.asType(), "nodes"));
+            ctor.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
+
+            CodeTreeBuilder javadoc = ctor.createDocBuilder();
+            javadoc.startJavadoc();
+            javadoc.string("Constructor for initial parses.");
+            javadoc.end();
+
+            CodeTreeBuilder b = ctor.createBuilder();
+
+            b.statement("this.nodes = nodes");
+            b.statement("this.isReparse = false");
+            b.statement("this.tags = encodeTags(getAddTags(config))");
+            b.statement("this.instrumentations = encodeInstrumentation(getAddInstrumentations(config)) & ~encodeInstrumentation(getRemoveInstrumentations(config))");
+            b.statement("this.parseBytecodes = true");
+            b.statement("this.parseSources = isAddSource(config)");
+            b.statement("this.sources = parseSources ? new ArrayList<>(4) : null");
             b.statement("this.builtNodes = new ArrayList<>()");
 
             return ctor;
@@ -4500,7 +4572,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("bci = 0");
             b.statement("currentStackHeight = 0");
             b.statement("maxStackHeight = 0");
-            b.startIf().string("withSource").end().startBlock();
+            b.startIf().string("parseSources").end().startBlock();
             b.statement("sourceInfo = new int[15]");
             b.statement("sourceInfoIndex = 0");
             b.end();
@@ -4522,11 +4594,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             bytecodeNodesImpl.setEnclosingElement(bytecodeNodeGen);
             bytecodeNodesImpl.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(Object.class), "VISIBLE_TOKEN")).createInitBuilder().string("TOKEN");
 
+            bytecodeNodesImpl.add(new CodeVariableElement(Set.of(PRIVATE), type(int.class), "instrumentations"));
+            bytecodeNodesImpl.add(new CodeVariableElement(Set.of(PRIVATE), type(int.class), "tags"));
+            bytecodeNodesImpl.add(new CodeVariableElement(Set.of(PRIVATE), type(boolean.class), "sources"));
+
             bytecodeNodesImpl.add(createConstructor());
             bytecodeNodesImpl.add(createReparseImpl());
             bytecodeNodesImpl.add(createSetNodes());
-            bytecodeNodesImpl.add(createSetSources());
-            bytecodeNodesImpl.add(createGetSources());
+            bytecodeNodesImpl.add(createGetParserImpl());
 
             return bytecodeNodesImpl;
         }
@@ -4542,14 +4617,35 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createReparseImpl() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNodes, "reparseImpl");
             addOverride(ex);
+            ex.getModifiers().add(Modifier.SYNCHRONIZED);
             mergeSuppressWarnings(ex, "hiding");
-            ex.renameArguments("config", "parse", "nodes");
-            ((CodeVariableElement) ex.getParameters().get(2)).setType(arrayOf(model.templateType.asType()));
+            ex.renameArguments("config");
             CodeTreeBuilder b = ex.createBuilder();
 
+            b.declaration(parserType, "parser", castParser(ex, "getParser()"));
+            b.declaration(type(boolean.class), "addSource", "isAddSource(config)");
+            b.declaration(type(int.class), "addInstrumentation", "encodeInstrumentation(getAddInstrumentations(config))");
+            b.declaration(type(int.class), "removeInstrumentation", "encodeInstrumentation(getRemoveInstrumentations(config))");
+            b.declaration(type(int.class), "addTags", "encodeTags(getAddTags(config))");
+
+            b.statement("boolean oldSources = this.sources");
+            b.statement("int oldTags = this.tags");
+            b.statement("int oldInstrumentations = this.instrumentations");
+
+            b.statement("int newTags = oldTags | addTags");
+            b.statement("int newInstrumentations = (oldInstrumentations | addInstrumentation) & ~removeInstrumentation");
+            b.statement("boolean newSources = oldSources || addSource");
+            b.statement("boolean needsBytecodeReparse = newInstrumentations != oldInstrumentations || newTags != oldTags");
+            b.statement("boolean needsSourceReparse = newSources != oldSources || (needsBytecodeReparse && newSources)");
+
+            b.startIf().string("!needsBytecodeReparse && !needsSourceReparse").end().startBlock();
+            b.statement("return false");
+            b.end();
+
             // When we reparse, we add metadata to the existing nodes. The builder gets them here.
-            b.declaration(builder.asType(), "builder",
-                            b.create().startNew(builder.asType()).string("this").string("true").string("config").end().build());
+            b.declaration(builder.getSimpleName().toString(), "builder",
+                            b.create().startNew(builder.getSimpleName().toString()).string("this").string("needsBytecodeReparse").string("newTags").string("newInstrumentations").string(
+                                            "needsSourceReparse").end().build());
 
             b.startFor().type(model.templateType.asType()).string(" node : nodes").end().startBlock();
             b.startStatement().startCall("builder.builtNodes.add");
@@ -4557,9 +4653,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(2);
             b.end(2);
 
-            b.startStatement().startCall(castParser(ex, "parse"), "parse").string("builder").end(2);
-
+            b.startStatement().startCall("parser", "parse").string("builder").end(2);
             b.startStatement().startCall("builder", "finish").end(2);
+
+            b.statement("this.tags = newTags");
+            b.statement("this.instrumentations = newInstrumentations");
+            b.statement("this.sources = newSources");
+
+            b.statement("return true");
 
             return ex;
         }
@@ -4568,13 +4669,19 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return GeneratorUtils.createSetter(Set.of(), new CodeVariableElement(arrayOf(bytecodeNodeGen.asType()), "nodes"));
         }
 
-        private CodeExecutableElement createSetSources() {
-            return GeneratorUtils.createSetter(Set.of(), new CodeVariableElement(arrayOf(types.Source), "sources"));
+        private CodeExecutableElement createGetParserImpl() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), parserType, "getParserImpl");
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startReturn();
+            b.cast(parserType);
+            b.startCall("super.getParser");
+            b.end();
+            b.end();
+
+            return ex;
         }
 
-        private CodeExecutableElement createGetSources() {
-            return GeneratorUtils.createGetter(Set.of(), new CodeVariableElement(arrayOf(types.Source), "sources"));
-        }
     }
 
     // Generates an Instructions class with constants for each instruction.
@@ -4621,6 +4728,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 type.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(boolean[].class), "basicBlockBoundary")));
             }
             type.add(compFinal(1, new CodeVariableElement(Set.of(FINAL), context.getType(int[].class), "sourceInfo")));
+            type.add(new CodeVariableElement(Set.of(FINAL), generic(type(List.class), types.Source), "sources"));
 
             for (ExecutableElement superConstructor : ElementFilter.constructorsIn(ElementUtils.castTypeElement(types.BytecodeNode).getEnclosedElements())) {
                 CodeExecutableElement constructor = CodeExecutableElement.cloneNoAnnotations(superConstructor);
@@ -4631,6 +4739,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 constructor.addParameter(new CodeVariableElement(arrayOf(type(Object.class)), "constants"));
                 constructor.addParameter(new CodeVariableElement(arrayOf(type(int.class)), "handlers"));
                 constructor.addParameter(new CodeVariableElement(arrayOf(type(int.class)), "sourceInfo"));
+                constructor.addParameter(new CodeVariableElement(generic(type(List.class), types.Source), "sources"));
 
                 CodeTreeBuilder b = constructor.createBuilder();
                 b.startStatement().startSuperCall().string("BytecodeNodesImpl.VISIBLE_TOKEN").end().end();
@@ -4638,6 +4747,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.statement("this.bytecodes = bc");
                 b.statement("this.handlers = handlers");
                 b.statement("this.sourceInfo = sourceInfo");
+                b.statement("this.sources = sources");
                 type.add(constructor);
                 break;
             }
@@ -4661,7 +4771,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startReturn().startCall("node.findLocation").string("bci").end().end();
 
             type.add(new CodeExecutableElement(Set.of(ABSTRACT), type.asType(), "toCached"));
-            type.add(new CodeExecutableElement(Set.of(ABSTRACT), type.asType(), "addSource", new CodeVariableElement(arrayOf(type(int.class)), "newSourceInfo")));
+            CodeExecutableElement addSource = type.add(new CodeExecutableElement(Set.of(ABSTRACT), type.asType(), "addSource"));
+            addSource.addParameter(new CodeVariableElement(arrayOf(type(int.class)), "sourceInfo"));
+            addSource.addParameter(new CodeVariableElement(generic(type(List.class), types.Source), "sources"));
 
             type.add(new CodeExecutableElement(Set.of(ABSTRACT), type.asType(), "cloneUninitialized"));
 
@@ -4684,24 +4796,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.renameArguments("bci");
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.declaration(bytecodeNodeGen.asType(), "root", "getRoot()");
-
             b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
+            b.declaration(generic(type(List.class), types.Source), "sources", "this.sources");
             b.startIf().string("info == null").end().startBlock();
-            b.statement("info = root.ensureSources().sourceInfo");
-            b.end();
-
-            // in the future we need to translate bytecodes here between the current bytecode
-            // and potentially new bytecode, as this can race with instrumentation.
-
-            b.startIf().string("info.length == 0").end().startBlock();
-            b.returnNull();
-            b.end();
-
-            b.statement("Source[] sources = root.nodes.getSources()");
-
-            b.startIf().string("sources == null").end().startBlock();
-            b.returnNull();
+            b.declaration(type.asType(), "newNode", "getRoot().ensureSources()");
+            b.statement("info = newNode.sourceInfo");
+            b.statement("sources = newNode.sources");
             b.end();
 
             b.statement("int i = 0");
@@ -4720,32 +4820,29 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.returnNull();
             b.end();
 
-            b.statement("return sources[(info[i] >> 16) & 0xffff].createSection(info[i + 1], info[i + 2])");
+            b.statement("return sources.get((info[i] >> 16) & 0xffff).createSection(info[i + 1], info[i + 2])");
 
             return ex;
         }
 
         private CodeExecutableElement createGetSourceSection() {
             CodeExecutableElement ex = GeneratorUtils.override(types.Node, "getSourceSection");
+            ex.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.declaration(bytecodeNodeGen.asType(), "root", "getRoot()");
             b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
+            b.declaration(generic(type(List.class), types.Source), "sources", "this.sources");
             b.startIf().string("info == null").end().startBlock();
-            b.statement("info = root.ensureSources().sourceInfo");
+            b.declaration(type.asType(), "newNode", "getRoot().ensureSources()");
+            b.statement("info = newNode.sourceInfo");
+            b.statement("sources = newNode.sources");
             b.end();
 
             b.startIf().string("info.length == 0").end().startBlock();
             b.returnNull();
             b.end();
 
-            b.statement("Source[] sources = root.nodes.getSources()");
-
-            b.startIf().string("sources == null").end().startBlock();
-            b.returnNull();
-            b.end();
-
-            b.startReturn().string("sources[(info[0] >> 16) & 0xffff].createSection(info[1], info[2])").end();
+            b.startReturn().string("sources.get((info[0] >> 16) & 0xffff).createSection(info[1], info[2])").end();
 
             return ex;
         }
@@ -4790,7 +4887,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.declaration(generic(type(List.class), type(Object[].class)), "sourceData", "new ArrayList<>()");
             b.startIf().string("sourceInfo != null").end().startBlock();
-            b.declaration(arrayOf(types.Source), "sources", "getRoot().nodes.getSources()");
             b.startFor().string("int idx = 0; idx < sourceInfo.length; idx += 3").end().startBlock();
 
             // we encode ranges with no SourceSection using (-1, -1)
@@ -4800,7 +4896,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.statement("int startIndex = sourceInfo[idx] & 0xffff");
             b.statement("int endIndex = (idx + 3 == sourceInfo.length) ? bc.length : sourceInfo[idx + 3] & 0xffff");
-            b.declaration(types.SourceSection, "section", "sources[(sourceInfo[idx] >> 16) & 0xffff].createSection(sourceInfo[idx + 1], sourceInfo[idx + 2])");
+            b.declaration(types.SourceSection, "section", "this.sources.get((sourceInfo[idx] >> 16) & 0xffff).createSection(sourceInfo[idx + 1], sourceInfo[idx + 2])");
             b.statement("sourceData.add(new Object[]{startIndex, endIndex, section})");
             b.end();
             b.end();
@@ -5118,13 +5214,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createAddSource() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement((DeclaredType) abstractBytecodeNode.asType(), "addSource");
+            ex.renameArguments("sourceInfo", "sources");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn();
             b.startNew(type.asType());
             b.string("this.bytecodes");
             b.string("this.constants");
             b.string("this.handlers");
-            b.string("newSourceInfo");
+            b.string("sourceInfo");
+            b.string("sources");
             for (VariableElement var : ElementFilter.fieldsIn(type.getEnclosedElements())) {
                 b.string("this.", var.getSimpleName().toString());
             }

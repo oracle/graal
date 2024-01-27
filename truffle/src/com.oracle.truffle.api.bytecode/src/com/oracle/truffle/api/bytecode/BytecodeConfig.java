@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.bytecode;
 
+import com.oracle.truffle.api.instrumentation.Tag;
+
 /**
  * The configuration to use while generating bytecode. To reduce interpreter footprint, source
  * sections and instrumentation information can be lazily re-parsed when it is needed.
@@ -53,26 +55,31 @@ public final class BytecodeConfig {
      *
      * @since 24.1
      */
-    public static final BytecodeConfig DEFAULT = new BytecodeConfig(false, false);
+    public static final BytecodeConfig DEFAULT = new BytecodeConfig(false, null, null, null);
     /**
      * Retain source information.
      *
      * @since 24.1
      */
-    public static final BytecodeConfig WITH_SOURCE = new BytecodeConfig(true, false);
+    public static final BytecodeConfig WITH_SOURCE = new BytecodeConfig(true, null, null, null);
+
     /**
-     * Retain source and instrumentation information.
+     * Retain all information.
      *
      * @since 24.1
      */
-    public static final BytecodeConfig COMPLETE = new BytecodeConfig(true, true);
+    public static final BytecodeConfig COMPLETE = new BytecodeConfig(true, null, null, null);
 
-    private final boolean withSource;
-    private final boolean withInstrumentation;
+    final boolean addSource;
+    final Class<?>[] addInstrumentations;
+    final Class<?>[] removeInstrumentations;
+    final Class<?>[] addTags;
 
-    private BytecodeConfig(boolean withSource, boolean withInstrumentation) {
-        this.withSource = withSource;
-        this.withInstrumentation = withInstrumentation;
+    BytecodeConfig(boolean withSource, Class<?>[] addInstrumentations, Class<?>[] removeInstrumentations, Class<?>[] tags) {
+        this.addSource = withSource;
+        this.addInstrumentations = addInstrumentations;
+        this.removeInstrumentations = removeInstrumentations;
+        this.addTags = tags;
     }
 
     /**
@@ -86,31 +93,15 @@ public final class BytecodeConfig {
     }
 
     /**
-     * Returns whether sources are included in the config.
-     *
-     * @since 24.1
-     */
-    public boolean isWithSource() {
-        return withSource;
-    }
-
-    /**
-     * Returns whether instrumentation tags are included in the config.
-     *
-     * @since 24.1
-     */
-    public boolean isWithInstrumentation() {
-        return withInstrumentation;
-    }
-
-    /**
      * Builder to generate a {@link BytecodeConfig} programmatically.
      *
      * @since 24.1
      */
     public static class Builder {
-        private boolean withSource;
-        private boolean withInstrumentation;
+        private boolean addSource;
+        private Class<?>[] addTags;
+        private Class<?>[] addInstrumentations;
+        private Class<?>[] removeInstrumentations;
 
         /**
          * Default constructor.
@@ -125,18 +116,24 @@ public final class BytecodeConfig {
          *
          * @since 24.1
          */
-        public Builder withSource(boolean value) {
-            this.withSource = value;
+        public Builder addSource() {
+            this.addSource = true;
             return this;
         }
 
-        /**
-         * Sets whether the config should include instrumentation tags.
-         *
-         * @since 24.1
-         */
-        public Builder withInstrumentation(boolean value) {
-            this.withInstrumentation = value;
+        @SuppressWarnings("unchecked")
+        public Builder addTags(Class<? extends Tag>... tags) {
+            this.addTags = tags;
+            return this;
+        }
+
+        public Builder addInstrumentations(Class<?>... instrumentations) {
+            this.addInstrumentations = instrumentations;
+            return this;
+        }
+
+        public Builder removeInstrumentations(Class<?>... instrumentations) {
+            this.removeInstrumentations = instrumentations;
             return this;
         }
 
@@ -146,7 +143,7 @@ public final class BytecodeConfig {
          * @since 24.1
          */
         public BytecodeConfig build() {
-            return new BytecodeConfig(withSource, withInstrumentation);
+            return new BytecodeConfig(addSource, addInstrumentations, removeInstrumentations, addTags);
         }
     }
 }

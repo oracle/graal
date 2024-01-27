@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -354,9 +353,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        assertFalse(nodes.hasSources());
-        nodes.updateConfiguration(BytecodeConfig.WITH_SOURCE);
-        assertTrue(nodes.hasSources());
+        assertTrue(nodes.ensureSources());
 
         BasicInterpreter node = nodes.getNode(0);
 

@@ -55,7 +55,9 @@ package com.oracle.truffle.api.bytecode;
  *
  * @since 24.1
  */
+@SuppressWarnings("static-method")
 public abstract class BytecodeBuilder {
+
     /**
      * Default constructor for a {@link BytecodeBuilder}.
      *
@@ -63,4 +65,33 @@ public abstract class BytecodeBuilder {
      */
     public BytecodeBuilder() {
     }
+
+    /**
+     * Accessor to be used by generate code only.
+     */
+    protected final boolean isAddSource(BytecodeConfig config) {
+        return config.addSource;
+    }
+
+    /**
+     * Accessor to be used by generate code only.
+     */
+    protected final Class<?>[] getAddInstrumentations(BytecodeConfig config) {
+        return config.addInstrumentations;
+    }
+
+    /**
+     * Accessor to be used by generate code only.
+     */
+    protected final Class<?>[] getRemoveInstrumentations(BytecodeConfig config) {
+        return config.removeInstrumentations;
+    }
+
+    /**
+     * Accessor to be used by generate code only.
+     */
+    protected final Class<?>[] getAddTags(BytecodeConfig config) {
+        return config.addTags;
+    }
+
 }
