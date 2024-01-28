@@ -87,7 +87,7 @@ public class ProgressReporterFeature implements InternalFeature {
         }
     }
 
-    public void createAdditionalArtifacts(@SuppressWarnings("unused") BuildArtifacts artifacts) {
+    public void createAdditionalArtifactsOnSuccess(@SuppressWarnings("unused") BuildArtifacts artifacts) {
     }
 
     protected List<UserRecommendation> getRecommendations() {
