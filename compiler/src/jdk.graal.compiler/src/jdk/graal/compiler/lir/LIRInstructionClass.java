@@ -27,6 +27,7 @@ package jdk.graal.compiler.lir;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.Locale;
 
 import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.FieldsScanner;
@@ -322,7 +323,7 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
         StringBuilder result = new StringBuilder();
 
         appendValues(result, obj, "", " = ", "(", ")", new String[]{""}, defs);
-        result.append(String.valueOf(getOpcode(obj)).toUpperCase());
+        result.append(String.valueOf(getOpcode(obj)).toUpperCase(Locale.ENGLISH));
         appendValues(result, obj, " ", "", "(", ")", new String[]{"", "~"}, uses, alives);
         appendValues(result, obj, " ", "", "{", "}", new String[]{""}, temps);
 
