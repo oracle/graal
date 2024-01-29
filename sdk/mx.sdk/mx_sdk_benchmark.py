@@ -565,12 +565,12 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         ret_code, applicationOutput, dims = super(BaseMicroserviceBenchmarkSuite, self).runAndReturnStdOut(benchmarks, bmSuiteArgs)
         result = ret_code, "\n".join(self.timeToFirstResponseOutputs) + '\n' + self.startupOutput + '\n' + self.peakOutput + '\n' + self.latencyOutput + '\n' + applicationOutput, dims
 
-        # For HotSpot, the rules are executed after every execution. So, it is necessary to reset the data to avoid duplication of datapoints.
-        if not self.is_native_mode(self.bmSuiteArgs):
-            self.timeToFirstResponseOutputs = []
-            self.startupOutput = ''
-            self.peakOutput = ''
-            self.latencyOutput = ''
+        # For HotSpot, the rules are executed after every execution and for Native Image the rules are applied after each stage.
+        # So, it is necessary to reset the data to avoid duplication of datapoints.
+        self.timeToFirstResponseOutputs = []
+        self.startupOutput = ''
+        self.peakOutput = ''
+        self.latencyOutput = ''
 
         return result
 
