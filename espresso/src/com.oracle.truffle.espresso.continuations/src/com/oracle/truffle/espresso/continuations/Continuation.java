@@ -177,6 +177,8 @@ public final class Continuation implements Externalizable {
         // Note: If you change this enum, bump the format version and ensure correct deserialization
         // of old continuations.
 
+        /** Constructed via the no-arg constructor and pending deserialization. */
+        INCOMPLETE,
         /** Newly constructed and waiting for a resume. */
         NEW,
         /** Currently executing. */
@@ -194,7 +196,7 @@ public final class Continuation implements Externalizable {
         @Serial
         private static final long serialVersionUID = -4139336648021552606L;
 
-        State state = State.NEW;
+        State state = State.INCOMPLETE;
     }
 
     private StateHolder stateHolder = new StateHolder();
@@ -228,14 +230,16 @@ public final class Continuation implements Externalizable {
      * </p>
      */
     public Continuation(EntryPoint entryPoint) {
+        this.stateHolder.state = State.NEW;
         this.entryPoint = entryPoint;
     }
 
     /**
-     * This constructor is intended only to allow deserializtion. You shouldn't use it directly.
-     * @hidden
+     * This constructor is intended only to allow deserialization. You shouldn't use it directly.
      */
     public Continuation() {
+        // Note: can't mark this as @hidden in javadoc because the doclet fork used by GraalVM
+        // is too old to understand it.
     }
 
     /**
@@ -305,6 +309,9 @@ public final class Continuation implements Externalizable {
      * @throws IllegalStateException if the {@link #getState()} is not {@link State#SUSPENDED}.
      */
     public void resume() {
+        if (stateHolder.state == State.INCOMPLETE)
+            throw new IllegalStateException("Do not construct this class using the no-arg constructor, which is there only for deserialization purposes.");
+
         // Are we in the special waiting-to-start state?
         if (stateHolder.state == State.NEW) {
             if (entryPoint == null)

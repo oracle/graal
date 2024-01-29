@@ -6,35 +6,35 @@ import java.util.Enumeration;
 import java.util.NoSuchElementException;
 
 /**
- * An {@link Enumeration} that emits an element any time {@link #emit(Object)}
- * is called from inside the {@link #generate()} method. Emit can be called
- * anywhere in the call stack. This type of enumeration is sometimes called
- * a <i>generator</i>.
+ * An {@link Enumeration} that emits an element any time {@link #emit(Object)} is called from inside
+ * the {@link #generate()} method. Emit can be called anywhere in the call stack. This type of
+ * enumeration is sometimes called a <i>generator</i>.
  */
-public abstract class ContinuationEnumeration<E> implements Enumeration<E>, Serializable {
+public abstract class Generator<E> implements Enumeration<E>, Serializable {
     @Serial
     private static final long serialVersionUID = -5614372125614425080L;
 
     private final Continuation continuation;
-
+    private Continuation.SuspendCapability suspendCapability;
     private transient E currentElement;
-
     private transient boolean hasProduced;
 
-    private Continuation.SuspendCapability suspendCapability;
 
     /**
      * This constructor exists only for deserialization purposes. Don't call it directly.
-     * @hidden
      */
     @SuppressWarnings("this-escape")
-    protected ContinuationEnumeration() {
+    protected Generator() {
         continuation = new Continuation((Continuation.EntryPoint & Serializable) suspendCapability -> {
             this.suspendCapability = suspendCapability;
             generate();
         });
     }
 
+    /**
+     * Runs the generator and returns true if it emitted an element. If it finished running, returns
+     * false. If the generator throws an exception it will be propagated from this method.
+     */
     @Override
     public final boolean hasMoreElements() {
         if (hasProduced)
@@ -47,6 +47,12 @@ public abstract class ContinuationEnumeration<E> implements Enumeration<E>, Seri
         return hasProduced;
     }
 
+    /**
+     * Runs the generator if necessary, and returns the element it yielded.
+     *
+     * @throws NoSuchElementException if the generator has finished and no longer emits elements,
+     * or if the generator has previously thrown an exception and failed.
+     */
     @Override
     public final E nextElement() {
         if (!hasMoreElements())
@@ -76,6 +82,8 @@ public abstract class ContinuationEnumeration<E> implements Enumeration<E>, Seri
 
     @Override
     public String toString() {
+        // Printing the continuation will invoke toString on everything reachable from the stack,
+        // thus we need to cancel the re-entrancy here.
         if (reentrancy)
             return "this generator";
         reentrancy = true;
@@ -83,16 +91,4 @@ public abstract class ContinuationEnumeration<E> implements Enumeration<E>, Seri
         reentrancy = false;
         return result;
     }
-//
-//    @Serial
-//    private void writeObject(java.io.ObjectOutputStream out) throws IOException {
-//        if (hasProduced)
-//            throw new IllegalStateException("You cannot serialize a generator between a call to hasMoreElements() and nextElement().");
-//        out.defaultWriteObject();
-//    }
-//
-//    @Serial
-//    private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
-//        in.defaultReadObject();
-//    }
 }
