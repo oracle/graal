@@ -1153,6 +1153,7 @@ final class EngineAccessor extends Accessor {
             for (;;) {
                 try {
                     threadContext.context.checkMultiThreadedAccess(newThread);
+                    break;
                 } catch (PolyglotThreadAccessException ex) {
                     ex.rethrow(threadContext.context);
                 }
