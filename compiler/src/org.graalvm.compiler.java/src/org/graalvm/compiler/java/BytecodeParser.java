@@ -4640,8 +4640,8 @@ public class BytecodeParser implements GraphBuilderContext {
             genNewObjectArray((ResolvedJavaType) type);
         } else {
             /*
-             * The link time effects of an unresolved bytecode always occur before any runtime exception checks,
-             * meaning there is no need to check if the length is positive.
+             * The link time effects of an unresolved bytecode always occur before any runtime
+             * exception checks, meaning there is no need to check if the length is positive.
              */
             handleUnresolvedNewObjectArray(type);
         }
