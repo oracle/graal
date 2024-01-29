@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -59,16 +58,14 @@ final class StackVerifier {
         JavaStackWalker.walkCurrentThread(KnownIntrinsics.readCallerStackPointer(), STACK_FRAME_VISITOR);
         result &= STACK_FRAME_VISITOR.result;
 
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
-                if (thread == CurrentIsolate.getCurrentThread()) {
-                    continue;
-                }
-
-                STACK_FRAME_VISITOR.initialize();
-                JavaStackWalker.walkThread(thread, STACK_FRAME_VISITOR);
-                result &= STACK_FRAME_VISITOR.result;
+        for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
+            if (thread == CurrentIsolate.getCurrentThread()) {
+                continue;
             }
+
+            STACK_FRAME_VISITOR.initialize();
+            JavaStackWalker.walkThread(thread, STACK_FRAME_VISITOR);
+            result &= STACK_FRAME_VISITOR.result;
         }
         return result;
     }

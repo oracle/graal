@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -49,7 +48,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
-import com.oracle.svm.core.threadlocal.VMThreadLocalMTSupport;
+import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;
@@ -70,19 +69,14 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 @AutomaticallyRegisteredFeature
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
-public class VMThreadMTFeature implements InternalFeature {
+public class VMThreadFeature implements InternalFeature {
 
     private final VMThreadLocalCollector threadLocalCollector = new VMThreadLocalCollector();
-    private final VMThreadLocalMTSupport threadLocalSupport = new VMThreadLocalMTSupport();
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.MultiThreaded.getValue();
-    }
+    private final VMThreadLocalSupport threadLocalSupport = new VMThreadLocalSupport();
 
     @Override
     public void duringSetup(DuringSetupAccess config) {
-        ImageSingletons.add(VMThreadLocalMTSupport.class, threadLocalSupport);
+        ImageSingletons.add(VMThreadLocalSupport.class, threadLocalSupport);
         config.registerObjectReplacer(threadLocalCollector);
     }
 

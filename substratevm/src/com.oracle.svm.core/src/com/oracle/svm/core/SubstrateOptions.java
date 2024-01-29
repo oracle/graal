@@ -399,8 +399,7 @@ public class SubstrateOptions {
     @Option(help = "Verify naming conventions during image construction.")//
     public static final HostedOptionKey<Boolean> VerifyNamingConventions = new HostedOptionKey<>(false);
 
-    @Option(help = "Enable support for threads and and thread-local variables (disable for single-threaded implementation)", //
-                    deprecated = true, deprecationMessage = "This special mode to build images that cannot start any additional threads has no benefits anymore and will be removed in a future release")//
+    @Option(help = "Deprecated, has no effect.", deprecated = true) //
     public static final HostedOptionKey<Boolean> MultiThreaded = new HostedOptionKey<>(true);
 
     @Option(help = "Use only a writable native image heap (requires ld.gold linker)")//

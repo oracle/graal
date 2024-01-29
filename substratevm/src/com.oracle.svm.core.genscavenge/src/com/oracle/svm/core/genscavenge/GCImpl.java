@@ -92,7 +92,7 @@ import com.oracle.svm.core.thread.NativeVMOperationData;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.threadlocal.VMThreadLocalMTSupport;
+import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -809,24 +809,22 @@ public final class GCImpl implements GC {
             JavaStackWalker.initWalk(walk, sp, ip);
             walkStack(walk);
 
-            if (SubstrateOptions.MultiThreaded.getValue()) {
-                /*
-                 * Scan the stacks of all the threads. Other threads will be blocked at a safepoint
-                 * (or in native code) so they will each have a JavaFrameAnchor in their VMThread.
-                 */
-                for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-                    if (vmThread == CurrentIsolate.getCurrentThread()) {
-                        /*
-                         * The current thread is already scanned by code above, so we do not have to
-                         * do anything for it here. It might have a JavaFrameAnchor from earlier
-                         * Java-to-C transitions, but certainly not at the top of the stack since it
-                         * is running this code, so just this scan would be incomplete.
-                         */
-                        continue;
-                    }
-                    if (JavaStackWalker.initWalk(walk, vmThread)) {
-                        walkStack(walk);
-                    }
+            /*
+             * Scan the stacks of all the threads. Other threads will be blocked at a safepoint (or
+             * in native code) so they will each have a JavaFrameAnchor in their VMThread.
+             */
+            for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
+                if (vmThread == CurrentIsolate.getCurrentThread()) {
+                    /*
+                     * The current thread is already scanned by code above, so we do not have to do
+                     * anything for it here. It might have a JavaFrameAnchor from earlier Java-to-C
+                     * transitions, but certainly not at the top of the stack since it is running
+                     * this code, so just this scan would be incomplete.
+                     */
+                    continue;
+                }
+                if (JavaStackWalker.initWalk(walk, vmThread)) {
+                    walkStack(walk);
                 }
             }
         } finally {
@@ -891,15 +889,13 @@ public final class GCImpl implements GC {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void walkThreadLocals() {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            Timer walkThreadLocalsTimer = timers.walkThreadLocals.open();
-            try {
-                for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
-                    VMThreadLocalMTSupport.singleton().walk(isolateThread, greyToBlackObjRefVisitor);
-                }
-            } finally {
-                walkThreadLocalsTimer.close();
+        Timer walkThreadLocalsTimer = timers.walkThreadLocals.open();
+        try {
+            for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
+                VMThreadLocalSupport.singleton().walk(isolateThread, greyToBlackObjRefVisitor);
             }
+        } finally {
+            walkThreadLocalsTimer.close();
         }
     }
 

@@ -37,7 +37,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -79,7 +78,7 @@ public abstract class ExceptionUnwind {
          * something went wrong in our state transition code. We cannot reliably unwind the stack,
          * so exiting quickly is better.
          */
-        return SubstrateOptions.MultiThreaded.getValue() && !VMThreads.StatusSupport.isStatusJava();
+        return !VMThreads.StatusSupport.isStatusJava();
     }
 
     /** Foreign call: {@link #UNWIND_EXCEPTION_WITHOUT_CALLEE_SAVED_REGISTERS}. */

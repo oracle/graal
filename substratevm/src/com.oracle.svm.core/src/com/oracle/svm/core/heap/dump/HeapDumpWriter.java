@@ -26,11 +26,6 @@ package com.oracle.svm.core.heap.dump;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import jdk.graal.compiler.word.ObjectAccess;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -44,7 +39,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -87,8 +81,14 @@ import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.threadlocal.VMThreadLocalMTSupport;
+import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 
 /**
  * This class dumps the image heap and the Java heap into a file (HPROF binary format), similar to
@@ -735,10 +735,8 @@ public class HeapDumpWriter {
     }
 
     private void writeThreadLocals(IsolateThread isolateThread, int threadSerialNum) {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            threadLocalsVisitor.initialize(threadSerialNum);
-            VMThreadLocalMTSupport.singleton().walk(isolateThread, threadLocalsVisitor);
-        }
+        threadLocalsVisitor.initialize(threadSerialNum);
+        VMThreadLocalSupport.singleton().walk(isolateThread, threadLocalsVisitor);
     }
 
     private void writeJNIGlobals() {

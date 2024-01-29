@@ -195,17 +195,15 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
         }
 
         /* We are keeping reference to isolate thread inside OS thread local area. */
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            ThreadLocalKey key = singleton().keyForNativeThreadLocal;
-            IsolateThread thread = PlatformThreads.singleton().getUnmanagedThreadLocalValue(key);
-            if (thread.isNull()) {
-                /* Thread is not yet initialized or already detached from isolate. */
-                return false;
-            }
-
-            /* Write isolate thread pointer into register. */
-            WriteCurrentVMThreadNode.writeCurrentVMThread(thread);
+        ThreadLocalKey key = singleton().keyForNativeThreadLocal;
+        IsolateThread thread = PlatformThreads.singleton().getUnmanagedThreadLocalValue(key);
+        if (thread.isNull()) {
+            /* Thread is not yet initialized or already detached from isolate. */
+            return false;
         }
+
+        /* Write isolate thread pointer into register. */
+        WriteCurrentVMThreadNode.writeCurrentVMThread(thread);
         return true;
     }
 

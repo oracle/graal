@@ -510,10 +510,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         masm.movq(new AMD64Address(anchor, knownOffsets.getJavaFrameAnchorLastIPOffset()), lastJavaIP);
         masm.movq(new AMD64Address(anchor, knownOffsets.getJavaFrameAnchorLastSPOffset()), AMD64.rsp);
 
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            /* Change the VMThread status from Java to Native. */
-            masm.movl(new AMD64Address(ReservedRegisters.singleton().getThreadRegister(), knownOffsets.getVMThreadStatusOffset()), newThreadStatus);
-        }
+        /* Change the VMThread status from Java to Native. */
+        masm.movl(new AMD64Address(ReservedRegisters.singleton().getThreadRegister(), knownOffsets.getVMThreadStatusOffset()), newThreadStatus);
     }
 
     /**

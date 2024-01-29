@@ -425,19 +425,17 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                             AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, anchor, knownOffsets.getJavaFrameAnchorLastSPOffset()));
         }
 
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            /*
-             * Change VMThread status from Java to Native. Note a "store release" is needed for this
-             * update to ensure VMThread status is only updated once all prior stores are also
-             * observable.
-             */
-            try (ScratchRegister scratch1 = masm.getScratchRegister(); ScratchRegister scratch2 = masm.getScratchRegister()) {
-                Register statusValueRegister = scratch1.getRegister();
-                Register statusAddressRegister = scratch2.getRegister();
-                masm.mov(statusValueRegister, newThreadStatus);
-                masm.loadAlignedAddress(32, statusAddressRegister, ReservedRegisters.singleton().getThreadRegister(), knownOffsets.getVMThreadStatusOffset());
-                masm.stlr(32, statusValueRegister, statusAddressRegister);
-            }
+        /*
+         * Change VMThread status from Java to Native. Note a "store release" is needed for this
+         * update to ensure VMThread status is only updated once all prior stores are also
+         * observable.
+         */
+        try (ScratchRegister scratch1 = masm.getScratchRegister(); ScratchRegister scratch2 = masm.getScratchRegister()) {
+            Register statusValueRegister = scratch1.getRegister();
+            Register statusAddressRegister = scratch2.getRegister();
+            masm.mov(statusValueRegister, newThreadStatus);
+            masm.loadAlignedAddress(32, statusAddressRegister, ReservedRegisters.singleton().getThreadRegister(), knownOffsets.getVMThreadStatusOffset());
+            masm.stlr(32, statusValueRegister, statusAddressRegister);
         }
     }
 

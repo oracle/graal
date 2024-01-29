@@ -35,7 +35,6 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
@@ -274,10 +273,6 @@ public final class Target_java_lang_Thread {
     @Substitute
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private void start0() {
-        if (!SubstrateOptions.MultiThreaded.getValue()) {
-            throw VMError.unsupportedFeature("Single-threaded VM cannot create new threads");
-        }
-
         parentThreadId = JavaThreads.getThreadId(Thread.currentThread());
         long stackSize = PlatformThreads.getRequestedStackSize(JavaThreads.fromTarget(this));
         try {
@@ -330,12 +325,6 @@ public final class Target_java_lang_Thread {
          * The interrupted flag is maintained by the JDK in Java code, i.e., already set by the
          * caller. So we do not need to set any flag.
          */
-
-        if (!SubstrateOptions.MultiThreaded.getValue()) {
-            /* If the VM is single-threaded, this thread can not be blocked. */
-            return;
-        }
-
         Thread thread = JavaThreads.fromTarget(this);
         PlatformThreads.interruptSleep(thread);
         /*
