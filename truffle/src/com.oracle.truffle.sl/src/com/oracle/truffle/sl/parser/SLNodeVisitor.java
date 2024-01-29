@@ -162,11 +162,11 @@ public class SLNodeVisitor extends SLBaseVisitor {
             methodNodes.add(assignment);
         }
 
-        SLStatementNode bodyNode = statementVisitor.visitBlock(ctx.body);
+        SLBlockNode bodyNode = (SLBlockNode) statementVisitor.visitBlock(ctx.body);
 
         exitFunction();
 
-        methodNodes.add(bodyNode);
+        methodNodes.addAll(bodyNode.getStatements());
         final int bodyEndPos = bodyNode.getSourceEndIndex();
         final SourceSection functionSrc = source.createSection(functionStartPos, bodyEndPos - functionStartPos);
         final SLStatementNode methodBlock = new SLBlockNode(methodNodes.toArray(new SLStatementNode[methodNodes.size()]));
