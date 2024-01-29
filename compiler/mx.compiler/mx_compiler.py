@@ -1292,11 +1292,7 @@ class GraalArchiveParticipant:
 
     def __closing__(self):
         _record_last_updated_jar(self.dist, self.arc.path)
-        if self.dist.name == 'GRAAL':
-            # Check if we're using the same JVMCI JDK as the CI system does.
-            # This only done when building the GRAAL distribution so as to
-            # not be too intrusive.
-            _check_latest_jvmci_version()
+
 
 mx.add_argument('--vmprefix', action='store', dest='vm_prefix', help='prefix for running the VM (e.g. "gdb --args")', metavar='<prefix>')
 mx.add_argument('--gdb', action='store_const', const='gdb --args', dest='vm_prefix', help='alias for --vmprefix "gdb --args"')
