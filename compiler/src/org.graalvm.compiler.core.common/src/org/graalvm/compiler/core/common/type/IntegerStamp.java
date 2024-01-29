@@ -85,6 +85,10 @@ public final class IntegerStamp extends PrimitiveStamp {
     }
 
     public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput, long downMask, long upMask) {
+        if (lowerBoundInput > upperBoundInput || (downMask & (~upMask)) != 0 || (upMask == 0 && (lowerBoundInput > 0 || upperBoundInput < 0))) {
+            return createEmptyStamp(bits);
+        }
+
         assert (downMask & ~upMask) == 0 : String.format("\u21ca: %016x \u21c8: %016x", downMask, upMask);
 
         // Set lower bound, use masks to make it more precise
@@ -164,6 +168,10 @@ public final class IntegerStamp extends PrimitiveStamp {
     @Override
     public IntegerStamp empty() {
         return new IntegerStamp(getBits(), CodeUtil.maxValue(getBits()), CodeUtil.minValue(getBits()), CodeUtil.mask(getBits()), 0);
+    }
+
+    static IntegerStamp createEmptyStamp(int bits) {
+        return new IntegerStamp(bits, CodeUtil.maxValue(bits), CodeUtil.minValue(bits), CodeUtil.mask(bits), 0);
     }
 
     @Override
@@ -1579,7 +1587,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                              * but the following is defensive to ensure that we only perform valid
                              * inversions.
                              */
-                            long mustBeSetOutputBits = stamp.mustBeSet();
+                            long mustBeSetOutputBits = stamp.downMask();
                             long mustBeSetExtensionBits = mustBeSetOutputBits >>> inputBits;
                             if (mustBeSetExtensionBits != 0) {
                                 return createEmptyStamp(inputBits);
@@ -1593,7 +1601,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                             long lowerBound = Math.max(stamp.lowerBound(), 0);
                             assert stamp.upperBound() >= 0 : "Cannot invert ZeroExtend for stamp with msb=1, which implies a negative value after ZeroExtend!";
 
-                            return StampFactory.forUnsignedInteger(inputBits, lowerBound, stamp.upperBound(), stamp.mustBeSet(), stamp.mayBeSet());
+                            return StampFactory.forUnsignedInteger(inputBits, lowerBound, stamp.upperBound(), stamp.downMask(), stamp.upMask());
                         }
                     },
 
@@ -1658,14 +1666,14 @@ public final class IntegerStamp extends PrimitiveStamp {
                              * but 0xb308 has 0xb3, and so we cannot invert the stamp. In this case
                              * the only sensible inversion is the empty stamp.
                              */
-                            long mustBeSetExtensionBits = stamp.mustBeSet() >>> inputBits;
-                            long mayBeSetExtensionBits = stamp.mayBeSet() >>> inputBits;
+                            long mustBeSetExtensionBits = stamp.downMask() >>> inputBits;
+                            long mayBeSetExtensionBits = stamp.upMask() >>> inputBits;
                             long extensionMask = CodeUtil.mask(stamp.getBits()) >>> inputBits;
 
                             boolean zeroInExtension = mayBeSetExtensionBits != extensionMask;
                             boolean oneInExtension = mustBeSetExtensionBits != 0;
-                            boolean inputMSBOne = significantBit(inputBits, stamp.mustBeSet()) == 1;
-                            boolean inputMSBZero = significantBit(inputBits, stamp.mayBeSet()) == 0;
+                            boolean inputMSBOne = significantBit(inputBits, stamp.downMask()) == 1;
+                            boolean inputMSBZero = significantBit(inputBits, stamp.upMask()) == 0;
 
                             /*
                              * Checks for contradictions in the extension and returns an empty stamp in such cases.
@@ -1684,8 +1692,8 @@ public final class IntegerStamp extends PrimitiveStamp {
                             }
 
                             long inputMask = CodeUtil.mask(inputBits);
-                            long inputMustBeSet = stamp.mustBeSet() & inputMask;
-                            long inputMayBeSet = stamp.mayBeSet() & inputMask;
+                            long inputMustBeSet = stamp.downMask() & inputMask;
+                            long inputMayBeSet = stamp.upMask() & inputMask;
 
                             if (!inputMSBOne && !inputMSBZero) {
                                 /*
