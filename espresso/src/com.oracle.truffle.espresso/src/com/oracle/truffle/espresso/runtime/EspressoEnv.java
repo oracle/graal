@@ -136,7 +136,7 @@ public final class EspressoEnv {
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
         this.EnableAgents = env.getOptions().get(EspressoOptions.EnableAgents);
         this.TrivialMethodSize = env.getOptions().get(EspressoOptions.TrivialMethodSize);
-        this.RegexSubstitutions = env.getOptions().get(EspressoOptions.RegexSubstitutions);
+        this.RegexSubstitutions = env.getOptions().get(EspressoOptions.UseTRegex);
         boolean useHostFinalReferenceOption = env.getOptions().get(EspressoOptions.UseHostFinalReference);
         this.UseHostFinalReference = useHostFinalReferenceOption && FinalizationSupport.canUseHostFinalReference();
         if (useHostFinalReferenceOption && !FinalizationSupport.canUseHostFinalReference()) {

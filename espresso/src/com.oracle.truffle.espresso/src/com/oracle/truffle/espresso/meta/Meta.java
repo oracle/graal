@@ -220,7 +220,6 @@ public final class Meta extends ContextAccessImpl {
         java_lang_String_hash = java_lang_String.requireDeclaredField(Name.hash, Type._int);
         java_lang_String_hashCode = java_lang_String.requireDeclaredMethod(Name.hashCode, Signature._int);
         java_lang_String_length = java_lang_String.requireDeclaredMethod(Name.length, Signature._int);
-        java_lang_String_substring = java_lang_String.requireDeclaredMethod(Name.substring, Signature.String_int_int);
         java_lang_String_toCharArray = java_lang_String.requireDeclaredMethod(Name.toCharArray, Signature._char_array);
         java_lang_String_indexOf = java_lang_String.requireDeclaredMethod(Name.indexOf, Signature._int_int_int);
         java_lang_String_init_char_array = java_lang_String.requireDeclaredMethod(Name._init_, Signature._void_char_array);
@@ -232,8 +231,6 @@ public final class Meta extends ContextAccessImpl {
             java_lang_String_COMPACT_STRINGS = null;
         }
 
-        java_lang_CharSequence_length = java_lang_CharSequence.requireDeclaredMethod(Name.length, Signature._int);
-        java_lang_CharSequence_subSequence = java_lang_CharSequence.requireDeclaredMethod(Name.subSequence, Signature.CharSequence_int_int);
         java_lang_CharSequence_toString = java_lang_CharSequence.requireDeclaredMethod(Name.toString, Signature.String);
 
         java_lang_Throwable = knownKlass(Type.java_lang_Throwable);
@@ -941,58 +938,116 @@ public final class Meta extends ContextAccessImpl {
         java_util_Optional_value = java_util_Optional.requireDeclaredField(Name.value, Type.java_lang_Object);
 
         java_util_regex_Pattern = knownKlass(Type.java_util_regex_Pattern);
-        java_util_regex_Pattern_HIDDEN_tregexMatch = java_util_regex_Pattern.requireHiddenField(Name.HIDDEN_TREGEX_MATCH);
-        java_util_regex_Pattern_HIDDEN_tregexFullmatch = java_util_regex_Pattern.requireHiddenField(Name.HIDDEN_TREGEX_FULLMATCH);
-        java_util_regex_Pattern_HIDDEN_tregexSearch = java_util_regex_Pattern.requireHiddenField(Name.HIDDEN_TREGEX_SEARCH);
-        java_util_regex_Pattern_HIDDEN_unsupported = java_util_regex_Pattern.requireHiddenField(Name.HIDDEN_TREGEX_UNSUPPORTED);
-        java_util_regex_Pattern_pattern = java_util_regex_Pattern.requireDeclaredField(Name.pattern, Type.java_lang_String);
-        java_util_regex_Pattern_flags = java_util_regex_Pattern.requireDeclaredField(Name.flags, Type._int);
-        java_util_regex_Pattern_flags0 = java_util_regex_Pattern.requireDeclaredField(Name.flags0, Type._int);
-        java_util_regex_Pattern_compiled = java_util_regex_Pattern.requireDeclaredField(Name.compiled, Type._boolean);
         java_util_regex_Pattern_init = java_util_regex_Pattern.requireMethod(Name._init_, Signature._void_String_int);
-        java_util_regex_Pattern_namedGroups = java_util_regex_Pattern.requireMethod(Name.namedGroups, Signature.Map);
-        java_util_regex_Pattern_namedGroups_field = java_util_regex_Pattern.requireDeclaredField(Name.namedGroups, Type.java_util_Map);
-        java_util_regex_Pattern_capturingGroupCount = java_util_regex_Pattern.requireDeclaredField(Name.capturingGroupCount, Type._int);
-        java_util_regex_Pattern_root = java_util_regex_Pattern.requireDeclaredField(Name.root, Type.java_util_regex_Pattern_Node);
-        java_util_regex_Pattern_matchRoot = java_util_regex_Pattern.requireDeclaredField(Name.matchRoot, Type.java_util_regex_Pattern_Node);
         java_util_regex_Pattern_compile = java_util_regex_Pattern.requireDeclaredMethod(Name.compile, Signature._void);
-        java_util_regex_Pattern_localCount = java_util_regex_Pattern.requireDeclaredField(Name.localCount, Type._int);
-        java_util_regex_Pattern_localTCNCount = java_util_regex_Pattern.requireDeclaredField(Name.localTCNCount, Type._int);
-        java_util_regex_IntHashSet = knownKlass(Type.java_util_regex_IntHashSet);
 
-        java_util_regex_PatternSyntaxException = knownKlass(Type.java_util_regex_PatternSyntaxException);
-        java_util_regex_PatternSyntaxException_init = java_util_regex_PatternSyntaxException.requireMethod(Name._init_, Signature._void_String_String_int);
+        if (context.getJavaVersion().java20OrLater()) {
+            java_util_regex_Pattern_namedGroups = java_util_regex_Pattern.requireMethod(Name.namedGroups, Signature.Map);
+        } else {
+            java_util_regex_Pattern_namedGroups = null;
+        }
+
+        if (context.regexSubstitutionsEnabled()) {
+            java_util_regex_Pattern_HIDDEN_tregexMatch = java_util_regex_Pattern.requireHiddenField(Name.HIDDEN_TREGEX_MATCH);
+            java_util_regex_Pattern_HIDDEN_tregexFullmatch = java_util_regex_Pattern.requireHiddenField(Name.HIDDEN_TREGEX_FULLMATCH);
+            java_util_regex_Pattern_HIDDEN_tregexSearch = java_util_regex_Pattern.requireHiddenField(Name.HIDDEN_TREGEX_SEARCH);
+            java_util_regex_Pattern_HIDDEN_unsupported = java_util_regex_Pattern.requireHiddenField(Name.HIDDEN_TREGEX_UNSUPPORTED);
+        } else {
+            java_util_regex_Pattern_HIDDEN_tregexMatch = null;
+            java_util_regex_Pattern_HIDDEN_tregexFullmatch = null;
+            java_util_regex_Pattern_HIDDEN_tregexSearch = null;
+            java_util_regex_Pattern_HIDDEN_unsupported = null;
+        }
+
+        if (context.getJavaVersion().java21OrLater()) {
+            java_util_regex_Pattern_pattern = java_util_regex_Pattern.requireDeclaredField(Name.pattern, Type.java_lang_String);
+            java_util_regex_Pattern_flags = java_util_regex_Pattern.requireDeclaredField(Name.flags, Type._int);
+            java_util_regex_Pattern_flags0 = java_util_regex_Pattern.requireDeclaredField(Name.flags0, Type._int);
+            java_util_regex_Pattern_compiled = java_util_regex_Pattern.requireDeclaredField(Name.compiled, Type._boolean);
+            java_util_regex_Pattern_namedGroups_field = java_util_regex_Pattern.requireDeclaredField(Name.namedGroups, Type.java_util_Map);
+            java_util_regex_Pattern_capturingGroupCount = java_util_regex_Pattern.requireDeclaredField(Name.capturingGroupCount, Type._int);
+            java_util_regex_Pattern_root = java_util_regex_Pattern.requireDeclaredField(Name.root, Type.java_util_regex_Pattern_Node);
+            java_util_regex_Pattern_localCount = java_util_regex_Pattern.requireDeclaredField(Name.localCount, Type._int);
+            java_util_regex_Pattern_localTCNCount = java_util_regex_Pattern.requireDeclaredField(Name.localTCNCount, Type._int);
+        } else {
+            java_util_regex_Pattern_pattern = null;
+            java_util_regex_Pattern_flags = null;
+            java_util_regex_Pattern_flags0 = null;
+            java_util_regex_Pattern_compiled = null;
+            java_util_regex_Pattern_namedGroups_field = null;
+            java_util_regex_Pattern_capturingGroupCount = null;
+            java_util_regex_Pattern_root = null;
+            java_util_regex_Pattern_localCount = null;
+            java_util_regex_Pattern_localTCNCount = null;
+        }
 
         java_util_regex_Matcher = knownKlass(Type.java_util_regex_Matcher);
         java_util_regex_Matcher_init = java_util_regex_Matcher.requireMethod(Name._init_, Signature._void_CharSequence_Pattern);
         java_util_regex_Matcher_reset = java_util_regex_Matcher.requireMethod(Name.reset, Signature.Matcher_CharSequence);
-        java_util_regex_Matcher_HIDDEN_tstring = java_util_regex_Matcher.requireHiddenField(Name.HIDDEN_TREGEX_TSTRING);
-        java_util_regex_Matcher_HIDDEN_oldLastBackup = java_util_regex_Matcher.requireHiddenField(Name.HIDDEN_TREGEX_OLD_LAST_BACKUP);
-        java_util_regex_Matcher_HIDDEN_modCountBackup = java_util_regex_Matcher.requireHiddenField(Name.HIDDEN_TREGEX_MOD_COUNT_BACKUP);
-        java_util_regex_Matcher_HIDDEN_transparentBoundsBackup = java_util_regex_Matcher.requireHiddenField(Name.HIDDEN_TREGEX_TRANSPARENT_BOUNDS_BACKUP);
-        java_util_regex_Matcher_HIDDEN_anchoringBoundsBackup = java_util_regex_Matcher.requireHiddenField(Name.HIDDEN_TREGEX_ANCHORING_BOUNDS_BACKUP);
-        java_util_regex_Matcher_HIDDEN_fromBackup = java_util_regex_Matcher.requireHiddenField(Name.HIDDEN_TREGEX_FROM_BACKUP);
-        java_util_regex_Matcher_HIDDEN_toBackup = java_util_regex_Matcher.requireHiddenField(Name.HIDDEN_TREGEX_TO_BACKUP);
-        java_util_regex_Matcher_HIDDEN_matchingModeBackup = java_util_regex_Matcher.requireHiddenField(Name.HIDDEN_TREGEX_MATCHING_MODE_BACKUP);
-        java_util_regex_Matcher_HIDDEN_searchFromBackup = java_util_regex_Matcher.requireHiddenField(Name.HIDDEN_TREGEX_SEARCH_FROM_BACKUP);
-        java_util_regex_Matcher_parentPattern = java_util_regex_Matcher.requireDeclaredField(Name.parentPattern, Type.java_util_regex_Pattern);
-        java_util_regex_Matcher_text = java_util_regex_Matcher.requireDeclaredField(Name.text, Type.java_lang_CharSequence);
         java_util_regex_Matcher_match = java_util_regex_Matcher.requireMethod(Name.match, Signature._boolean_int_int);
         java_util_regex_Matcher_search = java_util_regex_Matcher.requireMethod(Name.search, Signature._boolean_int);
-        java_util_regex_Matcher_groups = java_util_regex_Matcher.requireDeclaredField(Name.groups, Type._int_array);
-        java_util_regex_Matcher_first = java_util_regex_Matcher.requireDeclaredField(Name.first, Type._int);
-        java_util_regex_Matcher_last = java_util_regex_Matcher.requireDeclaredField(Name.last, Type._int);
-        java_util_regex_Matcher_oldLast = java_util_regex_Matcher.requireDeclaredField(Name.oldLast, Type._int);
-        java_util_regex_Matcher_from = java_util_regex_Matcher.requireDeclaredField(Name.from, Type._int);
-        java_util_regex_Matcher_to = java_util_regex_Matcher.requireDeclaredField(Name.to, Type._int);
-        java_util_regex_Matcher_modCount = java_util_regex_Matcher.requireDeclaredField(Name.modCount, Type._int);
-        java_util_regex_Matcher_transparentBounds = java_util_regex_Matcher.requireDeclaredField(Name.transparentBounds, Type._boolean);
-        java_util_regex_Matcher_anchoringBounds = java_util_regex_Matcher.requireDeclaredField(Name.anchoringBounds, Type._boolean);
-        java_util_regex_Matcher_locals = java_util_regex_Matcher.requireDeclaredField(Name.locals, Type._int_array);
-        java_util_regex_Matcher_localsPos = java_util_regex_Matcher.requireDeclaredField(Name.localsPos, Type.java_util_regex_IntHashSet_array);
+        java_util_regex_Matcher_groupCount = java_util_regex_Matcher.requireDeclaredMethod(Name.groupCount, Signature._int);
         java_util_regex_Matcher_hitEnd = java_util_regex_Matcher.requireDeclaredField(Name.hitEnd, Type._boolean);
         java_util_regex_Matcher_requireEnd = java_util_regex_Matcher.requireDeclaredField(Name.requireEnd, Type._boolean);
-        java_util_regex_Matcher_groupCount = java_util_regex_Matcher.requireDeclaredMethod(Name.groupCount, Signature._int);
+
+        if (context.regexSubstitutionsEnabled()) {
+            java_util_regex_Matcher_HIDDEN_tstring = java_util_regex_Matcher.requireHiddenField(Name.HIDDEN_TREGEX_TSTRING);
+            java_util_regex_Matcher_HIDDEN_oldLastBackup = java_util_regex_Matcher.requireHiddenField(Name.HIDDEN_TREGEX_OLD_LAST_BACKUP);
+            java_util_regex_Matcher_HIDDEN_modCountBackup = java_util_regex_Matcher.requireHiddenField(Name.HIDDEN_TREGEX_MOD_COUNT_BACKUP);
+            java_util_regex_Matcher_HIDDEN_transparentBoundsBackup = java_util_regex_Matcher.requireHiddenField(Name.HIDDEN_TREGEX_TRANSPARENT_BOUNDS_BACKUP);
+            java_util_regex_Matcher_HIDDEN_anchoringBoundsBackup = java_util_regex_Matcher.requireHiddenField(Name.HIDDEN_TREGEX_ANCHORING_BOUNDS_BACKUP);
+            java_util_regex_Matcher_HIDDEN_fromBackup = java_util_regex_Matcher.requireHiddenField(Name.HIDDEN_TREGEX_FROM_BACKUP);
+            java_util_regex_Matcher_HIDDEN_toBackup = java_util_regex_Matcher.requireHiddenField(Name.HIDDEN_TREGEX_TO_BACKUP);
+            java_util_regex_Matcher_HIDDEN_matchingModeBackup = java_util_regex_Matcher.requireHiddenField(Name.HIDDEN_TREGEX_MATCHING_MODE_BACKUP);
+            java_util_regex_Matcher_HIDDEN_searchFromBackup = java_util_regex_Matcher.requireHiddenField(Name.HIDDEN_TREGEX_SEARCH_FROM_BACKUP);
+        } else {
+            java_util_regex_Matcher_HIDDEN_tstring = null;
+            java_util_regex_Matcher_HIDDEN_oldLastBackup = null;
+            java_util_regex_Matcher_HIDDEN_modCountBackup = null;
+            java_util_regex_Matcher_HIDDEN_transparentBoundsBackup = null;
+            java_util_regex_Matcher_HIDDEN_anchoringBoundsBackup = null;
+            java_util_regex_Matcher_HIDDEN_fromBackup = null;
+            java_util_regex_Matcher_HIDDEN_toBackup = null;
+            java_util_regex_Matcher_HIDDEN_matchingModeBackup = null;
+            java_util_regex_Matcher_HIDDEN_searchFromBackup = null;
+        }
+
+        if (context.getJavaVersion().java21OrLater()) {
+            java_util_regex_Matcher_parentPattern = java_util_regex_Matcher.requireDeclaredField(Name.parentPattern, Type.java_util_regex_Pattern);
+            java_util_regex_Matcher_groups = java_util_regex_Matcher.requireDeclaredField(Name.groups, Type._int_array);
+            java_util_regex_Matcher_first = java_util_regex_Matcher.requireDeclaredField(Name.first, Type._int);
+            java_util_regex_Matcher_last = java_util_regex_Matcher.requireDeclaredField(Name.last, Type._int);
+            java_util_regex_Matcher_oldLast = java_util_regex_Matcher.requireDeclaredField(Name.oldLast, Type._int);
+            java_util_regex_Matcher_from = java_util_regex_Matcher.requireDeclaredField(Name.from, Type._int);
+            java_util_regex_Matcher_to = java_util_regex_Matcher.requireDeclaredField(Name.to, Type._int);
+            java_util_regex_Matcher_modCount = java_util_regex_Matcher.requireDeclaredField(Name.modCount, Type._int);
+            java_util_regex_Matcher_transparentBounds = java_util_regex_Matcher.requireDeclaredField(Name.transparentBounds, Type._boolean);
+            java_util_regex_Matcher_anchoringBounds = java_util_regex_Matcher.requireDeclaredField(Name.anchoringBounds, Type._boolean);
+            java_util_regex_Matcher_locals = java_util_regex_Matcher.requireDeclaredField(Name.locals, Type._int_array);
+            java_util_regex_Matcher_localsPos = java_util_regex_Matcher.requireDeclaredField(Name.localsPos, Type.java_util_regex_IntHashSet_array);
+
+        } else {
+            java_util_regex_Matcher_parentPattern = null;
+            java_util_regex_Matcher_groups = null;
+            java_util_regex_Matcher_first = null;
+            java_util_regex_Matcher_last = null;
+            java_util_regex_Matcher_oldLast = null;
+            java_util_regex_Matcher_from = null;
+            java_util_regex_Matcher_to = null;
+            java_util_regex_Matcher_modCount = null;
+            java_util_regex_Matcher_transparentBounds = null;
+            java_util_regex_Matcher_anchoringBounds = null;
+            java_util_regex_Matcher_locals = null;
+            java_util_regex_Matcher_localsPos = null;
+        }
+
+        if (context.getJavaVersion().java21OrLater()) {
+            java_util_regex_IntHashSet = knownKlass(Type.java_util_regex_IntHashSet);
+        } else {
+            java_util_regex_IntHashSet = null;
+        }
+
+        java_util_regex_PatternSyntaxException = knownKlass(Type.java_util_regex_PatternSyntaxException);
 
         java_math_BigInteger = knownKlass(Type.java_math_BigInteger);
         java_math_BigInteger_init = java_math_BigInteger.requireDeclaredMethod(Name._init_, Signature._void_byte_array);
@@ -1289,14 +1344,11 @@ public final class Meta extends ContextAccessImpl {
     public final Field java_lang_String_COMPACT_STRINGS;
     public final Method java_lang_String_hashCode;
     public final Method java_lang_String_length;
-    public final Method java_lang_String_substring;
     public final Method java_lang_String_toCharArray;
     public final Method java_lang_String_indexOf;
     public final Method java_lang_String_init_char_array;
 
     // Charsequence
-    public final Method java_lang_CharSequence_length;
-    public final Method java_lang_CharSequence_subSequence;
     public final Method java_lang_CharSequence_toString;
 
     public final ObjectKlass java_lang_ClassLoader;
@@ -1786,13 +1838,11 @@ public final class Meta extends ContextAccessImpl {
     public final Field java_util_regex_Pattern_namedGroups_field;
     public final Field java_util_regex_Pattern_capturingGroupCount;
     public final Field java_util_regex_Pattern_root;
-    public final Field java_util_regex_Pattern_matchRoot;
     public final Method java_util_regex_Pattern_compile;
     public final Field java_util_regex_Pattern_localCount;
     public final Field java_util_regex_Pattern_localTCNCount;
     public final ObjectKlass java_util_regex_IntHashSet;
     public final ObjectKlass java_util_regex_PatternSyntaxException;
-    public final Method java_util_regex_PatternSyntaxException_init;
     public final ObjectKlass java_util_regex_Matcher;
     public final Method java_util_regex_Matcher_init;
     public final Method java_util_regex_Matcher_reset;
@@ -1807,7 +1857,6 @@ public final class Meta extends ContextAccessImpl {
     public final Field java_util_regex_Matcher_HIDDEN_searchFromBackup;
     public final Field java_util_regex_Matcher_modCount;
     public final Field java_util_regex_Matcher_parentPattern;
-    public final Field java_util_regex_Matcher_text;
     public final Field java_util_regex_Matcher_groups;
     public final Field java_util_regex_Matcher_first;
     public final Field java_util_regex_Matcher_last;

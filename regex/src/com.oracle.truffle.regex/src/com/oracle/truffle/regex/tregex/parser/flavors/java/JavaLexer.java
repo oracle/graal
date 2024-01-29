@@ -64,7 +64,7 @@ import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.TBitSet;
 
-public class JavaLexer extends RegexLexer {
+public final class JavaLexer extends RegexLexer {
 
     // [A-Za-z]
     public static final CodePointSet ASCII_LETTERS = CodePointSet.createNoDedup(
@@ -151,12 +151,8 @@ public class JavaLexer extends RegexLexer {
     public static final Map<Character, CodePointSet> UNICODE_CHAR_CLASS_SETS;
 
     static {
-        UNICODE_CHAR_CLASS_SETS = new HashMap<>();
         CodePointSet digits = UnicodeProperties.getProperty("General_Category=Decimal_Number");
-        UNICODE_CHAR_CLASS_SETS.put('d', digits);
-        UNICODE_CHAR_CLASS_SETS.put('D', digits.createInverse(Encodings.UTF_16));
-        UNICODE_CHAR_CLASS_SETS.put('s', UnicodeProperties.getProperty("White_Space"));
-        UNICODE_CHAR_CLASS_SETS.put('S', UnicodeProperties.getProperty("White_Space").createInverse(Encodings.UTF_16));
+        CodePointSet whiteSpace = UnicodeProperties.getProperty("White_Space");
         CodePointSet alpha = UnicodeProperties.getProperty("Alphabetic");
         CodePointSet gcMn = UnicodeProperties.getProperty("General_Category=Mn");
         CodePointSet gcMe = UnicodeProperties.getProperty("General_Category=Me");
@@ -164,9 +160,13 @@ public class JavaLexer extends RegexLexer {
         CodePointSet gcPc = UnicodeProperties.getProperty("General_Category=Pc");
         CodePointSet joinControl = UnicodeProperties.getProperty("Join_Control");
         CodePointSet wordChars = alpha.union(digits).union(gcMn).union(gcMe).union(gcMc).union(gcPc).union(joinControl);
-        CodePointSet nonWordChars = wordChars.createInverse(Encodings.UTF_16);
+        UNICODE_CHAR_CLASS_SETS = new HashMap<>();
+        UNICODE_CHAR_CLASS_SETS.put('d', digits);
+        UNICODE_CHAR_CLASS_SETS.put('D', digits.createInverse(Encodings.UTF_16));
+        UNICODE_CHAR_CLASS_SETS.put('s', whiteSpace);
+        UNICODE_CHAR_CLASS_SETS.put('S', whiteSpace.createInverse(Encodings.UTF_16));
         UNICODE_CHAR_CLASS_SETS.put('w', wordChars);
-        UNICODE_CHAR_CLASS_SETS.put('W', nonWordChars);
+        UNICODE_CHAR_CLASS_SETS.put('W', wordChars.createInverse(Encodings.UTF_16));
     }
 
     private final Deque<JavaFlags> flagsStack = new ArrayDeque<>();
@@ -779,16 +779,10 @@ public class JavaLexer extends RegexLexer {
                 if (c < 256 &&
                                 !(getLocalFlags().isCaseInsensitive() && getLocalFlags().isUnicodeCase() &&
                                                 (c == 0xff || c == 0xb5 ||
-                                                                c == 0x49 || c == 0x69 ||    // I
-                                                                                             // and
-                                                                                             // i
-                                                                c == 0x53 || c == 0x73 ||    // S
-                                                                                             // and
-                                                                                             // s
-                                                                c == 0x4b || c == 0x6b ||    // K
-                                                                                             // and
-                                                                                             // k
-                                                                c == 0xc5 || c == 0xe5))) {  // A+ring
+                                                                c == 0x49 || c == 0x69 ||
+                                                                c == 0x53 || c == 0x73 ||
+                                                                c == 0x4b || c == 0x6b ||
+                                                                c == 0xc5 || c == 0xe5))) {
                     hasBits = true;
                     curr = null;
                     bits = bits.union(range);

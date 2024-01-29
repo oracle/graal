@@ -41,7 +41,7 @@
 
 package com.oracle.truffle.regex.charset;
 
-// Sets corresponding to contributory properties defined in PropList.txt
+// Sets corresponding to contributory properties defined in src/java.base/share/data/unicodedata/PropList.txt
 class JavaPropList {
     static final CodePointSet OTHER_LOWERCASE = CodePointSet.createNoDedup(
                     170, 170,

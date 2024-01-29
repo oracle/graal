@@ -118,8 +118,6 @@ public class UnicodeProperties {
         // Unicode character property aliases, defined in
         // http://www.unicode.org/Public/UNIDATA/PropertyValueAliases.txt
         return switch (name) {
-            // TODO we probably do not need to worry about case sensitivity here as we'll perform
-            // case folding later anyway
             case "Cn" -> JavaGc.category("Cn");
             case "Lu" -> caseIns ? categories("Lu", "Ll", "Lt") : JavaGc.category("Lu");
             case "Ll" -> caseIns ? categories("Lu", "Ll", "Lt") : JavaGc.category("Ll");
@@ -228,13 +226,12 @@ public class UnicodeProperties {
             case "ALPHABETIC" -> JavaCharacter.ALPHABETIC;
             case "ASSIGNED" -> JavaCharacter.DEFINED;
             case "CONTROL" -> JavaGc.CONTROL;
-            // TODO emoji are only supported in jdk 21
-            // case "EMOJI" -> JavaEmoji.EMOJI;
-            // case "EMOJI_PRESENTATION" -> JavaEmoji.EMOJI;
-            // case "EMOJI_MODIFIER" -> JavaEmoji.EMOJI;
-            // case "EMOJI_MODIFIER_BASE" -> JavaEmoji.EMOJI;
-            // case "EMOJI_COMPONENT" -> JavaEmoji.EMOJI;
-            // case "EXTENDED_PICTOGRAPHIC" -> JavaEmoji.EMOJI;
+            case "EMOJI" -> JavaEmoji.EMOJI;
+            case "EMOJI_PRESENTATION" -> JavaEmoji.EMOJI_PRESENTATION;
+            case "EMOJI_MODIFIER" -> JavaEmoji.EMOJI_MODIFIER;
+            case "EMOJI_MODIFIER_BASE" -> JavaEmoji.EMOJI_MODIFIER_BASE;
+            case "EMOJI_COMPONENT" -> JavaEmoji.EMOJI_COMPONENT;
+            case "EXTENDED_PICTOGRAPHIC" -> JavaEmoji.EXTENDED_PICTOGRAPHIC;
             case "HEXDIGIT", "HEX_DIGIT" -> JavaCharacter.DIGIT.union(JavaPropList.HEX_DIGIT);
             case "IDEOGRAPHIC" -> JavaCharacter.IDEOGRAPHIC;
             case "JOINCONTROL", "JOIN_CONTROL" -> JavaPropList.JOINT_CONTROL;

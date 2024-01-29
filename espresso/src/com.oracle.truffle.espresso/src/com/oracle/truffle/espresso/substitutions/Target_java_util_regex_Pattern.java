@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
@@ -52,8 +51,8 @@ public final class Target_java_util_regex_Pattern {
 
         abstract void execute(@JavaType(Pattern.class) StaticObject self, @JavaType(String.class) StaticObject p, int f);
 
-        @Specialization
-        void doDefault(
+        @Specialization(guards = "context.regexSubstitutionsEnabled()")
+        static void doDefault(
                         @JavaType(Pattern.class) StaticObject self, @JavaType(String.class) StaticObject p, int f,
                         @Bind("getContext()") EspressoContext context,
                         @CachedLibrary(limit = "3") InteropLibrary regexInterop,
@@ -61,13 +60,10 @@ public final class Target_java_util_regex_Pattern {
             Meta meta = context.getMeta();
             String pattern = meta.toHostString(p);
 
-            String combined = "RegressionTestMode=true,Encoding=UTF-16,Flavor=JavaUtilPattern,Validate=true";
+            String combined = "Encoding=UTF-16,Flavor=JavaUtilPattern,Validate=true";
 
             if ((f & ~ALL_FLAGS) != 0) {
-                StaticObject guestException = meta.java_lang_IllegalArgumentException.allocateInstance(context);
-                CallTarget exceptionInit = meta.java_lang_IllegalArgumentException_init.getCallTarget();
-                exceptionInit.call(guestException, meta.toGuestString(unknownFlagMessage(f)));
-                meta.throwException(guestException);
+                meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, unknownFlagMessage(f));
             }
 
             // this is to reproduce the java.util.regex behavior, where isEmpty is called on the
@@ -76,8 +72,7 @@ public final class Target_java_util_regex_Pattern {
                 throw meta.throwNullPointerException();
             }
 
-            String sourceStr = getString(f, combined, pattern);
-            Source src = getSource(sourceStr);
+            Source src = getSource(f, combined, pattern);
             try {
                 context.getEnv().parseInternal(src).call();
             } catch (Exception e) {
@@ -97,9 +92,9 @@ public final class Target_java_util_regex_Pattern {
                 }
             }
 
-            meta.java_util_regex_Pattern_HIDDEN_tregexSearch.setHiddenObject(self, StaticObject.NULL);
-            meta.java_util_regex_Pattern_HIDDEN_tregexMatch.setHiddenObject(self, StaticObject.NULL);
-            meta.java_util_regex_Pattern_HIDDEN_tregexFullmatch.setHiddenObject(self, StaticObject.NULL);
+            meta.java_util_regex_Pattern_HIDDEN_tregexSearch.setHiddenObject(self, null);
+            meta.java_util_regex_Pattern_HIDDEN_tregexMatch.setHiddenObject(self, null);
+            meta.java_util_regex_Pattern_HIDDEN_tregexFullmatch.setHiddenObject(self, null);
             meta.java_util_regex_Pattern_HIDDEN_unsupported.setHiddenObject(self, false);
 
             // indicates that the group count is invalid
@@ -110,10 +105,17 @@ public final class Target_java_util_regex_Pattern {
             meta.java_util_regex_Pattern_compiled.setBoolean(self, true);
         }
 
+        @Specialization
+        static void doDisabled(
+                        @JavaType(Pattern.class) StaticObject self, @JavaType(String.class) StaticObject p, int f,
+                        @Cached("create(getContext().getMeta().java_util_regex_Pattern_init.getCallTargetNoSubstitution())") DirectCallNode original) {
+            original.call(self, p, f);
+        }
+
         @TruffleBoundary
-        private static Source getSource(String sourceStr) {
-            Source src = Source.newBuilder("regex", sourceStr, "patternExpr").build();
-            return src;
+        private static Source getSource(int f, String combined, String pattern) {
+            String sourceStr = combined + '/' + pattern + '/' + convertFlags(f);
+            return Source.newBuilder("regex", sourceStr, "patternExpr").build();
         }
     }
 
@@ -122,24 +124,28 @@ public final class Target_java_util_regex_Pattern {
 
         abstract @JavaType(Map.class) StaticObject execute(@JavaType(Pattern.class) StaticObject self);
 
-        @Specialization
+        @Specialization(guards = "context.regexSubstitutionsEnabled()")
         @JavaType(Map.class)
-        StaticObject doFallback(
+        StaticObject doDefault(
                         @JavaType(Pattern.class) StaticObject self,
-                        @Cached("create(getContext().getMeta().java_util_regex_Pattern_namedGroups.getCallTargetNoSubstitution())") DirectCallNode original,
-                        @Cached("create(getContext().getMeta().java_util_regex_Pattern_init.getCallTargetNoSubstitution())") DirectCallNode initOriginal) {
-            if (getContext().getMeta().java_util_regex_Pattern_namedGroups_field.getObject(self) == StaticObject.NULL) {
-                StaticObject pattern = getContext().getMeta().java_util_regex_Pattern_pattern.getObject(self);
-                Object flags = getContext().getMeta().java_util_regex_Pattern_flags.getValue(self);
+                        @Bind("getContext()") EspressoContext context,
+                        @Cached("create(context.getMeta().java_util_regex_Pattern_namedGroups.getCallTargetNoSubstitution())") DirectCallNode original,
+                        @Cached("create(context.getMeta().java_util_regex_Pattern_init.getCallTargetNoSubstitution())") DirectCallNode initOriginal) {
+            if (context.getMeta().java_util_regex_Pattern_namedGroups_field.getObject(self) == StaticObject.NULL) {
+                StaticObject pattern = context.getMeta().java_util_regex_Pattern_pattern.getObject(self);
+                Object flags = context.getMeta().java_util_regex_Pattern_flags.getValue(self);
                 initOriginal.call(self, pattern, flags);
             }
             return (StaticObject) original.call(self);
         }
-    }
 
-    @TruffleBoundary
-    private static String getString(int f, String combined, String pattern) {
-        return combined + '/' + pattern + '/' + convertFlags(f);
+        @Specialization
+        @JavaType(Map.class)
+        StaticObject doDisabled(
+                        @JavaType(Pattern.class) StaticObject self,
+                        @Cached("create(getContext().getMeta().java_util_regex_Pattern_namedGroups.getCallTargetNoSubstitution())") DirectCallNode original) {
+            return (StaticObject) original.call(self);
+        }
     }
 
     @TruffleBoundary
