@@ -33,6 +33,7 @@ import mx_sdk_benchmark
 import mx_compiler
 from mx_java_benchmarks import DaCapoBenchmarkSuite, ScalaDaCapoBenchmarkSuite
 from mx_benchmark import DataPoints
+from mx_sdk_benchmark import SUCCESSFUL_STAGE_PATTERNS
 
 _suite = mx.suite('compiler')
 
@@ -506,6 +507,9 @@ class JMHDistGraalCoreBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarB
         return super(JMHDistGraalCoreBenchmarkSuite, self).filter_distribution(dist) and \
                not JMHDistWhiteboxBenchmarkSuite.is_whitebox_dependency(dist)
 
+    def successPatterns(self):
+        return super().successPatterns() + SUCCESSFUL_STAGE_PATTERNS
+
 
 mx_benchmark.add_bm_suite(JMHDistGraalCoreBenchmarkSuite())
 
@@ -554,6 +558,9 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarBa
     def getJMHEntry(self, bmSuiteArgs):
         assert self.dist
         return [mx.distribution(self.dist).mainClass]
+
+    def successPatterns(self):
+        return super().successPatterns() + SUCCESSFUL_STAGE_PATTERNS
 
 
 mx_benchmark.add_bm_suite(JMHDistWhiteboxBenchmarkSuite())

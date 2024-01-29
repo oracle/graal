@@ -35,13 +35,9 @@ import mx
 import mx_benchmark
 import mx_java_benchmarks
 import mx_sdk_benchmark
+from mx_sdk_benchmark import SUCCESSFUL_STAGE_PATTERNS
 
 _suite = mx.suite("substratevm")
-_successful_stage_patterns = [re.compile(p, re.MULTILINE) for p in [
-    r"Successfully finished stage:.*$",
-    r"Successfully finished the last specified stage:.*$",
-    r"Skipping stage:.*$",
-]]
 
 
 def extract_archive(path, extracted_name):
@@ -269,7 +265,7 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
         return vm_args + ["-jar", self.standalone_jar_path(self.benchmarkName())] + run_args + [self.benchmarkName()]
 
     def successPatterns(self):
-        return super().successPatterns() + _successful_stage_patterns
+        return super().successPatterns() + SUCCESSFUL_STAGE_PATTERNS
 
 mx_benchmark.add_bm_suite(RenaissanceNativeImageBenchmarkSuite())
 
@@ -491,7 +487,7 @@ class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, B
         return cp
 
     def successPatterns(self):
-        return super(DaCapoNativeImageBenchmarkSuite, self).successPatterns() + _successful_stage_patterns
+        return super().successPatterns() + SUCCESSFUL_STAGE_PATTERNS
 
 
 mx_benchmark.add_bm_suite(DaCapoNativeImageBenchmarkSuite())
@@ -615,7 +611,7 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
         return cp
 
     def successPatterns(self):
-        return super(ScalaDaCapoNativeImageBenchmarkSuite, self).successPatterns() + _successful_stage_patterns
+        return super().successPatterns() + SUCCESSFUL_STAGE_PATTERNS
 
     @staticmethod
     def substitution_path():
@@ -698,6 +694,6 @@ class SpecJVM2008NativeImageBenchmarkSuite(mx_java_benchmarks.SpecJvm2008Benchma
         return super().extra_run_arg(benchmark, args, image_run_args) + SpecJVM2008NativeImageBenchmarkSuite.long_run_args
 
     def successPatterns(self):
-        return super().successPatterns() + _successful_stage_patterns
+        return super().successPatterns() + SUCCESSFUL_STAGE_PATTERNS
 
 mx_benchmark.add_bm_suite(SpecJVM2008NativeImageBenchmarkSuite())
