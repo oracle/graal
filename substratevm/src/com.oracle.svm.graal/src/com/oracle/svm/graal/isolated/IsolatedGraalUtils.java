@@ -28,7 +28,6 @@ import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolates;
 import org.graalvm.nativeimage.Isolates.CreateIsolateParameters;
@@ -47,6 +46,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
 import com.oracle.svm.graal.meta.SubstrateMethod;
@@ -76,16 +76,105 @@ public final class IsolatedGraalUtils {
             ProtectionDomain domain = MemoryProtectionProvider.singleton().getProtectionDomain();
             builder.setProtectionDomain(domain);
         }
-        // Compilation isolates do the reference handling manually to avoid the extra thread.
-        builder.appendArgument(getOptionString(SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling, false));
+
+        appendOptionsRelevantForCompilationIsolates(builder);
+        appendOptionsExplicitlySetForCompilationIsolates(builder);
+
         CreateIsolateParameters params = builder.build();
         CompilerIsolateThread isolate = (CompilerIsolateThread) Isolates.createIsolate(params);
         initializeCompilationIsolate(isolate);
         return isolate;
     }
 
+    private static void appendOptionsRelevantForCompilationIsolates(CreateIsolateParameters.Builder builder) {
+        /* Append all native image options that are relevant for the compilation isolate. */
+        var cur = RuntimeOptionValues.singleton().getMap().getEntries();
+        while (cur.advance()) {
+            if (cur.getKey() instanceof RuntimeOptionKey<?> runtimeOptionKey && runtimeOptionKey.shouldCopyToCompilationIsolate()) {
+                appendArgument(builder, runtimeOptionKey, cur.getValue());
+            }
+        }
+
+        /* Compilation isolates do the reference handling manually to avoid the extra thread. */
+        appendArgument(builder, SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling, false);
+
+        /*
+         * All compilation isolates should use the same folder for debug dumps, to avoid confusion
+         * of users. Always setting the DumpPath option in the compilation isolates is the easiest
+         * way to achieve that.
+         */
+        appendArgument(builder, DebugOptions.DumpPath, DebugOptions.getDumpDirectoryName(RuntimeOptionValues.singleton()));
+    }
+
+    private static void appendOptionsExplicitlySetForCompilationIsolates(CreateIsolateParameters.Builder builder) {
+        String optionString = SubstrateOptions.CompilationIsolateOptions.getValue();
+        if (optionString == null) {
+            return;
+        }
+
+        int start = 0;
+        char prev = ' ';
+        boolean withinQuotes = false;
+        for (int i = 0; i < optionString.length(); i++) {
+            char c = optionString.charAt(i);
+            if (!withinQuotes && prev == '\'' && c != ' ') {
+                throw new Isolates.IsolateException("Failed while parsing " + SubstrateOptions.CompilationIsolateOptions.getName() + ": space expected after " + optionString.substring(0, i));
+            }
+
+            if (c == '\'') {
+                withinQuotes = !withinQuotes;
+                if (withinQuotes && prev != ' ') {
+                    throw new Isolates.IsolateException("Failed while parsing " + SubstrateOptions.CompilationIsolateOptions.getName() + ": expected space after " + optionString.substring(0, i));
+                }
+
+                if (!withinQuotes && i > start) {
+                    builder.appendArgument(optionString.substring(start, i));
+                }
+                start = i + 1;
+            } else if (!withinQuotes && c == ' ') {
+                if (i > start) {
+                    builder.appendArgument(optionString.substring(start, i));
+                }
+                start = i + 1;
+            }
+            prev = c;
+        }
+
+        if (withinQuotes) {
+            throw new Isolates.IsolateException("Failed while parsing " + SubstrateOptions.CompilationIsolateOptions.getName() + ": unmatched single quote.");
+        }
+
+        /* Add the remaining part. */
+        if (start < optionString.length()) {
+            builder.appendArgument(optionString.substring(start));
+        }
+    }
+
+    private static void appendArgument(CreateIsolateParameters.Builder builder, OptionKey<?> optionKey, Object value) {
+        String optionString = "-XX:";
+        if (value instanceof Boolean b) {
+            optionString += b ? "+" : "-";
+            optionString += optionKey.getName();
+        } else {
+            optionString += optionKey.getName();
+            optionString += "=";
+            optionString += formatOptionValue(value);
+        }
+        builder.appendArgument(optionString);
+    }
+
+    private static String formatOptionValue(Object value) {
+        if (value instanceof Number n) {
+            return n.toString();
+        } else if (value instanceof String str) {
+            return str;
+        } else {
+            throw VMError.shouldNotReachHere("Unexpected option type: " + value);
+        }
+    }
+
     private static void initializeCompilationIsolate(CompilerIsolateThread isolate) {
-        byte[] encodedOptions = encodeRuntimeOptionValues();
+        byte[] encodedOptions = encodeNonNativeImageRuntimeOptionValues();
         try (PrimitiveArrayView ref = PrimitiveArrayView.createForReading(encodedOptions)) {
             initializeCompilationIsolate0(isolate, ref.addressOfArrayElement(0), encodedOptions.length);
         }
@@ -153,40 +242,20 @@ public final class IsolatedGraalUtils {
         IsolatedCompileContext.set(null);
     }
 
-    public static byte[] encodeRuntimeOptionValues() {
-        /* Copy all options that are relevant for the compilation isolate. */
+    /**
+     * All options outside the control of Native Image (e.g., Truffle, Graal) are encoded as binary
+     * data and applied to the compilation isolate after the isolate is already fully started.
+     */
+    public static byte[] encodeNonNativeImageRuntimeOptionValues() {
         EconomicMap<OptionKey<?>, Object> result = EconomicMap.create();
-        UnmodifiableMapCursor<OptionKey<?>, Object> cur = RuntimeOptionValues.singleton().getMap().getEntries();
+        var cur = RuntimeOptionValues.singleton().getMap().getEntries();
         while (cur.advance()) {
             OptionKey<?> optionKey = cur.getKey();
-            if (shouldCopyToCompilationIsolate(optionKey)) {
+            if (!(optionKey instanceof RuntimeOptionKey)) {
                 result.put(optionKey, cur.getValue());
             }
         }
-
-        /*
-         * All compilation isolates should use the same folder for debug dumps, to avoid confusion
-         * of users. Always setting the DumpPath option in the compilation isolates is the easiest
-         * way to achieve that.
-         */
-        result.put(DebugOptions.DumpPath, DebugOptions.getDumpDirectoryName(RuntimeOptionValues.singleton()));
         return OptionValuesEncoder.encode(result);
-    }
-
-    private static boolean shouldCopyToCompilationIsolate(OptionKey<?> optionKey) {
-        if (optionKey instanceof RuntimeOptionKey) {
-            return ((RuntimeOptionKey<?>) optionKey).shouldCopyToCompilationIsolate();
-        }
-
-        /*
-         * For all other options (Truffle, Graal, ...) outside the control of Native Image, we
-         * assume that they are relevant for the compilation isolate.
-         */
-        return true;
-    }
-
-    public static int getNullableArrayLength(Object array) {
-        return (array != null) ? Array.getLength(array) : -1;
     }
 
     public static void applyClientRuntimeOptionValues(PointerBase encodedOptionsPtr, int encodedOptionsLength) {
@@ -202,8 +271,8 @@ public final class IsolatedGraalUtils {
         RuntimeOptionValues.singleton().update(options);
     }
 
-    private static String getOptionString(RuntimeOptionKey<Boolean> option, boolean value) {
-        return "-XX:" + (value ? "+" : "-") + option.getName();
+    public static int getNullableArrayLength(Object array) {
+        return (array != null) ? Array.getLength(array) : -1;
     }
 
     private IsolatedGraalUtils() {
