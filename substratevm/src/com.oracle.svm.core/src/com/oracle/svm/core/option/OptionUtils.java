@@ -28,13 +28,14 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.options.OptionKey;
-
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.UserError;
+
+import jdk.graal.compiler.options.OptionKey;
 
 /**
  * This class contains static helper methods related to options.
@@ -110,7 +111,7 @@ public class OptionUtils {
 
         @Override
         public String toString() {
-            return name().toLowerCase();
+            return name().toLowerCase(Locale.ENGLISH);
         }
     }
 

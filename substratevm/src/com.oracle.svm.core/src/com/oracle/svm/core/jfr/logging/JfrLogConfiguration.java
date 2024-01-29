@@ -93,7 +93,7 @@ final class JfrLogConfiguration {
         for (JfrLogSelection selection : selections) {
             if (!selection.matchesATagSet) {
                 throw new IllegalArgumentException("No tag set matches tag combination " +
-                                selection.tags.toString().toLowerCase() + (selection.wildcard ? "*" : "") + " for FlightRecorderLogging");
+                                selection.tags.toString().toLowerCase(Locale.ENGLISH) + (selection.wildcard ? "*" : "") + " for FlightRecorderLogging");
             }
         }
     }

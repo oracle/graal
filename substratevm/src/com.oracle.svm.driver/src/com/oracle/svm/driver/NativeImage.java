@@ -120,7 +120,7 @@ public class NativeImage {
     static final String platform = getPlatform();
 
     private static String getPlatform() {
-        return (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase();
+        return (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase(Locale.ENGLISH);
     }
 
     static final String graalvmVendor = VM.getVendor();
