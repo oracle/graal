@@ -287,9 +287,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "sdk:POLYGLOT",
-        "com.oracle.truffle.api.instrumentation",
-        "com.oracle.truffle.api.exception",
         "com.oracle.truffle.api.bytecode",
       ],
       "requires" : [
@@ -476,12 +473,9 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api",
-        "com.oracle.truffle.api.library",
-        "com.oracle.truffle.api.interop",
         "com.oracle.truffle.api.exception",
-        "com.oracle.truffle.api.instrumentation",
         "TRUFFLE_JSON",
+        "com.oracle.truffle.api.instrumentation",
       ],
       "requires" : [
         "jdk.unsupported", # sun.misc.Unsafe
@@ -1740,6 +1734,9 @@ suite = {
           "com.oracle.truffle.api.dsl",
           "com.oracle.truffle.api.bytecode",
           "com.oracle.truffle.api.bytecode.debug",
+          "com.oracle.truffle.api.bytecode.introspection",
+          "com.oracle.truffle.api.bytecode.serialization",
+          "com.oracle.truffle.api.bytecode.tracing",
           "com.oracle.truffle.api.profiles",
           "com.oracle.truffle.api.interop",
           "com.oracle.truffle.api.exception",
