@@ -29,31 +29,31 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
-import com.oracle.svm.core.TypeResult;
-
 public abstract class ConditionalConfigurationRegistry {
-    private final Map<String, Collection<Runnable>> pendingReachabilityHandlers = new ConcurrentHashMap<>();
+    private final Map<Class<?>, Collection<Runnable>> pendingReachabilityHandlers = new ConcurrentHashMap<>();
 
-    protected void registerConditionalConfiguration(ConfigurationCondition condition, Runnable runnable) {
+    protected void registerConditionalConfiguration(ConfigurationCondition condition, Consumer<ConfigurationCondition> consumer) {
         Objects.requireNonNull(condition, "Cannot use null value as condition for conditional configuration. Please ensure that you register a non-null condition.");
-        Objects.requireNonNull(runnable, "Cannot use null value as runnable for conditional configuration. Please ensure that you register a non-null runnable.");
+        Objects.requireNonNull(consumer, "Cannot use null value as runnable for conditional configuration. Please ensure that you register a non-null runnable.");
         if (ConfigurationCondition.alwaysTrue().equals(condition)) {
             /* analysis optimization to include new types as early as possible */
-            runnable.run();
+            consumer.accept(condition);
         } else {
-            Collection<Runnable> handlers = pendingReachabilityHandlers.computeIfAbsent(condition.getTypeName(), key -> new ConcurrentLinkedQueue<>());
-            handlers.add(runnable);
+            Collection<Runnable> handlers = pendingReachabilityHandlers.computeIfAbsent(condition.getType(), key -> new ConcurrentLinkedQueue<>());
+            ConfigurationCondition runtimeCondition = ConfigurationCondition.alwaysTrue();
+            handlers.add(() -> consumer.accept(runtimeCondition));
         }
+
     }
 
     public void flushConditionalConfiguration(Feature.BeforeAnalysisAccess b) {
-        for (Map.Entry<String, Collection<Runnable>> reachabilityEntry : pendingReachabilityHandlers.entrySet()) {
-            TypeResult<Class<?>> typeResult = ((FeatureImpl.BeforeAnalysisAccessImpl) b).getImageClassLoader().findClass(reachabilityEntry.getKey());
-            b.registerReachabilityHandler(access -> reachabilityEntry.getValue().forEach(Runnable::run), typeResult.get());
+        for (Map.Entry<Class<?>, Collection<Runnable>> reachabilityEntry : pendingReachabilityHandlers.entrySet()) {
+            b.registerReachabilityHandler(access -> reachabilityEntry.getValue().forEach(Runnable::run), reachabilityEntry.getKey());
         }
         pendingReachabilityHandlers.clear();
     }

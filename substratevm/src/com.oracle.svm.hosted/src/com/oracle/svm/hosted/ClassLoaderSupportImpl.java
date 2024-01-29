@@ -220,7 +220,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     }
 
     private static void includeResource(ResourceCollector collector, Module module, String name, ConfigurationCondition condition) {
-        if (ConfigurationCondition.isAlwaysTrue(condition)) {
+        if (condition.isAlwaysTrue()) {
             collector.addResource(module, name);
         } else {
             collector.addResourceConditionally(module, name, condition);

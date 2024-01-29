@@ -33,11 +33,12 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.svm.configure.config.ResourceConfiguration;
+import com.oracle.svm.core.configure.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
 import com.oracle.svm.core.util.VMError;
@@ -48,7 +49,7 @@ public class ResourceConfigurationTest {
     @Test
     public void anyResourceMatches() {
         ResourceConfiguration rc = new ResourceConfiguration();
-        ConfigurationCondition defaultCond = ConfigurationCondition.alwaysTrue();
+        UnresolvedConfigurationCondition defaultCond = UnresolvedConfigurationCondition.alwaysTrue();
         rc.addResourcePattern(defaultCond, ".*/Resource.*txt$");
 
         Assert.assertTrue(rc.anyResourceMatches("com/my/app/Resource0.txt"));
@@ -67,7 +68,7 @@ public class ResourceConfigurationTest {
     @Test
     public void printJson() {
         ResourceConfiguration rc = new ResourceConfiguration();
-        ConfigurationCondition defaultCond = ConfigurationCondition.alwaysTrue();
+        UnresolvedConfigurationCondition defaultCond = UnresolvedConfigurationCondition.alwaysTrue();
         rc.addResourcePattern(defaultCond, ".*/Resource.*txt$");
         rc.ignoreResourcePattern(defaultCond, ".*/Resource2.txt$");
         PipedWriter pw = new PipedWriter();
@@ -87,10 +88,10 @@ public class ResourceConfigurationTest {
             List<String> addedResources = new LinkedList<>();
             List<String> ignoredResources = new LinkedList<>();
 
-            ResourcesRegistry registry = new ResourcesRegistry() {
+            ResourcesRegistry<UnresolvedConfigurationCondition> registry = new ResourcesRegistry<>() {
 
                 @Override
-                public void addResources(ConfigurationCondition condition, String pattern) {
+                public void addResources(UnresolvedConfigurationCondition condition, String pattern) {
                     addedResources.add(pattern);
                 }
 
@@ -104,26 +105,26 @@ public class ResourceConfigurationTest {
                 }
 
                 @Override
-                public void ignoreResources(ConfigurationCondition condition, String pattern) {
+                public void ignoreResources(UnresolvedConfigurationCondition condition, String pattern) {
                     ignoredResources.add(pattern);
                 }
 
                 @Override
-                public void addResourceBundles(ConfigurationCondition condition, String name) {
+                public void addResourceBundles(UnresolvedConfigurationCondition condition, String name) {
                 }
 
                 @Override
-                public void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales) {
+                public void addResourceBundles(UnresolvedConfigurationCondition condition, String basename, Collection<Locale> locales) {
 
                 }
 
                 @Override
-                public void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className) {
+                public void addClassBasedResourceBundle(UnresolvedConfigurationCondition condition, String basename, String className) {
 
                 }
             };
 
-            ResourceConfigurationParser rcp = new ResourceConfigurationParser(registry, true);
+            ResourceConfigurationParser<UnresolvedConfigurationCondition> rcp = new ResourceConfigurationParser<>(ConfigurationConditionResolver.identityResolver(), registry, true);
             writerThread.start();
             rcp.parseAndRegister(pr);
 
@@ -132,8 +133,7 @@ public class ResourceConfigurationTest {
             Assert.assertTrue(addedResources.contains(".*/Resource.*txt$"));
             Assert.assertTrue(ignoredResources.contains(".*/Resource2.txt$"));
         } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
-            Assert.fail(e.getMessage());
+            throw new RuntimeException(e);
         }
     }
 }

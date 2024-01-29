@@ -77,7 +77,7 @@ public class JmxServerFeature implements InternalFeature {
     }
 
     private static void registerJMXAgentResources() {
-        ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
+        ResourcesRegistry<ConfigurationCondition> resourcesRegistry = ResourcesRegistry.singleton();
 
         resourcesRegistry.addResourceBundles(ConfigurationCondition.alwaysTrue(),
                         "jdk.internal.agent.resources.agent");

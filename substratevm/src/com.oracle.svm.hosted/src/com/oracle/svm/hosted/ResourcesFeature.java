@@ -72,6 +72,7 @@ import com.oracle.svm.core.ClassLoaderSupport.ResourceCollector;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.configure.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
@@ -87,8 +88,10 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
+import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -158,20 +161,14 @@ public final class ResourcesFeature implements InternalFeature {
     private int loadedConfigurations;
     private ImageClassLoader imageClassLoader;
 
-    private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry {
-        private final ConfigurationTypeResolver configurationTypeResolver;
+    private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry<ConfigurationCondition> {
         private final Set<String> alreadyAddedResources = new HashSet<>();
 
-        ResourcesRegistryImpl(ConfigurationTypeResolver configurationTypeResolver) {
-            this.configurationTypeResolver = configurationTypeResolver;
+        ResourcesRegistryImpl() {
         }
 
         @Override
         public void addResources(ConfigurationCondition condition, String pattern) {
-            if (configurationTypeResolver.resolveConditionType(condition.getTypeName()) == null) {
-                return;
-            }
-
             try {
                 resourcePatternWorkSet.add(new ConditionalPattern(condition, pattern));
             } catch (UnsupportedOperationException e) {
@@ -200,10 +197,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void ignoreResources(ConfigurationCondition condition, String pattern) {
-            if (configurationTypeResolver.resolveConditionType(condition.getTypeName()) == null) {
-                return;
-            }
-            registerConditionalConfiguration(condition, () -> {
+            registerConditionalConfiguration(condition, (cnd) -> {
                 UserError.guarantee(!sealed, "Resources ignored too late: %s", pattern);
 
                 excludedResourcePatterns.add(pattern);
@@ -212,26 +206,17 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void addResourceBundles(ConfigurationCondition condition, String name) {
-            if (configurationTypeResolver.resolveConditionType(condition.getTypeName()) == null) {
-                return;
-            }
-            registerConditionalConfiguration(condition, () -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(name));
+            registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(name));
         }
 
         @Override
         public void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className) {
-            if (configurationTypeResolver.resolveConditionType(condition.getTypeName()) == null) {
-                return;
-            }
-            registerConditionalConfiguration(condition, () -> ImageSingletons.lookup(LocalizationFeature.class).prepareClassResourceBundle(basename, className));
+            registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareClassResourceBundle(basename, className));
         }
 
         @Override
         public void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales) {
-            if (configurationTypeResolver.resolveConditionType(condition.getTypeName()) == null) {
-                return;
-            }
-            registerConditionalConfiguration(condition, () -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(basename, locales));
+            registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(basename, locales));
         }
 
         /*
@@ -421,7 +406,7 @@ public final class ResourcesFeature implements InternalFeature {
     public void afterRegistration(AfterRegistrationAccess a) {
         FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
         imageClassLoader = access.getImageClassLoader();
-        ResourcesRegistryImpl resourcesRegistry = new ResourcesRegistryImpl(new ConfigurationTypeResolver("resource configuration", imageClassLoader));
+        ResourcesRegistryImpl resourcesRegistry = new ResourcesRegistryImpl();
         ImageSingletons.add(ResourcesRegistry.class, resourcesRegistry);
         ImageSingletons.add(RuntimeResourceSupport.class, resourcesRegistry);
     }
@@ -432,7 +417,10 @@ public final class ResourcesFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        ResourceConfigurationParser parser = new ResourceConfigurationParser(ImageSingletons.lookup(ResourcesRegistry.class), ConfigurationFiles.Options.StrictConfiguration.getValue());
+        ConfigurationConditionResolver<ConfigurationCondition> conditionResolver = new NativeImageConditionResolver(((FeatureImpl.BeforeAnalysisAccessImpl) access).getImageClassLoader(),
+                        ClassInitializationSupport.singleton());
+        ResourceConfigurationParser<ConfigurationCondition> parser = new ResourceConfigurationParser<>(conditionResolver, ResourcesRegistry.singleton(),
+                        ConfigurationFiles.Options.StrictConfiguration.getValue());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "resource",
                         ConfigurationFiles.Options.ResourceConfigurationFiles, ConfigurationFiles.Options.ResourceConfigurationResources,
                         ConfigurationFile.RESOURCES.getFileName());
@@ -557,7 +545,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void addResourceConditionally(Module module, String resourceName, ConfigurationCondition condition) {
-            access.registerReachabilityHandler(e -> addResource(module, resourceName), access.findClassByName(condition.getTypeName()));
+            access.registerReachabilityHandler(e -> addResource(module, resourceName), condition.getType());
         }
 
         @Override

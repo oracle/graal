@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,41 +43,30 @@ package org.graalvm.nativeimage.impl;
 import java.util.Objects;
 
 /**
- * A condition that describes if a reflectively accessed element in Native Image is visible by the
- * user.
- * <p>
- * Currently, there is only one type of condition (<code>typeReached</code>) so this is a single
- * class instead of the class hierarchy. The {@link ConfigurationCondition#type} represents the
- * {@link Class<>} that needs to be reached by analysis in order for an element to be visible.
+ * This is an unresolved version of the {@link ConfigurationCondition} used only during parsing.
  */
-public final class ConfigurationCondition {
+public class UnresolvedConfigurationCondition implements Comparable<UnresolvedConfigurationCondition> {
+    private final String typeName;
+    private static final UnresolvedConfigurationCondition JAVA_LANG_OBJECT_REACHED = new UnresolvedConfigurationCondition(Object.class.getTypeName());
 
-    /* Cached to save space: it is used as a marker for all non-conditional elements */
-    private static final ConfigurationCondition JAVA_LANG_OBJECT_REACHED = new ConfigurationCondition(Object.class);
+    public static UnresolvedConfigurationCondition create(String typeName) {
+        Objects.requireNonNull(typeName);
+        if (JAVA_LANG_OBJECT_REACHED.getTypeName().equals(typeName)) {
+            return JAVA_LANG_OBJECT_REACHED;
+        }
+        return new UnresolvedConfigurationCondition(typeName);
+    }
 
-    public static ConfigurationCondition alwaysTrue() {
+    protected UnresolvedConfigurationCondition(String typeName) {
+        this.typeName = typeName;
+    }
+
+    public static UnresolvedConfigurationCondition alwaysTrue() {
         return JAVA_LANG_OBJECT_REACHED;
     }
 
-    private final Class<?> type;
-
-    public static ConfigurationCondition create(Class<?> type) {
-        if (JAVA_LANG_OBJECT_REACHED.getType().equals(type)) {
-            return JAVA_LANG_OBJECT_REACHED;
-        }
-        return new ConfigurationCondition(type);
-    }
-
-    public boolean isAlwaysTrue() {
-        return ConfigurationCondition.alwaysTrue().equals(this);
-    }
-
-    private ConfigurationCondition(Class<?> type) {
-        this.type = type;
-    }
-
-    public Class<?> getType() {
-        return type;
+    public String getTypeName() {
+        return typeName;
     }
 
     @Override
@@ -88,13 +77,26 @@ public final class ConfigurationCondition {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        ConfigurationCondition condition = (ConfigurationCondition) o;
-        return Objects.equals(type, condition.type);
+        UnresolvedConfigurationCondition condition = (UnresolvedConfigurationCondition) o;
+        return Objects.equals(typeName, condition.typeName);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(type);
+        return Objects.hash(typeName);
     }
 
+    @Override
+    public String toString() {
+        return "[\"typeReachable\": \"" + typeName + "\"" + "]";
+    }
+
+    @Override
+    public int compareTo(UnresolvedConfigurationCondition c) {
+        return this.typeName.compareTo(c.typeName);
+    }
+
+    public boolean isAlwaysTrue() {
+        return typeName.equals(JAVA_LANG_OBJECT_REACHED.getTypeName());
+    }
 }
