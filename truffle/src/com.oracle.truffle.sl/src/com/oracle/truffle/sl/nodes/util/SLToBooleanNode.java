@@ -64,7 +64,7 @@ public abstract class SLToBooleanNode extends SLExpressionNode {
     }
 
     @Fallback
-    public static boolean doFallback(Object value, @Bind("$root") Node node, @Bind("$bci") int bci) {
+    public static boolean doFallback(Object value, @Bind("this") Node node, @Bind("$bci") int bci) {
         throw SLException.typeError(node, "toBoolean", bci, value);
     }
 }

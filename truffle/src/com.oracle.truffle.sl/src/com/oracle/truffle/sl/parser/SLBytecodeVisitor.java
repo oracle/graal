@@ -120,9 +120,6 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
         }
 
         for (SLBytecodeRootNode node : nodes.getNodes()) {
-
-            System.out.println(node.dump());
-
             TruffleString name = node.getTSName();
             RootCallTarget callTarget = node.getCallTarget();
             functions.put(name, callTarget);

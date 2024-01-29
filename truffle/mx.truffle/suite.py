@@ -468,7 +468,7 @@ suite = {
       "workingSets" : "API,Truffle",
       "graalCompilerSourceEdition": "ignore",
     },
-    
+
     "com.oracle.truffle.api.bytecode" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -485,7 +485,7 @@ suite = {
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle",
     },
-    
+
     "com.oracle.truffle.api.bytecode.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
