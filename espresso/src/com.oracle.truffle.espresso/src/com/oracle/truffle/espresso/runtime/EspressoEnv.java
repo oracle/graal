@@ -101,6 +101,7 @@ public final class EspressoEnv {
     public final boolean EnableAgents;
     public final int TrivialMethodSize;
     public final boolean UseHostFinalReference;
+    public final boolean RegexSubstitutions;
     public final EspressoOptions.JImageMode JImageMode;
     private final PolyglotTypeMappings polyglotTypeMappings;
     private final HashMap<String, EspressoForeignProxyGenerator.GeneratedProxyBytes> proxyCache;
@@ -135,6 +136,7 @@ public final class EspressoEnv {
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
         this.EnableAgents = env.getOptions().get(EspressoOptions.EnableAgents);
         this.TrivialMethodSize = env.getOptions().get(EspressoOptions.TrivialMethodSize);
+        this.RegexSubstitutions = env.getOptions().get(EspressoOptions.RegexSubstitutions);
         boolean useHostFinalReferenceOption = env.getOptions().get(EspressoOptions.UseHostFinalReference);
         this.UseHostFinalReference = useHostFinalReferenceOption && FinalizationSupport.canUseHostFinalReference();
         if (useHostFinalReferenceOption && !FinalizationSupport.canUseHostFinalReference()) {
