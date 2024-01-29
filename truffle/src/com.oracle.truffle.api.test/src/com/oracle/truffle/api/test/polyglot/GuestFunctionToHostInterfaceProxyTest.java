@@ -45,11 +45,13 @@ import static org.junit.Assert.assertThat;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyArray;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
@@ -59,6 +61,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -149,6 +152,42 @@ public class GuestFunctionToHostInterfaceProxyTest extends AbstractPolyglotTest 
         }
     }
 
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings({"static-method", "unused"})
+    static final class MembersObject implements TruffleObject {
+        private final Map<String, ?> map;
+
+        MembersObject(Map<String, ?> keys) {
+            this.map = keys;
+        }
+
+        @ExportMessage
+        boolean hasMembers() {
+            return true;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
+            return ProxyArray.fromList(List.copyOf(map.keySet()));
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        boolean isMemberReadable(String member) {
+            return map.containsKey(member);
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object readMember(String member) throws UnsupportedMessageException, UnknownIdentifierException {
+            if (!map.containsKey(member)) {
+                throw UnknownIdentifierException.create(member);
+            }
+            return map.get(member);
+        }
+    }
+
     private static final TypeLiteral<BiFunctionLike<Object, Object, Object>> BF_OOO = new TypeLiteral<>() {
     };
     private static final TypeLiteral<BiFunctionLike<Value, Value, Value>> BF_VVV = new TypeLiteral<>() {
@@ -178,6 +217,20 @@ public class GuestFunctionToHostInterfaceProxyTest extends AbstractPolyglotTest 
     @Test
     public void testGenericReturnTypeOfPolyglotFunctionProxy() {
         Value join = context.asValue(new JoinerFunctionObject());
+        Value collect = context.asValue(new ArrayOfFunctionObject());
+
+        testGenericReturnTypeOfPolyglotProxy(join, collect);
+    }
+
+    @Test
+    public void testGenericReturnTypeOfPolyglotObjectProxy() {
+        Value join = context.asValue(new MembersObject(Map.of("apply", new JoinerFunctionObject())));
+        Value collect = context.asValue(new MembersObject(Map.of("apply", new ArrayOfFunctionObject())));
+
+        testGenericReturnTypeOfPolyglotProxy(join, collect);
+    }
+
+    private void testGenericReturnTypeOfPolyglotProxy(Value join, Value collect) {
         assertThat(join.as(BF_OOO).apply("X", "Y"), equalTo("X, Y"));
         assertThat(join.as(BF_VVV).apply(context.asValue("X"), context.asValue("Y")), isValueOfStringEqualTo("X, Y"));
         assertThat(join.as(BF_OOV).apply("X", "Y"), isValueOfStringEqualTo("X, Y"));
@@ -187,7 +240,6 @@ public class GuestFunctionToHostInterfaceProxyTest extends AbstractPolyglotTest 
 
         final var listOfStringsXandY = isListOf(equalTo("X"), equalTo("Y"));
         final var listOfValueOfStringsXandY = isListOf(isValueOfStringEqualTo("X"), isValueOfStringEqualTo("Y"));
-        Value collect = context.asValue(new ArrayOfFunctionObject());
         assertThat(collect.as(BF_OOLO).apply("X", "Y"), listOfStringsXandY);
         assertThat(collect.as(BF_OOLY).apply("X", "Y"), listOfStringsXandY);
         assertThat(collect.as(BF_OOLV).apply("X", "Y"), listOfValueOfStringsXandY);
