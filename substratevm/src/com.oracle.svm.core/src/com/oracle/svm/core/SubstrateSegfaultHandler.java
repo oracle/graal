@@ -279,8 +279,9 @@ public abstract class SubstrateSegfaultHandler {
 
             boolean printedDiagnostics = SubstrateDiagnostics.printFatalError(log, sp, ip, context, false);
             if (SubstrateSegfaultHandler.isInstalled() && printedDiagnostics) {
-                log.string("Segfault detected, aborting process. ").string("Use '-XX:-InstallSegfaultHandler' to disable the segfault handler at run time and create a core dump instead. ").string(
-                                "Rebuild with '-R:-InstallSegfaultHandler' to disable the handler permanently at build time.") //
+                log.string("Segfault detected, aborting process. ") //
+                                .string("Use '-XX:-InstallSegfaultHandler' to disable the segfault handler at run time and create a core dump instead. ") //
+                                .string("Rebuild with '-R:-InstallSegfaultHandler' to disable the handler permanently at build time.") //
                                 .newline().newline();
             }
         }

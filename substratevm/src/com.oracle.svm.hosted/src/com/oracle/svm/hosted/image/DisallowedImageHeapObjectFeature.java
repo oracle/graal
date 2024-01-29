@@ -123,8 +123,7 @@ public class DisallowedImageHeapObjectFeature implements InternalFeature {
         }).toArray(String[]::new);
     }
 
-    @SuppressWarnings("unused")
-    private void onStringReachable(DuringAnalysisAccess a, String string) {
+    private void onStringReachable(@SuppressWarnings("unused") DuringAnalysisAccess a, String string) {
         if (disallowedSubstrings != null) {
             for (String disallowedSubstring : disallowedSubstrings) {
                 if (string.contains(disallowedSubstring)) {
@@ -138,8 +137,7 @@ public class DisallowedImageHeapObjectFeature implements InternalFeature {
         }
     }
 
-    @SuppressWarnings("unused")
-    private void onByteArrayReachable(DuringAnalysisAccess a, byte[] bytes) {
+    private void onByteArrayReachable(@SuppressWarnings("unused") DuringAnalysisAccess a, byte[] bytes) {
         if (disallowedByteSubstrings != null) {
             for (Map.Entry<byte[], Charset> entry : disallowedByteSubstrings.entrySet()) {
                 byte[] disallowedSubstring = entry.getKey();
@@ -158,8 +156,7 @@ public class DisallowedImageHeapObjectFeature implements InternalFeature {
     /**
      * See {@link ManagementSupport} for details why these objects are not allowed.
      */
-    @SuppressWarnings("unused")
-    private void onMBeanServerConnectionReachable(DuringAnalysisAccess a, MBeanServerConnection serverConnection) {
+    private void onMBeanServerConnectionReachable(@SuppressWarnings("unused") DuringAnalysisAccess a, MBeanServerConnection serverConnection) {
         throw error("Detected a MBean server in the image heap. This is currently not supported, but could be changed in the future. " +
                         "Management beans are registered in many global caches that would need to be cleared and properly re-built at image build time. " +
                         "Class of disallowed object: " + serverConnection.getClass().getTypeName(),
@@ -169,8 +166,7 @@ public class DisallowedImageHeapObjectFeature implements InternalFeature {
     /**
      * See {@link ManagementSupport} for details why these objects are not allowed.
      */
-    @SuppressWarnings("unused")
-    private void onPlatformManagedObjectReachable(DuringAnalysisAccess a, PlatformManagedObject platformManagedObject) {
+    private void onPlatformManagedObjectReachable(@SuppressWarnings("unused") DuringAnalysisAccess a, PlatformManagedObject platformManagedObject) {
         if (!ManagementSupport.getSingleton().isAllowedPlatformManagedObject(platformManagedObject)) {
             throw error("Detected a PlatformManagedObject (a MXBean defined by the virtual machine) in the image heap. " +
                             "This bean is introspecting the VM that runs the image builder, i.e., a VM instance that is no longer available at image runtime. " +

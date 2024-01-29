@@ -107,7 +107,6 @@ import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Edges;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeList;
-import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
@@ -698,7 +697,6 @@ public class SubstrateGraphBuilderPlugins {
      * Intercept the invoke to newUpdater. If the holder class and field name are constant register
      * them for reflection/unsafe access.
      */
-    @SuppressWarnings("unused")
     private static void interceptUpdaterInvoke(GraphBuilderContext b, ValueNode tclassNode, ValueNode fieldNameNode) {
         if (tclassNode.isConstant() && fieldNameNode.isConstant()) {
             Class<?> tclass = b.getSnippetReflection().asObject(Class.class, tclassNode.asJavaConstant());
@@ -875,7 +873,6 @@ public class SubstrateGraphBuilderPlugins {
         return true;
     }
 
-    @SuppressWarnings("unused")
     private static void registerArrayPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Array.class).setAllowOverwrite(true);
         r.register(new RequiredInvocationPlugin("newInstance", Class.class, int[].class) {
@@ -1287,11 +1284,6 @@ public class SubstrateGraphBuilderPlugins {
             Class<?> classAESCrypt = Class.forName("com.sun.crypto.provider.AESCrypt", true, ClassLoader.getSystemClassLoader());
             return metaAccess.lookupJavaType(classAESCrypt);
         }
-    }
-
-    @SuppressWarnings("unused")
-    private static Object nonNullReason(NodeSourcePosition position) {
-        return position == null ? "Unknown graph builder location." : position;
     }
 
     private static void registerAESPlugins(InvocationPlugins plugins, Replacements replacements, Architecture arch) {

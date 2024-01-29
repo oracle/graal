@@ -129,11 +129,6 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
         RuntimeJNIAccess.register(constructor(a, "java.net.InetSocketAddress", InetAddress.class, int.class));
     }
 
-    @SuppressWarnings("unused")
-    private static void registerFileChannelImplInitIDs(DuringAnalysisAccess a) {
-        RuntimeJNIAccess.register(fields(a, "sun.nio.ch.FileChannelImpl", "fd"));
-    }
-
     private static void registerFileKeyInitIDs(DuringAnalysisAccess a) {
         if (isPosix()) {
             RuntimeJNIAccess.register(fields(a, "sun.nio.ch.FileKey", "st_dev", "st_ino"));

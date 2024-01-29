@@ -1195,10 +1195,10 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
              * {@link java.lang.invoke.MethodHandle#invoke(Object...)}.
              */
             private boolean isBootstrapInvocationInvalid(BootstrapMethodIntrospection bootstrap, int parameterLength, List<JavaConstant> staticArgumentsList, boolean isVarargs, Class<?> typeClass) {
-                ResolvedJavaMethod resolvedMethod = bootstrap.getMethod();
+                ResolvedJavaMethod bootstrapMethod = bootstrap.getMethod();
                 return (isVarargs && parameterLength > (3 + staticArgumentsList.size())) || (!isVarargs && parameterLength != (3 + staticArgumentsList.size())) ||
-                                !(OriginalClassProvider.getJavaClass(resolvedMethod.getSignature().getReturnType(null)).isAssignableFrom(typeClass) || resolvedMethod.isConstructor()) ||
-                                !checkBootstrapParameters(resolvedMethod, bootstrap.getStaticArguments(), true);
+                                !(OriginalClassProvider.getJavaClass(bootstrapMethod.getSignature().getReturnType(null)).isAssignableFrom(typeClass) || bootstrapMethod.isConstructor()) ||
+                                !checkBootstrapParameters(bootstrapMethod, bootstrap.getStaticArguments(), true);
             }
 
             protected boolean checkBootstrapParameters(ResolvedJavaMethod bootstrapMethod, List<JavaConstant> staticArguments, boolean condy) {
