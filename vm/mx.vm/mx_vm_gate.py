@@ -128,6 +128,23 @@ def _check_compiler_log(compiler_log_file, expectations, extra_check=None, extra
         for extra_log_file in extra_log_files:
             remove(extra_log_file)
 
+def _test_libgraal_check_build_path(libgraal_location):
+    """
+    If ``mx_substratevm.allow_build_path_in_libgraal()`` is False, tests that libgraal does not contain
+    strings whose prefix is the absolute path of the SDK suite.
+    """
+    import mx_compiler
+    import mx_substratevm
+    import subprocess
+    if not mx_substratevm.allow_build_path_in_libgraal():
+        sdk_suite_dir = mx.suite('sdk').dir
+        tool_path = join(sdk_suite_dir, 'src/org.graalvm.nativeimage.test/src/org/graalvm/nativeimage/test/FindPathsInBinary.java'.replace('/', os.sep))
+        cmd = [mx_compiler.jdk.java, tool_path, libgraal_location, sdk_suite_dir]
+        mx.logv(' '.join(cmd))
+        matches = subprocess.check_output(cmd, universal_newlines=True).strip()
+        if len(matches) != 0:
+            mx.abort(f"Found strings in {libgraal_location} with illegal prefix \"{sdk_suite_dir}\":\n{matches}\n\nRe-run: {' '.join(cmd)}")
+
 def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
     """
     Tests basic libgraal execution by running CountUppercase, ensuring it has a 0 exit code
@@ -514,6 +531,8 @@ def gate_body(args, tasks):
                 if args.extra_vm_argument:
                     extra_vm_arguments += args.extra_vm_argument
 
+                with Task('LibGraal Compiler:CheckBuildPaths', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
+                    if t: _test_libgraal_check_build_path(libgraal_location)
                 with Task('LibGraal Compiler:Basic', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
                     if t: _test_libgraal_basic(extra_vm_arguments, libgraal_location)
                 with Task('LibGraal Compiler:FatalErrorHandling', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:

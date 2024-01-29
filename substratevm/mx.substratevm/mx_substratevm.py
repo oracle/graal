@@ -1386,7 +1386,6 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
             add_to_module='java.base',
             headers=False,
             home_finder=False,
-            find_bad_strings=not allow_build_path_in_libgraal(),
         ),
     ],
     support_libraries_distributions=[],

@@ -81,7 +81,7 @@ _base_jdk = None
 
 
 class AbstractNativeImageConfig(object, metaclass=ABCMeta):
-    def __init__(self, destination, jar_distributions, build_args, use_modules=None, links=None, is_polyglot=False, dir_jars=False, home_finder=False, build_time=1, build_args_enterprise=None, find_bad_strings=False):  # pylint: disable=super-init-not-called
+    def __init__(self, destination, jar_distributions, build_args, use_modules=None, links=None, is_polyglot=False, dir_jars=False, home_finder=False, build_time=1, build_args_enterprise=None):  # pylint: disable=super-init-not-called
         """
         :type destination: str
         :type jar_distributions: list[str]
@@ -93,7 +93,6 @@ class AbstractNativeImageConfig(object, metaclass=ABCMeta):
         :type home_finder: bool
         :type build_time: int
         :type build_args_enterprise: list[str] | None
-        :param bool find_bad_strings: If true, check that the native image does not contain strings whose prefix is the absolute path of the SDK suite
         """
         self.destination = mx_subst.path_substitutions.substitute(destination)
         self.jar_distributions = jar_distributions
@@ -107,7 +106,6 @@ class AbstractNativeImageConfig(object, metaclass=ABCMeta):
         self.build_args_enterprise = build_args_enterprise or []
         self.relative_home_paths = {}
         self.relative_extracted_lib_paths = {}
-        self.find_bad_strings = find_bad_strings
 
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.build_args, (list, types.GeneratorType))

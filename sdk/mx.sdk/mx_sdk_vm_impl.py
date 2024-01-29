@@ -1224,7 +1224,7 @@ class SvmSupport(object):
     def is_pgo_supported(self):
         return self.is_ee_supported()
 
-    def native_image(self, build_args, output_file, out=None, err=None, find_bad_strings=False):
+    def native_image(self, build_args, output_file, out=None, err=None):
         assert self._svm_supported
         stage1 = get_stage1_graalvm_distribution()
         native_image_project_name = GraalVmLauncher.launcher_project_name(mx_sdk.LauncherConfig(mx.exe_suffix('native-image'), [], "", []), stage1=True)
@@ -1236,15 +1236,6 @@ class SvmSupport(object):
         ])
 
         mx.run(native_image_command, nonZeroIsFatal=True, out=out, err=err)
-
-        # Ensure there are no strings in the native image whose prefix is the absolute path of the SDK suite
-        if find_bad_strings:
-            tool_path = join(_suite.dir, 'src/org.graalvm.nativeimage.test/src/org/graalvm/nativeimage/test/FindPathsInBinary.java'.replace('/', os.sep))
-            cmd = [_src_jdk.java, tool_path, output_file, _suite.dir]
-            mx.logv(' '.join(cmd))
-            matches = subprocess.check_output(cmd, text=True).strip()
-            if len(matches) != 0:
-                mx.abort(f"Found strings in native image {output_file} with illegal prefix \"{_suite.dir}\":\n{matches}\n\nRe-run: {' '.join(cmd)}")
 
     def is_debug_supported(self):
         return self._debug_supported
@@ -2394,7 +2385,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
         mx.ensure_dir_exists(dirname(output_file))
 
         # Disable build server (different Java properties on each build prevent server reuse)
-        self.svm_support.native_image(build_args, output_file, find_bad_strings=self.subject.native_image_config.find_bad_strings)
+        self.svm_support.native_image(build_args, output_file)
 
         with open(self._get_command_file(), 'w') as f:
             f.writelines((l + os.linesep for l in build_args))

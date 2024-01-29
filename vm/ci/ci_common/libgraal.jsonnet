@@ -40,7 +40,12 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   },
   libgraal_compiler_zgc:: self.libgraal_compiler_base(extra_vm_args=['-XX:+UseZGC']),
   # enable economy mode building with the -Ob flag
-  libgraal_compiler_quickbuild:: self.libgraal_compiler_base(quickbuild_args=['-Ob']),
+  libgraal_compiler_quickbuild:: self.libgraal_compiler_base(quickbuild_args=['-Ob']) + {
+    environment+: {
+      # Exercise support for preventing build paths being embedded in libgraal.
+      ALLOW_ABSOLUTE_PATHS_IN_OUTPUT: 'false'
+    }
+  },
 
   libgraal_truffle_base(quickbuild_args=[], extra_vm_args=[], coverage=false): self.libgraal_build(['-J-esa', '-J-ea', '-esa', '-ea'] + quickbuild_args) + {
     environment+: {
