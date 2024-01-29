@@ -1119,7 +1119,7 @@ public abstract class RegexLexer {
                         if (JavaStringUtil.isSingleCodePoint(name)) {
                             return ClassSetContents.createPOSIXCollationEquivalenceClass(name.codePointAt(0));
                         } else {
-                            validatePOSIXCollationElement(name);
+                            validatePOSIXEquivalenceClass(name);
                             return ClassSetContents.createPOSIXCollationEquivalenceClass(name);
                         }
                     default:
