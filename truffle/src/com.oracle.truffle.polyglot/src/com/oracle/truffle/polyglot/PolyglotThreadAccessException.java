@@ -47,8 +47,13 @@ final class PolyglotThreadAccessException extends Exception {
         super(message);
     }
 
-    RuntimeException rethrow(PolyglotContextImpl noLockCheck) {
-        assert !Thread.holdsLock(noLockCheck) : "Only rethrow without holding internal lock";
-        throw PolyglotEngineException.illegalState(getMessage());
+    void rethrow(PolyglotContextImpl context) {
+        assert !Thread.holdsLock(context) : "Only rethrow without holding internal lock";
+        PolyglotEngineException ex = PolyglotEngineException.illegalState(getMessage());
+        if (context.config.onDeniedThreadAccess != null) {
+            context.config.onDeniedThreadAccess.accept(ex);
+        } else {
+            throw ex;
+        }
     }
 }

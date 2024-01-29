@@ -840,7 +840,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 PolyglotThreadAccessException threadAccessException = null;
                 LOOP: for (;;) {
                     if (threadAccessException != null) {
-                        throw threadAccessException.rethrow(this);
+                        threadAccessException.rethrow(this);
                     }
                     boolean needsInitialization = false;
                     synchronized (this) {

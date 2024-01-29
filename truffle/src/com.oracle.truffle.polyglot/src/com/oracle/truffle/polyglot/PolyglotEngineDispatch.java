@@ -143,14 +143,14 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
     public Object createContext(Object oreceiver, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in,
                     boolean allowHostLookup,
                     Object hostAccess, Object polyglotAccess, boolean allowNativeAccess,
-                    boolean allowCreateThread, boolean allowHostClassLoading, boolean allowInnerContextOptions,
+                    boolean allowCreateThread, Consumer<RuntimeException> onDeniedThreadAccess, boolean allowHostClassLoading, boolean allowInnerContextOptions,
                     boolean allowExperimentalOptions, Predicate<String> classFilter,
                     Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, Object ioAccess, Object logHandler, boolean allowCreateProcess,
                     ProcessHandler processHandler, Object environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory,
                     String tmpDir, ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit) {
         PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         PolyglotContextImpl context = receiver.createContext(sandboxPolicy, out, err, in, allowHostLookup, hostAccess, polyglotAccess,
-                        allowNativeAccess, allowCreateThread, allowHostClassLoading,
+                        allowNativeAccess, allowCreateThread, onDeniedThreadAccess, allowHostClassLoading,
                         allowInnerContextOptions,
                         allowExperimentalOptions,
                         classFilter, options, arguments, onlyLanguages, ioAccess, logHandler, allowCreateProcess, processHandler, environmentAccess, environment, zone, limitsImpl,

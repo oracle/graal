@@ -74,7 +74,7 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
     @Override
     public Object createContext(Object receiver, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess, Object hostAccess,
                     Object polyglotAccess,
-                    boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostClassLoading, boolean allowInnerContextOptions, boolean allowExperimentalOptions,
+                    boolean allowNativeAccess, boolean allowCreateThread, Consumer<RuntimeException> onDeniedThreadAccess, boolean allowHostClassLoading, boolean allowInnerContextOptions, boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, Object ioAccess, Object logHandler,
                     boolean allowCreateProcess, ProcessHandler processHandler, Object environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl,
                     String currentWorkingDirectory, String tmpDir, ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit) {
@@ -82,7 +82,7 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
         Engine localEngine = (Engine) engine.localEngine;
         AbstractEngineDispatch dispatch = api.getEngineDispatch(localEngine);
         Object engineReceiver = api.getEngineReceiver(localEngine);
-        Context localContext = (Context) dispatch.createContext(engineReceiver, sandboxPolicy, out, err, in, allowHostAccess, hostAccess, polyglotAccess, allowNativeAccess, allowCreateThread,
+        Context localContext = (Context) dispatch.createContext(engineReceiver, sandboxPolicy, out, err, in, allowHostAccess, hostAccess, polyglotAccess, allowNativeAccess, allowCreateThread, onDeniedThreadAccess,
                         allowHostClassLoading,
                         allowInnerContextOptions, allowExperimentalOptions, classFilter, options, arguments, onlyLanguages, ioAccess, logHandler, allowCreateProcess, processHandler,
                         environmentAccess, environment, zone, limitsImpl, currentWorkingDirectory, tmpDir, hostClassLoader, true, useSystemExit);
