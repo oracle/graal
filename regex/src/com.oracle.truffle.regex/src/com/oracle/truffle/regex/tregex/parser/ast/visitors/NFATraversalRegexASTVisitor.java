@@ -152,6 +152,7 @@ public abstract class NFATraversalRegexASTVisitor {
     private TBitSet matchedConditionGroups;
     private boolean forward = true;
     private boolean done = false;
+    private boolean shouldRetreat = false;
 
     /**
      * The exhaustive path traversal may result in some duplicate successors, e.g. on a regex like
@@ -280,6 +281,7 @@ public abstract class NFATraversalRegexASTVisitor {
         assert caretsOnPath.isEmpty();
         assert lookAroundsOnPath.isEmpty();
         assert nodeVisitsEmpty() : Arrays.toString(nodeVisitCount);
+        assert !shouldRetreat;
         assert Arrays.stream(quantifierGuardsLoop).allMatch(x -> x == 0);
         assert Arrays.stream(quantifierGuardsExited).allMatch(x -> x == 0);
         assert quantifierGuards == null;
@@ -421,15 +423,6 @@ public abstract class NFATraversalRegexASTVisitor {
         }
         if (cur.isSequence()) {
             final Sequence sequence = (Sequence) cur;
-            assert (isBuildingDFA() && getMatchedConditionGroups() != null) == this instanceof ASTStepVisitor;
-            if (sequence.getParent().isConditionalBackReferenceGroup() && isBuildingDFA() && getMatchedConditionGroups() != null) {
-                int referencedGroupNumber = sequence.getParent().asConditionalBackReferenceGroup().getReferencedGroupNumber();
-                boolean groupMatched = (getMatchedConditionGroups().get(referencedGroupNumber) && !captureGroupClears.get(Group.groupNumberToBoundaryIndexEnd(referencedGroupNumber))) ||
-                                captureGroupUpdates.get(Group.groupNumberToBoundaryIndexEnd(referencedGroupNumber));
-                if (groupMatched != sequence.isFirstInGroup()) {
-                    return retreat();
-                }
-            }
             if (sequence.isEmpty()) {
                 Group parent = sequence.getParent();
                 if (sequence.isExpandedQuantifier()) {
@@ -444,9 +437,15 @@ public abstract class NFATraversalRegexASTVisitor {
                         }
                     }
                     switchEnterToPassThrough(parent);
+                    if (shouldRetreat) {
+                        return retreat();
+                    }
                     unregisterInsideLoop(parent);
                 } else {
                     pushGroupExit(parent);
+                    if (shouldRetreat) {
+                        return retreat();
+                    }
                 }
                 return advanceTerm(parent);
             } else {
@@ -456,6 +455,9 @@ public abstract class NFATraversalRegexASTVisitor {
         } else if (cur.isGroup()) {
             final Group group = (Group) cur;
             pushGroupEnter(group, 1);
+            if (shouldRetreat) {
+                return retreat();
+            }
             if (group.hasEmptyGuard()) {
                 insideEmptyGuardGroup.add(group);
             }
@@ -537,6 +539,9 @@ public abstract class NFATraversalRegexASTVisitor {
             if (curTerm == (forward ? parentSeq.getLastTerm() : parentSeq.getFirstTerm())) {
                 final Group parentGroup = parentSeq.getParent();
                 pushGroupExit(parentGroup);
+                if (shouldRetreat) {
+                    return retreat();
+                }
                 if (parentGroup.isLoop()) {
                     cur = parentGroup;
                     return false;
@@ -582,6 +587,7 @@ public abstract class NFATraversalRegexASTVisitor {
      * @return {@code true} if a successor was found in this step
      */
     private boolean retreat() {
+        shouldRetreat = false;
         while (!curPath.isEmpty()) {
             long lastVisited = curPath.peek();
             RegexASTNode node = pathGetNode(lastVisited);
@@ -595,6 +601,9 @@ public abstract class NFATraversalRegexASTVisitor {
                             registerInsideLoop(group);
                         }
                         switchNextGroupAlternative(group);
+                        if (shouldRetreat) {
+                            return retreat();
+                        }
                         cur = pathGroupGetNext(lastVisited);
                         return deduplicatePath(true);
                     } else {
@@ -627,6 +636,9 @@ public abstract class NFATraversalRegexASTVisitor {
                     // one of the two transitions will be admissible. The clause below lets us
                     // generate the second transition by replacing the loop exit with a loop escape.
                     switchExitToEscape(group);
+                    if (shouldRetreat) {
+                        return retreat();
+                    }
                     return advanceTerm(group);
                 } else {
                     if (pathIsGroupExit(lastVisited)) {
@@ -1050,6 +1062,63 @@ public abstract class NFATraversalRegexASTVisitor {
 
     private void pushQuantifierGuard(QuantifierGuard guard) {
         assert useQuantifierGuards();
+        switch (guard.getKind()) {
+            case updateCG: {
+                QuantifierGuardsLinkedList curGuard = quantifierGuards;
+                while (curGuard != null) {
+                    if (curGuard.getGuard().equals(guard)) {
+                        // redundant updateCG
+                        return;
+                    }
+                    curGuard = curGuard.getPrev();
+                }
+                break;
+            }
+            case exitZeroWidth:
+            case escapeZeroWidth: {
+                if (ast.getOptions().getFlavor().matchesTransitionsStepByStep()) {
+                    boolean keptAliveByConsumedInput = false;
+                    boolean keptAliveByCaptureGroups = false;
+                    // Search for the last enterZeroWidth guard of the same group.
+                    QuantifierGuardsLinkedList curGuard = quantifierGuards;
+                    while (curGuard != null && (!(curGuard.getGuard().getKind() == QuantifierGuard.Kind.enterZeroWidth && curGuard.getGuard().getIndex() == guard.getIndex()))) {
+                        if (ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() && curGuard.getGuard().getKind() == QuantifierGuard.Kind.updateCG) {
+                            keptAliveByCaptureGroups = true;
+                        }
+                        curGuard = curGuard.getPrev();
+                    }
+                    if (curGuard == null) {
+                        // We did not find any corresponding enterZeroWidth, so exitZeroWidth will pass because of
+                        // input being consumed.
+                        keptAliveByConsumedInput = isBuildingDFA() || root.isCharacterClass();
+                    }
+                    boolean keptAlive = keptAliveByConsumedInput || keptAliveByCaptureGroups;
+                    if (isBuildingDFA()) {
+                        // TODO: We should be able to eliminate some of these exitZeroWidth/escapeZeroWidth guards even
+                        // when not building a DFA.
+                        if ((guard.getKind() == QuantifierGuard.Kind.exitZeroWidth && !keptAlive) || (guard.getKind() == QuantifierGuard.Kind.escapeZeroWidth && keptAlive)) {
+                            shouldRetreat = true;
+                        }
+                        return;
+                    }
+                }
+                break;
+            }
+            case checkGroupMatched:
+            case checkGroupNotMatched: {
+                assert (isBuildingDFA() && getMatchedConditionGroups() != null) == this instanceof ASTStepVisitor;
+                if (isBuildingDFA() && getMatchedConditionGroups() != null) {
+                    int referencedGroupNumber = guard.getIndex();
+                    boolean groupMatched = (getMatchedConditionGroups().get(referencedGroupNumber) && !captureGroupClears.get(Group.groupNumberToBoundaryIndexEnd(referencedGroupNumber))) ||
+                            captureGroupUpdates.get(Group.groupNumberToBoundaryIndexEnd(referencedGroupNumber));
+                    if ((guard.getKind() == QuantifierGuard.Kind.checkGroupMatched) != groupMatched) {
+                        shouldRetreat = true;
+                    }
+                    return;
+                }
+                break;
+            }
+        }
         quantifierGuards = new QuantifierGuardsLinkedList(curPath.length(), guard, quantifierGuards);
     }
 
