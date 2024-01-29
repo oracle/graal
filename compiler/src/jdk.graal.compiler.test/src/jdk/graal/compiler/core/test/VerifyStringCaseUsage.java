@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,8 +32,19 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class VerifyStringCaseUsage extends VerifyPhase<CoreProviders> {
+    private static final String TO_LOWER_CASE_METHOD_NAME = "toLowerCase";
+    private static final String TO_UPPER_CASE_METHOD_NAME = "toUpperCase";
+
     @Override
     protected void verify(StructuredGraph graph, CoreProviders context) {
+        // Ensure methods of interest still exist.
+        try {
+            String.class.getDeclaredMethod(TO_LOWER_CASE_METHOD_NAME);
+            String.class.getDeclaredMethod(TO_UPPER_CASE_METHOD_NAME);
+        } catch (NoSuchMethodException e) {
+            throw new VerificationError("Failed to find expected method. Has the String class been modified?", e);
+        }
+        // Find and check uses of methods of interest.
         final ResolvedJavaType stringType = context.getMetaAccess().lookupJavaType(String.class);
         for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
             ResolvedJavaMethod callee = t.targetMethod();
@@ -42,8 +53,9 @@ public class VerifyStringCaseUsage extends VerifyPhase<CoreProviders> {
                     continue;
                 }
                 String calleeName = callee.getName();
-                if (calleeName.equals("toLowerCase") || calleeName.equals("toUpperCase")) {
-                    throw new VerificationError(t, "call to %s is prohibited to avoid localization issues. Please pass a locale such as 'Locale.ENGLISH' explicitly.", callee.format("%H.%n(%p)"));
+                if (calleeName.equals(TO_LOWER_CASE_METHOD_NAME) || calleeName.equals(TO_UPPER_CASE_METHOD_NAME)) {
+                    throw new VerificationError(t, "call to parameterless %s is prohibited to avoid localization issues. Please pass a locale such as 'Locale.ENGLISH' explicitly.",
+                                    callee.format("%H.%n(%p)"));
                 }
             }
         }
