@@ -85,6 +85,8 @@ However, using the profiles collected on a different platform will typically wor
 3. Can the profiling information be reused after a code change, provided it is limited,
    or do you need to collect new profiling information for each build?
 
+TODO BS Update terminology and link to relevance/applicability/coverage explanation.
+
 Yes, the profiling information can always be reused, and the native image has to be correctly generated.
 It is not necessary to collect new profiling information for each build.
 
@@ -102,7 +104,7 @@ Let's consider some of the possible code changes and how they affect the program
   Some profile entries will not be used.
 - Method renaming will do both -- from the perspective of PGO, a renamed method
   is a different method.
-- Modifying the code of a method may prevent the the application of the profile
+- Modifying the code of a method may prevent the application of the profile
   when that method is compiled during the optimized image build.
 - However, all of the above may have no performance impact
   if the method is *cold* (i.e. infrequently executed).
