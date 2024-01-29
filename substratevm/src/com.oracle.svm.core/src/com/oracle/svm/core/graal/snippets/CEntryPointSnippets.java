@@ -90,7 +90,7 @@ import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
-import com.oracle.svm.core.threadlocal.VMThreadLocalMTSupport;
+import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -131,23 +131,23 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     public static final SubstrateForeignCallDescriptor ENSURE_JAVA_THREAD = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "ensureJavaThread",
                     HAS_SIDE_EFFECT, LocationIdentity.any());
 
-    public static final SubstrateForeignCallDescriptor ENTER_BY_ISOLATE_MT = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "enterByIsolateMT",
+    public static final SubstrateForeignCallDescriptor ENTER_BY_ISOLATE = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "enterByIsolate",
                     HAS_SIDE_EFFECT, LocationIdentity.any());
 
-    public static final SubstrateForeignCallDescriptor DETACH_THREAD_MT = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "detachThreadMT",
+    public static final SubstrateForeignCallDescriptor DETACH_THREAD = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "detachThread",
                     HAS_SIDE_EFFECT, LocationIdentity.any());
 
     public static final SubstrateForeignCallDescriptor REPORT_EXCEPTION = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "reportException",
                     HAS_SIDE_EFFECT, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor TEAR_DOWN_ISOLATE = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "tearDownIsolate",
                     HAS_SIDE_EFFECT, LocationIdentity.any());
-    public static final SubstrateForeignCallDescriptor IS_ATTACHED_MT = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "isAttachedMT", HAS_SIDE_EFFECT, LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor IS_ATTACHED = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "isAttached", HAS_SIDE_EFFECT, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor FAIL_FATALLY = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "failFatally", HAS_SIDE_EFFECT, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor VERIFY_ISOLATE_THREAD = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "verifyIsolateThread", HAS_SIDE_EFFECT,
                     LocationIdentity.any());
 
-    public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = {CREATE_ISOLATE, INITIALIZE_ISOLATE, ATTACH_THREAD, ENSURE_JAVA_THREAD, ENTER_BY_ISOLATE_MT,
-                    DETACH_THREAD_MT, REPORT_EXCEPTION, TEAR_DOWN_ISOLATE, IS_ATTACHED_MT, FAIL_FATALLY, VERIFY_ISOLATE_THREAD};
+    public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = {CREATE_ISOLATE, INITIALIZE_ISOLATE, ATTACH_THREAD, ENSURE_JAVA_THREAD, ENTER_BY_ISOLATE,
+                    DETACH_THREAD, REPORT_EXCEPTION, TEAR_DOWN_ISOLATE, IS_ATTACHED, FAIL_FATALLY, VERIFY_ISOLATE_THREAD};
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, CEntryPointCreateIsolateParameters parameters);
@@ -468,7 +468,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     private static int attachUnattachedThread(Isolate isolate, boolean startedByIsolate, boolean inCrashHandler) {
-        int isolateThreadSize = VMThreadLocalMTSupport.singleton().vmThreadSize;
+        int isolateThreadSize = VMThreadLocalSupport.singleton().vmThreadSize;
         IsolateThread thread = VMThreads.singleton().allocateIsolateThread(isolateThreadSize);
         if (thread.isNull()) {
             return CEntryPointErrors.ALLOCATION_FAILED;
@@ -538,15 +538,13 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Snippet(allowMissingProbabilities = true)
     public static int detachThreadSnippet() {
-        int result = CEntryPointErrors.NO_ERROR;
         IsolateThread thread = CurrentIsolate.getCurrentThread();
-        result = runtimeCall(DETACH_THREAD_MT, thread);
-        return result;
+        return runtimeCall(DETACH_THREAD, thread);
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     @Uninterruptible(reason = "Thread state going away.")
-    private static int detachThreadMT(IsolateThread currentThread) {
+    private static int detachThread(IsolateThread currentThread) {
         try {
             VMThreads.singleton().detachThread(currentThread);
         } catch (Throwable t) {
@@ -590,7 +588,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     public static int enterByIsolateSnippet(Isolate isolate) {
         int result;
         writeCurrentVMThread(WordFactory.nullPointer());
-        result = runtimeCall(ENTER_BY_ISOLATE_MT, isolate);
+        result = runtimeCall(ENTER_BY_ISOLATE, isolate);
         if (result == CEntryPointErrors.NO_ERROR) {
             if (VMThreads.StatusSupport.isStatusNativeOrSafepoint()) {
                 Safepoint.transitionNativeToJava(false);
@@ -601,7 +599,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Uninterruptible(reason = "Thread state not set up yet")
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static int enterByIsolateMT(Isolate isolate) {
+    private static int enterByIsolate(Isolate isolate) {
         int error = Isolates.checkIsolate(isolate);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
@@ -622,12 +620,11 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Snippet(allowMissingProbabilities = true)
     public static int enterSnippet(IsolateThread thread) {
-        Isolate isolate;
         if (thread.isNull()) {
             return CEntryPointErrors.NULL_ARGUMENT;
         }
         writeCurrentVMThread(thread);
-        isolate = VMThreads.IsolateTL.get(thread);
+        Isolate isolate = VMThreads.IsolateTL.get(thread);
         if (SpawnIsolates.getValue()) {
             setHeapBase(Isolates.getHeapBase(isolate));
         }
@@ -705,12 +702,12 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Snippet(allowMissingProbabilities = true)
     public static boolean isAttachedSnippet(Isolate isolate) {
-        return Isolates.checkIsolate(isolate) == CEntryPointErrors.NO_ERROR && runtimeCallIsAttached(IS_ATTACHED_MT, isolate);
+        return Isolates.checkIsolate(isolate) == CEntryPointErrors.NO_ERROR && runtimeCallIsAttached(IS_ATTACHED, isolate);
     }
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static boolean isAttachedMT(Isolate isolate) {
+    private static boolean isAttached(Isolate isolate) {
         if (SpawnIsolates.getValue()) {
             setHeapBase(Isolates.getHeapBase(isolate));
         }

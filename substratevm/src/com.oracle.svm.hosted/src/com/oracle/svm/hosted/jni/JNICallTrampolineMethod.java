@@ -49,7 +49,7 @@ import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
-import com.oracle.svm.hosted.thread.VMThreadMTFeature;
+import com.oracle.svm.hosted.thread.VMThreadFeature;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -124,7 +124,7 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
             int threadIsolateOffset = -1;
             if (SubstrateOptions.SpawnIsolates.getValue()) {
                 threadArg = (RegisterValue) callingConvention.getArgument(0); // JNIEnv
-                threadIsolateOffset = ImageSingletons.lookup(VMThreadMTFeature.class).offsetOf(VMThreads.IsolateTL);
+                threadIsolateOffset = ImageSingletons.lookup(VMThreadFeature.class).offsetOf(VMThreads.IsolateTL);
             }
             RegisterValue methodIdArg = (RegisterValue) callingConvention.getArgument(parameters.size() - 1);
 

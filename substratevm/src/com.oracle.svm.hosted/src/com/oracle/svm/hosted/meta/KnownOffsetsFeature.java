@@ -42,7 +42,7 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.c.info.AccessorInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
-import com.oracle.svm.hosted.thread.VMThreadMTFeature;
+import com.oracle.svm.hosted.thread.VMThreadFeature;
 import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticallyRegisteredFeature
@@ -51,7 +51,7 @@ public final class KnownOffsetsFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(VMThreadMTFeature.class);
+        return List.of(VMThreadFeature.class);
     }
 
     @Override
@@ -73,7 +73,7 @@ public final class KnownOffsetsFeature implements InternalFeature {
         int javaFrameAnchorLastSPOffset = findStructOffset(access, JavaFrameAnchor.class, "getLastJavaSP");
         int javaFrameAnchorLastIPOffset = findStructOffset(access, JavaFrameAnchor.class, "getLastJavaIP");
 
-        int vmThreadStatusOffset = ImageSingletons.lookup(VMThreadMTFeature.class).offsetOf(VMThreads.StatusSupport.statusTL);
+        int vmThreadStatusOffset = ImageSingletons.lookup(VMThreadFeature.class).offsetOf(VMThreads.StatusSupport.statusTL);
 
         int imageCodeInfoCodeStartOffset = findFieldOffset(access, ImageCodeInfo.class, "codeStart");
 

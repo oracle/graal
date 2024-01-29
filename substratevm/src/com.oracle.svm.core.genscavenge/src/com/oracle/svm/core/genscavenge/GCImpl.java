@@ -92,7 +92,7 @@ import com.oracle.svm.core.thread.NativeVMOperationData;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.threadlocal.VMThreadLocalMTSupport;
+import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -892,7 +892,7 @@ public final class GCImpl implements GC {
         Timer walkThreadLocalsTimer = timers.walkThreadLocals.open();
         try {
             for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
-                VMThreadLocalMTSupport.singleton().walk(isolateThread, greyToBlackObjRefVisitor);
+                VMThreadLocalSupport.singleton().walk(isolateThread, greyToBlackObjRefVisitor);
             }
         } finally {
             walkThreadLocalsTimer.close();

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.threadlocal;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -40,18 +39,20 @@ import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 
-public class VMThreadLocalMTSupport {
+import jdk.graal.compiler.api.replacements.Fold;
+
+public class VMThreadLocalSupport {
     @UnknownPrimitiveField(availability = ReadyForCompilation.class) public int vmThreadSize = -1;
     @UnknownObjectField(availability = ReadyForCompilation.class) public byte[] vmThreadReferenceMapEncoding;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class) public long vmThreadReferenceMapIndex = -1;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public VMThreadLocalMTSupport() {
+    public VMThreadLocalSupport() {
     }
 
     @Fold
-    public static VMThreadLocalMTSupport singleton() {
-        return ImageSingletons.lookup(VMThreadLocalMTSupport.class);
+    public static VMThreadLocalSupport singleton() {
+        return ImageSingletons.lookup(VMThreadLocalSupport.class);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

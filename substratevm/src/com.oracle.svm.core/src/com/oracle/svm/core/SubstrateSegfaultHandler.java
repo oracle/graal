@@ -63,7 +63,7 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
-import com.oracle.svm.core.threadlocal.VMThreadLocalMTSupport;
+import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -241,7 +241,7 @@ public abstract class SubstrateSegfaultHandler {
              * Some error occurred or this is an unattached thread. Only set up a minimal
              * IsolateThread so that we can at least try to dump some information.
              */
-            int isolateThreadSize = VMThreadLocalMTSupport.singleton().vmThreadSize;
+            int isolateThreadSize = VMThreadLocalSupport.singleton().vmThreadSize;
             IsolateThread structForUnattachedThread = UnsafeLateStackValue.get(isolateThreadSize);
             UnmanagedMemoryUtil.fill((Pointer) structForUnattachedThread, WordFactory.unsigned(isolateThreadSize), (byte) 0);
             CEntryPointSnippets.initializeIsolateThreadForCrashHandler(isolate, structForUnattachedThread);

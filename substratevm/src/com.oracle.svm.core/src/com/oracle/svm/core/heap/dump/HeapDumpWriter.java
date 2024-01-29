@@ -81,7 +81,7 @@ import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.threadlocal.VMThreadLocalMTSupport;
+import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -736,7 +736,7 @@ public class HeapDumpWriter {
 
     private void writeThreadLocals(IsolateThread isolateThread, int threadSerialNum) {
         threadLocalsVisitor.initialize(threadSerialNum);
-        VMThreadLocalMTSupport.singleton().walk(isolateThread, threadLocalsVisitor);
+        VMThreadLocalSupport.singleton().walk(isolateThread, threadLocalsVisitor);
     }
 
     private void writeJNIGlobals() {
