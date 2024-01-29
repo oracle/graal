@@ -246,6 +246,14 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     @Override
+    public boolean isGenerateSlowPathOnly(TypeElement element) {
+        if (mode == ParseMode.OPERATION) {
+            return false;
+        }
+        return super.isGenerateSlowPathOnly(element);
+    }
+
+    @Override
     public DeclaredType getAnnotationType() {
         return null;
     }
