@@ -368,7 +368,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 el.getEnclosedElements().add(quicken);
             }
 
-            nodeConsts.prependToClass(el);
+            nodeConsts.addToClass(el);
             bytecodeNodeGen.add(el);
         }
         consts.addElementsTo(bytecodeNodeGen);
