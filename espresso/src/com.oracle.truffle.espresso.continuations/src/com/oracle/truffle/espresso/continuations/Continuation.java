@@ -40,7 +40,14 @@
  */
 package com.oracle.truffle.espresso.continuations;
 
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.io.Serial;
+import java.io.Serializable;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 
 /**
  * <p>
@@ -90,7 +97,7 @@ import java.lang.reflect.Method;
  * cause extremely confusing and apparently 'impossible' states to occur.
  * </p>
  */
-public final class Continuation {
+public final class Continuation implements Externalizable {
     // Next steps:
     // - Refactor to pull frame serialization into Truffle itself, stop exposing frame guts to
     // language impls.
@@ -159,7 +166,7 @@ public final class Continuation {
     /**
      * The entry point as provided to the constructor.
      */
-    public final EntryPoint entryPoint;
+    public EntryPoint entryPoint;
 
     /**
      * A point in the lifecycle of a continuation.
@@ -167,6 +174,9 @@ public final class Continuation {
      * @see Continuation#getState
      */
     public enum State {
+        // Note: If you change this enum, bump the format version and ensure correct deserialization
+        // of old continuations.
+
         /** Newly constructed and waiting for a resume. */
         NEW,
         /** Currently executing. */
@@ -180,11 +190,14 @@ public final class Continuation {
     }
 
     // Avoid the continuation stack having a reference to this controller class.
-    private static final class StateHolder {
+    private static final class StateHolder implements Serializable {
+        @Serial
+        private static final long serialVersionUID = -4139336648021552606L;
+
         State state = State.NEW;
     }
 
-    private final StateHolder stateHolder = new StateHolder();
+    private StateHolder stateHolder = new StateHolder();
 
     // endregion State
 
@@ -219,6 +232,13 @@ public final class Continuation {
     }
 
     /**
+     * This constructor is intended only to allow deserializtion. You shouldn't use it directly.
+     * @hidden
+     */
+    public Continuation() {
+    }
+
+    /**
      * A newly constructed continuation starts in {@link State#NEW}. After the first call to
      * {@link #resume()} the state will become {@link State#RUNNING} until either the entry point
      * returns, at which point the state becomes {@link State#COMPLETED}, or until the continuation
@@ -245,7 +265,10 @@ public final class Continuation {
      * An object provided by the system that lets you yield control and return from
      * {@link Continuation#resume()}.
      */
-    public static final class SuspendCapability {
+    public static final class SuspendCapability implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 4790341975992263909L;
+
         // Will be assigned separately to break the cycle that occurs because this object has to be
         // on the entry stack.
         StateHolder stateHolder;
@@ -284,6 +307,8 @@ public final class Continuation {
     public void resume() {
         // Are we in the special waiting-to-start state?
         if (stateHolder.state == State.NEW) {
+            if (entryPoint == null)
+                throw new IllegalStateException("The entry point is not set. Do not use the public no-args constructor to create this class, it's only for serialization.");
             // Enable the use of suspend capabilities.
             insideContinuation.set(true);
             try {
@@ -311,6 +336,195 @@ public final class Continuation {
             resume0();
         } finally {
             insideContinuation.set(false);
+        }
+    }
+
+    // endregion
+
+    // region Serialization
+    @Serial
+    private static final long serialVersionUID = -5833405097154096157L;
+
+    private static final int FORMAT_VERSION = 1;
+
+    /**
+     * Serializes the continuation using an internal format. The {@link ObjectOutput} will receive
+     * some opaque bytes followed by writes of the objects pointed to by the stack. It's up to
+     * the serialization engine to recursively serialize everything that's reachable.
+     */
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException {
+        var state = getState();
+        if (state == State.RUNNING)
+            throw new IllegalStateException("You cannot serialize a continuation whilst it's running, as this would have unclear semantics. Please suspend first.");
+
+        // We start by writing out a header byte. The high nibble contains a major version. Old
+        // libraries will refuse to deserialize continuations with a higher version than what they
+        // recognize. New libraries may choose to continue supporting the old formats. The low
+        // nibble contains flags. The first flag indicates if VM assertions are enabled, in
+        // which case we have to also record the slot tag array.
+        int header = FORMAT_VERSION << 4;
+        boolean writeSlotTags = hasSlotTagsInFrame();
+        if (writeSlotTags)
+            header |= 1;
+        out.writeByte(header);
+
+        out.writeObject(stateHolder);
+        out.writeObject(entryPoint);
+
+        if (state == State.SUSPENDED) {
+            // We serialize frame-at-a-time. Prims go first, then object pointers. Conceptually there
+            // aren't two arrays, just one array of untyped slots but we don't currently know the
+            // real types of the slots, so have to serialize both arrays even though they'll contain
+            // quite a few nulls. There are more efficient encodings available.
+            FrameRecord cursor = stackFrameHead;
+            assert cursor != null;
+            while (cursor != null) {
+                writeFrame(out, cursor, writeSlotTags);
+                out.writeBoolean(cursor.next != null);
+                cursor = cursor.next;
+            }
+        }
+    }
+
+    private static void writeFrame(ObjectOutput out, FrameRecord cursor, boolean writeSlotTags) throws IOException {
+        Method method = cursor.method;
+        out.writeObject(cursor.pointers);
+        out.writeObject(cursor.primitives);
+        writeMethodNameAndTypes(out, method);
+        out.writeInt(cursor.sp);
+        if (writeSlotTags)
+            out.writeObject(cursor.reserved1);
+    }
+
+    private boolean hasSlotTagsInFrame() {
+        FrameRecord cursor = stackFrameHead;
+        while (cursor != null) {
+            if (cursor.reserved1 != null)
+                return true;
+            cursor = cursor.next;
+        }
+        return false;
+    }
+
+    private static void writeMethodNameAndTypes(ObjectOutput out, Method method) throws IOException {
+        out.writeUTF(method.getReturnType().getName());
+        out.writeUTF(method.getDeclaringClass().getName());
+        out.writeUTF(method.getName());
+        Class<?>[] paramTypes = method.getParameterTypes();
+        out.writeByte(paramTypes.length);
+        for (var p : paramTypes) {
+            out.writeUTF(p.getName());
+        }
+    }
+
+    /**
+     * Initializes the continuation from the given {@link ObjectInput}.
+     *
+     * @throws FormatVersionException if the header read from the stream doesn't match the expected
+     * version number.
+     * @throws IOException if there is a problem reading the stream, or if the stream appears to
+     * be corrupted.
+     */
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        int header = in.readByte();
+        boolean hasSlotTags = (header & 1) == 1;
+        int version = (header >> 4) & 0xFF;
+        if (version != FORMAT_VERSION)
+            throw new FormatVersionException(version);
+
+        stateHolder = (StateHolder) in.readObject();
+        entryPoint = (EntryPoint) in.readObject();
+
+        if (getState() == State.SUSPENDED) {
+            try {
+                FrameRecord last = null;
+                do {
+                    // We read the context classloader here because we need the classloader that
+                    // holds the user's app. If we use Class.forName() in this code we get the
+                    // platform classloader because this class is provided by the VM, and thus can't
+                    // look up methods of user classes. If we use the classloader of the entrypoint
+                    // it breaks for ContinuationEnumeration and any other classes we might want to
+                    // ship with the VM that use this API. So we need the user's app class loader.
+                    // We could walk the stack to find it just like ObjectInputStream does, but we
+                    // go with the context classloader here to make it easier for the user to
+                    // control.
+                    var frame = readFrame(in, Thread.currentThread().getContextClassLoader(), hasSlotTags);
+                    if (last == null) {
+                        stackFrameHead = frame;
+                    } else {
+                        last.next = frame;
+                    }
+                    last = frame;
+                } while (in.readBoolean());
+            } catch (NoSuchMethodException e) {
+                throw new IOException(e);
+            }
+        }
+    }
+
+    private FrameRecord readFrame(ObjectInput in, ClassLoader classLoader, boolean hasSlotTags) throws IOException, ClassNotFoundException, NoSuchMethodException {
+        Object[] pointers = (Object[]) in.readObject();
+        long[] primitives = (long[]) in.readObject();
+        // Slot zero is always primitive (bci), so this is in slot 1.
+        Method method = readMethodNameAndTypes(in, classLoader, pointers.length > 1 ? pointers[1] : null);
+        int sp = in.readInt();
+        Object reserved1 = null;
+        if (hasSlotTags)
+            reserved1 = in.readObject();
+        return new FrameRecord(pointers, primitives, method, sp, reserved1);
+    }
+
+    private Method readMethodNameAndTypes(ObjectInput in, ClassLoader classLoader, Object possibleThis) throws IOException, ClassNotFoundException, NoSuchMethodException {
+        String returnTypeAsString = in.readUTF();
+        String declaringClassAsString = in.readUTF();
+        String name = in.readUTF();
+
+        Class<?> returnType = !returnTypeAsString.equals("void") ? Class.forName(returnTypeAsString, true, classLoader) : null;
+        Class<?> declaringClass;
+        // Lambda classes can't be looked up by name. This is a JVM optimization designed to avoid
+        // contention on the global dictionary lock, but it means we need another way to get the
+        // class for the method. Fortunately, lambdas always have an instance, so we can read it
+        // out of the first pointer slot.
+        if (declaringClassAsString.contains("$$Lambda/")) {
+            if (possibleThis == null)
+                throw new IllegalStateException("Lambda method with no this pointer in frame");
+            declaringClass = possibleThis.getClass();
+            if (!declaringClass.getName().contains("$$Lambda/"))
+                throw new IllegalStateException("Lambda method on stack with incorrect 'this' pointer.");
+        } else {
+            declaringClass = Class.forName(declaringClassAsString, false, classLoader);
+        }
+
+        var numArgs = in.readUnsignedByte();
+        var argTypes = new Class<?>[numArgs];
+        for (int i = 0; i < numArgs; i++) {
+            argTypes[i] = Class.forName(in.readUTF(), false, classLoader);
+        }
+
+        for (Method method : declaringClass.getDeclaredMethods()) {
+            if (!method.getName().equals(name)) continue;
+            if (!Arrays.equals(method.getParameterTypes(), argTypes)) continue;
+            if (returnType != null && !method.getReturnType().equals(returnType)) continue;
+            return method;
+        }
+
+        throw new NoSuchMethodException("%s %s(%s)".formatted(
+                returnTypeAsString, name, String.join(", ", Arrays.stream(argTypes).map(Object::toString).toList()))
+        );
+    }
+
+    /**
+     * Thrown if the format of the serialized continuation is unrecognized i.e. from a newer
+     * version of the runtime, or from a version too old to still be supported.
+     */
+    public static final class FormatVersionException extends IOException {
+        @Serial
+        private static final long serialVersionUID = 6913545866116536598L;
+
+        public FormatVersionException(int version) {
+            super("Unsupported serialized continuation version: " + version);
         }
     }
 

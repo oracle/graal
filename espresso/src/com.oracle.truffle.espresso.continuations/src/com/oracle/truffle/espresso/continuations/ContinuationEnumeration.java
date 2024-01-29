@@ -1,5 +1,7 @@
 package com.oracle.truffle.espresso.continuations;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.Enumeration;
 import java.util.NoSuchElementException;
 
@@ -9,18 +11,25 @@ import java.util.NoSuchElementException;
  * anywhere in the call stack. This type of enumeration is sometimes called
  * a <i>generator</i>.
  */
-public abstract class ContinuationEnumeration<E> implements Enumeration<E> {
+public abstract class ContinuationEnumeration<E> implements Enumeration<E>, Serializable {
+    @Serial
+    private static final long serialVersionUID = -5614372125614425080L;
+
     private final Continuation continuation;
 
-    private E currentElement;
+    private transient E currentElement;
 
-    private boolean hasProduced;
+    private transient boolean hasProduced;
 
     private Continuation.SuspendCapability suspendCapability;
 
+    /**
+     * This constructor exists only for deserialization purposes. Don't call it directly.
+     * @hidden
+     */
     @SuppressWarnings("this-escape")
     protected ContinuationEnumeration() {
-        continuation = new Continuation(suspendCapability -> {
+        continuation = new Continuation((Continuation.EntryPoint & Serializable) suspendCapability -> {
             this.suspendCapability = suspendCapability;
             generate();
         });
@@ -28,6 +37,8 @@ public abstract class ContinuationEnumeration<E> implements Enumeration<E> {
 
     @Override
     public final boolean hasMoreElements() {
+        if (hasProduced)
+            return true;
         Continuation.State state = continuation.getState();
         boolean ready = state == Continuation.State.SUSPENDED || state == Continuation.State.NEW;
         if (!ready)
@@ -60,4 +71,28 @@ public abstract class ContinuationEnumeration<E> implements Enumeration<E> {
      * Implement this method to {@link #emit(Object)} elements from the enumeration.
      */
     protected abstract void generate();
+
+    private transient boolean reentrancy = false;
+
+    @Override
+    public String toString() {
+        if (reentrancy)
+            return "this generator";
+        reentrancy = true;
+        String result = continuation.toString();
+        reentrancy = false;
+        return result;
+    }
+//
+//    @Serial
+//    private void writeObject(java.io.ObjectOutputStream out) throws IOException {
+//        if (hasProduced)
+//            throw new IllegalStateException("You cannot serialize a generator between a call to hasMoreElements() and nextElement().");
+//        out.defaultWriteObject();
+//    }
+//
+//    @Serial
+//    private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+//        in.defaultReadObject();
+//    }
 }
