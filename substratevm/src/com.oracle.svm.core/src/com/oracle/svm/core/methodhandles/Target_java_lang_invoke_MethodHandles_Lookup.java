@@ -28,6 +28,7 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.security.ProtectionDomain;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -40,6 +41,13 @@ import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 
 @TargetClass(value = MethodHandles.class, innerClass = "Lookup")
 final class Target_java_lang_invoke_MethodHandles_Lookup {
+    /*
+     * Reset the field to avoid image build errors in case the field becomes reachable (plus the
+     * hosted values would be wrong at run time anyway).
+     */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    private volatile ProtectionDomain cachedProtectionDomain;
+
     @SuppressWarnings("static-method")
     @Substitute
     public Class<?> defineClass(@SuppressWarnings("unused") byte[] bytes) {
