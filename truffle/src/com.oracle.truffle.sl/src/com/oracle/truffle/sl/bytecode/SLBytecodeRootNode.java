@@ -54,6 +54,7 @@ import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
 import com.oracle.truffle.api.bytecode.Variadic;
 import com.oracle.truffle.api.bytecode.debug.BytecodeDebugTraceListener;
+import com.oracle.truffle.api.bytecode.introspection.Instruction;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -114,6 +115,8 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 @ShortCircuitOperation(name = "SLOr", booleanConverter = SLToBooleanNode.class, operator = Operator.OR_RETURN_CONVERTED)
 public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeRootNode, BytecodeDebugTraceListener {
 
+    private static final boolean TRACE_BYTECODE = false;
+
     protected SLBytecodeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super((SLLanguage) language, frameDescriptor);
     }
@@ -123,13 +126,20 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
     private transient String saved;
 
     public void executeProlog(VirtualFrame frame) {
+        if (!TRACE_BYTECODE) {
+            return;
+        }
         if (saved == null) {
             saved = dump();
             printDump(saved);
         }
+
     }
 
     public void executeEpilog(VirtualFrame frame, Object returnValue, Throwable throwable) {
+        if (!TRACE_BYTECODE) {
+            return;
+        }
         String newDump = dump();
         if (!newDump.equals(saved)) {
             printDump(newDump);
@@ -158,6 +168,27 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
 
     public void setTSName(TruffleString tsName) {
         this.tsName = tsName;
+    }
+
+    @Override
+    public void onQuicken(Instruction before, Instruction after) {
+        if (TRACE_BYTECODE) {
+            BytecodeDebugTraceListener.super.onQuicken(before, after);
+        }
+    }
+
+    @Override
+    public void onQuickenOperand(Instruction base, int operandIndex, Instruction operandBefore, Instruction operandAfter) {
+        if (TRACE_BYTECODE) {
+            BytecodeDebugTraceListener.super.onQuickenOperand(base, operandIndex, operandBefore, operandAfter);
+        }
+    }
+
+    @Override
+    public void onSpecialize(Instruction instruction, String specialization) {
+        if (TRACE_BYTECODE) {
+            BytecodeDebugTraceListener.super.onSpecialize(instruction, specialization);
+        }
     }
 
     @Operation

@@ -4661,7 +4661,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startReturn().startCall("node.findLocation").string("bci").end().end();
 
             type.add(new CodeExecutableElement(Set.of(ABSTRACT), type.asType(), "toCached"));
-            type.add(new CodeExecutableElement(Set.of(ABSTRACT), type.asType(), "addSource", new CodeVariableElement(arrayOf(type(int.class)), "sourceInfo")));
+            type.add(new CodeExecutableElement(Set.of(ABSTRACT), type.asType(), "addSource", new CodeVariableElement(arrayOf(type(int.class)), "newSourceInfo")));
 
             type.add(new CodeExecutableElement(Set.of(ABSTRACT), type.asType(), "cloneUninitialized"));
 
@@ -5118,14 +5118,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createAddSource() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement((DeclaredType) abstractBytecodeNode.asType(), "addSource");
-            ex.renameArguments("sourceInfo");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn();
             b.startNew(type.asType());
             b.string("this.bytecodes");
             b.string("this.constants");
             b.string("this.handlers");
-            b.string("sourceInfo");
+            b.string("newSourceInfo");
             for (VariableElement var : ElementFilter.fieldsIn(type.getEnclosedElements())) {
                 b.string("this.", var.getSimpleName().toString());
             }
@@ -5157,6 +5156,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = ex.createBuilder();
             b.tree(createNeverPartOfCompilation());
             if (!tier.isCached()) {
+                mergeSuppressWarnings(ex, "static-method");
                 b.startReturn().string("-1").end();
                 return ex;
             }
@@ -5937,19 +5937,19 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startAssign("ex").startCall("$root", model.interceptTruffleException).string("ex").string(localFrame()).string("bci").end(2);
             }
 
-            b.statement("int[] handlers = this.handlers");
-            b.startFor().string("int idx = 0; idx < handlers.length; idx += 5").end().startBlock();
+            b.statement("int[] localHandlers = this.handlers");
+            b.startFor().string("int idx = 0; idx < localHandlers.length; idx += 5").end().startBlock();
 
-            b.startIf().string("handlers[idx] > bci").end().startBlock().statement("continue").end();
-            b.startIf().string("handlers[idx + 1] <= bci").end().startBlock().statement("continue").end();
-            b.statement("bci = handlers[idx + 2]");
-            b.statement("int handlerSp = handlers[idx + 3] + $root.numLocals");
+            b.startIf().string("localHandlers[idx] > bci").end().startBlock().statement("continue").end();
+            b.startIf().string("localHandlers[idx + 1] <= bci").end().startBlock().statement("continue").end();
+            b.statement("bci = localHandlers[idx + 2]");
+            b.statement("int handlerSp = localHandlers[idx + 3] + $root.numLocals");
             b.statement("assert sp >= handlerSp");
             b.startWhile().string("sp > handlerSp").end().startBlock();
             b.statement(clearFrame("frame", "--sp"));
             b.end();
 
-            b.statement(setFrameObject(localFrame(), "handlers[idx + 4]", "ex"));
+            b.statement(setFrameObject(localFrame(), "localHandlers[idx + 4]", "ex"));
 
             b.statement("continue loop");
 
