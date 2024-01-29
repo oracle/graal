@@ -940,7 +940,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
     }
 
-    private void registerLinkageError(Class<?> clazz, LinkageError error, Map<Class<?>, Throwable> errorMap) {
+    private static void registerLinkageError(Class<?> clazz, LinkageError error, Map<Class<?>, Throwable> errorMap) {
         if (LinkAtBuildTimeSupport.singleton().linkAtBuildTime(clazz)) {
             throw error;
         } else {

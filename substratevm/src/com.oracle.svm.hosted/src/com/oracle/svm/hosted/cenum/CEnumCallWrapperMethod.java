@@ -80,7 +80,7 @@ public class CEnumCallWrapperMethod extends CustomSubstitutionMethod {
         AnalysisType returnType = method.getSignature().getReturnType();
         ValueNode arg = kit.getInitialArguments().get(0);
 
-        CInterfaceEnumTool tool = new CInterfaceEnumTool(kit.getMetaAccess(), kit.getSnippetReflection());
+        CInterfaceEnumTool tool = new CInterfaceEnumTool(kit.getMetaAccess());
 
         JavaKind pushKind = CInterfaceInvocationPlugin.pushKind(method);
         ValueNode returnValue;

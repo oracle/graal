@@ -26,7 +26,6 @@ package com.oracle.svm.core.jfr;
 
 import java.util.List;
 
-import com.oracle.svm.core.log.Log;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -39,6 +38,7 @@ import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jfr.logging.JfrLogging;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.sampler.SamplerBufferPool;
 import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 import com.oracle.svm.core.thread.JavaThreads;
@@ -209,6 +209,7 @@ public class SubstrateJVM {
         threadLocal.initialize(options.threadBufferSize.getValue());
         globalMemory.initialize(options.globalBufferSize.getValue(), options.globalBufferCount.getValue());
         unlockedChunkWriter.initialize(options.maxChunkSize.getValue());
+        stackTraceRepo.setStackTraceDepth(NumUtil.safeToInt(options.stackDepth.getValue()));
 
         recorderThread.start();
 
@@ -444,7 +445,7 @@ public class SubstrateJVM {
      * See {@link JVM#setStackDepth}.
      */
     public void setStackDepth(int depth) {
-        stackTraceRepo.setStackTraceDepth(depth);
+        options.stackDepth.setUserValue(depth);
     }
 
     /**

@@ -93,7 +93,6 @@ import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -622,7 +621,7 @@ public final class ResourcesFeature implements InternalFeature {
     }
 
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+    public void registerInvocationPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
         if (!reason.duringAnalysis() || reason == ParsingReason.JITCompilation) {
             return;
         }
@@ -634,11 +633,11 @@ public final class ResourcesFeature implements InternalFeature {
         Method resolveResourceName = ReflectionUtil.lookupMethod(Class.class, "resolveName", String.class);
 
         for (Method method : resourceMethods) {
-            registerResourceRegistrationPlugin(plugins.getInvocationPlugins(), method, snippetReflection, resolveResourceName, reason);
+            registerResourceRegistrationPlugin(plugins.getInvocationPlugins(), method, providers, resolveResourceName, reason);
         }
     }
 
-    private void registerResourceRegistrationPlugin(InvocationPlugins plugins, Method method, SnippetReflectionProvider snippetReflectionProvider, Method resolveResourceName, ParsingReason reason) {
+    private void registerResourceRegistrationPlugin(InvocationPlugins plugins, Method method, Providers providers, Method resolveResourceName, ParsingReason reason) {
         List<Class<?>> parameterTypes = new ArrayList<>();
         assert !Modifier.isStatic(method.getModifiers());
         parameterTypes.add(InvocationPlugin.Receiver.class);
@@ -654,8 +653,8 @@ public final class ResourcesFeature implements InternalFeature {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 try {
                     if (!sealed && receiver.isConstant() && arg.isJavaConstant() && !arg.isNullConstant()) {
-                        Class<?> clazz = snippetReflectionProvider.asObject(Class.class, receiver.get().asJavaConstant());
-                        String resource = snippetReflectionProvider.asObject(String.class, arg.asJavaConstant());
+                        Class<?> clazz = providers.getSnippetReflection().asObject(Class.class, receiver.get().asJavaConstant());
+                        String resource = providers.getSnippetReflection().asObject(String.class, arg.asJavaConstant());
                         String resourceName = (String) resolveResourceName.invoke(clazz, resource);
                         b.add(ReachabilityRegistrationNode.create(() -> RuntimeResourceAccess.addResource(clazz.getModule(), resourceName), reason));
                         return true;

@@ -73,7 +73,6 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.debug.DebugContext;
@@ -200,10 +199,8 @@ public class HostedConfiguration {
         return new SVMHost(options, loader, classInitializationSupport, annotationSubstitutions);
     }
 
-    public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse, RuntimeConfiguration runtimeConfiguration, boolean deoptimizeAll,
-                    SnippetReflectionProvider aSnippetReflection) {
-
-        return new CompileQueue(debug, featureHandler, hostedUniverse, runtimeConfiguration, deoptimizeAll, aSnippetReflection);
+    public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse, RuntimeConfiguration runtimeConfiguration, boolean deoptimizeAll) {
+        return new CompileQueue(debug, featureHandler, hostedUniverse, runtimeConfiguration, deoptimizeAll);
     }
 
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
@@ -264,9 +261,15 @@ public class HostedConfiguration {
 
     private static Set<AnalysisType> getForceMonitorSlotTypes(BigBang bb) {
         Set<AnalysisType> forceMonitorTypes = new HashSet<>();
-        for (Class<?> forceMonitorType : MultiThreadedMonitorSupport.FORCE_MONITOR_SLOT_TYPES) {
-            Optional<AnalysisType> aType = bb.getMetaAccess().optionalLookupJavaType(forceMonitorType);
-            aType.ifPresent(forceMonitorTypes::add);
+        for (var entry : MultiThreadedMonitorSupport.FORCE_MONITOR_SLOT_TYPES.entrySet()) {
+            Optional<AnalysisType> optionalType = bb.getMetaAccess().optionalLookupJavaType(entry.getKey());
+            if (optionalType.isPresent()) {
+                AnalysisType aType = optionalType.get();
+                forceMonitorTypes.add(aType);
+                if (entry.getValue()) {
+                    forceMonitorTypes.addAll(aType.getAllSubtypes());
+                }
+            }
         }
         return forceMonitorTypes;
     }

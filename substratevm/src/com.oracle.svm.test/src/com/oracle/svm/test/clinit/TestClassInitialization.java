@@ -829,7 +829,7 @@ abstract class TestClassInitializationFeature implements Feature {
         }
     }
 
-    private void assertNotInitialized(Class<?>... classes) {
+    private static void assertNotInitialized(Class<?>... classes) {
         for (var clazz : classes) {
             if (!Unsafe.getUnsafe().shouldBeInitialized(clazz)) {
                 throw new AssertionError("Already initialized: " + clazz);
@@ -837,7 +837,7 @@ abstract class TestClassInitializationFeature implements Feature {
         }
     }
 
-    private void assertInitialized(Class<?>... classes) {
+    private static void assertInitialized(Class<?>... classes) {
         for (var clazz : classes) {
             if (Unsafe.getUnsafe().shouldBeInitialized(clazz)) {
                 throw new AssertionError("Not initialized: " + clazz);

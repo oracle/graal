@@ -131,9 +131,9 @@ public class RuntimeCompiledMethodSupport {
         ImageHeapScanner imageScanner = bb.getUniverse().getHeapScanner();
 
         GraphEncoder graphEncoder = new RuntimeCompiledMethodSupport.RuntimeCompilationGraphEncoder(ConfigurationValues.getTarget().arch, imageScanner);
-        HostedProviders runtimeCompilationProviders = hostedProviders
-                        .copyWith(constantFieldProviderWrapper.apply(new RuntimeCompilationFieldProvider(hostedProviders.getMetaAccess(), hUniverse)))
-                        .copyWith(new RuntimeCompilationReflectionProvider(bb, hUniverse.hostVM().getClassInitializationSupport()));
+        HostedProviders runtimeCompilationProviders = hostedProviders.copyWith(
+                        constantFieldProviderWrapper.apply(new RuntimeCompilationFieldProvider(hostedProviders.getMetaAccess(), hUniverse))).copyWith(
+                                        new RuntimeCompilationReflectionProvider(bb, hUniverse.hostVM().getClassInitializationSupport()));
 
         SubstrateCompilationDirectives.singleton().resetDeoptEntries();
 
@@ -201,10 +201,10 @@ public class RuntimeCompiledMethodSupport {
         }
 
         @SuppressWarnings("try")
-        private void compileRuntimeCompiledMethod(DebugContext debug, HostedMethod method) {
-            assert method.getMultiMethodKey() == RUNTIME_COMPILED_METHOD;
+        private void compileRuntimeCompiledMethod(DebugContext debug, HostedMethod hostedMethod) {
+            assert hostedMethod.getMultiMethodKey() == RUNTIME_COMPILED_METHOD;
 
-            AnalysisMethod aMethod = method.getWrapped();
+            AnalysisMethod aMethod = hostedMethod.getWrapped();
             StructuredGraph graph = aMethod.decodeAnalyzedGraph(debug, null, false,
                             (arch, analyzedGraph) -> new RuntimeCompilationGraphDecoder(arch, analyzedGraph, compilationState.heapScanner));
             if (graph == null) {
@@ -216,7 +216,7 @@ public class RuntimeCompiledMethodSupport {
              */
             aMethod.setAnalyzedGraph(null);
 
-            try (DebugContext.Scope s = debug.scope("RuntimeOptimize", graph, method, this)) {
+            try (DebugContext.Scope s = debug.scope("RuntimeOptimize", graph, hostedMethod, this)) {
                 CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
                 canonicalizer.apply(graph, compilationState.runtimeCompilationProviders);
 
@@ -241,7 +241,7 @@ public class RuntimeCompiledMethodSupport {
              * Registering all deopt entries seen within the optimized graph. This should be
              * strictly a subset of the deopt entrypoints seen during evaluation.
              */
-            AnalysisMethod origMethod = method.getMultiMethod(ORIGINAL_METHOD).getWrapped();
+            AnalysisMethod origMethod = hostedMethod.getMultiMethod(ORIGINAL_METHOD).getWrapped();
             DeoptimizationUtils.registerDeoptEntries(graph, compilationState.registeredRuntimeCompilations.contains(origMethod),
                             (deoptEntryMethod -> {
                                 PointsToAnalysisMethod deoptMethod = (PointsToAnalysisMethod) ((PointsToAnalysisMethod) deoptEntryMethod).getMultiMethod(DEOPT_TARGET_METHOD);
@@ -250,7 +250,7 @@ public class RuntimeCompiledMethodSupport {
                             }));
 
             assert verifyNodes(graph);
-            var previous = compilationState.runtimeGraphs.put(method, graph);
+            var previous = compilationState.runtimeGraphs.put(hostedMethod, graph);
             assert previous == null;
 
             // graph encoder is not currently threadsafe
@@ -324,6 +324,7 @@ public class RuntimeCompiledMethodSupport {
 
     static class RuntimeCompilationReflectionProvider extends AnalysisConstantReflectionProvider {
 
+        @SuppressWarnings("unused")
         RuntimeCompilationReflectionProvider(BigBang bb, ClassInitializationSupport classInitializationSupport) {
             super(bb.getUniverse(), bb.getMetaAccess());
         }
@@ -349,6 +350,7 @@ public class RuntimeCompiledMethodSupport {
      * {@link GraphEncoder#objectsArray} are captured in GraalSupport#graphObjects and
      * SubstrateReplacements#snippetObjects which are then scanned.
      */
+    @SuppressWarnings("javadoc")
     public static class RuntimeCompilationGraphEncoder extends GraphEncoder {
 
         private final ImageHeapScanner heapScanner;

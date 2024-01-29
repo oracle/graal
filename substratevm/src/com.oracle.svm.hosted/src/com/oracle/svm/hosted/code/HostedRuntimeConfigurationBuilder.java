@@ -69,9 +69,9 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
 
     @Override
     protected Providers createProviders(CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, ForeignCallsProvider foreignCalls,
-                    LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, SnippetReflectionProvider snippetReflection,
+                    LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, SnippetReflectionProvider reflectionProvider,
                     PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider, WordTypes wordTypes, LoopsDataProvider loopsDataProvider) {
-        return new HostedProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, snippetReflection,
+        return new HostedProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, reflectionProvider,
                         wordTypes, platformConfigurationProvider, metaAccessExtensionProvider, loopsDataProvider);
     }
 
@@ -91,9 +91,9 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
     }
 
     @Override
-    protected Replacements createReplacements(Providers p, SnippetReflectionProvider reflectionProvider) {
+    protected Replacements createReplacements(Providers p) {
         BytecodeProvider bytecodeProvider = new ResolvedJavaMethodBytecodeProvider();
-        return new HostedReplacements(universe, p, reflectionProvider, ConfigurationValues.getTarget(), analysisProviders, bytecodeProvider);
+        return new HostedReplacements(universe, p, ConfigurationValues.getTarget(), analysisProviders, bytecodeProvider);
     }
 
     @Override

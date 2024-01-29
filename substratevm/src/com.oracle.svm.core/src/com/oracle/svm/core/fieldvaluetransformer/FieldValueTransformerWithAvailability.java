@@ -70,6 +70,7 @@ public interface FieldValueTransformerWithAvailability extends FieldValueTransfo
      * This allows the compiler to optimize field values that are not available yet, as long as
      * there is a dedicated high-level node available.
      */
+    @SuppressWarnings("unused")
     default ValueNode intrinsify(CoreProviders providers, JavaConstant receiver) {
         return null;
     }

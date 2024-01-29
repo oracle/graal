@@ -138,6 +138,7 @@ public final class Target_java_lang_VirtualThread {
     private static final class UnparkerAccessor {
         private static volatile ScheduledExecutorService delayedTaskScheduler;
 
+        @SuppressWarnings("unused")
         public static ScheduledExecutorService get() {
             ScheduledExecutorService result = delayedTaskScheduler;
             if (result == null) {

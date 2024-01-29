@@ -1059,7 +1059,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                     System.arraycopy(oldArguments, 0, arguments, 1, oldArguments.length);
                 }
 
-                Class<?> returnClass = OriginalClassProvider.getJavaClass((ResolvedJavaType) bootstrapMethod.getSignature().getReturnType(null));
+                Class<?> returnClass = OriginalClassProvider.getJavaClass(bootstrapMethod.getSignature().getReturnType(null));
 
                 InvokeWithExceptionNode bootstrapObject;
                 ValueNode bootstrapObjectNode;
@@ -1195,10 +1195,10 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
              * {@link java.lang.invoke.MethodHandle#invoke(Object...)}.
              */
             private boolean isBootstrapInvocationInvalid(BootstrapMethodIntrospection bootstrap, int parameterLength, List<JavaConstant> staticArgumentsList, boolean isVarargs, Class<?> typeClass) {
-                ResolvedJavaMethod method = bootstrap.getMethod();
+                ResolvedJavaMethod resolvedMethod = bootstrap.getMethod();
                 return (isVarargs && parameterLength > (3 + staticArgumentsList.size())) || (!isVarargs && parameterLength != (3 + staticArgumentsList.size())) ||
-                                !(OriginalClassProvider.getJavaClass((ResolvedJavaType) method.getSignature().getReturnType(null)).isAssignableFrom(typeClass) || method.isConstructor()) ||
-                                !checkBootstrapParameters(method, bootstrap.getStaticArguments(), true);
+                                !(OriginalClassProvider.getJavaClass(resolvedMethod.getSignature().getReturnType(null)).isAssignableFrom(typeClass) || resolvedMethod.isConstructor()) ||
+                                !checkBootstrapParameters(resolvedMethod, bootstrap.getStaticArguments(), true);
             }
 
             protected boolean checkBootstrapParameters(ResolvedJavaMethod bootstrapMethod, List<JavaConstant> staticArguments, boolean condy) {
@@ -1283,8 +1283,8 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
             protected InvokeWithExceptionNode invokeMethodAndAdd(int bci, Class<?> returnClass, InvokeKind invokeKind, ValueNode[] arguments, ResolvedJavaMethod invokedMethod) {
                 CallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, invokedMethod, arguments, returnClass, null));
-                InvokeWithExceptionNode invoke = graph
-                                .add(createInvokeWithException(bci, callTarget, callTarget.returnStamp().getTrustedStamp().getStackKind(), ExceptionEdgeAction.INCLUDE_AND_HANDLE));
+                InvokeWithExceptionNode invoke = graph.add(
+                                createInvokeWithException(bci, callTarget, callTarget.returnStamp().getTrustedStamp().getStackKind(), ExceptionEdgeAction.INCLUDE_AND_HANDLE));
                 invoke.setStateAfter(createFrameState(stream.nextBCI(), invoke));
                 return invoke;
             }

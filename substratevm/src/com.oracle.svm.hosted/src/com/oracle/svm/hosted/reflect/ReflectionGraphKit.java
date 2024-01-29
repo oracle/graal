@@ -103,6 +103,7 @@ public class ReflectionGraphKit extends HostedGraphKit {
     private final List<FixedWithNextNode> illegalArgumentExceptionPaths = new ArrayList<>();
     private final List<ExceptionObjectNode> invocationTargetExceptionPaths = new ArrayList<>();
 
+    @SuppressWarnings("unused")
     public ReflectionGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method, GraphProvider.Purpose purpose) {
         super(debug, providers, method);
     }

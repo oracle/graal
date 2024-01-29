@@ -24,11 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.graph.Node.NodeIntrinsic;
-import jdk.graal.compiler.nodes.extended.MembarNode;
-import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -63,6 +58,12 @@ import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.nodes.extended.MembarNode;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.word.Word;
 
 /** Helper for allocating and accessing {@link StoredContinuation} instances. */
 public final class StoredContinuationAccess {
@@ -269,6 +270,7 @@ public final class StoredContinuationAccess {
     public interface ContinuationStackFrameVisitorData extends PointerBase {
     }
 
+    @SuppressWarnings("unused")
     private static final class PreemptVisitor extends StackFrameVisitor {
         private final Pointer endSP;
         private boolean startFromNextFrame = false;

@@ -1,6 +1,6 @@
 ---
 layout: docs
-toc_group: truffles
+toc_group: truffle
 link_title: Implementing a New Language with Truffle
 permalink: /graalvm-as-a-platform/language-implementation-framework/LanguageTutorial/
 ---

@@ -35,6 +35,7 @@ import java.lang.reflect.Array;
  * This case is for
  * {@link jdk.graal.compiler.replacements.StandardGraphBuilderPlugins#registerArrayPlugins(InvocationPlugins, Replacements)}.
  */
+@SuppressWarnings({"javadoc"})
 public class ArrayNewInstancePluginCase {
     public static void main(String[] args) {
         int size = 3;

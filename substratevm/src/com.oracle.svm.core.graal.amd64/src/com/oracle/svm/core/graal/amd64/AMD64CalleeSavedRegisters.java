@@ -59,7 +59,6 @@ import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
@@ -455,8 +454,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         private AMD64Address getFeatureMapAddress() {
-            SnippetReflectionProvider snippetReflection = crb.getSnippetReflection();
-            JavaConstant object = snippetReflection.forObject(RuntimeCPUFeatureCheckImpl.instance());
+            JavaConstant object = crb.getSnippetReflection().forObject(RuntimeCPUFeatureCheckImpl.instance());
             int fieldOffset = fieldOffset(RuntimeCPUFeatureCheckImpl.getMaskField(crb.getMetaAccess()));
             GraalError.guarantee(ConfigurationValues.getTarget().inlineObjects, "Dynamic feature check for callee saved registers requires inlined objects");
             Register heapBase = ReservedRegisters.singleton().getHeapBaseRegister();

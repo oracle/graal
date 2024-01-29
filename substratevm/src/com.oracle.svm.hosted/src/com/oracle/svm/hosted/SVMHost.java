@@ -339,7 +339,7 @@ public class SVMHost extends HostVM {
         return updatedConfig;
     }
 
-    private boolean retainLocalVariables() {
+    private static boolean retainLocalVariables() {
         /*
          * Disabling liveness analysis preserves the values of local variables beyond the
          * bytecode-liveness. This greatly helps debugging. Note that when local variable numbers
@@ -422,7 +422,7 @@ public class SVMHost extends HostVM {
 
     private static final Method getSignature = ReflectionUtil.lookupMethod(Class.class, "getGenericSignature0");
 
-    private String getSignature(Class<?> javaClass) {
+    private static String getSignature(Class<?> javaClass) {
         try {
             return (String) getSignature.invoke(javaClass);
         } catch (IllegalAccessException | InvocationTargetException e) {

@@ -35,6 +35,7 @@ import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.CallTargetNode;
@@ -56,7 +57,6 @@ import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -127,8 +127,8 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
         }
 
         /**
-         * Call {@link StructuredGraph#addOrUnique(Node)} on {@code node} and link any
-         * {@link FixedWithNextNode}s into the current control flow.
+         * Call {@link jdk.graal.compiler.nodes.StructuredGraph#addOrUnique(Node)} on {@code node}
+         * and link any {@link FixedWithNextNode}s into the current control flow.
          *
          * @return the newly added node
          */

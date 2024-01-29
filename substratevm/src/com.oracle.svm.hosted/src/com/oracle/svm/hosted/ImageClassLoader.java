@@ -41,16 +41,17 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.util.LogUtils;
 import org.graalvm.collections.EconomicSet;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.TypeResult;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.word.Word;
 
 public final class ImageClassLoader {
 
@@ -80,6 +81,7 @@ public final class ImageClassLoader {
         this.watchdog = new DeadlockWatchdog(watchdogInterval, watchdogExitOnTimeout);
     }
 
+    @SuppressWarnings("unused")
     public void loadAllClasses() throws InterruptedException {
         ForkJoinPool executor = ForkJoinPool.commonPool();
         try {

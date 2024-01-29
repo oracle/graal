@@ -127,7 +127,7 @@ public abstract class SubstrateSegfaultHandler {
     private static final long MARKER_VALUE = 0x0123456789ABCDEFL;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
     static long offsetOfStaticFieldWithWellKnownValue;
-    private static long staticFieldWithWellKnownValue = MARKER_VALUE;
+    @SuppressWarnings("unused") private static long staticFieldWithWellKnownValue = MARKER_VALUE;
 
     private boolean installed;
 
@@ -279,9 +279,8 @@ public abstract class SubstrateSegfaultHandler {
 
             boolean printedDiagnostics = SubstrateDiagnostics.printFatalError(log, sp, ip, context, false);
             if (SubstrateSegfaultHandler.isInstalled() && printedDiagnostics) {
-                log.string("Segfault detected, aborting process. ")
-                                .string("Use '-XX:-InstallSegfaultHandler' to disable the segfault handler at run time and create a core dump instead. ")
-                                .string("Rebuild with '-R:-InstallSegfaultHandler' to disable the handler permanently at build time.") //
+                log.string("Segfault detected, aborting process. ").string("Use '-XX:-InstallSegfaultHandler' to disable the segfault handler at run time and create a core dump instead. ").string(
+                                "Rebuild with '-R:-InstallSegfaultHandler' to disable the handler permanently at build time.") //
                                 .newline().newline();
             }
         }

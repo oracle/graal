@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import java.nio.ByteBuffer;
 import java.util.function.DoubleBinaryOperator;
 
 import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.calc.ReinterpretUtils;
 import jdk.graal.compiler.core.common.spi.LIRKindTool;
 import jdk.graal.compiler.debug.Assertions;
@@ -383,6 +384,47 @@ public class FloatStamp extends PrimitiveStamp {
             }
         }
         return null;
+    }
+
+    public static boolean floatingToIntegerCanOverflow(FloatStamp floatStamp, int integerBits) {
+        final boolean canBeInfinity = Double.isInfinite(floatStamp.lowerBound()) || Double.isInfinite(floatStamp.upperBound());
+        if (canBeInfinity) {
+            return true;
+        }
+        final boolean conversionCanOverflow = integralPartLargerMaxValue(floatStamp, integerBits) || integralPartSmallerMinValue(floatStamp, integerBits);
+        return conversionCanOverflow;
+    }
+
+    private static boolean integralPartLargerMaxValue(FloatStamp floatStamp, int integerBits) {
+        double upperBound = floatStamp.upperBound();
+        if (Double.isInfinite(upperBound) || Double.isNaN(upperBound)) {
+            return true;
+        }
+        assert integerBits == 32 || integerBits == 64 : "Must be int or long " + Assertions.errorMessage(integerBits, upperBound);
+        long maxValue = NumUtil.maxValue(integerBits);
+        /*
+         * There could be conversion loss here when casting maxValue from long to double - given
+         * that max can be Long.MAX_VALUE. In order to avoid checking if upperBound is larger than
+         * max with arbitrary precision numbers (BigDecimal for example) we use some trick.
+         *
+         * (double) Long.MAX_VALUE is 9223372036854775808, which is 1 more than Long.MAX_VALUE. So
+         * (long) (double) Long.MAX_VALUE will already overflow. So we need upperBound >= (double)
+         * maxValue, with >= instead of >. The next lower double value is Math.nextDown((double)
+         * Long.MAX_VALUE) == 9223372036854774784, which fits into long. So if upperBound >=
+         * (double) maxValue does not hold, i.e., upperBound < (double) maxValue does hold, then
+         * (long) upperBound will not overflow.
+         */
+        return upperBound >= maxValue;
+    }
+
+    private static boolean integralPartSmallerMinValue(FloatStamp floatStamp, int integerBits) {
+        double lowerBound = floatStamp.lowerBound();
+        if (Double.isInfinite(lowerBound) || Double.isNaN(lowerBound)) {
+            return true;
+        }
+        assert integerBits == 32 || integerBits == 64 : "Must be int or long " + Assertions.errorMessage(integerBits, lowerBound);
+        long minValue = NumUtil.minValue(integerBits);
+        return lowerBound <= minValue;
     }
 
     public static final ArithmeticOpTable OPS = new ArithmeticOpTable(
@@ -1059,6 +1101,11 @@ public class FloatStamp extends PrimitiveStamp {
                             }
                             return StampFactory.forInteger(JavaKind.Int, lowerBound, upperBound);
                         }
+
+                        @Override
+                        public boolean canOverflowInteger(Stamp inputStamp) {
+                            return inputStamp instanceof FloatStamp floatStamp && floatingToIntegerCanOverflow(floatStamp, Integer.SIZE);
+                        }
                     },
 
                     new ArithmeticOpTable.FloatConvertOp(F2L) {
@@ -1087,6 +1134,11 @@ public class FloatStamp extends PrimitiveStamp {
                                 }
                             }
                             return StampFactory.forInteger(JavaKind.Long, lowerBound, upperBound);
+                        }
+
+                        @Override
+                        public boolean canOverflowInteger(Stamp inputStamp) {
+                            return inputStamp instanceof FloatStamp floatStamp && floatingToIntegerCanOverflow(floatStamp, Long.SIZE);
                         }
                     },
 
@@ -1117,6 +1169,11 @@ public class FloatStamp extends PrimitiveStamp {
                             }
                             return StampFactory.forInteger(JavaKind.Int, lowerBound, upperBound);
                         }
+
+                        @Override
+                        public boolean canOverflowInteger(Stamp inputStamp) {
+                            return inputStamp instanceof FloatStamp floatStamp && floatingToIntegerCanOverflow(floatStamp, Integer.SIZE);
+                        }
                     },
 
                     new ArithmeticOpTable.FloatConvertOp(D2L) {
@@ -1145,6 +1202,11 @@ public class FloatStamp extends PrimitiveStamp {
                                 }
                             }
                             return StampFactory.forInteger(JavaKind.Long, lowerBound, upperBound);
+                        }
+
+                        @Override
+                        public boolean canOverflowInteger(Stamp inputStamp) {
+                            return inputStamp instanceof FloatStamp floatStamp && floatingToIntegerCanOverflow(floatStamp, Long.SIZE);
                         }
                     },
 

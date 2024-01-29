@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,14 +38,14 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.TreeMap;
 
-import com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput;
-
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.Context.Builder;
 import org.junit.Assert;
+
+import com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput;
 
 public class TestHarness {
     private static Engine testEngine = Engine.newBuilder().allowExperimentalOptions(true).build();
@@ -76,7 +76,7 @@ public class TestHarness {
     private static int runBitcode(String[] runargs) throws IOException {
         File bitcodeFile = Path.of(runargs[0]).toFile();
         String[] args = Arrays.copyOfRange(runargs, 1, runargs.length);
-        return runBitcode(bitcodeFile, args, new TreeMap<String, String>());
+        return runBitcode(bitcodeFile, args, new TreeMap<>());
     }
 
     private static void run(String[] runargs) throws IOException {

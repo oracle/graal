@@ -89,7 +89,6 @@ public abstract class HostVM {
     /**
      * Check if the provided object is a relocated pointer.
      * 
-     * @param metaAccess the meta-access provider
      * @param constant the constant to check
      */
     public boolean isRelocatedPointer(JavaConstant constant) {
@@ -314,6 +313,7 @@ public abstract class HostVM {
         return providers;
     }
 
+    @SuppressWarnings("unused")
     public boolean isFieldIncluded(BigBang bb, Field field) {
         return true;
     }

@@ -236,7 +236,7 @@ meth public void onResume(com.oracle.truffle.api.frame.VirtualFrame)
 meth public void onReturnValue(com.oracle.truffle.api.frame.VirtualFrame,java.lang.Object)
 meth public void onYield(com.oracle.truffle.api.frame.VirtualFrame,java.lang.Object)
 supr com.oracle.truffle.api.nodes.Node
-hfds SEEN_REENTER,SEEN_RETURN,SEEN_UNWIND,SEEN_UNWIND_NEXT,UNWIND_ACTION_IGNORED,chain,context,handler,retiredNodeReference,seen,version
+hfds ASSERT_ENTER_RETURN_PARITY,SEEN_REENTER,SEEN_RETURN,SEEN_UNWIND,SEEN_UNWIND_NEXT,UNWIND_ACTION_IGNORED,chain,context,handler,retiredNodeReference,seen,version
 hcls EventChainNode,EventFilterChainNode,EventProviderChainNode,EventProviderWithInputChainNode,InputChildContextLookup,InputChildIndexLookup,InputValueChainNode,InstrumentableChildVisitor,RetiredNodeReference
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.instrumentation.ProvidedTags
@@ -303,8 +303,9 @@ meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder l
 meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder rootNameIs(java.util.function.Predicate<java.lang.String>)
 meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder sourceFilter(com.oracle.truffle.api.instrumentation.SourceFilter)
 meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder sourceIs(com.oracle.truffle.api.instrumentation.SourceSectionFilter$SourcePredicate)
+meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter$Builder sourceSectionAvailableOnly(boolean)
 supr java.lang.Object
-hfds expressions,includeInternal
+hfds availableSections,expressions,includeInternal
 
 CLSS public final static com.oracle.truffle.api.instrumentation.SourceSectionFilter$IndexRange
  outer com.oracle.truffle.api.instrumentation.SourceSectionFilter

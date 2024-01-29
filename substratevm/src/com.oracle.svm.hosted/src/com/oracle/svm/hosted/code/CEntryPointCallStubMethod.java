@@ -351,7 +351,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
             // These methods must be called after the prologue established a safe context
             for (int i = 0; i < parameterEnumInfos.length; i++) {
                 if (parameterEnumInfos[i] != null) {
-                    CInterfaceEnumTool tool = new CInterfaceEnumTool(kit.getMetaAccess(), kit.getSnippetReflection());
+                    CInterfaceEnumTool tool = new CInterfaceEnumTool(kit.getMetaAccess());
                     args[i] = tool.createEnumLookupInvoke(kit, parameterTypes.get(i), parameterEnumInfos[i], cEnumParameterKind, args[i]);
                 }
             }
@@ -558,7 +558,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
             // Always return enum values as a signed word because it should never be a problem if
             // the caller expects a narrower integer type and the various checks already handle
             // replacements with word types.
-            CInterfaceEnumTool tool = new CInterfaceEnumTool(kit.getMetaAccess(), kit.getSnippetReflection());
+            CInterfaceEnumTool tool = new CInterfaceEnumTool(kit.getMetaAccess());
             JavaKind cEnumReturnType = kit.getWordTypes().getWordKind();
             assert !cEnumReturnType.isUnsigned() : "requires correct representation of signed values";
             returnValue = tool.startEnumValueInvokeWithException(kit, (EnumInfo) typeInfo, cEnumReturnType, returnValue);

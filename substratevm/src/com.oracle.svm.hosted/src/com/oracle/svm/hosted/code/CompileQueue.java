@@ -77,7 +77,6 @@ import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.util.ImageBuildStatistics;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.asm.Assembler;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.code.CompilationResult;
@@ -175,7 +174,6 @@ public class CompileQueue {
     private LIRSuites deoptTargetLIRSuites = null;
     private final ConcurrentMap<Constant, DataSection.Data> dataCache;
 
-    protected SnippetReflectionProvider snippetReflection;
     protected final FeatureHandler featureHandler;
     protected final GlobalMetrics metricValues = new GlobalMetrics();
     private final AnalysisToHostedGraphTransplanter graphTransplanter;
@@ -349,8 +347,7 @@ public class CompileQueue {
     }
 
     @SuppressWarnings("this-escape")
-    public CompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse universe, RuntimeConfiguration runtimeConfiguration, Boolean deoptimizeAll,
-                    SnippetReflectionProvider snippetReflection) {
+    public CompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse universe, RuntimeConfiguration runtimeConfiguration, Boolean deoptimizeAll) {
         this.universe = universe;
         this.compilations = new ConcurrentHashMap<>();
         this.runtimeConfig = runtimeConfiguration;
@@ -359,7 +356,6 @@ public class CompileQueue {
         this.dataCache = new ConcurrentHashMap<>();
         this.executor = new CompletionExecutor(debug, universe.getBigBang());
         this.featureHandler = featureHandler;
-        this.snippetReflection = snippetReflection;
         this.graphTransplanter = createGraphTransplanter();
         this.defaultParseHooks = new ParseHooks(this);
 
@@ -456,11 +452,11 @@ public class CompileQueue {
     }
 
     protected Suites createRegularSuites() {
-        return NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);
+        return NativeImageGenerator.createSuites(featureHandler, runtimeConfig, true);
     }
 
     protected Suites createDeoptTargetSuites() {
-        return NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);
+        return NativeImageGenerator.createSuites(featureHandler, runtimeConfig, true);
     }
 
     protected LIRSuites createLIRSuites() {

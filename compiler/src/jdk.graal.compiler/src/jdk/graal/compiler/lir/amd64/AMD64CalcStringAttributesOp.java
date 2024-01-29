@@ -24,10 +24,6 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
-import static jdk.vm.ci.amd64.AMD64.rcx;
-import static jdk.vm.ci.amd64.AMD64.rdx;
-import static jdk.vm.ci.amd64.AMD64.rsi;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Equal;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Less;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag.NotEqual;
@@ -37,6 +33,10 @@ import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.DWORD;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.QWORD;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.XMM;
 import static jdk.graal.compiler.asm.amd64.AVXKind.AVXSize.YMM;
+import static jdk.vm.ci.amd64.AMD64.rcx;
+import static jdk.vm.ci.amd64.AMD64.rdx;
+import static jdk.vm.ci.amd64.AMD64.rsi;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -56,7 +56,7 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
@@ -81,7 +81,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
     // The following fields must be kept in sync with com.oracle.truffle.api.strings.TSCodeRange,
     // TStringOpsCalcStringAttributesReturnValuesInSyncTest verifies this.
 
-    private final LIRGeneratorTool.CalcStringAttributesEncoding encoding;
+    private final CalcStringAttributesEncoding encoding;
 
     private final Stride stride;
     private final int vectorLength;
@@ -102,7 +102,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
     @Temp({OperandFlag.REG}) private Value[] temp;
     @Temp({OperandFlag.REG}) private Value[] vectorTemp;
 
-    private AMD64CalcStringAttributesOp(LIRGeneratorTool tool, LIRGeneratorTool.CalcStringAttributesEncoding encoding, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, Value array, Value offset,
+    private AMD64CalcStringAttributesOp(LIRGeneratorTool tool, CalcStringAttributesEncoding encoding, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, Value array, Value offset,
                     Value length, Value result, boolean assumeValid) {
         super(TYPE, tool, runtimeCheckedCPUFeatures, YMM);
         this.encoding = encoding;
@@ -128,7 +128,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         }
     }
 
-    private static int getNumberOfTempRegisters(LIRGeneratorTool.CalcStringAttributesEncoding encoding, boolean assumeValid) {
+    private static int getNumberOfTempRegisters(CalcStringAttributesEncoding encoding, boolean assumeValid) {
         switch (encoding) {
             case UTF_8:
                 return assumeValid ? 1 : 3;
@@ -139,7 +139,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         }
     }
 
-    private static int getNumberOfRequiredVectorRegisters(LIRGeneratorTool.CalcStringAttributesEncoding encoding, boolean isAVX, boolean assumeValid) {
+    private static int getNumberOfRequiredVectorRegisters(CalcStringAttributesEncoding encoding, boolean isAVX, boolean assumeValid) {
         switch (encoding) {
             case LATIN1:
                 return isAVX ? 1 : 2;
@@ -172,10 +172,10 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
      * @param array arbitrary array.
      * @param byteOffset byteOffset to start from. Must include array base byteOffset!
      * @param length length of the array region to consider, scaled to
-     *            {@link LIRGeneratorTool.CalcStringAttributesEncoding#stride}.
+     *            {@link CalcStringAttributesEncoding#stride}.
      * @param assumeValid assume that the string is encoded correctly.
      */
-    public static AMD64CalcStringAttributesOp movParamsAndCreate(LIRGeneratorTool tool, LIRGeneratorTool.CalcStringAttributesEncoding encoding, EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
+    public static AMD64CalcStringAttributesOp movParamsAndCreate(LIRGeneratorTool tool, CalcStringAttributesEncoding encoding, EnumSet<CPUFeature> runtimeCheckedCPUFeatures,
                     Value array, Value byteOffset,
                     Value length, Value result,
                     boolean assumeValid) {
@@ -253,7 +253,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             emitPTestTail(asm, XMM, arr, lengthTail, vecArray, vecMask, null, returnLatin1, returnAscii);
         }
 
-        emitExit(asm, ret, returnLatin1, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_8BIT);
+        emitExit(asm, ret, returnLatin1, end, CalcStringAttributesEncoding.CR_8BIT);
 
         asm.bind(tailLessThan16);
         // move mask into general purpose register for regular TEST instructions
@@ -272,7 +272,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         asm.testAndJcc(AMD64BaseAssembler.OperandSize.QWORD, len, 0x80, NotZero, returnLatin1, true);
         asm.jmpb(returnAscii);
 
-        emitExitAtEnd(asm, ret, returnAscii, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_7BIT);
+        emitExitAtEnd(asm, ret, returnAscii, end, CalcStringAttributesEncoding.CR_7BIT);
     }
 
     private void latin1Tail(AMD64MacroAssembler asm, AMD64BaseAssembler.OperandSize size,
@@ -398,9 +398,9 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             bmpTail(asm, arr, lengthTail, vecArray, vecMaskAscii, vecMaskBMP, tailLessThan32, tailLessThan16, returnBMP, returnLatin1, returnAscii);
         }
 
-        emitExit(asm, ret, returnAscii, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_7BIT);
-        emitExit(asm, ret, returnLatin1, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_8BIT);
-        emitExit(asm, ret, returnBMP, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_16BIT);
+        emitExit(asm, ret, returnAscii, end, CalcStringAttributesEncoding.CR_7BIT);
+        emitExit(asm, ret, returnLatin1, end, CalcStringAttributesEncoding.CR_8BIT);
+        emitExit(asm, ret, returnBMP, end, CalcStringAttributesEncoding.CR_16BIT);
 
         asm.bind(tailLessThan16);
         // move masks into general purpose registers for regular TEST instructions
@@ -799,7 +799,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             asm.ptest(vectorSize, vecError, vecError);
             asm.jcc(Zero, returnValid);
             asm.shlq(ret, 32);
-            asm.orq(ret, LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
+            asm.orq(ret, CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
             asm.jmp(end);
 
             asm.bind(tailLessThan32);
@@ -873,12 +873,12 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
 
             asm.testqAndJcc(state, state, Zero, returnValid, true);
             asm.shlq(ret, 32);
-            asm.orq(ret, LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
+            asm.orq(ret, CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
             asm.jmpb(end);
         }
 
-        emitExitMultiByte(asm, ret, returnValid, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_VALID_MULTIBYTE);
-        emitExitMultiByteAtEnd(asm, ret, returnAscii, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_7BIT);
+        emitExitMultiByte(asm, ret, returnValid, end, CalcStringAttributesEncoding.CR_VALID_MULTIBYTE);
+        emitExitMultiByteAtEnd(asm, ret, returnAscii, end, CalcStringAttributesEncoding.CR_7BIT);
     }
 
     /**
@@ -988,7 +988,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         asm.movl(ret, len);
 
         if (!assumeValid) {
-            asm.movl(retBroken, LIRGeneratorTool.CalcStringAttributesEncoding.CR_VALID_MULTIBYTE);
+            asm.movl(retBroken, CalcStringAttributesEncoding.CR_VALID_MULTIBYTE);
             asm.pxor(vectorSize, vecResult, vecResult);
         }
 
@@ -1056,7 +1056,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             asm.movzwl(tmp, new AMD64Address(arr, len, stride));
             asm.shrl(tmp, 10);
             asm.cmpl(tmp, 0x37);
-            asm.movl(tmp, LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
+            asm.movl(tmp, CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
             asm.cmovl(Equal, retBroken, tmp);
             // high surrogate mask: 0x1b << 1 == 0x36
             asm.psllw(vectorSize, vecMaskSurrogate, vecMaskSurrogate, 1);
@@ -1101,7 +1101,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             asm.shrl(tmp, 10);
             // if last char is a high surrogate, return BROKEN
             asm.cmpl(tmp, 0x36);
-            asm.movl(tmp, LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
+            asm.movl(tmp, CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
             asm.cmovl(Equal, retBroken, tmp);
             asm.jmp(returnValidOrBroken);
         }
@@ -1168,7 +1168,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             asm.movzwl(tmp, new AMD64Address(arr, -2));
             asm.shrl(tmp, 10);
             asm.cmpl(tmp, 0x36);
-            asm.movl(tmp, LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
+            asm.movl(tmp, CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
             asm.cmovl(Equal, retBroken, tmp);
 
             asm.bind(tailSingleVectorSurrogate);
@@ -1186,17 +1186,17 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             utf16ValidateSurrogates(asm, ret, vecArrayTail, vecArray, vecMaskSurrogate, vecMaskAscii, vecTmp, vecResult, tmp);
             asm.jmpb(returnValidOrBroken);
         }
-        emitExitMultiByte(asm, ret, returnAscii, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_7BIT);
-        emitExitMultiByte(asm, ret, returnLatin1, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_8BIT);
-        emitExitMultiByte(asm, ret, returnBMP, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_16BIT);
+        emitExitMultiByte(asm, ret, returnAscii, end, CalcStringAttributesEncoding.CR_7BIT);
+        emitExitMultiByte(asm, ret, returnLatin1, end, CalcStringAttributesEncoding.CR_8BIT);
+        emitExitMultiByte(asm, ret, returnBMP, end, CalcStringAttributesEncoding.CR_16BIT);
 
         asm.bind(returnValidOrBroken);
         asm.shlq(ret, 32);
         if (assumeValid) {
-            asm.orq(ret, LIRGeneratorTool.CalcStringAttributesEncoding.CR_VALID_MULTIBYTE);
+            asm.orq(ret, CalcStringAttributesEncoding.CR_VALID_MULTIBYTE);
         } else {
             asm.ptest(vectorSize, vecResult, vecResult);
-            asm.movl(tmp, LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
+            asm.movl(tmp, CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE);
             asm.cmovl(NotZero, retBroken, tmp);
             asm.orq(ret, retBroken);
         }
@@ -1313,8 +1313,8 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         utf32CheckInvalid(asm, vecArrayTail, vecArrayTail, vecArrayTmp, vecMaskSurrogate, vecMaskOutOfRange, returnBroken, true);
         asm.jmpb(returnBMP);
 
-        emitExit(asm, ret, returnBroken, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN, false);
-        emitExit(asm, ret, returnBMP, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_16BIT, false);
+        emitExit(asm, ret, returnBroken, end, CalcStringAttributesEncoding.CR_BROKEN, false);
+        emitExit(asm, ret, returnBMP, end, CalcStringAttributesEncoding.CR_16BIT, false);
 
         // astral loop: check if any codepoints are in the forbidden UTF-16 surrogate range;
         // if so, break immediately and return BROKEN
@@ -1363,10 +1363,10 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         asm.ptest(vectorSize, vecArray, vecMaskBMP);
         asm.jcc(Zero, returnBMP);
 
-        emitExit(asm, ret, returnAstral, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_VALID);
+        emitExit(asm, ret, returnAstral, end, CalcStringAttributesEncoding.CR_VALID);
 
-        emitExit(asm, ret, returnLatin1, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_8BIT);
-        emitExitAtEnd(asm, ret, returnAscii, end, LIRGeneratorTool.CalcStringAttributesEncoding.CR_7BIT);
+        emitExit(asm, ret, returnLatin1, end, CalcStringAttributesEncoding.CR_8BIT);
+        emitExitAtEnd(asm, ret, returnAscii, end, CalcStringAttributesEncoding.CR_7BIT);
     }
 
     private void utf32CheckInvalid(AMD64MacroAssembler asm, Register vecArrayDst, Register vecArraySrc, Register vecArrayTmp, Register vecMaskBroken, Register vecMaskOutOfRange, Label returnBroken,

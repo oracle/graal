@@ -84,7 +84,6 @@ import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.internal.reflect.CallerSensitive;
@@ -364,9 +363,9 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     }
 
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
+    public void registerInvocationPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
         FallbackFeature fallbackFeature = ImageSingletons.contains(FallbackFeature.class) ? ImageSingletons.lookup(FallbackFeature.class) : null;
-        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions,
+        ReflectionPlugins.registerInvocationPlugins(loader, annotationSubstitutions,
                         plugins.getClassInitializationPlugin(), plugins.getInvocationPlugins(), aUniverse, reason, fallbackFeature);
     }
 }

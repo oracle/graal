@@ -24,6 +24,9 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -36,12 +39,12 @@ import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.tools.profiler.CPUTracer;
-import org.graalvm.shadowed.org.json.JSONArray;
-import org.graalvm.shadowed.org.json.JSONObject;
 
 @Option.Group(CPUTracerInstrument.ID)
 class CPUTracerCLI extends ProfilerCLI {
@@ -101,8 +104,8 @@ class CPUTracerCLI extends ProfilerCLI {
     @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to standard output stream by default.", usageSyntax = "<path>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
 
-    public static void handleOutput(TruffleInstrument.Env env, CPUTracer tracer) {
-        PrintStream out = chooseOutputStream(env, OUTPUT_FILE);
+    public static void handleOutput(TruffleInstrument.Env env, CPUTracer tracer, String absoluteOutputPath) {
+        PrintStream out = chooseOutputStream(env, absoluteOutputPath);
         switch (env.getOptions().get(OUTPUT)) {
             case HISTOGRAM:
                 printTracerHistogram(out, tracer);
@@ -110,6 +113,19 @@ class CPUTracerCLI extends ProfilerCLI {
             case JSON:
                 printTracerJson(out, tracer);
                 break;
+        }
+    }
+
+    protected static PrintStream chooseOutputStream(TruffleInstrument.Env env, String absoluteOutputPath) {
+        try {
+            if (absoluteOutputPath != null) {
+                final File file = new File(absoluteOutputPath);
+                return new PrintStream(new FileOutputStream(file));
+            } else {
+                return new PrintStream(env.out());
+            }
+        } catch (FileNotFoundException e) {
+            throw handleFileNotFound();
         }
     }
 

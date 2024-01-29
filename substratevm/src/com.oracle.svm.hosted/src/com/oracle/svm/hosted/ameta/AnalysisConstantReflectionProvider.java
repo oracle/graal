@@ -292,7 +292,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
         return universe.getHeapScanner().createImageHeapConstant(asConstant(value), ObjectScanner.OtherReason.UNKNOWN);
     }
 
-    private JavaConstant asConstant(Object object) {
+    private static JavaConstant asConstant(Object object) {
         return SubstrateObjectConstant.forObject(object);
     }
 

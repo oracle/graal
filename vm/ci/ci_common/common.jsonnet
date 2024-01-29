@@ -138,7 +138,7 @@ local devkits = graal_common.devkits;
   },
 
   # GRAALPYTHON
-  graalpython_linux_amd64: self.sulong_linux + {
+  graalpython_common_linux: {
     packages+: {
       libffi: '>=3.2.1',
       bzip2: '>=1.0.6',
@@ -146,10 +146,9 @@ local devkits = graal_common.devkits;
     },
   },
 
-  graalpython_linux_aarch64: self.sulong_linux + {},
-
+  graalpython_linux_amd64: self.sulong_linux + self.graalpython_common_linux,
+  graalpython_linux_aarch64: self.sulong_linux + self.graalpython_common_linux,
   graalpython_darwin_amd64: self.sulong_darwin_amd64 + {},
-
   graalpython_darwin_aarch64: self.sulong_darwin_aarch64 + {},
 
   vm_linux_amd64_common: graal_common.deps.svm {

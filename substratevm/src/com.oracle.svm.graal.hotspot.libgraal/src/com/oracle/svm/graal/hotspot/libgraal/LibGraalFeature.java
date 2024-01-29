@@ -50,8 +50,8 @@ import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
@@ -219,32 +219,26 @@ public class LibGraalFeature implements InternalFeature {
     }
 
     @Override
-    public void duringSetup(DuringSetupAccess access) {
-        access.registerObjectReplacer(optionCollector);
+    public void duringSetup(DuringSetupAccess a) {
+        DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
+        access.registerObjectReachableCallback(OptionKey.class, optionCollector::accept);
 
-        ImageClassLoader imageClassLoader = ((DuringSetupAccessImpl) access).getImageClassLoader();
+        ImageClassLoader imageClassLoader = access.getImageClassLoader();
         registerJNIConfiguration(imageClassLoader);
     }
 
-    /**
-     * Collects all reachable {@link OptionKey}s. Note that this includes options where the class is
-     * only reachable at image build-time (e.g.,
-     * {@link com.oracle.svm.core.option.HostedOptionKey}).
-     */
-    private static class OptionCollector implements Function<Object, Object> {
+    /** Collects all {@link OptionKey}s that are reachable at run time. */
+    private static class OptionCollector implements BiConsumer<DuringAnalysisAccess, OptionKey<?>> {
         final ConcurrentHashMap<OptionKey<?>, OptionKey<?>> options = new ConcurrentHashMap<>();
         private boolean sealed;
 
         @Override
-        public Object apply(Object source) {
-            if (source instanceof OptionKey<?> option) {
-                if (sealed) {
-                    assert options.contains(option) : "All options must have been discovered during static analysis";
-                } else {
-                    options.put(option, option);
-                }
+        public void accept(DuringAnalysisAccess access, OptionKey<?> option) {
+            if (sealed) {
+                assert options.contains(option) : "All options must have been discovered during static analysis";
+            } else {
+                options.put(option, option);
             }
-            return source;
         }
 
         public void setSealed() {
@@ -565,11 +559,9 @@ public class LibGraalFeature implements InternalFeature {
     private void registerReachableOptions(AfterAnalysisAccess access) {
         EconomicMap<String, OptionDescriptor> options = EconomicMap.create();
         for (OptionKey<?> option : optionCollector.options.keySet()) {
-            // This reachability check can be removed once GR-50219 is in place.
-            if (access.isReachable(option.getClass())) {
-                String optionKey = getPrefixedOptionName(option);
-                options.put(optionKey, option.getDescriptor());
-            }
+            VMError.guarantee(access.isReachable(option.getClass()));
+            String optionKey = getPrefixedOptionName(option);
+            options.put(optionKey, option.getDescriptor());
         }
 
         OptionsParserAccessors.optionDescriptors = options;

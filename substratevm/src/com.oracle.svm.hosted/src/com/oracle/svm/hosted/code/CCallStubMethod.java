@@ -96,7 +96,7 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
                 ElementInfo typeInfo = nativeLibraries.findElementInfo(parameterTypes[i]);
                 if (typeInfo instanceof EnumInfo) {
                     ValueNode argumentValue = kit.maybeCreateExplicitNullCheck(arguments.get(i));
-                    CInterfaceEnumTool tool = new CInterfaceEnumTool(kit.getMetaAccess(), kit.getSnippetReflection());
+                    CInterfaceEnumTool tool = new CInterfaceEnumTool(kit.getMetaAccess());
                     argumentValue = tool.createEnumValueInvoke(kit, (EnumInfo) typeInfo, cEnumKind, argumentValue);
 
                     arguments.set(i, argumentValue);
@@ -129,7 +129,7 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
 
             // We take a word return type because checks expect word type replacements, but it is
             // narrowed to cEnumKind here.
-            CInterfaceEnumTool tool = new CInterfaceEnumTool(kit.getMetaAccess(), kit.getSnippetReflection());
+            CInterfaceEnumTool tool = new CInterfaceEnumTool(kit.getMetaAccess());
             returnValue = tool.createEnumLookupInvoke(kit, declaredReturnType, (EnumInfo) typeInfo, cEnumKind, returnValue);
         } else {
             throw UserError.abort("Return types of methods annotated with @%s are restricted to primitive types, word types and enumerations (@%s): %s",

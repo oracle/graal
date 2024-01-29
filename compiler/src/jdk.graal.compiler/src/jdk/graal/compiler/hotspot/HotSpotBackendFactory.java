@@ -96,8 +96,8 @@ public abstract class HotSpotBackendFactory {
         return new HotSpotMetaAccessExtensionProvider();
     }
 
-    protected HotSpotReplacementsImpl createReplacements(TargetDescription target, HotSpotProviders p, HotSpotSnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider) {
-        return new HotSpotReplacementsImpl(p, snippetReflection, bytecodeProvider, target);
+    protected HotSpotReplacementsImpl createReplacements(TargetDescription target, HotSpotProviders p, BytecodeProvider bytecodeProvider) {
+        return new HotSpotReplacementsImpl(p, bytecodeProvider, target);
     }
 
     protected ClassfileBytecodeProvider createBytecodeProvider(MetaAccessProvider metaAccess, HotSpotSnippetReflectionProvider snippetReflection) {
@@ -193,7 +193,7 @@ public abstract class HotSpotBackendFactory {
                             snippetReflection, wordTypes, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider, loopsDataProvider, config);
             HotSpotReplacementsImpl replacements;
             try (InitTimer rt = timer("create Replacements provider")) {
-                replacements = createReplacements(target, providers, snippetReflection, bytecodeProvider);
+                replacements = createReplacements(target, providers, bytecodeProvider);
                 providers = replacements.getProviders();
                 replacements.maybeInitializeEncoder();
             }

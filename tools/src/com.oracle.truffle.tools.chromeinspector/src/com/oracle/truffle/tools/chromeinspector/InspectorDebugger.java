@@ -169,7 +169,10 @@ public final class InspectorDebugger extends DebuggerDomain {
         suspendedCallback = new SuspendedCallbackImpl();
         debuggerSession = tdbg.startSession(suspendedCallback, SourceElement.ROOT, SourceElement.STATEMENT);
         debuggerSession.setSourcePath(context.getSourcePath());
-        debuggerSession.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(!context.isInspectInitialization()).includeInternal(context.isInspectInternal()).build());
+        debuggerSession.setSteppingFilter(SuspensionFilter.newBuilder() //
+                        .ignoreLanguageContextInitialization(!context.isInspectInitialization()) //
+                        .includeInternal(context.isInspectInternal()) //
+                        .sourceSectionAvailableOnly(true).build());
         scriptsHandler = context.acquireScriptsHandler(debuggerSession);
         breakpointsHandler = new BreakpointsHandler(debuggerSession, scriptsHandler, () -> eventHandler);
     }

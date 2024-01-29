@@ -52,6 +52,7 @@ public class ClassLinkedByCompilerTest extends PartialEvaluationTest {
             super(null);
         }
 
+        @Override
         public Object execute(VirtualFrame frame) {
             return Unlinked.call();
         }

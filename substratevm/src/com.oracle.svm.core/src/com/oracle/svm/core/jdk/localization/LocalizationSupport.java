@@ -262,7 +262,7 @@ public class LocalizationSupport {
      * default constructor as invoked if it exists, and as queried if it doesn't, which we know will
      * result in a negative query.
      */
-    private void registerNullaryConstructor(Class<?> bundleClass) {
+    private static void registerNullaryConstructor(Class<?> bundleClass) {
         RuntimeReflection.register(bundleClass);
         Constructor<?> nullaryConstructor;
         try {
