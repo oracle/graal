@@ -144,6 +144,7 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
 
     @Override
     protected void visit(RegexASTNode target) {
+        assert noPredicatesInGuards(getQuantifierGuardsOnPath());
         ASTSuccessor successor = new ASTSuccessor();
         ASTTransition transition = new ASTTransition(ast.getLanguage());
         transition.setGroupBoundaries(getGroupBoundaries());
@@ -181,6 +182,15 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
             successor.addLookBehinds(curLookBehinds);
         }
         stepCur.addSuccessor(successor);
+    }
+
+    private static boolean noPredicatesInGuards(QuantifierGuard[] quantifierGuards) {
+        for (QuantifierGuard guard : quantifierGuards) {
+            if (guard.getKind() != QuantifierGuard.Kind.updateCG && guard.getKind() != QuantifierGuard.Kind.enterZeroWidth) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
