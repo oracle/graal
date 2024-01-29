@@ -624,7 +624,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 PolyglotThreadAccessException threadAccessException = null;
                 LOOP: for (;;) {
                     if (threadAccessException != null) {
-                        throw threadAccessException.rethrow(this);
+                        throw threadAccessException.rethrow(context);
                     }
                     synchronized (context) {
                         if (!created) {
