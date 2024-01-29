@@ -32,9 +32,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ServiceLoader;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
-
 import jdk.graal.compiler.asm.Assembler;
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.debug.DebugContext;
@@ -130,7 +127,6 @@ public interface CompilationResultBuilderFactory {
                             debug,
                             compilationResult,
                             uncompressedNullRegister,
-                            EconomicMap.create(Equivalence.DEFAULT),
                             lirInstructionVerifiers,
                             lir);
         }
