@@ -633,11 +633,11 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                             }
                             try {
                                 Env localEnv = LANGUAGE.createEnv(this, languageInstance.spi, contextConfig.out,
-                                        contextConfig.err,
-                                        contextConfig.in,
-                                        creatorConfig,
-                                        contextConfig.getLanguageOptionValues(language).copy(),
-                                        contextConfig.getApplicationArguments(language));
+                                                contextConfig.err,
+                                                contextConfig.in,
+                                                creatorConfig,
+                                                contextConfig.getLanguageOptionValues(language).copy(),
+                                                contextConfig.getApplicationArguments(language));
                                 Lazy localLazy = new Lazy(languageInstance, contextConfig);
 
                                 if (layer.isSingleContext()) {

@@ -880,10 +880,10 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                         }
                         if (singleThreaded) {
                             /*
-                             * If this is the only thread, then setting the cached thread info to NULL
-                             * is no performance problem. If there is other thread that is just about to
-                             * enter, we are making sure that it initializes multi-threading if this
-                             * thread doesn't do it.
+                             * If this is the only thread, then setting the cached thread info to
+                             * NULL is no performance problem. If there is other thread that is just
+                             * about to enter, we are making sure that it initializes
+                             * multi-threading if this thread doesn't do it.
                              */
                             setCachedThreadInfo(PolyglotThreadInfo.NULL);
                         }
@@ -901,8 +901,9 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
                         if (transitionToMultiThreading) {
                             /*
-                             * We need to do this early (before initializeMultiThreading) as entering or
-                             * local initialization depends on single thread per context.
+                             * We need to do this early (before initializeMultiThreading) as
+                             * entering or local initialization depends on single thread per
+                             * context.
                              */
                             engine.singleThreadPerContext.invalidate();
                             singleThreaded = false;
@@ -914,8 +915,8 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
                         if (needsInitialization) {
                             /*
-                             * Do not enter the thread before initializing thread locals. Creation of
-                             * thread locals might fail.
+                             * Do not enter the thread before initializing thread locals. Creation
+                             * of thread locals might fail.
                              */
                             initializeThreadLocals(threadInfo);
                         }
@@ -938,7 +939,8 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                         }
                         enteredThread = threadInfo;
 
-                        // new thread became active so we need to check potential active thread local
+                        // new thread became active so we need to check potential active thread
+                        // local
                         // actions and process them.
                         Set<ThreadLocalAction> activatedActions = null;
                         if (enteredThread.getEnteredCount() == 1 && !deactivateSafepoints) {
