@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 import com.oracle.truffle.regex.tregex.parser.ast.ConditionalBackReferenceGroup;
+import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 
 import java.util.Objects;
 
@@ -85,15 +86,17 @@ public final class QuantifierGuard {
         enterZeroWidth,
         /**
          * Transition is leaving a quantified expression that may match the empty string. Check if
-         * the current index is greater than the saved index. In the case of Ruby, also check if any
-         * capture groups were modified.
+         * the current index is greater than the saved index. In the case of flavors in which
+         * {@link RegexFlavor#emptyChecksMonitorCaptureGroups()}, also check if any capture groups
+         * were modified.
          */
         exitZeroWidth,
         /**
          * Transition is leaving a quantified expression that may match the empty string and it is
-         * about to continue to what follows the loop. This is only possible in Ruby and only when
-         * the last iteration of the quantiifed expression fails the empty check (the check for the
-         * index and the state of capture groups tested by {@link #exitZeroWidth}).
+         * about to continue to what follows the loop. This is possible in flavors in which
+         * {@link RegexFlavor#failingEmptyChecksDontBacktrack()} and only when the last iteration of
+         * the quantified expression fails the empty check (the check for the index and the state of
+         * capture groups tested by {@link #exitZeroWidth}).
          */
         escapeZeroWidth,
         /**
@@ -111,8 +114,9 @@ public final class QuantifierGuard {
         exitEmptyMatch,
         /**
          * Transition is passing a capture group boundary. We need this information in order to
-         * implement the empty check test in {@link #exitZeroWidth}, which, in the case of Ruby,
-         * also needs to monitor the state of capture groups in between {@link #enterZeroWidth} and
+         * implement the empty check test in {@link #exitZeroWidth}, which, in the case of flavors
+         * in which {@link RegexFlavor#emptyChecksMonitorCaptureGroups()}, where we need to monitor
+         * the state of capture groups in between {@link #enterZeroWidth} and
          * {@link #exitZeroWidth}.
          */
         updateCG,
