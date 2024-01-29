@@ -1107,7 +1107,7 @@ public abstract class NFATraversalRegexASTVisitor {
 
     /// Quantifier guard data handling
     private boolean useQuantifierGuards() {
-        return !isBuildingDFA();
+        return !isBuildingDFA() || ast.getOptions().getFlavor().canHaveEmptyLoopIterations();
     }
 
     private void clearQuantifierGuards() {
