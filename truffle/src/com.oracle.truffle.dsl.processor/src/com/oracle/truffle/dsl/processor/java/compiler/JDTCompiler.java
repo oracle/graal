@@ -99,41 +99,48 @@ public class JDTCompiler extends AbstractCompiler {
         return cache.computeIfAbsent(type, (t) -> sortBySourceOrder(newElementList(getAllMembers(environment, type))));
     }
 
-    private static volatile boolean HASSTATICMEMBERINHERITANCEBUG = false;
-    private static volatile boolean HASSTATICMEMBERINHERITANCEBUGASSIGNED = false;
+    private static final class CompilerVersionSpecifics {
+        private static final int COMPILER_MAJOR_VERSION;
+        private static final int COMPILER_MINOR_VERSION;
 
-    static boolean hasStaticMemberInheritanceBug() {
-        if (HASSTATICMEMBERINHERITANCEBUGASSIGNED) {
-            return HASSTATICMEMBERINHERITANCEBUG;
-        }
-        try (InputStream eclipseCompilerPropertiesStream = JDTCompiler.class.getResourceAsStream("/org/eclipse/jdt/internal/compiler/batch/messages.properties")) {
-            Properties properties = new Properties();
-            if (eclipseCompilerPropertiesStream != null) {
-                properties.load(eclipseCompilerPropertiesStream);
-            }
-            int compilerVersion1 = 0;
-            int compilerVersion2 = 0;
-            String compilerVersionRawString = properties.getProperty("compiler.version");
-            if (compilerVersionRawString != null) {
-                Pattern compilerVersionPattern = Pattern.compile("^.*(\\d+)\\.(\\d+).\\d+$");
-                Matcher compilerVersionMatcher = compilerVersionPattern.matcher(compilerVersionRawString);
-                if (compilerVersionMatcher.find()) {
-                    compilerVersion1 = Integer.parseInt(compilerVersionMatcher.group(1));
-                    compilerVersion2 = Integer.parseInt(compilerVersionMatcher.group(2));
+        static {
+            try (InputStream eclipseCompilerPropertiesStream = JDTCompiler.class.getResourceAsStream("/org/eclipse/jdt/internal/compiler/batch/messages.properties")) {
+                Properties properties = new Properties();
+                if (eclipseCompilerPropertiesStream != null) {
+                    properties.load(eclipseCompilerPropertiesStream);
                 }
+                int majorVer = 0;
+                int minorVer = 0;
+                String compilerVersionRawString = properties.getProperty("compiler.version");
+                if (compilerVersionRawString != null) {
+                    Pattern compilerVersionPattern = Pattern.compile("^.*(\\d+)\\.(\\d+).\\d+$");
+                    Matcher compilerVersionMatcher = compilerVersionPattern.matcher(compilerVersionRawString);
+                    if (compilerVersionMatcher.find()) {
+                        majorVer = Integer.parseInt(compilerVersionMatcher.group(1));
+                        minorVer = Integer.parseInt(compilerVersionMatcher.group(2));
+                    }
+                }
+                COMPILER_MAJOR_VERSION = majorVer;
+                COMPILER_MINOR_VERSION = minorVer;
+            } catch (IOException ioe) {
+                throw new RuntimeException(ioe);
             }
-            HASSTATICMEMBERINHERITANCEBUG = (compilerVersion1 > 3 || (compilerVersion1 == 3 && compilerVersion2 >= 34));
-            HASSTATICMEMBERINHERITANCEBUGASSIGNED = true;
-            return HASSTATICMEMBERINHERITANCEBUG;
-        } catch (IOException ioe) {
-            throw new RuntimeException(ioe);
+        }
+
+        /**
+         * Returns true if and only if the used version of ECJ has the <a
+         * href=https://github.com/eclipse-jdt/eclipse.jdt.core/issues/1752>static member inheritace
+         * bug</a>.
+         */
+        static boolean hasStaticMemberInheritanceBug() {
+            return (COMPILER_MAJOR_VERSION > 3 || (COMPILER_MAJOR_VERSION == 3 && COMPILER_MINOR_VERSION >= 34));
         }
     }
 
     private static List<? extends Element> getAllMembers(ProcessingEnvironment environment, TypeElement type) {
         Elements elements = environment.getElementUtils();
         List<Element> allMembers = new ArrayList<>(elements.getAllMembers(type));
-        if (hasStaticMemberInheritanceBug()) {
+        if (CompilerVersionSpecifics.hasStaticMemberInheritanceBug()) {
             TypeElement superTypeElement = type.getSuperclass() != null ? ElementUtils.castTypeElement(type.getSuperclass()) : null;
             while (superTypeElement != null) {
                 for (ExecutableElement method : ElementFilter.methodsIn(superTypeElement.getEnclosedElements())) {
