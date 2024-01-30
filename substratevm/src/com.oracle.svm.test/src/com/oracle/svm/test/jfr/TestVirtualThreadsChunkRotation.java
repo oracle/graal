@@ -37,13 +37,12 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.Assume;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
@@ -71,7 +70,6 @@ public class TestVirtualThreadsChunkRotation extends JfrRecordingTest {
 
     @Test
     public void test() throws Throwable {
-        Assume.assumeFalse("Currently broken on JDK 23+ (GR-51526)", JavaVersionUtil.JAVA_SPEC >= 23);
         String[] events = new String[]{JfrEvent.JavaMonitorWait.getName()};
         Recording recording = startRecording(events);
 

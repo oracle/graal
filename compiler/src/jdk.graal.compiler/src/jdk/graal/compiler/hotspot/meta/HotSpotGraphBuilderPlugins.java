@@ -51,6 +51,7 @@ import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.util.zip.CRC32;
 
@@ -760,12 +761,15 @@ public class HotSpotGraphBuilderPlugins {
                 }
             });
         }
-        r.register(new InvocationPlugin("notifyJvmtiHideFrames", Receiver.class, boolean.class) {
+        Type[] notifyJvmtiHideFramesArgTypes = JavaVersionUtil.JAVA_SPEC >= 23 ? new Type[]{boolean.class} : new Type[]{Receiver.class, boolean.class};
+        r.register(new InvocationPlugin("notifyJvmtiHideFrames", notifyJvmtiHideFramesArgTypes) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode hide) {
                 if (config.doJVMTIVirtualThreadTransitions) {
                     try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                        receiver.get();
+                        if (JavaVersionUtil.JAVA_SPEC < 23) {
+                            receiver.get();
+                        }
                         // unconditionally update the temporary VTMS transition bit in current
                         // JavaThread
                         GraalError.guarantee(config.threadIsInTmpVTMSTransitionOffset != -1, "JavaThread::_is_in_tmp_VTMS_transition is not exported");
@@ -779,12 +783,15 @@ public class HotSpotGraphBuilderPlugins {
         });
 
         if (JavaVersionUtil.JAVA_SPEC >= 22) {
-            r.register(new InvocationPlugin("notifyJvmtiDisableSuspend", Receiver.class, boolean.class) {
+            Type[] notifyJvmtiDisableSuspendArgTypes = JavaVersionUtil.JAVA_SPEC >= 23 ? new Type[]{boolean.class} : new Type[]{Receiver.class, boolean.class};
+            r.register(new InvocationPlugin("notifyJvmtiDisableSuspend", notifyJvmtiDisableSuspendArgTypes) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode enter) {
                     if (config.doJVMTIVirtualThreadTransitions) {
                         try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                            receiver.get();
+                            if (JavaVersionUtil.JAVA_SPEC < 23) {
+                                receiver.get();
+                            }
                             // unconditionally update the is_disable_suspend bit in current
                             // JavaThread
                             GraalError.guarantee(config.threadIsDisableSuspendOffset != -1, "JavaThread::_is_disable_suspend is not exported");
