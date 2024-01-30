@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,130 +24,185 @@
  */
 package jdk.graal.compiler.core.test;
 
+import java.util.Random;
+
+import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.java.UnsafeCompareAndSwapNode;
 import jdk.graal.compiler.test.AddExports;
+import jdk.internal.misc.Unsafe;
 
+/**
+ * Test to ensure that the virtualization of
+ * {@link Unsafe#compareAndSetBoolean(Object, long, boolean, boolean)} operations on arrays work
+ * properly.
+ */
 @AddExports("java.base/jdk.internal.misc")
 public class UnsafeCompareAndSwapTest extends GraalCompilerTest {
+    @Override
+    protected Object[] getArgumentToBind() {
+        return argsToBind;
+    }
 
-    static void swapBooleanSnippet() {
-        boolean[] f = new boolean[100];
-        final int index = 12;
+    Object[] argsToBind;
+
+    @Override
+    protected void checkHighTierGraph(StructuredGraph graph) {
+        super.checkHighTierGraph(graph);
+        Assert.assertEquals(0, graph.getNodes().filter(UnsafeCompareAndSwapNode.class).count());
+    }
+
+    static boolean swapBooleanSnippet(boolean b1, boolean b2, boolean b3, boolean trueVal, boolean falseVal) {
+        boolean[] f = new boolean[]{b1, b2, b3};
+        final int index = 2;
         var unsafe = jdk.internal.misc.Unsafe.getUnsafe();
         long baseOffset = unsafe.arrayBaseOffset(boolean[].class);
         long indexScale = unsafe.arrayIndexScale(boolean[].class);
         long offset = baseOffset + index * indexScale;
-        unsafe.compareAndSetBoolean(f, offset, true, false);
+        return unsafe.compareAndSetBoolean(f, offset, trueVal, falseVal);
     }
 
     @Test
     public void swapBoolean() {
-        test("swapBooleanSnippet");
+        Random r = getRandomInstance();
+        test("swapBooleanSnippet", r.nextBoolean(), r.nextBoolean(), r.nextBoolean(), r.nextBoolean(), r.nextBoolean());
+        argsToBind = new Object[]{r.nextBoolean(), r.nextBoolean(), r.nextBoolean(), r.nextBoolean(), r.nextBoolean()};
+        test("swapBooleanSnippet", argsToBind[0], argsToBind[1], argsToBind[2], argsToBind[3], argsToBind[4]);
+        argsToBind = null;
     }
 
-    static void swapByteSnippet() {
-        byte[] f = new byte[100];
-        final int index = 12;
+    static boolean swapByteSnippet(byte b1, byte b2, byte b3, byte trueVal, byte falseVal) {
+        byte[] f = new byte[]{b1, b2, b3};
+        final int index = 2;
         var unsafe = jdk.internal.misc.Unsafe.getUnsafe();
         long baseOffset = unsafe.arrayBaseOffset(byte[].class);
         long indexScale = unsafe.arrayIndexScale(byte[].class);
         long offset = baseOffset + index * indexScale;
-        unsafe.compareAndSetByte(f, offset, (byte) 2, (byte) 3);
+        return unsafe.compareAndSetByte(f, offset, trueVal, falseVal);
     }
 
     @Test
     public void swapByte() {
-        test("swapByteSnippet");
+        Random r = getRandomInstance();
+        test("swapByteSnippet", (byte) r.nextInt(), (byte) r.nextInt(), (byte) r.nextInt(), (byte) r.nextInt(), (byte) r.nextInt());
+        argsToBind = new Object[]{(byte) r.nextInt(), (byte) r.nextInt(), (byte) r.nextInt(), (byte) r.nextInt(), (byte) r.nextInt()};
+        test("swapByteSnippet", argsToBind[0], argsToBind[1], argsToBind[2], argsToBind[3], argsToBind[4]);
+        argsToBind = null;
     }
 
-    static void swapCharSnippet() {
-        char[] f = new char[100];
-        final int index = 12;
+    static boolean swapCharSnippet(char c1, char c2, char c3, char trueVal, char falseVal) {
+        char[] f = new char[]{c1, c2, c3};
+        final int index = 2;
         var unsafe = jdk.internal.misc.Unsafe.getUnsafe();
         long baseOffset = unsafe.arrayBaseOffset(char[].class);
         long indexScale = unsafe.arrayIndexScale(char[].class);
         long offset = baseOffset + index * indexScale;
-        unsafe.compareAndSetChar(f, offset, 'b', 'a');
+        return unsafe.compareAndSetChar(f, offset, trueVal, falseVal);
     }
 
     @Test
     public void swapChar() {
-        test("swapCharSnippet");
+        Random r = getRandomInstance();
+        test("swapCharSnippet", (char) r.nextInt(), (char) r.nextInt(), (char) r.nextInt(), (char) r.nextInt(), (char) r.nextInt());
+        argsToBind = new Object[]{(char) r.nextInt(), (char) r.nextInt(), (char) r.nextInt(), (char) r.nextInt(), (char) r.nextInt()};
+        test("swapCharSnippet", argsToBind[0], argsToBind[1], argsToBind[2], argsToBind[3], argsToBind[4]);
+        argsToBind = null;
     }
 
-    static void swapShortSnippet() {
-        short[] f = new short[100];
-        final int index = 12;
+    static boolean swapShortSnippet(short s1, short s2, short s3, short trueVal, short falseVal) {
+        short[] f = new short[]{s1, s2, s3};
+        final int index = 2;
         var unsafe = jdk.internal.misc.Unsafe.getUnsafe();
         long baseOffset = unsafe.arrayBaseOffset(short[].class);
         long indexScale = unsafe.arrayIndexScale(short[].class);
         long offset = baseOffset + index * indexScale;
-        unsafe.compareAndSetShort(f, offset, (short) 2, (short) 3);
+        return unsafe.compareAndSetShort(f, offset, trueVal, falseVal);
     }
 
     @Test
     public void swapShort() {
-        test("swapShortSnippet");
+        Random r = getRandomInstance();
+        test("swapShortSnippet", (short) r.nextInt(), (short) r.nextInt(), (short) r.nextInt(), (short) r.nextInt(), (short) r.nextInt());
+        argsToBind = new Object[]{(short) r.nextInt(), (short) r.nextInt(), (short) r.nextInt(), (short) r.nextInt(), (short) r.nextInt()};
+        test("swapShortSnippet", argsToBind[0], argsToBind[1], argsToBind[2], argsToBind[3], argsToBind[4]);
+        argsToBind = null;
     }
 
-    static void swapFloatSnippet() {
-        float[] f = new float[100];
-        final int index = 12;
+    static boolean swapFloatSnippet(float f1, float f2, float f3, float trueVal, float falseVal) {
+        float[] f = new float[]{f1, f2, f3};
+        final int index = 2;
         var unsafe = jdk.internal.misc.Unsafe.getUnsafe();
         long baseOffset = unsafe.arrayBaseOffset(float[].class);
         long indexScale = unsafe.arrayIndexScale(float[].class);
         long offset = baseOffset + index * indexScale;
-        unsafe.compareAndSetFloat(f, offset, 2f, 3f);
+        return unsafe.compareAndSetFloat(f, offset, trueVal, falseVal);
     }
 
     @Test
     public void swapFloat() {
-        test("swapFloatSnippet");
+        Random r = getRandomInstance();
+        test("swapFloatSnippet", r.nextFloat(), r.nextFloat(), r.nextFloat(), r.nextFloat(), r.nextFloat());
+        argsToBind = new Object[]{r.nextFloat(), r.nextFloat(), r.nextFloat(), r.nextFloat(), r.nextFloat()};
+        test("swapFloatSnippet", argsToBind[0], argsToBind[1], argsToBind[2], argsToBind[3], argsToBind[4]);
+        argsToBind = null;
     }
 
-    static void swapDoubleSnippet() {
-        double[] f = new double[100];
-        final int index = 12;
+    static boolean swapDoubleSnippet(double d1, double d2, double d3, double trueVal, double falseVal) {
+        double[] f = new double[]{d1, d2, d3};
+        final int index = 2;
         var unsafe = jdk.internal.misc.Unsafe.getUnsafe();
         long baseOffset = unsafe.arrayBaseOffset(double[].class);
         long indexScale = unsafe.arrayIndexScale(double[].class);
         long offset = baseOffset + index * indexScale;
-        unsafe.compareAndSetDouble(f, offset, 2D, 3D);
+        return unsafe.compareAndSetDouble(f, offset, trueVal, falseVal);
     }
 
     @Test
     public void swapDouble() {
-        test("swapDoubleSnippet");
+        Random r = getRandomInstance();
+        test("swapDoubleSnippet", r.nextDouble(), r.nextDouble(), r.nextDouble(), r.nextDouble(), r.nextDouble());
+        argsToBind = new Object[]{r.nextDouble(), r.nextDouble(), r.nextDouble(), r.nextDouble(), r.nextDouble()};
+        test("swapDoubleSnippet", argsToBind[0], argsToBind[1], argsToBind[2], argsToBind[3], argsToBind[4]);
+        argsToBind = null;
     }
 
-    static void swapIntSnippet() {
-        int[] f = new int[100];
-        final int index = 12;
+    static boolean swapIntSnippet(int i1, int i2, int i3, int trueVal, int falseVal) {
+        int[] f = new int[]{i1, i2, i3};
+        final int index = 2;
         var unsafe = jdk.internal.misc.Unsafe.getUnsafe();
         long baseOffset = unsafe.arrayBaseOffset(int[].class);
         long indexScale = unsafe.arrayIndexScale(int[].class);
         long offset = baseOffset + index * indexScale;
-        unsafe.compareAndSetInt(f, offset, 2, 3);
+        return unsafe.compareAndSetInt(f, offset, trueVal, falseVal);
     }
 
     @Test
     public void swapInt() {
-        test("swapIntSnippet");
+        Random r = getRandomInstance();
+        test("swapIntSnippet", r.nextInt(), r.nextInt(), r.nextInt(), r.nextInt(), r.nextInt());
+        argsToBind = new Object[]{r.nextInt(), r.nextInt(), r.nextInt(), r.nextInt(), r.nextInt()};
+        test("swapIntSnippet", argsToBind[0], argsToBind[1], argsToBind[2], argsToBind[3], argsToBind[4]);
+        argsToBind = null;
     }
 
-    static void swapLongSnippet() {
-        long[] f = new long[100];
-        final int index = 12;
+    static boolean swapLongSnippet(long l1, long l2, long l3, long trueVal, long falseVal) {
+        long[] f = new long[]{l1, l2, l3};
+        final int index = 2;
         var unsafe = jdk.internal.misc.Unsafe.getUnsafe();
         long baseOffset = unsafe.arrayBaseOffset(long[].class);
         long indexScale = unsafe.arrayIndexScale(long[].class);
         long offset = baseOffset + index * indexScale;
-        unsafe.compareAndSetLong(f, offset, 2, 3);
+        return unsafe.compareAndSetLong(f, offset, trueVal, falseVal);
     }
 
     @Test
     public void swapLong() {
-        test("swapLongSnippet");
+        Random r = getRandomInstance();
+        test("swapLongSnippet", r.nextLong(), r.nextLong(), r.nextLong(), r.nextLong(), r.nextLong());
+        argsToBind = new Object[]{r.nextLong(), r.nextLong(), r.nextLong(), r.nextLong(), r.nextLong()};
+        test("swapLongSnippet", argsToBind[0], argsToBind[1], argsToBind[2], argsToBind[3], argsToBind[4]);
+        argsToBind = null;
     }
 }
