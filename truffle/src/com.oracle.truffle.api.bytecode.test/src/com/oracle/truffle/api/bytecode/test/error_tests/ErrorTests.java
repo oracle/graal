@@ -112,7 +112,7 @@ public class ErrorTests {
         }
     }
 
-    @ExpectError("Bytecode DSL class must be public.")
+    @ExpectError("Bytecode DSL class must be public or package-private.")
     @GenerateBytecode(languageClass = ErrorLanguage.class)
     private abstract static class MustBePublic extends RootNode implements BytecodeRootNode {
         protected MustBePublic(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {

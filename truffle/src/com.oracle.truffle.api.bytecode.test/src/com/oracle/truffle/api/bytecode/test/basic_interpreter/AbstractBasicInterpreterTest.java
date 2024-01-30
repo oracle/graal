@@ -203,7 +203,11 @@ public abstract class AbstractBasicInterpreterTest {
         if (testSerialize) {
             // Perform a serialize-deserialize round trip.
             ByteArrayOutputStream output = new ByteArrayOutputStream();
-            invokeSerialize(interpreterClass, config, new DataOutputStream(output), SERIALIZER, builder);
+            try {
+                result.serialize(config, new DataOutputStream(output), SERIALIZER);
+            } catch (IOException ex) {
+                throw new AssertionError(ex);
+            }
             Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(output.toByteArray()));
             BytecodeRootNodes<BasicInterpreter> deserialized = invokeDeserialize(interpreterClass, LANGUAGE, config, input, DESERIALIZER);
 
@@ -254,22 +258,6 @@ public abstract class AbstractBasicInterpreterTest {
         try {
             Method deserialize = interpreterClass.getMethod("deserialize", TruffleLanguage.class, BytecodeConfig.class, Supplier.class, BytecodeDeserializer.class);
             return (BytecodeRootNodes<T>) deserialize.invoke(null, language, config, input, callback);
-        } catch (InvocationTargetException e) {
-            // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
-            // get caught by the test harness.
-            throw new IllegalStateException(e.getCause());
-        } catch (Exception e) {
-            throw new AssertionError(e);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <T extends BasicInterpreterBuilder> void invokeSerialize(Class<? extends BasicInterpreter> interpreterClass, BytecodeConfig config, DataOutput buffer,
-                    BytecodeSerializer callback,
-                    BytecodeParser<T> parser) {
-        try {
-            Method serialize = interpreterClass.getMethod("serialize", BytecodeConfig.class, DataOutput.class, BytecodeSerializer.class, BytecodeParser.class);
-            serialize.invoke(null, config, buffer, callback, parser);
         } catch (InvocationTargetException e) {
             // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
             // get caught by the test harness.
