@@ -1088,13 +1088,15 @@ public abstract class NFATraversalRegexASTVisitor {
                         curGuard = curGuard.getPrev();
                     }
                     if (curGuard == null) {
-                        // We did not find any corresponding enterZeroWidth, so exitZeroWidth will pass because of
+                        // We did not find any corresponding enterZeroWidth, so exitZeroWidth will
+                        // pass because of
                         // input being consumed.
                         keptAliveByConsumedInput = isBuildingDFA() || root.isCharacterClass();
                     }
                     boolean keptAlive = keptAliveByConsumedInput || keptAliveByCaptureGroups;
                     if (isBuildingDFA()) {
-                        // TODO: We should be able to eliminate some of these exitZeroWidth/escapeZeroWidth guards even
+                        // TODO: We should be able to eliminate some of these
+                        // exitZeroWidth/escapeZeroWidth guards even
                         // when not building a DFA.
                         if ((guard.getKind() == QuantifierGuard.Kind.exitZeroWidth && !keptAlive) || (guard.getKind() == QuantifierGuard.Kind.escapeZeroWidth && keptAlive)) {
                             shouldRetreat = true;
@@ -1105,7 +1107,8 @@ public abstract class NFATraversalRegexASTVisitor {
                 break;
             }
             case enterZeroWidth: {
-                // If there is another enterZeroWidth for the same group in the quantifier guards and there are no CG
+                // If there is another enterZeroWidth for the same group in the quantifier guards
+                // and there are no CG
                 // updates in between, then this new enterZeroWidth is redundant.
                 QuantifierGuardsLinkedList curGuard = quantifierGuards;
                 while (curGuard != null && (!ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() || curGuard.getGuard().getKind() != QuantifierGuard.Kind.updateCG)) {
@@ -1122,7 +1125,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 if (isBuildingDFA() && getMatchedConditionGroups() != null) {
                     int referencedGroupNumber = guard.getIndex();
                     boolean groupMatched = (getMatchedConditionGroups().get(referencedGroupNumber) && !captureGroupClears.get(Group.groupNumberToBoundaryIndexEnd(referencedGroupNumber))) ||
-                            captureGroupUpdates.get(Group.groupNumberToBoundaryIndexEnd(referencedGroupNumber));
+                                    captureGroupUpdates.get(Group.groupNumberToBoundaryIndexEnd(referencedGroupNumber));
                     if ((guard.getKind() == QuantifierGuard.Kind.checkGroupMatched) != groupMatched) {
                         shouldRetreat = true;
                     }
