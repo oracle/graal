@@ -76,7 +76,7 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
      * @since 24.1
      */
     public static final BytecodeDSLAccess lookup(Object token, boolean allowUnsafe) {
-        BytecodeNodes.checkToken(token);
+        BytecodeRootNodes.checkToken(token);
         BytecodeDSLAccess impl;
         if (allowUnsafe && !Boolean.getBoolean("truffle.dsl.DisableUnsafeBytecodeDSLAccess")) {
             impl = unsafeSingleton;

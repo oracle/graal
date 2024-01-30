@@ -128,7 +128,7 @@ public @interface GenerateBytecode {
      * Note that the generated {@code deserialize} method takes a {@link java.util.function.Supplier
      * Supplier<DataInput>} rather than a {@link java.io.DataInput} directly. The supplier should
      * produce a fresh {@link java.io.DataInput} each time because the input may be processed
-     * multiple times (due to {@link BytecodeNodes#reparse reparsing}).
+     * multiple times (due to {@link BytecodeRootNodes#reparse reparsing}).
      *
      * @see com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer
      * @see com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer

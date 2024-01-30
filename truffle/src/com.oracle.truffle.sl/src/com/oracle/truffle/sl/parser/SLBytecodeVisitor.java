@@ -57,7 +57,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
-import com.oracle.truffle.api.bytecode.BytecodeNodes;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -107,7 +107,7 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
             parseSLImpl(source, visitor);
         };
 
-        BytecodeNodes<SLBytecodeRootNode> nodes;
+        BytecodeRootNodes<SLBytecodeRootNode> nodes;
         if (FORCE_SERIALIZE) {
             try {
                 byte[] serializedData = SLBytecodeSerialization.serializeNodes(slParser);

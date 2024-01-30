@@ -50,7 +50,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
-import com.oracle.truffle.api.bytecode.BytecodeNodes;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeTier;
@@ -89,7 +89,7 @@ public class NodeBindingTest extends AbstractQuickeningTest {
     }
 
     private static BindingTestRootNode parse(BytecodeParser<BindingTestRootNodeGen.Builder> builder) {
-        BytecodeNodes<BindingTestRootNode> nodes = BindingTestRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
+        BytecodeRootNodes<BindingTestRootNode> nodes = BindingTestRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(nodes.count() - 1);
     }
 

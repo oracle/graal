@@ -68,7 +68,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
-import com.oracle.truffle.api.bytecode.BytecodeNodes;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
@@ -182,7 +182,7 @@ public abstract class AbstractBasicInterpreterTest {
         return parseNodeWithSource(interpreterClass, testSerialize, rootName, builder);
     }
 
-    public <T extends BasicInterpreterBuilder> BytecodeNodes<BasicInterpreter> createNodes(BytecodeConfig config, BytecodeParser<T> builder) {
+    public <T extends BasicInterpreterBuilder> BytecodeRootNodes<BasicInterpreter> createNodes(BytecodeConfig config, BytecodeParser<T> builder) {
         return createNodes(interpreterClass, testSerialize, config, builder);
     }
 
@@ -195,17 +195,17 @@ public abstract class AbstractBasicInterpreterTest {
      * reflection.
      */
     @SuppressWarnings("unchecked")
-    public static <T extends BasicInterpreterBuilder> BytecodeNodes<BasicInterpreter> createNodes(Class<? extends BasicInterpreter> interpreterClass, boolean testSerialize,
+    public static <T extends BasicInterpreterBuilder> BytecodeRootNodes<BasicInterpreter> createNodes(Class<? extends BasicInterpreter> interpreterClass, boolean testSerialize,
                     BytecodeConfig config,
                     BytecodeParser<T> builder) {
 
-        BytecodeNodes<BasicInterpreter> result = invokeCreate(interpreterClass, config, builder);
+        BytecodeRootNodes<BasicInterpreter> result = invokeCreate(interpreterClass, config, builder);
         if (testSerialize) {
             // Perform a serialize-deserialize round trip.
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             invokeSerialize(interpreterClass, config, new DataOutputStream(output), SERIALIZER, builder);
             Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(output.toByteArray()));
-            BytecodeNodes<BasicInterpreter> deserialized = invokeDeserialize(interpreterClass, LANGUAGE, config, input, DESERIALIZER);
+            BytecodeRootNodes<BasicInterpreter> deserialized = invokeDeserialize(interpreterClass, LANGUAGE, config, input, DESERIALIZER);
 
             assertBytecodeNodesEqual(result, deserialized);
         }
@@ -219,7 +219,7 @@ public abstract class AbstractBasicInterpreterTest {
 
     public static <T extends BasicInterpreterBuilder> BasicInterpreter parseNode(Class<? extends BasicInterpreter> interpreterClass, boolean testSerialize, String rootName,
                     BytecodeParser<T> builder) {
-        BytecodeNodes<BasicInterpreter> nodes = createNodes(interpreterClass, testSerialize, BytecodeConfig.DEFAULT, builder);
+        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(interpreterClass, testSerialize, BytecodeConfig.DEFAULT, builder);
         BasicInterpreter op = nodes.getNode(nodes.count() - 1);
         op.setName(rootName);
         return op;
@@ -227,18 +227,18 @@ public abstract class AbstractBasicInterpreterTest {
 
     public static <T extends BasicInterpreterBuilder> BasicInterpreter parseNodeWithSource(Class<? extends BasicInterpreter> interpreterClass, boolean testSerialize, String rootName,
                     BytecodeParser<T> builder) {
-        BytecodeNodes<BasicInterpreter> nodes = createNodes(interpreterClass, testSerialize, BytecodeConfig.WITH_SOURCE, builder);
+        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(interpreterClass, testSerialize, BytecodeConfig.WITH_SOURCE, builder);
         BasicInterpreter op = nodes.getNode(nodes.count() - 1);
         op.setName(rootName);
         return op;
     }
 
     @SuppressWarnings("unchecked")
-    public static <T extends BasicInterpreter> BytecodeNodes<T> invokeCreate(Class<? extends BasicInterpreter> interpreterClass, BytecodeConfig config,
+    public static <T extends BasicInterpreter> BytecodeRootNodes<T> invokeCreate(Class<? extends BasicInterpreter> interpreterClass, BytecodeConfig config,
                     BytecodeParser<? extends BasicInterpreterBuilder> builder) {
         try {
             Method create = interpreterClass.getMethod("create", BytecodeConfig.class, BytecodeParser.class);
-            return (BytecodeNodes<T>) create.invoke(null, config, builder);
+            return (BytecodeRootNodes<T>) create.invoke(null, config, builder);
         } catch (InvocationTargetException e) {
             // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
             // get caught by the test harness.
@@ -249,11 +249,11 @@ public abstract class AbstractBasicInterpreterTest {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T extends BasicInterpreter> BytecodeNodes<T> invokeDeserialize(Class<? extends BasicInterpreter> interpreterClass, TruffleLanguage<?> language, BytecodeConfig config,
+    public static <T extends BasicInterpreter> BytecodeRootNodes<T> invokeDeserialize(Class<? extends BasicInterpreter> interpreterClass, TruffleLanguage<?> language, BytecodeConfig config,
                     Supplier<DataInput> input, BytecodeDeserializer callback) {
         try {
             Method deserialize = interpreterClass.getMethod("deserialize", TruffleLanguage.class, BytecodeConfig.class, Supplier.class, BytecodeDeserializer.class);
-            return (BytecodeNodes<T>) deserialize.invoke(null, language, config, input, callback);
+            return (BytecodeRootNodes<T>) deserialize.invoke(null, language, config, input, callback);
         } catch (InvocationTargetException e) {
             // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
             // get caught by the test harness.
@@ -279,7 +279,7 @@ public abstract class AbstractBasicInterpreterTest {
         }
     }
 
-    private static void assertBytecodeNodesEqual(BytecodeNodes<BasicInterpreter> expectedBytecodeNodes, BytecodeNodes<BasicInterpreter> actualBytecodeNodes) {
+    private static void assertBytecodeNodesEqual(BytecodeRootNodes<BasicInterpreter> expectedBytecodeNodes, BytecodeRootNodes<BasicInterpreter> actualBytecodeNodes) {
         List<BasicInterpreter> expectedNodes = expectedBytecodeNodes.getNodes();
         List<BasicInterpreter> actualNodes = actualBytecodeNodes.getNodes();
         assertEquals(expectedNodes.size(), actualNodes.size());

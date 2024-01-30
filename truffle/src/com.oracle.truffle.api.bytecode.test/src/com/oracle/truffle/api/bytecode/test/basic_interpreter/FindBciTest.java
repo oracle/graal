@@ -55,7 +55,7 @@ import org.junit.runners.Parameterized;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
-import com.oracle.truffle.api.bytecode.BytecodeNodes;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -95,7 +95,7 @@ public class FindBciTest extends AbstractBasicInterpreterTest {
         Source bazSource = Source.newBuilder("test", "if (arg0) <trace1> else <trace2>", "baz").build();
         Source barSource = Source.newBuilder("test", "baz(arg0)", "bar").build();
         Source fooSource = Source.newBuilder("test", "c = bar(arg0); c", "foo").build();
-        BytecodeNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.WITH_SOURCE, b -> {
+        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.WITH_SOURCE, b -> {
             // @formatter:off
             // collectBcis
             b.beginRoot(LANGUAGE);
@@ -255,7 +255,7 @@ public class FindBciTest extends AbstractBasicInterpreterTest {
         Source bazSource = Source.newBuilder("test", "if (arg0) <trace1> else <trace2>", "baz").build();
         Source barSource = Source.newBuilder("test", "x = yield 1; baz(x)", "bar").build();
         Source fooSource = Source.newBuilder("test", "c = bar(); continue(c, arg0)", "foo").build();
-        BytecodeNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.WITH_SOURCE, b -> {
+        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.WITH_SOURCE, b -> {
             // @formatter:off
             // collectBcis
             b.beginRoot(LANGUAGE);

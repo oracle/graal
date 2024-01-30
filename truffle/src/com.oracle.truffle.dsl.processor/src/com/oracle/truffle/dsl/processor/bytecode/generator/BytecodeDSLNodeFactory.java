@@ -153,7 +153,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     private final TypeMirror parserType = generic(types.BytecodeParser, operationBuilderType);
 
     // Implementations of public classes that Truffle interpreters interact with.
-    private final CodeTypeElement bytecodeNodesImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "BytecodeNodesImpl");
+    private final CodeTypeElement bytecodeRootNodesImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "BytecodeRootNodesImpl");
     private final CodeTypeElement bytecodeLocalImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "BytecodeLocalImpl");
     private final CodeTypeElement bytecodeLabelImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "BytecodeLabelImpl");
 
@@ -222,7 +222,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         CodeVariableElement bytecodeNode = new CodeVariableElement(Set.of(PRIVATE, VOLATILE), abstractBytecodeNode.asType(), "bytecode");
         bytecodeNodeGen.add(compFinal(bytecodeNode));
-        bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), bytecodeNodesImpl.asType(), "nodes"));
+        bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), bytecodeRootNodesImpl.asType(), "nodes"));
         bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "numLocals"));
         bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "numNodes"));
         bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "buildIndex"));
@@ -247,7 +247,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         bytecodeNodeGen.add(new BuilderFactory().create());
 
         // Define implementations for the public classes that Truffle interpreters interact with.
-        bytecodeNodeGen.add(new BytecodeNodesImplFactory().create());
+        bytecodeNodeGen.add(new BytecodeRootNodesImplFactory().create());
         bytecodeNodeGen.add(new BytecodeLocalImplFactory().create());
         bytecodeNodeGen.add(new BytecodeLabelImplFactory().create());
 
@@ -620,7 +620,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     private CodeTree createFastAccessFieldInitializer() {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        b.startStaticCall(types.BytecodeDSLAccess, "lookup").string("BytecodeNodesImpl.VISIBLE_TOKEN").string(Boolean.toString(model.allowUnsafe)).end();
+        b.startStaticCall(types.BytecodeDSLAccess, "lookup").string("BytecodeRootNodesImpl.VISIBLE_TOKEN").string(Boolean.toString(model.allowUnsafe)).end();
         return b.build();
     }
 
@@ -713,7 +713,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, bytecodeNodeGen.getSimpleName().toString());
         ctor.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
         ctor.addParameter(new CodeVariableElement(types.FrameDescriptor_Builder, "builder"));
-        ctor.addParameter(new CodeVariableElement(bytecodeNodesImpl.asType(), "nodes"));
+        ctor.addParameter(new CodeVariableElement(bytecodeRootNodesImpl.asType(), "nodes"));
         ctor.addParameter(new CodeVariableElement(type(short[].class), "bytecodes"));
         ctor.addParameter(new CodeVariableElement(type(Object[].class), "constants"));
         ctor.addParameter(new CodeVariableElement(type(int[].class), "handlers"));
@@ -905,7 +905,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     }
 
     private CodeExecutableElement createCreate() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, STATIC), generic(types.BytecodeNodes, model.templateType.asType()), "create");
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, STATIC), generic(types.BytecodeRootNodes, model.templateType.asType()), "create");
         ex.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
         ex.addParameter(new CodeVariableElement(parserType, "parser"));
 
@@ -918,7 +918,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         CodeTreeBuilder b = ex.getBuilder();
 
-        b.declaration("BytecodeNodesImpl", "nodes", "new BytecodeNodesImpl(parser)");
+        b.declaration("BytecodeRootNodesImpl", "nodes", "new BytecodeRootNodesImpl(parser)");
         b.startAssign("Builder builder").startNew(builder.getSimpleName().toString());
         b.string("nodes");
         b.string("config");
@@ -992,7 +992,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         CodeTreeBuilder init = CodeTreeBuilder.createBuilder();
         init.startNew(operationBuilderType);
         init.startGroup();
-        init.startNew(bytecodeNodesImpl.asType());
+        init.startNew(bytecodeRootNodesImpl.asType());
         init.string("parser");
         init.end(2);
         init.string("config");
@@ -1018,7 +1018,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     private CodeExecutableElement createDeserialize() {
         CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC),
-                        generic(types.BytecodeNodes, model.getTemplateType().asType()), "deserialize");
+                        generic(types.BytecodeRootNodes, model.getTemplateType().asType()), "deserialize");
 
         method.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
         method.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
@@ -1982,7 +1982,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             builder.add(createOperationNames());
 
-            builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), bytecodeNodesImpl.asType(), "nodes"));
+            builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), bytecodeRootNodesImpl.asType(), "nodes"));
             builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(boolean.class), "isReparse"));
             builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(boolean.class), "parseBytecodes"));
             builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "tags"));
@@ -3085,7 +3085,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     constructorCallBuilder.startNew(bytecodeNodeGen.asType());
                     constructorCallBuilder.string("serialization.language");
                     constructorCallBuilder.startStaticCall(types.FrameDescriptor, "newBuilder").end();
-                    constructorCallBuilder.string("null"); // BytecodeNodesImpl
+                    constructorCallBuilder.string("null"); // BytecodeRootNodesImpl
                     constructorCallBuilder.string("null"); // bc
                     constructorCallBuilder.string("null"); // constants
                     constructorCallBuilder.string("null"); // handlers
@@ -3143,7 +3143,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startAssign("result").startNew(bytecodeNodeGen.asType());
             b.string("language");
             b.string("frameDescriptorBuilder");
-            b.string("nodes"); // BytecodeNodesImpl
+            b.string("nodes"); // BytecodeRootNodesImpl
             b.string("Arrays.copyOf(bc, bci)"); // bc
             b.string("constantPool.toArray()"); // constants
             b.string("Arrays.copyOf(exHandlers, exHandlerCount)"); // handlers
@@ -4518,7 +4518,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createReparseConstructor() {
             CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, "Builder");
-            ctor.addParameter(new CodeVariableElement(bytecodeNodesImpl.asType(), "nodes"));
+            ctor.addParameter(new CodeVariableElement(bytecodeRootNodesImpl.asType(), "nodes"));
             ctor.addParameter(new CodeVariableElement(context.getType(boolean.class), "parseBytecodes"));
             ctor.addParameter(new CodeVariableElement(context.getType(int.class), "tags"));
             ctor.addParameter(new CodeVariableElement(context.getType(int.class), "instrumentations"));
@@ -4545,7 +4545,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createParseConstructor() {
             CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, "Builder");
-            ctor.addParameter(new CodeVariableElement(bytecodeNodesImpl.asType(), "nodes"));
+            ctor.addParameter(new CodeVariableElement(bytecodeRootNodesImpl.asType(), "nodes"));
             ctor.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
 
             CodeTreeBuilder javadoc = ctor.createDocBuilder();
@@ -4588,26 +4588,26 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
     }
 
-    class BytecodeNodesImplFactory {
+    class BytecodeRootNodesImplFactory {
         private CodeTypeElement create() {
-            bytecodeNodesImpl.setSuperClass(generic(types.BytecodeNodes, model.templateType.asType()));
-            bytecodeNodesImpl.setEnclosingElement(bytecodeNodeGen);
-            bytecodeNodesImpl.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(Object.class), "VISIBLE_TOKEN")).createInitBuilder().string("TOKEN");
+            bytecodeRootNodesImpl.setSuperClass(generic(types.BytecodeRootNodes, model.templateType.asType()));
+            bytecodeRootNodesImpl.setEnclosingElement(bytecodeNodeGen);
+            bytecodeRootNodesImpl.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(Object.class), "VISIBLE_TOKEN")).createInitBuilder().string("TOKEN");
 
-            bytecodeNodesImpl.add(new CodeVariableElement(Set.of(PRIVATE), type(int.class), "instrumentations"));
-            bytecodeNodesImpl.add(new CodeVariableElement(Set.of(PRIVATE), type(int.class), "tags"));
-            bytecodeNodesImpl.add(new CodeVariableElement(Set.of(PRIVATE), type(boolean.class), "sources"));
+            bytecodeRootNodesImpl.add(new CodeVariableElement(Set.of(PRIVATE), type(int.class), "instrumentations"));
+            bytecodeRootNodesImpl.add(new CodeVariableElement(Set.of(PRIVATE), type(int.class), "tags"));
+            bytecodeRootNodesImpl.add(new CodeVariableElement(Set.of(PRIVATE), type(boolean.class), "sources"));
 
-            bytecodeNodesImpl.add(createConstructor());
-            bytecodeNodesImpl.add(createReparseImpl());
-            bytecodeNodesImpl.add(createSetNodes());
-            bytecodeNodesImpl.add(createGetParserImpl());
+            bytecodeRootNodesImpl.add(createConstructor());
+            bytecodeRootNodesImpl.add(createReparseImpl());
+            bytecodeRootNodesImpl.add(createSetNodes());
+            bytecodeRootNodesImpl.add(createGetParserImpl());
 
-            return bytecodeNodesImpl;
+            return bytecodeRootNodesImpl;
         }
 
         private CodeExecutableElement createConstructor() {
-            CodeExecutableElement ctor = new CodeExecutableElement(null, "BytecodeNodesImpl");
+            CodeExecutableElement ctor = new CodeExecutableElement(null, "BytecodeRootNodesImpl");
             ctor.addParameter(new CodeVariableElement(parserType, "generator"));
 
             ctor.createBuilder().statement("super(generator)");
@@ -4615,7 +4615,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createReparseImpl() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNodes, "reparseImpl");
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNodes, "reparseImpl");
             addOverride(ex);
             ex.getModifiers().add(Modifier.SYNCHRONIZED);
             mergeSuppressWarnings(ex, "hiding");
@@ -4743,7 +4743,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 constructor.addParameter(new CodeVariableElement(generic(type(List.class), types.Source), "sources"));
 
                 CodeTreeBuilder b = constructor.createBuilder();
-                b.startStatement().startSuperCall().string("BytecodeNodesImpl.VISIBLE_TOKEN").end().end();
+                b.startStatement().startSuperCall().string("BytecodeRootNodesImpl.VISIBLE_TOKEN").end().end();
                 b.statement("this.constants = constants");
                 b.statement("this.bytecodes = bc");
                 b.statement("this.handlers = handlers");
@@ -7921,7 +7921,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createCreate() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, STATIC), generic(types.BytecodeNodes, model.templateType.asType()), "create");
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, STATIC), generic(types.BytecodeRootNodes, model.templateType.asType()), "create");
             ex.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
             ex.addParameter(new CodeVariableElement(generic(types.BytecodeParser, builder.asType()), "generator"));
             CodeTreeBuilder b = ex.getBuilder();
@@ -7943,7 +7943,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createDeserialize() {
             CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC),
-                            generic(types.BytecodeNodes, model.getTemplateType().asType()), "deserialize");
+                            generic(types.BytecodeRootNodes, model.getTemplateType().asType()), "deserialize");
             method.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
             method.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
             method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "input"));

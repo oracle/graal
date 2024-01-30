@@ -61,6 +61,7 @@ import java.util.stream.Collectors;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -217,6 +218,12 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
         if (!ElementUtils.isAssignable(typeElement.asType(), types.BytecodeRootNode)) {
             model.addError(typeElement, "Bytecode DSL class must directly or indirectly implement %s.", getSimpleName(types.BytecodeRootNode));
+        }
+        if (!typeElement.getModifiers().contains(Modifier.PUBLIC)) {
+            model.addError(typeElement, "Bytecode DSL class must be public.");
+        }
+        if (typeElement.getEnclosingElement().getKind() != ElementKind.PACKAGE && !typeElement.getModifiers().contains(Modifier.STATIC)) {
+            model.addError(typeElement, "Bytecode DSL class must be static if it is a nested class.");
         }
 
         // Find the appropriate constructor.

@@ -68,7 +68,7 @@ import com.oracle.truffle.api.source.SourceSection;
 public abstract class BytecodeNode extends Node {
 
     protected BytecodeNode(Object token) {
-        BytecodeNodes.checkToken(token);
+        BytecodeRootNodes.checkToken(token);
     }
 
     // needs to translate locations if the bytecodes were rewritten in the meantime
