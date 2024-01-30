@@ -26,6 +26,7 @@
 import re
 import os
 from tempfile import mkstemp
+from typing import List, Optional
 
 import mx
 import mx_benchmark
@@ -408,7 +409,21 @@ class ScalaDaCapoTimingBenchmarkSuite(DaCapoTimingBenchmarkMixin, ScalaDaCapoBen
 mx_benchmark.add_bm_suite(ScalaDaCapoTimingBenchmarkSuite())
 
 
-class JMHNativeImageBenchmarkMixin(mx_sdk_benchmark.NativeImageBenchmarkMixin):
+class JMHNativeImageBenchmarkMixin(mx_benchmark.JMHBenchmarkSuiteBase, mx_sdk_benchmark.NativeImageBenchmarkMixin):
+
+    def get_jmh_result_file(self, bm_suite_args: List[str]) -> Optional[str]:
+        """
+        Only generate a JMH result file in the run stage. Otherwise the file-based rule (see
+        :class:`mx_benchmark.JMHJsonRule`) will produce datapoints at every stage, based on results from a previous
+        stage.
+
+        TODO GR-50022 Once we can track where datapoints come from, allow for a JMH result file in other run stages as
+        well (instrument-run and maybe also agent), if requested
+        """
+        if not self.is_native_mode(bm_suite_args) or self.stages_info.get_current_stage() == "run":
+            return super().get_jmh_result_file(bm_suite_args)
+        else:
+            return None
 
     def extra_image_build_argument(self, benchmark, args):
         # JMH does HotSpot-specific field offset checks in class initializers

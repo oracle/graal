@@ -240,6 +240,8 @@ class NativeImageBenchmarkMixin(object):
     IMPORTANT: All Native Image benchmarks (including JVM benchmarks that are also used in Native Image benchmarks) must
     explicitly call :meth:`NativeImageBenchmarkMixin.intercept_run` in order for benchmarking to work.
     See description of that method for more information.
+
+    TODO document how to use this class and caveats (file-rules)
     """
 
     def __init__(self):
