@@ -39,22 +39,19 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.JDK20OrEarlier;
 import com.oracle.svm.core.jdk.JDK20OrLater;
 import com.oracle.svm.core.jdk.JDK21OrLater;
 import com.oracle.svm.core.jdk.LoomJDK;
+import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.jfr.SubstrateJVM;
-import com.oracle.svm.core.jfr.HasJfrSupport;
 
 @TargetClass(className = "java.lang.VirtualThread", onlyWith = LoomJDK.class)
 public final class Target_java_lang_VirtualThread {
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    @TargetElement(onlyWith = JDK20OrEarlier.class)//
-    private static boolean notifyJvmtiEvents;
-
     // Checkstyle: stop
     @Alias static int NEW;
     @Alias static int STARTED;
@@ -72,53 +69,6 @@ public final class Target_java_lang_VirtualThread {
 
     @Substitute
     private static void registerNatives() {
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK21OrLater.class)
-    @SuppressWarnings({"static-method", "unused"})
-    private void notifyJvmtiStart() {
-        // unimplemented (GR-46126)
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK21OrLater.class)
-    @SuppressWarnings({"static-method", "unused"})
-    private void notifyJvmtiEnd() {
-        // unimplemented (GR-46126)
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK21OrLater.class)
-    @SuppressWarnings({"static-method", "unused"})
-    private void notifyJvmtiMount(boolean hide) {
-        // unimplemented (GR-45392)
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK21OrLater.class)
-    @SuppressWarnings({"static-method", "unused"})
-    private void notifyJvmtiUnmount(boolean hide) {
-        // unimplemented (GR-45392)
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK21OrLater.class)
-    @SuppressWarnings({"static-method", "unused"})
-    private void notifyJvmtiHideFrames(boolean hide) {
-        // unimplemented (GR-45392)
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = {JDK20OrLater.class, JDK20OrEarlier.class}, name = "notifyJvmtiHideFrames")
-    @SuppressWarnings({"static-method", "unused"})
-    private void notifyJvmtiHideFramesJDK20(boolean hide) {
-        /*
-         * Unfortunately, resetting the `notifyJvmtiEvents` field is not enough to completely remove
-         * calls to this method due to the way it's used from the `switchToVirtualThread` method, so
-         * unlike the other `notifyJvmti*` methods, we need a substitution to prevent linker errors.
-         */
-        throw VMError.shouldNotReachHereSubstitution();
     }
 
     @Alias Executor scheduler;
@@ -298,6 +248,56 @@ public final class Target_java_lang_VirtualThread {
      */
     @Alias
     native void unpark();
+}
+
+/** Always apply JVMTI-related substitutions to avoid linking problems. */
+@SuppressWarnings({"static-method", "unused"})
+@TargetClass(className = "java.lang.VirtualThread", onlyWith = JDK19OrLater.class)
+final class Target_java_lang_VirtualThread_JVMTI {
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    @TargetElement(onlyWith = JDK20OrEarlier.class)//
+    private static boolean notifyJvmtiEvents;
+
+    @Substitute
+    @TargetElement(onlyWith = JDK21OrLater.class)
+    private void notifyJvmtiStart() {
+        // unimplemented (GR-46126)
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK21OrLater.class)
+    private void notifyJvmtiEnd() {
+        // unimplemented (GR-46126)
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK21OrLater.class)
+    private void notifyJvmtiMount(boolean hide) {
+        // unimplemented (GR-45392)
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK21OrLater.class)
+    private void notifyJvmtiUnmount(boolean hide) {
+        // unimplemented (GR-45392)
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK21OrLater.class)
+    private void notifyJvmtiHideFrames(boolean hide) {
+        // unimplemented (GR-45392)
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = {JDK20OrLater.class, JDK20OrEarlier.class}, name = "notifyJvmtiHideFrames")
+    private void notifyJvmtiHideFramesJDK20(boolean hide) {
+        /*
+         * Unfortunately, resetting the `notifyJvmtiEvents` field is not enough to completely remove
+         * calls to this method due to the way it's used from the `switchToVirtualThread` method, so
+         * unlike the other `notifyJvmti*` methods, we need a substitution to prevent linker errors.
+         */
+        throw VMError.shouldNotReachHereSubstitution();
+    }
 }
 
 final class VirtualThreadHelper {
