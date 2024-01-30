@@ -41,11 +41,16 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 
+import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -246,6 +251,119 @@ public class GuestFunctionToHostInterfaceProxyTest extends AbstractPolyglotTest 
         assertThat(collect.as(BF_OOLXV).apply("X", "Y"), listOfValueOfStringsXandY);
         assertThat(collect.as(BF_OOXLV).apply("X", "Y"), listOfValueOfStringsXandY);
         assertThat(collect.as(BF_OOXLXV).apply("X", "Y"), listOfValueOfStringsXandY);
+    }
+
+    public static class HostCallee {
+        private static void assertNotProxy(Consumer<Object> verifier) {
+            assertFalse(Proxy.isProxyClass(verifier.getClass()));
+        }
+
+        private static void verifyUsing(Consumer<Object> verifier, Object result) {
+            assertNotProxy(verifier);
+            verifier.accept(result);
+        }
+
+        public void functionObject(Function<Object, Object> f, Consumer<Object> verifier) {
+            verifyUsing(verifier, f.apply("A"));
+        }
+
+        public void functionValue(Function<Object, Value> f, Consumer<Object> verifier) {
+            verifyUsing(verifier, f.apply("A"));
+        }
+
+        public void bifunctionObject(BiFunction<Object, Object, Object> f, Consumer<Object> verifier) {
+            verifyUsing(verifier, f.apply("X", "Y"));
+        }
+
+        public void bifunctionValue(BiFunction<Object, Object, Value> f, Consumer<Object> verifier) {
+            verifyUsing(verifier, f.apply("X", "Y"));
+        }
+
+        public void bifunctionExtendsValue(BiFunction<Object, Object, ? extends Value> f, Consumer<Object> verifier) {
+            verifyUsing(verifier, f.apply("X", "Y"));
+        }
+
+        public void bifunctionAny(BiFunction<Object, Object, ?> f, Consumer<Object> verifier) {
+            verifyUsing(verifier, f.apply("X", "Y"));
+        }
+
+        public void bifunctionValueCustom(BiFunctionReturningValue<Object, Object> f, Consumer<Object> verifier) {
+            verifyUsing(verifier, f.apply("X", "Y"));
+        }
+
+        public void bifunctionListOfObject(BiFunction<Object, Object, List<Object>> f, Consumer<Object> verifier) {
+            verifyUsing(verifier, f.apply("X", "Y"));
+        }
+
+        public void bifunctionListOfValue(BiFunction<Object, Object, List<Value>> f, Consumer<Object> verifier) {
+            verifyUsing(verifier, f.apply("X", "Y"));
+        }
+
+        public void bifunctionListOfExtendsValue(BiFunction<Object, Object, List<? extends Value>> f, Consumer<Object> verifier) {
+            verifyUsing(verifier, f.apply("X", "Y"));
+        }
+
+        public void bifunctionListOfAny(BiFunction<Object, Object, List<?>> f, Consumer<Object> verifier) {
+            verifyUsing(verifier, f.apply("X", "Y"));
+        }
+
+        public <BFV extends BiFunction<Object, Object, Value>> void bifunctionValueFromTypeVar(BFV f, Consumer<Object> verifier) {
+            verifyUsing(verifier, f.apply("X", "Y"));
+        }
+
+        @SuppressWarnings("all")
+        public <V extends Value, T extends V, BF extends BiFunction<Object, Object, ? extends T>, BFV extends BF> void bifunctionValueFromTypeVar2(BFV f, Consumer<Object> verifier) {
+            verifyUsing(verifier, f.apply("X", "Y"));
+        }
+
+        public <ANY> void bifunctionUnboundedTypeVar(BiFunction<Object, Object, ANY> f, Consumer<Object> verifier) {
+            verifyUsing(verifier, f.apply("X", "Y"));
+        }
+
+        public <LV extends List<Value>> void bifunctionListOfValueFromTypeVar(BiFunction<Object, Object, LV> f, Consumer<Object> verifier) {
+            verifyUsing(verifier, f.apply("X", "Y"));
+        }
+
+        @SuppressWarnings("all")
+        public <V extends Value, LV extends List<V>> void bifunctionListOfValueFromTypeVar2(BiFunction<Object, Object, LV> f, Consumer<Object> verifier) {
+            verifyUsing(verifier, f.apply("X", "Y"));
+        }
+    }
+
+    @Test
+    public void testGenericReturnTypeOfPolyglotFunctionProxyForHostMethodParameter() {
+        Value join = context.asValue(new JoinerFunctionObject());
+        Value collect = context.asValue(new ArrayOfFunctionObject());
+
+        Value target = context.asValue(new HostCallee());
+        target.invokeMember("functionObject", join, verifyThat(equalTo("A")));
+        target.invokeMember("functionValue", join, verifyThat(isValueOfStringEqualTo("A")));
+
+        target.invokeMember("bifunctionObject", join, verifyThat(equalTo("X, Y")));
+        target.invokeMember("bifunctionValue", join, verifyThat(isValueOfStringEqualTo("X, Y")));
+        target.invokeMember("bifunctionExtendsValue", join, verifyThat(isValueOfStringEqualTo("X, Y")));
+        target.invokeMember("bifunctionValueCustom", join, verifyThat(isValueOfStringEqualTo("X, Y")));
+        target.invokeMember("bifunctionAny", join, verifyThat(equalTo("X, Y")));
+
+        final var listOfStringsXandY = isListOf(equalTo("X"), equalTo("Y"));
+        final var listOfValueOfStringsXandY = isListOf(isValueOfStringEqualTo("X"), isValueOfStringEqualTo("Y"));
+        target.invokeMember("bifunctionListOfObject", collect, verifyThat(listOfStringsXandY));
+        target.invokeMember("bifunctionListOfValue", collect, verifyThat(listOfValueOfStringsXandY));
+        target.invokeMember("bifunctionListOfExtendsValue", collect, verifyThat(listOfValueOfStringsXandY));
+        target.invokeMember("bifunctionListOfAny", collect, verifyThat(listOfStringsXandY));
+
+        // some more contrived cases
+        target.invokeMember("bifunctionValueFromTypeVar", join, verifyThat(isValueOfStringEqualTo("X, Y")));
+        target.invokeMember("bifunctionValueFromTypeVar2", join, verifyThat(isValueOfStringEqualTo("X, Y")));
+        target.invokeMember("bifunctionUnboundedTypeVar", join, verifyThat(equalTo("X, Y")));
+        target.invokeMember("bifunctionListOfValueFromTypeVar", collect, verifyThat(listOfValueOfStringsXandY));
+        target.invokeMember("bifunctionListOfValueFromTypeVar2", collect, verifyThat(listOfValueOfStringsXandY));
+    }
+
+    private static <T> Consumer<T> verifyThat(Matcher<T> equalTo) {
+        return (result) -> {
+            assertThat(result, equalTo);
+        };
     }
 
     static Matcher<? super Value> isValueOfStringEqualTo(String expectedString) {
