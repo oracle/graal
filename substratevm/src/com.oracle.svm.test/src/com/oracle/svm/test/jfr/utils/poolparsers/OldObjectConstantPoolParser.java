@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,41 +23,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.Uninterruptible;
+package com.oracle.svm.test.jfr.utils.poolparsers;
 
-/**
- * Maps JFR types against their IDs in the JDK.
- */
-public enum JfrType {
-    Class("java.lang.Class"),
-    String("java.lang.String"),
-    Thread("java.lang.Thread"),
-    ThreadState("jdk.types.ThreadState"),
-    ThreadGroup("jdk.types.ThreadGroup"),
-    StackTrace("jdk.types.StackTrace"),
-    ClassLoader("jdk.types.ClassLoader"),
-    Method("jdk.types.Method"),
-    Symbol("jdk.types.Symbol"),
-    Module("jdk.types.Module"),
-    Package("jdk.types.Package"),
-    FrameType("jdk.types.FrameType"),
-    GCCause("jdk.types.GCCause"),
-    GCName("jdk.types.GCName"),
-    GCWhen("jdk.types.GCWhen"),
-    VMOperation("jdk.types.VMOperationType"),
-    MonitorInflationCause("jdk.types.InflateCause"),
-    OldObject("jdk.types.OldObject");
+import static org.junit.Assert.assertTrue;
 
-    private final long id;
+import java.io.IOException;
 
-    JfrType(String name) {
-        this.id = JfrMetadataTypeLibrary.lookupType(name);
+import com.oracle.svm.core.jfr.JfrType;
+import com.oracle.svm.test.jfr.utils.JfrFileParser;
+import com.oracle.svm.test.jfr.utils.RecordingInput;
+
+public final class OldObjectConstantPoolParser extends AbstractRepositoryParser {
+    public OldObjectConstantPoolParser(JfrFileParser parser) {
+        super(parser);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long getId() {
-        return id;
+    @Override
+    public void parse(RecordingInput input) throws IOException {
+        int numOldObjects = input.readInt();
+        for (int i = 0; i < numOldObjects; i++) {
+            addFoundId(input.readLong());
+            assertTrue("Address can't be 0", input.readLong() != 0);
+            addExpectedId(JfrType.Class, input.readLong());
+            input.readUTF(); // description
+            input.readLong(); // GC root
+        }
     }
 }

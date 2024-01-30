@@ -57,7 +57,9 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrTicks;
+import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.ObjectAllocationInNewTLABEvent;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -218,8 +220,12 @@ public final class ThreadLocalAllocation {
         try {
             DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
 
-            Object result = slowPathNewInstanceWithoutAllocating(hub);
+            UnsignedWord size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding());
+            Object result = slowPathNewInstanceWithoutAllocating(hub, size);
+
             runSlowPathHooks();
+            sampleSlowPathAllocation(result, size, Integer.MIN_VALUE);
+
             return result;
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
@@ -227,10 +233,9 @@ public final class ThreadLocalAllocation {
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
-    private static Object slowPathNewInstanceWithoutAllocating(DynamicHub hub) {
+    private static Object slowPathNewInstanceWithoutAllocating(DynamicHub hub, UnsignedWord size) {
         DeoptTester.disableDeoptTesting();
         long startTicks = JfrTicks.elapsedTicks();
-        UnsignedWord size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding());
         try {
             HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.slowPathNewInstanceWithoutAllocating", DynamicHub.toClass(hub).getName());
             GCImpl.getGCImpl().maybeCollectOnAllocation(size);
@@ -283,7 +288,10 @@ public final class ThreadLocalAllocation {
             }
 
             Object result = slowPathNewArrayLikeObject0(hub, length, size, podReferenceMap);
+
             runSlowPathHooks();
+            sampleSlowPathAllocation(result, size, length);
+
             return result;
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
@@ -520,5 +528,11 @@ public final class ThreadLocalAllocation {
             allocatedBytes.set(thread, allocatedBytes.get(thread).add(usedTlabSize));
         }
         return tlab;
+    }
+
+    private static void sampleSlowPathAllocation(Object obj, UnsignedWord allocatedSize, int arrayLength) {
+        if (HasJfrSupport.get()) {
+            SubstrateJVM.getJfrOldObjectProfiler().sample(obj, allocatedSize, arrayLength);
+        }
     }
 }

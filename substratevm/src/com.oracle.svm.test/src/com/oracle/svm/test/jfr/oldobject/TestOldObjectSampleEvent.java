@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,41 +23,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.Uninterruptible;
+package com.oracle.svm.test.jfr.oldobject;
 
-/**
- * Maps JFR types against their IDs in the JDK.
- */
-public enum JfrType {
-    Class("java.lang.Class"),
-    String("java.lang.String"),
-    Thread("java.lang.Thread"),
-    ThreadState("jdk.types.ThreadState"),
-    ThreadGroup("jdk.types.ThreadGroup"),
-    StackTrace("jdk.types.StackTrace"),
-    ClassLoader("jdk.types.ClassLoader"),
-    Method("jdk.types.Method"),
-    Symbol("jdk.types.Symbol"),
-    Module("jdk.types.Module"),
-    Package("jdk.types.Package"),
-    FrameType("jdk.types.FrameType"),
-    GCCause("jdk.types.GCCause"),
-    GCName("jdk.types.GCName"),
-    GCWhen("jdk.types.GCWhen"),
-    VMOperation("jdk.types.VMOperationType"),
-    MonitorInflationCause("jdk.types.InflateCause"),
-    OldObject("jdk.types.OldObject");
+import org.junit.Test;
 
-    private final long id;
-
-    JfrType(String name) {
-        this.id = JfrMetadataTypeLibrary.lookupType(name);
+public class TestOldObjectSampleEvent extends JfrOldObjectTest {
+    @Test
+    public void testObjectLeak() throws Throwable {
+        int arrayLength = Integer.MIN_VALUE;
+        testSampling(new TinyObject(43), arrayLength, events -> validateEvents(events, TinyObject.class, arrayLength));
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long getId() {
-        return id;
+    @Test
+    public void testSmallArrayLeak() throws Throwable {
+        int arrayLength = 3;
+        testSampling(new TinyObject[arrayLength], arrayLength, events -> validateEvents(events, TinyObject.class.arrayType(), arrayLength));
+    }
+
+    @Test
+    public void testLargeArrayLeak() throws Throwable {
+        int arrayLength = 1024 * 1024;
+        testSampling(new TinyObject[arrayLength], arrayLength, events -> validateEvents(events, TinyObject.class.arrayType(), arrayLength));
     }
 }

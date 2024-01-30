@@ -700,6 +700,12 @@ public final class HeapImpl extends Heap {
         return HeapChunk.getIdentityHashSalt(chunk).rawValue();
     }
 
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public UnsignedWord getUsedMemoryAfterLastGC() {
+        return accounting.getUsedBytes();
+    }
+
     private boolean printLocationInfo(Log log, Pointer ptr, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
         for (ImageHeapInfo info = firstImageHeapInfo; info != null; info = info.next) {
             if (info.isInReadOnlyRegularPartition(ptr)) {

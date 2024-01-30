@@ -26,6 +26,7 @@ package com.oracle.svm.core.jfr;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.Serial;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -44,8 +45,8 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jfr.events.EndChunkNativePeriodicEvents;
 import com.oracle.svm.core.jfr.events.EveryChunkNativePeriodicEvents;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UserError.UserException;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -81,9 +82,16 @@ public class JfrManager {
         return ImageSingletons.lookup(JfrManager.class);
     }
 
-    public RuntimeSupport.Hook startupHook() {
+    public static RuntimeSupport.Hook initializationHook() {
+        /* Parse arguments early on so that we can tear down the isolate more easily if it fails. */
         return isFirstIsolate -> {
-            parseFlightRecorderLogging(SubstrateOptions.FlightRecorderLogging.getValue());
+            parseFlightRecorderLogging();
+            parseFlightRecorderOptions();
+        };
+    }
+
+    public static RuntimeSupport.Hook startupHook() {
+        return isFirstIsolate -> {
             periodicEventSetup();
 
             boolean startRecording = SubstrateOptions.FlightRecorder.getValue() || !SubstrateOptions.StartFlightRecording.getValue().isEmpty();
@@ -93,7 +101,60 @@ public class JfrManager {
         };
     }
 
-    public RuntimeSupport.Hook shutdownHook() {
+    private static void parseFlightRecorderOptions() {
+        Map<JfrArgument, String> optionsArgs = parseJfrOptions(SubstrateOptions.FlightRecorderOptions, FlightRecorderOptionsArgument.values());
+        Long globalBufferSize = parseMaxSize(optionsArgs, FlightRecorderOptionsArgument.GlobalBufferSize);
+        Long maxChunkSize = parseMaxSize(optionsArgs, FlightRecorderOptionsArgument.MaxChunkSize);
+        Long memorySize = parseMaxSize(optionsArgs, FlightRecorderOptionsArgument.MemorySize);
+        Integer oldObjectQueueSize = parseInteger(optionsArgs, FlightRecorderOptionsArgument.OldObjectQueueSize);
+        String repositoryPath = optionsArgs.get(FlightRecorderOptionsArgument.RepositoryPath);
+        Integer stackDepth = parseInteger(optionsArgs, FlightRecorderOptionsArgument.StackDepth);
+        Boolean preserveRepository = parseBoolean(optionsArgs, FlightRecorderOptionsArgument.PreserveRepository);
+        Long threadBufferSize = parseMaxSize(optionsArgs, FlightRecorderOptionsArgument.ThreadBufferSize);
+
+        if (globalBufferSize != null) {
+            Options.setGlobalBufferSize(globalBufferSize);
+        }
+
+        if (maxChunkSize != null) {
+            Options.setMaxChunkSize(maxChunkSize);
+        }
+
+        if (memorySize != null) {
+            Options.setMemorySize(memorySize);
+        }
+
+        if (oldObjectQueueSize != null) {
+            if (oldObjectQueueSize >= 0) {
+                SubstrateJVM.getJfrOldObjectProfiler().configure(oldObjectQueueSize);
+            } else {
+                throw argumentParsingFailed(FlightRecorderOptionsArgument.OldObjectQueueSize.getCmdLineKey() + " must be greater or equal 0.");
+            }
+        }
+
+        if (repositoryPath != null) {
+            try {
+                SecuritySupport.SafePath repositorySafePath = new SecuritySupport.SafePath(repositoryPath);
+                Repository.getRepository().setBasePath(repositorySafePath);
+            } catch (Throwable e) {
+                throw argumentParsingFailed("Could not use " + repositoryPath + " as repository. " + e.getMessage(), e);
+            }
+        }
+
+        if (stackDepth != null) {
+            Options.setStackDepth(stackDepth);
+        }
+
+        if (preserveRepository != null) {
+            Options.setPreserveRepository(preserveRepository);
+        }
+
+        if (threadBufferSize != null) {
+            Options.setThreadBufferSize(threadBufferSize);
+        }
+    }
+
+    public static RuntimeSupport.Hook shutdownHook() {
         return isFirstIsolate -> {
             /*
              * Everything should already have been torn down by JVM.destroyJFR(), which is called in
@@ -104,7 +165,8 @@ public class JfrManager {
         };
     }
 
-    private static void parseFlightRecorderLogging(String option) {
+    private static void parseFlightRecorderLogging() {
+        String option = SubstrateOptions.FlightRecorderLogging.getValue();
         SubstrateJVM.getJfrLogging().parseConfiguration(option);
     }
 
@@ -116,9 +178,7 @@ public class JfrManager {
     }
 
     private static void initRecording() {
-        Map<JfrArgument, String> startArgs = parseJfrOptions(SubstrateOptions.StartFlightRecording.getValue(), JfrStartArgument.values());
-        Map<JfrArgument, String> optionsArgs = parseJfrOptions(SubstrateOptions.FlightRecorderOptions.getValue(), FlightRecorderOptionsArgument.values());
-
+        Map<JfrArgument, String> startArgs = parseJfrOptions(SubstrateOptions.StartFlightRecording, JfrStartArgument.values());
         String name = startArgs.get(JfrStartArgument.Name);
         String[] settings = parseSettings(startArgs);
         Long delay = parseDuration(startArgs, JfrStartArgument.Delay);
@@ -129,189 +189,140 @@ public class JfrManager {
         Long maxSize = parseMaxSize(startArgs, JfrStartArgument.MaxSize);
         Boolean dumpOnExit = parseBoolean(startArgs, JfrStartArgument.DumpOnExit);
         Boolean pathToGcRoots = parseBoolean(startArgs, JfrStartArgument.PathToGCRoots);
-        String stackDepth = optionsArgs.get(FlightRecorderOptionsArgument.StackDepth);
-        Long maxChunkSize = parseMaxSize(optionsArgs, FlightRecorderOptionsArgument.MaxChunkSize);
-        Long memorySize = parseMaxSize(optionsArgs, FlightRecorderOptionsArgument.MemorySize);
-        Long globalBufferSize = parseMaxSize(optionsArgs, FlightRecorderOptionsArgument.GlobalBufferSize);
-        Long globalBufferCount = parseMaxSize(optionsArgs, FlightRecorderOptionsArgument.GlobalBufferCount);
-        Long threadBufferSize = parseMaxSize(optionsArgs, FlightRecorderOptionsArgument.ThreadBufferSize);
-        Boolean preserveRepo = parseBoolean(optionsArgs, FlightRecorderOptionsArgument.PreserveRepository);
-        String repositoryPath = optionsArgs.get(FlightRecorderOptionsArgument.RepositoryPath);
 
-        try {
-            if (Logger.shouldLog(LogTag.JFR_DCMD, LogLevel.DEBUG)) {
-                Logger.log(LogTag.JFR_DCMD, LogLevel.DEBUG, "Executing DCmdStart: name=" + name +
-                                ", settings=" + Arrays.asList(settings) +
-                                ", delay=" + delay +
-                                ", duration=" + duration +
-                                ", disk=" + disk +
-                                ", filename=" + path +
-                                ", maxage=" + maxAge +
-                                ", maxsize=" + maxSize +
-                                ", dumponexit =" + dumpOnExit +
-                                ", path-to-gc-roots=" + pathToGcRoots);
-            }
-            if (name != null) {
-                try {
-                    Integer.parseInt(name);
-                    throw new Exception("Name of recording can't be numeric");
-                } catch (NumberFormatException nfe) {
-                    // ok, can't be mixed up with name
-                }
-            }
-
-            if (duration == null && Boolean.FALSE.equals(dumpOnExit) && path != null) {
-                throw new Exception("Filename can only be set for a time bound recording or if dumponexit=true. Set duration/dumponexit or omit filename.");
-            }
-            if (settings.length == 1 && settings[0].length() == 0) {
-                throw new Exception("No settings specified. Use settings=none to start without any settings");
-            }
-            Map<String, String> s = new HashMap<>();
-            for (String configName : settings) {
-                try {
-                    s.putAll(JFC.createKnown(configName).getSettings());
-                } catch (FileNotFoundException e) {
-                    throw new Exception("Could not find settings file'" + configName + "'", e);
-                } catch (IOException | ParseException e) {
-                    throw new Exception("Could not parse settings file '" + settings[0] + "'", e);
-                }
-            }
-
-            OldObjectSample.updateSettingPathToGcRoots(s, pathToGcRoots);
-
-            if (duration != null) {
-                if (duration < 1000L * 1000L * 1000L) {
-                    // to avoid typo, duration below 1s makes no sense
-                    throw new Exception("Could not start recording, duration must be at least 1 second.");
-                }
-            }
-
-            if (delay != null) {
-                if (delay < 1000L * 1000L * 1000) {
-                    // to avoid typo, delay shorter than 1s makes no sense.
-                    throw new Exception("Could not start recording, delay must be at least 1 second.");
-                }
-            }
-
-            if (stackDepth != null) {
-                try {
-                    Options.setStackDepth(Integer.valueOf(stackDepth));
-                } catch (Throwable e) {
-                    throw new Exception("Could not start recording, stack depth is not an integer.", e);
-                }
-            }
-
-            if (repositoryPath != null) {
-                try {
-                    SecuritySupport.SafePath repositorySafePath = new SecuritySupport.SafePath(repositoryPath);
-                    Repository.getRepository().setBasePath(repositorySafePath);
-                } catch (Throwable e) {
-                    throw new Exception("Could not start recording, repository path is invalid.", e);
-                }
-            }
-
-            if (maxChunkSize != null) {
-                Options.setMaxChunkSize(maxChunkSize);
-            }
-
-            if (preserveRepo != null) {
-                Options.setPreserveRepository(preserveRepo);
-            }
-
-            if (threadBufferSize != null) {
-                Options.setThreadBufferSize(threadBufferSize);
-            }
-
-            if (globalBufferCount != null) {
-                Options.setGlobalBufferCount(globalBufferCount);
-            }
-
-            if (globalBufferSize != null) {
-                Options.setGlobalBufferSize(globalBufferSize);
-            }
-
-            if (memorySize != null) {
-                Options.setMemorySize(memorySize);
-            }
-
-            Recording recording = new Recording();
-            if (name != null) {
-                recording.setName(name);
-            }
-
-            if (disk != null) {
-                recording.setToDisk(disk.booleanValue());
-            }
-            recording.setSettings(s);
-            SecuritySupport.SafePath safePath = null;
-
-            if (path != null) {
-                try {
-                    if (dumpOnExit == null) {
-                        // default to dumponexit=true if user specified filename
-                        dumpOnExit = Boolean.TRUE;
-                    }
-                    Path p = Paths.get(path);
-                    if (Files.isDirectory(p) && (JavaVersionUtil.JAVA_SPEC >= 23 || Boolean.TRUE.equals(dumpOnExit))) {
-                        // Decide destination filename at dump time
-                        // Purposely avoid generating filename in Recording#setDestination due to
-                        // security concerns
-                        JfrJdkCompatibility.setDumpDirectory(PrivateAccess.getInstance().getPlatformRecording(recording), new SecuritySupport.SafePath(p));
-                    } else {
-                        safePath = resolvePath(recording, path);
-                        recording.setDestination(safePath.toPath());
-                    }
-                } catch (IOException | InvalidPathException e) {
-                    recording.close();
-                    throw new Exception("Could not start recording, not able to write to file: " + path, e);
-                }
-            }
-
-            if (maxAge != null) {
-                recording.setMaxAge(Duration.ofNanos(maxAge));
-            }
-
-            if (maxSize != null) {
-                recording.setMaxSize(maxSize);
-            }
-
-            if (duration != null) {
-                recording.setDuration(Duration.ofNanos(duration));
-            }
-
-            if (dumpOnExit != null) {
-                recording.setDumpOnExit(dumpOnExit);
-            }
-
-            StringBuilder msg = new StringBuilder();
-
-            if (delay != null) {
-                Duration dDelay = Duration.ofNanos(delay);
-                recording.scheduleStart(dDelay);
-
-                msg.append("Recording " + recording.getId() + " scheduled to start in ");
-                msg.append(JfrJdkCompatibility.formatTimespan(dDelay, " "));
-                msg.append(".");
-            } else {
-                recording.start();
-                msg.append("Started recording " + recording.getId() + ".");
-            }
-
-            if (recording.isToDisk() && duration == null && maxAge == null && maxSize == null) {
-                msg.append(" No limit specified, using maxsize=250MB as default.");
-                recording.setMaxSize(250 * 1024L * 1024L);
-            }
-
-            if (safePath != null && duration != null) {
-                msg.append(" The result will be written to:");
-                msg.append(System.getProperty("line.separator"));
-                msg.append(getPath(safePath));
-                msg.append(System.getProperty("line.separator"));
-            }
-            Logger.log(LogTag.JFR_SYSTEM, LogLevel.INFO, msg.toString());
-        } catch (Throwable e) {
-            VMError.shouldNotReachHere(e);
+        if (Logger.shouldLog(LogTag.JFR_DCMD, LogLevel.DEBUG)) {
+            Logger.log(LogTag.JFR_DCMD, LogLevel.DEBUG, "Executing DCmdStart: name=" + name +
+                            ", settings=" + Arrays.asList(settings) +
+                            ", delay=" + delay +
+                            ", duration=" + duration +
+                            ", disk=" + disk +
+                            ", filename=" + path +
+                            ", maxage=" + maxAge +
+                            ", maxsize=" + maxSize +
+                            ", dumponexit =" + dumpOnExit +
+                            ", path-to-gc-roots=" + pathToGcRoots);
         }
+        if (name != null) {
+            try {
+                Integer.parseInt(name);
+                throw argumentParsingFailed("Name of recording can't be numeric");
+            } catch (NumberFormatException nfe) {
+                // ok, can't be mixed up with name
+            }
+        }
+
+        if (duration == null && Boolean.FALSE.equals(dumpOnExit) && path != null) {
+            throw argumentParsingFailed("Filename can only be set for a time bound recording or if dumponexit=true. Set duration/dumponexit or omit filename.");
+        }
+        if (settings.length == 1 && settings[0].length() == 0) {
+            throw argumentParsingFailed("No settings specified. Use settings=none to start without any settings");
+        }
+        Map<String, String> s = new HashMap<>();
+        for (String configName : settings) {
+            try {
+                s.putAll(JFC.createKnown(configName).getSettings());
+            } catch (FileNotFoundException e) {
+                throw argumentParsingFailed("Could not find settings file'" + configName + "'", e);
+            } catch (IOException | ParseException e) {
+                throw argumentParsingFailed("Could not parse settings file '" + settings[0] + "'", e);
+            }
+        }
+
+        OldObjectSample.updateSettingPathToGcRoots(s, pathToGcRoots);
+
+        if (duration != null) {
+            if (duration < 1000L * 1000L * 1000L) {
+                // to avoid typo, duration below 1s makes no sense
+                throw argumentParsingFailed("Could not start recording, duration must be at least 1 second.");
+            }
+        }
+
+        if (delay != null) {
+            if (delay < 1000L * 1000L * 1000) {
+                // to avoid typo, delay shorter than 1s makes no sense.
+                throw argumentParsingFailed("Could not start recording, delay must be at least 1 second.");
+            }
+        }
+
+        Recording recording = new Recording();
+        if (name != null) {
+            recording.setName(name);
+        }
+
+        if (disk != null) {
+            recording.setToDisk(disk);
+        }
+        recording.setSettings(s);
+        SecuritySupport.SafePath safePath = null;
+
+        if (path != null) {
+            try {
+                if (dumpOnExit == null) {
+                    // default to dumponexit=true if user specified filename
+                    dumpOnExit = Boolean.TRUE;
+                }
+                Path p = Paths.get(path);
+                if (Files.isDirectory(p) && (JavaVersionUtil.JAVA_SPEC >= 23 || Boolean.TRUE.equals(dumpOnExit))) {
+                    // Decide destination filename at dump time
+                    // Purposely avoid generating filename in Recording#setDestination due to
+                    // security concerns
+                    JfrJdkCompatibility.setDumpDirectory(PrivateAccess.getInstance().getPlatformRecording(recording), new SecuritySupport.SafePath(p));
+                } else {
+                    safePath = resolvePath(recording, path);
+                    recording.setDestination(safePath.toPath());
+                }
+            } catch (IOException | InvalidPathException e) {
+                recording.close();
+                throw new RuntimeException("Could not start recording, not able to write to file: " + path, e);
+            }
+        }
+
+        if (maxAge != null) {
+            recording.setMaxAge(Duration.ofNanos(maxAge));
+        }
+
+        if (maxSize != null) {
+            recording.setMaxSize(maxSize);
+        }
+
+        if (duration != null) {
+            recording.setDuration(Duration.ofNanos(duration));
+        }
+
+        if (dumpOnExit != null) {
+            recording.setDumpOnExit(dumpOnExit);
+        }
+
+        StringBuilder msg = new StringBuilder();
+
+        if (delay != null) {
+            Duration dDelay = Duration.ofNanos(delay);
+            recording.scheduleStart(dDelay);
+
+            msg.append("Recording ");
+            msg.append(recording.getId());
+            msg.append(" scheduled to start in ");
+            msg.append(JfrJdkCompatibility.formatTimespan(dDelay, " "));
+            msg.append(".");
+        } else {
+            recording.start();
+            msg.append("Started recording ");
+            msg.append(recording.getId());
+            msg.append(".");
+        }
+
+        if (recording.isToDisk() && duration == null && maxAge == null && maxSize == null) {
+            msg.append(" No limit specified, using maxsize=250MB as default.");
+            recording.setMaxSize(250 * 1024L * 1024L);
+        }
+
+        if (safePath != null && duration != null) {
+            msg.append(" The result will be written to:");
+            msg.append(System.getProperty("line.separator"));
+            msg.append(getPath(safePath));
+            msg.append(System.getProperty("line.separator"));
+        }
+        Logger.log(LogTag.JFR_SYSTEM, LogLevel.INFO, msg.toString());
     }
 
     private static SecuritySupport.SafePath resolvePath(Recording recording, String filename) throws InvalidPathException {
@@ -349,15 +360,16 @@ public class JfrManager {
         }
     }
 
-    private static Map<JfrArgument, String> parseJfrOptions(String userInput, JfrArgument[] possibleArguments) {
+    private static Map<JfrArgument, String> parseJfrOptions(RuntimeOptionKey<String> runtimeOptionKey, JfrArgument[] possibleArguments) {
         Map<JfrArgument, String> optionsMap = new HashMap<>();
+        String userInput = runtimeOptionKey.getValue();
         if (!userInput.isEmpty()) {
             String[] options = userInput.split(",");
             for (String option : options) {
                 String[] keyVal = option.split("=");
                 JfrArgument arg = findArgument(possibleArguments, keyVal[0]);
                 if (arg == null) {
-                    throw VMError.shouldNotReachHere("Unknown argument '" + keyVal[0] + "' in " + SubstrateOptions.StartFlightRecording.getName());
+                    throw argumentParsingFailed("Unknown argument '" + keyVal[0] + "' in " + runtimeOptionKey.getName());
                 }
                 optionsMap.put(arg, keyVal[1]);
             }
@@ -386,7 +398,7 @@ public class JfrManager {
         } else if ("false".equalsIgnoreCase(value)) {
             return false;
         } else {
-            throw VMError.shouldNotReachHere("Could not parse JFR argument '" + key.getCmdLineKey() + "=" + value + "'. Expected a boolean value.");
+            throw argumentParsingFailed("Could not parse JFR argument '" + key.getCmdLineKey() + "=" + value + "'. Expected a boolean value.");
         }
     }
 
@@ -411,66 +423,65 @@ public class JfrManager {
                 }
 
                 String unit = value.substring(idx);
-                if ("ns".equals(unit)) {
-                    return Duration.ofNanos(time).toNanos();
-                } else if ("us".equals(unit)) {
-                    return Duration.ofNanos(time * 1000).toNanos();
-                } else if ("ms".equals(unit)) {
-                    return Duration.ofMillis(time).toNanos();
-                } else if ("s".equals(unit)) {
-                    return Duration.ofSeconds(time).toNanos();
-                } else if ("m".equals(unit)) {
-                    return Duration.ofMinutes(time).toNanos();
-                } else if ("h".equals(unit)) {
-                    return Duration.ofHours(time).toNanos();
-                } else if ("d".equals(unit)) {
-                    return Duration.ofDays(time).toNanos();
-                }
-                throw new IllegalArgumentException("Unit is invalid.");
+                return switch (unit) {
+                    case "ns" -> Duration.ofNanos(time).toNanos();
+                    case "us" -> Duration.ofNanos(time * 1000).toNanos();
+                    case "ms" -> Duration.ofMillis(time).toNanos();
+                    case "s" -> Duration.ofSeconds(time).toNanos();
+                    case "m" -> Duration.ofMinutes(time).toNanos();
+                    case "h" -> Duration.ofHours(time).toNanos();
+                    case "d" -> Duration.ofDays(time).toNanos();
+                    default -> throw new IllegalArgumentException("Unit is invalid.");
+                };
             } catch (IllegalArgumentException e) {
-                throw VMError.shouldNotReachHere("Could not parse JFR argument '" + key.cmdLineKey + "=" + value + "'. " + e.getMessage());
+                throw argumentParsingFailed("Could not parse JFR argument '" + key.cmdLineKey + "=" + value + "'. " + e.getMessage());
+            }
+        }
+        return null;
+    }
+
+    private static Integer parseInteger(Map<JfrArgument, String> args, JfrArgument key) {
+        String value = args.get(key);
+        if (value != null) {
+            try {
+                return Integer.valueOf(value);
+            } catch (Throwable e) {
+                throw argumentParsingFailed("Could not parse JFR argument '" + key.getCmdLineKey() + "=" + value + "'. " + e.getMessage());
             }
         }
         return null;
     }
 
     private static Long parseMaxSize(Map<JfrArgument, String> args, JfrArgument key) {
-        final String value = args.get(key);
-        if (value != null) {
-            try {
-                int idx = indexOfFirstNonDigitCharacter(value);
-                long number;
-                try {
-                    number = Long.parseLong(value.substring(0, idx));
-                } catch (NumberFormatException e) {
-                    throw new IllegalArgumentException("Expected a number.");
-                }
-
-                // Missing unit, number is plain bytes
-                if (idx == value.length()) {
-                    return number;
-                }
-
-                final char unit = value.substring(idx).charAt(0);
-                switch (unit) {
-                    case 'k':
-                    case 'K':
-                        return number * 1024;
-                    case 'm':
-                    case 'M':
-                        return number * 1024 * 1024;
-                    case 'g':
-                    case 'G':
-                        return number * 1024 * 1024 * 1024;
-                    default:
-                        // Unknown unit, number is treated as plain bytes
-                        return number;
-                }
-            } catch (IllegalArgumentException e) {
-                throw VMError.shouldNotReachHere("Could not parse JFR argument '" + key.getCmdLineKey() + "=" + value + "'. " + e.getMessage());
-            }
+        String value = args.get(key);
+        if (value == null) {
+            return null;
         }
-        return null;
+
+        try {
+            int idx = indexOfFirstNonDigitCharacter(value);
+            long number;
+            try {
+                number = Long.parseLong(value.substring(0, idx));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Expected a positive number.");
+            }
+
+            // Missing unit, number is plain bytes
+            if (idx == value.length()) {
+                return number;
+            }
+
+            final char unit = value.substring(idx).charAt(0);
+            return switch (unit) {
+                case 'k', 'K' -> number * 1024;
+                case 'm', 'M' -> number * 1024 * 1024;
+                case 'g', 'G' -> number * 1024 * 1024 * 1024;
+                default -> number; // Unknown unit, number is treated as plain bytes
+            };
+        } catch (IllegalArgumentException e) {
+            throw argumentParsingFailed("Could not parse JFR argument '" + key.getCmdLineKey() + "=" + value + "'. " + e.getMessage());
+        }
     }
 
     private static int indexOfFirstNonDigitCharacter(String durationText) {
@@ -488,6 +499,14 @@ public class JfrManager {
             }
         }
         return null;
+    }
+
+    private static RuntimeException argumentParsingFailed(String message) {
+        throw new JfrArgumentParsingFailed(message);
+    }
+
+    private static RuntimeException argumentParsingFailed(String message, Throwable cause) {
+        throw new JfrArgumentParsingFailed(message, cause);
     }
 
     private interface JfrArgument {
@@ -519,13 +538,13 @@ public class JfrManager {
     }
 
     private enum FlightRecorderOptionsArgument implements JfrArgument {
-        GlobalBufferCount("globalbuffercount"),
         GlobalBufferSize("globalbuffersize"),
         MaxChunkSize("maxchunksize"),
         MemorySize("memorysize"),
-        RepositoryPath("repositorypath"),
+        OldObjectQueueSize("old-object-queue-size"),
+        RepositoryPath("repository"),
         StackDepth("stackdepth"),
-        ThreadBufferSize("thread_buffer_size"),
+        ThreadBufferSize("threadbuffersize"),
         PreserveRepository("preserve-repository");
 
         private final String cmdLineKey;
@@ -537,6 +556,18 @@ public class JfrManager {
         @Override
         public String getCmdLineKey() {
             return cmdLineKey;
+        }
+    }
+
+    private static class JfrArgumentParsingFailed extends RuntimeException {
+        @Serial private static final long serialVersionUID = -1050173145647068124L;
+
+        JfrArgumentParsingFailed(String message, Throwable cause) {
+            super(message, cause);
+        }
+
+        JfrArgumentParsingFailed(String message) {
+            super(message);
         }
     }
 }

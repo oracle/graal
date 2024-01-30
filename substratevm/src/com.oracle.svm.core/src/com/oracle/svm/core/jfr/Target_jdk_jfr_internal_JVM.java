@@ -448,7 +448,7 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     @TargetElement(onlyWith = JDK22OrLater.class)
     public static void emitOldObjectSamples(long cutoff, boolean emitAll, boolean skipBFS) {
-        // Not supported but this method is called during JFR shutdown, so we can't throw an error.
+        SubstrateJVM.get().emitOldObjectSamples(cutoff, emitAll, skipBFS);
     }
 
     /** See {@link JVM#shouldRotateDisk}. */
