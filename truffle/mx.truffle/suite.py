@@ -2077,12 +2077,15 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.dsl.processor",
       ],
-      "distDependencies" : ["TRUFFLE_JSON"],
+      "distDependencies" : [],
       "description" : "The Truffle DSL Processor generates source code for nodes that are declared using the DSL.",
       "allowsJavadocWarnings": True,
       "maven": {
           "tag": ["default", "public"],
       },
+      "overlaps" : [
+        "TRUFFLE_DSL_PROCESSOR",
+      ],
       "graalCompilerSourceEdition": "ignore",
     },
 
