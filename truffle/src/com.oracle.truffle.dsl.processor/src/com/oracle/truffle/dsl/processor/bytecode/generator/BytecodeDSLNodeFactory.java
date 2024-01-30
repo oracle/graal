@@ -2064,11 +2064,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             if (model.serializedFields.size() == 0) {
                 // Simplify generated code: just one call
-                b.startStatement().startCall(castParser(method, "nodes.getParserImpl()"), "parse").string("this").end(2);
+                b.startStatement().startCall("nodes.getParserImpl()", "parse").string("this").end(2);
                 serializationElements.writeShort(b, serializationElements.codeEndSerialize);
             } else {
                 b.lineComment("1. Serialize the root nodes and their constants.");
-                b.startStatement().startCall(castParser(method, "nodes.getParserImpl()"), "parse").string("this").end(2);
+                b.startStatement().startCall("nodes.getParserImpl()", "parse").string("this").end(2);
 
                 b.lineComment("2. Serialize the fields stored on each root node.");
                 b.statement("short[][] nodeFields = new short[builtNodes.size()][]");
@@ -4622,7 +4622,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.renameArguments("config");
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.declaration(parserType, "parser", castParser(ex, "getParser()"));
+            b.declaration(parserType, "parser", "getParserImpl()");
             b.declaration(type(boolean.class), "addSource", "isAddSource(config)");
             b.declaration(type(int.class), "addInstrumentation", "encodeInstrumentation(getAddInstrumentations(config))");
             b.declaration(type(int.class), "removeInstrumentation", "encodeInstrumentation(getRemoveInstrumentations(config))");
@@ -4671,6 +4671,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createGetParserImpl() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), parserType, "getParserImpl");
+            mergeSuppressWarnings(ex, "unchecked");
             CodeTreeBuilder b = ex.createBuilder();
 
             b.startReturn();
@@ -4772,8 +4773,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             type.add(new CodeExecutableElement(Set.of(ABSTRACT), type.asType(), "toCached"));
             CodeExecutableElement addSource = type.add(new CodeExecutableElement(Set.of(ABSTRACT), type.asType(), "addSource"));
-            addSource.addParameter(new CodeVariableElement(arrayOf(type(int.class)), "sourceInfo"));
-            addSource.addParameter(new CodeVariableElement(generic(type(List.class), types.Source), "sources"));
+            addSource.addParameter(new CodeVariableElement(arrayOf(type(int.class)), "newSourceInfo"));
+            addSource.addParameter(new CodeVariableElement(generic(type(List.class), types.Source), "newSources"));
 
             type.add(new CodeExecutableElement(Set.of(ABSTRACT), type.asType(), "cloneUninitialized"));
 
@@ -4784,24 +4785,24 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             type.add(createGetIntrospectionData());
             type.add(createParseInstruction());
             type.add(createGetSourceSection());
-            type.add(createFindSourceSection());
+            type.add(createFindSourceLocation());
             type.add(createFindInstruction());
 
             return type;
         }
 
-        private CodeExecutableElement createFindSourceSection() {
+        private CodeExecutableElement createFindSourceLocation() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findSourceLocation");
             ex.getModifiers().add(FINAL);
             ex.renameArguments("bci");
             CodeTreeBuilder b = ex.createBuilder();
 
             b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
-            b.declaration(generic(type(List.class), types.Source), "sources", "this.sources");
+            b.declaration(generic(type(List.class), types.Source), "localSources", "this.sources");
             b.startIf().string("info == null").end().startBlock();
             b.declaration(type.asType(), "newNode", "getRoot().ensureSources()");
             b.statement("info = newNode.sourceInfo");
-            b.statement("sources = newNode.sources");
+            b.statement("localSources = newNode.sources");
             b.end();
 
             b.statement("int i = 0");
@@ -4820,7 +4821,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.returnNull();
             b.end();
 
-            b.statement("return sources.get((info[i] >> 16) & 0xffff).createSection(info[i + 1], info[i + 2])");
+            b.statement("return localSources.get((info[i] >> 16) & 0xffff).createSection(info[i + 1], info[i + 2])");
 
             return ex;
         }
@@ -4831,18 +4832,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = ex.createBuilder();
 
             b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
-            b.declaration(generic(type(List.class), types.Source), "sources", "this.sources");
+            b.declaration(generic(type(List.class), types.Source), "localSources", "this.sources");
             b.startIf().string("info == null").end().startBlock();
             b.declaration(type.asType(), "newNode", "getRoot().ensureSources()");
             b.statement("info = newNode.sourceInfo");
-            b.statement("sources = newNode.sources");
+            b.statement("localSources = newNode.sources");
             b.end();
 
             b.startIf().string("info.length == 0").end().startBlock();
             b.returnNull();
             b.end();
 
-            b.startReturn().string("sources.get((info[0] >> 16) & 0xffff).createSection(info[1], info[2])").end();
+            b.startReturn().string("localSources.get((info[0] >> 16) & 0xffff).createSection(info[1], info[2])").end();
 
             return ex;
         }
@@ -5214,15 +5215,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createAddSource() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement((DeclaredType) abstractBytecodeNode.asType(), "addSource");
-            ex.renameArguments("sourceInfo", "sources");
+            ex.renameArguments("newSourceInfo", "newSources");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn();
             b.startNew(type.asType());
             b.string("this.bytecodes");
             b.string("this.constants");
             b.string("this.handlers");
-            b.string("sourceInfo");
-            b.string("sources");
+            b.string("newSourceInfo");
+            b.string("newSources");
             for (VariableElement var : ElementFilter.fieldsIn(type.getEnclosedElements())) {
                 b.string("this.", var.getSimpleName().toString());
             }
@@ -7615,16 +7616,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     private CodeTree createOperationConstant(OperationModel op) {
         return CodeTreeBuilder.createBuilder().staticReference(operationsElement.asType(), op.getConstantName()).build();
-    }
-
-    private CodeTree castParser(CodeExecutableElement ex, String parser) {
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        b.startParantheses();
-        b.cast(parserType);
-        b.string(parser);
-        b.end();
-        mergeSuppressWarnings(ex, "unchecked");
-        return b.build();
     }
 
     private static CodeTree cast(TypeMirror type, String value) {

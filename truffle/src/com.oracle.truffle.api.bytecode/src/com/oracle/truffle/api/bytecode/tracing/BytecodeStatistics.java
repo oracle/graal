@@ -446,7 +446,7 @@ public class BytecodeStatistics {
 
             @Override
             public boolean equals(Object obj) {
-                return obj.getClass() == InstructionSequence.class && Arrays.equals(((InstructionSequence) obj).instructions, instructions);
+                return obj != null && obj.getClass() == InstructionSequence.class && Arrays.equals(((InstructionSequence) obj).instructions, instructions);
             }
 
             @Override
