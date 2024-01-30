@@ -219,4 +219,4 @@ They follow the same naming convention:
 
 ## Further Reading
 
-* [Hosted and Runtime Options](HostedvsRuntimeOptions.md)
+* [Command-line Options](BuildOptions.md)
