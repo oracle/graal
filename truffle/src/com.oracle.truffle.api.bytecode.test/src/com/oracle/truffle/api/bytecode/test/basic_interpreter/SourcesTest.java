@@ -53,7 +53,7 @@ import org.junit.runners.Parameterized;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
-import com.oracle.truffle.api.bytecode.BytecodeNodes;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.introspection.Instruction;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -335,7 +335,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
     public void testSourceReparse() {
         // Test input taken from testSource above.
         Source source = Source.newBuilder("test", "return 1", "test.test").build();
-        BytecodeNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.DEFAULT, b -> {
+        BytecodeRootNodes<BasicInterpreter> nodes = createNodes(BytecodeConfig.DEFAULT, b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(source);
             b.beginSourceSection(0, 8);

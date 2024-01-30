@@ -49,7 +49,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
-import com.oracle.truffle.api.bytecode.BytecodeNodes;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
@@ -66,7 +66,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 public class HookTest {
 
     public static BytecodeNodeWithHooks parseNode(BytecodeParser<BytecodeNodeWithHooksGen.Builder> builder) {
-        BytecodeNodes<BytecodeNodeWithHooks> nodes = BytecodeNodeWithHooksGen.create(BytecodeConfig.DEFAULT, builder);
+        BytecodeRootNodes<BytecodeNodeWithHooks> nodes = BytecodeNodeWithHooksGen.create(BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(0);
     }
 

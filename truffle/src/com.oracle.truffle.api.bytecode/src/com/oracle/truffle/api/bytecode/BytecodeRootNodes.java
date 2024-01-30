@@ -49,7 +49,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
- * A {@link BytecodeNodes} instance encapsulates one or more bytecode root nodes produced from a
+ * A {@link BytecodeRootNodes} instance encapsulates one or more bytecode root nodes produced from a
  * single parse. To reduce interpreter footprint, it supports on-demand reparsing to compute source
  * and instrumentation metadata.
  *
@@ -58,7 +58,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  * @param <T> the type of the bytecode root node
  * @since 24.1
  */
-public abstract class BytecodeNodes<T extends RootNode & BytecodeRootNode> {
+public abstract class BytecodeRootNodes<T extends RootNode & BytecodeRootNode> {
 
     /**
      * A singleton object used to ensure certain Bytecode DSL APIs are only used by generated code.
@@ -75,12 +75,12 @@ public abstract class BytecodeNodes<T extends RootNode & BytecodeRootNode> {
      */
     @CompilationFinal(dimensions = 1) protected T[] nodes;
 
-    protected BytecodeNodes(BytecodeParser<? extends BytecodeBuilder> parser) {
+    protected BytecodeRootNodes(BytecodeParser<? extends BytecodeBuilder> parser) {
         this.parser = parser;
     }
 
     static void checkToken(Object token) {
-        if (token != BytecodeNodes.TOKEN) {
+        if (token != BytecodeRootNodes.TOKEN) {
             throw new IllegalArgumentException("Invalid usage token. Seriously, you shouldn't subclass this class manually.");
         }
     }
@@ -178,7 +178,8 @@ public abstract class BytecodeNodes<T extends RootNode & BytecodeRootNode> {
         return reparseImpl(BytecodeConfig.newBuilder().addInstrumentations(instrumentations).build());
     }
 
-    public final boolean ensureTags(@SuppressWarnings("unchecked") Class<? extends Tag>... tags) {
+    @SuppressWarnings("unchecked")
+    public final boolean ensureTags(Class<? extends Tag>... tags) {
         return reparseImpl(BytecodeConfig.newBuilder().addTags(tags).build());
     }
 
@@ -187,7 +188,7 @@ public abstract class BytecodeNodes<T extends RootNode & BytecodeRootNode> {
     }
 
     /**
-     * Returns a string representation of a {@link BytecodeNodes}.
+     * Returns a string representation of a {@link BytecodeRootNodes}.
      *
      * @since 24.1
      */

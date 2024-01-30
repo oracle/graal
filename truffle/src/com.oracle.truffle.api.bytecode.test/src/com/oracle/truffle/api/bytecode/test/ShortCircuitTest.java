@@ -54,7 +54,7 @@ import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
-import com.oracle.truffle.api.bytecode.BytecodeNodes;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
@@ -79,13 +79,13 @@ public class ShortCircuitTest {
     @Parameter(0) public Class<? extends BytecodeNodeWithShortCircuit> interpreterClass;
 
     @SuppressWarnings("unchecked")
-    public static <T extends BytecodeNodeWithShortCircuitBuilder> BytecodeNodes<BytecodeNodeWithShortCircuit> createNodes(
+    public static <T extends BytecodeNodeWithShortCircuitBuilder> BytecodeRootNodes<BytecodeNodeWithShortCircuit> createNodes(
                     Class<? extends BytecodeNodeWithShortCircuit> interpreterClass,
                     BytecodeConfig config,
                     BytecodeParser<T> builder) {
         try {
             Method create = interpreterClass.getMethod("create", BytecodeConfig.class, BytecodeParser.class);
-            return (BytecodeNodes<BytecodeNodeWithShortCircuit>) create.invoke(null, config, builder);
+            return (BytecodeRootNodes<BytecodeNodeWithShortCircuit>) create.invoke(null, config, builder);
         } catch (InvocationTargetException e) {
             // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
             // get caught by the test harness.
@@ -98,7 +98,7 @@ public class ShortCircuitTest {
 
     public static <T extends BytecodeNodeWithShortCircuitBuilder> BytecodeNodeWithShortCircuit parseNode(Class<? extends BytecodeNodeWithShortCircuit> interpreterClass,
                     BytecodeParser<T> builder) {
-        BytecodeNodes<BytecodeNodeWithShortCircuit> nodes = createNodes(interpreterClass, BytecodeConfig.DEFAULT, builder);
+        BytecodeRootNodes<BytecodeNodeWithShortCircuit> nodes = createNodes(interpreterClass, BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(nodes.count() - 1);
     }
 

@@ -49,7 +49,7 @@ import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.benchmark.bytecode.ManualBytecodeInterpreter.AccessToken;
 import com.oracle.truffle.api.bytecode.BytecodeBuilder;
 import com.oracle.truffle.api.bytecode.BytecodeDSLAccess;
-import com.oracle.truffle.api.bytecode.BytecodeNodes;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeSupport;
@@ -169,7 +169,7 @@ public class ManualBytecodeInterpreter extends BaseBytecodeNode {
         }
     }
 
-    abstract static class AccessToken<T extends RootNode & BytecodeRootNode> extends BytecodeNodes<T> {
+    abstract static class AccessToken<T extends RootNode & BytecodeRootNode> extends BytecodeRootNodes<T> {
 
         protected AccessToken(BytecodeParser<? extends BytecodeBuilder> parse) {
             super(parse);

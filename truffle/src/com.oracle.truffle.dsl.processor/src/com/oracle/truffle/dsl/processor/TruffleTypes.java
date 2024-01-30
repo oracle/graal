@@ -351,9 +351,9 @@ public class TruffleTypes {
     public static final String BytecodeInstrumentTreeNode_Name = "com.oracle.truffle.api.bytecode.BytecodeInstrumentTreeNode";
     public static final String BytecodeLabel_Name = "com.oracle.truffle.api.bytecode.BytecodeLabel";
     public static final String BytecodeLocal_Name = "com.oracle.truffle.api.bytecode.BytecodeLocal";
-    public static final String BytecodeNodes_Name = "com.oracle.truffle.api.bytecode.BytecodeNodes";
     public static final String BytecodeParser_Name = "com.oracle.truffle.api.bytecode.BytecodeParser";
     public static final String BytecodeRootNode_Name = "com.oracle.truffle.api.bytecode.BytecodeRootNode";
+    public static final String BytecodeRootNodes_Name = "com.oracle.truffle.api.bytecode.BytecodeRootNodes";
     public static final String BytecodeNode_Name = "com.oracle.truffle.api.bytecode.BytecodeNode";
     public static final String BytecodeLocation_Name = "com.oracle.truffle.api.bytecode.BytecodeLocation";
     public static final String BytecodeTier_Name = "com.oracle.truffle.api.bytecode.BytecodeTier";
@@ -396,9 +396,9 @@ public class TruffleTypes {
     public final DeclaredType BytecodeInstrumentTreeNode = c.getDeclaredTypeOptional(BytecodeInstrumentTreeNode_Name);
     public final DeclaredType BytecodeLabel = c.getDeclaredTypeOptional(BytecodeLabel_Name);
     public final DeclaredType BytecodeLocal = c.getDeclaredTypeOptional(BytecodeLocal_Name);
-    public final DeclaredType BytecodeNodes = c.getDeclaredTypeOptional(BytecodeNodes_Name);
     public final DeclaredType BytecodeParser = c.getDeclaredTypeOptional(BytecodeParser_Name);
     public final DeclaredType BytecodeRootNode = c.getDeclaredTypeOptional(BytecodeRootNode_Name);
+    public final DeclaredType BytecodeRootNodes = c.getDeclaredTypeOptional(BytecodeRootNodes_Name);
     public final DeclaredType BytecodeNode = c.getDeclaredTypeOptional(BytecodeNode_Name);
     public final DeclaredType BytecodeLocation = c.getDeclaredTypeOptional(BytecodeLocation_Name);
     public final DeclaredType BytecodeTier = c.getDeclaredTypeOptional(BytecodeTier_Name);

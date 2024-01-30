@@ -74,7 +74,7 @@ import com.oracle.truffle.api.source.SourceSection;
 public class ErrorTests {
     @ExpectError("Bytecode DSL class must be declared abstract.")
     @GenerateBytecode(languageClass = ErrorLanguage.class)
-    public class MustBeDeclaredAbstract extends RootNode implements BytecodeRootNode {
+    public static class MustBeDeclaredAbstract extends RootNode implements BytecodeRootNode {
         protected MustBeDeclaredAbstract(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
@@ -99,22 +99,38 @@ public class ErrorTests {
 
     @ExpectError("Bytecode DSL class must directly or indirectly subclass RootNode.")
     @GenerateBytecode(languageClass = ErrorLanguage.class)
-    public abstract class MustBeSubclassOfRootNode implements BytecodeRootNode {
+    public abstract static class MustBeSubclassOfRootNode implements BytecodeRootNode {
         protected MustBeSubclassOfRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         }
     }
 
     @ExpectError("Bytecode DSL class must directly or indirectly implement BytecodeRootNode.")
     @GenerateBytecode(languageClass = ErrorLanguage.class)
-    public abstract class MustImplementBytecodeRootNode extends RootNode {
+    public abstract static class MustImplementBytecodeRootNode extends RootNode {
         protected MustImplementBytecodeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+    }
+
+    @ExpectError("Bytecode DSL class must be public.")
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
+    private abstract static class MustBePublic extends RootNode implements BytecodeRootNode {
+        protected MustBePublic(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+    }
+
+    @ExpectError("Bytecode DSL class must be static if it is a nested class.")
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
+    public abstract class MustBeStatic extends RootNode implements BytecodeRootNode {
+        protected MustBeStatic(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
     }
 
     @ExpectError("Bytecode DSL class should declare a constructor that has signature (TruffleLanguage<C>, FrameDescriptor) or (TruffleLanguage<C>, FrameDescriptor.Builder). The constructor should be visible to subclasses.")
     @GenerateBytecode(languageClass = ErrorLanguage.class)
-    public abstract class HiddenConstructor extends RootNode implements BytecodeRootNode {
+    public abstract static class HiddenConstructor extends RootNode implements BytecodeRootNode {
         private HiddenConstructor(TruffleLanguage<?> language, FrameDescriptor descriptor) {
             super(language, descriptor);
         }
@@ -122,7 +138,7 @@ public class ErrorTests {
 
     @ExpectError("Bytecode DSL class should declare a constructor that has signature (TruffleLanguage<C>, FrameDescriptor) or (TruffleLanguage<C>, FrameDescriptor.Builder). The constructor should be visible to subclasses.")
     @GenerateBytecode(languageClass = ErrorLanguage.class)
-    public abstract class InvalidConstructor extends RootNode implements BytecodeRootNode {
+    public abstract static class InvalidConstructor extends RootNode implements BytecodeRootNode {
         protected InvalidConstructor() {
             super(null);
         }
@@ -149,7 +165,7 @@ public class ErrorTests {
     }
 
     @GenerateBytecode(languageClass = ErrorLanguage.class)
-    public abstract class BadOverrides extends RootNode implements BytecodeRootNode {
+    public abstract static class BadOverrides extends RootNode implements BytecodeRootNode {
         protected BadOverrides(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
@@ -185,7 +201,7 @@ public class ErrorTests {
     @ExpectError("The used type system 'com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.ErroredTypeSystem' is invalid. Fix errors in the type system first.")
     @GenerateBytecode(languageClass = ErrorLanguage.class)
     @TypeSystemReference(ErroredTypeSystem.class)
-    public abstract class BadTypeSystem extends RootNode implements BytecodeRootNode {
+    public abstract static class BadTypeSystem extends RootNode implements BytecodeRootNode {
         protected BadTypeSystem(TruffleLanguage<?> language, FrameDescriptor builder) {
             super(language, builder);
         }
@@ -193,7 +209,7 @@ public class ErrorTests {
 
     @ExpectError("Cannot perform boxing elimination on java.lang.String. Remove this type from the boxing eliminated types list. Only primitive types boolean, byte, int, float, long, and double are supported.")
     @GenerateBytecode(languageClass = ErrorLanguage.class, boxingEliminationTypes = {String.class})
-    public abstract class BadBoxingElimination extends RootNode implements BytecodeRootNode {
+    public abstract static class BadBoxingElimination extends RootNode implements BytecodeRootNode {
         protected BadBoxingElimination(TruffleLanguage<?> language, FrameDescriptor builder) {
             super(language, builder);
         }
@@ -202,7 +218,7 @@ public class ErrorTests {
     @ExpectError("Could not proxy operation: the proxied type must be a class, not int.")
     @GenerateBytecode(languageClass = ErrorLanguage.class)
     @OperationProxy(int.class)
-    public abstract class PrimitiveProxyType extends RootNode implements BytecodeRootNode {
+    public abstract static class PrimitiveProxyType extends RootNode implements BytecodeRootNode {
         protected PrimitiveProxyType(TruffleLanguage<?> language, FrameDescriptor builder) {
             super(language, builder);
         }
@@ -211,7 +227,7 @@ public class ErrorTests {
     @GenerateBytecode(languageClass = ErrorLanguage.class)
     @ExpectError("Encountered errors using com.oracle.truffle.api.bytecode.test.error_tests.ErrorTests.NoCachedProxyType.NodeWithNoCache as an OperationProxy. These errors must be resolved before the DSL can proceed.")
     @OperationProxy(NoCachedProxyType.NodeWithNoCache.class)
-    public abstract class NoCachedProxyType extends RootNode implements BytecodeRootNode {
+    public abstract static class NoCachedProxyType extends RootNode implements BytecodeRootNode {
         protected NoCachedProxyType(TruffleLanguage<?> language, FrameDescriptor builder) {
             super(language, builder);
         }
@@ -444,8 +460,8 @@ public class ErrorTests {
         }
     }
 
-    // These specializations should not be a problem. See {@link
-    // OperationErrorTests.PackagePrivateSpecializationOperation}
+// These specializations should not be a problem. See {@link
+// OperationErrorTests.PackagePrivateSpecializationOperation}
     @OperationProxy.Proxyable
     public abstract static class PackagePrivateSpecializationOperationProxy extends Node {
         public abstract Object execute(Object x, Object y);

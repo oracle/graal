@@ -49,7 +49,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
-import com.oracle.truffle.api.bytecode.BytecodeNodes;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ForceQuickening;
@@ -73,7 +73,7 @@ public class BoxingEliminationTypeSystemTest extends AbstractQuickeningTest {
     private static final int NUM_ITERATIONS = 10_000;
 
     private static BoxingEliminationTypeSystemRootNode parse(BytecodeParser<BoxingEliminationTypeSystemRootNodeGen.Builder> builder) {
-        BytecodeNodes<BoxingEliminationTypeSystemRootNode> nodes = BoxingEliminationTypeSystemRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
+        BytecodeRootNodes<BoxingEliminationTypeSystemRootNode> nodes = BoxingEliminationTypeSystemRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(nodes.count() - 1);
     }
 

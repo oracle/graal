@@ -51,7 +51,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
-import com.oracle.truffle.api.bytecode.BytecodeNodes;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 
 @Registration(id = "bm", name = "bm")
@@ -66,17 +66,17 @@ class BenchmarkLanguage extends TruffleLanguage<Object> {
 
     public static void registerName(String name, Class<? extends BytecodeBenchmarkRootNode> cls, BiConsumer<BenchmarkLanguage, BytecodeBenchmarkRootNodeBuilder> parser) {
         registerName(name, l -> {
-            BytecodeNodes<BytecodeBenchmarkRootNode> nodes = createNodes(cls, b -> parser.accept(l, b));
+            BytecodeRootNodes<BytecodeBenchmarkRootNode> nodes = createNodes(cls, b -> parser.accept(l, b));
             return nodes.getNode(nodes.count() - 1).getCallTarget();
         });
     }
 
     @SuppressWarnings("unchecked")
-    private static <T extends BytecodeBenchmarkRootNodeBuilder> BytecodeNodes<BytecodeBenchmarkRootNode> createNodes(Class<? extends BytecodeBenchmarkRootNode> interpreterClass,
+    private static <T extends BytecodeBenchmarkRootNodeBuilder> BytecodeRootNodes<BytecodeBenchmarkRootNode> createNodes(Class<? extends BytecodeBenchmarkRootNode> interpreterClass,
                     BytecodeParser<T> builder) {
         try {
             Method create = interpreterClass.getMethod("create", BytecodeConfig.class, BytecodeParser.class);
-            return (BytecodeNodes<BytecodeBenchmarkRootNode>) create.invoke(null, BytecodeConfig.DEFAULT, builder);
+            return (BytecodeRootNodes<BytecodeBenchmarkRootNode>) create.invoke(null, BytecodeConfig.DEFAULT, builder);
         } catch (InvocationTargetException e) {
             // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
             // get caught by the test harness.

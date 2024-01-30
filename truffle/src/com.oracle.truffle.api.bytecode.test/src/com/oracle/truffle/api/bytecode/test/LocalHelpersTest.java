@@ -64,7 +64,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
-import com.oracle.truffle.api.bytecode.BytecodeNodes;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
@@ -100,13 +100,13 @@ public class LocalHelpersTest {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T extends BytecodeNodeWithLocalIntrospectionBuilder> BytecodeNodes<BytecodeNodeWithLocalIntrospection> createNodes(
+    public static <T extends BytecodeNodeWithLocalIntrospectionBuilder> BytecodeRootNodes<BytecodeNodeWithLocalIntrospection> createNodes(
                     Class<? extends BytecodeNodeWithLocalIntrospection> interpreterClass,
                     BytecodeConfig config,
                     BytecodeParser<T> builder) {
         try {
             Method create = interpreterClass.getMethod("create", BytecodeConfig.class, BytecodeParser.class);
-            return (BytecodeNodes<BytecodeNodeWithLocalIntrospection>) create.invoke(null, config, builder);
+            return (BytecodeRootNodes<BytecodeNodeWithLocalIntrospection>) create.invoke(null, config, builder);
         } catch (InvocationTargetException e) {
             // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
             // get caught by the test harness.
@@ -119,7 +119,7 @@ public class LocalHelpersTest {
 
     public static <T extends BytecodeNodeWithLocalIntrospectionBuilder> BytecodeNodeWithLocalIntrospection parseNode(Class<? extends BytecodeNodeWithLocalIntrospection> interpreterClass,
                     BytecodeParser<T> builder) {
-        BytecodeNodes<BytecodeNodeWithLocalIntrospection> nodes = createNodes(interpreterClass, BytecodeConfig.DEFAULT, builder);
+        BytecodeRootNodes<BytecodeNodeWithLocalIntrospection> nodes = createNodes(interpreterClass, BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(nodes.count() - 1);
     }
 
