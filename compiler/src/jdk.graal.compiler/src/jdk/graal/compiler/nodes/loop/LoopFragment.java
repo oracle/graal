@@ -585,8 +585,8 @@ public abstract class LoopFragment {
                      * <li>originalExitState:The remaining original exit state can either be
                      * retained if it still has usages (below the original exit) or its deleted. If
                      * its deleted we dont want to duplicate any necessary remaining partial unused
-                     * state nodes as those are still part of origina.nodes. Thus, we remove all of
-                     * its unused floating inputs and clear them from nodes.original. The next time
+                     * state nodes as those are still part of original.nodes. Thus, we remove all of
+                     * its unused floating inputs and clear them from original.nodes. The next time
                      * this fragment is then duplicated the exit state (parts) are no longer in the
                      * map and not duplicated.</li>
                      * </ul>
@@ -599,7 +599,7 @@ public abstract class LoopFragment {
                     exitState.applyToVirtual(node -> original.nodes.markAndGrow(node));
                     merge.setStateAfter(originalExitState.duplicateWithVirtualState());
                     if (originalExitState.hasNoUsages()) {
-                        GraphUtil.killWithUnusedFloatingInputs(originalExitState, false, x -> original.nodes.clearAndGrow(x));
+                        GraphUtil.killWithUnusedFloatingInputs(originalExitState, false, unusedInput -> original.nodes.clearAndGrow(unusedInput));
                     }
                 }
             }
