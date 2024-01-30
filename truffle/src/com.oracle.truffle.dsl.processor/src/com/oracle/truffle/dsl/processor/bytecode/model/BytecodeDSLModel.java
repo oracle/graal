@@ -285,7 +285,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                         .setNumChildren(1) //
                         .setTransparent(true) //
                         .setOperationArgumentVarArgs(true) //
-                        .setOperationArguments(new OperationArgument(array(context.getDeclaredType(Class.class)), "tags", "the tags to associate with the enclosed operations"));
+                        .setOperationArguments(new OperationArgument(array(context.getDeclaredType(Class.class)), "newTags", "the tags to associate with the enclosed operations"));
 
         popVariadicInstruction = new InstructionModel[9];
         for (int i = 0; i <= 8; i++) {
@@ -374,7 +374,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         if (instructions.containsKey(name)) {
             throw new AssertionError(String.format("Multiple instructions declared with name %s. Instruction names must be distinct.", name));
         }
-        Signature signature = shortCircuitModel == null ? signature(Object.class, boolean.class, boolean.class) : signature(boolean.class, boolean.class, boolean.class);
+        Signature signature = shortCircuitModel.operator().returnConvertedBoolean ? signature(Object.class, boolean.class, boolean.class) : signature(boolean.class, boolean.class, boolean.class);
         InstructionModel instr = instruction(InstructionKind.CUSTOM_SHORT_CIRCUIT, name, signature);
         instr.shortCircuitModel = shortCircuitModel;
 

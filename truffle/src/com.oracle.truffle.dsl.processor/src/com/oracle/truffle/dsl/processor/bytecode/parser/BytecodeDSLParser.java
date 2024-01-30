@@ -938,7 +938,9 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
     private String resolveElementRelativePath(Element element, String relativePath) {
         File filePath = CompilerFactory.getCompiler(element).getEnclosingSourceFile(processingEnv, element);
-        return Path.of(filePath.getPath()).getParent().resolve(relativePath).toAbsolutePath().toString();
+        Path parent = Path.of(filePath.getPath()).getParent();
+        assert parent != null;
+        return parent.resolve(relativePath).toAbsolutePath().toString();
     }
 
     private static OptimizationDecisionsModel parseDecisions(BytecodeDSLModel model, String decisionsFile, String[] decisionOverrideFiles) {
