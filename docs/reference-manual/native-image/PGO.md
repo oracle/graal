@@ -92,4 +92,4 @@ Hence, the goal is to gather profiles on workload that match the production work
 The gold standard for this is to run the exact same workloads we expect to run in production on the instrumented build.
 Unfortunately, this is not always a simple thing to do, and running representative workloads is a big challenge in using PGO.
 
-TODO BS Add link to PGO-Basic-Usage.md as a "continue here to example of basic usage".
+For an overview of how to use PGO for Native Image on an example application please consult the [Basic Usage of Profile-Guided Optimizations](PGO-Basic-Usage.md) document.
