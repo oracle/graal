@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
 import java.nio.ByteOrder;
 import java.nio.ReadOnlyBufferException;
-import java.util.Objects;
 
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
