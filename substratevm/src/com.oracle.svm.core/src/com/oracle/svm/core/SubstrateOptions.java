@@ -889,6 +889,9 @@ public class SubstrateOptions {
         }
     };
 
+    @Option(help = "Specifies the number of entries that diagnostic buffers have.", type = OptionType.Debug)//
+    public static final HostedOptionKey<Integer> DiagnosticBufferSize = new HostedOptionKey<>(30);
+
     @SuppressWarnings("unused")//
     @APIOption(name = "configure-reflection-metadata")//
     @Option(help = "Enable runtime instantiation of reflection objects for non-invoked methods.", type = OptionType.Expert, deprecated = true)//

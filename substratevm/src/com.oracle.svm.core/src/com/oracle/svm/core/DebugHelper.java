@@ -264,7 +264,7 @@ public class DebugHelper {
         @CEntryPoint(name = "svm_dbg_print_obj", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class)
         public static void printObject(@SuppressWarnings("unused") IsolateThread thread, Pointer objPtr) {
-            SubstrateDiagnostics.printObjectInfo(Log.log(), objPtr);
+            SubstrateDiagnostics.printObjectInfo(Log.log(), objPtr.toObject());
         }
 
         @Uninterruptible(reason = "Called with a raw object pointer.", calleeMustBe = false)

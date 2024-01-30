@@ -32,18 +32,12 @@ import com.oracle.svm.core.Uninterruptible;
  * Keeps the last-n entries and allows to read the out on demand..
  */
 public final class RingBuffer<T> {
-    private static final int DEFAULT_BUFFER_SIZE = 30;
-
     private final T[] entries;
     private int pos;
     private boolean wrapped;
 
     public interface Consumer<T> {
         void accept(Object context, T t);
-    }
-
-    public RingBuffer() {
-        this(DEFAULT_BUFFER_SIZE);
     }
 
     @SuppressWarnings("unchecked")

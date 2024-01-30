@@ -32,6 +32,7 @@ import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -290,39 +291,42 @@ public final class HeapImpl extends Heap {
         log.string("Native image heap boundaries:").indent(true);
         imageHeapInfo.print(log);
         log.indent(false);
+
+        if (AuxiliaryImageHeap.isPresent()) {
+            ImageHeapInfo auxHeapInfo = AuxiliaryImageHeap.singleton().getImageHeapInfo();
+            if (auxHeapInfo != null) {
+                log.string("Auxiliary image heap boundaries:").indent(true);
+                auxHeapInfo.print(log);
+                log.indent(false);
+            }
+        }
     }
 
     /** Log the zap values to make it easier to search for them. */
-    static Log zapValuesToLog(Log log) {
+    static void logZapValues(Log log) {
         if (HeapParameters.getZapProducedHeapChunks() || HeapParameters.getZapConsumedHeapChunks()) {
-            log.string("[Heap Chunk zap values: ").indent(true);
             /* Padded with spaces so the columns line up between the int and word variants. */
             if (HeapParameters.getZapProducedHeapChunks()) {
-                log.string("  producedHeapChunkZapInt: ")
-                                .string("  hex: ").spaces(8).hex(HeapParameters.getProducedHeapChunkZapInt())
-                                .string("  signed: ").spaces(9).signed(HeapParameters.getProducedHeapChunkZapInt())
-                                .string("  unsigned: ").spaces(10).unsigned(HeapParameters.getProducedHeapChunkZapInt()).newline();
-                log.string("  producedHeapChunkZapWord:")
-                                .string("  hex: ").hex(HeapParameters.getProducedHeapChunkZapWord())
-                                .string("  signed: ").signed(HeapParameters.getProducedHeapChunkZapWord())
-                                .string("  unsigned: ").unsigned(HeapParameters.getProducedHeapChunkZapWord());
-                if (HeapParameters.getZapConsumedHeapChunks()) {
-                    log.newline();
-                }
+                log.string("producedHeapChunkZapInt: ")
+                                .string(" hex: ").spaces(8).hex(HeapParameters.getProducedHeapChunkZapInt())
+                                .string(" signed: ").spaces(9).signed(HeapParameters.getProducedHeapChunkZapInt())
+                                .string(" unsigned: ").spaces(10).unsigned(HeapParameters.getProducedHeapChunkZapInt()).newline();
+                log.string("producedHeapChunkZapWord:")
+                                .string(" hex: ").hex(HeapParameters.getProducedHeapChunkZapWord())
+                                .string(" signed: ").signed(HeapParameters.getProducedHeapChunkZapWord())
+                                .string(" unsigned: ").unsigned(HeapParameters.getProducedHeapChunkZapWord()).newline();
             }
             if (HeapParameters.getZapConsumedHeapChunks()) {
-                log.string("  consumedHeapChunkZapInt: ")
-                                .string("  hex: ").spaces(8).hex(HeapParameters.getConsumedHeapChunkZapInt())
-                                .string("  signed: ").spaces(10).signed(HeapParameters.getConsumedHeapChunkZapInt())
-                                .string("  unsigned: ").spaces(10).unsigned(HeapParameters.getConsumedHeapChunkZapInt()).newline();
-                log.string("  consumedHeapChunkZapWord:")
-                                .string("  hex: ").hex(HeapParameters.getConsumedHeapChunkZapWord())
-                                .string("  signed: ").signed(HeapParameters.getConsumedHeapChunkZapWord())
-                                .string("  unsigned: ").unsigned(HeapParameters.getConsumedHeapChunkZapWord());
+                log.string("consumedHeapChunkZapInt: ")
+                                .string(" hex: ").spaces(8).hex(HeapParameters.getConsumedHeapChunkZapInt())
+                                .string(" signed: ").spaces(10).signed(HeapParameters.getConsumedHeapChunkZapInt())
+                                .string(" unsigned: ").spaces(10).unsigned(HeapParameters.getConsumedHeapChunkZapInt()).newline();
+                log.string("consumedHeapChunkZapWord:")
+                                .string(" hex: ").hex(HeapParameters.getConsumedHeapChunkZapWord())
+                                .string(" signed: ").signed(HeapParameters.getConsumedHeapChunkZapWord())
+                                .string(" unsigned: ").unsigned(HeapParameters.getConsumedHeapChunkZapWord()).newline();
             }
-            log.redent(false).string("]");
         }
-        return log;
     }
 
     @Override
@@ -337,6 +341,9 @@ public final class HeapImpl extends Heap {
             ArrayList<Class<?>> list = new ArrayList<>(1024);
             ImageHeapWalker.walkRegions(imageHeapInfo, new ClassListBuilderVisitor(list));
             list.trimToSize();
+
+            /* Ensure that other threads see consistent values once the list is published. */
+            MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE);
             classList = list;
         }
         assert classList.size() == imageHeapInfo.dynamicHubCount;
@@ -639,7 +646,7 @@ public final class HeapImpl extends Heap {
         if (printLocationInfo(log, ptr, allowJavaHeapAccess, allowUnsafeOperations)) {
             if (allowJavaHeapAccess && objectHeaderImpl.pointsToObjectHeader(ptr)) {
                 log.indent(true);
-                SubstrateDiagnostics.printObjectInfo(log, ptr);
+                SubstrateDiagnostics.printObjectInfo(log, ptr.toObject());
                 log.redent(false);
             }
             return true;
@@ -860,19 +867,23 @@ public final class HeapImpl extends Heap {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            GCImpl gc = GCImpl.getGCImpl();
-
             log.string("Heap settings and statistics:").indent(true);
             log.string("Supports isolates: ").bool(SubstrateOptions.SpawnIsolates.getValue()).newline();
             if (SubstrateOptions.SpawnIsolates.getValue()) {
                 log.string("Heap base: ").zhex(KnownIntrinsics.heapBase()).newline();
             }
             log.string("Object reference size: ").signed(ConfigurationValues.getObjectLayout().getReferenceSize()).newline();
-            log.string("Aligned chunk size: ").unsigned(HeapParameters.getAlignedHeapChunkSize()).newline();
+            log.string("Reserved object header bits: 0b").number(Heap.getHeap().getObjectHeader().getReservedBitsMask(), 2, false).newline();
 
-            GCAccounting accounting = gc.getAccounting();
+            log.string("Aligned chunk size: ").unsigned(HeapParameters.getAlignedHeapChunkSize()).newline();
+            log.string("Large array threshold: ").unsigned(HeapParameters.getLargeArrayThreshold()).newline();
+
+            GCAccounting accounting = GCImpl.getGCImpl().getAccounting();
             log.string("Incremental collections: ").unsigned(accounting.getIncrementalCollectionCount()).newline();
             log.string("Complete collections: ").unsigned(accounting.getCompleteCollectionCount()).newline();
+
+            logZapValues(log);
+
             log.indent(false);
         }
     }
@@ -888,7 +899,8 @@ public final class HeapImpl extends Heap {
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             HeapImpl heap = HeapImpl.getHeapImpl();
             heap.logImageHeapPartitionBoundaries(log);
-            zapValuesToLog(log).newline();
+            log.newline();
+
             heap.report(log, true);
             log.newline();
         }

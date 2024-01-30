@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,34 +22,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
-
-import java.util.EnumSet;
+package com.oracle.svm.core.util;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import jdk.vm.ci.code.Architecture;
+import com.oracle.svm.core.log.Log;
 
-public interface CPUFeatureAccess {
-    @Fold
-    static CPUFeatureAccess singleton() {
-        return ImageSingletons.lookup(CPUFeatureAccess.class);
+public class CounterSupport {
+    private final Counter.Group[] enabledGroups;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    CounterSupport(Counter.Group[] enabledGroups) {
+        this.enabledGroups = enabledGroups;
     }
 
-    int verifyHostSupportsArchitectureEarly();
-
-    void verifyHostSupportsArchitectureEarlyOrExit();
-
-    void enableFeatures(Architecture architecture);
-
-    /**
-     * Compute the CPU features enabled at image run time.
-     */
-    EnumSet<?> determineHostCPUFeatures();
+    @Fold
+    public static CounterSupport singleton() {
+        return ImageSingletons.lookup(CounterSupport.class);
+    }
 
     /**
-     * CPU features enabled at image generation time.
+     * Prints all counters of all enabled groups to the {@link Log}.
      */
-    EnumSet<?> buildtimeCPUFeatures();
+    public void logValues(Log log) {
+        for (Counter.Group group : enabledGroups) {
+            group.logValues(log);
+        }
+    }
+
+    public boolean hasCounters() {
+        return enabledGroups != null && enabledGroups.length > 0;
+    }
+
 }

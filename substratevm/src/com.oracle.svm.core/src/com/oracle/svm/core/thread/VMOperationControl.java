@@ -39,6 +39,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateOptions.ConcealedOptions;
@@ -57,6 +58,7 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.RingBuffer;
+import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -902,7 +904,7 @@ public final class VMOperationControl {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         VMOpHistory() {
-            history = new RingBuffer<>(15, VMOpStatusChange::new);
+            history = new RingBuffer<>(SubstrateOptions.DiagnosticBufferSize.getValue(), VMOpStatusChange::new);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -920,7 +922,7 @@ public final class VMOperationControl {
         }
 
         public void print(Log log, boolean allowJavaHeapAccess) {
-            log.string("The ").signed(history.size()).string(" most recent VM operation status changes (oldest first):").indent(true);
+            log.string("The ").signed(history.size()).string(" most recent VM operation status changes:").indent(true);
             history.foreach(log, allowJavaHeapAccess ? PRINT_WITH_JAVA_HEAP_DATA : PRINT_WITHOUT_JAVA_HEAP_DATA);
             log.indent(false);
         }
@@ -967,7 +969,8 @@ public final class VMOperationControl {
         void print(Log log, boolean allowJavaHeapAccess) {
             VMOpStatus localStatus = status;
             if (localStatus != null) {
-                log.unsigned(timestamp).string(" - ").spaces(nestingLevel * 2).string(localStatus.name());
+                long uptime = timestamp - Isolates.getCurrentStartTimeMillis();
+                log.rational(uptime, TimeUtils.millisPerSecond, 3).string("s - ").spaces(nestingLevel * 2).string(localStatus.name());
                 if (allowJavaHeapAccess) {
                     log.string(" ").string(name);
                 }
