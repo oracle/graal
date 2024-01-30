@@ -93,7 +93,7 @@ public class ByteBufferInterop extends EspressoInterop {
     static void writeBufferByte(StaticObject receiver, long byteOffset, byte value,
                     @Bind("getMeta().java_nio_Buffer_isReadOnly") Method isReadOnlyMethod,
                     @Cached LookupAndInvokeKnownMethodNode lookup,
-                    @Bind("getMeta().java_nio_ByteBuffer_put") Method putByteAtMethod,
+                    @Bind("getMeta().java_nio_ByteBuffer_putByte") Method putByteAtMethod,
                     @Cached LookupAndInvokeKnownMethodNode put,
                     @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
         if (byteOffset < 0 || Integer.MAX_VALUE < byteOffset) {
@@ -394,8 +394,6 @@ public class ByteBufferInterop extends EspressoInterop {
             error.enter();
             throw InvalidBufferOffsetException.create(byteOffset, length);
         }
-        // check and throw IOOBE in case the destination array is too small
-        Objects.checkFromIndexSize(destinationOffset, length, destination.length);
         try {
             readBuffer.execute(receiver, get, new Object[]{byteOffset, StaticObject.wrap(destination, getMeta()), destinationOffset, length});
         } catch (EspressoException ex) {

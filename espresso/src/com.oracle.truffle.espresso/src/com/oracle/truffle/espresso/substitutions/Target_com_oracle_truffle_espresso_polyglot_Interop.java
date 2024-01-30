@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.substitutions;
 
 import java.math.BigInteger;
 import java.nio.ByteOrder;
+import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -2661,6 +2662,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
+            try {
+                // check destination array and throw guest exception in case it is too small
+                byte[] dest = destination.unwrap(getLanguage());
+                Objects.checkFromIndexSize(destinationOffset, length, dest.length);
+            } catch (IndexOutOfBoundsException ex) {
+                throw getMeta().throwExceptionWithMessage(getMeta().java_lang_ArrayIndexOutOfBoundsException, ex.getMessage());
+            }
             try {
                 interop.readBuffer(InteropUtils.unwrapForeign(getLanguage(), receiver), byteOffset, destination.unwrap(getLanguage()), destinationOffset, length);
             } catch (InteropException e) {

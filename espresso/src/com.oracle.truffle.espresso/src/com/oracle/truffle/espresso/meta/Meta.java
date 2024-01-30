@@ -405,7 +405,7 @@ public final class Meta extends ContextAccessImpl {
         java_nio_ByteBuffer_getLong = java_nio_ByteBuffer.requireDeclaredMethod(Name.getLong, Signature._long_int);
         java_nio_ByteBuffer_getFloat = java_nio_ByteBuffer.requireDeclaredMethod(Name.getFloat, Signature._float_int);
         java_nio_ByteBuffer_getDouble = java_nio_ByteBuffer.requireDeclaredMethod(Name.getDouble, Signature._double_int);
-        java_nio_ByteBuffer_put = java_nio_ByteBuffer.requireDeclaredMethod(Name.put, Signature.ByteBuffer_int_byte);
+        java_nio_ByteBuffer_putByte = java_nio_ByteBuffer.requireDeclaredMethod(Name.put, Signature.ByteBuffer_int_byte);
         java_nio_ByteBuffer_putShort = java_nio_ByteBuffer.requireDeclaredMethod(Name.putShort, Signature.ByteBuffer_int_short);
         java_nio_ByteBuffer_putInt = java_nio_ByteBuffer.requireDeclaredMethod(Name.putInt, Signature.ByteBuffer_int_int);
         java_nio_ByteBuffer_putLong = java_nio_ByteBuffer.requireDeclaredMethod(Name.putLong, Signature.ByteBuffer_int_long);
@@ -1348,7 +1348,7 @@ public final class Meta extends ContextAccessImpl {
     public final Method java_nio_ByteBuffer_getLong;
     public final Method java_nio_ByteBuffer_getFloat;
     public final Method java_nio_ByteBuffer_getDouble;
-    public final Method java_nio_ByteBuffer_put;
+    public final Method java_nio_ByteBuffer_putByte;
     public final Method java_nio_ByteBuffer_putShort;
     public final Method java_nio_ByteBuffer_putInt;
     public final Method java_nio_ByteBuffer_putLong;
