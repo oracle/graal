@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -381,6 +381,10 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         if (sharedEngine == null) {
             // Run in interpreted mode, with inlining turned off, to ensure profiles are populated.
             int interpreterIterations = Integer.parseInt(testCase.options().getProperty("interpreter-iterations", String.valueOf(DEFAULT_INTERPRETER_ITERATIONS)));
+            if (WasmTestOptions.COVERAGE_MODE) {
+                interpreterIterations = Math.min(interpreterIterations, 1);
+            }
+
             context = contextBuilder.options(getInterpretedNoInline()).build();
             runInContext(testCase, context, sources, interpreterIterations, PHASE_INTERPRETER_ICON, "interpreter", testOut);
 
@@ -388,6 +392,9 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             // We need to run the test at least twice like this, since the first run will lead to
             // de-opts due to empty profiles.
             int syncNoinlineIterations = Integer.parseInt(testCase.options().getProperty("sync-noinline-iterations", String.valueOf(DEFAULT_SYNC_NOINLINE_ITERATIONS)));
+            if (WasmTestOptions.COVERAGE_MODE) {
+                syncNoinlineIterations = Math.min(syncNoinlineIterations, 1);
+            }
             context = contextBuilder.options(getSyncCompiledNoInline()).build();
             runInContext(testCase, context, sources, syncNoinlineIterations, PHASE_SYNC_NO_INLINE_ICON, "sync,no-inl", testOut);
 
@@ -395,17 +402,26 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             // We need to run the test at least twice like this, since the first run will lead to
             // de-opts due to empty profiles.
             int syncInlineIterations = Integer.parseInt(testCase.options().getProperty("sync-inline-iterations", String.valueOf(DEFAULT_SYNC_INLINE_ITERATIONS)));
+            if (WasmTestOptions.COVERAGE_MODE) {
+                syncInlineIterations = Math.min(syncInlineIterations, 1);
+            }
             context = contextBuilder.options(getSyncCompiledWithInline()).build();
             runInContext(testCase, context, sources, syncInlineIterations, PHASE_SYNC_INLINE_ICON, "sync,inl", testOut);
 
             // Run with normal, asynchronous compilation.
             int asyncIterations = Integer.parseInt(testCase.options().getProperty("async-iterations", String.valueOf(DEFAULT_ASYNC_ITERATIONS)));
+            if (WasmTestOptions.COVERAGE_MODE) {
+                asyncIterations = Math.min(asyncIterations, 1);
+            }
             context = contextBuilder.options(getAsyncCompiled()).build();
             runInContext(testCase, context, sources, asyncIterations, PHASE_ASYNC_ICON, "async,multi", testOut);
         } else {
             int asyncSharedIterations = testCase.options().containsKey("async-iterations") && !testCase.options().containsKey("async-shared-iterations")
                             ? Integer.parseInt(testCase.options().getProperty("async-iterations")) / 10
                             : Integer.parseInt(testCase.options().getProperty("async-shared-iterations", String.valueOf(DEFAULT_ASYNC_SHARED_ITERATIONS)));
+            if (WasmTestOptions.COVERAGE_MODE) {
+                asyncSharedIterations = Math.min(asyncSharedIterations, 1);
+            }
             context = contextBuilder.build();
             runInContext(testCase, context, sources, asyncSharedIterations, PHASE_SHARED_ENGINE_ICON, "async,shared", testOut);
         }

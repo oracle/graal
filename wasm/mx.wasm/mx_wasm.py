@@ -109,14 +109,20 @@ def graal_wasm_gate_runner(args, tasks):
         if t:
             mx.build(["--all"])
 
-    with Task("UnitTests", tasks, tags=[GraalWasmDefaultTags.wasmtest, GraalWasmDefaultTags.coverage], report=True) as t:
+    with Task("UnitTests", tasks, tags=[GraalWasmDefaultTags.wasmtest], report=True) as t:
         if t:
             unittest([*wabt_test_args(), "WasmTestSuite"], test_report_tags={'task': t.title})
             unittest([*wabt_test_args(), "-Dwasmtest.sharedEngine=true", "WasmTestSuite"], test_report_tags={'task': t.title})
 
-    with Task("ExtraUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmextratest, GraalWasmDefaultTags.coverage], report=True) as t:
+    with Task("ExtraUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmextratest], report=True) as t:
         if t:
             unittest(["--suite", "wasm", "CSuite", "WatSuite"], test_report_tags={'task': t.title})
+
+    with Task("CoverageTests", tasks, tags=[GraalWasmDefaultTags.coverage], report=True) as t:
+        if t:
+            unittest([*wabt_test_args(), "-Dwasmtest.coverageMode=true", "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest([*wabt_test_args(), "-Dwasmtest.coverageMode=true", "-Dwasmtest.sharedEngine=true", "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest(["-Dwasmtest.coverageMode=true", "--suite", "wasm", "CSuite", "WatSuite"], test_report_tags={'task': t.title})
 
     # This is a gate used to test that all the benchmarks return the correct results. It does not upload anything,
     # and does not run on a dedicated machine.
@@ -147,9 +153,9 @@ class WasmUnittestConfig(mx_unittest.MxUnittestConfig):
         vmArgs = vmArgs + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
         # Assert for enter/return parity of ProbeNode
         vmArgs = vmArgs + ['-Dpolyglot.engine.AssertProbes=true', '-Dpolyglot.engine.AllowExperimentalOptions=true']
-        # limit heap memory to 2G, unless otherwise specified
+        # limit heap memory to 4G, unless otherwise specified
         if not any(a.startswith('-Xm') for a in vmArgs):
-            vmArgs += ['-Xmx2g']
+            vmArgs += ['-Xmx4g']
         return (vmArgs, mainClass, mainClassArgs)
 
 
