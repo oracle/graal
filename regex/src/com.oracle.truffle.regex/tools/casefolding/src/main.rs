@@ -2017,6 +2017,7 @@ fn oracledb_generate_tests() -> Result<()> {
         ("(^\\w)|()^", "", "empty"),
         ("x(y|())", "", "xy"),
         ("(x|())*", "", "xxx"),
+        ("a(\\z|())", "", "a"),
     ] {
         let from_index = 1;
         let e_pattern = java_string_escape(pattern);
