@@ -276,6 +276,12 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
             return false;
         }
 
+        if ("traceThrowable".equals(method.getName()) &&
+                        ("Ljdk/jfr/internal/instrument/ThrowableTracer;".equals(method.getDeclaringClass().getName()) ||
+                                        "Loracle/jrockit/jfr/jdkevents/ThrowableTracer;".equals(method.getDeclaringClass().getName()))) {
+            return true;
+        }
+
         // Fast check, the JFR instrumented methods are marked as synthetic.
         if (!method.isSynthetic() || method.isBridge() || method.isStatic()) {
             return false;
