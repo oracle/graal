@@ -185,6 +185,10 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
     }
 
     private static boolean noPredicatesInGuards(QuantifierGuard[] quantifierGuards) {
+        // Normalization should remove any exitZeroWidth, escapeZeroWidth, checkGroupMatched and
+        // checkGroupNotMatched guards. The effect of updateCG guards is implemented using
+        // getGroupBoundaries and enterZeroWidth guards have no effect when exitZeroWidth and
+        // escapeZeroWidth are removed already. Other guards shouldn't be used when building a DFA.
         for (QuantifierGuard guard : quantifierGuards) {
             if (guard.getKind() != QuantifierGuard.Kind.updateCG && guard.getKind() != QuantifierGuard.Kind.enterZeroWidth) {
                 return false;
