@@ -41,12 +41,13 @@ import jdk.internal.misc.Unsafe;
  */
 @AddExports("java.base/jdk.internal.misc")
 public class UnsafeCompareAndSwapTest extends GraalCompilerTest {
+
     @Override
     protected Object[] getArgumentToBind() {
-        return argsToBind;
+        return constantArgs;
     }
 
-    Object[] argsToBind;
+    Object[] constantArgs;
 
     @Override
     protected void checkHighTierGraph(StructuredGraph graph) {
@@ -68,9 +69,9 @@ public class UnsafeCompareAndSwapTest extends GraalCompilerTest {
     public void swapBoolean() {
         Random r = getRandomInstance();
         test("swapBooleanSnippet", r.nextBoolean(), r.nextBoolean(), r.nextBoolean(), r.nextBoolean(), r.nextBoolean());
-        argsToBind = new Object[]{r.nextBoolean(), r.nextBoolean(), r.nextBoolean(), r.nextBoolean(), r.nextBoolean()};
-        test("swapBooleanSnippet", argsToBind[0], argsToBind[1], argsToBind[2], argsToBind[3], argsToBind[4]);
-        argsToBind = null;
+        constantArgs = new Object[]{r.nextBoolean(), r.nextBoolean(), r.nextBoolean(), r.nextBoolean(), r.nextBoolean()};
+        test("swapBooleanSnippet", constantArgs);
+        constantArgs = null;
     }
 
     static boolean swapByteSnippet(byte b1, byte b2, byte b3, byte trueVal, byte falseVal) {
@@ -87,9 +88,9 @@ public class UnsafeCompareAndSwapTest extends GraalCompilerTest {
     public void swapByte() {
         Random r = getRandomInstance();
         test("swapByteSnippet", (byte) r.nextInt(), (byte) r.nextInt(), (byte) r.nextInt(), (byte) r.nextInt(), (byte) r.nextInt());
-        argsToBind = new Object[]{(byte) r.nextInt(), (byte) r.nextInt(), (byte) r.nextInt(), (byte) r.nextInt(), (byte) r.nextInt()};
-        test("swapByteSnippet", argsToBind[0], argsToBind[1], argsToBind[2], argsToBind[3], argsToBind[4]);
-        argsToBind = null;
+        constantArgs = new Object[]{(byte) r.nextInt(), (byte) r.nextInt(), (byte) r.nextInt(), (byte) r.nextInt(), (byte) r.nextInt()};
+        test("swapByteSnippet", constantArgs);
+        constantArgs = null;
     }
 
     static boolean swapCharSnippet(char c1, char c2, char c3, char trueVal, char falseVal) {
@@ -106,9 +107,9 @@ public class UnsafeCompareAndSwapTest extends GraalCompilerTest {
     public void swapChar() {
         Random r = getRandomInstance();
         test("swapCharSnippet", (char) r.nextInt(), (char) r.nextInt(), (char) r.nextInt(), (char) r.nextInt(), (char) r.nextInt());
-        argsToBind = new Object[]{(char) r.nextInt(), (char) r.nextInt(), (char) r.nextInt(), (char) r.nextInt(), (char) r.nextInt()};
-        test("swapCharSnippet", argsToBind[0], argsToBind[1], argsToBind[2], argsToBind[3], argsToBind[4]);
-        argsToBind = null;
+        constantArgs = new Object[]{(char) r.nextInt(), (char) r.nextInt(), (char) r.nextInt(), (char) r.nextInt(), (char) r.nextInt()};
+        test("swapCharSnippet", constantArgs);
+        constantArgs = null;
     }
 
     static boolean swapShortSnippet(short s1, short s2, short s3, short trueVal, short falseVal) {
@@ -125,9 +126,9 @@ public class UnsafeCompareAndSwapTest extends GraalCompilerTest {
     public void swapShort() {
         Random r = getRandomInstance();
         test("swapShortSnippet", (short) r.nextInt(), (short) r.nextInt(), (short) r.nextInt(), (short) r.nextInt(), (short) r.nextInt());
-        argsToBind = new Object[]{(short) r.nextInt(), (short) r.nextInt(), (short) r.nextInt(), (short) r.nextInt(), (short) r.nextInt()};
-        test("swapShortSnippet", argsToBind[0], argsToBind[1], argsToBind[2], argsToBind[3], argsToBind[4]);
-        argsToBind = null;
+        constantArgs = new Object[]{(short) r.nextInt(), (short) r.nextInt(), (short) r.nextInt(), (short) r.nextInt(), (short) r.nextInt()};
+        test("swapShortSnippet", constantArgs);
+        constantArgs = null;
     }
 
     static boolean swapFloatSnippet(float f1, float f2, float f3, float trueVal, float falseVal) {
@@ -144,9 +145,9 @@ public class UnsafeCompareAndSwapTest extends GraalCompilerTest {
     public void swapFloat() {
         Random r = getRandomInstance();
         test("swapFloatSnippet", r.nextFloat(), r.nextFloat(), r.nextFloat(), r.nextFloat(), r.nextFloat());
-        argsToBind = new Object[]{r.nextFloat(), r.nextFloat(), r.nextFloat(), r.nextFloat(), r.nextFloat()};
-        test("swapFloatSnippet", argsToBind[0], argsToBind[1], argsToBind[2], argsToBind[3], argsToBind[4]);
-        argsToBind = null;
+        constantArgs = new Object[]{r.nextFloat(), r.nextFloat(), r.nextFloat(), r.nextFloat(), r.nextFloat()};
+        test("swapFloatSnippet", constantArgs);
+        constantArgs = null;
     }
 
     static boolean swapDoubleSnippet(double d1, double d2, double d3, double trueVal, double falseVal) {
@@ -163,9 +164,9 @@ public class UnsafeCompareAndSwapTest extends GraalCompilerTest {
     public void swapDouble() {
         Random r = getRandomInstance();
         test("swapDoubleSnippet", r.nextDouble(), r.nextDouble(), r.nextDouble(), r.nextDouble(), r.nextDouble());
-        argsToBind = new Object[]{r.nextDouble(), r.nextDouble(), r.nextDouble(), r.nextDouble(), r.nextDouble()};
-        test("swapDoubleSnippet", argsToBind[0], argsToBind[1], argsToBind[2], argsToBind[3], argsToBind[4]);
-        argsToBind = null;
+        constantArgs = new Object[]{r.nextDouble(), r.nextDouble(), r.nextDouble(), r.nextDouble(), r.nextDouble()};
+        test("swapDoubleSnippet", constantArgs);
+        constantArgs = null;
     }
 
     static boolean swapIntSnippet(int i1, int i2, int i3, int trueVal, int falseVal) {
@@ -182,9 +183,9 @@ public class UnsafeCompareAndSwapTest extends GraalCompilerTest {
     public void swapInt() {
         Random r = getRandomInstance();
         test("swapIntSnippet", r.nextInt(), r.nextInt(), r.nextInt(), r.nextInt(), r.nextInt());
-        argsToBind = new Object[]{r.nextInt(), r.nextInt(), r.nextInt(), r.nextInt(), r.nextInt()};
-        test("swapIntSnippet", argsToBind[0], argsToBind[1], argsToBind[2], argsToBind[3], argsToBind[4]);
-        argsToBind = null;
+        constantArgs = new Object[]{r.nextInt(), r.nextInt(), r.nextInt(), r.nextInt(), r.nextInt()};
+        test("swapIntSnippet", constantArgs);
+        constantArgs = null;
     }
 
     static boolean swapLongSnippet(long l1, long l2, long l3, long trueVal, long falseVal) {
@@ -201,8 +202,8 @@ public class UnsafeCompareAndSwapTest extends GraalCompilerTest {
     public void swapLong() {
         Random r = getRandomInstance();
         test("swapLongSnippet", r.nextLong(), r.nextLong(), r.nextLong(), r.nextLong(), r.nextLong());
-        argsToBind = new Object[]{r.nextLong(), r.nextLong(), r.nextLong(), r.nextLong(), r.nextLong()};
-        test("swapLongSnippet", argsToBind[0], argsToBind[1], argsToBind[2], argsToBind[3], argsToBind[4]);
-        argsToBind = null;
+        constantArgs = new Object[]{r.nextLong(), r.nextLong(), r.nextLong(), r.nextLong(), r.nextLong()};
+        test("swapLongSnippet", constantArgs);
+        constantArgs = null;
     }
 }
