@@ -303,10 +303,12 @@ public abstract class PlatformThreads {
      * Returns the isolate thread associated with a Java thread. The caller must own the
      * {@linkplain VMThreads#THREAD_MUTEX threads mutex} and release it only after it has finished
      * using the returned {@link IsolateThread} pointer.
+     *
+     * This method can return {@code NULL} if the thread is not alive or if it has been recently
+     * started but has not completed initialization yet.
      */
     public static IsolateThread getIsolateThread(Thread t) {
         VMThreads.guaranteeOwnsThreadMutex("Threads mutex must be locked before accessing/iterating the thread list.");
-        VMError.guarantee(t.isAlive(), "Only running java.lang.Thread objects have a IsolateThread");
         return getIsolateThreadUnsafe(t);
     }
 

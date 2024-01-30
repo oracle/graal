@@ -49,7 +49,6 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.LoomSupport;
 import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.thread.Target_java_lang_Thread;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VirtualThreads;
@@ -94,6 +93,9 @@ public class StackTraceUtils {
 
     public static StackTraceElement[] getThreadStackTraceAtSafepoint(IsolateThread isolateThread, Pointer endSP) {
         assert VMOperation.isInProgressAtSafepoint();
+        if (isolateThread.isNull()) { // recently launched thread
+            return NO_ELEMENTS;
+        }
         BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(false, SubstrateOptions.MaxJavaStackTraceDepth.getValue());
         JavaStackWalker.walkThread(isolateThread, endSP, visitor, null);
         return visitor.trace.toArray(NO_ELEMENTS);
@@ -213,6 +215,10 @@ public class StackTraceUtils {
     }
 
     public static StackTraceElement[] asyncGetStackTrace(Thread thread) {
+        if (!thread.isAlive()) {
+            /* Avoid triggering a safepoint operation below if the thread is not even alive. */
+            return NO_ELEMENTS;
+        }
         GetStackTraceOperation vmOp = new GetStackTraceOperation(thread);
         vmOp.enqueue();
         return vmOp.result;
@@ -229,11 +235,7 @@ public class StackTraceUtils {
 
         @Override
         protected void operate() {
-            if (thread.isAlive()) {
-                result = getStackTraceAtSafepoint(thread);
-            } else {
-                result = Target_java_lang_Thread.EMPTY_STACK_TRACE;
-            }
+            result = getStackTraceAtSafepoint(thread);
         }
     }
 }
