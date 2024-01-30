@@ -417,7 +417,7 @@ public abstract class NFATraversalRegexASTVisitor {
         // emptyLoopIterations tells us how many extra empty iterations of a loop do we admit.
         // In Ruby and Python, we admit 1, while in other dialects, we admit 0. This extra iteration
         // will not match any characters, but it might store an empty string in a capture group.
-        int extraEmptyLoopIterations = ast.getOptions().getFlavor().canHaveEmptyLoopIterations() ? 1 : 0;
+        int extraEmptyLoopIterations = ast.getOptions().getFlavor().canHaveEmptyLoopIterations() ? (isBuildingDFA() ? Integer.MAX_VALUE : 1) : 0;
         if (cur.isDead() || insideLoops.get(cur, 0) > extraEmptyLoopIterations) {
             return retreat();
         }
@@ -1101,6 +1101,18 @@ public abstract class NFATraversalRegexASTVisitor {
                         }
                         return;
                     }
+                }
+                break;
+            }
+            case enterZeroWidth: {
+                // If there is another enterZeroWidth for the same group in the quantifier guards and there are no CG
+                // updates in between, then this new enterZeroWidth is redundant.
+                QuantifierGuardsLinkedList curGuard = quantifierGuards;
+                while (curGuard != null && (!ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() || curGuard.getGuard().getKind() != QuantifierGuard.Kind.updateCG)) {
+                    if (curGuard.getGuard().getKind() == QuantifierGuard.Kind.enterZeroWidth && curGuard.getGuard().getIndex() == guard.getIndex()) {
+                        return;
+                    }
+                    curGuard = curGuard.getPrev();
                 }
                 break;
             }
