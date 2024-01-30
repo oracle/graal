@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
 import java.nio.ByteOrder;
 import java.nio.ReadOnlyBufferException;
+import java.util.Objects;
 
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -72,15 +73,20 @@ public class ByteBufferInterop extends EspressoInterop {
     static byte readBufferByte(StaticObject receiver, long byteOffset,
                     @Bind("getMeta().java_nio_ByteBuffer_getByte") Method getByteMethod,
                     @Cached LookupAndInvokeKnownMethodNode get,
-                    @Bind("getMeta().java_nio_Buffer_limit") Method limitMethod,
-                    @Cached LookupAndInvokeKnownMethodNode size,
                     @Cached.Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
-        int bufferSize = (int) size.execute(receiver, limitMethod);
-        if (byteOffset < 0 || byteOffset >= bufferSize) {
+        if (byteOffset < 0 || Integer.MAX_VALUE < byteOffset) {
             error.enter();
-            throw InvalidBufferOffsetException.create(byteOffset, bufferSize);
+            throw InvalidBufferOffsetException.create(byteOffset, Byte.BYTES);
         }
-        return (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset});
+        try {
+            return (byte) get.execute(receiver, getByteMethod, new Object[]{byteOffset});
+        } catch (EspressoException ex) {
+            error.enter();
+            if (InterpreterToVM.instanceOf(ex.getGuestException(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {
+                throw InvalidBufferOffsetException.create(byteOffset, Byte.BYTES);
+            }
+            throw ex;
+        }
     }
 
     @ExportMessage
@@ -89,38 +95,48 @@ public class ByteBufferInterop extends EspressoInterop {
                     @Cached LookupAndInvokeKnownMethodNode lookup,
                     @Bind("getMeta().java_nio_ByteBuffer_put") Method putByteAtMethod,
                     @Cached LookupAndInvokeKnownMethodNode put,
-                    @Bind("getMeta().java_nio_Buffer_limit") Method limitMethod,
-                    @Cached LookupAndInvokeKnownMethodNode size,
                     @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
-        int bufferSize = (int) size.execute(receiver, limitMethod);
-        if (byteOffset < 0 || byteOffset >= bufferSize) {
+        if (byteOffset < 0 || Integer.MAX_VALUE < byteOffset) {
             error.enter();
-            throw InvalidBufferOffsetException.create(byteOffset, bufferSize);
+            throw InvalidBufferOffsetException.create(byteOffset, Byte.BYTES);
         }
         if ((boolean) lookup.execute(receiver, isReadOnlyMethod)) {
             error.enter();
             throw UnsupportedMessageException.create(new ReadOnlyBufferException());
         }
-        put.execute(receiver, putByteAtMethod, new Object[]{byteOffset, value});
+        try {
+            put.execute(receiver, putByteAtMethod, new Object[]{byteOffset, value});
+        } catch (EspressoException ex) {
+            error.enter();
+            if (InterpreterToVM.instanceOf(ex.getGuestException(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {
+                throw InvalidBufferOffsetException.create(byteOffset, Byte.BYTES);
+            }
+            throw ex;
+        }
     }
 
     @ExportMessage
     static short readBufferShort(StaticObject receiver, ByteOrder order, long byteOffset,
                     @Bind("getMeta().java_nio_ByteBuffer_getShort") Method getShortMethod,
                     @Cached LookupAndInvokeKnownMethodNode get,
-                    @Bind("getMeta().java_nio_Buffer_limit") Method limitMethod,
-                    @Cached LookupAndInvokeKnownMethodNode size,
                     @Bind("getMeta().java_nio_ByteBuffer_order") Method orderMethod,
                     @Cached LookupAndInvokeKnownMethodNode orderNode,
                     @Bind("getMeta().java_nio_ByteBuffer_setOrder") Method setOrderMethod,
                     @Cached LookupAndInvokeKnownMethodNode setOrderNode,
                     @Cached.Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
-        int bufferSize = (int) size.execute(receiver, limitMethod);
-        if (byteOffset < 0 || byteOffset >= bufferSize - 1) {
+        if (byteOffset < 0 || Integer.MAX_VALUE < byteOffset) {
             error.enter();
-            throw InvalidBufferOffsetException.create(byteOffset, bufferSize);
+            throw InvalidBufferOffsetException.create(byteOffset, Short.BYTES);
         }
-        return (short) get(receiver, byteOffset, order, get, getShortMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
+        try {
+            return (short) get(receiver, byteOffset, order, get, getShortMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
+        } catch (EspressoException ex) {
+            error.enter();
+            if (InterpreterToVM.instanceOf(ex.getGuestException(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {
+                throw InvalidBufferOffsetException.create(byteOffset, Short.BYTES);
+            }
+            throw ex;
+        }
     }
 
     @ExportMessage
@@ -129,42 +145,52 @@ public class ByteBufferInterop extends EspressoInterop {
                     @Cached LookupAndInvokeKnownMethodNode lookup,
                     @Bind("getMeta().java_nio_ByteBuffer_putShort") Method putShortMethod,
                     @Cached LookupAndInvokeKnownMethodNode put,
-                    @Bind("getMeta().java_nio_Buffer_limit") Method limitMethod,
-                    @Cached LookupAndInvokeKnownMethodNode size,
                     @Bind("getMeta().java_nio_ByteBuffer_order") Method orderMethod,
                     @Cached LookupAndInvokeKnownMethodNode orderNode,
                     @Bind("getMeta().java_nio_ByteBuffer_setOrder") Method setOrderMethod,
                     @Cached LookupAndInvokeKnownMethodNode setOrderNode,
                     @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
-        int bufferSize = (int) size.execute(receiver, limitMethod);
-        if (byteOffset < 0 || byteOffset >= bufferSize - 1) {
+        if (byteOffset < 0 || Integer.MAX_VALUE < byteOffset) {
             error.enter();
-            throw InvalidBufferOffsetException.create(byteOffset, bufferSize);
+            throw InvalidBufferOffsetException.create(byteOffset, Short.BYTES);
         }
         if ((boolean) lookup.execute(receiver, isReadOnlyMethod)) {
             error.enter();
             throw UnsupportedMessageException.create(new ReadOnlyBufferException());
         }
-        put(receiver, byteOffset, value, order, put, putShortMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
+        try {
+            put(receiver, byteOffset, value, order, put, putShortMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
+        } catch (EspressoException ex) {
+            error.enter();
+            if (InterpreterToVM.instanceOf(ex.getGuestException(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {
+                throw InvalidBufferOffsetException.create(byteOffset, Short.BYTES);
+            }
+            throw ex;
+        }
     }
 
     @ExportMessage
     static int readBufferInt(StaticObject receiver, ByteOrder order, long byteOffset,
                     @Bind("getMeta().java_nio_ByteBuffer_getInt") Method getIntMethod,
                     @Cached LookupAndInvokeKnownMethodNode get,
-                    @Bind("getMeta().java_nio_Buffer_limit") Method limitMethod,
-                    @Cached LookupAndInvokeKnownMethodNode size,
                     @Bind("getMeta().java_nio_ByteBuffer_order") Method orderMethod,
                     @Cached LookupAndInvokeKnownMethodNode orderNode,
                     @Bind("getMeta().java_nio_ByteBuffer_setOrder") Method setOrderMethod,
                     @Cached LookupAndInvokeKnownMethodNode setOrderNode,
                     @Cached.Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
-        int bufferSize = (int) size.execute(receiver, limitMethod);
-        if (byteOffset < 0 || byteOffset >= bufferSize - 3) {
+        if (byteOffset < 0 || Integer.MAX_VALUE < byteOffset) {
             error.enter();
-            throw InvalidBufferOffsetException.create(byteOffset, bufferSize);
+            throw InvalidBufferOffsetException.create(byteOffset, Integer.BYTES);
         }
-        return (int) get(receiver, byteOffset, order, get, getIntMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
+        try {
+            return (int) get(receiver, byteOffset, order, get, getIntMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
+        } catch (EspressoException ex) {
+            error.enter();
+            if (InterpreterToVM.instanceOf(ex.getGuestException(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {
+                throw InvalidBufferOffsetException.create(byteOffset, Integer.BYTES);
+            }
+            throw ex;
+        }
     }
 
     @ExportMessage
@@ -173,42 +199,52 @@ public class ByteBufferInterop extends EspressoInterop {
                     @Cached LookupAndInvokeKnownMethodNode lookup,
                     @Bind("getMeta().java_nio_ByteBuffer_putInt") Method putIntMethod,
                     @Cached LookupAndInvokeKnownMethodNode put,
-                    @Bind("getMeta().java_nio_Buffer_limit") Method limitMethod,
-                    @Cached LookupAndInvokeKnownMethodNode size,
                     @Bind("getMeta().java_nio_ByteBuffer_order") Method orderMethod,
                     @Cached LookupAndInvokeKnownMethodNode orderNode,
                     @Bind("getMeta().java_nio_ByteBuffer_setOrder") Method setOrderMethod,
                     @Cached LookupAndInvokeKnownMethodNode setOrderNode,
                     @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
-        int bufferSize = (int) size.execute(receiver, limitMethod);
-        if (byteOffset < 0 || byteOffset >= bufferSize - 3) {
+        if (byteOffset < 0 || Integer.MAX_VALUE < byteOffset) {
             error.enter();
-            throw InvalidBufferOffsetException.create(byteOffset, bufferSize);
+            throw InvalidBufferOffsetException.create(byteOffset, Integer.BYTES);
         }
         if ((boolean) lookup.execute(receiver, isReadOnlyMethod)) {
             error.enter();
             throw UnsupportedMessageException.create(new ReadOnlyBufferException());
         }
-        put(receiver, byteOffset, value, order, put, putIntMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
+        try {
+            put(receiver, byteOffset, value, order, put, putIntMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
+        } catch (EspressoException ex) {
+            error.enter();
+            if (InterpreterToVM.instanceOf(ex.getGuestException(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {
+                throw InvalidBufferOffsetException.create(byteOffset, Integer.BYTES);
+            }
+            throw ex;
+        }
     }
 
     @ExportMessage
     static long readBufferLong(StaticObject receiver, ByteOrder order, long byteOffset,
                     @Bind("getMeta().java_nio_ByteBuffer_getLong") Method getLongMethod,
                     @Cached LookupAndInvokeKnownMethodNode get,
-                    @Bind("getMeta().java_nio_Buffer_limit") Method limitMethod,
-                    @Cached LookupAndInvokeKnownMethodNode size,
                     @Bind("getMeta().java_nio_ByteBuffer_order") Method orderMethod,
                     @Cached LookupAndInvokeKnownMethodNode orderNode,
                     @Bind("getMeta().java_nio_ByteBuffer_setOrder") Method setOrderMethod,
                     @Cached LookupAndInvokeKnownMethodNode setOrderNode,
                     @Cached.Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
-        int bufferSize = (int) size.execute(receiver, limitMethod);
-        if (byteOffset < 0 || byteOffset >= bufferSize - 7) {
+        if (byteOffset < 0 || Integer.MAX_VALUE < byteOffset) {
             error.enter();
-            throw InvalidBufferOffsetException.create(byteOffset, bufferSize);
+            throw InvalidBufferOffsetException.create(byteOffset, Long.BYTES);
         }
-        return (long) get(receiver, byteOffset, order, get, getLongMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
+        try {
+            return (long) get(receiver, byteOffset, order, get, getLongMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
+        } catch (EspressoException ex) {
+            error.enter();
+            if (InterpreterToVM.instanceOf(ex.getGuestException(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {
+                throw InvalidBufferOffsetException.create(byteOffset, Long.BYTES);
+            }
+            throw ex;
+        }
     }
 
     @ExportMessage
@@ -217,42 +253,52 @@ public class ByteBufferInterop extends EspressoInterop {
                     @Cached LookupAndInvokeKnownMethodNode lookup,
                     @Bind("getMeta().java_nio_ByteBuffer_putLong") Method putLongMethod,
                     @Cached LookupAndInvokeKnownMethodNode put,
-                    @Bind("getMeta().java_nio_Buffer_limit") Method limitMethod,
-                    @Cached LookupAndInvokeKnownMethodNode size,
                     @Bind("getMeta().java_nio_ByteBuffer_order") Method orderMethod,
                     @Cached LookupAndInvokeKnownMethodNode orderNode,
                     @Bind("getMeta().java_nio_ByteBuffer_setOrder") Method setOrderMethod,
                     @Cached LookupAndInvokeKnownMethodNode setOrderNode,
                     @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
-        int bufferSize = (int) size.execute(receiver, limitMethod);
-        if (byteOffset < 0 || byteOffset >= bufferSize - 7) {
+        if (byteOffset < 0 || Integer.MAX_VALUE < byteOffset) {
             error.enter();
-            throw InvalidBufferOffsetException.create(byteOffset, bufferSize);
+            throw InvalidBufferOffsetException.create(byteOffset, Long.BYTES);
         }
         if ((boolean) lookup.execute(receiver, isReadOnlyMethod)) {
             error.enter();
             throw UnsupportedMessageException.create(new ReadOnlyBufferException());
         }
-        put(receiver, byteOffset, value, order, put, putLongMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
+        try {
+            put(receiver, byteOffset, value, order, put, putLongMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
+        } catch (EspressoException ex) {
+            error.enter();
+            if (InterpreterToVM.instanceOf(ex.getGuestException(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {
+                throw InvalidBufferOffsetException.create(byteOffset, Long.BYTES);
+            }
+            throw ex;
+        }
     }
 
     @ExportMessage
     static float readBufferFloat(StaticObject receiver, ByteOrder order, long byteOffset,
                     @Bind("getMeta().java_nio_ByteBuffer_getFloat") Method getFloatMethod,
                     @Cached LookupAndInvokeKnownMethodNode get,
-                    @Bind("getMeta().java_nio_Buffer_limit") Method limitMethod,
-                    @Cached LookupAndInvokeKnownMethodNode size,
                     @Bind("getMeta().java_nio_ByteBuffer_order") Method orderMethod,
                     @Cached LookupAndInvokeKnownMethodNode orderNode,
                     @Bind("getMeta().java_nio_ByteBuffer_setOrder") Method setOrderMethod,
                     @Cached LookupAndInvokeKnownMethodNode setOrderNode,
                     @Cached.Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
-        int bufferSize = (int) size.execute(receiver, limitMethod);
-        if (byteOffset < 0 || byteOffset >= bufferSize - 3) {
+        if (byteOffset < 0 || Integer.MAX_VALUE < byteOffset) {
             error.enter();
-            throw InvalidBufferOffsetException.create(byteOffset, bufferSize);
+            throw InvalidBufferOffsetException.create(byteOffset, Float.BYTES);
         }
-        return (float) get(receiver, byteOffset, order, get, getFloatMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
+        try {
+            return (float) get(receiver, byteOffset, order, get, getFloatMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
+        } catch (EspressoException ex) {
+            error.enter();
+            if (InterpreterToVM.instanceOf(ex.getGuestException(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {
+                throw InvalidBufferOffsetException.create(byteOffset, Float.BYTES);
+            }
+            throw ex;
+        }
     }
 
     @ExportMessage
@@ -261,42 +307,52 @@ public class ByteBufferInterop extends EspressoInterop {
                     @Cached LookupAndInvokeKnownMethodNode lookup,
                     @Bind("getMeta().java_nio_ByteBuffer_putFloat") Method putFloatMethod,
                     @Cached LookupAndInvokeKnownMethodNode put,
-                    @Bind("getMeta().java_nio_Buffer_limit") Method limitMethod,
-                    @Cached LookupAndInvokeKnownMethodNode size,
                     @Bind("getMeta().java_nio_ByteBuffer_order") Method orderMethod,
                     @Cached LookupAndInvokeKnownMethodNode orderNode,
                     @Bind("getMeta().java_nio_ByteBuffer_setOrder") Method setOrderMethod,
                     @Cached LookupAndInvokeKnownMethodNode setOrderNode,
                     @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
-        int bufferSize = (int) size.execute(receiver, limitMethod);
-        if (byteOffset < 0 || byteOffset >= bufferSize - 3) {
+        if (byteOffset < 0 || Integer.MAX_VALUE < byteOffset) {
             error.enter();
-            throw InvalidBufferOffsetException.create(byteOffset, bufferSize);
+            throw InvalidBufferOffsetException.create(byteOffset, Float.BYTES);
         }
         if ((boolean) lookup.execute(receiver, isReadOnlyMethod)) {
             error.enter();
             throw UnsupportedMessageException.create(new ReadOnlyBufferException());
         }
-        put(receiver, byteOffset, value, order, put, putFloatMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
+        try {
+            put(receiver, byteOffset, value, order, put, putFloatMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
+        } catch (EspressoException ex) {
+            error.enter();
+            if (InterpreterToVM.instanceOf(ex.getGuestException(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {
+                throw InvalidBufferOffsetException.create(byteOffset, Float.BYTES);
+            }
+            throw ex;
+        }
     }
 
     @ExportMessage
     static double readBufferDouble(StaticObject receiver, ByteOrder order, long byteOffset,
                     @Bind("getMeta().java_nio_ByteBuffer_getDouble") Method getDoubleMethod,
                     @Cached LookupAndInvokeKnownMethodNode get,
-                    @Bind("getMeta().java_nio_Buffer_limit") Method limitMethod,
                     @Bind("getMeta().java_nio_ByteBuffer_order") Method orderMethod,
                     @Cached LookupAndInvokeKnownMethodNode orderNode,
                     @Bind("getMeta().java_nio_ByteBuffer_setOrder") Method setOrderMethod,
                     @Cached LookupAndInvokeKnownMethodNode setOrderNode,
-                    @Cached LookupAndInvokeKnownMethodNode size,
                     @Cached.Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
-        int bufferSize = (int) size.execute(receiver, limitMethod);
-        if (byteOffset < 0 || byteOffset >= bufferSize - 7) {
+        if (byteOffset < 0 || Integer.MAX_VALUE < byteOffset) {
             error.enter();
-            throw InvalidBufferOffsetException.create(byteOffset, bufferSize);
+            throw InvalidBufferOffsetException.create(byteOffset, Double.BYTES);
         }
-        return (double) get(receiver, byteOffset, order, get, getDoubleMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
+        try {
+            return (double) get(receiver, byteOffset, order, get, getDoubleMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
+        } catch (EspressoException ex) {
+            error.enter();
+            if (InterpreterToVM.instanceOf(ex.getGuestException(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {
+                throw InvalidBufferOffsetException.create(byteOffset, Double.BYTES);
+            }
+            throw ex;
+        }
     }
 
     @ExportMessage
@@ -305,23 +361,28 @@ public class ByteBufferInterop extends EspressoInterop {
                     @Cached LookupAndInvokeKnownMethodNode lookup,
                     @Bind("getMeta().java_nio_ByteBuffer_putDouble") Method putDoubleMethod,
                     @Cached LookupAndInvokeKnownMethodNode put,
-                    @Bind("getMeta().java_nio_Buffer_limit") Method limitMethod,
-                    @Cached LookupAndInvokeKnownMethodNode size,
                     @Bind("getMeta().java_nio_ByteBuffer_order") Method orderMethod,
                     @Cached LookupAndInvokeKnownMethodNode orderNode,
                     @Bind("getMeta().java_nio_ByteBuffer_setOrder") Method setOrderMethod,
                     @Cached LookupAndInvokeKnownMethodNode setOrderNode,
                     @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, InvalidBufferOffsetException {
-        int bufferSize = (int) size.execute(receiver, limitMethod);
-        if (byteOffset < 0 || byteOffset >= bufferSize - 7) {
+        if (byteOffset < 0 || Integer.MAX_VALUE < byteOffset) {
             error.enter();
-            throw InvalidBufferOffsetException.create(byteOffset, bufferSize);
+            throw InvalidBufferOffsetException.create(byteOffset, Double.BYTES);
         }
         if ((boolean) lookup.execute(receiver, isReadOnlyMethod)) {
             error.enter();
             throw UnsupportedMessageException.create(new ReadOnlyBufferException());
         }
-        put(receiver, byteOffset, value, order, put, putDoubleMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
+        try {
+            put(receiver, byteOffset, value, order, put, putDoubleMethod, orderNode, orderMethod, setOrderNode, setOrderMethod);
+        } catch (EspressoException ex) {
+            error.enter();
+            if (InterpreterToVM.instanceOf(ex.getGuestException(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {
+                throw InvalidBufferOffsetException.create(byteOffset, Double.BYTES);
+            }
+            throw ex;
+        }
     }
 
     @ExportMessage
@@ -333,12 +394,13 @@ public class ByteBufferInterop extends EspressoInterop {
             error.enter();
             throw InvalidBufferOffsetException.create(byteOffset, length);
         }
+        // check and throw IOOBE in case the destination array is too small
+        Objects.checkFromIndexSize(destinationOffset, length, destination.length);
         try {
             readBuffer.execute(receiver, get, new Object[]{byteOffset, StaticObject.wrap(destination, getMeta()), destinationOffset, length});
         } catch (EspressoException ex) {
             error.enter();
-            StaticObject guestException = ex.getGuestException();
-            if (InterpreterToVM.instanceOf(guestException, receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {
+            if (InterpreterToVM.instanceOf(ex.getGuestException(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {
                 throw InvalidBufferOffsetException.create(byteOffset, length);
             }
             throw ex;
