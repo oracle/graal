@@ -133,15 +133,9 @@ public class GameOfLife {
 }
 ```
 
-We are interested in 3 run-time metrics this application:
-- Elapsed time - A proxy for the performance of the application i.e. how well the application was optimized.
-- CPU Usage - A proxy for the overhead of the runtime (since our application if fully single-threaded, CPU usage over 100% is a proxy for overhead)
-- Max RSS size - A proxy for the memory usage of the application and runtime
-
-We will run the same application in three different ways:
-- GraalVM as a JVM
-- GraalVM native-image without PGO 
-- GraalVM native-image with PGO 
+We are interested in elapsed time as a measurement for the performance of the application i.e. how well the application was optimized.
+The assumption is that the better the optimizations applied to the application the less time the application will take to complete a workload.
+We will run the same application in two different ways GraalVM Native Image without PGO and GraalVM Native Image with PGO.
 
 ## Build instructions
 
@@ -154,7 +148,7 @@ $ $GRAALVM_HOME/bin/java -version
     Java HotSpot(TM) 64-Bit Server VM Oracle GraalVM 21.0.1+12.1 (build 21.0.1+12-jvmci-23.1-b19, mixed mode, sharing)
 ```
 
-To confirm the enviroment variable is set up correctly to a GraalVM version we expect.
+To confirm the environment variable is set up correctly to a GraalVM version we expect.
 
 Our first step is to compile our `.java` file to a class file.
 
@@ -162,7 +156,7 @@ Our first step is to compile our `.java` file to a class file.
 $ $GRAALVM_HOME/bin/javac GameOfLife.java
 ```
 
-This is all we need to do to run the application on the JVM, but we also want to build a native image of the application, as follows.
+We also need to build a native image of the application, as follows.
 
 ```
 $ $GRAALVM_HOME/bin/native-image -cp . GameOfLife -o gameoflife-default
@@ -227,65 +221,30 @@ $ $GRAALVM_HOME/bin/native-image -cp . GameOfLife -o gameoflife-pgo --pgo=gameof
 	...
 ```
 
-With all this in place we can finally move on the evaluating the run-time metrics of our application running in the different modes.
+With all this in place we can finally move on the evaluating the run-time performance of our application running in the different modes.
 
 ## Evaluation
 
-We will run our application in all three ways (JVM, no PGO native image, PGO native image) using the same inputs.
-Note that we will be running the JIT mode using the serial garbage collector, as this is the default GC for native image.
-This also ensures that the application runs fully single-threaded allowing us to approximate the CPU usage overhead in JIT mode.
-We will also increase the order of magnitude for the number of iterations to get a feel of how the length of the run time impacts the strengths and weaknesses of each execution mode.
-We measure all 3 of our metrics using the Linux `time` command with a custom output format (`--format=>> Elapsed: %es, CPU Usage: %P, MAX RSS: %MkB`).
+We will run both of our application executables using the same inputs.
+We measure our elapsed time sing the Linux `time` command with a custom output format (`--format=>> Elapsed: %es`).
 Note: We fixed the CPU clock 2.5GHz during all the measurements in an attempt to minimize noise.
 
 ## 1 iteration
 
-The commands and output of or application in all three modes is shown bellow.
+The commands and output of both our application builds is shown bellow.
 
 ```
-$ time  $GRAALVM_HOME/bin/java -XX:+UseSerialGC GameOfLife input.txt output.txt 1
-	>> Elapsed: 1.43s, CPU Usage: 185%, MAX RSS: 569424kB
-
-
 $ time  ./gameoflife-default input.txt output.txt 1
-	>> Elapsed: 1.67s, CPU Usage: 99%, MAX RSS: 211804kB
+	>> Elapsed: 1.67s
 
 
 $ time  ./gameoflife-pgo input.txt output.txt 1
-	>> Elapsed: 1.00s, CPU Usage: 99%, MAX RSS: 209868kB
+	>> Elapsed: 0.97s
 ```
 
-Looking at the elapsed time we see that running on the JVM is only slightly faster than the default native-image build, but the PGO build is substantially faster in terms of precentage.
-With that in mind the half a second of difference does not have a huge imact for a single run of this application, 
+Looking at the elapsed time we see that running the PGO build is substantially faster in terms of percentage.
+With that in mind the half a second of difference does not have a huge impact for a single run of this application, 
 but if this was a serverless application that would execute frequently the cumulative performance gain would start to add up.
-
-The CPU Usage tells another interesting story - both native image builds have a 99% CPU usage, while the JVM reports 185%.
-This is primarily because the JIT compiler runs in a separate thread and compiles hot code at run time.
-Since we are running only one iteration and the JIT compiled code is discontinued once the application finishes - the extra CPU usage goes to waste.
-Similarly, the max RSS size of both native image builds is roughly 200MB, while the same application running on the JVM has a max RSS of more than 500MB.
-This is in partly because of the memory used by the JIT compiler (including the run-time profiles which are a small part of that memory).
-
-## 10 Iterations
-
-Let's repeat the same thing increasing the iteration count to 10.
-The commands and output follow.
-
-```
-$ time  $GRAALVM_HOME/bin/java -XX:+UseSerialGC GameOfLife input.txt output.txt 10
-	>> Elapsed: 2.56s, CPU Usage: 156%, MAX RSS: 695796kB
-
-
-$ time  ./gameoflife-default input.txt output.txt 10
-	>> Elapsed: 3.92s, CPU Usage: 99%, MAX RSS: 430728kB
-
-
-$ time  ./gameoflife-pgo input.txt output.txt 10
-	>> Elapsed: 2.33s, CPU Usage: 99%, MAX RSS: 452812kB
-```
-
-Similarly to the one iteration example, we can see that running on the JVM is still faster than the default build of native image, while consuming more resources (CPU Usage and max RSS).
-The PGO build of the application manages to just beat the JVM in elapsed time, while consuming significantly less resources.
-It also clearly outperforms the default native image build.
 
 ## 100 Iterations
 
@@ -293,28 +252,18 @@ We now move on to running our application for 100 iterations.
 Same as before, the executed commands and the time output is shown bellow.
 
 ```
-$ time  $GRAALVM_HOME/bin/java -XX:+UseSerialGC GameOfLife input.txt output.txt 100
-	>> Elapsed: 8.78s, CPU Usage: 116%, MAX RSS: 1203196kB
-
-
 $ time  ./gameoflife-default input.txt output.txt 100
-	>> Elapsed: 24.13s, CPU Usage: 99%, MAX RSS: 796288kB
+	>> Elapsed: 24.02s
 
 
 $ time  ./gameoflife-pgo input.txt output.txt 100
-	>> Elapsed: 13.39s, CPU Usage: 99%, MAX RSS: 896060kB
+	>> Elapsed: 13.25s
+
 ```
 
-We can now see that the story changes slightly.
-One hunderd iterations on the JVM actually takes less time than both the native image builds.
-This is because the application is running long enough that the effort the JVM invests in profiling and optimizing the code 
-(including speculative optimizations that AOT compilers can't do) starts paying off.
-On the other hand, the max RSS of the JVM is still significantly higher than both native image builds, and the CPU usage is higher.
-
-But the more interesting part of this comparison is comparing at the default native image build and the PGO native image build.
-In all three of our example runs (1, 10 and 100 iterations) the PGO build outperformes the default native image build significantly.
+In both of our example runs (1 and 100 iterations) the PGO build outperformes the default native image build significantly.
 The amount of improvement that PGO provides in this case is offcourse not representative of the PGO gains for real world applications,
-since our Game Of Life application is small and does exactly one thing so the profiles provded are based on the exact same workload we are measuring.
+since our Game Of Life application is small and does exactly one thing so the profiles provided are based on the exact same workload we are measuring.
 But it illustrates the general point - 
 profile guided optimizations allow AOT compilers to perform similar tricks that JIT compilers can do in order to improve the performance of the code they generate.
 
@@ -350,8 +299,7 @@ In this text we presented an overview of the main ideas behind Profile Guided Op
 We've discussed how recoding the behaviour of an application at run time (i.e. Profiling) and storing this information for later use 
 (i.e. The profile stored in an `.iprof` file for native image) can enable an Ahead-of-time compiler to have access to information it normally does not have.
 This information can be used to guide decision making in the compiler which can result in better performance as well as smaller binaries.
-We illustrated the benefits of PGO on a toy Game Of Life example,
-and discussed the comparison with running the application on a JVM which requires more resources to profile and optimize and run time.
+We illustrated the benefits of PGO on a toy Game Of Life example.
 
 It is also important to note that PGO is not a trivial technique to use.
 This is because PGO, in order to be beneficial, requires executing the instrumented build with realistic workloads, which is not always trivial to achieve.
