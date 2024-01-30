@@ -146,7 +146,11 @@ public abstract class AbstractUnsafeCompareAndSwapNode extends AbstractMemoryChe
             equalsNode = ObjectEqualsNode.virtualizeComparison(expectedAlias, currentValue, graph(), tool);
         }
         if (equalsNode == null && !(expectedAlias instanceof VirtualObjectNode) && !(currentValue instanceof VirtualObjectNode)) {
-            equalsNode = CompareNode.createCompareNode(EQ, expectedAlias, currentValue, tool.getConstantReflection(), NodeView.DEFAULT);
+            if (expectedAlias.getStackKind().isNumericFloat()) {
+                equalsNode = CompareNode.createFloatCompareNode(EQ, expectedAlias, currentValue, false, NodeView.DEFAULT);
+            } else {
+                equalsNode = CompareNode.createCompareNode(EQ, expectedAlias, currentValue, tool.getConstantReflection(), NodeView.DEFAULT);
+            }
         }
         if (equalsNode == null) {
             tool.getDebug().log(DETAILED_LEVEL, "%s.virtualize() -> Expected and/or current values are virtual and the comparison can not be folded", this);

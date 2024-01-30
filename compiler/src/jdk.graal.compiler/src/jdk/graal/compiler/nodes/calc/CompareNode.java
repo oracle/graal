@@ -323,7 +323,7 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
 
     public static LogicNode createCompareNode(CanonicalCondition condition, ValueNode x, ValueNode y, ConstantReflectionProvider constantReflection, NodeView view) {
         assert x.getStackKind() == y.getStackKind() : Assertions.errorMessageContext("condition", condition, "x", x, "y", y);
-        assert !x.getStackKind().isNumericFloat();
+        assert !x.getStackKind().isNumericFloat() : Assertions.errorMessage("Should be floats", x, y);
 
         LogicNode comparison;
         if (condition == CanonicalCondition.EQ) {
