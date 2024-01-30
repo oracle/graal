@@ -40,11 +40,14 @@
  */
 package com.oracle.truffle.api.bytecode;
 
+import java.io.DataOutput;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -166,7 +169,23 @@ public abstract class BytecodeRootNodes<T extends RootNode & BytecodeRootNode> {
     protected abstract boolean reparseImpl(BytecodeConfig config);
 
     /**
-     * Checks if the sources are present, and if not, reparses to get them.
+     * Serializes the nodes to a byte buffer. This method will always fail unless serialization is
+     * {@link GenerateBytecode#enableSerialization enabled}.
+     *
+     * This method will be overridden by the Bytecode DSL. Do not override.
+     *
+     * @param config The configuration to use. Determines what metadata gets serialized.
+     * @param buffer The buffer to write the serialized bytes to.
+     * @param callback A language-defined method for serializing language constants.
+     * @throws IOException if an I/O error occurs with the buffer.
+     */
+    @SuppressWarnings("unused")
+    public void serialize(BytecodeConfig config, DataOutput buffer, BytecodeSerializer callback) throws IOException {
+        throw new IllegalArgumentException("Serialization is not enabled for this interpreter.");
+    }
+
+    /**
+     * Ensures that sources are available, reparsing if necessary.
      *
      * @since 24.1
      */
@@ -174,15 +193,30 @@ public abstract class BytecodeRootNodes<T extends RootNode & BytecodeRootNode> {
         return reparseImpl(BytecodeConfig.WITH_SOURCE);
     }
 
+    /**
+     * Ensures the given instrumentations are available, reparsing if necessary.
+     *
+     * @since 24.1
+     */
     public final boolean enableInstrumentations(Class<?>... instrumentations) {
         return reparseImpl(BytecodeConfig.newBuilder().addInstrumentations(instrumentations).build());
     }
 
+    /**
+     * Ensures the given tags are available, reparsing if necessary.
+     *
+     * @since 24.1
+     */
     @SuppressWarnings("unchecked")
     public final boolean ensureTags(Class<? extends Tag>... tags) {
         return reparseImpl(BytecodeConfig.newBuilder().addTags(tags).build());
     }
 
+    /**
+     * Removes the given instrumentations, reparsing if necessary.
+     *
+     * @since 24.1
+     */
     public final boolean disableInstrumentations(Class<?>... instrumentations) {
         return reparseImpl(BytecodeConfig.newBuilder().removeInstrumentations(instrumentations).build());
     }

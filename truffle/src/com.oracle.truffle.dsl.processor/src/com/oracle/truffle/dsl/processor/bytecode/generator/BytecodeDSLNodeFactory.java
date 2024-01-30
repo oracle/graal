@@ -4603,6 +4603,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             bytecodeRootNodesImpl.add(createSetNodes());
             bytecodeRootNodesImpl.add(createGetParserImpl());
 
+            if (model.enableSerialization) {
+                bytecodeRootNodesImpl.add(createSerialize());
+            }
+
             return bytecodeRootNodesImpl;
         }
 
@@ -4683,6 +4687,22 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
+        private CodeExecutableElement createSerialize() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNodes, "serialize");
+            ex.renameArguments("config", "buffer", "callback");
+            addOverride(ex);
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startStatement();
+            b.startStaticCall(bytecodeNodeGen.asType(), "serialize");
+            b.string("config");
+            b.string("buffer");
+            b.string("callback");
+            b.string("getParserImpl()");
+            b.end(2);
+
+            return ex;
+        }
     }
 
     // Generates an Instructions class with constants for each instruction.

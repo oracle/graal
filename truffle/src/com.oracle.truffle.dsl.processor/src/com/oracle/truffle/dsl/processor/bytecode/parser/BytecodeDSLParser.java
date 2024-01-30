@@ -208,7 +208,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.addDefault();
 
         // check basic declaration properties
-        if (!typeElement.getModifiers().contains(Modifier.ABSTRACT)) {
+        Set<Modifier> modifiers = typeElement.getModifiers();
+        if (!modifiers.contains(Modifier.ABSTRACT)) {
             model.addError(typeElement, "Bytecode DSL class must be declared abstract.");
         }
 
@@ -219,10 +220,10 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         if (!ElementUtils.isAssignable(typeElement.asType(), types.BytecodeRootNode)) {
             model.addError(typeElement, "Bytecode DSL class must directly or indirectly implement %s.", getSimpleName(types.BytecodeRootNode));
         }
-        if (!typeElement.getModifiers().contains(Modifier.PUBLIC)) {
-            model.addError(typeElement, "Bytecode DSL class must be public.");
+        if (modifiers.contains(Modifier.PRIVATE) || modifiers.contains(Modifier.PROTECTED)) {
+            model.addError(typeElement, "Bytecode DSL class must be public or package-private.");
         }
-        if (typeElement.getEnclosingElement().getKind() != ElementKind.PACKAGE && !typeElement.getModifiers().contains(Modifier.STATIC)) {
+        if (typeElement.getEnclosingElement().getKind() != ElementKind.PACKAGE && !modifiers.contains(Modifier.STATIC)) {
             model.addError(typeElement, "Bytecode DSL class must be static if it is a nested class.");
         }
 
