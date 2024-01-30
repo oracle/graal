@@ -1985,12 +1985,17 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void align(int modulus) {
+        align(modulus, position());
+    }
+
+    /**
+     * Ensure that the code at {@code target} bytes offset from the current {@link #position()} is
+     * aligned according to {@code modulus}.
+     */
+    public void align(int modulus, int target) {
         assert modulus > 0 && (modulus & 0b11) == 0 : "Modulus has to be a positive multiple of 4.";
-        if (position() % modulus == 0) {
-            return;
-        }
-        int offset = modulus - position() % modulus;
-        for (int i = 0; i < offset; i += 4) {
+        int delta = target - position();
+        while ((position() + delta) % modulus != 0) {
             nop();
         }
     }

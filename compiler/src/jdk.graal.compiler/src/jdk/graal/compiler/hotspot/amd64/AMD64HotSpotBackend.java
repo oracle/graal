@@ -317,31 +317,65 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
     public void emitCodePrefix(ResolvedJavaMethod installedCodeOwner, CompilationResultBuilder crb, AMD64MacroAssembler asm, RegisterConfig regConfig) {
         HotSpotProviders providers = getProviders();
         if (installedCodeOwner != null && !installedCodeOwner.isStatic()) {
-            crb.recordMark(HotSpotMarkId.UNVERIFIED_ENTRY);
-            CallingConvention cc = regConfig.getCallingConvention(HotSpotCallingConventionType.JavaCallee, null, new JavaType[]{providers.getMetaAccess().lookupJavaType(Object.class)}, this);
-            Register inlineCacheKlass = rax; // see definition of IC_Klass in
-            // c1_LIRAssembler_x86.cpp
+            JavaType[] parameterTypes = {providers.getMetaAccess().lookupJavaType(Object.class)};
+            CallingConvention cc = regConfig.getCallingConvention(HotSpotCallingConventionType.JavaCallee, null, parameterTypes, this);
             Register receiver = asRegister(cc.getArgument(0));
             AMD64Address src = new AMD64Address(receiver, config.hubOffset);
             int before;
+            if (config.icSpeculatedKlassOffset == Integer.MAX_VALUE) {
+                crb.recordMark(HotSpotMarkId.UNVERIFIED_ENTRY);
+                // c1_LIRAssembler_x86.cpp: const Register IC_Klass = rax;
+                Register inlineCacheKlass = rax;
 
-            if (config.useCompressedClassPointers) {
-                Register register = r10;
-                Register heapBase = providers.getRegisters().getHeapBaseRegister();
-                AMD64HotSpotMove.decodeKlassPointer(asm, register, heapBase, src, config);
-                if (config.narrowKlassBase != 0) {
-                    // The heap base register was destroyed above, so restore it
-                    if (config.narrowOopBase == 0L) {
-                        asm.xorq(heapBase, heapBase);
-                    } else {
-                        asm.movq(heapBase, config.narrowOopBase);
+                if (config.useCompressedClassPointers) {
+                    Register register = r10;
+                    Register heapBase = providers.getRegisters().getHeapBaseRegister();
+                    AMD64HotSpotMove.decodeKlassPointer(asm, register, heapBase, src, config);
+                    if (config.narrowKlassBase != 0) {
+                        // The heap base register was destroyed above, so restore it
+                        if (config.narrowOopBase == 0L) {
+                            asm.xorq(heapBase, heapBase);
+                        } else {
+                            asm.movq(heapBase, config.narrowOopBase);
+                        }
                     }
+                    before = asm.cmpqAndJcc(inlineCacheKlass, register, ConditionFlag.NotEqual, null, false);
+                } else {
+                    before = asm.cmpqAndJcc(inlineCacheKlass, src, ConditionFlag.NotEqual, null, false);
                 }
-                before = asm.cmpqAndJcc(inlineCacheKlass, register, ConditionFlag.NotEqual, null, false);
+                crb.recordDirectCall(before, asm.position(), getForeignCalls().lookupForeignCall(IC_MISS_HANDLER), null);
             } else {
-                before = asm.cmpqAndJcc(inlineCacheKlass, src, ConditionFlag.NotEqual, null, false);
+                // JDK-8322630 (removed ICStubs)
+                Register data = rax;
+                Register temp = r10;
+                ForeignCallLinkage icMissHandler = getForeignCalls().lookupForeignCall(IC_MISS_HANDLER);
+
+                // Size of IC check sequence checked with a guarantee below.
+                int inlineCacheCheckSize = 14;
+                asm.align(config.codeEntryAlignment, asm.position() + inlineCacheCheckSize);
+
+                int startICCheck = asm.position();
+                crb.recordMark(HotSpotMarkId.UNVERIFIED_ENTRY);
+                AMD64Address icSpeculatedKlass = new AMD64Address(data, config.icSpeculatedKlassOffset);
+
+                AMD64BaseAssembler.OperandSize size;
+                if (config.useCompressedClassPointers) {
+                    asm.movl(temp, src);
+                    size = AMD64BaseAssembler.OperandSize.DWORD;
+                } else {
+                    asm.movptr(temp, src);
+                    size = AMD64BaseAssembler.OperandSize.QWORD;
+                }
+                before = asm.cmpAndJcc(size, temp, icSpeculatedKlass, ConditionFlag.NotEqual, null, false);
+                crb.recordDirectCall(before, asm.position(), icMissHandler, null);
+
+                int actualInlineCacheCheckSize = asm.position() - startICCheck;
+                if (actualInlineCacheCheckSize != inlineCacheCheckSize) {
+                    // Code emission pattern has changed: adjust `inlineCacheCheckSize`
+                    // initialization above accordingly.
+                    throw new GraalError("%s != %s", actualInlineCacheCheckSize, inlineCacheCheckSize);
+                }
             }
-            crb.recordDirectCall(before, asm.position(), getForeignCalls().lookupForeignCall(IC_MISS_HANDLER), null);
         }
 
         asm.align(config.codeEntryAlignment);
