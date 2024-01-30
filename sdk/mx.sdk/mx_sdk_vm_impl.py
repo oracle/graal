@@ -1992,10 +1992,18 @@ class GraalVmLibrary(GraalVmNativeImage):
         return _skip_libraries(self.native_image_config)
 
 class PolyglotIsolateLibrary(GraalVmLibrary):
-    def __init__(self, component, name, resources, native_image_config, **kw_args):
-        deps = list(resources)
-        super(PolyglotIsolateLibrary, self).__init__(component, name, deps, native_image_config, **kw_args)
-        self.resources = resources
+    def __init__(self, target_suite, language, deps, build_args, **kw_args):
+        library_config = mx_sdk.LanguageLibraryConfig(
+            jar_distributions=deps,
+            build_args=[],
+            build_args_enterprise=build_args,
+            language=language,
+        )
+        super(PolyglotIsolateLibrary, self).__init__(None, os.path.basename(library_config.destination) + ".image",
+                                                     list(deps), library_config, **kw_args)
+        self.suite = target_suite
+        self.dir = target_suite.dir
+
 
     def getBuildTask(self, args):
         svm_support = _get_svm_support()
@@ -2014,6 +2022,9 @@ class PolyglotIsolateLibrary(GraalVmLibrary):
         resources_dir = join(output_dir, 'resources')
         if exists(resources_dir):
             yield resources_dir, 'resources'
+
+    def is_skipped(self):
+        return False
 
 class GraalVmMiscLauncher(GraalVmLauncher):  # pylint: disable=too-many-ancestors
     def __init__(self, component, native_image_config, stage1=False, **kw_args):
@@ -2465,8 +2476,19 @@ class GraalVmLibraryBuildTask(GraalVmSVMNativeImageBuildTask):
 
 class PolyglotIsolateLibraryBuildTask(GraalVmLibraryBuildTask):
     def get_build_args(self):
-        build_args = super(PolyglotIsolateLibraryBuildTask, self).get_build_args()
-        build_args.extend(mx.get_runtime_jvm_args(self.subject.resources, exclude_names=['truffle:TRUFFLE_API']))
+        target = self.subject.native_image_name[:-len(_lib_suffix)]
+        build_args = [
+            '-EJVMCI_VERSION_CHECK',  # Propagate this env var when running native image from mx
+            '--parallelism=' + str(self.parallelism),
+            '--shared',
+            '-o',
+            target,
+            '--features=com.oracle.svm.enterprise.truffle.PolyglotIsolateGuestFeature',
+            '-H:APIFunctionPrefix=truffle_isolate_',
+        ] + svm_experimental_options([
+            '-H:+BuildOutputPrefix',
+            '-H:+GenerateBuildArtifactsFile',  # generate 'build-artifacts.json'
+        ]) + mx.get_runtime_jvm_args(self.subject.native_image_jar_distributions)
         return build_args
 
 
@@ -3522,14 +3544,8 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                         with_non_rebuildable_configs = True
             for library_config in _get_library_configs(component):
                 library_project = None
-                with_polyglot_isolate = False
                 if with_svm:
-                    with_polyglot_isolate = has_component('tfle', stage1=True) and isinstance(library_config, mx_sdk.LanguageLibraryConfig) and library_config.isolate_library_layout_distribution
-                    if with_polyglot_isolate:
-                        resources_distributions = library_config.isolate_library_layout_distribution.get('resources', [])
-                        library_project = PolyglotIsolateLibrary(component, GraalVmNativeImage.project_name(library_config), resources_distributions, library_config)
-                    else:
-                        library_project = GraalVmLibrary(component, GraalVmNativeImage.project_name(library_config), [], library_config)
+                    library_project = GraalVmLibrary(component, GraalVmNativeImage.project_name(library_config), [], library_config)
                     register_project(library_project)
                     if _rebuildable_image(library_config):
                         register_project(GraalVmNativeProperties(component, library_config))
@@ -3545,7 +3561,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                         register_project(launcher_project)
                         polyglot_config_project = PolyglotConfig(component, library_config)
                         register_project(polyglot_config_project)
-                    if with_polyglot_isolate and not library_project.is_skipped():
+                    if with_svm and library_config.isolate_library_layout_distribution and not library_project.is_skipped() and has_component('tfle', stage1=True):
                         # Create a layout distribution with the resulting language library that can be consumed into the
                         # isolate resources jar distribution,
                         resource_base_folder = f'META-INF/resources/engine/{library_config.language}-isolate/<os>/<arch>/libvm'
