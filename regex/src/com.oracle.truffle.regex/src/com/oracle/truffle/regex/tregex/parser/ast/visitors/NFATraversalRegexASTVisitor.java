@@ -152,6 +152,10 @@ public abstract class NFATraversalRegexASTVisitor {
     private TBitSet matchedConditionGroups;
     private boolean forward = true;
     private boolean done = false;
+    /**
+     * This is set to true whenever a nested call discovers that the current path is dead. One of
+     * the top-levels methods should check for this flag regularly and back-track if needed.
+     */
     private boolean shouldRetreat = false;
 
     /**
@@ -417,6 +421,10 @@ public abstract class NFATraversalRegexASTVisitor {
         // emptyLoopIterations tells us how many extra empty iterations of a loop do we admit.
         // In Ruby and Python, we admit 1, while in other dialects, we admit 0. This extra iteration
         // will not match any characters, but it might store an empty string in a capture group.
+        // When building a DFA, we ignore insideLoops altogether. Instead, termination is
+        // guaranteed by deduplication. Since deduplication takes quantifier guards into account,
+        // we have to make sure that the number of quantifier guards is bounded. This is achieved
+        // by normalization in pushQuantifierGuard.
         int extraEmptyLoopIterations = ast.getOptions().getFlavor().canHaveEmptyLoopIterations() ? (isBuildingDFA() ? Integer.MAX_VALUE : 1) : 0;
         if (cur.isDead() || insideLoops.get(cur, 0) > extraEmptyLoopIterations) {
             return retreat();
@@ -1053,6 +1061,10 @@ public abstract class NFATraversalRegexASTVisitor {
 
     /// Quantifier guard data handling
     private boolean useQuantifierGuards() {
+        // In some flavors, we need to calculate quantifier guards even when building DFAs, since
+        // these guards represent critical semantic details. While these guards would be ignored by
+        // the DFA at runtime, they are all resolved statically during this traversal. This is
+        // checked by ASTStepVisitor#noPredicatesInGuards.
         return !isBuildingDFA() || ast.getOptions().getFlavor().canHaveEmptyLoopIterations();
     }
 
@@ -1062,6 +1074,8 @@ public abstract class NFATraversalRegexASTVisitor {
 
     private void pushQuantifierGuard(QuantifierGuard guard) {
         assert useQuantifierGuards();
+        // First, we check whether the guard can be resolved statically. If it is trivially true,
+        // we ignore it (normalization). If it is impossible to satisfy, we backtrack.
         switch (guard.getKind()) {
             case updateCG: {
                 QuantifierGuardsLinkedList curGuard = quantifierGuards;
