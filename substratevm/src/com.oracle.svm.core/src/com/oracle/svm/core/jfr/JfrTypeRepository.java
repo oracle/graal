@@ -104,13 +104,14 @@ public class JfrTypeRepository implements JfrRepository {
 
     private void visitClass(TypeInfo typeInfo, Class<?> clazz) {
         if (clazz != null && addClass(typeInfo, clazz)) {
-            visitPackage(typeInfo, clazz.getPackage(), clazz.getModule());
+            visitPackage(typeInfo, clazz.getPackage(), clazz.getModule(), getPackageKey(clazz));
             visitClass(typeInfo, clazz.getSuperclass());
+            visitClassLoader(typeInfo, clazz.getClassLoader());
         }
     }
 
-    private void visitPackage(TypeInfo typeInfo, Package pkg, Module module) {
-        if (pkg != null && addPackage(typeInfo, pkg, module)) {
+    private void visitPackage(TypeInfo typeInfo, Package pkg, Module module, String pkgKey) {
+        if (pkg != null && addPackage(typeInfo, pkg, module, pkgKey)) {
             visitModule(typeInfo, module);
         }
     }
@@ -145,7 +146,7 @@ public class JfrTypeRepository implements JfrRepository {
         writer.writeCompressedLong(JfrTraceId.getTraceId(clazz));
         writer.writeCompressedLong(getClassLoaderId(typeInfo, clazz.getClassLoader()));
         writer.writeCompressedLong(getSymbolId(writer, clazz.getName(), flushpoint, true));
-        writer.writeCompressedLong(getPackageId(typeInfo, clazz.getPackage()));
+        writer.writeCompressedLong(getPackageId(typeInfo, clazz));
         writer.writeCompressedLong(clazz.getModifiers());
         writer.writeBoolean(clazz.isHidden());
     }
@@ -168,14 +169,14 @@ public class JfrTypeRepository implements JfrRepository {
         writer.writeCompressedInt(typeInfo.packages.size());
 
         for (Map.Entry<String, PackageInfo> pkgInfo : typeInfo.packages.entrySet()) {
-            writePackage(typeInfo, writer, pkgInfo.getKey(), pkgInfo.getValue(), flushpoint);
+            writePackage(typeInfo, writer, pkgInfo.getValue(), flushpoint);
         }
         return NON_EMPTY;
     }
 
-    private void writePackage(TypeInfo typeInfo, JfrChunkWriter writer, String pkgName, PackageInfo pkgInfo, boolean flushpoint) {
+    private void writePackage(TypeInfo typeInfo, JfrChunkWriter writer, PackageInfo pkgInfo, boolean flushpoint) {
         writer.writeCompressedLong(pkgInfo.id);  // id
-        writer.writeCompressedLong(getSymbolId(writer, pkgName, flushpoint, true));
+        writer.writeCompressedLong(getSymbolId(writer, pkgInfo.pkgName, flushpoint, true));
         writer.writeCompressedLong(getModuleId(typeInfo, pkgInfo.module));
         writer.writeBoolean(false); // exported
     }
@@ -228,10 +229,12 @@ public class JfrTypeRepository implements JfrRepository {
     private static class PackageInfo {
         private final long id;
         private final Module module;
+        private final String pkgName;
 
-        PackageInfo(long id, Module module) {
+        PackageInfo(long id, Module module, String pkgName) {
             this.id = id;
             this.module = module;
+            this.pkgName = pkgName;
         }
     }
 
@@ -246,27 +249,47 @@ public class JfrTypeRepository implements JfrRepository {
         return typeInfo.classes.contains(clazz) || flushedClasses.contains(clazz);
     }
 
-    private boolean addPackage(TypeInfo typeInfo, Package pkg, Module module) {
-        if (isPackageVisited(typeInfo, pkg)) {
-            assert module == (flushedPackages.containsKey(pkg.getName()) ? flushedPackages.get(pkg.getName()).module : typeInfo.packages.get(pkg.getName()).module);
+    /**
+     * It is possible that generated classes may have the same package as ordinary non-generated
+     * classes, however their module may be different (the unnamed module). We must deduplicate
+     * packages during serialization, but since a single package name may correspond to multiple
+     * modules, we make the deduplication key the concatenation of the package and module name. This
+     * allows each package module combination to be represented in the serialized data.
+     */
+    private static String getPackageKey(Class<?> clazz) {
+        if (clazz.getPackage() == null) {
+            return null;
+        }
+        String packageKey = clazz.getPackage().getName();
+        if (clazz.getModule() != null && clazz.getModule().getName() != null) {
+            packageKey += clazz.getModule().getName();
+        }
+        return packageKey;
+    }
+
+    private boolean addPackage(TypeInfo typeInfo, Package pkg, Module module, String pkgKey) {
+
+        if (isPackageVisited(typeInfo, pkgKey)) {
+            assert module == (flushedPackages.containsKey(pkgKey) ? flushedPackages.get(pkgKey).module : typeInfo.packages.get(pkgKey).module);
             return false;
         }
         // The empty package represented by "" is always traced with id 0
         long id = pkg.getName().isEmpty() ? 0 : ++currentPackageId;
-        typeInfo.packages.put(pkg.getName(), new PackageInfo(id, module));
+        typeInfo.packages.put(pkgKey, new PackageInfo(id, module, pkg.getName()));
         return true;
     }
 
-    private boolean isPackageVisited(TypeInfo typeInfo, Package pkg) {
-        return flushedPackages.containsKey(pkg.getName()) || typeInfo.packages.containsKey(pkg.getName());
+    private boolean isPackageVisited(TypeInfo typeInfo, String packageKey) {
+        return flushedPackages.containsKey(packageKey) || typeInfo.packages.containsKey(packageKey);
     }
 
-    private long getPackageId(TypeInfo typeInfo, Package pkg) {
-        if (pkg != null) {
-            if (flushedPackages.containsKey(pkg.getName())) {
-                return flushedPackages.get(pkg.getName()).id;
+    private long getPackageId(TypeInfo typeInfo, Class<?> clazz) {
+        String packageKey = getPackageKey(clazz);
+        if (packageKey != null) {
+            if (flushedPackages.containsKey(packageKey)) {
+                return flushedPackages.get(packageKey).id;
             }
-            return typeInfo.packages.get(pkg.getName()).id;
+            return typeInfo.packages.get(packageKey).id;
         } else {
             return 0;
         }

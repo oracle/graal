@@ -50,6 +50,11 @@ public class GCCause {
     @DuplicatedInNativeCode public static final GCCause HintedGC = new GCCause("Hinted GC", 3);
     @DuplicatedInNativeCode public static final GCCause JvmtiForceGC = new GCCause("JvmtiEnv ForceGarbageCollection", 4);
     @DuplicatedInNativeCode public static final GCCause HeapDump = new GCCause("Heap Dump Initiated GC ", 5);
+    /**
+     * {@link GCCause#JfrObjectCount} is a GC cause hotspot does not have. It indicates the GC was
+     * invoked in order to emit JFR ObjectCount periodic events.
+     */
+    @DuplicatedInNativeCode public static final GCCause JfrObjectCount = new GCCause("JFR object counting", 6);
 
     private final int id;
     private final String name;

@@ -81,6 +81,7 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jfr.JfrGCWhen;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.AllocationRequiringGCEvent;
+import com.oracle.svm.core.jfr.events.ObjectCountEventSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
@@ -250,6 +251,7 @@ public final class GCImpl implements GC {
             }
         } finally {
             JfrGCEvents.emitGarbageCollectionEvent(getCollectionEpoch(), cause, startTicks);
+            ObjectCountEventSupport.emitEvents(getCollectionEpoch(), startTicks, cause);
         }
         return outOfMemory;
     }
