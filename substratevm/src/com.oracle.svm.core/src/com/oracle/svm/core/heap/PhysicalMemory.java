@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.heap;
 
+import com.oracle.svm.core.Uninterruptible;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -58,8 +59,15 @@ public class PhysicalMemory {
     private static final UnsignedWord UNSET_SENTINEL = UnsignedUtils.MAX_VALUE;
     private static UnsignedWord cachedSize = UNSET_SENTINEL;
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isInitialized() {
         return cachedSize != UNSET_SENTINEL;
+    }
+
+    @Uninterruptible(reason = "May only be called during early startup.")
+    public static void setSize(UnsignedWord value) {
+        VMError.guarantee(!isInitialized(), "PhysicalMemorySize must not be initialized yet.");
+        cachedSize = value;
     }
 
     /**
