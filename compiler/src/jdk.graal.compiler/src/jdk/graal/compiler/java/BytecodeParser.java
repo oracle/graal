@@ -1224,7 +1224,9 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
          * Make sure we didn't pop something that we shouldn't have from the stack between
          * processing the opcode and emitting the deopt, which could cause an underflow.
          */
-        GraalError.guarantee(frameState.stackSize() + Bytecodes.stackEffectOf(stream.currentBC()) >= 0, "Stack underflow at unresolved deopt");
+        if (currentBlock.isInstructionBlock()) {
+            GraalError.guarantee(frameState.stackSize() + Bytecodes.stackEffectOf(stream.currentBC()) >= 0, "Stack underflow at unresolved deopt");
+        }
 
         SpeculationLog.Speculation speculation = mayUseUnresolved(bci());
         if (speculation == null) {
