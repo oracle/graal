@@ -4952,8 +4952,16 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     @Override
     public void align(int modulus) {
-        if (position() % modulus != 0) {
-            nop(modulus - (position() % modulus));
+        align(modulus, position());
+    }
+
+    /**
+     * Ensure that the code at {@code target} bytes offset from the current {@link #position()} is
+     * aligned according to {@code modulus}.
+     */
+    public void align(int modulus, int target) {
+        if (target % modulus != 0) {
+            nop(modulus - (target % modulus));
         }
     }
 
