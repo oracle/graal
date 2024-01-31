@@ -312,6 +312,7 @@ public abstract class VMThreads {
         return attachThread(thread);
     }
 
+    /* Needs to be protected due to legacy code. */
     @Uninterruptible(reason = "Thread is not attached yet.")
     protected int attachThread(IsolateThread thread) {
         assert StatusSupport.isStatusCreated(thread) : "Status should be initialized on creation.";
@@ -328,6 +329,11 @@ public abstract class VMThreads {
             head = thread;
             numAttachedThreads++;
             assert numAttachedThreads > 0;
+
+            if (!wasStartedByCurrentIsolate(thread)) {
+                /* Treat attached threads as non-daemon threads until we know better. */
+                PlatformThreads.incrementNonDaemonThreads();
+            }
 
             Heap.getHeap().attachThread(CurrentIsolate.getCurrentThread());
             /* On the initial transition to java code this thread should be synchronized. */
@@ -349,9 +355,11 @@ public abstract class VMThreads {
         assert thread.equal(CurrentIsolate.getCurrentThread()) : "Cannot detach different thread with this method";
 
         // read thread local data (can't be accessed further below as the IsolateThread is freed)
+        OSThreadHandle threadHandle = OSThreadHandleTL.get(thread);
         OSThreadHandle nextOsThreadToCleanup = WordFactory.nullPointer();
-        if (wasStartedByCurrentIsolate(thread)) {
-            nextOsThreadToCleanup = OSThreadHandleTL.get(thread);
+        boolean wasStartedByCurrentIsolate = wasStartedByCurrentIsolate(thread);
+        if (wasStartedByCurrentIsolate) {
+            nextOsThreadToCleanup = threadHandle;
         }
 
         threadExit(thread);
@@ -388,6 +396,10 @@ public abstract class VMThreads {
             THREAD_MUTEX.unlockNoTransitionUnspecifiedOwner();
         }
 
+        if (!wasStartedByCurrentIsolate) {
+            /* If a thread was attached, we need to free its thread handle. */
+            PlatformThreads.singleton().closeOSThreadHandle(threadHandle);
+        }
         cleanupExitedOsThread(threadToCleanup);
     }
 

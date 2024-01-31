@@ -45,6 +45,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackFrameVisitor;
@@ -220,26 +221,27 @@ public final class JavaThreads {
         }
     }
 
-    /** If there is an uncaught exception handler, call it. */
     public static void dispatchUncaughtException(Thread thread, Throwable throwable) {
-        /* Get the uncaught exception handler for the Thread, or the default one. */
-        UncaughtExceptionHandler handler = thread.getUncaughtExceptionHandler();
-        if (handler == null) {
-            handler = Thread.getDefaultUncaughtExceptionHandler();
-        }
-        if (handler != null) {
-            try {
-                handler.uncaughtException(thread, throwable);
-            } catch (Throwable t) {
-                /*
-                 * The JavaDoc for {@code Thread.UncaughtExceptionHandler.uncaughtException} says
-                 * the VM ignores any exceptions thrown.
-                 */
+        try {
+            /* Get the uncaught exception handler for the Thread, or the default one. */
+            UncaughtExceptionHandler handler = thread.getUncaughtExceptionHandler();
+            if (handler == null) {
+                handler = Thread.getDefaultUncaughtExceptionHandler();
             }
-        } else {
-            /* If no uncaught exception handler is present, then just report the throwable. */
-            System.err.print("Exception in thread \"" + Thread.currentThread().getName() + "\" ");
-            throwable.printStackTrace();
+
+            if (handler != null) {
+                handler.uncaughtException(thread, throwable);
+            } else {
+                /*
+                 * If no uncaught exception handler is present, then just report the Throwable in
+                 * the same way as it is done by ThreadGroup.uncaughtException().
+                 */
+                System.err.print("Exception in thread \"" + thread.getName() + "\" ");
+                throwable.printStackTrace(System.err);
+            }
+        } catch (Throwable e) {
+            /* See JavaThread::exit() in HotSpot. */
+            Log.log().newline().string("Exception: ").string(e.getClass().getName()).string(" thrown from the UncaughtExceptionHandler in thread \"").string(thread.getName()).string("\"").newline();
         }
     }
 
