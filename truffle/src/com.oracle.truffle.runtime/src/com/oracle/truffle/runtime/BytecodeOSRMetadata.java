@@ -202,22 +202,25 @@ public final class BytecodeOSRMetadata {
                 // smaller than the number of slots. Copy it into an array with the correct size.
                 osrEntry.indexedFrameTags = new byte[state.frameDescriptor.getNumberOfSlots()];
                 for (int i = 0; i < osrEntry.indexedFrameTags.length; i++) {
-                    if (!frame.isStatic(i)) {
-                        osrEntry.indexedFrameTags[i] = frame.getTag(i);
-                    } else {
-                        // Static check goes through the frame descriptor, which is more precise
-                        // than the tag in case of uninitialized slot.
-                        // The tag is forced to be STATIC, effectively disallowing the OSR frame to
-                        // have uninitialized static slots. This solves a couple effects:
-                        // - Uninitialized slots would get tag == 0, which, in the frame transfer
-                        // loop would resolve as a non-static OBJECT access. Forcing them to be
-                        // STATIC here solves that issue.
-                        // - Uninitialized slots have a Long(0) in their slot, which causes problems
-                        // when their virtualization returns them as-is. Static slots used in OSR
-                        // forces the conversion to the requested kind anyway: we can take
-                        // advantage of that behavior here to return the correct 0 value for all
-                        // slot kinds.
+                    if (frame.isStatic(i)) {
+                        /*
+                         * Static check goes through the frame descriptor, which is more precise
+                         * than the tag in case of uninitialized slot. The tag is forced to be
+                         * STATIC, effectively disallowing the OSR frame to have uninitialized
+                         * static slots. This solves a couple effects:
+                         *
+                         * - Uninitialized slots would get tag == 0, which, in the frame transfer
+                         * loop would resolve as a non-static OBJECT access. Forcing them to be
+                         * STATIC here solves that issue.
+                         *
+                         * - Uninitialized slots have a Long(0) in their slot, which causes problems
+                         * when their virtualization returns them as-is. Static slots used in OSR
+                         * forces the conversion to the requested kind anyway: we can take advantage
+                         * of that behavior here to return the correct 0 value for all slot kinds.
+                         */
                         osrEntry.indexedFrameTags[i] = FrameWithoutBoxing.STATIC_TAG;
+                    } else {
+                        osrEntry.indexedFrameTags[i] = frame.getTag(i);
                     }
                 }
             }

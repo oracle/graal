@@ -442,7 +442,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public boolean isObject(int slot) {
         return isNonStaticType(slot, OBJECT_TAG) &&
-                        // Uninitialized static slots get OBJECT_TAG before the first set , so we
+                        // Uninitialized static slots get OBJECT_TAG before the first set, so we
                         // explicitly check for non-staticness of the slot.
                         !isStatic(slot);
     }
