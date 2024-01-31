@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -173,8 +173,8 @@ public class Driver {
         toolArgs.addAll(sulongArgs);
         // add user flags
         toolArgs.addAll(userArgs);
-        printInfos(verbose, help, earlyExit, toolArgs);
         if (earlyExit) {
+            printInfos(verbose, help, earlyExit, toolArgs);
             return 0;
         }
         ProcessBuilder pb = new ProcessBuilder(toolArgs);
@@ -194,6 +194,7 @@ public class Driver {
             }
             // wait for process termination
             p.waitFor();
+            printInfos(verbose, help, earlyExit, toolArgs);
             // set exit code
             int exitCode = p.exitValue();
             if (verbose) {
