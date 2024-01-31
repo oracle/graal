@@ -112,6 +112,7 @@ import jdk.graal.compiler.nodes.calc.SubNode;
 import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 import jdk.graal.compiler.nodes.calc.XorNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.extended.JavaReadNode;
 import jdk.graal.compiler.nodes.extended.JavaWriteNode;
@@ -562,6 +563,11 @@ public class HotSpotGraphBuilderPlugins {
                     // perform the call that fills in the array.
                     b.add(new ArrayCopyCallNode(foreignCalls, wordTypes, value, srcBegin, newArray, ConstantNode.forInt(0), length, JavaKind.Char, LocationIdentity.init(), false, true, true,
                                     vmConfig.heapWordSize));
+
+                    // Writes to init must be protected by a FixedValueAnchorNode so that floating
+                    // reads don't bypass the ArrayCopyCallNode above.
+                    b.pop(JavaKind.Object);
+                    b.addPush(JavaKind.Object, new FixedValueAnchorNode(newArray));
                 }
                 return true;
             }
