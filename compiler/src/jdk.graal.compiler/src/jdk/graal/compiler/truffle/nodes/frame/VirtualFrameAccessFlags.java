@@ -42,7 +42,8 @@ public enum VirtualFrameAccessFlags {
     STATIC_BOTH_UPDATE(Constants.STATIC_UPDATE),
 
     // Special flag.
-    NON_STATIC_NO_SET_TAG_UPDATE(Constants.NON_STATIC_UPDATE_NO_SET_TAG);
+    NON_STATIC_NO_SET_TAG_UPDATE(Constants.NON_STATIC_UPDATE_NO_SET_TAG),
+    STATIC_NO_SET_TAG_UPDATE(Constants.STATIC_UPDATE_NO_SET_TAG);
 
     private final byte flags;
 
@@ -82,6 +83,7 @@ public enum VirtualFrameAccessFlags {
 
         public static final byte NON_STATIC_UPDATE = PRIMITIVE_FLAG | OBJECT_FLAG | SET_TAG_FLAG | UPDATES_FRAME;
         public static final byte NON_STATIC_UPDATE_NO_SET_TAG = PRIMITIVE_FLAG | OBJECT_FLAG | UPDATES_FRAME;
+        public static final byte STATIC_UPDATE_NO_SET_TAG = STATIC_FLAG | PRIMITIVE_FLAG | OBJECT_FLAG | UPDATES_FRAME;
 
         public static final byte STATIC = STATIC_FLAG | PRIMITIVE_FLAG | OBJECT_FLAG | SET_TAG_FLAG;
         public static final byte STATIC_PRIMITIVE = STATIC_FLAG | PRIMITIVE_FLAG | SET_TAG_FLAG;
