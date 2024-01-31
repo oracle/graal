@@ -32,8 +32,6 @@ import jdk.graal.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.Call;
-import jdk.vm.ci.code.site.Infopoint;
-import jdk.vm.ci.code.site.InfopointReason;
 
 public class AMD64HotSpotMacroAssembler extends AMD64MacroAssembler {
     private final GraalHotSpotVMConfig config;
@@ -44,11 +42,10 @@ public class AMD64HotSpotMacroAssembler extends AMD64MacroAssembler {
     }
 
     @Override
-    public void postCallNop(Infopoint infopoint) {
-        if (config.continuationsEnabled && infopoint instanceof Call) {
+    public void postCallNop(Call call) {
+        if (config.continuationsEnabled) {
             // Support for loom requires custom nops after call sites that might deopt
-            Call call = (Call) infopoint;
-            if (call.debugInfo != null && call.reason == InfopointReason.CALL) {
+            if (call.debugInfo != null) {
                 // Expected nop pattern taken from src/hotspot/cpu/x86/macroAssembler_x86.cpp in
                 // MacroAssembler::post_call_nop(). JVMCI will add a relocation during installation.
                 emitByte(0x0f);
@@ -59,7 +56,7 @@ public class AMD64HotSpotMacroAssembler extends AMD64MacroAssembler {
                 return;
             }
         }
-        super.postCallNop(infopoint);
+        super.postCallNop(call);
     }
 
     /**
