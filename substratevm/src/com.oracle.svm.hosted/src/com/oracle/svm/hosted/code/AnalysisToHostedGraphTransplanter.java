@@ -28,7 +28,24 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
+
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
+import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
+import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
+import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.meta.HostedUniverse;
 
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;
 import jdk.graal.compiler.core.common.Fields;
@@ -51,23 +68,6 @@ import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectState;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.SnippetTemplate;
-
-import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.common.meta.MultiMethod;
-import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
-import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
-import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
-import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.meta.HostedField;
-import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.HostedType;
-import com.oracle.svm.hosted.meta.HostedUniverse;
-
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -342,8 +342,8 @@ public class AnalysisToHostedGraphTransplanter {
             newReplacement = obj;
         } else {
             /* Check that we do not have a class or package name that relates to the analysis. */
-            assert !obj.getClass().getName().toLowerCase().contains("analysis") : "Object " + obj + " of " + obj.getClass() + " in node " + node;
-            assert !obj.getClass().getName().toLowerCase().contains("pointsto") : "Object " + obj + " of " + obj.getClass() + " in node " + node;
+            assert !obj.getClass().getName().toLowerCase(Locale.ENGLISH).contains("analysis") : "Object " + obj + " of " + obj.getClass() + " in node " + node;
+            assert !obj.getClass().getName().toLowerCase(Locale.ENGLISH).contains("pointsto") : "Object " + obj + " of " + obj.getClass() + " in node " + node;
             newReplacement = obj;
         }
 

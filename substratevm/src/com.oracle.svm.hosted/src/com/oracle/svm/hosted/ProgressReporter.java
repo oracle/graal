@@ -37,6 +37,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
@@ -210,7 +211,7 @@ public class ProgressReporter {
         }
         l().printHeadlineSeparator();
         recordJsonMetric(GeneralInfo.IMAGE_NAME, imageName);
-        String imageKindName = imageKind.name().toLowerCase().replace('_', ' ');
+        String imageKindName = imageKind.name().toLowerCase(Locale.ENGLISH).replace('_', ' ');
         l().blueBold().link("GraalVM Native Image", "https://www.graalvm.org/native-image/").reset()
                         .a(": Generating '").bold().a(imageName).reset().a("' (").doclink(imageKindName, "#glossary-imagekind").a(")...").println();
         l().printHeadlineSeparator();
@@ -681,7 +682,7 @@ public class ProgressReporter {
         l().yellowBold().a("Recommendations:").reset().println();
         for (UserRecommendation r : topApplicableRecommendations) {
             String alignment = Utils.stringFilledWith(Math.max(1, 5 - r.id().length()), " ");
-            l().a(" ").doclink(r.id(), "#recommendation-" + r.id().toLowerCase()).a(":").a(alignment).a(r.description()).println();
+            l().a(" ").doclink(r.id(), "#recommendation-" + r.id().toLowerCase(Locale.ENGLISH)).a(":").a(alignment).a(r.description()).println();
         }
     }
 
@@ -783,7 +784,7 @@ public class ProgressReporter {
         Map<Path, List<String>> pathToTypes = new TreeMap<>();
         artifacts.forEach((artifactType, paths) -> {
             for (Path path : paths) {
-                pathToTypes.computeIfAbsent(path, p -> new ArrayList<>()).add(artifactType.name().toLowerCase());
+                pathToTypes.computeIfAbsent(path, p -> new ArrayList<>()).add(artifactType.name().toLowerCase(Locale.ENGLISH));
             }
         });
         pathToTypes.forEach((path, typeNames) -> l().a(" ").link(path).dim().a(" (").a(String.join(", ", typeNames)).a(")").reset().println());
@@ -1184,7 +1185,7 @@ public class ProgressReporter {
 
         private void appendStageStart() {
             a(outputPrefix).blue().a(String.format("[%s/%s] ", 1 + activeBuildStage.ordinal(), BuildStage.NUM_STAGES)).reset()
-                            .blueBold().doclink(activeBuildStage.message, "#stage-" + activeBuildStage.name().toLowerCase()).a("...").reset();
+                            .blueBold().doclink(activeBuildStage.message, "#stage-" + activeBuildStage.name().toLowerCase(Locale.ENGLISH)).a("...").reset();
         }
 
         final String progressBarStartPadding() {

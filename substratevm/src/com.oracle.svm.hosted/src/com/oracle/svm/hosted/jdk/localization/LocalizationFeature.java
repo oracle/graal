@@ -419,9 +419,9 @@ public class LocalizationFeature implements InternalFeature {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void addCharset(Charset charset) {
         Map<String, Charset> charsets = ImageSingletons.lookup(LocalizationSupport.class).charsets;
-        charsets.put(charset.name().toLowerCase(), charset);
+        charsets.put(charset.name().toLowerCase(Locale.ENGLISH), charset);
         for (String name : charset.aliases()) {
-            charsets.put(name.toLowerCase(), charset);
+            charsets.put(name.toLowerCase(Locale.ENGLISH), charset);
         }
 
         /* Eagerly initialize all the tables necessary for decoding / encoding. */

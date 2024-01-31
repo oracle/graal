@@ -33,13 +33,14 @@ import java.util.Formatter;
 import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.core.phases.fuzzing.AbstractCompilationPlan.PrintingUtils;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.phases.BasePhase;
@@ -303,7 +304,7 @@ class MinimalFuzzedTierPlan<C> extends AbstractTierPlan<C> {
             return "Every phase that was given is in the resulting tier plan.";
         }
         Formatter formatter = new Formatter();
-        formatter.format("Phase%s in %s ignored by the fuzzer:%n", getIgnoredPhases().size() > 1 ? "s" : "", getTierName().toLowerCase());
+        formatter.format("Phase%s in %s ignored by the fuzzer:%n", getIgnoredPhases().size() > 1 ? "s" : "", getTierName().toLowerCase(Locale.ENGLISH));
         for (BasePhase<? super C> phase : getIgnoredPhases()) {
             if (phase instanceof PhaseSuite) {
                 formatter.format("%s", PrintingUtils.indent(phase.toString()));

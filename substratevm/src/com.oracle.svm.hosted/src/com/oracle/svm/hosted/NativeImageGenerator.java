@@ -49,6 +49,7 @@ import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
@@ -418,7 +419,7 @@ public class NativeImageGenerator {
 
         String os = System.getProperty("svm.targetPlatformOS");
         if (os == null) {
-            os = OS.getCurrent().className.toLowerCase();
+            os = OS.getCurrent().className.toLowerCase(Locale.ENGLISH);
         }
 
         String arch = System.getProperty("svm.targetPlatformArch");
@@ -1703,7 +1704,6 @@ public class NativeImageGenerator {
          * they are JDK internal types.
          */
         String message = checkName(name);
-
         if (message != null) {
             if (bb != null) {
                 bb.getUnsupportedFeatures().addMessage(name, method, message);
@@ -1714,7 +1714,7 @@ public class NativeImageGenerator {
     }
 
     public static String checkName(String name) {
-        String lname = name.toLowerCase();
+        String lname = name.toLowerCase(Locale.ENGLISH);
         String message = null;
         if (lname.contains("hosted")) {
             message = "Hosted element used at run time: " + name;

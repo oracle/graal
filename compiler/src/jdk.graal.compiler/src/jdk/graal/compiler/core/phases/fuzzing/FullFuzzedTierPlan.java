@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
 
@@ -210,7 +211,7 @@ public final class FullFuzzedTierPlan<C> extends MinimalFuzzedTierPlan<C> {
     @Override
     public String toString() {
         return String.format("%s%n%s%nProbability of inserting a phase: 1/%s (-Dtest.graal.skip.phase.insertion.odds.%s=%s)%n",
-                        super.toString(), ignoredPhasesToString(), phaseSkipOdds, String.join(".", getTierName().toLowerCase().split(" ")), phaseSkipOdds);
+                        super.toString(), ignoredPhasesToString(), phaseSkipOdds, String.join(".", getTierName().toLowerCase(Locale.ENGLISH).split(" ")), phaseSkipOdds);
     }
 
     @Override

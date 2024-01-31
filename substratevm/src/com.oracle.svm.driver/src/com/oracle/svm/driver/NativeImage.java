@@ -52,6 +52,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
@@ -119,7 +120,7 @@ public class NativeImage {
     static final String platform = getPlatform();
 
     private static String getPlatform() {
-        return (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase();
+        return (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase(Locale.ENGLISH);
     }
 
     static final String graalvmVendor = VM.getVendor();
@@ -1210,10 +1211,10 @@ public class NativeImage {
                     if (getHostedOptionArgumentValue(imageBuilderArgs, oHName) == null) {
                         /* Also no explicit image name given as customImageBuilderArgs */
                         if (explicitMainClass) {
-                            imageBuilderArgs.add(oH(SubstrateOptions.Name, "main-class lower case as image name") + mainClass.toLowerCase());
+                            imageBuilderArgs.add(oH(SubstrateOptions.Name, "main-class lower case as image name") + mainClass.toLowerCase(Locale.ENGLISH));
                         } else if (getHostedOptionArgumentValue(imageBuilderArgs, oHName) == null) {
                             if (hasMainClassModule) {
-                                imageBuilderArgs.add(oH(SubstrateOptions.Name, "image-name from module-name") + mainClassModule.toLowerCase());
+                                imageBuilderArgs.add(oH(SubstrateOptions.Name, "image-name from module-name") + mainClassModule.toLowerCase(Locale.ENGLISH));
                             } else if (!listModules) {
                                 /* Although very unlikely, report missing image-name if needed. */
                                 throw showError("Missing image-name. Use -o <imagename> to provide one.");
@@ -1446,7 +1447,7 @@ public class NativeImage {
         if (targetPlatform == null) {
             return;
         }
-        targetPlatform = targetPlatform.toLowerCase();
+        targetPlatform = targetPlatform.toLowerCase(Locale.ENGLISH);
 
         String[] parts = targetPlatform.split("-");
         if (parts.length != 2) {
@@ -1781,7 +1782,7 @@ public class NativeImage {
         Function<String, String> keyMapper;
         if (OS.WINDOWS.isCurrent()) {
             requiredKeys.addAll(List.of("TEMP", "INCLUDE", "LIB"));
-            keyMapper = String::toUpperCase;
+            keyMapper = s -> s.toUpperCase(Locale.ENGLISH);
         } else {
             keyMapper = Function.identity();
         }
@@ -2113,7 +2114,7 @@ public class NativeImage {
     }
 
     private static boolean hasJarFileSuffix(Path p) {
-        return p.getFileName().toString().toLowerCase().endsWith(".jar");
+        return p.getFileName().toString().toLowerCase(Locale.ENGLISH).endsWith(".jar");
     }
 
     /**
@@ -2305,15 +2306,14 @@ public class NativeImage {
         List<String> baseNameList = Arrays.asList(jarBaseNames);
         try (var files = Files.list(dir)) {
             return files.filter(p -> {
-                String jarFileName = p.getFileName().toString();
-                String jarSuffix = ".jar";
-                if (!jarFileName.toLowerCase().endsWith(jarSuffix)) {
+                if (!hasJarFileSuffix(p)) {
                     return false;
                 }
                 if (baseNameList.isEmpty()) {
                     return true;
                 }
-                String jarBaseName = jarFileName.substring(0, jarFileName.length() - jarSuffix.length());
+                String jarFileName = p.getFileName().toString();
+                String jarBaseName = jarFileName.substring(0, jarFileName.length() - ".jar".length());
                 return baseNameList.contains(jarBaseName);
             }).collect(Collectors.toList());
         } catch (IOException e) {
