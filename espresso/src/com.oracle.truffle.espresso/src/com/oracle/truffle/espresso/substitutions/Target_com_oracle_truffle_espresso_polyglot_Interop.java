@@ -49,6 +49,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -2660,16 +2661,18 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         int length,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
-                        @Cached BranchProfile exceptionProfile) {
+                        @Cached InlinedBranchProfile unexpectedExceptionProfile,
+                        @Cached InlinedBranchProfile exceptionProfile) {
             // check destination array and throw guest exception in case it is too small
             byte[] dest = destination.unwrap(getLanguage());
             if (destinationOffset < 0 || destinationOffset + length > dest.length) {
+                unexpectedExceptionProfile.enter(this);
                 throw getMeta().throwExceptionWithMessage(getMeta().java_lang_ArrayIndexOutOfBoundsException, "destination array is not able to hold the bytes");
             }
             try {
                 interop.readBuffer(InteropUtils.unwrapForeign(getLanguage(), receiver), byteOffset, destination.unwrap(getLanguage()), destinationOffset, length);
             } catch (InteropException e) {
-                exceptionProfile.enter();
+                exceptionProfile.enter(this);
                 throw throwInteropExceptionAsGuest.execute(e);
             }
         }
