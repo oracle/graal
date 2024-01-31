@@ -1652,6 +1652,7 @@ suite = {
           "java.sql", # java.sql.date java.sql.Time
           "org.graalvm.collections",
           "org.graalvm.nativeimage",
+          "org.graalvm.shadowed.jcodings",
         ],
         "exports" : [
           # Unqualified exports
