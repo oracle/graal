@@ -963,9 +963,11 @@ final class BreakpointInterceptor {
     }
 
     /**
-     * This method should be intercepted when we are predefining a lambda class. This is the only spot in the lambda-class creation
-     * pipeline where we can get lambda-class bytecode so the class can be predefined. We do not want to predefine all lambda classes,
-     * but only the ones that are actually created at runtime, so we have a method that checks wheter the lambda should be predefined or not.
+     * This method should be intercepted when we are predefining a lambda class. This is the only
+     * spot in the lambda-class creation pipeline where we can get lambda-class bytecode so the
+     * class can be predefined. We do not want to predefine all lambda classes, but only the ones
+     * that are actually created at runtime, so we have a method that checks wheter the lambda
+     * should be predefined or not.
      */
     private static boolean onMethodHandleClassFileInit(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
         String className = Support.fromJniString(jni, getObjectArgument(thread, 1));
@@ -995,9 +997,10 @@ final class BreakpointInterceptor {
     }
 
     /**
-     * This method is used to check whether a lambda class should be predefined or not. Only lambdas that are created at runtime should
-     * be predefined, and we should ignore the others. This method checks if the specific sequence of methods exists in the stacktrace
-     * and base on that decides if the lambda class should be ignored.
+     * This method is used to check whether a lambda class should be predefined or not. Only lambdas
+     * that are created at runtime should be predefined, and we should ignore the others. This
+     * method checks if the specific sequence of methods exists in the stacktrace and base on that
+     * decides if the lambda class should be ignored.
      */
     private static boolean shouldIgnoreLambdaClassForPredefinition(JNIEnvironment env) {
         JNIMethodId[] stackTraceMethodIds = EagerlyLoadedJavaStackAccess.stackAccessSupplier().get().getFullStackTraceOrNull();

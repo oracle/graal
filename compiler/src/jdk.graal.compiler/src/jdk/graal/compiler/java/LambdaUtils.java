@@ -126,7 +126,7 @@ public final class LambdaUtils {
     }
 
     /**
-     * Checks if the passed type is lambda class type based on set flags and the type name
+     * Checks if the passed type is lambda class type based on set flags and the type name.
      *
      * @param type type to be checked
      * @return true if the passed type is lambda type, false otherwise
@@ -165,7 +165,7 @@ public final class LambdaUtils {
     }
 
     /**
-     * Hashing a passed string parameter using SHA-1 hashing algorithm
+     * Hashing a passed string parameter using SHA-1 hashing algorithm.
      *
      * @param value string to be hashed
      * @return hexadecimal hashed value of the passed string parameter
@@ -175,7 +175,7 @@ public final class LambdaUtils {
     }
 
     /**
-     * Hashing a passed byte array parameter using SHA-1 hashing algorithm
+     * Hashing a passed byte array parameter using SHA-1 hashing algorithm.
      *
      * @param bytes byte array to be hashed
      * @return hexadecimal hashed value of the passed byte array parameter
@@ -191,7 +191,7 @@ public final class LambdaUtils {
     }
 
     /**
-     * Extracts lambda capturing class name from the lambda class name
+     * Extracts lambda capturing class name from the lambda class name.
      *
      * @param className name of the lambda class
      * @return name of the lambda capturing class
@@ -201,7 +201,7 @@ public final class LambdaUtils {
     }
 
     /**
-     * Checks if the passed class is lambda class
+     * Checks if the passed class is lambda class.
      *
      * @param clazz class to be checked
      * @return true if the clazz is lambda class, false instead
@@ -211,7 +211,7 @@ public final class LambdaUtils {
     }
 
     /**
-     * Checks if the passed class name is lambda class name
+     * Checks if the passed class name is lambda class name.
      *
      * @param className name of the class
      * @return true if the className is lambda class name, false instead
