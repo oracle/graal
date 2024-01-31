@@ -81,6 +81,35 @@ public class JDTCompiler extends AbstractCompiler {
         }
     }
 
+    private final int compilerMinorVersion;
+    private final int compilerMajorVersion;
+
+    public JDTCompiler(Element element) {
+        synchronized (JDTCompiler.class) {
+            try (InputStream eclipseCompilerPropertiesStream = element.getClass().getResourceAsStream("/org/eclipse/jdt/internal/compiler/batch/messages.properties")) {
+                Properties properties = new Properties();
+                if (eclipseCompilerPropertiesStream != null) {
+                    properties.load(eclipseCompilerPropertiesStream);
+                }
+                int majorVer = 0;
+                int minorVer = 0;
+                String compilerVersionRawString = properties.getProperty("compiler.version");
+                if (compilerVersionRawString != null) {
+                    Pattern compilerVersionPattern = Pattern.compile("^.*(\\d+)\\.(\\d+).\\d+$");
+                    Matcher compilerVersionMatcher = compilerVersionPattern.matcher(compilerVersionRawString);
+                    if (compilerVersionMatcher.find()) {
+                        majorVer = Integer.parseInt(compilerVersionMatcher.group(1));
+                        minorVer = Integer.parseInt(compilerVersionMatcher.group(2));
+                    }
+                }
+                this.compilerMajorVersion = majorVer;
+                this.compilerMinorVersion = minorVer;
+            } catch (IOException ioe) {
+                throw new RuntimeException(ioe);
+            }
+        }
+    }
+
     /**
      * @see "https://bugs.openjdk.java.net/browse/JDK-8039214"
      */
@@ -99,48 +128,19 @@ public class JDTCompiler extends AbstractCompiler {
         return cache.computeIfAbsent(type, (t) -> sortBySourceOrder(newElementList(getAllMembers(environment, type))));
     }
 
-    private static final class CompilerVersionSpecifics {
-        private static final int COMPILER_MAJOR_VERSION;
-        private static final int COMPILER_MINOR_VERSION;
-
-        static {
-            try (InputStream eclipseCompilerPropertiesStream = JDTCompiler.class.getResourceAsStream("/org/eclipse/jdt/internal/compiler/batch/messages.properties")) {
-                Properties properties = new Properties();
-                if (eclipseCompilerPropertiesStream != null) {
-                    properties.load(eclipseCompilerPropertiesStream);
-                }
-                int majorVer = 0;
-                int minorVer = 0;
-                String compilerVersionRawString = properties.getProperty("compiler.version");
-                if (compilerVersionRawString != null) {
-                    Pattern compilerVersionPattern = Pattern.compile("^.*(\\d+)\\.(\\d+).\\d+$");
-                    Matcher compilerVersionMatcher = compilerVersionPattern.matcher(compilerVersionRawString);
-                    if (compilerVersionMatcher.find()) {
-                        majorVer = Integer.parseInt(compilerVersionMatcher.group(1));
-                        minorVer = Integer.parseInt(compilerVersionMatcher.group(2));
-                    }
-                }
-                COMPILER_MAJOR_VERSION = majorVer;
-                COMPILER_MINOR_VERSION = minorVer;
-            } catch (IOException ioe) {
-                throw new RuntimeException(ioe);
-            }
-        }
-
-        /**
-         * Returns true if and only if the used version of ECJ has the <a
-         * href=https://github.com/eclipse-jdt/eclipse.jdt.core/issues/1752>static member inheritace
-         * bug</a>.
-         */
-        static boolean hasStaticMemberInheritanceBug() {
-            return (COMPILER_MAJOR_VERSION > 3 || (COMPILER_MAJOR_VERSION == 3 && COMPILER_MINOR_VERSION >= 34));
-        }
+    /**
+     * Returns true if and only if the used version of ECJ has the <a
+     * href=https://github.com/eclipse-jdt/eclipse.jdt.core/issues/1752>static member inheritace
+     * bug</a>.
+     */
+    private boolean hasStaticMemberInheritanceBug() {
+        return (compilerMajorVersion > 3 || (compilerMajorVersion == 3 && compilerMinorVersion >= 34));
     }
 
-    private static List<? extends Element> getAllMembers(ProcessingEnvironment environment, TypeElement type) {
+    private List<? extends Element> getAllMembers(ProcessingEnvironment environment, TypeElement type) {
         Elements elements = environment.getElementUtils();
         List<Element> allMembers = new ArrayList<>(elements.getAllMembers(type));
-        if (CompilerVersionSpecifics.hasStaticMemberInheritanceBug()) {
+        if (hasStaticMemberInheritanceBug()) {
             TypeElement superTypeElement = type.getSuperclass() != null ? ElementUtils.castTypeElement(type.getSuperclass()) : null;
             while (superTypeElement != null) {
                 for (ExecutableElement method : ElementFilter.methodsIn(superTypeElement.getEnclosedElements())) {
