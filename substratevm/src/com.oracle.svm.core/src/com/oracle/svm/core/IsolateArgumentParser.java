@@ -210,10 +210,7 @@ public class IsolateArgumentParser {
     }
 
     private static boolean shouldValidate(RuntimeOptionKey<?> option) {
-        if (!option.hasBeenSet()) {
-            /* Workaround for one specific Truffle language that does something weird. */
-            return false;
-        } else if (SubstrateOptions.UseSerialGC.getValue()) {
+        if (SubstrateOptions.UseSerialGC.getValue()) {
             /* The serial GC supports changing the heap size at run-time to some degree. */
             return option != SubstrateGCOptions.MinHeapSize && option != SubstrateGCOptions.MaxHeapSize && option != SubstrateGCOptions.MaxNewSize;
         }
