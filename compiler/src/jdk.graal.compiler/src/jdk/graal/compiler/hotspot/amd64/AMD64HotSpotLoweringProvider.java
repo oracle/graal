@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,15 +38,11 @@ import jdk.graal.compiler.hotspot.meta.HotSpotRegistersProvider;
 import jdk.graal.compiler.hotspot.replacements.HotSpotAllocationSnippets;
 import jdk.graal.compiler.hotspot.replacements.arraycopy.HotSpotArraycopySnippets;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.calc.FloatConvertNode;
-import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.replacements.amd64.AMD64ConvertSnippets;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
@@ -55,7 +51,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider implements AMD64LoweringProviderMixin {
 
-    private AMD64ConvertSnippets.Templates convertSnippets;
     private AMD64X87MathSnippets.Templates mathSnippets;
 
     public AMD64HotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
@@ -68,7 +63,6 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
     public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config,
                     HotSpotArraycopySnippets.Templates arraycopySnippetTemplates,
                     HotSpotAllocationSnippets.Templates allocationSnippetTemplates) {
-        convertSnippets = new AMD64ConvertSnippets.Templates(options, providers);
         mathSnippets = new AMD64X87MathSnippets.Templates(options, providers);
         super.initialize(options, factories, providers, config, arraycopySnippetTemplates, allocationSnippetTemplates);
     }
@@ -78,9 +72,7 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
         if (lowerAMD64(n)) {
             return;
         }
-        if (n instanceof FloatConvertNode) {
-            convertSnippets.lower((FloatConvertNode) n, tool);
-        } else if (n instanceof UnaryMathIntrinsicNode) {
+        if (n instanceof UnaryMathIntrinsicNode) {
             lowerUnaryMath((UnaryMathIntrinsicNode) n, tool);
         } else {
             super.lower(n, tool);
@@ -117,10 +109,7 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
                     return;
             }
         }
-
-        ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, math.getOperation().foreignCallSignature, math.getValue()));
-        graph.addAfterFixed(tool.lastFixedNode(), call);
-        math.replaceAtUsages(call);
+        lowerUnaryMathToForeignCall(math, tool);
     }
 
     @Override

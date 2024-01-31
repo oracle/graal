@@ -505,7 +505,7 @@ public class OptionProcessor extends AbstractProcessor {
         if (model.options.isEmpty()) {
             builder.startStaticCall(context.getType(Collections.class), "<OptionDescriptor> emptyList().iterator").end();
         } else {
-            builder.startStaticCall(context.getType(Arrays.class), "asList");
+            builder.startStaticCall(context.getType(List.class), "of");
             for (OptionInfo info : model.options) {
                 builder.startGroup();
                 builder.startIndention();
@@ -514,7 +514,7 @@ public class OptionProcessor extends AbstractProcessor {
                 builder.end();
                 builder.end();
             }
-            builder.end(); /// asList call
+            builder.end(); /// of call
             builder.newLine();
             builder.startCall("", "iterator").end();
         }

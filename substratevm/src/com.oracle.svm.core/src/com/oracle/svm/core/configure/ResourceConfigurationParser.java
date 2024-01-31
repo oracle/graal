@@ -34,17 +34,21 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import jdk.graal.compiler.util.json.JSONParserException;
 
+import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 
-public class ResourceConfigurationParser extends ConfigurationParser {
-    private final ResourcesRegistry registry;
+import jdk.graal.compiler.util.json.JSONParserException;
 
-    public ResourceConfigurationParser(ResourcesRegistry registry, boolean strictConfiguration) {
+public class ResourceConfigurationParser<C> extends ConfigurationParser {
+    private final ResourcesRegistry<C> registry;
+
+    private final ConfigurationConditionResolver<C> conditionResolver;
+
+    public ResourceConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, ResourcesRegistry<C> registry, boolean strictConfiguration) {
         super(strictConfiguration);
         this.registry = registry;
+        this.conditionResolver = conditionResolver;
     }
 
     @Override
@@ -101,7 +105,10 @@ public class ResourceConfigurationParser extends ConfigurationParser {
         EconomicMap<String, Object> resource = asMap(bundle, "Elements of 'bundles' list must be a bundle descriptor object");
         checkAttributes(resource, "bundle descriptor object", Collections.singletonList("name"), Arrays.asList("locales", "classNames", "condition"));
         String basename = asString(resource.get("name"));
-        ConfigurationCondition condition = parseCondition(resource);
+        TypeResult<C> resolvedConfigurationCondition = conditionResolver.resolveCondition(parseCondition(resource));
+        if (!resolvedConfigurationCondition.isPresent()) {
+            return;
+        }
         Object locales = resource.get("locales");
         if (locales != null) {
             List<Locale> asList = asList(locales, "Attribute 'locales' must be a list of locales")
@@ -109,7 +116,7 @@ public class ResourceConfigurationParser extends ConfigurationParser {
                             .map(ResourceConfigurationParser::parseLocale)
                             .collect(Collectors.toList());
             if (!asList.isEmpty()) {
-                registry.addResourceBundles(condition, basename, asList);
+                registry.addResourceBundles(resolvedConfigurationCondition.get(), basename, asList);
             }
 
         }
@@ -118,12 +125,12 @@ public class ResourceConfigurationParser extends ConfigurationParser {
             List<Object> asList = asList(classNames, "Attribute 'classNames' must be a list of classes");
             for (Object o : asList) {
                 String className = asString(o);
-                registry.addClassBasedResourceBundle(condition, basename, className);
+                registry.addClassBasedResourceBundle(resolvedConfigurationCondition.get(), basename, className);
             }
         }
         if (locales == null && classNames == null) {
             /* If nothing more precise is specified, register in every included locale */
-            registry.addResourceBundles(condition, basename);
+            registry.addResourceBundles(resolvedConfigurationCondition.get(), basename);
         }
     }
 
@@ -136,12 +143,15 @@ public class ResourceConfigurationParser extends ConfigurationParser {
         return locale;
     }
 
-    private void parseStringEntry(Object data, String valueKey, BiConsumer<ConfigurationCondition, String> resourceRegistry, String expectedType, String parentType) {
+    private void parseStringEntry(Object data, String valueKey, BiConsumer<C, String> resourceRegistry, String expectedType, String parentType) {
         EconomicMap<String, Object> resource = asMap(data, "Elements of " + parentType + " must be a " + expectedType);
         checkAttributes(resource, "resource and resource bundle descriptor object", Collections.singletonList(valueKey), Collections.singletonList(CONDITIONAL_KEY));
-        ConfigurationCondition condition = parseCondition(resource);
+        TypeResult<C> resolvedConfigurationCondition = conditionResolver.resolveCondition(parseCondition(resource));
+        if (!resolvedConfigurationCondition.isPresent()) {
+            return;
+        }
         Object valueObject = resource.get(valueKey);
         String value = asString(valueObject, valueKey);
-        resourceRegistry.accept(condition, value);
+        resourceRegistry.accept(resolvedConfigurationCondition.get(), value);
     }
 }

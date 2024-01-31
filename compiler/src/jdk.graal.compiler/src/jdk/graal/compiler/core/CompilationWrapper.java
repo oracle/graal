@@ -335,8 +335,16 @@ public abstract class CompilationWrapper<T> {
                 TTY.printf("Error writing to %s: %s%n", retryLogFile, ioe);
             }
 
+            String diagnoseLevel = DebugOptions.DiagnoseDumpLevel.getValue(initialOptions);
+
+            // pre GR-51012 this was just a number - we still want to support the old numeric values
+            boolean isOldLevel = diagnoseLevel.matches("-?\\d+");
+            if (isOldLevel) {
+                diagnoseLevel = ":" + diagnoseLevel;
+            }
+
             OptionValues retryOptions = new OptionValues(initialOptions,
-                            Dump, ":" + DebugOptions.DiagnoseDumpLevel.getValue(initialOptions),
+                            Dump, diagnoseLevel,
                             MethodFilter, null,
                             Count, "",
                             Time, "",

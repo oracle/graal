@@ -30,7 +30,9 @@ import java.util.List;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
@@ -43,7 +45,6 @@ import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.jni.JNIJavaCallVariantWrapperHolder;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.EntryPointCallStubMethod;
-import com.oracle.svm.hosted.code.SimpleSignature;
 
 import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.memory.BarrierType;
@@ -70,7 +71,7 @@ import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 /**
@@ -84,7 +85,8 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
     private final CallVariant callVariant;
     private final boolean nonVirtual;
 
-    public JNIJavaCallVariantWrapperMethod(SimpleSignature callWrapperSignature, CallVariant callVariant, boolean nonVirtual, MetaAccessProvider originalMetaAccess, WordTypes wordTypes) {
+    public JNIJavaCallVariantWrapperMethod(ResolvedSignature<ResolvedJavaType> callWrapperSignature, CallVariant callVariant, boolean nonVirtual, MetaAccessProvider originalMetaAccess,
+                    WordTypes wordTypes) {
         super(createName(callWrapperSignature, callVariant, nonVirtual),
                         originalMetaAccess.lookupJavaType(JNIJavaCallVariantWrapperHolder.class),
                         createSignature(callWrapperSignature, callVariant, nonVirtual, originalMetaAccess, wordTypes),
@@ -94,8 +96,8 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
         this.nonVirtual = nonVirtual;
     }
 
-    private static String createName(SimpleSignature targetSignature, CallVariant callVariant, boolean nonVirtual) {
-        return "invoke" + targetSignature.getIdentifier() + "_" + callVariant.name() + (nonVirtual ? "_Nonvirtual" : "");
+    private static String createName(ResolvedSignature<ResolvedJavaType> targetSignature, CallVariant callVariant, boolean nonVirtual) {
+        return "invoke" + JNIGraphKit.signatureToIdentifier(targetSignature) + "_" + callVariant.name() + (nonVirtual ? "_Nonvirtual" : "");
     }
 
     private static Signature createSignature(Signature callWrapperSignature, CallVariant callVariant, boolean nonVirtual, MetaAccessProvider originalMetaAccess, WordTypes wordTypes) {
@@ -133,17 +135,16 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
         if (returnType.isObject()) {
             returnType = wordKind; // handle
         }
-        return SimpleSignature.fromKinds(args.toArray(JavaKind[]::new), returnType, originalMetaAccess);
+        return ResolvedSignature.fromKinds(args.toArray(JavaKind[]::new), returnType, originalMetaAccess);
     }
 
     @Override
-    public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        AnalysisMetaAccess aMetaAccess = (AnalysisMetaAccess) providers.getMetaAccess();
+    public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         JNIGraphKit kit = new JNIGraphKit(debug, providers, method);
 
-        Signature invokeSignature = aMetaAccess.getUniverse().lookup(callWrapperSignature, getDeclaringClass());
+        var invokeSignature = kit.getMetaAccess().getUniverse().lookup(callWrapperSignature, getDeclaringClass());
 
-        JavaKind wordKind = providers.getWordTypes().getWordKind();
+        JavaKind wordKind = kit.getWordTypes().getWordKind();
         int slotIndex = 0;
         ValueNode env = kit.loadLocal(slotIndex, wordKind);
         slotIndex += wordKind.getSlotCount();
@@ -162,11 +163,11 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
         args.add(receiverOrClassHandle);
         args.add(methodId);
         args.add(kit.createInt(nonVirtual ? 1 : 0));
-        args.addAll(loadArguments(kit, providers, invokeSignature, args.size(), slotIndex));
+        args.addAll(loadArguments(kit, invokeSignature, args.size(), slotIndex));
 
         ValueNode formerPendingException = kit.getAndClearPendingException();
 
-        StampPair returnStamp = StampFactory.forDeclaredType(kit.getAssumptions(), invokeSignature.getReturnType(null), false);
+        StampPair returnStamp = StampFactory.forDeclaredType(kit.getAssumptions(), invokeSignature.getReturnType(), false);
         CallTargetNode callTarget = new IndirectCallTargetNode(callAddress, args.toArray(ValueNode[]::new), returnStamp, invokeSignature.toParameterTypes(null),
                         null, SubstrateCallingConventionKind.Java.toType(true), InvokeKind.Static);
 
@@ -205,8 +206,8 @@ public class JNIJavaCallVariantWrapperMethod extends EntryPointCallStubMethod {
      *
      * @return List of created argument nodes and their type
      */
-    private List<ValueNode> loadArguments(JNIGraphKit kit, HostedProviders providers, Signature invokeSignature, int firstParamIndex, int firstSlotIndex) {
-        JavaKind wordKind = providers.getWordTypes().getWordKind();
+    private List<ValueNode> loadArguments(JNIGraphKit kit, ResolvedSignature<AnalysisType> invokeSignature, int firstParamIndex, int firstSlotIndex) {
+        JavaKind wordKind = kit.getWordTypes().getWordKind();
         List<ValueNode> args = new ArrayList<>();
         int slotIndex = firstSlotIndex;
         int count = invokeSignature.getParameterCount(false);

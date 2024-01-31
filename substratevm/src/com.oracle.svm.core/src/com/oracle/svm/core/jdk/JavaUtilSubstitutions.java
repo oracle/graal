@@ -213,7 +213,7 @@ final class Target_java_util_Currency {
 @TargetClass(className = "java.util.logging.LogManager", onlyWith = JavaLoggingModule.IsPresent.class)
 final class Target_java_util_logging_LogManager {
 
-    @Inject @RecomputeFieldValue(kind = Kind.NewInstance, declClass = AtomicBoolean.class) private AtomicBoolean addedShutdownHook = new AtomicBoolean();
+    @Inject @RecomputeFieldValue(kind = Kind.NewInstance, declClass = AtomicBoolean.class, isFinal = true) private AtomicBoolean addedShutdownHook = new AtomicBoolean();
 
     @Alias static Target_java_util_logging_LogManager manager;
 
@@ -222,22 +222,17 @@ final class Target_java_util_logging_LogManager {
 
     @Substitute
     public static Target_java_util_logging_LogManager getLogManager() {
-        /* First performing logic originally in getLogManager. */
+        /* Logic from original JDK method. */
         if (manager == null) {
-            return manager;
+            return null;
         }
         manager.ensureLogManagerInitialized();
 
-        /* Logic for adding shutdown hook. */
+        /* Add a shutdown hook to close the global handlers. */
         if (!manager.addedShutdownHook.getAndSet(true)) {
-            /* Add a shutdown hook to close the global handlers. */
-            try {
-                Runtime.getRuntime().addShutdownHook(SubstrateUtil.cast(new Target_java_util_logging_LogManager_Cleaner(manager), Thread.class));
-            } catch (IllegalStateException e) {
-                /* If the VM is already shutting down, we do not need to register shutdownHook. */
-            }
+            Runnable hook = SubstrateUtil.cast(new Target_java_util_logging_LogManager_Cleaner(manager), Runnable.class);
+            Util_java_lang_Shutdown.registerLogManagerShutdownHook(hook);
         }
-
         return manager;
     }
 }

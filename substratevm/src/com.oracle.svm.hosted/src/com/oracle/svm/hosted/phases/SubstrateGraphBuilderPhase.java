@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -33,17 +35,13 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
-import jdk.graal.compiler.word.WordTypes;
-
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SubstrateGraphBuilderPhase extends SharedGraphBuilderPhase {
 
     public SubstrateGraphBuilderPhase(CoreProviders providers,
-                    GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes) {
-        super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
+                    GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
+        super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
     }
 
     @Override

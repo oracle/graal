@@ -2623,11 +2623,6 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
         }
 
         @Override
-        public long getAddress() {
-            return objectInfo.getAddress();
-        }
-
-        @Override
         public long getSize() {
             return objectInfo.getSize();
         }

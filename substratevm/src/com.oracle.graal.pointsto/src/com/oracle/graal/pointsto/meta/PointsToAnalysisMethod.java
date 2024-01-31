@@ -195,10 +195,10 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
 
         actualParameters[0] = receiverFlow;
         for (int i = 1; i < actualParameters.length; i++) {
-            actualParameters[i] = new ActualParameterTypeFlow((AnalysisType) method.getSignature().getParameterType(i - 1, null));
+            actualParameters[i] = new ActualParameterTypeFlow(method.getSignature().getParameterType(i - 1));
         }
         ActualReturnTypeFlow actualReturn = null;
-        AnalysisType returnType = (AnalysisType) method.getSignature().getReturnType(null);
+        AnalysisType returnType = method.getSignature().getReturnType();
         if (bb.isSupportedJavaKind(returnType.getStorageKind())) {
             actualReturn = new ActualReturnTypeFlow(returnType);
         }

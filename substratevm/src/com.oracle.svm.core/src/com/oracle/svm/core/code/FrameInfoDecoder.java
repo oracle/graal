@@ -45,6 +45,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.util.TypeConversion;
 import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.FrameState.StackState;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -63,7 +64,7 @@ public class FrameInfoDecoder {
      */
     protected static final int ENCODED_BCI_ADDEND = 4;
     /**
-     * Flag in the encoded bci to preserve {@link FrameState#duringCall()} information.
+     * Flag in the encoded bci to preserve {@link StackState#duringCall} information.
      */
     protected static final int ENCODED_BCI_DURING_CALL_MASK = 2;
     /**

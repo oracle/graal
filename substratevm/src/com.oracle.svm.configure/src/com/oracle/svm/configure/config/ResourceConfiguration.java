@@ -34,10 +34,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.core.configure.ConditionalElement;
+import com.oracle.svm.core.configure.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
@@ -47,7 +48,7 @@ import com.oracle.svm.core.util.json.JsonWriter;
 
 public final class ResourceConfiguration extends ConfigurationBase<ResourceConfiguration, ResourceConfiguration.Predicate> {
 
-    public static class ParserAdapter implements ResourcesRegistry {
+    public static class ParserAdapter implements ResourcesRegistry<UnresolvedConfigurationCondition> {
 
         private final ResourceConfiguration configuration;
 
@@ -56,7 +57,7 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         }
 
         @Override
-        public void addResources(ConfigurationCondition condition, String pattern) {
+        public void addResources(UnresolvedConfigurationCondition condition, String pattern) {
             configuration.addResourcePattern(condition, pattern);
         }
 
@@ -71,33 +72,33 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         }
 
         @Override
-        public void ignoreResources(ConfigurationCondition condition, String pattern) {
+        public void ignoreResources(UnresolvedConfigurationCondition condition, String pattern) {
             configuration.ignoreResourcePattern(condition, pattern);
         }
 
         @Override
-        public void addResourceBundles(ConfigurationCondition condition, String baseName) {
+        public void addResourceBundles(UnresolvedConfigurationCondition condition, String baseName) {
             configuration.addBundle(condition, baseName);
         }
 
         @Override
-        public void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales) {
+        public void addResourceBundles(UnresolvedConfigurationCondition condition, String basename, Collection<Locale> locales) {
             configuration.addBundle(condition, basename, locales);
         }
 
         @Override
-        public void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className) {
+        public void addClassBasedResourceBundle(UnresolvedConfigurationCondition condition, String basename, String className) {
             configuration.addClassResourceBundle(condition, basename, className);
         }
     }
 
     public static final class BundleConfiguration {
-        public final ConfigurationCondition condition;
+        public final UnresolvedConfigurationCondition condition;
         public final String baseName;
         public final Set<String> locales = ConcurrentHashMap.newKeySet();
         public final Set<String> classNames = ConcurrentHashMap.newKeySet();
 
-        private BundleConfiguration(ConfigurationCondition condition, String baseName) {
+        private BundleConfiguration(UnresolvedConfigurationCondition condition, String baseName) {
             this.condition = condition;
             this.baseName = baseName;
         }
@@ -157,47 +158,47 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
     }
 
     @Override
-    public void mergeConditional(ConfigurationCondition condition, ResourceConfiguration other) {
+    public void mergeConditional(UnresolvedConfigurationCondition condition, ResourceConfiguration other) {
         for (Map.Entry<ConditionalElement<String>, Pattern> entry : other.addedResources.entrySet()) {
-            addedResources.put(new ConditionalElement<>(condition, entry.getKey().getElement()), entry.getValue());
+            addedResources.put(new ConditionalElement<>(condition, entry.getKey().element()), entry.getValue());
         }
         for (Map.Entry<ConditionalElement<String>, Pattern> entry : other.ignoredResources.entrySet()) {
-            ignoredResources.put(new ConditionalElement<>(condition, entry.getKey().getElement()), entry.getValue());
+            ignoredResources.put(new ConditionalElement<>(condition, entry.getKey().element()), entry.getValue());
         }
         for (Map.Entry<ConditionalElement<String>, BundleConfiguration> entry : other.bundles.entrySet()) {
-            bundles.put(new ConditionalElement<>(condition, entry.getKey().getElement()), new BundleConfiguration(entry.getValue()));
+            bundles.put(new ConditionalElement<>(condition, entry.getKey().element()), new BundleConfiguration(entry.getValue()));
         }
     }
 
-    public void addResourcePattern(ConfigurationCondition condition, String pattern) {
-        addedResources.computeIfAbsent(new ConditionalElement<>(condition, pattern), p -> Pattern.compile(p.getElement()));
+    public void addResourcePattern(UnresolvedConfigurationCondition condition, String pattern) {
+        addedResources.computeIfAbsent(new ConditionalElement<>(condition, pattern), p -> Pattern.compile(p.element()));
     }
 
-    public void ignoreResourcePattern(ConfigurationCondition condition, String pattern) {
-        ignoredResources.computeIfAbsent(new ConditionalElement<>(condition, pattern), p -> Pattern.compile(p.getElement()));
+    public void ignoreResourcePattern(UnresolvedConfigurationCondition condition, String pattern) {
+        ignoredResources.computeIfAbsent(new ConditionalElement<>(condition, pattern), p -> Pattern.compile(p.element()));
     }
 
-    public void addBundle(ConfigurationCondition condition, String basename, Collection<Locale> locales) {
+    public void addBundle(UnresolvedConfigurationCondition condition, String basename, Collection<Locale> locales) {
         BundleConfiguration config = getOrCreateBundleConfig(condition, basename);
         for (Locale locale : locales) {
             config.locales.add(locale.toLanguageTag());
         }
     }
 
-    private void addBundle(ConfigurationCondition condition, String baseName) {
+    private void addBundle(UnresolvedConfigurationCondition condition, String baseName) {
         getOrCreateBundleConfig(condition, baseName);
     }
 
-    private void addClassResourceBundle(ConfigurationCondition condition, String basename, String className) {
+    private void addClassResourceBundle(UnresolvedConfigurationCondition condition, String basename, String className) {
         getOrCreateBundleConfig(condition, basename).classNames.add(className);
     }
 
-    public void addBundle(ConfigurationCondition condition, String baseName, String queriedLocale) {
+    public void addBundle(UnresolvedConfigurationCondition condition, String baseName, String queriedLocale) {
         BundleConfiguration config = getOrCreateBundleConfig(condition, baseName);
         config.locales.add(queriedLocale);
     }
 
-    private BundleConfiguration getOrCreateBundleConfig(ConfigurationCondition condition, String baseName) {
+    private BundleConfiguration getOrCreateBundleConfig(UnresolvedConfigurationCondition condition, String baseName) {
         ConditionalElement<String> key = new ConditionalElement<>(condition, baseName);
         return bundles.computeIfAbsent(key, cond -> new BundleConfiguration(condition, baseName));
     }
@@ -220,7 +221,7 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         return false;
     }
 
-    public boolean anyBundleMatches(ConfigurationCondition condition, String bundleName) {
+    public boolean anyBundleMatches(UnresolvedConfigurationCondition condition, String bundleName) {
         return bundles.containsKey(new ConditionalElement<>(condition, bundleName));
     }
 
@@ -243,7 +244,7 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
 
     @Override
     public ConfigurationParser createParser() {
-        return new ResourceConfigurationParser(new ResourceConfiguration.ParserAdapter(this), true);
+        return new ResourceConfigurationParser<>(ConfigurationConditionResolver.identityResolver(), new ResourceConfiguration.ParserAdapter(this), true);
     }
 
     private static void printResourceBundle(BundleConfiguration config, JsonWriter writer) throws IOException {
@@ -268,8 +269,8 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
 
     private static void conditionalElementJson(ConditionalElement<String> p, JsonWriter w, String elementName) throws IOException {
         w.append('{').indent().newline();
-        ConfigurationConditionPrintable.printConditionAttribute(p.getCondition(), w);
-        w.quote(elementName).append(':').quote(p.getElement());
+        ConfigurationConditionPrintable.printConditionAttribute(p.condition(), w);
+        w.quote(elementName).append(':').quote(p.element());
         w.unindent().newline().append('}');
     }
 

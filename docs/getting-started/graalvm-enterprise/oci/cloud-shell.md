@@ -9,7 +9,7 @@ This guide shows you how to get started with Oracle GraalVM in Oracle Cloud Infr
 
 [OCI Cloud Shell](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/cloudshellintro.htm) is a browser-based terminal accessible from the Oracle Cloud Console. It provides access to a Linux shell with a pre-authenticated OCI Command Line Interface (CLI), preinstalled developer tools, and comes with 5GB of storage.
 
-Oracle GraalVM JDK 17 with Native Image is preinstalled in Cloud Shell, so you do not have to install and configure a development machine.
+Oracle GraalVM for JDK 17 is preinstalled in Cloud Shell, so you do not have to install and configure a development machine.
 
 > Note: Oracle GraalVM license and support are included in the Oracle Cloud Infrastructure subscription at no additional cost.
 
@@ -24,14 +24,14 @@ Cloud Shell has several preinstalled JDKs, including Oracle GraalVM JDK.
     ```shell
     csruntimectl java list
     ```
-    The output lists the JDKs preinstalled in Cloud Shell: GraalVM for JDK 17, Oracle JDK 11, and Oracle JDK 8. The JDK marked with an asterisk is the current JDK.
+    The output lists the JDKs preinstalled in Cloud Shell: Oracle GraalVM for JDK 17, Oracle JDK 11, and Oracle JDK 8. The JDK marked with an asterisk is the current JDK.
 
 3. Select GraalVM for JDK 17 as the current JDK:
 
     ```shell
-    csruntimectl java set graalvmeejdk-17
+    csruntimectl java set graalvmjdk-17
     ```
-    You will see the confirmation message printed `The current managed java version is set to graalvmeejdk-17`.
+    You will see the confirmation message printed `The current managed java version is set to graalvmjdk-17`.
 
 4. Now confirm the values of the environment variables `PATH` and `JAVA_HOME`, and the version of `java`, the `native-image` generator:
 

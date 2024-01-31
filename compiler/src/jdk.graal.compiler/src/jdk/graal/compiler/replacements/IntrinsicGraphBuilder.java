@@ -93,7 +93,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
 
     private FrameState createStateAfterStartOfReplacementGraph(ResolvedJavaMethod original, GraphBuilderConfiguration graphBuilderConfig) {
         FrameStateBuilder startFrameState = new FrameStateBuilder(this, code, graph, graphBuilderConfig.retainLocalVariables());
-        startFrameState.initializeForMethodStart(graph.getAssumptions(), false, graphBuilderConfig.getPlugins());
+        startFrameState.initializeForMethodStart(graph.getAssumptions(), false, graphBuilderConfig.getPlugins(), null);
         return startFrameState.createInitialIntrinsicFrameState(original);
     }
 

@@ -27,14 +27,14 @@ package jdk.graal.compiler.nodes.graphbuilderconf;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.Pair;
-import jdk.graal.compiler.core.common.BootstrapMethodIntrospection;
+
 import jdk.graal.compiler.graph.Node.ValueNumberable;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
-
+import jdk.vm.ci.meta.ConstantPool.BootstrapMethodInvocation;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -225,7 +225,7 @@ public interface NodePlugin extends GraphBuilderPlugin {
      * @return pair with the call target & arguments for the static call, null if the indy cannot be
      *         converted to a static call
      */
-    default Pair<ResolvedJavaMethod, ValueNode[]> convertInvokeDynamic(GraphBuilderContext b, BootstrapMethodIntrospection m) {
+    default Pair<ResolvedJavaMethod, ValueNode[]> convertInvokeDynamic(GraphBuilderContext b, BootstrapMethodInvocation m) {
         return null;
     }
 

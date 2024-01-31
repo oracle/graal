@@ -30,7 +30,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.heap.ObjectHeader;
@@ -151,18 +150,6 @@ public final class YoungGeneration extends Generation {
             getSurvivorFromSpaceAt(i).absorb(getSurvivorToSpaceAt(i));
         }
         assert survivorsToSpacesAccounting.getChunkBytes().equal(0);
-    }
-
-    boolean walkHeapChunks(MemoryWalker.Visitor visitor) {
-        if (getEden().walkHeapChunks(visitor)) {
-            for (int i = 0; i < maxSurvivorSpaces; i++) {
-                if (!(getSurvivorFromSpaceAt(i).walkHeapChunks(visitor) && getSurvivorToSpaceAt(i).walkHeapChunks(visitor))) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        return false;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

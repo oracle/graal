@@ -26,15 +26,12 @@ package com.oracle.svm.hosted.foreign;
 
 import java.util.List;
 
-import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.java.FrameStateBuilder;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.ValueNode;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 
+import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.foreign.AbiUtils;
@@ -48,12 +45,15 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
-import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.java.FrameStateBuilder;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 
 /**
@@ -86,7 +86,7 @@ import jdk.vm.ci.meta.Signature;
 @Platforms(Platform.HOSTED_ONLY.class)
 class DowncallStub extends NonBytecodeMethod {
     public static Signature createSignature(MetaAccessProvider metaAccess) {
-        return SimpleSignature.fromKinds(new JavaKind[]{JavaKind.Object}, JavaKind.Object, metaAccess);
+        return ResolvedSignature.fromKinds(new JavaKind[]{JavaKind.Object}, JavaKind.Object, metaAccess);
     }
 
     private final NativeEntryPointInfo nep;
@@ -106,11 +106,11 @@ class DowncallStub extends NonBytecodeMethod {
      * {@link LinkToNativeSupportImpl#linkToNative(Object...)}.
      */
     @Override
-    public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
+    public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method, purpose);
         FrameStateBuilder state = kit.getFrameState();
         boolean deoptimizationTarget = MultiMethod.isDeoptTarget(method);
-        List<ValueNode> arguments = kit.loadArguments(getSignature().toParameterTypes(null));
+        List<ValueNode> arguments = kit.getInitialArguments();
 
         assert arguments.size() == 1;
         var argumentsAndNep = kit.unpackArgumentsAndExtractNEP(arguments.get(0), nep.methodType());
@@ -139,7 +139,7 @@ class DowncallStub extends NonBytecodeMethod {
         ValueNode returnValue = kit.createCFunctionCallWithCapture(
                         callAddress,
                         adapted.arguments(),
-                        SimpleSignature.fromMethodType(adapted.callType(), kit.getMetaAccess()),
+                        ResolvedSignature.fromMethodType(adapted.callType(), kit.getMetaAccess()),
                         VMThreads.StatusSupport.getNewThreadStatus(transition),
                         deoptimizationTarget,
                         cc,

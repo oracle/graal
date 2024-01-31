@@ -83,7 +83,7 @@ public class TestCDTBasics extends AbstractTest {
         printScope(scope, output);
 
         EditorGutter gutter = new EditorGutter(driver);
-        gutter.clickAt(16); // Set breakpoint at line 16
+        gutter.clickAt(36); // Set breakpoint at line 36
         actions.click(Action.PAUSE_RESUME);
 
         actions.waitTillEnabled(Action.STEP, true, TIMEOUT);
@@ -102,7 +102,7 @@ public class TestCDTBasics extends AbstractTest {
         printStack(callFrames, 1, output);
         printScope(scope, output);
 
-        gutter.clickAt(16); // Remove breakpoint at line 16
+        gutter.clickAt(36); // Remove breakpoint at line 36
 
         actions.click(Action.PAUSE_RESUME);
 

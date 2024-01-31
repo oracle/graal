@@ -32,6 +32,8 @@ import org.graalvm.nativeimage.c.function.CEntryPoint.FatalExceptionHandler;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.word.LocationIdentity;
 
+import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.c.function.CEntryPointOptions.AutomaticPrologueBailout;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
@@ -45,7 +47,6 @@ import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.EntryPointCallStubMethod;
-import com.oracle.svm.hosted.code.SimpleSignature;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.java.FrameStateBuilder;
@@ -55,9 +56,7 @@ import jdk.graal.compiler.nodes.extended.RawLoadNode;
 import jdk.graal.compiler.nodes.extended.RawStoreNode;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -149,13 +148,13 @@ public class JNIFieldAccessorMethod extends EntryPointCallStubMethod {
         return sb.toString();
     }
 
-    private static SimpleSignature createSignature(JavaKind fieldKind, boolean isSetter, MetaAccessProvider metaAccess) {
+    private static ResolvedSignature<ResolvedJavaType> createSignature(JavaKind fieldKind, boolean isSetter, MetaAccessProvider metaAccess) {
         Class<?> valueClass = fieldKind.toJavaClass();
         if (fieldKind.isObject()) {
             valueClass = JNIObjectHandle.class;
         }
         ResolvedJavaType objectHandle = metaAccess.lookupJavaType(JNIObjectHandle.class);
-        List<JavaType> args = new ArrayList<>();
+        List<ResolvedJavaType> args = new ArrayList<>();
         args.add(metaAccess.lookupJavaType(JNIEnvironment.class));
         args.add(objectHandle); // this (instance field) or class (static field)
         args.add(metaAccess.lookupJavaType(JNIFieldId.class));
@@ -168,23 +167,19 @@ public class JNIFieldAccessorMethod extends EntryPointCallStubMethod {
         } else {
             returnType = metaAccess.lookupJavaType(valueClass);
         }
-        return new SimpleSignature(args, returnType);
+        return ResolvedSignature.fromList(args, returnType);
     }
 
     @Override
-    public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
+    public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         JNIGraphKit kit = new JNIGraphKit(debug, providers, method);
-        StructuredGraph graph = kit.getGraph();
-        FrameStateBuilder state = new FrameStateBuilder(null, method, graph);
-        state.initializeForMethodStart(null, true, providers.getGraphBuilderPlugins());
 
         ValueNode vmThread = kit.loadLocal(0, getSignature().getParameterKind(0));
         kit.append(CEntryPointEnterNode.enter(vmThread));
-        List<ValueNode> arguments = kit.loadArguments(getSignature().toParameterTypes(null));
 
-        ValueNode returnValue = buildGraphBody(kit, arguments, state, providers.getMetaAccess());
+        ValueNode returnValue = buildGraphBody(kit, kit.getInitialArguments(), kit.getFrameState(), kit.getMetaAccess());
 
-        kit.appendStateSplitProxy(state);
+        kit.appendStateSplitProxy();
         CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.Leave);
         kit.append(leave);
         JavaKind returnKind = isSetter ? JavaKind.Void : fieldKind;

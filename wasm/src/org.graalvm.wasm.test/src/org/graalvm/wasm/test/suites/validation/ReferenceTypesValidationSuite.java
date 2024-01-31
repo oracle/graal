@@ -48,7 +48,7 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.test.AbstractBinarySuite;
-import org.graalvm.wasm.utils.Assert;
+import org.junit.Assert;
 import org.junit.Test;
 
 public class ReferenceTypesValidationSuite extends AbstractBinarySuite {

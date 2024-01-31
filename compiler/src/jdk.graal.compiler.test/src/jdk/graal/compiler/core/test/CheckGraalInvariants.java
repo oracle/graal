@@ -73,7 +73,6 @@ import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.PhiNode;
@@ -140,6 +139,10 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         }
 
         return true;
+    }
+
+    public static void main(String[] args) {
+
     }
 
     public static String relativeFileName(String absolutePath) {
@@ -242,7 +245,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         Plugins plugins = new Plugins(new InvocationPlugins());
         plugins.setClassInitializationPlugin(new DoNotInitializeClassInitializationPlugin());
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true).withUnresolvedIsError(true);
-        graphBuilderSuite.appendPhase(new GraphBuilderPhase(config));
+        graphBuilderSuite.appendPhase(new TestGraphBuilderPhase(config));
         HighTierContext context = new HighTierContext(providers, graphBuilderSuite, OptimisticOptimizations.NONE);
 
         Assume.assumeTrue(VerifyPhase.class.desiredAssertionStatus());
@@ -306,7 +309,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         OptionValues options = getInitialOptions();
         CompilerThreadFactory factory = new CompilerThreadFactory("CheckInvariantsThread");
         int availableProcessors = Runtime.getRuntime().availableProcessors();
-        ThreadPoolExecutor executor = new ThreadPoolExecutor(availableProcessors, availableProcessors, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), factory);
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(availableProcessors, availableProcessors, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(), factory);
 
         List<String> errors = Collections.synchronizedList(new ArrayList<>());
 
@@ -344,6 +347,8 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyPluginFrameState());
         verifiers.add(new VerifyGraphUniqueUsages());
         verifiers.add(new VerifyEndlessLoops());
+        verifiers.add(new VerifyPhaseNoDirectRecursion());
+        verifiers.add(new VerifyStringCaseUsage());
         VerifyAssertionUsage assertionUsages = null;
         boolean checkAssertions = tool.checkAssertions();
 

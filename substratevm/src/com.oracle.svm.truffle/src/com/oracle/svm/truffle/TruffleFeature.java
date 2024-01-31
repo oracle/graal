@@ -25,9 +25,9 @@
 
 package com.oracle.svm.truffle;
 
-import static com.oracle.svm.graal.hosted.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.INLINE;
-import static com.oracle.svm.graal.hosted.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.INLINING_DISALLOWED;
-import static com.oracle.svm.graal.hosted.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.NO_DECISION;
+import static com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.INLINE;
+import static com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.INLINING_DISALLOWED;
+import static com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.NO_DECISION;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -124,9 +124,10 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.graal.hosted.RuntimeCompilationFeature;
-import com.oracle.svm.graal.hosted.RuntimeCompilationFeature.RuntimeCompilationCandidate;
-import com.oracle.svm.graal.hosted.RuntimeCompilationFeature.RuntimeCompiledMethod;
+import com.oracle.svm.graal.hosted.runtimecompilation.CallTreeInfo;
+import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationCandidate;
+import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
+import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompiledMethod;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -150,7 +151,6 @@ import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.runtime.TruffleCallBoundary;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.phases.HighTier;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FrameState;
@@ -248,7 +248,7 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return List.of(RuntimeCompilationFeature.getRuntimeCompilationFeature(), TruffleBaseFeature.class);
+        return List.of(RuntimeCompilationFeature.class, TruffleBaseFeature.class);
     }
 
     /*
@@ -354,7 +354,6 @@ public class TruffleFeature implements InternalFeature {
                         "Truffle thread local foreign poll, registered in " + TruffleFeature.class);
 
         RuntimeCompilationFeature runtimeCompilationFeature = RuntimeCompilationFeature.singleton();
-        SnippetReflectionProvider snippetReflection = runtimeCompilationFeature.getHostedProviders().getSnippetReflection();
         SubstrateTruffleCompiler truffleCompiler = truffleRuntime.preinitializeTruffleCompiler();
         truffleRuntime.initializeKnownMethods(config.getMetaAccess());
         truffleRuntime.initializeHostedKnownMethods(config.getUniverse().getOriginalMetaAccess());
@@ -382,14 +381,14 @@ public class TruffleFeature implements InternalFeature {
                         peProviders.getLowerer(),
                         peProviders.getReplacements(),
                         peProviders.getStampProvider(),
-                        snippetReflection,
+                        runtimeCompilationFeature.getHostedProviders().getSnippetReflection(),
                         runtimeCompilationFeature.getHostedProviders().getWordTypes(),
                         runtimeCompilationFeature.getHostedProviders().getPlatformConfigurationProvider(),
                         runtimeCompilationFeature.getHostedProviders().getMetaAccessExtensionProvider(),
                         runtimeCompilationFeature.getHostedProviders().getLoopsDataProvider());
         newHostedProviders.setGraphBuilderPlugins(graphBuilderConfig.getPlugins());
 
-        runtimeCompilationFeature.initializeRuntimeCompilationConfiguration(newHostedProviders, graphBuilderConfig, this::allowRuntimeCompilation, this::deoptimizeOnException);
+        runtimeCompilationFeature.initializeRuntimeCompilationConfiguration(newHostedProviders, graphBuilderConfig, this::allowRuntimeCompilation, this::deoptimizeOnException, this::checkBlockList);
         for (ResolvedJavaMethod method : partialEvaluator.getCompilationRootMethods()) {
             runtimeCompilationFeature.prepareMethodForRuntimeCompilation(method, config);
         }
@@ -780,10 +779,11 @@ public class TruffleFeature implements InternalFeature {
         }
     }
 
-    @Override
-    public void beforeCompilation(BeforeCompilationAccess config) {
-        FeatureImpl.BeforeCompilationAccessImpl access = (FeatureImpl.BeforeCompilationAccessImpl) config;
+    private record BlocklistViolationInfo(RuntimeCompilationCandidate candidate, String[] callTrace) {
+    }
 
+    private void checkBlockList(CallTreeInfo treeInfo) {
+        RuntimeCompilationFeature runtimeCompilation = RuntimeCompilationFeature.singleton();
         boolean failBlockListViolations;
         if (Options.TruffleCheckBlackListedMethods.hasBeenSet()) {
             failBlockListViolations = Options.TruffleCheckBlackListedMethods.getValue();
@@ -792,8 +792,8 @@ public class TruffleFeature implements InternalFeature {
         }
         boolean printBlockListViolations = RuntimeCompilationFeature.Options.PrintRuntimeCompileMethods.getValue() || failBlockListViolations;
         if (printBlockListViolations) {
-            Set<RuntimeCompilationCandidate> blocklistViolations = new TreeSet<>(RuntimeCompilationFeature.singleton().getRuntimeCompilationComparator());
-            for (RuntimeCompilationCandidate candidate : RuntimeCompilationFeature.singleton().getAllRuntimeCompilationCandidates()) {
+            Set<BlocklistViolationInfo> blocklistViolations = new TreeSet<>((o1, o2) -> Arrays.compare(o1.callTrace(), o2.callTrace()));
+            for (RuntimeCompilationCandidate candidate : runtimeCompilation.getAllRuntimeCompilationCandidates()) {
 
                 // Determine blocklist violations
                 if (!runtimeCompilationForbidden(candidate.getImplementationMethod())) {
@@ -802,7 +802,8 @@ public class TruffleFeature implements InternalFeature {
                                         tempTargetAllowlistMethods.contains(candidate.getTargetMethod()) &&
                                         !isBlocklisted(candidate.getImplementationMethod());
                         if (!tempAllow) {
-                            blocklistViolations.add(candidate);
+                            BlocklistViolationInfo violation = new BlocklistViolationInfo(candidate, runtimeCompilation.getCallTrace(treeInfo, candidate));
+                            blocklistViolations.add(violation);
                         }
                     }
                 }
@@ -811,11 +812,13 @@ public class TruffleFeature implements InternalFeature {
                 System.out.println();
                 System.out.println("=== Found " + blocklistViolations.size() + " compilation blocklist violations ===");
                 System.out.println();
-                for (RuntimeCompilationCandidate violation : blocklistViolations) {
+                for (BlocklistViolationInfo violation : blocklistViolations) {
                     System.out.println("Blocklisted method");
-                    System.out.format("   %s (target: %s)%n", violation.getImplementationMethod().format("%H.%n(%p)"), violation.getTargetMethod().format("%H.%n(%p)"));
+                    System.out.format("   %s (target: %s)%n", violation.candidate.getImplementationMethod().format("%H.%n(%p)"), violation.candidate.getTargetMethod().format("%H.%n(%p)"));
                     System.out.println("trace:");
-                    RuntimeCompilationFeature.singleton().getCallTrace(violation).forEach(item -> System.out.println("  " + item));
+                    for (String item : violation.callTrace()) {
+                        System.out.println("  " + item);
+                    }
                 }
                 if (failBlockListViolations) {
                     throw VMError.shouldNotReachHere("Blocklisted methods are reachable for runtime compilation");
@@ -824,7 +827,7 @@ public class TruffleFeature implements InternalFeature {
         }
 
         Set<RuntimeCompilationCandidate> warnViolations = new HashSet<>();
-        for (RuntimeCompilationCandidate node : RuntimeCompilationFeature.singleton().getAllRuntimeCompilationCandidates()) {
+        for (RuntimeCompilationCandidate node : runtimeCompilation.getAllRuntimeCompilationCandidates()) {
             var method = node.getImplementationMethod();
             if (warnMethods.contains(method)) {
                 warnViolations.add(node);
@@ -841,7 +844,9 @@ public class TruffleFeature implements InternalFeature {
             for (RuntimeCompilationCandidate violation : warnViolations) {
                 System.out.println("Suspicious method: " + violation.getImplementationMethod().format("%H.%n(%p)"));
                 System.out.println("trace:");
-                RuntimeCompilationFeature.singleton().getCallTrace(violation).forEach(item -> System.out.println("  " + item));
+                for (String item : runtimeCompilation.getCallTrace(treeInfo, violation)) {
+                    System.out.println("  " + item);
+                }
             }
         }
 
@@ -850,10 +855,16 @@ public class TruffleFeature implements InternalFeature {
             for (Pair<ResolvedJavaMethod, String> violation : neverPartOfCompilationViolations) {
                 System.out.println("called from");
                 System.out.println("(inlined call path): " + violation.getRight());
-                RuntimeCompilationFeature.singleton().getCallTrace(violation.getLeft()).forEach(item -> System.out.println(" " + item));
+                for (String item : runtimeCompilation.getCallTrace(treeInfo, (AnalysisMethod) violation.getLeft())) {
+                    System.out.println(" " + item);
+                }
             }
             throw VMError.shouldNotReachHere("CompilerAsserts.neverPartOfCompilation reachable for runtime compilation");
         }
+    }
+
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess config) {
 
         if (Options.TruffleCheckFrameImplementation.getValue()) {
             /*
@@ -865,7 +876,7 @@ public class TruffleFeature implements InternalFeature {
              * DefaultMaterializedFrame, ReadOnlyFrame) to detect wrong usages of the Frame API, so
              * we can only check when running with compilation enabled.
              */
-            Optional<? extends ResolvedJavaType> optionalFrameType = access.getMetaAccess().optionalLookupJavaType(Frame.class);
+            Optional<? extends ResolvedJavaType> optionalFrameType = ((FeatureImpl.BeforeCompilationAccessImpl) config).getMetaAccess().optionalLookupJavaType(Frame.class);
             if (optionalFrameType.isPresent()) {
                 HostedType frameType = (HostedType) optionalFrameType.get();
                 Set<HostedType> implementations = new HashSet<>();
@@ -919,8 +930,12 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
+        CallTreeInfo treeInfo = RuntimeCompilationFeature.singleton().getCallTreeInfo();
+
+        checkBlockList(treeInfo);
+
         if (Options.PrintStaticTruffleBoundaries.getValue()) {
-            printStaticTruffleBoundaries();
+            printStaticTruffleBoundaries(treeInfo);
         }
 
         SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
@@ -931,9 +946,9 @@ public class TruffleFeature implements InternalFeature {
         runtimeCompiledMethods.addAll(Arrays.asList(config.getMetaAccess().lookupJavaType(CompilerDirectives.class).getDeclaredMethods(false)));
         runtimeCompiledMethods.addAll(Arrays.asList(config.getMetaAccess().lookupJavaType(CompilerAsserts.class).getDeclaredMethods(false)));
 
-        for (RuntimeCompiledMethod runtimeCompiledMethod : RuntimeCompilationFeature.singleton().getRuntimeCompiledMethods()) {
+        for (RuntimeCompiledMethod runtimeCompiledMethod : treeInfo.runtimeCompilations()) {
 
-            runtimeCompiledMethods.add(runtimeCompiledMethod.getMethod());
+            runtimeCompiledMethods.add(runtimeCompiledMethod.getOriginalMethod());
 
             /*
              * The list of runtime compiled methods is not containing all methods that are always
@@ -955,11 +970,11 @@ public class TruffleFeature implements InternalFeature {
         }
     }
 
-    private static void printStaticTruffleBoundaries() {
+    private static void printStaticTruffleBoundaries(CallTreeInfo treeInfo) {
         HashSet<ResolvedJavaMethod> foundBoundaries = new HashSet<>();
         int callSiteCount = 0;
         int calleeCount = 0;
-        for (RuntimeCompiledMethod runtimeCompiledMethod : RuntimeCompilationFeature.singleton().getRuntimeCompiledMethods()) {
+        for (RuntimeCompiledMethod runtimeCompiledMethod : treeInfo.runtimeCompilations()) {
             for (ResolvedJavaMethod targetMethod : runtimeCompiledMethod.getInvokeTargets()) {
                 TruffleBoundary truffleBoundary = targetMethod.getAnnotation(TruffleBoundary.class);
                 if (truffleBoundary != null) {
@@ -979,7 +994,7 @@ public class TruffleFeature implements InternalFeature {
     }
 
     @Override
-    public void registerGraalPhases(Providers providers, SnippetReflectionProvider snippetReflection, Suites suites, boolean hosted) {
+    public void registerGraalPhases(Providers providers, Suites suites, boolean hosted) {
         /*
          * Please keep this code in sync with the HotSpot configuration in
          * TruffleCommunityCompilerConfiguration.

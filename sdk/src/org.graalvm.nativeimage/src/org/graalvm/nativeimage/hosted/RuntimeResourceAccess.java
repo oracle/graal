@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,15 +40,15 @@
  */
 package org.graalvm.nativeimage.hosted;
 
+import java.util.Arrays;
+import java.util.Locale;
+import java.util.Objects;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
-
-import java.util.Arrays;
-import java.util.Locale;
-import java.util.Objects;
 
 /**
  * This class can be used to register Java resources and ResourceBundles that should be accessible
@@ -96,7 +96,7 @@ public final class RuntimeResourceAccess {
      */
     public static void addResourceBundle(Module module, String baseBundleName, Locale[] locales) {
         Objects.requireNonNull(locales);
-        ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(),
+        RuntimeResourceSupport.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(),
                         withModuleName(module, baseBundleName), Arrays.asList(locales));
     }
 
@@ -108,7 +108,7 @@ public final class RuntimeResourceAccess {
      * @since 22.3
      */
     public static void addResourceBundle(Module module, String bundleName) {
-        ImageSingletons.lookup(RuntimeResourceSupport.class).addResourceBundles(ConfigurationCondition.alwaysTrue(),
+        RuntimeResourceSupport.singleton().addResourceBundles(ConfigurationCondition.alwaysTrue(),
                         withModuleName(module, bundleName));
     }
 

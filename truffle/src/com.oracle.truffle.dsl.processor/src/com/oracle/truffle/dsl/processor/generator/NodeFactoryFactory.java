@@ -47,7 +47,6 @@ import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import javax.lang.model.element.Element;
@@ -143,11 +142,11 @@ public class NodeFactoryFactory {
         builder.startReturn();
 
         builder.startGroup();
-        builder.startStaticCall(context.getType(Arrays.class), "asList");
+        builder.startStaticCall(context.getType(List.class), "of");
         List<ExecutableElement> constructors = GeneratorUtils.findUserConstructors(createdFactoryElement.asType());
         for (ExecutableElement constructor : constructors) {
             builder.startGroup();
-            builder.startStaticCall(context.getType(Arrays.class), "asList");
+            builder.startStaticCall(context.getType(List.class), "of");
             for (VariableElement var : constructor.getParameters()) {
                 builder.typeLiteral(var.asType());
             }
@@ -167,7 +166,7 @@ public class NodeFactoryFactory {
         CodeTreeBuilder builder = method.createBuilder();
         builder.startReturn();
 
-        builder.startStaticCall(context.getType(Arrays.class), "asList");
+        builder.startStaticCall(context.getType(List.class), "of");
         for (NodeExecutionData execution : node.getChildExecutions()) {
             TypeMirror nodeType = execution.getNodeType();
             if (nodeType != null) {

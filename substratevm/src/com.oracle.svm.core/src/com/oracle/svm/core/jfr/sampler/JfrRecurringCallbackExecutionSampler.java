@@ -106,6 +106,7 @@ public final class JfrRecurringCallbackExecutionSampler extends AbstractJfrExecu
         }
     }
 
+    @Override
     @Uninterruptible(reason = "Prevent VM operations that modify the recurring callbacks.")
     protected void uninstall(IsolateThread thread) {
         assert thread == CurrentIsolate.getCurrentThread() || VMOperation.isInProgressAtSafepoint();

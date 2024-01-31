@@ -51,6 +51,7 @@ import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
@@ -275,12 +276,15 @@ public class FeatureHandler {
     }
 
     private static UserException handleFeatureError(Feature feature, Throwable throwable) {
-        /* Avoid wrapping UserErrors and VMErrors. */
+        /* Avoid wrapping UserError, VMError, and InterruptImageBuilding throwables. */
         if (throwable instanceof UserException userError) {
             throw userError;
         }
         if (throwable instanceof HostedError vmError) {
             throw vmError;
+        }
+        if (throwable instanceof InterruptImageBuilding iib) {
+            throw iib;
         }
 
         String featureClassName = feature.getClass().getName();

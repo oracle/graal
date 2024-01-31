@@ -29,7 +29,6 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 
 import jdk.graal.compiler.options.Option;
@@ -80,9 +79,6 @@ public final class SerialGCOptions {
     @Option(help = "Print the time for each of the phases of each collection, if +VerboseGC. Serial GC only.", type = OptionType.Debug)//
     public static final RuntimeOptionKey<Boolean> PrintGCTimes = new RuntimeOptionKey<>(false, SerialGCOptions::serialGCOnly);
 
-    @Option(help = "Instrument write barriers with counters. Serial GC only.", type = OptionType.Debug)//
-    public static final HostedOptionKey<Boolean> CountWriteBarriers = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly);
-
     @Option(help = "Verify the heap before doing a garbage collection if VerifyHeap is enabled. Serial GC only.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyBeforeGC = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly);
 
@@ -115,7 +111,7 @@ public final class SerialGCOptions {
 
     private static void serialGCOnly(OptionKey<?> optionKey) {
         if (!SubstrateOptions.UseSerialGC.getValue()) {
-            throw new InterruptImageBuilding("The option '" + optionKey.getName() + "' can only be used together with the serial garbage collector ('--gc=serial').");
+            throw UserError.abort("The option '" + optionKey.getName() + "' can only be used together with the serial garbage collector ('--gc=serial').");
         }
     }
 }

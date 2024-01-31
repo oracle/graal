@@ -41,21 +41,28 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  */
 public interface OriginalFieldProvider {
 
+    static ResolvedJavaField getOriginalField(ResolvedJavaField field) {
+        ResolvedJavaField cur = field;
+        while (cur instanceof OriginalFieldProvider originalFieldProvider) {
+            cur = originalFieldProvider.unwrapTowardsOriginalField();
+        }
+        return cur;
+    }
+
     static Field getJavaField(ResolvedJavaField field) {
-        if (field instanceof OriginalFieldProvider) {
-            return ((OriginalFieldProvider) field).getJavaField();
-        } else {
+        ResolvedJavaField originalField = getOriginalField(field);
+        if (originalField != null) {
             try {
-                return GraalAccess.getOriginalSnippetReflection().originalField(field);
+                return GraalAccess.getOriginalSnippetReflection().originalField(originalField);
             } catch (LinkageError ignored) {
                 /*
                  * Ignore any linking problems and incompatible class change errors. Looking up a
                  * reflective representation of a JVMCI field is always a best effort operation.
                  */
-                return null;
             }
         }
+        return null;
     }
 
-    Field getJavaField();
+    ResolvedJavaField unwrapTowardsOriginalField();
 }

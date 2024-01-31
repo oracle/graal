@@ -29,6 +29,7 @@ import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.hosted.ameta.CustomTypeFieldHandler;
 
 public class PointsToCustomTypeFieldHandler extends CustomTypeFieldHandler {
     public PointsToCustomTypeFieldHandler(BigBang bb, AnalysisMetaAccess metaAccess) {

@@ -32,11 +32,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.filters.ComplexFilter;
+import com.oracle.svm.core.configure.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationFile;
 
 public class ConditionalConfigurationComputer {
@@ -170,26 +171,26 @@ public class ConditionalConfigurationComputer {
         for (List<MethodCallNode> value : methodCallNodes.values()) {
             for (MethodCallNode node : value) {
                 String className = node.methodInfo.getJavaDeclaringClassName();
-                ConfigurationCondition condition = ConfigurationCondition.create(className);
-
-                addConfigurationWithCondition(configurationSet, node.configuration, condition);
+                UnresolvedConfigurationCondition condition = UnresolvedConfigurationCondition.create(className);
+                var resolveCondition = ConfigurationConditionResolver.identityResolver().resolveCondition(condition);
+                addConfigurationWithCondition(configurationSet, node.configuration, resolveCondition.get());
             }
         }
 
-        addConfigurationWithCondition(configurationSet, rootCallNode.configuration, ConfigurationCondition.alwaysTrue());
+        addConfigurationWithCondition(configurationSet, rootCallNode.configuration, UnresolvedConfigurationCondition.alwaysTrue());
 
         return configurationSet.filter(configurationFilter);
     }
 
     /* Force the compiler to believe us we're referring to the same type. */
-    private static <T extends ConfigurationBase<T, ?>> void mergeWithCondition(ConfigurationSet destConfigSet, ConfigurationSet srcConfigSet, ConfigurationCondition condition,
+    private static <T extends ConfigurationBase<T, ?>> void mergeWithCondition(ConfigurationSet destConfigSet, ConfigurationSet srcConfigSet, UnresolvedConfigurationCondition condition,
                     ConfigurationFile configType) {
         T destConfig = destConfigSet.getConfiguration(configType);
         T srcConfig = srcConfigSet.getConfiguration(configType);
         destConfig.mergeConditional(condition, srcConfig);
     }
 
-    private static void addConfigurationWithCondition(ConfigurationSet destConfigSet, ConfigurationSet srcConfigSet, ConfigurationCondition condition) {
+    private static void addConfigurationWithCondition(ConfigurationSet destConfigSet, ConfigurationSet srcConfigSet, UnresolvedConfigurationCondition condition) {
         for (ConfigurationFile configType : ConfigurationFile.agentGeneratedFiles()) {
             mergeWithCondition(destConfigSet, srcConfigSet, condition, configType);
         }

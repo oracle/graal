@@ -113,7 +113,7 @@ Mostly all Native Image features are supported on Linux AArch64 architecture, ex
 * `--libc=<value>`: `musl` is not supported.
 * `--gc=<value>`: The G1 garbage collector (`G1`) is not supported.
 
-Find a complete list of options to the `native-image` builder [here](BuildOptions.md).
+Find a list of options for the `native-image` builder [here](BuildOptions.md).
 
 ### Related Documentation
 

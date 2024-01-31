@@ -37,6 +37,13 @@ import com.oracle.svm.core.annotate.TargetElement;
 @SuppressWarnings("unused")
 @TargetClass(value = java.lang.Module.class)
 public final class Target_java_lang_Module {
+    @Substitute
+    @TargetElement(onlyWith = ForeignDisabled.class)
+    @SuppressWarnings("static-method")
+    public boolean isNativeAccessEnabled() {
+        throw ForeignDisabledSubstitutions.fail();
+    }
+
     @Alias
     @TargetElement(onlyWith = JDK21OrEarlier.class)
     public native void ensureNativeAccess(Class<?> owner, String methodName);

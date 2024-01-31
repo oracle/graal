@@ -68,8 +68,8 @@ public final class UnaryMathIntrinsicNode extends UnaryNode implements Arithmeti
             this.foreignCallSignature = foreignCallSignature;
         }
 
-        public double compute(double value) {
-            switch (this) {
+        public static double compute(UnaryOperation op, double value) {
+            switch (op) {
                 case LOG:
                     return Math.log(value);
                 case LOG10:
@@ -83,14 +83,14 @@ public final class UnaryMathIntrinsicNode extends UnaryNode implements Arithmeti
                 case TAN:
                     return Math.tan(value);
                 default:
-                    throw new GraalError("unknown op %s", this);
+                    throw new GraalError("unknown op %s", op);
             }
         }
 
-        public Stamp computeStamp(Stamp valueStamp) {
+        public static Stamp computeStamp(UnaryOperation op, Stamp valueStamp) {
             if (valueStamp instanceof FloatStamp) {
                 FloatStamp floatStamp = (FloatStamp) valueStamp;
-                switch (this) {
+                switch (op) {
                     case COS:
                     case SIN: {
                         boolean nonNaN = floatStamp.lowerBound() != Double.NEGATIVE_INFINITY && floatStamp.upperBound() != Double.POSITIVE_INFINITY && floatStamp.isNonNaN();
@@ -102,8 +102,8 @@ public final class UnaryMathIntrinsicNode extends UnaryNode implements Arithmeti
                     }
                     case LOG:
                     case LOG10: {
-                        double lowerBound = compute(floatStamp.lowerBound());
-                        double upperBound = compute(floatStamp.upperBound());
+                        double lowerBound = compute(op, floatStamp.lowerBound());
+                        double upperBound = compute(op, floatStamp.upperBound());
                         if (floatStamp.contains(0.0)) {
                             // 0.0 and -0.0 infinity produces -Inf
                             lowerBound = Double.NEGATIVE_INFINITY;
@@ -139,13 +139,13 @@ public final class UnaryMathIntrinsicNode extends UnaryNode implements Arithmeti
 
     protected static ValueNode tryConstantFold(ValueNode value, UnaryOperation op) {
         if (value.isConstant()) {
-            return ConstantNode.forDouble(op.compute(value.asJavaConstant().asDouble()));
+            return ConstantNode.forDouble(UnaryOperation.compute(op, value.asJavaConstant().asDouble()));
         }
         return null;
     }
 
     protected UnaryMathIntrinsicNode(ValueNode value, UnaryOperation op) {
-        super(TYPE, op.computeStamp(value.stamp(NodeView.DEFAULT)), value);
+        super(TYPE, UnaryOperation.computeStamp(op, value.stamp(NodeView.DEFAULT)), value);
         assert value.stamp(NodeView.DEFAULT) instanceof FloatStamp : Assertions.errorMessageContext("value", value);
         assert PrimitiveStamp.getBits(value.stamp(NodeView.DEFAULT)) == 64 : value;
         this.operation = op;
@@ -153,7 +153,7 @@ public final class UnaryMathIntrinsicNode extends UnaryNode implements Arithmeti
 
     @Override
     public Stamp foldStamp(Stamp valueStamp) {
-        return getOperation().computeStamp(valueStamp);
+        return UnaryOperation.computeStamp(this.operation, valueStamp);
     }
 
     @Override

@@ -32,7 +32,6 @@ import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.BinaryOpLogicNode;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.vm.ci.meta.TriState;
 
 /**
@@ -71,8 +70,4 @@ public class OpMaskOrTestNode extends BinaryOpLogicNode {
         return TriState.UNKNOWN;
     }
 
-    @Override
-    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        return this;
-    }
 }

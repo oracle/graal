@@ -28,6 +28,7 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
+import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -132,7 +133,9 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         NON_NULL,
         POSITIVE_INT,
         INT_NON_ZERO,
-        LONG_NON_ZERO
+        LONG_NON_ZERO,
+        DOUBLE_NON_NAN,
+        FLOAT_NON_NAN
     }
 
     public static boolean intrinsify(GraphBuilderContext b, ValueNode input, ValueNode guard, IntrinsifyOp intrinsifyOp) {
@@ -154,6 +157,16 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
             case LONG_NON_ZERO:
                 piStamp = StampFactory.nonZeroLong();
                 pushKind = JavaKind.Long;
+                break;
+            case FLOAT_NON_NAN:
+                // non NAN float stamp
+                piStamp = new FloatStamp(32, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY, true);
+                pushKind = JavaKind.Float;
+                break;
+            case DOUBLE_NON_NAN:
+                // non NAN double stamp
+                piStamp = new FloatStamp(64, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, true);
+                pushKind = JavaKind.Double;
                 break;
             default:
                 throw GraalError.shouldNotReachHereUnexpectedValue(intrinsifyOp); // ExcludeFromJacocoGeneratedReport
@@ -405,6 +418,20 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     public static Class<?> piCastNonNullClass(Class<?> type, GuardingNode guard) {
         return intrinsified(type, guard, IntrinsifyOp.NON_NULL);
     }
+
+    public static float piCastNonNanFloat(float input, GuardingNode guard) {
+        return intrinsified(input, guard, IntrinsifyOp.FLOAT_NON_NAN);
+    }
+
+    @NodeIntrinsic
+    private static native float intrinsified(float input, GuardingNode guard, @ConstantNodeParameter IntrinsifyOp intrinsifyOp);
+
+    public static double piCastNonNanDouble(double input, GuardingNode guard) {
+        return intrinsified(input, guard, IntrinsifyOp.DOUBLE_NON_NAN);
+    }
+
+    @NodeIntrinsic
+    private static native double intrinsified(double input, GuardingNode guard, @ConstantNodeParameter IntrinsifyOp intrinsifyOp);
 
     @NodeIntrinsic
     private static native Class<?> intrinsified(Class<?> object, GuardingNode guard, @ConstantNodeParameter IntrinsifyOp intrinsifyOp);

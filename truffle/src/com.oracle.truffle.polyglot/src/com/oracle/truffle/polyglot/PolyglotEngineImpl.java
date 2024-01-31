@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1296,7 +1296,16 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             this.lock.notifyAll();
             if (!activeSystemThreads.isEmpty()) {
                 InstrumentSystemThread thread = activeSystemThreads.iterator().next();
-                throw new IllegalStateException(String.format("The engine has an alive system thread %s created by instrument %s.", thread.getName(), thread.instrumentId));
+                StringBuilder stack = new StringBuilder("Alive system thread '");
+                stack.append(thread.getName());
+                stack.append('\'');
+                stack.append(System.lineSeparator());
+                for (StackTraceElement e : thread.getStackTrace()) {
+                    stack.append("\tat ");
+                    stack.append(e);
+                    stack.append(System.lineSeparator());
+                }
+                throw new IllegalStateException(String.format("%sThe engine has an alive system thread '%s' created by instrument %s.", stack, thread.getName(), thread.instrumentId));
             }
             if (specializationStatistics != null) {
                 StringWriter logMessage = new StringWriter();

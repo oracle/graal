@@ -26,9 +26,9 @@ package com.oracle.svm.hosted.substitute;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Field;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.hosted.ameta.ReadableJavaField;
 import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
@@ -37,7 +37,6 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -62,17 +61,17 @@ public class AnnotatedField implements ReadableJavaField, OriginalFieldProvider,
     }
 
     @Override
-    public JavaConstant readValue(MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport, JavaConstant receiver) {
-        return ReadableJavaField.readFieldValue(metaAccess, classInitializationSupport, original, receiver);
+    public JavaConstant readValue(ClassInitializationSupport classInitializationSupport, JavaConstant receiver) {
+        return ReadableJavaField.readFieldValue(classInitializationSupport, original, receiver);
     }
 
     @Override
-    public boolean isValueAvailableBeforeAnalysis() {
+    public boolean isValueAvailable() {
         /*
          * We assume that fields for which this class is used always have altered behavior for which
-         * constant folding is not valid.
+         * constant folding before or during analysis is not valid.
          */
-        return false;
+        return BuildPhaseProvider.isAnalysisFinished();
     }
 
     @Override
@@ -123,8 +122,8 @@ public class AnnotatedField implements ReadableJavaField, OriginalFieldProvider,
     }
 
     @Override
-    public Field getJavaField() {
-        return OriginalFieldProvider.getJavaField(original);
+    public ResolvedJavaField unwrapTowardsOriginalField() {
+        return original;
     }
 
     @Override

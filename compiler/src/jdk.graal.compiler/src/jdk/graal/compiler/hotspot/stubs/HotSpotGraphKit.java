@@ -44,7 +44,6 @@ import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.GraphKit;
-import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -56,9 +55,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class HotSpotGraphKit extends GraphKit {
 
-    public HotSpotGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes, Plugins graphBuilderPlugins, CompilationIdentifier compilationId, String name,
+    public HotSpotGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, Plugins graphBuilderPlugins, CompilationIdentifier compilationId, String name,
                     boolean trackNodeSourcePosition, boolean recordInlinedMethods) {
-        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, name, trackNodeSourcePosition, recordInlinedMethods);
+        super(debug, stubMethod, providers, graphBuilderPlugins, compilationId, name, trackNodeSourcePosition, recordInlinedMethods);
     }
 
     /**

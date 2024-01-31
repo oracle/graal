@@ -38,8 +38,6 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.svm.core.config.ConfigurationValues;
-import jdk.graal.compiler.nodes.GraphEncoder;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -50,8 +48,8 @@ import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptTest;
 import com.oracle.svm.core.deopt.Specialize;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -79,7 +77,6 @@ import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.util.ImageBuildStatistics;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.asm.Assembler;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.code.CompilationResult;
@@ -87,7 +84,6 @@ import jdk.graal.compiler.code.DataSection;
 import jdk.graal.compiler.core.GraalCompiler;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.CompilationIdentifier.Verbosity;
-import jdk.graal.compiler.core.common.spi.CodeGenProviders;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Description;
 import jdk.graal.compiler.debug.DebugHandlersFactory;
@@ -109,6 +105,7 @@ import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.GraphState.GuardsStage;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.IndirectCallTargetNode;
@@ -117,11 +114,10 @@ import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedFoldInvocationPlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.Phase;
@@ -178,7 +174,6 @@ public class CompileQueue {
     private LIRSuites deoptTargetLIRSuites = null;
     private final ConcurrentMap<Constant, DataSection.Data> dataCache;
 
-    protected SnippetReflectionProvider snippetReflection;
     protected final FeatureHandler featureHandler;
     protected final GlobalMetrics metricValues = new GlobalMetrics();
     private final AnalysisToHostedGraphTransplanter graphTransplanter;
@@ -352,8 +347,7 @@ public class CompileQueue {
     }
 
     @SuppressWarnings("this-escape")
-    public CompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse universe, RuntimeConfiguration runtimeConfiguration, Boolean deoptimizeAll,
-                    SnippetReflectionProvider snippetReflection) {
+    public CompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse universe, RuntimeConfiguration runtimeConfiguration, Boolean deoptimizeAll) {
         this.universe = universe;
         this.compilations = new ConcurrentHashMap<>();
         this.runtimeConfig = runtimeConfiguration;
@@ -362,7 +356,6 @@ public class CompileQueue {
         this.dataCache = new ConcurrentHashMap<>();
         this.executor = new CompletionExecutor(debug, universe.getBigBang());
         this.featureHandler = featureHandler;
-        this.snippetReflection = snippetReflection;
         this.graphTransplanter = createGraphTransplanter();
         this.defaultParseHooks = new ParseHooks(this);
 
@@ -459,11 +452,11 @@ public class CompileQueue {
     }
 
     protected Suites createRegularSuites() {
-        return NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);
+        return NativeImageGenerator.createSuites(featureHandler, runtimeConfig, true);
     }
 
     protected Suites createDeoptTargetSuites() {
-        return NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);
+        return NativeImageGenerator.createSuites(featureHandler, runtimeConfig, true);
     }
 
     protected LIRSuites createLIRSuites() {
@@ -1044,23 +1037,6 @@ public class CompileQueue {
         return debug.getOptions();
     }
 
-    protected GraphBuilderConfiguration createHostedGraphBuilderConfiguration(HostedProviders providers, HostedMethod method) {
-        GraphBuilderConfiguration gbConf = GraphBuilderConfiguration.getDefault(providers.getGraphBuilderPlugins()).withBytecodeExceptionMode(BytecodeExceptionMode.CheckAll);
-
-        if (SubstrateOptions.optimizationLevel() == OptimizationLevel.O0 && !method.isDeoptTarget()) {
-            /*
-             * Disabling liveness analysis preserves the values of local variables beyond the
-             * bytecode-liveness. This greatly helps debugging. When local variable numbers are
-             * reused by javac, local variables can still get illegal values. Since we cannot
-             * "restore" such illegal values during deoptimization, we cannot disable liveness
-             * analysis for deoptimization target methods.
-             */
-            gbConf = gbConf.withRetainLocalVariables(true);
-        }
-
-        return gbConf;
-    }
-
     protected boolean canBeUsedForInlining(Invoke invoke) {
         HostedMethod caller = (HostedMethod) invoke.asNode().graph().method();
         HostedMethod callee = (HostedMethod) invoke.callTarget().targetMethod();
@@ -1149,7 +1125,7 @@ public class CompileQueue {
 
     class HostedCompilationResultBuilderFactory implements CompilationResultBuilderFactory {
         @Override
-        public CompilationResultBuilder createBuilder(CodeGenProviders providers,
+        public CompilationResultBuilder createBuilder(CoreProviders providers,
                         FrameMap frameMap,
                         Assembler<?> asm,
                         DataBuilder dataBuilder,

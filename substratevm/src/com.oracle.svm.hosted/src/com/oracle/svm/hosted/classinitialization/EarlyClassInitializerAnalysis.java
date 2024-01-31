@@ -31,6 +31,22 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Supplier;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
+
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
+import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
+import com.oracle.svm.core.graal.thread.VMThreadLocalAccess;
+import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FallbackFeature;
+import com.oracle.svm.hosted.phases.EarlyConstantFoldLoadFieldPlugin;
+import com.oracle.svm.hosted.snippets.ReflectionPlugins;
+import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
+
 import jdk.graal.compiler.core.common.GraalBailoutException;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
@@ -58,22 +74,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.util.Providers;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
-
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
-import com.oracle.graal.pointsto.util.GraalAccess;
-import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.core.graal.thread.VMThreadLocalAccess;
-import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.FallbackFeature;
-import com.oracle.svm.hosted.phases.EarlyConstantFoldLoadFieldPlugin;
-import com.oracle.svm.hosted.snippets.ReflectionPlugins;
-import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -174,9 +174,9 @@ final class EarlyClassInitializerAnalysis {
         plugins.setClassInitializationPlugin(classInitializationPlugin);
         plugins.appendNodePlugin(new EarlyConstantFoldLoadFieldPlugin(originalProviders.getMetaAccess()));
 
-        SubstrateGraphBuilderPlugins.registerClassDesiredAssertionStatusPlugin(invocationPlugins, originalProviders.getSnippetReflection());
+        SubstrateGraphBuilderPlugins.registerClassDesiredAssertionStatusPlugin(invocationPlugins);
         FallbackFeature fallbackFeature = ImageSingletons.contains(FallbackFeature.class) ? ImageSingletons.lookup(FallbackFeature.class) : null;
-        ReflectionPlugins.registerInvocationPlugins(classInitializationSupport.loader, originalProviders.getSnippetReflection(), null, classInitializationPlugin, invocationPlugins, null,
+        ReflectionPlugins.registerInvocationPlugins(classInitializationSupport.loader, null, classInitializationPlugin, invocationPlugins, null,
                         ParsingReason.EarlyClassInitializerAnalysis, fallbackFeature);
 
         GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);

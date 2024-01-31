@@ -32,7 +32,6 @@ import java.util.function.Function;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
-import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
@@ -107,7 +106,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
                             SubstrateOptions.PreserveFramePointer.getValue()));
         }
 
-        WordTypes wordTypes = new SubstrateWordTypes(metaAccess, FrameAccess.getWordKind());
+        WordTypes wordTypes = new SubstrateWordTypes(metaAccess, ConfigurationValues.getWordKind());
 
         ForeignCallsProvider foreignCalls = createForeignCallsProvider(registerConfigs.get(ConfigKind.NORMAL));
 
@@ -126,7 +125,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
          * Use the snippet reflection provider during image building replacement. It will be
          * replaced by the GraalGraphObjectReplacer for run time compilation.
          */
-        Replacements replacements = createReplacements(p, snippetReflection);
+        Replacements replacements = createReplacements(p);
         p = (Providers) replacements.getProviders();
 
         EnumMap<ConfigKind, SubstrateBackend> backends = new EnumMap<>(ConfigKind.class);
@@ -147,12 +146,12 @@ public abstract class SharedRuntimeConfigurationBuilder {
             }
         }
 
-        return new RuntimeConfiguration(p, snippetReflection, backends, wordTypes, handlers);
+        return new RuntimeConfiguration(p, backends, handlers);
     }
 
     protected abstract Providers createProviders(CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
                     ForeignCallsProvider foreignCalls,
-                    LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, SnippetReflectionProvider snippetReflection,
+                    LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, SnippetReflectionProvider reflectionProvider,
                     PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider, WordTypes wordTypes, LoopsDataProvider loopsDataProvider);
 
     protected abstract ConstantReflectionProvider createConstantReflectionProvider();
@@ -169,7 +168,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
 
     protected abstract LoweringProvider createLoweringProvider(ForeignCallsProvider foreignCalls, MetaAccessExtensionProvider metaAccessExtensionProvider);
 
-    protected abstract Replacements createReplacements(Providers p, SnippetReflectionProvider snippetReflection);
+    protected abstract Replacements createReplacements(Providers p);
 
     protected abstract CodeCacheProvider createCodeCacheProvider(RegisterConfig registerConfig);
 }

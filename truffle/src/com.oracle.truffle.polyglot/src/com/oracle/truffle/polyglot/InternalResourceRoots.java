@@ -62,8 +62,22 @@ import java.util.Set;
 final class InternalResourceRoots {
 
     private static final String OVERRIDDEN_CACHE_ROOT = "polyglot.engine.resourcePath";
-    private static final String OVERRIDDEN_COMPONENT_ROOT = "polyglot.engine.resourcePath.";
-    private static final String OVERRIDDEN_RESOURCE_ROOT = "polyglot.engine.resourcePath.";
+
+    static String overriddenComponentRootProperty(String componentId) {
+        StringBuilder builder = new StringBuilder(OVERRIDDEN_CACHE_ROOT);
+        builder.append('.');
+        builder.append(componentId);
+        return builder.toString();
+    }
+
+    static String overriddenResourceRootProperty(String componentId, String resourceId) {
+        StringBuilder builder = new StringBuilder(OVERRIDDEN_CACHE_ROOT);
+        builder.append('.');
+        builder.append(componentId);
+        builder.append('.');
+        builder.append(resourceId);
+        return builder.toString();
+    }
 
     /**
      * This field is reset to {@code null} by the {@code TruffleBaseFeature} before writing the
@@ -192,11 +206,12 @@ final class InternalResourceRoots {
     }
 
     private static Pair<Path, Root.Kind> findDefaultRoot() {
-        Path root;
+        ResolvedCacheFolder root;
         Root.Kind kind;
         String overriddenRoot = System.getProperty(OVERRIDDEN_CACHE_ROOT);
         if (overriddenRoot != null) {
-            root = Path.of(overriddenRoot);
+            Path overriddenRootPath = Path.of(overriddenRoot).toAbsolutePath();
+            root = new ResolvedCacheFolder(overriddenRootPath, OVERRIDDEN_CACHE_ROOT + " system property", overriddenRootPath);
             kind = Root.Kind.UNVERSIONED;
         } else if (ImageInfo.inImageRuntimeCode()) {
             root = findCacheRootOnNativeImage();
@@ -205,40 +220,36 @@ final class InternalResourceRoots {
             root = findCacheRootOnHotSpot();
             kind = Root.Kind.VERSIONED;
         }
-        return Pair.create(root, kind);
+        logInternalResourceEvent("Resolved the root directory for the internal resource cache to: %s, determined by the %s with the value %s.",
+                        root.path(), root.hint(), root.hintValue());
+        return Pair.create(root.path(), kind);
     }
 
     private static void collectRoots(String componentId, Path componentRoot, Root.Kind componentKind, Collection<InternalResourceCache> resources,
                     Map<Pair<Path, Root.Kind>, List<InternalResourceCache>> collector) {
         Path useRoot = componentRoot;
         Root.Kind useKind = componentKind;
-        StringBuilder builder = new StringBuilder(OVERRIDDEN_COMPONENT_ROOT);
-        builder.append(componentId);
-        String overriddenRoot = System.getProperty(builder.toString());
+        String overriddenRoot = System.getProperty(overriddenComponentRootProperty(componentId));
         if (overriddenRoot != null) {
-            useRoot = Path.of(overriddenRoot);
+            useRoot = Path.of(overriddenRoot).toAbsolutePath();
             useKind = Root.Kind.COMPONENT;
         }
         for (InternalResourceCache resource : resources) {
             Path resourceRoot = useRoot;
             Root.Kind resourceKind = useKind;
-            builder = new StringBuilder(OVERRIDDEN_RESOURCE_ROOT);
-            builder.append(componentId);
-            builder.append('.');
-            builder.append(resource.getResourceId());
-            overriddenRoot = System.getProperty(builder.toString());
+            overriddenRoot = System.getProperty(overriddenResourceRootProperty(componentId, resource.getResourceId()));
             if (overriddenRoot != null) {
-                resourceRoot = Path.of(overriddenRoot);
+                resourceRoot = Path.of(overriddenRoot).toAbsolutePath();
                 resourceKind = Root.Kind.RESOURCE;
             }
             collector.computeIfAbsent(Pair.create(resourceRoot, resourceKind), (k) -> new ArrayList<>()).add(resource);
         }
     }
 
-    private static Path findCacheRootOnNativeImage() {
+    private static ResolvedCacheFolder findCacheRootOnNativeImage() {
         assert ImageInfo.inImageRuntimeCode() : "Can be called only in the native-image execution time.";
         Path executable = getExecutablePath();
-        return executable.resolveSibling("resources");
+        return new ResolvedCacheFolder(executable.resolveSibling("resources"), "executable location", executable);
     }
 
     private static Path getExecutablePath() {
@@ -252,16 +263,16 @@ final class InternalResourceRoots {
         }
     }
 
-    private static Path findCacheRootOnHotSpot() {
+    private static ResolvedCacheFolder findCacheRootOnHotSpot() {
         String userHomeValue = System.getProperty("user.home");
         if (userHomeValue == null) {
             throw CompilerDirectives.shouldNotReachHere("The 'user.home' system property is not set.");
         }
         Path userHome = Paths.get(userHomeValue);
-        Path container = switch (InternalResource.OS.getCurrent()) {
-            case DARWIN -> userHome.resolve(Path.of("Library", "Caches"));
+        ResolvedCacheFolder container = switch (InternalResource.OS.getCurrent()) {
+            case DARWIN -> new ResolvedCacheFolder(userHome.resolve(Path.of("Library", "Caches")), "user home", userHome);
             case LINUX -> {
-                Path userCacheDir = null;
+                ResolvedCacheFolder userCacheDir = null;
                 String xdgCacheValue = System.getenv("XDG_CACHE_HOME");
                 if (xdgCacheValue != null) {
                     try {
@@ -269,7 +280,7 @@ final class InternalResourceRoots {
                         // Do not fail when XDG_CACHE_HOME value is invalid. Fall back to
                         // $HOME/.cache.
                         if (xdgCacheDir.isAbsolute()) {
-                            userCacheDir = xdgCacheDir;
+                            userCacheDir = new ResolvedCacheFolder(xdgCacheDir, "XDG_CACHE_HOME env variable", xdgCacheDir);
                         } else {
                             emitWarning("The value of the environment variable 'XDG_CACHE_HOME' is not an absolute path. Using the default cache folder '%s'.", userHome.resolve(".cache"));
                         }
@@ -278,13 +289,28 @@ final class InternalResourceRoots {
                     }
                 }
                 if (userCacheDir == null) {
-                    userCacheDir = userHome.resolve(".cache");
+                    userCacheDir = new ResolvedCacheFolder(userHome.resolve(".cache"), "user home", userHome);
                 }
                 yield userCacheDir;
             }
-            case WINDOWS -> userHome.resolve(Path.of("AppData", "Local"));
+            case WINDOWS -> new ResolvedCacheFolder(userHome.resolve(Path.of("AppData", "Local")), "user home", userHome);
         };
         return container.resolve("org.graalvm.polyglot");
+    }
+
+    static boolean isTraceInternalResourceEvents() {
+        /*
+         * Internal resources are utilized before the Engine is created; hence, we cannot leverage
+         * engine options and engine logger.
+         */
+        return Boolean.getBoolean("polyglotimpl.TraceInternalResources");
+    }
+
+    static void logInternalResourceEvent(String message, Object... args) {
+        if (isTraceInternalResourceEvents()) {
+            PrintStream out = System.err;
+            out.printf("[engine][resource] " + message + "%n", args);
+        }
     }
 
     private static void emitWarning(String message, Object... args) {
@@ -299,6 +325,13 @@ final class InternalResourceRoots {
             RESOURCE,
             UNVERSIONED,
             VERSIONED,
+        }
+    }
+
+    private record ResolvedCacheFolder(Path path, String hint, Path hintValue) {
+
+        ResolvedCacheFolder resolve(String file) {
+            return new ResolvedCacheFolder(path.resolve(file), hint, hintValue);
         }
     }
 }

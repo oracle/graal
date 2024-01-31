@@ -68,7 +68,6 @@ import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerPolicy.
 import com.oracle.svm.hosted.fieldfolding.IsStaticFinalFieldInitializedNode;
 import com.oracle.svm.hosted.fieldfolding.MarkStaticFinalFieldInitializedNode;
 
-import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
@@ -295,6 +294,10 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
                 return ConstantNode.forConstant(currentValue, metaAccess);
             }
         }
+        var intrinsified = support.fieldValueInterceptionSupport.tryIntrinsifyFieldLoad(providers, node);
+        if (intrinsified != null) {
+            return intrinsified;
+        }
         return node;
     }
 
@@ -304,8 +307,8 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
         int idx = asIntegerOrMinusOne(node.index());
 
         if (array != null && value != null && idx >= 0 && idx < array.getLength()) {
-            var componentType = array.getType(metaAccess).getComponentType();
-            if (node.elementKind().isPrimitive() || value.isNull() || componentType.isAssignableFrom(((TypedConstant) value).getType(metaAccess))) {
+            var componentType = array.getType().getComponentType();
+            if (node.elementKind().isPrimitive() || value.isNull() || componentType.isAssignableFrom(((ImageHeapConstant) value).getType())) {
                 array.setElement(idx, adaptForImageHeap(value, componentType.getStorageKind()));
                 return null;
             }
@@ -339,16 +342,19 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
             return false;
         }
 
-        var sourceComponentType = source.getType(metaAccess).getComponentType();
-        var destComponentType = dest.getType(metaAccess).getComponentType();
+        var sourceComponentType = source.getType().getComponentType();
+        var destComponentType = dest.getType().getComponentType();
         if (sourceComponentType.getJavaKind() != destComponentType.getJavaKind()) {
             return false;
         }
         if (destComponentType.getJavaKind() == JavaKind.Object && !destComponentType.isJavaLangObject() && !sourceComponentType.equals(destComponentType)) {
             for (int i = 0; i < length; i++) {
-                var elementValueType = ((TypedConstant) source.getElement(sourcePos + i)).getType(metaAccess);
-                if (!destComponentType.isAssignableFrom(elementValueType)) {
-                    return false;
+                var elementValue = (JavaConstant) source.getElement(sourcePos + i);
+                if (elementValue.isNonNull()) {
+                    var elementValueType = ((ImageHeapConstant) elementValue).getType();
+                    if (!destComponentType.isAssignableFrom(elementValueType)) {
+                        return false;
+                    }
                 }
             }
         }
@@ -532,7 +538,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
     private ValueNode handleObjectClone(SimulateClassInitializerInlineScope countersScope, ObjectClone node) {
         var originalImageHeapConstant = asActiveImageHeapConstant(node.getObject());
         if (originalImageHeapConstant != null) {
-            var type = originalImageHeapConstant.getType(metaAccess);
+            var type = originalImageHeapConstant.getType();
             if ((originalImageHeapConstant instanceof ImageHeapArray originalArray && accumulateNewArraySize(countersScope, type, originalArray.getLength(), node.asNode())) ||
                             (type.isCloneableWithAllocation() && accumulateNewInstanceSize(countersScope, type, node.asNode()))) {
                 var cloned = originalImageHeapConstant.forObjectClone();
@@ -738,7 +744,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
      * sub-integer types are often just integer constants in the Graal IR, i.e., we cannot rely on
      * the JavaKind of the constant to match the type of the field or array.
      */
-    private JavaConstant adaptForImageHeap(JavaConstant value, JavaKind storageKind) {
+    private static JavaConstant adaptForImageHeap(JavaConstant value, JavaKind storageKind) {
         if (value.getJavaKind() != storageKind) {
             assert value instanceof PrimitiveConstant && value.getJavaKind().getStackKind() == storageKind.getStackKind() : "only sub-int values can have a mismatch of the JavaKind: " +
                             value.getJavaKind() + ", " + storageKind;

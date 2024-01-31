@@ -59,16 +59,4 @@ public class RuntimeCodeInfoGCSupportImpl extends RuntimeCodeInfoGCSupport {
     public void registerDeoptMetadata(CodeInfo codeInfo) {
         // nothing to do (see above)
     }
-
-    @Override
-    @Uninterruptible(reason = "Called when freeing code.", callerMustBe = true)
-    public void unregisterCodeConstants(CodeInfo codeInfo) {
-        // nothing to do (see above)
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called when freeing code.", callerMustBe = true)
-    public void unregisterRuntimeCodeInfo(CodeInfo codeInfo) {
-        // nothing to do (see above)
-    }
 }

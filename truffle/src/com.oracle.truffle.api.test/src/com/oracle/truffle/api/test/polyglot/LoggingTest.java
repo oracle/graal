@@ -1282,6 +1282,31 @@ public class LoggingTest {
         }
     }
 
+    @Test
+    public void testGR49739() {
+        AtomicReference<TruffleLogger> loggerHolder = new AtomicReference<>();
+        AbstractLoggingLanguage.action = (ctx, defaultLoggers) -> {
+            loggerHolder.set(ctx.env.getLogger("after.close"));
+            return false;
+        };
+        Context.Builder contextBuilder = newContextBuilder();
+        contextBuilder.option("log." + LoggingLanguageFirst.ID + ".level", "CONFIG");
+        Context ctx = contextBuilder.build();
+        Reference<Context> ctxRef = new WeakReference<>(ctx);
+        try {
+            ctx.eval(LoggingLanguageFirst.ID, "");
+        } finally {
+            ctx.close();
+            ctx = null;
+        }
+        GCUtils.assertGc("Context should be collected.", ctxRef);
+        TruffleLogger closedLogger = loggerHolder.getAndSet(null);
+        Assert.assertNotNull(closedLogger);
+        AbstractPolyglotTest.assertFails(() -> closedLogger.config("Should fail"), AssertionError.class, (e) -> {
+            Assert.assertTrue(e.getMessage().contains("Invalid sharing of bound TruffleLogger"));
+        });
+    }
+
     private static boolean hasInterpreterOnlyWarning(Iterable<Map.Entry<Level, String>> log) {
         for (Map.Entry<Level, String> record : log) {
             String message = record.getValue();

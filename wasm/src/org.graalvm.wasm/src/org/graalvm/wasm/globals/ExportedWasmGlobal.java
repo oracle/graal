@@ -64,8 +64,8 @@ public class ExportedWasmGlobal extends WasmGlobal {
     }
 
     @Override
-    public Object loadAsReference() {
-        return globals.loadAsReference(address);
+    public Object loadAsObject() {
+        return globals.loadAsObject(address);
     }
 
     @Override
@@ -79,7 +79,7 @@ public class ExportedWasmGlobal extends WasmGlobal {
     }
 
     @Override
-    public void storeReference(Object value) {
-        globals.storeReference(address, value);
+    public void storeObject(Object value) {
+        globals.storeObject(address, value);
     }
 }

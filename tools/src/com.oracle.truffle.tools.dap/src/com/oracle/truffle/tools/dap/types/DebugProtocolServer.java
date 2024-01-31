@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,8 +40,10 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.logging.Level;
@@ -765,9 +767,11 @@ public class DebugProtocolServer {
             return t instanceof CompletionException ? asExceptionWithMessage(t.getCause()) : t instanceof ExceptionWithMessage ? (ExceptionWithMessage) t : null;
         }
 
-        public static Future<?> connect(DebugProtocolServer server, InputStream in, OutputStream out, ExecutorService executors) {
+        public static Future<?> connect(DebugProtocolServer server, InputStream in, OutputStream out, Executor executor) {
             Session s = new Session(server, in, out);
-            return executors.submit(s);
+            RunnableFuture<?> future = new FutureTask<>(s, null);
+            executor.execute(future);
+            return future;
         }
     }
 

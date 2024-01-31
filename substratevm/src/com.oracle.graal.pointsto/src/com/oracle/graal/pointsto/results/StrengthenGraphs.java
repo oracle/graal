@@ -45,7 +45,9 @@ import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.Universe;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
@@ -91,6 +93,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
+import jdk.graal.compiler.nodes.extended.FieldOffsetProvider;
 import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
 import jdk.graal.compiler.nodes.java.ClassIsAssignableFromNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
@@ -450,15 +453,20 @@ public abstract class StrengthenGraphs {
 
             } else if (n instanceof FrameState) {
                 /*
-                 * We do not want a type to be reachable only to be used for debugging purposes in a
-                 * FrameState. We could just null out the frame slot, but to leave as much
-                 * information as possible we replace the java.lang.Class with the type name.
+                 * We do not want a constant to be reachable only to be used for debugging purposes
+                 * in a FrameState.
                  */
                 FrameState node = (FrameState) n;
                 for (int i = 0; i < node.values().size(); i++) {
-                    AnalysisType nonReachableType = asConstantNonReachableType(node.values().get(i), tool);
-                    if (nonReachableType != null) {
-                        node.values().set(i, ConstantNode.forConstant(tool.getConstantReflection().forString(getTypeName(nonReachableType)), tool.getMetaAccess(), graph));
+                    if (node.values().get(i) instanceof ConstantNode constantNode && constantNode.getValue() instanceof ImageHeapConstant imageHeapConstant && !imageHeapConstant.isReachable()) {
+                        node.values().set(i, ConstantNode.defaultForKind(JavaKind.Object, graph));
+                    }
+                    if (node.values().get(i) instanceof FieldOffsetProvider fieldOffsetProvider && !((AnalysisField) fieldOffsetProvider.getField()).isUnsafeAccessed()) {
+                        /*
+                         * We use a unique marker constant as the replacement value, so that a
+                         * search in the code base for the value leads us to here.
+                         */
+                        node.values().set(i, ConstantNode.forIntegerKind(fieldOffsetProvider.asNode().getStackKind(), 0xDEA51106, graph));
                     }
                 }
 

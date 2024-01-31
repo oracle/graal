@@ -28,7 +28,6 @@ import re
 import tempfile
 from glob import glob
 from contextlib import contextmanager
-from distutils.dir_util import mkpath  # pylint: disable=no-name-in-module
 from os.path import join, exists, dirname
 import pipes
 from argparse import ArgumentParser
@@ -494,9 +493,9 @@ def native_unittests_task(extra_build_args=None):
     resources_from_dir = join(cp_entry_name, 'resourcesFromDir')
     simple_dir = join(cp_entry_name, 'simpleDir')
 
-    mkpath(cp_entry_name)
-    mkpath(resources_from_dir)
-    mkpath(simple_dir)
+    os.makedirs(cp_entry_name)
+    os.makedirs(resources_from_dir)
+    os.makedirs(simple_dir)
 
     for i in range(4):
         with open(join(cp_entry_name, "resourcesFromDir", f'cond-resource{i}.txt'), 'w') as out:
@@ -640,7 +639,7 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
         if not preserve_image:
             mx.rmtree(junit_test_dir)
 
-_mask_str = '#'
+_mask_str = '$mask$'
 
 
 def _mask(arg, arg_list):
@@ -1005,8 +1004,9 @@ svm = mx_sdk_vm.GraalVmJreComponent(
         'substratevm:OBJECTFILE',
         'substratevm:POINTSTO',
         'substratevm:NATIVE_IMAGE_BASE',
-    ],
+    ] + (['substratevm:SVM_FOREIGN'] if mx_sdk_vm.base_jdk().javaCompliance >= '22' else []),
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
+    extra_native_targets=['linux-default-glibc', 'linux-default-musl'] if mx.is_linux() else None,
     stability="earlyadopter",
     jlink=False,
     installable=False,
@@ -1073,22 +1073,6 @@ driver_exe_build_args = driver_build_args + svm_experimental_options([
 ])
 
 additional_ni_dependencies = []
-
-if mx.get_jdk(tag='default').javaCompliance >= '21':
-    mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
-        suite=suite,
-        name='SubstrateVM Foreign API Preview Feature',
-        short_name='svmforeign',
-        dir_name='svm-preview',
-        installable_id='native-image',
-        license_files=[],
-        third_party_license_files=[],
-        dependencies=['SubstrateVM'],
-        builder_jar_distributions=['substratevm:SVM_FOREIGN'],
-        installable=False,
-        jlink=False,
-    ))
-    additional_ni_dependencies += ['svmforeign']
 
 native_image = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
@@ -1291,6 +1275,34 @@ libgraal_jar_distributions = [
     'sdk:JNIUTILS',
     'substratevm:GRAAL_HOTSPOT_LIBRARY']
 
+def allow_build_path_in_libgraal():
+    """
+    Determines if the ALLOW_ABSOLUTE_PATHS_IN_OUTPUT env var is any other value than ``false``.
+    """
+    return mx.get_env('ALLOW_ABSOLUTE_PATHS_IN_OUTPUT', None) != 'false'
+
+def prevent_build_path_in_libgraal():
+    """
+    If `allow_build_path_in_libgraal() == False`, returns linker
+    options to prevent the build path from showing up in a string in libgraal.
+    """
+    if not allow_build_path_in_libgraal():
+        if mx.is_linux():
+            return ['-H:NativeLinkerOption=-Wl,-soname=libjvmcicompiler.so']
+        if mx.is_darwin():
+            return [
+                '-H:NativeLinkerOption=-Wl,-install_name,@rpath/libjvmcicompiler.dylib',
+
+                # native-image doesn't support generating debug info on Darwin
+                # but the helper C libraries are built with debug info which
+                # can include the build path. Use the -S to strip the debug info
+                # info from the helper C libraries to avoid these paths.
+                '-H:NativeLinkerOption=-Wl,-S'
+            ]
+        if mx.is_windows():
+            return ['-H:NativeLinkerOption=-pdbaltpath:%_PDB%']
+    return []
+
 libgraal_build_args = [
     ## Pass via JVM args opening up of packages needed for image builder early on
     '-J--add-exports=jdk.graal.compiler/jdk.graal.compiler.hotspot=ALL-UNNAMED',
@@ -1332,7 +1344,7 @@ libgraal_build_args = [
     '-H:+PreserveFramePointer',
     '-H:-DeleteLocalSymbols',
 
-    # Configure -Djdk.libgraal.HeapDumpOnOutOfMemoryError=true
+    # Configure -Djdk.libgraal.internal.HeapDumpOnOutOfMemoryError=true
     '--enable-monitoring=heapdump',
     '-H:HeapDumpDefaultFilenamePrefix=libgraal_pid',
 
@@ -1346,12 +1358,12 @@ libgraal_build_args = [
     # No need for container support in libgraal as HotSpot already takes care of it
     '-H:-UseContainerSupport',
 ] + ([
-   # Force page size to support libgraal on AArch64 machines with a page size up to 64K.
-   '-H:PageSize=64K'
+    # Force page size to support libgraal on AArch64 machines with a page size up to 64K.
+    '-H:PageSize=64K'
 ] if mx.get_arch() == 'aarch64' else []) + ([
-   # Build libgraal with 'Full RELRO' to prevent GOT overwriting exploits on Linux (GR-46838)
-   '-H:NativeLinkerOption=-Wl,-z,relro,-z,now',
-] if mx.is_linux() else []))
+    # Build libgraal with 'Full RELRO' to prevent GOT overwriting exploits on Linux (GR-46838)
+    '-H:NativeLinkerOption=-Wl,-z,relro,-z,now',
+] if mx.is_linux() else [])) + prevent_build_path_in_libgraal()
 
 libgraal = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
@@ -1926,12 +1938,17 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
         required_exports = mx_javamodules.requiredExports(distributions_transitive, get_jdk())
         exports_flags = mx_sdk_vm.AbstractNativeImageConfig.get_add_exports_list(required_exports)
 
-        graal_compiler_flags_map['21'] = exports_flags
-        # Currently JDK 22 has the same flags
-        graal_compiler_flags_map['22'] = graal_compiler_flags_map['21']
+        min_version = 21
+        graal_compiler_flags_map[str(min_version)] = exports_flags
+
+        feature_version = get_jdk().javaCompliance.value
+        if str(feature_version) not in graal_compiler_flags_map and feature_version > min_version:
+            # Unless specified otherwise, newer JDK versions use the same flags as JDK 21
+            graal_compiler_flags_map[str(feature_version)] = graal_compiler_flags_map[str(min_version)]
+
         # DO NOT ADD ANY NEW ADD-OPENS OR ADD-EXPORTS HERE!
         #
-        # Instead provide the correct requiresConcealed entries in the moduleInfo
+        # Instead, provide the correct requiresConcealed entries in the moduleInfo
         # section of org.graalvm.nativeimage.builder in the substratevm suite.py.
 
         graal_compiler_flags_base = [

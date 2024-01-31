@@ -1224,10 +1224,7 @@ class SvmSupport(object):
     def is_pgo_supported(self):
         return self.is_ee_supported()
 
-    search_tool = 'strings'
-    has_search_tool = shutil.which(search_tool) is not None
-
-    def native_image(self, build_args, output_file, out=None, err=None, find_bad_strings=False):
+    def native_image(self, build_args, output_file, out=None, err=None):
         assert self._svm_supported
         stage1 = get_stage1_graalvm_distribution()
         native_image_project_name = GraalVmLauncher.launcher_project_name(mx_sdk.LauncherConfig(mx.exe_suffix('native-image'), [], "", []), stage1=True)
@@ -1239,20 +1236,6 @@ class SvmSupport(object):
         ])
 
         mx.run(native_image_command, nonZeroIsFatal=True, out=out, err=err)
-
-        if find_bad_strings and not mx.is_windows():
-            if not self.__class__.has_search_tool:
-                mx.abort(f"Searching for strings requires '{self.__class__.search_tool}' executable.")
-            try:
-                strings_in_image = subprocess.check_output([self.__class__.search_tool, output_file], stderr=None).decode().strip().split('\n')
-                bad_strings = (output_directory, dirname(native_image_bin))
-                for entry in strings_in_image:
-                    for bad_string in bad_strings:
-                        if bad_string in entry:
-                            mx.abort(f"Found forbidden string '{bad_string}' in native image {output_file}.")
-
-            except subprocess.CalledProcessError:
-                mx.abort(f"Using '{self.__class__.search_tool}' to search for strings in native image {output_file} failed.")
 
     def is_debug_supported(self):
         return self._debug_supported
@@ -1448,7 +1431,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             if isinstance(image_config, mx_sdk.LauncherConfig) or (isinstance(image_config, mx_sdk.LanguageLibraryConfig) and image_config.launchers):
                 build_args += [
                     '--install-exit-handlers',
-                    '--enable-monitoring=jvmstat,heapdump,jfr',
+                    '--enable-monitoring=jvmstat,heapdump,jfr,threaddump',
                 ] + svm_experimental_options([
                     '-H:+DumpRuntimeCompilationOnSignal',
                     '-H:+ReportExceptionStackTraces',
@@ -2402,7 +2385,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
         mx.ensure_dir_exists(dirname(output_file))
 
         # Disable build server (different Java properties on each build prevent server reuse)
-        self.svm_support.native_image(build_args, output_file, find_bad_strings=True)
+        self.svm_support.native_image(build_args, output_file)
 
         with open(self._get_command_file(), 'w') as f:
             f.writelines((l + os.linesep for l in build_args))
@@ -2890,7 +2873,8 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                         'path': None,
                     })
                     # additional JDK libraries need to be in the launcher's directory
-                    layout.setdefault(dirname(launcher_dest) + '/', []).append({
+                    destination = path_prefix + '/bin/' if mx.is_windows() else dirname(launcher_dest) + '/'
+                    layout.setdefault(destination, []).append({
                         'source_type': 'dependency',
                         'dependency': dependency,
                         'exclude': [],
@@ -2938,7 +2922,8 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                         })
                         if not _skip_libraries(library_config):
                             # additional JDK libraries need to be in the library's directory
-                            layout.setdefault(dirname(library_dest) + '/', []).append({
+                            destination = path_prefix + '/bin/' if mx.is_windows() else dirname(library_dest) + '/'
+                            layout.setdefault(destination, []).append({
                                 'source_type': 'dependency',
                                 'dependency': dependency,
                                 'exclude': [],
@@ -3599,6 +3584,13 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
 
     _final_graalvm_distribution = get_final_graalvm_distribution()
 
+    from mx_native import TargetSelection
+    for c in _final_graalvm_distribution.components:
+        if c.extra_native_targets:
+            for t in c.extra_native_targets:
+                mx.logv(f"Selecting extra target '{t}' from GraalVM component '{c.short_name}'.")
+                TargetSelection.add_extra(t)
+
     # Add the macros if SubstrateVM is in stage1, as images could be created later with an installable Native Image
     with_svm = has_component('svm', stage1=True)
     libpolyglot_component = mx_sdk_vm.graalvm_component_by_name('libpoly', fatalIfMissing=False) if with_svm else None
@@ -4104,6 +4096,12 @@ def print_standalone_home(args):
     parser.add_argument('comp_dir_name', action='store', help='component dir name', metavar='<comp_dir_name>')
     args = parser.parse_args(args)
     print(standalone_home(args.comp_dir_name, is_jvm=(args.type == 'jvm')))
+
+
+def print_graalvm_type(args):
+    """print the GraalVM artifact type"""
+    # Required by the CI jsonnet files that trigger structure checks
+    print('release' if _suite.is_release() else 'snapshot')
 
 
 def _infer_env(graalvm_dist):
@@ -4917,6 +4915,7 @@ mx.update_commands(_suite, {
     'graalvm-dist-name': [print_graalvm_dist_name, ''],
     'graalvm-version': [print_graalvm_version, ''],
     'graalvm-home': [print_graalvm_home, ''],
+    'graalvm-type': [print_graalvm_type, ''],
     'graalvm-enter': [graalvm_enter, ''],
     'graalvm-show': [graalvm_show, ''],
     'graalvm-vm-name': [print_graalvm_vm_name, ''],

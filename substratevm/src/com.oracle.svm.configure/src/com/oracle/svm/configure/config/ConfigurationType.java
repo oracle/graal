@@ -35,7 +35,7 @@ import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
@@ -85,7 +85,7 @@ public class ConfigurationType implements JsonPrintable {
         return copy;
     }
 
-    private final ConfigurationCondition condition;
+    private final UnresolvedConfigurationCondition condition;
     private final String qualifiedJavaName;
 
     private Map<String, FieldInfo> fields;
@@ -105,14 +105,14 @@ public class ConfigurationType implements JsonPrintable {
     private ConfigurationMemberAccessibility allDeclaredConstructorsAccess = ConfigurationMemberAccessibility.NONE;
     private ConfigurationMemberAccessibility allPublicConstructorsAccess = ConfigurationMemberAccessibility.NONE;
 
-    public ConfigurationType(ConfigurationCondition condition, String qualifiedJavaName) {
+    public ConfigurationType(UnresolvedConfigurationCondition condition, String qualifiedJavaName) {
         assert qualifiedJavaName.indexOf('/') == -1 : "Requires qualified Java name, not internal representation";
         assert !qualifiedJavaName.startsWith("[") : "Requires Java source array syntax, for example java.lang.String[]";
         this.condition = condition;
         this.qualifiedJavaName = qualifiedJavaName;
     }
 
-    ConfigurationType(ConfigurationType other, ConfigurationCondition condition) {
+    ConfigurationType(ConfigurationType other, UnresolvedConfigurationCondition condition) {
         // Our object is not yet published, so it is sufficient to take only the other object's lock
         synchronized (other) {
             qualifiedJavaName = other.qualifiedJavaName;
@@ -523,7 +523,7 @@ public class ConfigurationType implements JsonPrintable {
         return map;
     }
 
-    ConfigurationCondition getCondition() {
+    UnresolvedConfigurationCondition getCondition() {
         return condition;
     }
 

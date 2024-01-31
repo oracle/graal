@@ -35,7 +35,6 @@ import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.AllocationPhase;
-
 import jdk.vm.ci.code.TargetDescription;
 
 /**

@@ -136,4 +136,9 @@ public interface BigBang extends ReachabilityAnalysis {
     default AnalysisMethod fallbackResolveConcreteMethod(AnalysisType resolvingType, AnalysisMethod method) {
         return null;
     }
+
+    @SuppressWarnings("unused")
+    default void registerTypeForBaseImage(Class<?> cls) {
+
+    }
 }

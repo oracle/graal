@@ -85,7 +85,7 @@ public class PointerEqualsNode extends CompareNode implements Canonicalizable.Bi
         if (value != null) {
             return value;
         }
-        return this;
+        return super.canonical(tool, forX, forY);
     }
 
     public static class PointerEqualsOp extends CompareOp {

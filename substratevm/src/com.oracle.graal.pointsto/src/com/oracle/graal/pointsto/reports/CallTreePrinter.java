@@ -57,17 +57,15 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.java.LambdaUtils;
-
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
+import jdk.graal.compiler.java.LambdaUtils;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class CallTreePrinter {
 
@@ -315,7 +313,7 @@ public final class CallTreePrinter {
 
     private void printUsedMethods(PrintWriter out) {
         List<String> methodsList = new ArrayList<>();
-        for (ResolvedJavaMethod method : methodToNode.keySet()) {
+        for (AnalysisMethod method : methodToNode.keySet()) {
             methodsList.add(method.format("%H.%n(%p):%r"));
         }
         methodsList.sort(null);
@@ -334,7 +332,7 @@ public final class CallTreePrinter {
 
     public Set<String> classesSet(boolean packageNameOnly) {
         Set<String> classSet = new HashSet<>();
-        for (ResolvedJavaMethod method : methodToNode.keySet()) {
+        for (AnalysisMethod method : methodToNode.keySet()) {
             String name = method.getDeclaringClass().toJavaName(true);
             if (packageNameOnly) {
                 name = packagePrefix(name);
@@ -536,7 +534,7 @@ public final class CallTreePrinter {
         return resolvedJavaMethodInfo(null, method);
     }
 
-    private static List<String> resolvedJavaMethodInfo(Integer id, ResolvedJavaMethod method) {
+    private static List<String> resolvedJavaMethodInfo(Integer id, AnalysisMethod method) {
         // TODO method parameter types are opaque, but could in the future be split out and link
         // together
         // e.g. each method could BELONG to a type, and a method could have PARAMETER relationships
@@ -552,13 +550,13 @@ public final class CallTreePrinter {
                         method.getName(),
                         method.getDeclaringClass().toJavaName(true),
                         parameters,
-                        method.getSignature().getReturnType(null).toJavaName(true),
+                        method.getSignature().getReturnType().toJavaName(true),
                         display(method),
                         flags(method));
     }
 
-    private static String display(ResolvedJavaMethod method) {
-        final ResolvedJavaType type = method.getDeclaringClass();
+    private static String display(AnalysisMethod method) {
+        final AnalysisType type = method.getDeclaringClass();
         final String typeName = type.toJavaName(true);
         if (type.getJavaKind() == JavaKind.Object) {
             List<String> matchResults = new ArrayList<>();
@@ -573,7 +571,7 @@ public final class CallTreePrinter {
         return typeName + "." + method.getName();
     }
 
-    private static String flags(ResolvedJavaMethod method) {
+    private static String flags(AnalysisMethod method) {
         StringBuilder sb = new StringBuilder();
         if (method.isPublic()) {
             sb.append('p');

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -98,7 +98,7 @@ public final class InspectServerSession implements MessageEndpoint {
 
     @Override
     public void sendClose() throws IOException {
-        if (processThread == null) {
+        if (isClosed()) {
             throw createClosedException();
         }
         Runnable onCloseRunnable = onClose;
@@ -109,7 +109,8 @@ public final class InspectServerSession implements MessageEndpoint {
     }
 
     boolean isClosed() {
-        return processThread == null;
+        CommandProcessThread cmdProcessThread = processThread;
+        return cmdProcessThread == null || cmdProcessThread.isClosed();
     }
 
     // For tests only
@@ -141,7 +142,6 @@ public final class InspectServerSession implements MessageEndpoint {
             cmdProcessThread = processThread;
             if (cmdProcessThread != null) {
                 cmdProcessThread.dispose();
-                processThread = null;
             }
         }
         if (cmdProcessThread != null) {
@@ -189,7 +189,7 @@ public final class InspectServerSession implements MessageEndpoint {
 
     @Override
     public void sendText(String message) throws IOException {
-        if (processThread == null) {
+        if (isClosed()) {
             throw createClosedException();
         }
         Command cmd;
@@ -271,14 +271,14 @@ public final class InspectServerSession implements MessageEndpoint {
 
     @Override
     public void sendPing(ByteBuffer data) throws IOException {
-        if (processThread == null) {
+        if (isClosed()) {
             throw createClosedException();
         }
     }
 
     @Override
     public void sendPong(ByteBuffer data) throws IOException {
-        if (processThread == null) {
+        if (isClosed()) {
             throw createClosedException();
         }
     }
@@ -618,14 +618,15 @@ public final class InspectServerSession implements MessageEndpoint {
         }
     }
 
-    private class CommandProcessThread extends Thread {
+    private class CommandProcessThread implements Runnable {
 
+        private final Thread thread;
         private volatile boolean disposed = false;
         private final BlockingQueue<Command> commands = new LinkedBlockingQueue<>();
 
         CommandProcessThread() {
-            super("chromeinspector.server.CommandProcessThread");
-            setDaemon(true);
+            thread = context.getEnv().createSystemThread(this);
+            thread.setName("chromeinspector.server.CommandProcessThread");
         }
 
         void push(Command cmd) {
@@ -639,9 +640,17 @@ public final class InspectServerSession implements MessageEndpoint {
             }
         }
 
+        void start() {
+            thread.start();
+        }
+
         void dispose() {
             disposed = true;
-            interrupt();
+            thread.interrupt();
+        }
+
+        boolean isClosed() {
+            return disposed && !thread.isAlive();
         }
 
         @Override
@@ -677,6 +686,11 @@ public final class InspectServerSession implements MessageEndpoint {
                 }
                 postProcessor.run();
             }
+        }
+
+        private void join() throws InterruptedException {
+            thread.join();
+            commands.clear();
         }
 
     }

@@ -41,6 +41,7 @@ import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
 import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkageImpl;
 import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
 import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
+import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition;
 import jdk.graal.compiler.hotspot.meta.HotSpotLoweringProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.nodes.ParameterNode;
@@ -50,7 +51,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.GraphKit;
 import jdk.graal.compiler.replacements.nodes.ReadRegisterNode;
-import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotSignature;
 import jdk.vm.ci.meta.JavaMethod;
@@ -61,11 +61,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 /**
- * A {@linkplain #getGraph generated} stub for a {@link HotSpotForeignCallDescriptor.Transition
- * non-leaf} foreign call from compiled code. A stub is required for such calls as the caller may be
- * scheduled for deoptimization while the call is in progress. And since these are foreign/runtime
- * calls on slow paths, we don't want to force the register allocator to spill around the call. As
- * such, this stub saves and restores all allocatable registers. It also
+ * A {@linkplain #getGraph generated} stub for a {@link Transition non-leaf} foreign call from
+ * compiled code. A stub is required for such calls as the caller may be scheduled for
+ * deoptimization while the call is in progress. And since these are foreign/runtime calls on slow
+ * paths, we don't want to force the register allocator to spill around the call. As such, this stub
+ * saves and restores all allocatable registers. It also
  * {@linkplain ForeignCallSnippets#handlePendingException handles} any exceptions raised during the
  * foreign call.
  */
@@ -225,7 +225,6 @@ public abstract class AbstractForeignCallStub extends Stub {
     @Override
     @SuppressWarnings("try")
     protected final StructuredGraph getGraph(DebugContext debug, CompilationIdentifier compilationId) {
-        WordTypes wordTypes = providers.getWordTypes();
         boolean isObjectResult = returnsObject();
         // Do we want to clear the pending exception?
         boolean shouldClearException = shouldClearException();
@@ -235,10 +234,10 @@ public abstract class AbstractForeignCallStub extends Stub {
             ResolvedJavaMethod handlePendingException = foreignCallSnippets.handlePendingException.getMethod();
             ResolvedJavaMethod getAndClearObjectResult = foreignCallSnippets.getAndClearObjectResult.getMethod();
             ResolvedJavaMethod thisMethod = getGraphMethod();
-            HotSpotGraphKit kit = new HotSpotGraphKit(debug, thisMethod, providers, wordTypes, providers.getGraphBuilderPlugins(), compilationId, toString(), false, true);
+            HotSpotGraphKit kit = new HotSpotGraphKit(debug, thisMethod, providers, providers.getGraphBuilderPlugins(), compilationId, toString(), false, true);
             StructuredGraph graph = kit.getGraph();
             graph.getGraphState().forceDisableFrameStateVerification();
-            ReadRegisterNode thread = kit.append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), wordTypes.getWordKind(), true, false));
+            ReadRegisterNode thread = kit.append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), providers.getWordTypes().getWordKind(), true, false));
             ValueNode result = createTargetCall(kit, thread);
             if (linkage.getDescriptor().getTransition() == HotSpotForeignCallDescriptor.Transition.SAFEPOINT) {
                 kit.createIntrinsicInvoke(handlePendingException, thread, forBoolean(shouldClearException, graph), forBoolean(isObjectResult, graph));

@@ -30,11 +30,6 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.word.BarrieredAccess;
-import jdk.graal.compiler.word.ObjectAccess;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -44,6 +39,11 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.word.BarrieredAccess;
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -75,6 +75,7 @@ public final class ReferenceInternals {
     }
 
     @SuppressWarnings("unchecked")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> T getReferent(Reference<T> instance) {
         return (T) SubstrateUtil.cast(instance, Target_java_lang_ref_Reference.class).referent;
     }
@@ -87,8 +88,16 @@ public final class ReferenceInternals {
 
     @Uninterruptible(reason = "Must be atomic with regard to garbage collection.")
     public static boolean refersTo(Reference<?> instance, Object value) {
-        // JDK-8188055
+        /*
+         * Use a read without a barrier to avoid that this code keeps the object alive, see
+         * JDK-8188055.
+         */
         return value == ObjectAccess.readObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset));
+    }
+
+    @Uninterruptible(reason = "Must be atomic with regard to garbage collection.")
+    public static boolean isReferentAlive(Reference<?> instance) {
+        return !refersTo(instance, null);
     }
 
     public static void clear(Reference<?> instance) {

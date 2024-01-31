@@ -38,7 +38,6 @@ import java.util.List;
  * IDs depend on the JDK version (see metadata.xml file) and are computed at image build time.
  */
 public final class JfrEvent {
-    private static final List<JfrEvent> events = new ArrayList<>();
     public static final JfrEvent ThreadStart = create("jdk.ThreadStart", false, false);
     public static final JfrEvent ThreadEnd = create("jdk.ThreadEnd", false, false);
     public static final JfrEvent ThreadCPULoad = create("jdk.ThreadCPULoad", false, false);
@@ -69,8 +68,10 @@ public final class JfrEvent {
     public static final JfrEvent GCHeapSummary = create("jdk.GCHeapSummary", false, false);
     public static final JfrEvent ThreadAllocationStatistics = create("jdk.ThreadAllocationStatistics", false, false);
     public static final JfrEvent SystemGC = create("jdk.SystemGC", true, false);
-    public static final JfrEvent AllocationRequiringGC = create("jdk.AllocationRequiringGC", false, false);
-    public static final JfrEvent ObjectAllocationSample = create("jdk.ObjectAllocationSample", false, true);
+    public static final JfrEvent OldObjectSample = create("jdk.OldObjectSample", false);
+    public static final JfrEvent AllocationRequiringGC = create("jdk.AllocationRequiringGC", false, false, false);
+    public static final JfrEvent ObjectAllocationSample = create("jdk.ObjectAllocationSample", false, true, true);
+
     private final long id;
     private final String name;
     private final boolean hasDuration;

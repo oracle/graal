@@ -591,9 +591,6 @@ public class PolyglotThreadNotificationsTest {
 
     @Test
     public void testThreadNotificationError() throws IOException {
-        // TODO GR-44560
-        TruffleTestAssumptions.assumeWeakEncapsulation();
-
         try (ByteArrayOutputStream errorOutput = new ByteArrayOutputStream(); Context ctx = Context.newBuilder().allowCreateThread(true).err(errorOutput).build()) {
             AbstractExecutableTestLanguage.evalTestLanguage(ctx, ThreadNotificationErrorTestLanguage.class, "1", "throwBefore");
             AbstractExecutableTestLanguage.evalTestLanguage(ctx, ThreadNotificationErrorTestLanguage.class, "2", "throwAfter");

@@ -42,8 +42,18 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
+
+import com.oracle.svm.core.SubstrateTargetDescription;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.util.VMError;
+
 import jdk.graal.compiler.api.replacements.Snippet;
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -78,17 +88,6 @@ import jdk.graal.compiler.replacements.ConstantBindingParameterPlugin;
 import jdk.graal.compiler.replacements.PEGraphDecoder;
 import jdk.graal.compiler.replacements.ReplacementsImpl;
 import jdk.graal.compiler.word.WordTypes;
-import org.graalvm.nativeimage.AnnotationAccess;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
-
-import com.oracle.svm.core.SubstrateTargetDescription;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.util.VMError;
-
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -150,14 +149,11 @@ public class SubstrateReplacements extends ReplacementsImpl {
     private Object[] snippetObjects;
     private NodeClass<?>[] snippetNodeClasses;
     private Map<ResolvedJavaMethod, Integer> snippetStartOffsets;
-    private final WordTypes wordTypes;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateReplacements(Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider, TargetDescription target,
-                    WordTypes wordTypes, GraphMakerFactory graphMakerFactory) {
+    public SubstrateReplacements(Providers providers, BytecodeProvider bytecodeProvider, TargetDescription target, GraphMakerFactory graphMakerFactory) {
         // Snippets cannot have optimistic assumptions.
-        super(new GraalDebugHandlersFactory(snippetReflection), providers, snippetReflection, bytecodeProvider, target);
-        this.wordTypes = wordTypes;
+        super(new GraalDebugHandlersFactory(providers.getSnippetReflection()), providers, bytecodeProvider, target);
         this.builder = new Builder(graphMakerFactory);
     }
 
@@ -217,7 +213,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
 
         ParameterPlugin parameterPlugin = null;
         if (args != null) {
-            parameterPlugin = new ConstantBindingParameterPlugin(args, providers.getMetaAccess(), snippetReflection);
+            parameterPlugin = new ConstantBindingParameterPlugin(args, providers.getMetaAccess(), providers.getSnippetReflection());
         }
 
         OptionValues optionValues = new OptionValues(options, GraalOptions.TraceInlining, GraalOptions.TraceInliningForStubsAndSnippets.getValue(options),
@@ -382,7 +378,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
     @Override
     public <T> T getInjectedArgument(Class<T> capability) {
         if (capability.isAssignableFrom(WordTypes.class)) {
-            return (T) wordTypes;
+            return (T) providers.getWordTypes();
         }
         return super.getInjectedArgument(capability);
     }
@@ -392,8 +388,8 @@ public class SubstrateReplacements extends ReplacementsImpl {
         JavaKind kind = JavaKind.fromJavaClass(type);
         if (kind == JavaKind.Object) {
             ResolvedJavaType returnType = providers.getMetaAccess().lookupJavaType(type);
-            if (wordTypes.isWord(returnType)) {
-                return wordTypes.getWordStamp(returnType);
+            if (providers.getWordTypes().isWord(returnType)) {
+                return providers.getWordTypes().getWordStamp(returnType);
             } else {
                 return StampFactory.object(TypeReference.createWithoutAssumptions(returnType), nonNull);
             }

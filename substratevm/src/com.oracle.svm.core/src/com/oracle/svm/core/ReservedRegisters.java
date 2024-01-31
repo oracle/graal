@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.JavaValue;
@@ -47,9 +47,9 @@ public abstract class ReservedRegisters {
     protected final Register heapBaseRegister;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected ReservedRegisters(Register frameRegister, Register threadRegisterCandidate, Register heapBaseRegisterCandidate) {
+    protected ReservedRegisters(Register frameRegister, Register threadRegister, Register heapBaseRegisterCandidate) {
         this.frameRegister = frameRegister;
-        this.threadRegister = SubstrateOptions.MultiThreaded.getValue() ? threadRegisterCandidate : null;
+        this.threadRegister = threadRegister;
         this.heapBaseRegister = SubstrateOptions.SpawnIsolates.getValue() ? heapBaseRegisterCandidate : null;
     }
 

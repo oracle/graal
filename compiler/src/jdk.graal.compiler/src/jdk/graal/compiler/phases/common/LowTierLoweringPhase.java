@@ -29,16 +29,16 @@ import java.util.Optional;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.spi.Lowerable;
-import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.nodes.spi.LoweringTool.StandardLoweringStage;
 
 /**
  * A {@link LoweringPhase} used to lower {@link Lowerable} nodes when the graph is in
- * {@link LoweringTool.StandardLoweringStage#LOW_TIER} stage.
+ * {@link StandardLoweringStage#LOW_TIER} stage.
  */
 public class LowTierLoweringPhase extends LoweringPhase {
 
     public LowTierLoweringPhase(CanonicalizerPhase canonicalizer) {
-        super(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER, StageFlag.LOW_TIER_LOWERING);
+        super(canonicalizer, StandardLoweringStage.LOW_TIER, StageFlag.LOW_TIER_LOWERING);
     }
 
     @Override

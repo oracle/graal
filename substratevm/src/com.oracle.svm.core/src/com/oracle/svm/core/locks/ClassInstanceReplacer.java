@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.locks;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -36,14 +36,18 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.util.VMError;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-public abstract class ClassInstanceReplacer<S, T> implements Function<Object, Object> {
+public final class ClassInstanceReplacer<S, T> implements Function<Object, Object> {
 
     private final Class<S> sourceClass;
+    private final List<T> imageHeapList;
+    private final Function<S, T> createReplacement;
     private final Map<S, T> replacements = Collections.synchronizedMap(new IdentityHashMap<>());
     private boolean sealed;
 
-    protected ClassInstanceReplacer(Class<S> sourceClass) {
+    public ClassInstanceReplacer(Class<S> sourceClass, List<T> imageHeapList, Function<S, T> createReplacement) {
         this.sourceClass = sourceClass;
+        this.imageHeapList = imageHeapList;
+        this.createReplacement = createReplacement;
     }
 
     @Override
@@ -56,15 +60,11 @@ public abstract class ClassInstanceReplacer<S, T> implements Function<Object, Ob
 
     private T doReplace(S object) {
         VMError.guarantee(!sealed, "new object introduced after static analysis");
-        T replacement = createReplacement(object);
+        T replacement = createReplacement.apply(object);
         assert replacement.getClass() != sourceClass : "leads to recursive replacement";
+        if (imageHeapList != null) {
+            imageHeapList.add(replacement);
+        }
         return replacement;
     }
-
-    public Collection<T> getReplacements() {
-        sealed = true;
-        return replacements.values();
-    }
-
-    protected abstract T createReplacement(S source);
 }

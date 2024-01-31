@@ -95,6 +95,7 @@ import jdk.graal.compiler.lir.aarch64.AArch64SHA512Op;
 import jdk.graal.compiler.lir.aarch64.AArch64SpeculativeBarrier;
 import jdk.graal.compiler.lir.aarch64.AArch64StringLatin1InflateOp;
 import jdk.graal.compiler.lir.aarch64.AArch64StringUTF16CompressOp;
+import jdk.graal.compiler.lir.aarch64.AArch64VectorizedHashCodeOp;
 import jdk.graal.compiler.lir.aarch64.AArch64VectorizedMismatchOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ZapRegistersOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ZapStackOp;
@@ -828,6 +829,14 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     public Variable emitVectorizedMismatch(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value arrayB, Value length, Value stride) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         append(new AArch64VectorizedMismatchOp(this, result, asAllocatable(arrayA), asAllocatable(arrayB), asAllocatable(length), asAllocatable(stride)));
+        return result;
+    }
+
+    @Override
+    public Variable emitVectorizedHashCode(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayStart, Value length, Value initialValue, JavaKind arrayKind) {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64VectorizedHashCodeOp(this,
+                        result, asAllocatable(arrayStart), asAllocatable(length), asAllocatable(initialValue), arrayKind));
         return result;
     }
 

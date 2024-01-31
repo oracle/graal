@@ -88,7 +88,7 @@ public class AArch64HotSpotSafepointOp extends AArch64LIRInstruction {
                 // store mark pc in scratch
                 masm.adr(scratch, poll);
                 masm.str(64, scratch, masm.makeAddress(64, thread, config.savedExceptionPCOffset));
-                AArch64Call.directJmp(crb, masm, crb.foreignCalls.lookupForeignCall(HotSpotHostBackend.POLLING_PAGE_RETURN_HANDLER));
+                AArch64Call.directJmp(crb, masm, crb.getForeignCalls().lookupForeignCall(HotSpotHostBackend.POLLING_PAGE_RETURN_HANDLER));
             });
         } else {
             masm.ldr(64, scratch, masm.makeAddress(64, thread, config.threadPollingPageOffset, scratch));

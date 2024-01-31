@@ -8,12 +8,26 @@ redirect_from: /reference-manual/native-image/DebugInfo/
 
 # Debug Info Feature
 
-To add debug information to a generated native image, provide the `-g` option to the `native-image` builder:
+### Table of Contents
+
+- [Introduction](#introduction)
+- [Source File Caching](#source-file-caching)
+- [Special Considerations for Debugging Java from GDB](#special-considerations-for-debugging-java-from-gdb)
+- [Identifying Source Code Location](#identifying-source-code-location)
+- [Configuring Source Paths in GNU Debugger](#configuring-source-paths-in-gnu-debugger)
+- [Checking Debug Info on Linux](#checking-debug-info-on-linux)
+- [Debugging with Isolates](#debugging-with-isolates)
+- [Debugging Helper Methods](#debugging-helper-methods)
+- [Special Considerations for using perf and valgrind](#special-considerations-for-using-perf-and-valgrind)
+
+## Introduction
+
+To build a native executable with debug information, provide the `-g` command-line option for `javac` when compiling the application, and then to the `native-image` builder:
 ```shell
+javac -g Hello.java
 native-image -g Hello
 ```
-
-The `-g` flag instructs `native-image` to generate debug information.
+This enables source-level debugging, and the debugger (GDB) then correlates machine instructions with specific source lines in Java files.
 The resulting image will contain debug records in a format the GNU Debugger (GDB) understands.
 Additionally, you can pass `-O0` to the builder which specifies that no compiler optimizations should be performed.
 Disabling all optimizations is not required, but in general it makes the debugging experience better.
@@ -22,10 +36,7 @@ Debug information is not just useful to the debugger. It can also be used by the
 
 By default, debug info will only include details of some of the values of parameters and local variables.
 This means that the debugger will report many parameters and local variables as being undefined. If you pass `-O0` to the builder then full debug information will be included.
-If you
-want more parameter and local variable information to be included when employing higher
-levels of optimization (`-O1` or, the default, `-O2`) you need to pass an extra command
-line flag to the `native-image` command
+If you want more parameter and local variable information to be included when employing higher levels of optimization (`-O1` or, the default, `-O2`) you need to pass an extra command line flag to the `native-image` command:
 
 ```shell
 native-image -g -H:+SourceLevelDebug Hello
@@ -52,17 +63,6 @@ resulting image file.
 > Note: Native Image debugging currently works on Linux with initial support for macOS. The feature is experimental.
 
 > Note: Debug info support for `perf` and `valgrind` on Linux is an experimental feature.
-
-### Table of Contents
-
-- [Source File Caching](#source-file-caching)
-- [Special Considerations for Debugging Java from GDB](#special-considerations-for-debugging-java-from-gdb)
-- [Identifying Source Code Location](#identifying-source-code-location)
-- [Configuring Source Paths in GNU Debugger](#configuring-source-paths-in-gnu-debugger)
-- [Checking Debug Info on Linux](#checking-debug-info-on-linux)
-- [Debugging with Isolates](#debugging-with-isolates)
-- [Debugging Helper Methods](#debugging-helper-methods)
-- [Special Considerations for using perf and valgrind](#special-considerations-for-using-perf-and-valgrind)
 
 ## Source File Caching
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,6 +80,7 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -5145,11 +5146,7 @@ public final class TruffleString extends AbstractTruffleString {
          */
         public abstract TruffleString execute(AbstractTruffleString a, int fromByteIndex, int byteLength, Encoding expectedEncoding, boolean lazy);
 
-        static boolean isSame(int v0, int v1) {
-            return v0 == v1;
-        }
-
-        @Specialization(guards = "isSame(byteLength, 0)")
+        @Specialization(guards = "byteLength == 0")
         static TruffleString substringEmpty(AbstractTruffleString a, int fromByteIndex, @SuppressWarnings("unused") int byteLength, Encoding expectedEncoding,
                         @SuppressWarnings("unused") boolean lazy) {
             a.checkEncoding(expectedEncoding);
@@ -5158,10 +5155,11 @@ public final class TruffleString extends AbstractTruffleString {
             return expectedEncoding.getEmpty();
         }
 
-        @Specialization(guards = "byteLength != 0")
+        @Fallback
         final TruffleString substringRaw(AbstractTruffleString a, int fromByteIndex, int byteLength, Encoding expectedEncoding, boolean lazy,
                         @Cached ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.SubstringNode substringNode) {
+            assert byteLength != 0 : byteLength;
             a.checkEncoding(expectedEncoding);
             final int fromIndex = rawIndex(fromByteIndex, expectedEncoding);
             final int length = rawIndex(byteLength, expectedEncoding);
@@ -5214,12 +5212,12 @@ public final class TruffleString extends AbstractTruffleString {
         public abstract boolean execute(AbstractTruffleString a, AbstractTruffleString b, Encoding expectedEncoding);
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "identical(a, b)")
+        @Specialization(guards = "a == b")
         static boolean sameObject(AbstractTruffleString a, AbstractTruffleString b, Encoding expectedEncoding) {
             return true;
         }
 
-        @Specialization(guards = "!identical(a, b)")
+        @Fallback
         final boolean check(AbstractTruffleString a, AbstractTruffleString b, Encoding expectedEncoding,
                         @Cached ToIndexableNode toIndexableNodeA,
                         @Cached ToIndexableNode toIndexableNodeB,
@@ -5486,12 +5484,13 @@ public final class TruffleString extends AbstractTruffleString {
             return (int) value;
         }
 
-        @Specialization(guards = {"!a.isLazyLong() || radix != 10"})
+        @Fallback
         final int doParse(AbstractTruffleString a, int radix,
                         @Cached ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetPreciseCodeRangeNode getCodeRangeANode,
                         @Cached TStringInternalNodes.ParseIntNode parseIntNode,
                         @Cached InlinedIntValueProfile radixProfile) throws NumberFormatException {
+            assert !a.isLazyLong() || radix != 10;
             Encoding encodingA = Encoding.get(a.encoding());
             final int codeRangeA = getCodeRangeANode.execute(this, a, encodingA);
             return parseIntNode.execute(this, a, toIndexableNode.execute(this, a, a.data()), codeRangeA, encodingA, radixProfile.profile(this, radix));
@@ -5539,12 +5538,13 @@ public final class TruffleString extends AbstractTruffleString {
             return ((LazyLong) a.data()).value;
         }
 
-        @Specialization(guards = {"!a.isLazyLong() || radix != 10"})
+        @Fallback
         final long doParse(AbstractTruffleString a, int radix,
                         @Cached ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetPreciseCodeRangeNode getCodeRangeANode,
                         @Cached TStringInternalNodes.ParseLongNode parseLongNode,
                         @Cached InlinedIntValueProfile radixProfile) throws NumberFormatException {
+            assert !a.isLazyLong() || radix != 10;
             Encoding encodingA = Encoding.get(a.encoding());
             final int codeRangeA = getCodeRangeANode.execute(this, a, encodingA);
             return parseLongNode.execute(this, a, toIndexableNode.execute(this, a, a.data()), codeRangeA, encodingA, radixProfile.profile(this, radix));
@@ -5592,10 +5592,11 @@ public final class TruffleString extends AbstractTruffleString {
             return ((LazyLong) a.data()).value;
         }
 
-        @Specialization(guards = "!isLazyLongSafeInteger(a)")
+        @Fallback
         final double parseDouble(AbstractTruffleString a,
                         @Cached ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.ParseDoubleNode parseDoubleNode) throws NumberFormatException {
+            assert !isLazyLongSafeInteger(a);
             return parseDoubleNode.execute(this, a, toIndexableNode.execute(this, a, a.data()));
         }
 

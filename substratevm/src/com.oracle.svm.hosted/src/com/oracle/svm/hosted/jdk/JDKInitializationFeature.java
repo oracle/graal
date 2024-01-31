@@ -73,6 +73,14 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("jdk.nio", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("jdk.vm.ci", "Native Image classes are always initialized at build time");
         rci.initializeAtBuildTime("jdk.xml", JDK_CLASS_REASON);
+        /*
+         * The XML classes have cyclic class initializer dependencies, and class initialization can
+         * deadlock/fail when initialization is started at the "wrong part" of the cycle.
+         * Force-initializing the correct class of the cycle here, in addition to the
+         * "whole package" initialization above, breaks the cycle because it triggers immediate
+         * initilalization here before the static analysis is started.
+         */
+        rci.initializeAtBuildTime("jdk.xml.internal.JdkXmlUtils", JDK_CLASS_REASON);
 
         rci.initializeAtBuildTime("sun.invoke", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.launcher", JDK_CLASS_REASON);
@@ -195,6 +203,8 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.rerunInitialization("sun.security.provider.certpath.ssl.SSLServerCertStore", "Stores secure random");
 
         rci.rerunInitialization("jdk.internal.foreign.SystemLookup$WindowsFallbackSymbols", "Does not work on non-Windows modular images");
+
+        rci.rerunInitialization("jdk.internal.logger.LoggerFinderLoader", "Contains a static field with a FilePermission value");
 
         /*
          * The local class Holder in FallbackLinker#getInstance fails the build time initialization

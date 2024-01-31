@@ -305,17 +305,15 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         long header = hubOffsetFromHeapBase << numReservedExtraBits;
         VMError.guarantee((header >>> numReservedExtraBits) == hubOffsetFromHeapBase, "Hub is too far from heap base for encoding in object header");
         assert (header & reservedBitsMask) == 0 : "Object header bits must be zero initially";
-        if (HeapImpl.usesImageHeapCardMarking()) {
-            if (obj.getPartition() instanceof ChunkedImageHeapPartition partition) {
-                if (partition.isWritable()) {
-                    header |= REMEMBERED_SET_BIT.rawValue();
-                }
-                if (partition.usesUnalignedObjects()) {
-                    header |= UNALIGNED_BIT.rawValue();
-                }
-            } else {
-                assert obj.getPartition() instanceof FillerObjectDummyPartition;
+        if (obj.getPartition() instanceof ChunkedImageHeapPartition partition) {
+            if (partition.isWritable() && HeapImpl.usesImageHeapCardMarking()) {
+                header |= REMEMBERED_SET_BIT.rawValue();
             }
+            if (partition.usesUnalignedObjects()) {
+                header |= UNALIGNED_BIT.rawValue();
+            }
+        } else {
+            assert obj.getPartition() instanceof FillerObjectDummyPartition;
         }
         if (isIdentityHashFieldOptional()) {
             header |= (IDHASH_STATE_IN_FIELD.rawValue() << IDHASH_STATE_SHIFT);

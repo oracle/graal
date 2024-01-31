@@ -26,7 +26,6 @@ package com.oracle.svm.core.genscavenge.remset;
 
 import java.util.List;
 
-import jdk.graal.compiler.nodes.gc.BarrierSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -46,6 +45,7 @@ import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
@@ -165,6 +165,11 @@ public final class NoRememberedSet implements RememberedSet {
 
     @Override
     public boolean verify(UnalignedHeader firstUnalignedHeapChunk) {
+        return true;
+    }
+
+    @Override
+    public boolean verify(UnalignedHeader firstUnalignedHeapChunk, UnalignedHeader lastUnalignedHeapChunk) {
         return true;
     }
 }

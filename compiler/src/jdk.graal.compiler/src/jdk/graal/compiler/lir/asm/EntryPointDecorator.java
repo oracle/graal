@@ -24,15 +24,15 @@
  */
 package jdk.graal.compiler.lir.asm;
 
-import jdk.graal.compiler.core.common.spi.CodeGenProviders;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 
 /**
  * Helper class to allow emitting custom assembly at the normal entry point before any frame setup
  * has occurred.
  */
 public interface EntryPointDecorator {
-    void initialize(CodeGenProviders providers, LIRGenerationResult lirGenRes);
+    void initialize(CoreProviders providers, LIRGenerationResult lirGenRes);
 
     void emitEntryPoint(CompilationResultBuilder crb);
 }

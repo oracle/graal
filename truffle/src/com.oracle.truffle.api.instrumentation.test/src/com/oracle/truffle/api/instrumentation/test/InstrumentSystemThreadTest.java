@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -96,8 +96,11 @@ public final class InstrumentSystemThreadTest extends AbstractInstrumentationTes
             started.await();
             assertFails((Runnable) engine::close, PolyglotException.class, (pe) -> {
                 Assert.assertTrue(pe.isInternalError());
-                Assert.assertEquals(String.format("java.lang.IllegalStateException: The engine has an alive system thread Forgotten thread created by instrument %s.", ProxyInstrument.ID),
-                                pe.getMessage());
+                String message = pe.getMessage();
+                Assert.assertTrue(message, message.startsWith("java.lang.IllegalStateException: Alive system thread 'Forgotten thread'"));
+                // There is a system thread dump:
+                Assert.assertTrue(message, message.contains("com.oracle.truffle.polyglot.SystemThread.run"));
+                Assert.assertTrue(message, message.endsWith(String.format("The engine has an alive system thread 'Forgotten thread' created by instrument %s.", ProxyInstrument.ID)));
             });
         } finally {
             closed.countDown();

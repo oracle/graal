@@ -424,6 +424,7 @@ final class Target_java_lang_System {
      * @see SecurityManager
      */
     @Substitute
+    @SuppressWarnings({"removal", "javadoc"})
     private static void setSecurityManager(SecurityManager sm) {
         if (sm != null) {
             /* Read the property collected at isolate creation as that is what happens on the JVM */
@@ -576,6 +577,10 @@ final class Target_jdk_internal_loader_ClassLoaders {
 
 @TargetClass(value = jdk.internal.loader.BootLoader.class)
 final class Target_jdk_internal_loader_BootLoader {
+    // Checkstyle: stop
+    @Delete //
+    static String JAVA_HOME;
+    // Checkstyle: resume
 
     @Substitute
     static Package getDefinedPackage(String name) {

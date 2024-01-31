@@ -25,6 +25,7 @@
 package com.oracle.graal.pointsto;
 
 import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -32,7 +33,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.common.meta.MultiMethod;
-import com.oracle.svm.util.UnsafePartitionKind;
 
 /**
  * Interface to be used to query and change the state of the static analysis in Native Image.
@@ -57,6 +57,8 @@ public interface ReachabilityAnalysis {
      * Marks given field as accessed.
      */
     AnalysisType addRootField(Class<?> clazz, String fieldName);
+
+    AnalysisType addRootField(Field field);
 
     /**
      * Registers the method as root. Must be an {@link MultiMethod#ORIGINAL_METHOD}.
@@ -87,17 +89,15 @@ public interface ReachabilityAnalysis {
      */
     AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots);
 
-    default void registerAsFrozenUnsafeAccessed(AnalysisField field) {
-        field.setUnsafeFrozenTypeState(true);
-    }
-
-    default boolean registerAsUnsafeAccessed(AnalysisField field, UnsafePartitionKind partitionKind, Object reason) {
-        if (field.registerAsUnsafeAccessed(partitionKind, reason)) {
-            forceUnsafeUpdate(field);
-            return true;
-        }
-        return false;
-    }
+    /**
+     * In addition to register the method as a root, saturate all the parameters. Meant to be used
+     * under the {@code LayeredBaseImageAnalysis} option to ensure the invocation is replaced by the
+     * context-insensitive invoke.
+     *
+     * @see ReachabilityAnalysis#addRootMethod(AnalysisMethod, boolean, Object,
+     *      MultiMethod.MultiMethodKey...)
+     */
+    AnalysisMethod forcedAddRootMethod(Executable method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots);
 
     default boolean registerTypeAsReachable(AnalysisType type, Object reason) {
         return type.registerAsReachable(reason);
@@ -132,15 +132,6 @@ public interface ReachabilityAnalysis {
      * Clears all intermediary data to reduce the footprint.
      */
     void cleanupAfterAnalysis();
-
-    /**
-     * Force update of the unsafe loads and unsafe store type flows when a field is registered as
-     * unsafe accessed 'on the fly', i.e., during the analysis.
-     *
-     * @param field the newly unsafe registered field. We use its declaring type to filter the
-     *            unsafe access flows that need to be updated.
-     */
-    void forceUnsafeUpdate(AnalysisField field);
 
     /**
      * Performs any necessary additional steps required by the analysis to handle JNI accessed

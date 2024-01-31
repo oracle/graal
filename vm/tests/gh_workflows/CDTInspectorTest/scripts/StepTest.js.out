@@ -23,26 +23,26 @@
 #
 Opened file: StepTest.js
 Stack (1)
-:program StepTest.js:8
+:program StepTest.js:28
 Scope (3)
 Local
 this :  Object global{Object: function Object() {
 global Global
 Stack (1)
-:program StepTest.js:27
+:program StepTest.js:47
 Scope (3)
 Local
 this :  Object global{Object: function Object() {
 global Global
 Stack (1)
-:program StepTest.js:29
+:program StepTest.js:49
 Scope (3)
 Local
 this :  Object global{Object: function Object() {
 global Global
 Stack (2)
-binarySearch StepTest.js:11
-:program StepTest.js:29
+binarySearch StepTest.js:31
+:program StepTest.js:49
 Scope (5)
 Local
 this :  Object global{Object: function Object() {
@@ -50,8 +50,8 @@ array :  \(10\) \[1, 2, 3, 5, 8,.*
 element :  12
 global Global
 Stack (2)
-binarySearch StepTest.js:12
-:program StepTest.js:29
+binarySearch StepTest.js:32
+:program StepTest.js:49
 Scope (6)
 Local
 this :  Object global{Object: function Object() {
@@ -60,8 +60,8 @@ element :  12
 i1 :  0
 global Global
 Stack (2)
-binarySearch StepTest.js:13
-:program StepTest.js:29
+binarySearch StepTest.js:33
+:program StepTest.js:49
 Scope (7)
 Local
 this :  Object global{Object: function Object() {
@@ -71,8 +71,8 @@ i1 :  0
 i2 :  9
 global Global
 Stack (2)
-binarySearch StepTest.js:16
-:program StepTest.js:29
+binarySearch StepTest.js:36
+:program StepTest.js:49
 Scope (10)
 Block
 diff :  -4
@@ -85,8 +85,8 @@ i1 :  0
 i2 :  9
 global Global
 Stack (2)
-binarySearch StepTest.js:18
-:program StepTest.js:29
+binarySearch StepTest.js:38
+:program StepTest.js:49
 Scope (10)
 Block
 diff :  -4
@@ -99,7 +99,7 @@ i1 :  0
 i2 :  9
 global Global
 Stack (1)
-:program StepTest.js:29
+:program StepTest.js:49
 Scope (3)
 Local
 this :  Object global{Object: function Object() {

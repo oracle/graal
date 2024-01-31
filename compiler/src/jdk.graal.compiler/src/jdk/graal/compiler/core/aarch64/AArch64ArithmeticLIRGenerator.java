@@ -63,7 +63,6 @@ import jdk.graal.compiler.lir.aarch64.AArch64ReinterpretOp;
 import jdk.graal.compiler.lir.aarch64.AArch64RoundFloatToIntegerOp;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGenerator;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
-
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
@@ -242,7 +241,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public Value emitFloatConvert(FloatConvert op, Value inputVal) {
+    public Value emitFloatConvert(FloatConvert op, Value inputVal, boolean canBeNaN, boolean canOverflow) {
         PlatformKind resultPlatformKind = getFloatConvertResultKind(op);
         LIRKind resultLirKind = LIRKind.combine(inputVal).changeType(resultPlatformKind);
         Variable result = getLIRGen().newVariable(resultLirKind);
@@ -363,12 +362,11 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             /*
              * Performing sign extend via a left shift followed by an arithmetic right shift. First,
              * a left shift of (64 - fromBits) is performed to remove non-meaningful bits, and then
-             * an arithmetic right shift is used to set correctly all sign bits. Note the "toBits"
-             * size is not considered, as the constant is saved as a long value.
+             * an arithmetic right shift is used to set correctly all sign bits.
              */
             int shiftSize = 64 - fromBits;
             long signExtendedValue = (constant << shiftSize) >> shiftSize;
-            return new ConstantValue(resultKind, JavaConstant.forLong(signExtendedValue));
+            return new ConstantValue(resultKind, JavaConstant.forPrimitiveInt(toBits, signExtendedValue));
         }
         Variable result = getLIRGen().newVariable(resultKind);
         getLIRGen().append(new AArch64Convert.SignExtendOp(result, asAllocatable(inputVal), fromBits, toBits));

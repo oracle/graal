@@ -78,7 +78,7 @@ import com.oracle.truffle.api.dsl.NonIdempotent;
  * @since 0.8 or earlier
  */
 public abstract class Shape {
-    static final int OBJECT_FLAGS_MASK = 0x0000_00ff;
+    static final int OBJECT_FLAGS_MASK = 0x0000_ffff;
     static final int OBJECT_FLAGS_SHIFT = 0;
     static final int OBJECT_SHARED = 1 << 16;
     static final int OBJECT_PROPERTY_ASSUMPTIONS = 1 << 17;
@@ -116,11 +116,11 @@ public abstract class Shape {
         public abstract T dynamicType(Object dynamicType);
 
         /**
-         * Sets initial shape flags (default: 0). Currently limited to 8 bits.
+         * Sets initial shape flags (default: 0). Currently limited to 16 bits.
          *
          * See {@link DynamicObjectLibrary#setShapeFlags(DynamicObject, int)} for more information.
          *
-         * @param flags an int value in the range from 0 to 255 (inclusive)
+         * @param flags an int value in the range from 0 to 65535 (inclusive)
          * @throws IllegalArgumentException if the flags value is not in the supported range
          * @since 20.2.0
          */
@@ -147,7 +147,7 @@ public abstract class Shape {
 
         static int checkShapeFlags(int flags) {
             if ((flags & ~OBJECT_FLAGS_MASK) != 0) {
-                throw new IllegalArgumentException("flags must be in the range (0, 255)");
+                throw new IllegalArgumentException("flags must be in the range [0, 0xffff]");
             }
             return flags;
         }
@@ -694,7 +694,7 @@ public abstract class Shape {
     /**
      * Returns a copy of the shape, with the shape flags set to {@code newFlags}.
      *
-     * @param newFlags the new shape flags; an int value in the range from 0 to 255 (inclusive)
+     * @param newFlags the new shape flags; an int value in the range from 0 to 65535 (inclusive)
      * @throws IllegalArgumentException if the flags value is not in the supported range
      * @see Shape.Builder#shapeFlags(int)
      * @since 20.2.0

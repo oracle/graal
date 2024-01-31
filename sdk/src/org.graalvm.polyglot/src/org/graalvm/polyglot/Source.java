@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -931,10 +931,10 @@ public final class Source {
         }
 
         /**
-         * Uses configuration of this builder to create new {@link Source} object. This method can
-         * only be used if the builder was created as
-         * {@link Source#newBuilder(String, CharSequence, String) string literal} builder and
-         * otherwise throws an {@link UnsupportedOperationException}.
+         * Uses configuration of this builder to create a new {@link Source} object. This method
+         * suppresses any {@link IOException} as {@link AssertionError} and should only be used if
+         * the builder was created using {@link Source#newBuilder(String, CharSequence, String) or
+         * Source#newBuilder(String, ByteSequence, String) byte sequence literal}.
          *
          * @return the source object
          * @since 19.0

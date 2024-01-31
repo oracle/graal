@@ -24,15 +24,13 @@
  */
 package jdk.graal.compiler.truffle.phases;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
-
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.graal.compiler.truffle.TruffleTierContext;
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * Instruments {@link IfNode}s in the graph, by adding execution counters to the true and the false
@@ -58,8 +56,8 @@ public class InstrumentBranchesPhase extends InstrumentPhase {
 
     private final boolean isInstrumentPerInlineSite;
 
-    public InstrumentBranchesPhase(SnippetReflectionProvider snippetReflection, Instrumentation instrumentation, boolean instrumentPerInlineSite) {
-        super(snippetReflection, instrumentation);
+    public InstrumentBranchesPhase(Instrumentation instrumentation, boolean instrumentPerInlineSite) {
+        super(instrumentation);
         isInstrumentPerInlineSite = instrumentPerInlineSite;
     }
 

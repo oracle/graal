@@ -59,7 +59,6 @@ import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
@@ -69,12 +68,12 @@ import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.Register.RegisterCategory;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -455,13 +454,12 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         private AMD64Address getFeatureMapAddress() {
-            SnippetReflectionProvider snippetReflection = ((Providers) crb.providers).getSnippetReflection();
-            JavaConstant object = snippetReflection.forObject(RuntimeCPUFeatureCheckImpl.instance());
-            int fieldOffset = fieldOffset(RuntimeCPUFeatureCheckImpl.getMaskField(crb.providers.getMetaAccess()));
+            JavaConstant object = crb.getSnippetReflection().forObject(RuntimeCPUFeatureCheckImpl.instance());
+            int fieldOffset = fieldOffset(RuntimeCPUFeatureCheckImpl.getMaskField(crb.getMetaAccess()));
             GraalError.guarantee(ConfigurationValues.getTarget().inlineObjects, "Dynamic feature check for callee saved registers requires inlined objects");
             Register heapBase = ReservedRegisters.singleton().getHeapBaseRegister();
             GraalError.guarantee(heapBase != null, "Heap base register must not be null");
-            return new AMD64Address(heapBase, Register.None, Stride.S1, displacement(object, (SharedConstantReflectionProvider) crb.providers.getConstantReflection()) + fieldOffset,
+            return new AMD64Address(heapBase, Register.None, Stride.S1, displacement(object, crb.getConstantReflection()) + fieldOffset,
                             displacementAnnotation(object));
         }
 
@@ -488,7 +486,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         }
 
         @Platforms(Platform.HOSTED_ONLY.class)
-        private int displacement(JavaConstant constant, SharedConstantReflectionProvider constantReflection) {
+        private int displacement(JavaConstant constant, ConstantReflectionProvider constantReflection) {
             if (SubstrateUtil.HOSTED) {
                 return 0;
             } else {
@@ -497,7 +495,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
                  * offset of the constant can be emitted immediately. No patching is required later
                  * on.
                  */
-                return constantReflection.getImageHeapOffset(constant);
+                return ((SharedConstantReflectionProvider) constantReflection).getImageHeapOffset(constant);
             }
         }
     }

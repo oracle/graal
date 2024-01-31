@@ -1030,8 +1030,7 @@ def test():
     execute("continue")
 
     exec_string = execute("info args")
-    rexp = [r"this = 0x%s"%(hex_digits_pattern),
-            r"m1 = 0x%s"%(hex_digits_pattern), 
+    rexp = [r"m1 = 0x%s"%(hex_digits_pattern), 
             r"s = 1",
             r"ss1 = 0x%s"%(hex_digits_pattern),
             r"l = 123456789",

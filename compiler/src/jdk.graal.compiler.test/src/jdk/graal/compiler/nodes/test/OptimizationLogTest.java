@@ -27,14 +27,18 @@ package jdk.graal.compiler.nodes.test;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.core.test.GraalCompilerTest;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.OptimizationLog;
+import jdk.graal.compiler.nodes.OptimizationLog.OptimizationEntry;
 import jdk.graal.compiler.nodes.OptimizationLogImpl;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -45,9 +49,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.ClassTypeSequence;
 import jdk.graal.compiler.phases.util.Providers;
-import org.junit.Assert;
-import org.junit.Test;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -150,8 +151,8 @@ public class OptimizationLogTest extends GraalCompilerTest {
     /**
      * Tests that there is no reporting going on when the optimization log is disabled. In
      * particular, the optimization tree shall not be built and
-     * {@link OptimizationLog.OptimizationEntry#withLazyProperty(String, Supplier) lazy properties}
-     * shall not be consumed.
+     * {@link OptimizationEntry#withLazyProperty(String, Supplier) lazy properties} shall not be
+     * consumed.
      */
     @Test
     public void noReportingWhenDisabled() {

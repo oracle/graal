@@ -72,7 +72,17 @@ public class VectorizedHashCodeBenchmark extends TStringBenchmarkBase {
     @State(Scope.Benchmark)
     public static class BenchState {
 
-        @Param({"1", "10", "100", "1000", "10000"}) int length;
+        @Param({
+                        "3",
+                        "15", // AArch64: only scalar loop, max iterations
+                        "16", // AArch64: only vector loop, 1 iteration
+                        "31", // AMD64: only scalar loop, max iterations
+                        "32", // AMD64 and AArch64: only vector loop, 1 and 2 iterations.
+                        "64", // AMD64 and AArch64: only vector loop, 2 and 4 iterations.
+                        "100",
+                        "1000",
+                        "10000",
+        }) int length;
 
         byte[] b8;
         byte[] b16;

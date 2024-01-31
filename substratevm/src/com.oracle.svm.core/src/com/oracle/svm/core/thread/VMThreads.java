@@ -24,11 +24,6 @@
  */
 package com.oracle.svm.core.thread;
 
-import com.oracle.svm.core.locks.VMLockSupport;
-import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.replacements.ReplacementsUtil;
-import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -44,7 +39,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CFunctionOptions;
@@ -55,6 +49,7 @@ import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMCondition;
+import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
@@ -64,9 +59,15 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
-import com.oracle.svm.core.threadlocal.VMThreadLocalMTSupport;
+import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.replacements.ReplacementsUtil;
+import jdk.graal.compiler.replacements.nodes.AssertionNode;
 
 /**
  * Utility methods for the manipulation and iteration of {@link IsolateThread}s.
@@ -323,6 +324,7 @@ public abstract class VMThreads {
         return attachThread(thread);
     }
 
+    /* Needs to be protected due to legacy code. */
     @Uninterruptible(reason = "Thread is not attached yet.")
     protected int attachThread(IsolateThread thread) {
         assert StatusSupport.isStatusCreated(thread) : "Status should be initialized on creation.";
@@ -339,6 +341,11 @@ public abstract class VMThreads {
             head = thread;
             numAttachedThreads++;
             assert numAttachedThreads > 0;
+
+            if (!wasStartedByCurrentIsolate(thread)) {
+                /* Treat attached threads as non-daemon threads until we know better. */
+                PlatformThreads.incrementNonDaemonThreads();
+            }
 
             Heap.getHeap().attachThread(CurrentIsolate.getCurrentThread());
             /* On the initial transition to java code this thread should be synchronized. */
@@ -360,9 +367,11 @@ public abstract class VMThreads {
         assert thread.equal(CurrentIsolate.getCurrentThread()) : "Cannot detach different thread with this method";
 
         // read thread local data (can't be accessed further below as the IsolateThread is freed)
+        OSThreadHandle threadHandle = OSThreadHandleTL.get(thread);
         OSThreadHandle nextOsThreadToCleanup = WordFactory.nullPointer();
-        if (wasStartedByCurrentIsolate(thread)) {
-            nextOsThreadToCleanup = OSThreadHandleTL.get(thread);
+        boolean wasStartedByCurrentIsolate = wasStartedByCurrentIsolate(thread);
+        if (wasStartedByCurrentIsolate) {
+            nextOsThreadToCleanup = threadHandle;
         }
 
         threadExit(thread);
@@ -399,6 +408,10 @@ public abstract class VMThreads {
             THREAD_MUTEX.unlockNoTransitionUnspecifiedOwner();
         }
 
+        if (!wasStartedByCurrentIsolate) {
+            /* If a thread was attached, we need to free its thread handle. */
+            PlatformThreads.singleton().closeOSThreadHandle(threadHandle);
+        }
         cleanupExitedOsThread(threadToCleanup);
     }
 
@@ -407,12 +420,12 @@ public abstract class VMThreads {
         return StartedByCurrentIsolate.getAddress(thread).readByte(0) != 0;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.", callerMustBe = true)
     static void lockThreadMutexInNativeCode() {
         lockThreadMutexInNativeCode(false);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.", callerMustBe = true)
     @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode.")
     private static void lockThreadMutexInNativeCode(boolean unspecifiedOwner) {
         CFunctionPrologueNode.cFunctionPrologue(StatusSupport.STATUS_IN_NATIVE);
@@ -599,6 +612,7 @@ public abstract class VMThreads {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @SuppressFBWarnings(value = "UC", justification = "FB does not know that VMMutex objects are replaced, i.e., that the lock/unlock methods do not throw an error at run time.")
     public IsolateThread findIsolateThreadForCurrentOSThread(boolean inCrashHandler) {
         ThreadLookup threadLookup = ImageSingletons.lookup(ThreadLookup.class);
         ComparableWord identifier = threadLookup.getThreadIdentifier();
@@ -666,13 +680,11 @@ public abstract class VMThreads {
                 return true;
             }
 
-            if (SubstrateOptions.MultiThreaded.getValue()) {
-                int sizeOfThreadLocals = ImageSingletons.lookup(VMThreadLocalMTSupport.class).vmThreadSize;
-                UnsignedWord endOfThreadLocals = ((UnsignedWord) thread).add(sizeOfThreadLocals);
-                if (value.aboveOrEqual((UnsignedWord) thread) && value.belowThan(endOfThreadLocals)) {
-                    log.string("points into the thread locals for thread ").zhex(thread);
-                    return true;
-                }
+            int sizeOfThreadLocals = ImageSingletons.lookup(VMThreadLocalSupport.class).vmThreadSize;
+            UnsignedWord endOfThreadLocals = ((UnsignedWord) thread).add(sizeOfThreadLocals);
+            if (value.aboveOrEqual((UnsignedWord) thread) && value.belowThan(endOfThreadLocals)) {
+                log.string("points into the thread locals for thread ").zhex(thread);
+                return true;
             }
         }
         return false;

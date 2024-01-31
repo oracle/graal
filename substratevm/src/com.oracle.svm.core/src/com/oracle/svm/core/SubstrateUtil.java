@@ -37,9 +37,6 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import jdk.graal.compiler.graph.Node.NodeIntrinsic;
-import jdk.graal.compiler.java.LambdaUtils;
-import jdk.graal.compiler.nodes.BreakpointNode;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -57,6 +54,9 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.StringUtil;
 
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.java.LambdaUtils;
+import jdk.graal.compiler.nodes.BreakpointNode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
@@ -454,5 +454,31 @@ public class SubstrateUtil {
         long mostSigBits = new BigInteger(digest.substring(0, 16), 16).longValue();
         long leastSigBits = new BigInteger(digest.substring(16), 16).longValue();
         return new UUID(mostSigBits, leastSigBits);
+    }
+
+    public static Class<?> toUnboxedClass(Class<?> clazz) {
+        return toUnboxedClassWithDefault(clazz, clazz);
+    }
+
+    public static Class<?> toUnboxedClassWithDefault(Class<?> clazz, Class<?> defaultClass) {
+        if (clazz == Boolean.class) {
+            return boolean.class;
+        } else if (clazz == Byte.class) {
+            return byte.class;
+        } else if (clazz == Short.class) {
+            return short.class;
+        } else if (clazz == Character.class) {
+            return char.class;
+        } else if (clazz == Integer.class) {
+            return int.class;
+        } else if (clazz == Long.class) {
+            return long.class;
+        } else if (clazz == Float.class) {
+            return float.class;
+        } else if (clazz == Double.class) {
+            return double.class;
+        } else {
+            return defaultClass;
+        }
     }
 }

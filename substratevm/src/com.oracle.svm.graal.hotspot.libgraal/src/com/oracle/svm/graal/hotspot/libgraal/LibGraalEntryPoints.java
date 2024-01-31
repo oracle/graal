@@ -35,21 +35,6 @@ import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
-import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
-import jdk.graal.compiler.core.target.Backend;
-import jdk.graal.compiler.debug.GlobalMetrics;
-import jdk.graal.compiler.hotspot.CompilationContext;
-import jdk.graal.compiler.hotspot.CompilationTask;
-import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkageImpl.CodeInfo;
-import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
-import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
-import jdk.graal.compiler.hotspot.HotSpotGraalServices;
-import jdk.graal.compiler.hotspot.ProfileReplaySupport;
-import jdk.graal.compiler.hotspot.stubs.Stub;
-import jdk.graal.compiler.options.OptionDescriptors;
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.options.OptionsParser;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.nativeimage.UnmanagedMemory;
@@ -60,7 +45,6 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import jdk.graal.compiler.util.OptionsEncoder;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
@@ -69,6 +53,22 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.heap.Heap;
 import com.sun.management.ThreadMXBean;
 
+import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
+import jdk.graal.compiler.core.target.Backend;
+import jdk.graal.compiler.debug.GlobalMetrics;
+import jdk.graal.compiler.hotspot.CompilationContext;
+import jdk.graal.compiler.hotspot.CompilationTask;
+import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkageImpl.CodeInfo;
+import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
+import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
+import jdk.graal.compiler.hotspot.HotSpotGraalServices;
+import jdk.graal.compiler.hotspot.ProfileReplaySupport.Options;
+import jdk.graal.compiler.hotspot.stubs.Stub;
+import jdk.graal.compiler.options.OptionDescriptors;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionsParser;
+import jdk.graal.compiler.util.OptionsEncoder;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
@@ -212,6 +212,17 @@ public final class LibGraalEntryPoints {
         }
     }
 
+    /**
+     * Since reference handling is synchronous in libgraal, explicitly perform it here and then run
+     * any code which is expecting to process a reference queue to let it clean up.
+     */
+    static void doReferenceHandling() {
+        Heap.getHeap().doReferenceHandling();
+        synchronized (Target_jdk_vm_ci_hotspot_Cleaner.class) {
+            Target_jdk_vm_ci_hotspot_Cleaner.clean();
+        }
+    }
+
     private static final ThreadLocal<CachedOptions> cachedOptions = new ThreadLocal<>();
 
     private static OptionValues decodeOptions(long address, int size, int hash) {
@@ -283,7 +294,7 @@ public final class LibGraalEntryPoints {
                 if (verbose) {
                     System.out.println("calling reference handling");
                 }
-                Heap.getHeap().doReferenceHandling();
+                LibGraalEntryPoints.doReferenceHandling();
                 if (verbose) {
                     System.out.println("called reference handling");
                 }
@@ -331,7 +342,7 @@ public final class LibGraalEntryPoints {
      * @param timeAndMemBufferAddress 16-byte native buffer to store result of time and memory
      *            measurements of the compilation
      * @param profilePathBufferAddress native buffer containing a 0-terminated C string representing
-     *            {@link ProfileReplaySupport.Options#LoadProfiles} path.
+     *            {@link Options#LoadProfiles} path.
      * @return a handle to a {@link InstalledCode} in HotSpot's heap or 0 if compilation failed
      */
     @SuppressWarnings({"unused", "try"})
@@ -366,7 +377,7 @@ public final class LibGraalEntryPoints {
                 CompilationTask task = new CompilationTask(runtime, compiler, request, useProfilingInfo, false, eagerResolving, installAsDefault);
                 if (profilePathBufferAddress > 0) {
                     String profileLoadPath = CTypeConversion.toJavaString(WordFactory.pointer(profilePathBufferAddress));
-                    options = new OptionValues(options, ProfileReplaySupport.Options.LoadProfiles, profileLoadPath);
+                    options = new OptionValues(options, Options.LoadProfiles, profileLoadPath);
                 }
                 long allocatedBytesBefore = 0;
                 ThreadMXBean threadMXBean = null;
@@ -406,7 +417,7 @@ public final class LibGraalEntryPoints {
              * libgraal doesn't use a dedicated reference handler thread, so we trigger the
              * reference handling manually when a compilation finishes.
              */
-            Heap.getHeap().doReferenceHandling();
+            LibGraalEntryPoints.doReferenceHandling();
         }
     }
 }

@@ -26,16 +26,14 @@ package com.oracle.svm.hosted.phases;
 
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
+import com.oracle.svm.hosted.SVMHost;
+
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-
-import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.hosted.SVMHost;
-
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -61,8 +59,7 @@ public class SubstrateClassInitializationPlugin implements ClassInitializationPl
     @Override
     public boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState) {
         if (EnsureClassInitializedNode.needsRuntimeInitialization(builder.getMethod().getDeclaringClass(), type)) {
-            SnippetReflectionProvider snippetReflection = builder.getSnippetReflection();
-            emitEnsureClassInitialized(builder, snippetReflection.forObject(host.dynamicHub(type)), frameState.get());
+            emitEnsureClassInitialized(builder, builder.getSnippetReflection().forObject(host.dynamicHub(type)), frameState.get());
             return true;
         }
         return false;

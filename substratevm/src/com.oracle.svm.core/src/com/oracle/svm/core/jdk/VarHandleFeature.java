@@ -27,6 +27,7 @@ package com.oracle.svm.core.jdk;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
 import java.util.Map;
@@ -40,18 +41,22 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.graal.nodes.FieldOffsetNode;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.internal.misc.Unsafe;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * This file contains most of the code necessary for supporting VarHandle (and DirectMethodHandle
@@ -83,10 +88,7 @@ import jdk.internal.misc.Unsafe;
  * same custom field value recomputation handler: {@link VarHandleFieldOffsetComputer}.
  *
  * For static fields, also the base of the Unsafe access needs to be changed to the static field
- * holder arrays defined in {@link StaticFieldsSupport}. We cannot do a recomputation to the actual
- * arrays because the arrays are only available after static analysis. So we inject accessor methods
- * instead that read our holder fields: {@link VarHandleFieldStaticBasePrimitiveAccessor} and
- * {@link VarHandleFieldStaticBaseObjectAccessor}.
+ * holder arrays defined in {@link StaticFieldsSupport}: {@link VarHandleStaticBaseComputer}.
  *
  * VarHandle access to arrays is the simplest case: we only need field value recomputations for the
  * array base offset and array index shift.
@@ -98,6 +100,70 @@ public class VarHandleFeature implements InternalFeature {
 
     private final ConcurrentMap<Object, Boolean> processedVarHandles = new ConcurrentHashMap<>();
     private Consumer<Field> markAsUnsafeAccessed;
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        /*
+         * Initialize fields of VarHandle instances that are @Stable eagerly, so that during method
+         * handle intrinsification loads of those fields and array elements can be constant-folded.
+         * 
+         * Note that we do this on purpose here in an object replacer, and not in an object
+         * reachability handler: Intrinsification happens as part of method inlining before
+         * analysis, i.e., before the static analysis, i.e., before the VarHandle object itself is
+         * marked as reachable. The goal of intrinsification is to actually avoid making the
+         * VarHandle object itself reachable.
+         */
+        access.registerObjectReplacer(VarHandleFeature::eagerlyInitializeVarHandle);
+    }
+
+    private static Object eagerlyInitializeVarHandle(Object obj) {
+        if (obj instanceof VarHandle varHandle) {
+            eagerlyInitializeVarHandle(varHandle);
+        }
+        return obj;
+    }
+
+    private static final Field varHandleVFormField = ReflectionUtil.lookupField(VarHandle.class, "vform");
+    private static final Method varFormInitMethod = ReflectionUtil.lookupMethod(ReflectionUtil.lookupClass(false, "java.lang.invoke.VarForm"), "getMethodType_V", int.class);
+    private static final Method varHandleGetMethodHandleMethod = ReflectionUtil.lookupMethod(VarHandle.class, "getMethodHandle", int.class);
+
+    public static void eagerlyInitializeVarHandle(VarHandle varHandle) {
+        try {
+            /*
+             * The field VarHandle.vform.methodType_V_table is a @Stable field but initialized
+             * lazily on first access. Therefore, constant folding can happen only after
+             * initialization has happened. We force initialization by invoking the method
+             * VarHandle.vform.getMethodType_V(0).
+             */
+            Object varForm = varHandleVFormField.get(varHandle);
+            varFormInitMethod.invoke(varForm, 0);
+
+            /*
+             * The AccessMode used for the access that we are going to intrinsify is hidden in a
+             * AccessDescriptor object that is also passed in as a parameter to the intrinsified
+             * method. Initializing all AccessMode enum values is easier than trying to extract the
+             * actual AccessMode.
+             */
+            for (VarHandle.AccessMode accessMode : VarHandle.AccessMode.values()) {
+                /*
+                 * Force initialization of the @Stable field VarHandle.vform.memberName_table.
+                 */
+                boolean isAccessModeSupported = varHandle.isAccessModeSupported(accessMode);
+                /*
+                 * Force initialization of the @Stable field
+                 * VarHandle.typesAndInvokers.methodType_table.
+                 */
+                varHandle.accessModeType(accessMode);
+
+                if (isAccessModeSupported) {
+                    /* Force initialization of the @Stable field VarHandle.methodHandleTable. */
+                    varHandleGetMethodHandleMethod.invoke(varHandle, accessMode.ordinal());
+                }
+            }
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+    }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
@@ -242,7 +308,14 @@ class VarHandleInfo {
     }
 }
 
-class VarHandleFieldOffsetIntComputer implements FieldValueTransformerWithAvailability {
+abstract class VarHandleFieldOffsetComputer implements FieldValueTransformerWithAvailability {
+
+    private final JavaKind kind;
+
+    VarHandleFieldOffsetComputer(JavaKind kind) {
+        this.kind = kind;
+    }
+
     @Override
     public ValueAvailability valueAvailability() {
         return ValueAvailability.AfterAnalysis;
@@ -251,41 +324,64 @@ class VarHandleFieldOffsetIntComputer implements FieldValueTransformerWithAvaila
     @Override
     public Object transform(Object receiver, Object originalValue) {
         Field field = ImageSingletons.lookup(VarHandleFeature.class).findVarHandleField(receiver);
-        int offset = ImageSingletons.lookup(ReflectionSubstitutionSupport.class).getFieldOffset(field, true);
+        int offset = ReflectionSubstitutionSupport.singleton().getFieldOffset(field, true);
         if (offset <= 0) {
             throw VMError.shouldNotReachHere("Field is not marked as unsafe accessed: " + field);
         }
-        return offset;
+
+        switch (kind) {
+            case Int:
+                return Integer.valueOf(offset);
+            case Long:
+                return Long.valueOf(offset);
+            default:
+                throw VMError.shouldNotReachHere("Invalid kind: " + kind);
+        }
+    }
+
+    @Override
+    public ValueNode intrinsify(CoreProviders providers, JavaConstant receiver) {
+        Object varHandle = providers.getSnippetReflection().asObject(Object.class, receiver);
+        if (varHandle != null) {
+            Field field = ImageSingletons.lookup(VarHandleFeature.class).findVarHandleField(varHandle);
+            return FieldOffsetNode.create(kind, providers.getMetaAccess().lookupJavaField(field));
+        }
+        return null;
     }
 }
 
-class VarHandleFieldOffsetComputer extends VarHandleFieldOffsetIntComputer {
+class VarHandleFieldOffsetAsIntComputer extends VarHandleFieldOffsetComputer {
+    VarHandleFieldOffsetAsIntComputer() {
+        super(JavaKind.Int);
+    }
+}
+
+class VarHandleFieldOffsetAsLongComputer extends VarHandleFieldOffsetComputer {
+    VarHandleFieldOffsetAsLongComputer() {
+        super(JavaKind.Long);
+    }
+}
+
+class VarHandleStaticBaseComputer implements FieldValueTransformerWithAvailability {
+    @Override
+    public ValueAvailability valueAvailability() {
+        return ValueAvailability.AfterAnalysis;
+    }
+
     @Override
     public Object transform(Object receiver, Object originalValue) {
-        Object offset = super.transform(receiver, originalValue);
-        return Long.valueOf((Integer) offset);
-    }
-}
-
-class VarHandleFieldStaticBasePrimitiveAccessor {
-    static Object get(@SuppressWarnings("unused") Object varHandle) {
-        return StaticFieldsSupport.getStaticPrimitiveFields();
+        Field field = ImageSingletons.lookup(VarHandleFeature.class).findVarHandleField(receiver);
+        return field.getType().isPrimitive() ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields();
     }
 
-    @SuppressWarnings("unused")
-    static void set(Object varHandle, Object value) {
-        assert value == StaticFieldsSupport.getStaticPrimitiveFields();
-    }
-}
-
-class VarHandleFieldStaticBaseObjectAccessor {
-    static Object get(@SuppressWarnings("unused") Object varHandle) {
-        return StaticFieldsSupport.getStaticObjectFields();
-    }
-
-    @SuppressWarnings("unused")
-    static void set(Object varHandle, Object value) {
-        assert value == StaticFieldsSupport.getStaticObjectFields();
+    @Override
+    public ValueNode intrinsify(CoreProviders providers, JavaConstant receiver) {
+        Object varHandle = providers.getSnippetReflection().asObject(Object.class, receiver);
+        if (varHandle != null) {
+            Field field = ImageSingletons.lookup(VarHandleFeature.class).findVarHandleField(varHandle);
+            return StaticFieldsSupport.createStaticFieldBaseNode(field.getType().isPrimitive());
+        }
+        return null;
     }
 }
 
@@ -383,55 +479,55 @@ final class Target_java_lang_invoke_VarHandleReferences_Array {
 
 @TargetClass(className = "java.lang.invoke.VarHandleBooleans", innerClass = "FieldInstanceReadOnly")
 final class Target_java_lang_invoke_VarHandleBooleans_FieldInstanceReadOnly {
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetAsLongComputer.class) //
     long fieldOffset;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleBytes", innerClass = "FieldInstanceReadOnly")
 final class Target_java_lang_invoke_VarHandleBytes_FieldInstanceReadOnly {
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetAsLongComputer.class) //
     long fieldOffset;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleChars", innerClass = "FieldInstanceReadOnly")
 final class Target_java_lang_invoke_VarHandleChars_FieldInstanceReadOnly {
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetAsLongComputer.class) //
     long fieldOffset;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleDoubles", innerClass = "FieldInstanceReadOnly")
 final class Target_java_lang_invoke_VarHandleDoubles_FieldInstanceReadOnly {
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetAsLongComputer.class) //
     long fieldOffset;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleFloats", innerClass = "FieldInstanceReadOnly")
 final class Target_java_lang_invoke_VarHandleFloats_FieldInstanceReadOnly {
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetAsLongComputer.class) //
     long fieldOffset;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleInts", innerClass = "FieldInstanceReadOnly")
 final class Target_java_lang_invoke_VarHandleInts_FieldInstanceReadOnly {
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetAsLongComputer.class) //
     long fieldOffset;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleLongs", innerClass = "FieldInstanceReadOnly")
 final class Target_java_lang_invoke_VarHandleLongs_FieldInstanceReadOnly {
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetAsLongComputer.class) //
     long fieldOffset;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleShorts", innerClass = "FieldInstanceReadOnly")
 final class Target_java_lang_invoke_VarHandleShorts_FieldInstanceReadOnly {
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetAsLongComputer.class) //
     long fieldOffset;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleReferences", innerClass = "FieldInstanceReadOnly")
 final class Target_java_lang_invoke_VarHandleReferences_FieldInstanceReadOnly {
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetAsLongComputer.class) //
     long fieldOffset;
 }
 
@@ -444,73 +540,73 @@ final class Target_java_lang_invoke_VarHandleReferences_FieldInstanceReadOnly {
 
 @TargetClass(className = "java.lang.invoke.VarHandleBooleans", innerClass = "FieldStaticReadOnly")
 final class Target_java_lang_invoke_VarHandleBooleans_FieldStaticReadOnly {
-    @Alias @InjectAccessors(VarHandleFieldStaticBasePrimitiveAccessor.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleStaticBaseComputer.class) //
     Object base;
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetAsLongComputer.class) //
     long fieldOffset;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleBytes", innerClass = "FieldStaticReadOnly")
 final class Target_java_lang_invoke_VarHandleBytes_FieldStaticReadOnly {
-    @Alias @InjectAccessors(VarHandleFieldStaticBasePrimitiveAccessor.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleStaticBaseComputer.class) //
     Object base;
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetAsLongComputer.class) //
     long fieldOffset;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleChars", innerClass = "FieldStaticReadOnly")
 final class Target_java_lang_invoke_VarHandleChars_FieldStaticReadOnly {
-    @Alias @InjectAccessors(VarHandleFieldStaticBasePrimitiveAccessor.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleStaticBaseComputer.class) //
     Object base;
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetAsLongComputer.class) //
     long fieldOffset;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleDoubles", innerClass = "FieldStaticReadOnly")
 final class Target_java_lang_invoke_VarHandleDoubles_FieldStaticReadOnly {
-    @Alias @InjectAccessors(VarHandleFieldStaticBasePrimitiveAccessor.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleStaticBaseComputer.class) //
     Object base;
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetAsLongComputer.class) //
     long fieldOffset;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleFloats", innerClass = "FieldStaticReadOnly")
 final class Target_java_lang_invoke_VarHandleFloats_FieldStaticReadOnly {
-    @Alias @InjectAccessors(VarHandleFieldStaticBasePrimitiveAccessor.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleStaticBaseComputer.class) //
     Object base;
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetAsLongComputer.class) //
     long fieldOffset;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleInts", innerClass = "FieldStaticReadOnly")
 final class Target_java_lang_invoke_VarHandleInts_FieldStaticReadOnly {
-    @Alias @InjectAccessors(VarHandleFieldStaticBasePrimitiveAccessor.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleStaticBaseComputer.class) //
     Object base;
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetAsLongComputer.class) //
     long fieldOffset;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleLongs", innerClass = "FieldStaticReadOnly")
 final class Target_java_lang_invoke_VarHandleLongs_FieldStaticReadOnly {
-    @Alias @InjectAccessors(VarHandleFieldStaticBasePrimitiveAccessor.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleStaticBaseComputer.class) //
     Object base;
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetAsLongComputer.class) //
     long fieldOffset;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleShorts", innerClass = "FieldStaticReadOnly")
 final class Target_java_lang_invoke_VarHandleShorts_FieldStaticReadOnly {
-    @Alias @InjectAccessors(VarHandleFieldStaticBasePrimitiveAccessor.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleStaticBaseComputer.class) //
     Object base;
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetAsLongComputer.class) //
     long fieldOffset;
 }
 
 @TargetClass(className = "java.lang.invoke.VarHandleReferences", innerClass = "FieldStaticReadOnly")
 final class Target_java_lang_invoke_VarHandleReferences_FieldStaticReadOnly {
-    @Alias @InjectAccessors(VarHandleFieldStaticBaseObjectAccessor.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleStaticBaseComputer.class) //
     Object base;
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetAsLongComputer.class) //
     long fieldOffset;
 }
 
@@ -521,32 +617,14 @@ final class Target_java_lang_invoke_VarHandleReferences_FieldStaticReadOnly {
 
 @TargetClass(className = "java.lang.invoke.DirectMethodHandle", innerClass = "Accessor")
 final class Target_java_lang_invoke_DirectMethodHandle_Accessor {
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = VarHandleFieldOffsetIntComputer.class) //
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = VarHandleFieldOffsetAsIntComputer.class) //
     int fieldOffset;
 }
 
 @TargetClass(className = "java.lang.invoke.DirectMethodHandle", innerClass = "StaticAccessor")
 final class Target_java_lang_invoke_DirectMethodHandle_StaticAccessor {
-    @Alias //
-    Class<?> fieldType;
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = StaticAccessorFieldStaticBaseComputer.class) //
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = VarHandleStaticBaseComputer.class) //
     Object staticBase;
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = VarHandleFieldOffsetAsLongComputer.class) //
     long staticOffset;
-}
-
-class StaticAccessorFieldStaticBaseComputer implements FieldValueTransformerWithAvailability {
-    @Override
-    public FieldValueTransformerWithAvailability.ValueAvailability valueAvailability() {
-        return FieldValueTransformerWithAvailability.ValueAvailability.AfterAnalysis;
-    }
-
-    @Override
-    public Object transform(Object receiver, Object originalValue) {
-        Field field = ImageSingletons.lookup(VarHandleFeature.class).findVarHandleField(receiver);
-        if (field.getType().isPrimitive()) {
-            return StaticFieldsSupport.getStaticPrimitiveFields();
-        }
-        return StaticFieldsSupport.getStaticObjectFields();
-    }
 }

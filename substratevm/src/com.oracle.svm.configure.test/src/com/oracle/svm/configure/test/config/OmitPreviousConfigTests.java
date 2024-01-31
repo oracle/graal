@@ -35,7 +35,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -142,8 +142,8 @@ public class OmitPreviousConfigTests {
     }
 
     private static void doTestExpectedMissingTypes(TypeConfiguration typeConfig) {
-        Assert.assertNull(typeConfig.get(ConfigurationCondition.alwaysTrue(), "FlagTestA"));
-        Assert.assertNull(typeConfig.get(ConfigurationCondition.alwaysTrue(), "FlagTestB"));
+        Assert.assertNull(typeConfig.get(UnresolvedConfigurationCondition.alwaysTrue(), "FlagTestA"));
+        Assert.assertNull(typeConfig.get(UnresolvedConfigurationCondition.alwaysTrue(), "FlagTestB"));
     }
 
     private static void doTestTypeFlags(TypeConfiguration typeConfig) {
@@ -180,7 +180,7 @@ public class OmitPreviousConfigTests {
     }
 
     private static void doTestProxyConfig(ProxyConfiguration proxyConfig) {
-        ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
+        UnresolvedConfigurationCondition condition = UnresolvedConfigurationCondition.alwaysTrue();
         Assert.assertFalse(proxyConfig.contains(condition, "testProxySeenA", "testProxySeenB", "testProxySeenC"));
         Assert.assertTrue(proxyConfig.contains(condition, "testProxyUnseen"));
     }
@@ -189,19 +189,19 @@ public class OmitPreviousConfigTests {
         Assert.assertFalse(resourceConfig.anyResourceMatches("seenResource.txt"));
         Assert.assertTrue(resourceConfig.anyResourceMatches("unseenResource.txt"));
 
-        ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
+        UnresolvedConfigurationCondition condition = UnresolvedConfigurationCondition.alwaysTrue();
         Assert.assertFalse(resourceConfig.anyBundleMatches(condition, "seenBundle"));
         Assert.assertTrue(resourceConfig.anyBundleMatches(condition, "unseenBundle"));
     }
 
     private static void doTestSerializationConfig(SerializationConfiguration serializationConfig) {
-        ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
+        UnresolvedConfigurationCondition condition = UnresolvedConfigurationCondition.alwaysTrue();
         Assert.assertFalse(serializationConfig.contains(condition, "seenType", null));
         Assert.assertTrue(serializationConfig.contains(condition, "unseenType", null));
     }
 
     private static ConfigurationType getConfigTypeOrFail(TypeConfiguration typeConfig, String typeName) {
-        ConfigurationType type = typeConfig.get(ConfigurationCondition.alwaysTrue(), typeName);
+        ConfigurationType type = typeConfig.get(UnresolvedConfigurationCondition.alwaysTrue(), typeName);
         Assert.assertNotNull(type);
         return type;
     }
@@ -260,11 +260,11 @@ class TypeMethodsWithFlagsTest {
     }
 
     void populateConfig() {
-        ConfigurationType oldType = new ConfigurationType(ConfigurationCondition.alwaysTrue(), getTypeName());
+        ConfigurationType oldType = new ConfigurationType(UnresolvedConfigurationCondition.alwaysTrue(), getTypeName());
         setFlags(oldType);
         previousConfig.add(oldType);
 
-        ConfigurationType newType = new ConfigurationType(ConfigurationCondition.alwaysTrue(), getTypeName());
+        ConfigurationType newType = new ConfigurationType(UnresolvedConfigurationCondition.alwaysTrue(), getTypeName());
         for (Map.Entry<ConfigurationMethod, ConfigurationMemberDeclaration> methodEntry : methodsThatMustExist.entrySet()) {
             newType.addMethod(methodEntry.getKey().getName(), methodEntry.getKey().getInternalSignature(), methodEntry.getValue());
         }
@@ -297,7 +297,7 @@ class TypeMethodsWithFlagsTest {
         TypeConfiguration currentConfigWithoutPrevious = currentConfig.copyAndSubtract(previousConfig);
 
         String name = getTypeName();
-        ConfigurationType configurationType = currentConfigWithoutPrevious.get(ConfigurationCondition.alwaysTrue(), name);
+        ConfigurationType configurationType = currentConfigWithoutPrevious.get(UnresolvedConfigurationCondition.alwaysTrue(), name);
         if (methodsThatMustExist.size() == 0) {
             Assert.assertNull("Generated configuration type " + name + " exists. Expected it to be cleared as it is empty.", configurationType);
         } else {

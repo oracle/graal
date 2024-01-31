@@ -40,7 +40,12 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   },
   libgraal_compiler_zgc:: self.libgraal_compiler_base(extra_vm_args=['-XX:+UseZGC']),
   # enable economy mode building with the -Ob flag
-  libgraal_compiler_quickbuild:: self.libgraal_compiler_base(quickbuild_args=['-Ob']),
+  libgraal_compiler_quickbuild:: self.libgraal_compiler_base(quickbuild_args=['-Ob']) + {
+    environment+: {
+      # Exercise support for preventing build paths being embedded in libgraal.
+      ALLOW_ABSOLUTE_PATHS_IN_OUTPUT: 'false'
+    }
+  },
 
   libgraal_truffle_base(quickbuild_args=[], extra_vm_args=[], coverage=false): self.libgraal_build(['-J-esa', '-J-ea', '-esa', '-ea'] + quickbuild_args) + {
     environment+: {
@@ -49,11 +54,12 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     },
     run+: [
       ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Truffle'] + if coverage then g.jacoco_gate_args else [] +
-        if extra_vm_args != [] then ['--extra-vm-argument=' + std.join(" ", extra_vm_args)] else [],
+        ['--extra-vm-argument=' + std.join(" ", ['-DGCUtils.saveHeapDumpTo=.'] + extra_vm_args)],
     ],
     logs+: [
       '*/graal-compiler.log',
-      '*/graal-compiler-ctw.log'
+      '*/graal-compiler-ctw.log',
+      '*/gcutils_heapdump_*.hprof.gz'
     ],
     timelimit: '1:00:00',
     teardown+: if coverage then [
@@ -113,7 +119,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
   # Builds run on all platforms (platform = JDK + OS + ARCH)
   local all_platforms_builds = [
-    c["gate_vm_" + underscore(os_arch)] +
+    c.vm_base(os(os_arch), arch(os_arch), 'gate') +
     svm_common(os_arch, jdk) +
     vm["custom_vm_" + os(os_arch)] +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
@@ -144,7 +150,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
   # Builds run on all platforms (platform = JDK + OS + ARCH) but Windows currently requires Windows server 2019
   local all_platforms_zgc_builds = [
-    adjust_windows_version(c["gate_vm_" + underscore(os_arch)]) +
+    adjust_windows_version(c.vm_base(os(os_arch), arch(os_arch), 'gate')) +
     svm_common(os_arch, jdk) +
     vm["custom_vm_" + os(os_arch)] +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
@@ -166,7 +172,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
   # Coverage builds only on jdk21 (GR-46676)
   local coverage_jdk21_builds = [
-    c["gate_vm_" + underscore(os_arch)] +
+    c.vm_base(os(os_arch), arch(os_arch), 'gate') +
     svm_common(os_arch, jdk) +
     vm["custom_vm_" + os(os_arch)] +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
