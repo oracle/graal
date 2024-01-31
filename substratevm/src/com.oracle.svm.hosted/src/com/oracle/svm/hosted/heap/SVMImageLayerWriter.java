@@ -24,12 +24,15 @@
  */
 package com.oracle.svm.hosted.heap;
 
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_ID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.METHOD_POINTER_TAG;
 
 import java.util.List;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.heap.ImageHeap;
 import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -47,7 +50,9 @@ import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
 import com.oracle.svm.hosted.reflect.proxy.ProxySubstitutionType;
 import com.oracle.svm.util.LogUtils;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SVMImageLayerWriter extends ImageLayerWriter {
     public SVMImageLayerWriter(ImageHeap imageHeap) {
@@ -93,6 +98,25 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             throw VMError.shouldNotReachHere(message);
         } else {
             LogUtils.warning(message);
+        }
+    }
+
+    @Override
+    public void persistConstantRelinkingInfo(EconomicMap<String, Object> constantMap, BigBang bb, Class<?> clazz, JavaConstant hostedObject) {
+        ResolvedJavaType type = bb.getConstantReflectionProvider().asJavaType(hostedObject);
+        if (type instanceof AnalysisType analysisType) {
+            /*
+             * Until another solution for implementing a stable name for $$TypeSwitch classes is
+             * found, the constant containing a DynamicHub corresponding to a $$TypeSwitch class is
+             * not persisted as it would not be possible to relink it. Considering that those
+             * classes are only used as a container for a static method, recreating the constant in
+             * the extension image alongside the class should not cause too much issues.
+             */
+            if (!isTypeSwitch(analysisType)) {
+                constantMap.put(CLASS_ID_TAG, analysisType.getId());
+            }
+        } else {
+            super.persistConstantRelinkingInfo(constantMap, bb, clazz, hostedObject);
         }
     }
 

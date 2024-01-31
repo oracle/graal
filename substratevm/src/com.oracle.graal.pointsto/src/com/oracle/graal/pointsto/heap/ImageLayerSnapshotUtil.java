@@ -25,14 +25,18 @@
 package com.oracle.graal.pointsto.heap;
 
 import java.lang.reflect.Executable;
+import java.util.Set;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
 public class ImageLayerSnapshotUtil {
     public static final String FILE_NAME_PREFIX = "layer-snapshot-";
     public static final String FILE_EXTENSION = ".json";
+
+    public static final String PERSISTED = "persisted";
 
     public static final int NULL_POINTER_CONSTANT = -1;
     public static final int NOT_MATERIALIZED_CONSTANT = -2;
@@ -66,6 +70,11 @@ public class ImageLayerSnapshotUtil {
     public static final String NAME_TAG = "name";
     public static final String NEXT_TYPE_ID_TAG = "next type id";
     public static final String NEXT_METHOD_ID_TAG = "next method id";
+    public static final String VALUE_TAG = "value";
+    public static final String ENUM_CLASS_TAG = "enum class";
+    public static final String ENUM_NAME_TAG = "enum name";
+    public static final String CLASS_ID_TAG = "class id";
+    public static final String SIMULATED_TAG = "simulated";
 
     public String getTypeIdentifier(AnalysisType type, String moduleName) {
         return addModuleName(type.toJavaName(true), moduleName);
@@ -81,5 +90,10 @@ public class ImageLayerSnapshotUtil {
 
     protected static String addModuleName(String elementName, String moduleName) {
         return moduleName + ":" + elementName;
+    }
+
+    @SuppressWarnings("unused")
+    public Set<Integer> getRelinkedFields(AnalysisType type, AnalysisMetaAccess metaAccess) {
+        return Set.of();
     }
 }

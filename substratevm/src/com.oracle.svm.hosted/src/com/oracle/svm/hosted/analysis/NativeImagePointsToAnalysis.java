@@ -122,6 +122,14 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     public void onTypeReachable(AnalysisType type) {
         postTask(d -> {
             type.getInitializeMetaDataTask().ensureDone();
+            if (type.isInBaseLayer()) {
+                /*
+                 * Since the rescanning of the hub is skipped for constants from the base layer to
+                 * avoid deadlocks, the hub needs to be rescanned manually after the metadata is
+                 * initialized.
+                 */
+                universe.getImageLayerLoader().rescanHub(type, ((SVMHost) hostVM).dynamicHub(type));
+            }
             if (SubstrateOptions.includeAll()) {
                 /*
                  * Using getInstanceFields and getStaticFields allows to include the fields from the

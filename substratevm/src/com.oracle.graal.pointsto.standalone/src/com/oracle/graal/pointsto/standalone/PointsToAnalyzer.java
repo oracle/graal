@@ -161,10 +161,11 @@ public final class PointsToAnalyzer {
         standaloneHost.setImageName(analysisName);
         aUniverse.setBigBang(bigbang);
         ImageHeap heap = new ImageHeap();
+        HostedValuesProvider hostedValuesProvider = new HostedValuesProvider(aMetaAccess, aUniverse);
         ImageLayerLoader imageLayerLoader = new ImageLayerLoader(aUniverse);
         aUniverse.setImageLayerLoader(imageLayerLoader);
         StandaloneImageHeapScanner heapScanner = new StandaloneImageHeapScanner(bigbang, heap, aMetaAccess,
-                        snippetReflection, aConstantReflection, new AnalysisObjectScanningObserver(bigbang), analysisClassLoader, new HostedValuesProvider(aMetaAccess, aUniverse));
+                        snippetReflection, aConstantReflection, new AnalysisObjectScanningObserver(bigbang), analysisClassLoader, hostedValuesProvider);
         aUniverse.setHeapScanner(heapScanner);
         ImageLayerWriter imageLayerWriter = new ImageLayerWriter(heap);
         aUniverse.setImageLayerWriter(imageLayerWriter);

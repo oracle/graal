@@ -65,7 +65,7 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
          * Stores the hosted object, already processed by the object transformers. It is null for
          * instances of partially evaluated classes.
          */
-        private final JavaConstant hostedObject;
+        private JavaConstant hostedObject;
         /**
          * The identity hash code for the heap object. This field is only used if
          * {@link #hostedObject} is null, i.e., for objects without a backing object in the heap of
@@ -153,7 +153,8 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
         return constantData.hostedValuesReader == null || constantData.hostedValuesReader.isDone();
     }
 
-    public boolean markReachable(ObjectScanner.ScanReason reason) {
+    /** Intentionally package private. Should only be set via ImageHeapScanner.markReachable. */
+    boolean markReachable(ObjectScanner.ScanReason reason) {
         ensureReaderInstalled();
         return isReachableHandle.compareAndSet(constantData, null, reason);
     }
@@ -189,6 +190,10 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
 
     public boolean isInBaseLayer() {
         return constantData.isInBaseLayer;
+    }
+
+    public void setHostedObject(JavaConstant hostedObject) {
+        constantData.hostedObject = hostedObject;
     }
 
     public JavaConstant getHostedObject() {

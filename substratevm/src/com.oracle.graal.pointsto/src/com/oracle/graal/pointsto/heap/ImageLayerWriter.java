@@ -33,6 +33,8 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CONSTANTS_TA
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CONSTANT_TYPE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.DATA_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ENCLOSING_TYPE_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ENUM_CLASS_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ENUM_NAME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FIELDS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IDENTITY_HASH_CODE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ID_TAG;
@@ -51,10 +53,12 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NOT_MATERIAL
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NULL_POINTER_CONSTANT;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.OBJECT_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PRIMITIVE_ARRAY_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.SIMULATED_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.SOURCE_FILE_NAME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.SUPER_CLASS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TYPES_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.VALUE_TAG;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -66,6 +70,7 @@ import java.util.stream.IntStream;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -74,6 +79,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.util.FileDumpingUtil;
 
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.util.json.JSONFormatter;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -84,6 +90,10 @@ public class ImageLayerWriter {
     public static final String TYPE_SWITCH_SUBSTRING = "$$TypeSwitch";
     private final ImageLayerSnapshotUtil imageLayerSnapshotUtil;
     private final ImageHeap imageHeap;
+    /**
+     * Contains the same array as StringInternSupport#imageInternedStrings, which is sorted.
+     */
+    private String[] imageInternedStrings;
 
     public ImageLayerWriter(ImageHeap imageHeap) {
         this.imageHeap = imageHeap;
@@ -93,6 +103,10 @@ public class ImageLayerWriter {
     public ImageLayerWriter(ImageHeap imageHeap, ImageLayerSnapshotUtil imageLayerSnapshotUtil) {
         this.imageHeap = imageHeap;
         this.imageLayerSnapshotUtil = imageLayerSnapshotUtil;
+    }
+
+    public void setImageInternedStrings(String[] imageInternedStrings) {
+        this.imageInternedStrings = imageInternedStrings;
     }
 
     /**
@@ -150,7 +164,7 @@ public class ImageLayerWriter {
         EconomicMap<String, Object> constantsMap = EconomicMap.create();
         for (Map.Entry<AnalysisType, Set<ImageHeapConstant>> entry : imageHeap.getReachableObjects().entrySet()) {
             for (ImageHeapConstant imageHeapConstant : entry.getValue()) {
-                persistConstant(imageHeapConstant, constantsMap);
+                persistConstant(analysisUniverse, imageHeapConstant, constantsMap);
             }
         }
         jsonMap.put(CONSTANTS_TAG, constantsMap);
@@ -203,7 +217,7 @@ public class ImageLayerWriter {
         methodsMap.put(name, methodMap);
     }
 
-    private void persistConstant(ImageHeapConstant imageHeapConstant, EconomicMap<String, Object> constantsMap) {
+    private void persistConstant(AnalysisUniverse analysisUniverse, ImageHeapConstant imageHeapConstant, EconomicMap<String, Object> constantsMap) {
         if (imageHeapConstant.isReaderInstalled() && !constantsMap.containsKey(Integer.toString(imageHeapConstant.constantData.id))) {
             EconomicMap<String, Object> constantMap = EconomicMap.create();
             constantsMap.put(Integer.toString(imageHeapConstant.constantData.id), constantMap);
@@ -213,16 +227,47 @@ public class ImageLayerWriter {
             }
 
             switch (imageHeapConstant) {
-                case ImageHeapInstance imageHeapInstance ->
-                    persistConstant(constantsMap, constantMap, INSTANCE_TAG, imageHeapInstance.getFieldValues());
+                case ImageHeapInstance imageHeapInstance -> {
+                    persistConstant(analysisUniverse, constantsMap, constantMap, INSTANCE_TAG, imageHeapInstance.getFieldValues());
+                    persistConstantRelinkingInfo(constantMap, imageHeapConstant, analysisUniverse.getBigbang());
+                }
                 case ImageHeapObjectArray imageHeapObjectArray ->
-                    persistConstant(constantsMap, constantMap, ARRAY_TAG, imageHeapObjectArray.getElementValues());
+                    persistConstant(analysisUniverse, constantsMap, constantMap, ARRAY_TAG, imageHeapObjectArray.getElementValues());
                 case ImageHeapPrimitiveArray imageHeapPrimitiveArray -> {
                     constantMap.put(CONSTANT_TYPE_TAG, PRIMITIVE_ARRAY_TAG);
                     constantMap.put(DATA_TAG, getString(imageHeapPrimitiveArray.getType().getComponentType().getJavaKind(), imageHeapPrimitiveArray.getArray()));
                 }
                 default -> throw AnalysisError.shouldNotReachHere("Unexpected constant type " + imageHeapConstant);
             }
+        }
+    }
+
+    public void persistConstantRelinkingInfo(EconomicMap<String, Object> constantMap, ImageHeapConstant imageHeapConstant, BigBang bb) {
+        Class<?> clazz = imageHeapConstant.getType().getJavaClass();
+        JavaConstant hostedObject = imageHeapConstant.getHostedObject();
+        boolean simulated = hostedObject == null;
+        constantMap.put(SIMULATED_TAG, simulated);
+        if (!simulated) {
+            persistConstantRelinkingInfo(constantMap, bb, clazz, hostedObject);
+        }
+    }
+
+    @SuppressFBWarnings(value = "ES", justification = "Reference equality check needed to detect intern status")
+    public void persistConstantRelinkingInfo(EconomicMap<String, Object> constantMap, BigBang bb, Class<?> clazz, JavaConstant hostedObject) {
+        if (clazz.equals(String.class)) {
+            String value = bb.getSnippetReflectionProvider().asObject(String.class, hostedObject);
+            int stringIndex = Arrays.binarySearch(imageInternedStrings, value);
+            /*
+             * Arrays.binarySearch compares the strings by value. A comparison by reference is
+             * needed here as only interned strings are relinked.
+             */
+            if (stringIndex >= 0 && imageInternedStrings[stringIndex] == value) {
+                constantMap.put(VALUE_TAG, value);
+            }
+        } else if (Enum.class.isAssignableFrom(clazz)) {
+            Enum<?> value = bb.getSnippetReflectionProvider().asObject(Enum.class, hostedObject);
+            constantMap.put(ENUM_CLASS_TAG, value.getDeclaringClass().getName());
+            constantMap.put(ENUM_NAME_TAG, value.name());
         }
     }
 
@@ -242,7 +287,7 @@ public class ImageLayerWriter {
         };
     }
 
-    protected void persistConstant(EconomicMap<String, Object> constantsMap, EconomicMap<String, Object> constantMap, String constantType, Object[] values) {
+    protected void persistConstant(AnalysisUniverse analysisUniverse, EconomicMap<String, Object> constantsMap, EconomicMap<String, Object> constantMap, String constantType, Object[] values) {
         constantMap.put(CONSTANT_TYPE_TAG, constantType);
         List<List<Object>> data = new ArrayList<>();
         for (Object object : values) {
@@ -255,7 +300,7 @@ public class ImageLayerWriter {
                  * reachable constants. They can be created in the extension image, but should not
                  * be used.
                  */
-                persistConstant(imageHeapConstant, constantsMap);
+                persistConstant(analysisUniverse, imageHeapConstant, constantsMap);
             } else if (object == JavaConstant.NULL_POINTER) {
                 data.add(List.of(OBJECT_TAG, NULL_POINTER_CONSTANT));
             } else if (object instanceof PrimitiveConstant primitiveConstant) {

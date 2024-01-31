@@ -29,18 +29,41 @@ import static com.oracle.svm.hosted.methodhandles.MethodHandleInvokerRenamingSub
 import static com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor.isProxyType;
 import static jdk.graal.compiler.java.LambdaUtils.isLambdaType;
 
+import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.reflect.serialize.SerializationRegistry;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 
 public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
     private static final String GENERATED_SERIALIZATION = "jdk.internal.reflect.GeneratedSerializationConstructorAccessor";
+
+    public static final Field companion = ReflectionUtil.lookupField(DynamicHub.class, "companion");
+    public static final Field classInitializationInfo = ReflectionUtil.lookupField(DynamicHub.class, "classInitializationInfo");
+    private static final Field name = ReflectionUtil.lookupField(DynamicHub.class, "name");
+    private static final Field superHub = ReflectionUtil.lookupField(DynamicHub.class, "superHub");
+    private static final Field componentType = ReflectionUtil.lookupField(DynamicHub.class, "componentType");
+    public static final Field arrayHub = ReflectionUtil.lookupField(DynamicHub.class, "arrayHub");
+    public static final Field interfacesEncoding = ReflectionUtil.lookupField(DynamicHub.class, "interfacesEncoding");
+    public static final Field enumConstantsReference = ReflectionUtil.lookupField(DynamicHub.class, "enumConstantsReference");
+
+    protected static final Set<Field> dynamicHubRelinkedFields = Set.of(companion, classInitializationInfo, name, superHub, componentType, arrayHub);
+
+    protected final Map<AnalysisType, Set<Integer>> fieldsToRelink = new HashMap<>();
 
     @Override
     public String getTypeIdentifier(AnalysisType type, String moduleName) {
@@ -86,5 +109,22 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
         SerializationSupport serializationRegistry = (SerializationSupport) ImageSingletons.lookup(SerializationRegistry.class);
         SerializationSupport.SerializationLookupKey serializationLookupKey = serializationRegistry.getKeyFromConstructorAccessorClass(constructorAccessor);
         return generatedSerializationClassName(serializationLookupKey);
+    }
+
+    @Override
+    public Set<Integer> getRelinkedFields(AnalysisType type, AnalysisMetaAccess metaAccess) {
+        Set<Integer> result = fieldsToRelink.computeIfAbsent(type, key -> {
+            Class<?> clazz = type.getJavaClass();
+            if (clazz == Class.class) {
+                type.getInstanceFields(true);
+                return dynamicHubRelinkedFields.stream().map(metaAccess::lookupJavaField).map(AnalysisField::getPosition).collect(Collectors.toSet());
+            } else {
+                return null;
+            }
+        });
+        if (result == null) {
+            return Set.of();
+        }
+        return result;
     }
 }
