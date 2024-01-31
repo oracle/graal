@@ -42,11 +42,10 @@ public class AArch64HotSpotMacroAssembler extends AArch64MacroAssembler {
     }
 
     @Override
-    public void postCallNop(Infopoint infopoint) {
-        if (config.continuationsEnabled && infopoint instanceof Call) {
+    public void postCallNop(Call call) {
+        if (config.continuationsEnabled) {
             // Support for loom requires custom nops after call sites that might deopt
-            Call call = (Call) infopoint;
-            if (call.debugInfo != null && call.reason == InfopointReason.CALL) {
+            if (call.debugInfo != null) {
                 // Expected post call nop pattern taken from
                 // src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp in
                 // MacroAssembler::post_call_nop(). JVMCI will add a relocation during installation.
@@ -60,6 +59,6 @@ public class AArch64HotSpotMacroAssembler extends AArch64MacroAssembler {
                 return;
             }
         }
-        super.postCallNop(infopoint);
+        super.postCallNop(call);
     }
 }

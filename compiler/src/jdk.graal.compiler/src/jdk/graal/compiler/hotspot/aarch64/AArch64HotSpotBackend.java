@@ -412,7 +412,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                 ForeignCallLinkage icMissHandler = getForeignCalls().lookupForeignCall(IC_MISS_HANDLER);
 
                 // Size of IC check sequence checked with a guarantee below.
-                int inlineCacheCheckSize = AArch64Call.isNearCall(icMissHandler) ? 24 : 36;
+                int inlineCacheCheckSize = AArch64Call.isNearCall(icMissHandler) ? 20 : 32;
                 masm.align(config.codeEntryAlignment, masm.position() + inlineCacheCheckSize);
 
                 int startICCheck = masm.position();
