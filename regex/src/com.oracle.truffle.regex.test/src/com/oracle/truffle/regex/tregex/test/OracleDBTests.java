@@ -230,6 +230,12 @@ public class OracleDBTests extends RegexTestBase {
     }
 
     @Test
+    public void testNestedQuantifier() {
+        test("(a*|b)*", "", "aaaaaabaaaaaaaaaaaaaabb", 0, true, 0, 6, 6, 6);
+        test("a((b?)*)*", "", "ab", 0, true, 0, 2, 2, 2, 2, 2);
+    }
+
+    @Test
     public void generatedTests() {
         /* GENERATED CODE BEGIN - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
         test("abracadabra$", "", "abracadabracadabra", 0, true, 7, 18);

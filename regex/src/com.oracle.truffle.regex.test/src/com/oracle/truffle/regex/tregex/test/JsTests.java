@@ -268,4 +268,11 @@ public class JsTests extends RegexTestBase {
     public void gr50807() {
         test("(?<=%b{1,4}?)foo", "", "%bbbbfoo", 0, true, 5, 8);
     }
+
+    @Test
+    public void gr51523() {
+        test("(?:^|\\.?)([A-Z])", "g", "desktopBrowser", 0, true, 7, 8, 7, 8);
+        test("(?:^|\\.?)([A-Z])", "g", "locationChanged", 0, true, 8, 9, 8, 9);
+        test("(?:^|\\.?)([A-Z]|(?<=[a-z])\\d(?=\\d+))", "g", "helloWorld", 0, true, 5, 6, 5, 6);
+    }
 }
