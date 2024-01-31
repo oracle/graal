@@ -247,7 +247,7 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
 
     @Override
     public String toValueString() {
-        if (constantData.type.getJavaClass() == String.class) {
+        if (constantData.type.getJavaClass() == String.class && constantData.hostedObject != null) {
             return constantData.hostedObject.toValueString();
         }
         return constantData.type.getName();
