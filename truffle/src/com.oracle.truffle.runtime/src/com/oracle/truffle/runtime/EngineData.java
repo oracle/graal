@@ -200,6 +200,10 @@ public final class EngineData {
         return OptimizedRuntimeAccessor.ENGINE.getEngineLock(this.polyglotEngine);
     }
 
+    public Object getEngineLogHandler() {
+        return OptimizedRuntimeAccessor.ENGINE.getEngineLogHandler(this.polyglotEngine);
+    }
+
     @SuppressWarnings("unchecked")
     public <T> T getEngineLocal(Class<T> symbol) {
         Map<Class<?>, Object> data = this.engineLocals;

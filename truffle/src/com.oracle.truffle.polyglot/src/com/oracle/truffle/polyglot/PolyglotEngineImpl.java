@@ -1467,7 +1467,12 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.out = null;
         this.err = null;
         this.in = null;
-        this.logHandler = null;
+        /*
+         * Note: The 'logHandler' field must not be cleaned until the image persists to facilitate
+         * the detection and cleanup of all references to the 'logHandler' instance in the image
+         * heap. The cleanup process is handled by the 'AuxiliaryImageObjectReplacer' registered in
+         * the 'AuxiliaryEngineCacheSupport'.
+         */
         AbstractHostLanguageService hostLanguageService = this.host;
         if (hostLanguageService != null) {
             hostLanguageService.release();
