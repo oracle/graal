@@ -47,6 +47,7 @@ import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.SubstrateGraalRuntime;
+import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
 import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
@@ -202,8 +203,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         } else if (source instanceof FieldLocationIdentity && !(source instanceof SubstrateFieldLocationIdentity)) {
             dest = createFieldLocationIdentity((FieldLocationIdentity) source);
         } else if (source instanceof ImageHeapConstant heapConstant) {
-            VMError.guarantee(heapConstant.isBackedByHostedObject(), "Expected to find a heap object backed by a hosted object, found %s", heapConstant);
-            dest = heapConstant.getHostedObject();
+            dest = SubstrateGraalUtils.forRuntimeCompilation(heapConstant);
         }
 
         assert dest != null;
@@ -458,17 +458,9 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             JavaConstant constantValue = hField.isStatic() && ((HostedConstantFieldProvider) providers.getConstantFieldProvider()).isFinalField(hField, null)
                             ? providers.getConstantReflection().readFieldValue(hField, null)
                             : null;
-            constantValue = unwrapConstant(constantValue);
+            constantValue = SubstrateGraalUtils.forRuntimeCompilation(constantValue);
             sField.setSubstrateData(hField.getLocation(), hField.isAccessed(), hField.isWritten() || !hField.isValueAvailable(), constantValue);
         }
-    }
-
-    static JavaConstant unwrapConstant(JavaConstant constant) {
-        if (constant instanceof ImageHeapConstant heapConstant) {
-            VMError.guarantee(heapConstant.isBackedByHostedObject(), "Expected to find a heap object backed by a hosted object, found %s", heapConstant);
-            return heapConstant.getHostedObject();
-        }
-        return constant;
     }
 
     public void updateSubstrateDataAfterHeapLayout(HostedUniverse hUniverse) {
