@@ -174,5 +174,5 @@ As argued earlier, the instrumentation image has a certain overhead,
 which depends on the code patterns in a particular application.
 However, if only one instance uses the instrumentation image during a particular period,
 and all the other instances of your service use a normal or optimized build,
-then this is usually acceptable in practice.
+then this is generally acceptable in practice.
 
