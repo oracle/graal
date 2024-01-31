@@ -64,7 +64,7 @@ mx native-image HelloWorld -H:Dump= -H:MethodFilter=HelloWorld.*
 
 ## Options
 
-More information about options and the important distinction between hosted and runtime options is available [here](../docs/reference-manual/native-image/Options.md).
+More information about options and the important distinction between hosted and runtime options is available [here](../docs/reference-manual/native-image/BuildOptions.md).
 
 ## Project Structure
 
