@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import java.net.URLClassLoader;
 import java.security.ProtectionDomain;
 
 import org.graalvm.polyglot.Engine;
+import org.graalvm.shadowed.org.jcodings.EncodingDB;
 import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
@@ -81,10 +82,13 @@ public class SeparatedClassLoadersTest {
         URL truffleURL = Truffle.class.getProtectionDomain().getCodeSource().getLocation();
         Assume.assumeNotNull(truffleURL);
 
+        URL jcodingsURL = EncodingDB.class.getProtectionDomain().getCodeSource().getLocation();
+        Assume.assumeNotNull(jcodingsURL);
+
         ClassLoader parent = Engine.class.getClassLoader().getParent();
 
         URLClassLoader sdkLoader = new URLClassLoader(new URL[]{sdkURL}, parent);
-        URLClassLoader truffleLoader = new URLClassLoader(new URL[]{truffleURL}, sdkLoader);
+        URLClassLoader truffleLoader = new URLClassLoader(new URL[]{truffleURL, jcodingsURL}, sdkLoader);
         Thread.currentThread().setContextClassLoader(truffleLoader);
 
         Class<?> engineClass = sdkLoader.loadClass(Engine.class.getName());
