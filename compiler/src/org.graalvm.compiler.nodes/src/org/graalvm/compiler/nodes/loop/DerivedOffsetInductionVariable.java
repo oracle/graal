@@ -28,7 +28,6 @@ import static org.graalvm.compiler.nodes.loop.MathUtil.add;
 import static org.graalvm.compiler.nodes.loop.MathUtil.sub;
 
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -167,7 +166,7 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
             if (base.valueNode() == value.getX()) {
                 return Math.subtractExact(b, o);
             } else {
-                assert base.valueNode() == value.getY() : Assertions.errorMessage(base, base.valueNode(), value, value.getY());
+                assert base.valueNode() == value.getY() : String.format("[base]=%s;[value]=%s", base.valueNode(), value.getY());
                 return Math.subtractExact(b, o);
             }
         }
