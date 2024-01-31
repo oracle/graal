@@ -161,6 +161,7 @@ public class CompileQueue {
 
     protected final HostedUniverse universe;
     private final Boolean deoptimizeAll;
+    protected final List<Policy> policies;
     protected CompletionExecutor executor;
     protected final ConcurrentMap<HostedMethod, CompileTask> compilations;
     protected final RuntimeConfiguration runtimeConfig;
@@ -258,6 +259,20 @@ public class CompileQueue {
         }
     }
 
+    public abstract static class Policy {
+
+        protected final HostedUniverse universe;
+
+        public Policy(HostedUniverse universe) {
+            this.universe = universe;
+        }
+
+        public abstract void beforeEncode(HostedMethod method, StructuredGraph graph, HighTierContext context);
+
+        public void afterCompile() {
+        }
+    }
+
     protected interface Task extends DebugContextRunnable {
         @Override
         default DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
@@ -343,12 +358,14 @@ public class CompileQueue {
     }
 
     @SuppressWarnings("this-escape")
-    public CompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse universe, RuntimeConfiguration runtimeConfiguration, Boolean deoptimizeAll) {
+    public CompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse universe, RuntimeConfiguration runtimeConfiguration, Boolean deoptimizeAll,
+                    List<Policy> policies) {
         this.universe = universe;
         this.compilations = new ConcurrentHashMap<>();
         this.runtimeConfig = runtimeConfiguration;
         this.metaAccess = runtimeConfiguration.getProviders().getMetaAccess();
         this.deoptimizeAll = deoptimizeAll;
+        this.policies = policies;
         this.executor = new CompletionExecutor(debug, universe.getBigBang());
         this.featureHandler = featureHandler;
         this.graphTransplanter = createGraphTransplanter();
@@ -869,6 +886,14 @@ public class CompileQueue {
         runOnExecutor(this::scheduleEntryPoints);
 
         runOnExecutor(this::scheduleDeoptTargets);
+
+        notifyAfterCompile();
+    }
+
+    private void notifyAfterCompile() {
+        for (Policy policy : this.policies) {
+            policy.afterCompile();
+        }
     }
 
     public void scheduleEntryPoints() {
@@ -983,7 +1008,7 @@ public class CompileQueue {
 
                 GraalError.guarantee(graph.isAfterStage(StageFlag.GUARD_LOWERING), "Hosted compilations must have explicit exceptions %s %s", graph, graph.getGraphState().getStageFlags());
 
-                beforeEncode(method, graph);
+                notifyBeforeEncode(method, graph);
                 assert GraphOrder.assertSchedulableGraph(graph);
                 method.compilationInfo.encodeGraph(graph);
                 if (checkTrivial(method, graph)) {
@@ -1025,7 +1050,13 @@ public class CompileQueue {
     }
 
     @SuppressWarnings("unused")
-    protected void beforeEncode(HostedMethod method, StructuredGraph graph) {
+    protected void notifyBeforeEncode(HostedMethod method, StructuredGraph graph) {
+        HostedProviders providers = (HostedProviders) runtimeConfig.lookupBackend(method).getProviders();
+        HighTierContext highTierContext = new HighTierContext(providers, null, CompileQueue.getOptimisticOpts());
+
+        for (Policy policy : this.policies) {
+            policy.beforeEncode(method, graph, highTierContext);
+        }
     }
 
     protected OptionValues getCustomizedOptions(@SuppressWarnings("unused") HostedMethod method, DebugContext debug) {
