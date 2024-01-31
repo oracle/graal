@@ -77,7 +77,7 @@ public final class SLBytecodeSerialization {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-        SLBytecodeRootNodeGen.serialize(BytecodeConfig.COMPLETE, outputStream, (context, buffer, object) -> {
+        SLBytecodeRootNodeGen.serialize(outputStream, (context, buffer, object) -> {
             if (object instanceof SLNull) {
                 buffer.writeByte(CODE_SL_NULL);
             } else if (object instanceof TruffleString) {

@@ -70,7 +70,7 @@ package com.oracle.truffle.api.bytecode;
 @FunctionalInterface
 public interface BytecodeParser<T extends BytecodeBuilder> {
     /**
-     * The parse method. Should be idempotent.
+     * The parse method. Should be idempotent and free of side-effects.
      *
      * @since 24.1
      */

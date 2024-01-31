@@ -55,28 +55,30 @@ public final class BytecodeConfig {
      *
      * @since 24.1
      */
-    public static final BytecodeConfig DEFAULT = new BytecodeConfig(false, null, null, null);
+    public static final BytecodeConfig DEFAULT = new BytecodeConfig(false, false, null, null, null);
     /**
      * Retain source information.
      *
      * @since 24.1
      */
-    public static final BytecodeConfig WITH_SOURCE = new BytecodeConfig(true, null, null, null);
+    public static final BytecodeConfig WITH_SOURCE = new BytecodeConfig(true, false, null, null, null);
 
     /**
      * Retain all information.
      *
      * @since 24.1
      */
-    public static final BytecodeConfig COMPLETE = new BytecodeConfig(true, null, null, null);
+    public static final BytecodeConfig COMPLETE = new BytecodeConfig(true, true, null, null, null);
 
     final boolean addSource;
+    final boolean addAllInstrumentationData;
     final Class<?>[] addInstrumentations;
     final Class<?>[] removeInstrumentations;
     final Class<?>[] addTags;
 
-    BytecodeConfig(boolean withSource, Class<?>[] addInstrumentations, Class<?>[] removeInstrumentations, Class<?>[] tags) {
+    BytecodeConfig(boolean withSource, boolean addAllInstrumentationData, Class<?>[] addInstrumentations, Class<?>[] removeInstrumentations, Class<?>[] tags) {
         this.addSource = withSource;
+        this.addAllInstrumentationData = addAllInstrumentationData;
         this.addInstrumentations = addInstrumentations;
         this.removeInstrumentations = removeInstrumentations;
         this.addTags = tags;
@@ -99,6 +101,7 @@ public final class BytecodeConfig {
      */
     public static class Builder {
         private boolean addSource;
+        private boolean addAllInstrumentationData;
         private Class<?>[] addTags;
         private Class<?>[] addInstrumentations;
         private Class<?>[] removeInstrumentations;
@@ -112,7 +115,7 @@ public final class BytecodeConfig {
         }
 
         /**
-         * Sets whether the config should include sources.
+         * Sets whether to include sources.
          *
          * @since 24.1
          */
@@ -121,16 +124,43 @@ public final class BytecodeConfig {
             return this;
         }
 
+        /**
+         * Sets whether all instrumentation data should be included. This value, if {@code true},
+         * supersedes the tag and instrumentation values.
+         *
+         * @since 24.1
+         */
+        public Builder addAllInstrumentationData() {
+            this.addAllInstrumentationData = true;
+            return this;
+        }
+
+        /**
+         * Sets a specific set of tags to be included.
+         *
+         * @since 24.1
+         */
         @SuppressWarnings("unchecked")
         public Builder addTags(Class<? extends Tag>... tags) {
             this.addTags = tags;
             return this;
         }
 
+        /**
+         * Sets a specific set of instrumentations to be added.
+         *
+         * @since 24.1
+         */
         public Builder addInstrumentations(Class<?>... instrumentations) {
             this.addInstrumentations = instrumentations;
             return this;
         }
+
+        /**
+         * Sets a specific set of instrumentations to be removed.
+         *
+         * @since 24.1
+         */
 
         public Builder removeInstrumentations(Class<?>... instrumentations) {
             this.removeInstrumentations = instrumentations;
@@ -143,7 +173,7 @@ public final class BytecodeConfig {
          * @since 24.1
          */
         public BytecodeConfig build() {
-            return new BytecodeConfig(addSource, addInstrumentations, removeInstrumentations, addTags);
+            return new BytecodeConfig(addSource, addAllInstrumentationData, addInstrumentations, removeInstrumentations, addTags);
         }
     }
 }
