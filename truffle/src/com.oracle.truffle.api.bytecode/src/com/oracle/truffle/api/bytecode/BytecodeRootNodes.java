@@ -174,13 +174,12 @@ public abstract class BytecodeRootNodes<T extends RootNode & BytecodeRootNode> {
      *
      * This method will be overridden by the Bytecode DSL. Do not override.
      *
-     * @param config The configuration to use. Determines what metadata gets serialized.
      * @param buffer The buffer to write the serialized bytes to.
      * @param callback A language-defined method for serializing language constants.
      * @throws IOException if an I/O error occurs with the buffer.
      */
     @SuppressWarnings("unused")
-    public void serialize(BytecodeConfig config, DataOutput buffer, BytecodeSerializer callback) throws IOException {
+    public void serialize(DataOutput buffer, BytecodeSerializer callback) throws IOException {
         throw new IllegalArgumentException("Serialization is not enabled for this interpreter.");
     }
 

@@ -83,6 +83,9 @@ public interface BytecodeSerializer {
     interface SerializerContext {
         /**
          * Serializes a {@link BytecodeRootNode} to the byte buffer.
+         * <p>
+         * The given node must be created by the current parse, otherwise the behaviour of this
+         * method is undefined.
          *
          * @since 24.1
          */

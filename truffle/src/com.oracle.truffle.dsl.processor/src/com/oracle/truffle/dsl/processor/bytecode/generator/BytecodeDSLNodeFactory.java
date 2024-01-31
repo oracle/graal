@@ -149,8 +149,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     // The builder class invoked by the language parser to generate the bytecode.
     private final CodeTypeElement builder = new CodeTypeElement(Set.of(PUBLIC, STATIC, FINAL), ElementKind.CLASS, null, "Builder");
-    private final DeclaredType operationBuilderType = new GeneratedTypeMirror("", builder.getSimpleName().toString(), builder.asType());
-    private final TypeMirror parserType = generic(types.BytecodeParser, operationBuilderType);
+    private final DeclaredType bytecodeBuilderType = new GeneratedTypeMirror("", builder.getSimpleName().toString(), builder.asType());
+    private final TypeMirror parserType = generic(types.BytecodeParser, bytecodeBuilderType);
 
     // Implementations of public classes that Truffle interpreters interact with.
     private final CodeTypeElement bytecodeRootNodesImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "BytecodeRootNodesImpl");
@@ -974,7 +974,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     private CodeExecutableElement createSerialize() {
         CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC), context.getType(void.class), "serialize");
-        method.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
         method.addParameter(new CodeVariableElement(context.getType(DataOutput.class), "buffer"));
         method.addParameter(new CodeVariableElement(types.BytecodeSerializer, "callback"));
         method.addParameter(new CodeVariableElement(parserType, "parser"));
@@ -982,25 +981,25 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         addDoc(method, true, """
                         Serializes the bytecode nodes parsed by the {@code parser}.
+                        All metadata (e.g., source info) is serialized (even if it has not yet been parsed).
 
-                        @param config indicates whether to serialize metadata (e.g., source information).
                         @param buffer the buffer to write the byte output to.
                         @param callback the language-specific serializer for constants in the bytecode.
                         @param parser the parser.
                         """);
 
         CodeTreeBuilder init = CodeTreeBuilder.createBuilder();
-        init.startNew(operationBuilderType);
+        init.startNew(bytecodeBuilderType);
         init.startGroup();
         init.startNew(bytecodeRootNodesImpl.asType());
         init.string("parser");
         init.end(2);
-        init.string("config");
+        init.staticReference(types.BytecodeConfig, "COMPLETE");
         init.end();
 
         CodeTreeBuilder b = method.createBuilder();
 
-        b.declaration(operationBuilderType, "builder", init.build());
+        b.declaration(bytecodeBuilderType, "builder", init.build());
 
         b.startTryBlock();
 
@@ -1318,7 +1317,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.statement("return 0");
         b.end();
 
-        // this needs to be implemented still
+        // TODO: implement
         b.startReturn().string("0").end();
         return ex;
     }
@@ -2004,6 +2003,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             builder.add(createReparseConstructor());
             builder.add(createParseConstructor());
+
+            builder.add(createGetAllInstrumentations());
+            builder.add(createGetAllTags());
 
             builder.addAll(builderState);
 
@@ -3784,11 +3786,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.declaration(
                                         generic(HashMap.class, context.getDeclaredType(Integer.class), types.BytecodeLabel),
                                         "unresolvedBranchLabels",
-                                        CodeTreeBuilder.createBuilder().startStaticCall(operationBuilderType, "createBranchLabelMapping").string("unresolvedLabels").end());
+                                        CodeTreeBuilder.createBuilder().startStaticCall(bytecodeBuilderType, "createBranchLabelMapping").string("unresolvedLabels").end());
                         b.declaration(
                                         generic(HashMap.class, context.getDeclaredType(Integer.class), context.getDeclaredType(Integer.class)),
                                         "unresolvedBranchStackHeights",
-                                        CodeTreeBuilder.createBuilder().startStaticCall(operationBuilderType, "createBranchStackHeightMapping").string("unresolvedLabels").end());
+                                        CodeTreeBuilder.createBuilder().startStaticCall(bytecodeBuilderType, "createBranchStackHeightMapping").string("unresolvedLabels").end());
 
                         b.startStatement().startCall("finallyTryContext", "setHandler");
                         b.string("Arrays.copyOf(bc, bci)");
@@ -4567,6 +4569,39 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ctor;
         }
 
+        private CodeExecutableElement createGetAllInstrumentations() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeBuilder, "getAllInstrumentations");
+            addOverride(ex);
+
+            CodeTreeBuilder b = ex.createBuilder();
+            // TODO: implement
+            b.startReturn();
+            b.string("EMPTY_ARRAY");
+            b.end();
+
+            return ex;
+        }
+
+        private CodeExecutableElement createGetAllTags() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeBuilder, "getAllTags");
+            addOverride(ex);
+
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startReturn();
+            if (model.getProvidedTags().isEmpty()) {
+                b.string("EMPTY_ARRAY");
+            } else {
+                b.startNewArray(arrayOf(context.getDeclaredType(Class.class)), null);
+                for (TypeMirror mir : model.getProvidedTags()) {
+                    b.typeLiteral(mir);
+                }
+                b.end();
+            }
+            b.end();
+
+            return ex;
+        }
+
         private void buildContextSensitiveFieldInitializer(CodeTreeBuilder b) {
             b.statement("bc = new short[32]");
             b.statement("bci = 0");
@@ -4689,13 +4724,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createSerialize() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNodes, "serialize");
-            ex.renameArguments("config", "buffer", "callback");
+            ex.renameArguments("buffer", "callback");
             addOverride(ex);
             CodeTreeBuilder b = ex.createBuilder();
 
             b.startStatement();
             b.startStaticCall(bytecodeNodeGen.asType(), "serialize");
-            b.string("config");
             b.string("buffer");
             b.string("callback");
             b.string("getParserImpl()");
@@ -7310,7 +7344,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createIsDefined() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(boolean.class), "isDefined");
             CodeTreeBuilder b = ex.createBuilder();
-            b.startReturn().string("bci != ").staticReference(operationBuilderType, BuilderFactory.UNINIT).end();
+            b.startReturn().string("bci != ").staticReference(bytecodeBuilderType, BuilderFactory.UNINIT).end();
             return ex;
         }
 

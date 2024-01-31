@@ -204,7 +204,7 @@ public abstract class AbstractBasicInterpreterTest {
             // Perform a serialize-deserialize round trip.
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             try {
-                result.serialize(config, new DataOutputStream(output), SERIALIZER);
+                result.serialize(new DataOutputStream(output), SERIALIZER);
             } catch (IOException ex) {
                 throw new AssertionError(ex);
             }
