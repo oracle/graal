@@ -43,7 +43,6 @@ import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
-import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -75,7 +74,6 @@ import com.oracle.svm.hosted.nodes.DeoptProxyNode;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.BootstrapMethodIntrospection;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -127,6 +125,7 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.internal.org.objectweb.asm.Opcodes;
+import jdk.vm.ci.meta.ConstantPool.BootstrapMethodInvocation;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
@@ -897,9 +896,9 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         public class BootstrapMethodHandler {
 
             private Object loadConstantDynamic(int cpi, int opcode) {
-                BootstrapMethodIntrospection bootstrap;
+                BootstrapMethodInvocation bootstrap;
                 try {
-                    bootstrap = ((AnalysisConstantPool) constantPool).lookupBootstrapMethodIntrospection(cpi, -1);
+                    bootstrap = constantPool.lookupBootstrapMethodInvocation(cpi, -1);
                 } catch (Throwable ex) {
                     handleBootstrapException(ex, "constant");
                     return ex;
@@ -967,7 +966,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
              * return result;
              * </pre>
              */
-            protected Object resolveLinkedObject(int bci, int cpi, int opcode, BootstrapMethodIntrospection bootstrap, int parameterLength, List<JavaConstant> staticArgumentsList,
+            protected Object resolveLinkedObject(int bci, int cpi, int opcode, BootstrapMethodInvocation bootstrap, int parameterLength, List<JavaConstant> staticArgumentsList,
                             boolean isVarargs, boolean isPrimitiveConstant) {
                 ResolvedJavaMethod bootstrapMethod = bootstrap.getMethod();
 
@@ -1194,7 +1193,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
              * types in the bootstrap method declaration are detected in
              * {@link java.lang.invoke.MethodHandle#invoke(Object...)}.
              */
-            private boolean isBootstrapInvocationInvalid(BootstrapMethodIntrospection bootstrap, int parameterLength, List<JavaConstant> staticArgumentsList, boolean isVarargs, Class<?> typeClass) {
+            private boolean isBootstrapInvocationInvalid(BootstrapMethodInvocation bootstrap, int parameterLength, List<JavaConstant> staticArgumentsList, boolean isVarargs, Class<?> typeClass) {
                 ResolvedJavaMethod bootstrapMethod = bootstrap.getMethod();
                 return (isVarargs && parameterLength > (3 + staticArgumentsList.size())) || (!isVarargs && parameterLength != (3 + staticArgumentsList.size())) ||
                                 !(OriginalClassProvider.getJavaClass(bootstrapMethod.getSignature().getReturnType(null)).isAssignableFrom(typeClass) || bootstrapMethod.isConstructor()) ||
