@@ -612,7 +612,7 @@ A language implementation may choose to eagerly compute metadata that will likel
 For example, if a language makes frequent use of source information, it may make sense to create nodes with `BytecodeConfig.WITH_SOURCE` to eagerly parse source information.
 
 ### Serialization
-Bytecode DSL interpreters can support serialization, which allows a language to implement bytecode caching (à la Python's `.pyc` files). See the [Serialization guide](Serialization.md) for more details.
+Bytecode DSL interpreters can support serialization, which allows a language to implement bytecode caching (à la Python's `.pyc` files). See the [Serialization tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/SerializationTutorial.java) for more details.
 
 ### Continuations
 Bytecode DSL supports single-method continuations, whereby a bytecode node is suspended and can be resumed at a later point in time.
