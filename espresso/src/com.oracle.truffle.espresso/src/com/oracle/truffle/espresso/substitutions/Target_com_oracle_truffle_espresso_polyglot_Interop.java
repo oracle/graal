@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.substitutions;
 
 import java.math.BigInteger;
 import java.nio.ByteOrder;
-import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -2662,12 +2661,10 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
-            try {
-                // check destination array and throw guest exception in case it is too small
-                byte[] dest = destination.unwrap(getLanguage());
-                Objects.checkFromIndexSize(destinationOffset, length, dest.length);
-            } catch (IndexOutOfBoundsException ex) {
-                throw getMeta().throwExceptionWithMessage(getMeta().java_lang_ArrayIndexOutOfBoundsException, ex.getMessage());
+            // check destination array and throw guest exception in case it is too small
+            byte[] dest = destination.unwrap(getLanguage());
+            if (destinationOffset < 0 || destinationOffset + length > dest.length) {
+                throw getMeta().throwExceptionWithMessage(getMeta().java_lang_ArrayIndexOutOfBoundsException, "destination array is not able to hold the bytes");
             }
             try {
                 interop.readBuffer(InteropUtils.unwrapForeign(getLanguage(), receiver), byteOffset, destination.unwrap(getLanguage()), destinationOffset, length);
