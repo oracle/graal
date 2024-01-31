@@ -85,8 +85,6 @@ However, using the profiles collected on a different platform will typically wor
 3. Can the profiling information be reused after a code change, provided it is limited,
    or do you need to collect new profiling information for each build?
 
-TODO BS Update terminology and link to relevance/applicability/coverage explanation.
-
 Yes, the profiling information can always be reused, and the native image has to be correctly generated.
 It is not necessary to collect new profiling information for each build.
 
@@ -97,10 +95,10 @@ the compiler optimizations will be misled about which code is important.
 
 Let's consider some of the possible code changes and how they affect the program:
 
-- If you add additional methods to your codebase, that will reduce the profile coverage.
+- If you add additional methods to your codebase, that will reduce the profile applicability.
   An optimized-image build will not be able to associate profile information to these methods,
   so they may be suboptimally compiled.
-- If you remove existing methods from the codebase will reduce the profile's applicability.
+- If you remove existing methods from the codebase will reduce the profile's relevance.
   Some profile entries will not be used.
 - Method renaming will do both -- from the perspective of PGO, a renamed method
   is a different method.
@@ -112,6 +110,8 @@ Let's consider some of the possible code changes and how they affect the program
 In conclusion, it is always possible to use an outdated profile to generate an optimized image.
 Moreover, if the code changes are sufficiently small, or limited to the cold parts of the program,
 then using the old profile will usually not compromise the performance of the optimized image.
+
+For more information on this topic consult the [Tracking Profile Quality Over Time](PGO-Profile-Quality.md) page.
 
 
 4. Can you also run the benchmark with an instrumented image?
@@ -141,8 +141,7 @@ and subsequently use these profiles to build an optimized image for your product
 
 5. How to find out which code paths were missed during profiling?
 
-DRAFT:
-    - LCOV coverage
+DRAFT: see [LCOV coverage](PGO-LCOV.md).
 
 
 6. How does GraalVM generate a workload for profiling a web application?
