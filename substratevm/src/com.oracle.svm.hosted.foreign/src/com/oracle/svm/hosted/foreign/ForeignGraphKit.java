@@ -73,8 +73,10 @@ class ForeignGraphKit extends HostedGraphKit {
         assert args.size() == methodType.parameterCount() : args.size() + " " + methodType.parameterCount();
         for (int i = 0; i < args.size(); ++i) {
             ValueNode argument = args.get(i);
-            argument = createUnboxing(argument, JavaKind.fromJavaClass(methodType.parameterType(i)));
-            args.set(i, argument);
+            JavaKind targetKind = JavaKind.fromJavaClass(methodType.parameterType(i));
+            if (targetKind.isPrimitive()) {
+                args.set(i, createUnboxing(argument, targetKind));
+            }
         }
         return args;
     }
