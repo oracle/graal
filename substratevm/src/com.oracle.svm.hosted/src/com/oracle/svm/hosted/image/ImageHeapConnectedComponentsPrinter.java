@@ -216,7 +216,7 @@ public class ImageHeapConnectedComponentsPrinter {
             for (Iterator<ConnectedComponent> iterator = connectedComponents.iterator(); iterator.hasNext();) {
                 ConnectedComponent connectedComponent = iterator.next();
                 writer.append('{').newline();
-                writer.quote("componentId").append(':').quote(connectedComponent.getId()).append(',').newline();
+                writer.quote("componentId").append(':').printValue(connectedComponent.getId()).append(',').newline();
                 writer.quote("sizeInBytes").append(':').append(String.valueOf(connectedComponent.getSizeInBytes())).append(',').newline();
                 writer.quote("objects").append(":[");
                 List<ObjectInfo> objects = connectedComponent.getObjects();

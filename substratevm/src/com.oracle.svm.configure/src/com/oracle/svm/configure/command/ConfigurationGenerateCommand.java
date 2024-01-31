@@ -146,6 +146,7 @@ public class ConfigurationGenerateCommand extends ConfigurationCommand {
         boolean builtinCallerFilter = true;
         boolean builtinHeuristicFilter = true;
         List<URI> callerFilters = new ArrayList<>();
+        List<URI> accessFilters = new ArrayList<>();
 
         ConfigurationFileCollection omittedCollection = new ConfigurationFileCollection();
         ConfigurationFileCollection inputCollection = new ConfigurationFileCollection();
@@ -220,6 +221,9 @@ public class ConfigurationGenerateCommand extends ConfigurationCommand {
                 case "--caller-filter-file":
                     callerFilters.add(requirePathUri(option, value));
                     break;
+                case "--access-filter-file":
+                    accessFilters.add(requirePathUri(option, value));
+                    break;
                 case "--":
                     if (acceptTraceFileArgs) {
                         argumentsIterator.forEachRemaining(arg -> traceInputs.add(Paths.get(arg).toUri()));
@@ -248,15 +252,12 @@ public class ConfigurationGenerateCommand extends ConfigurationCommand {
                 callersFilterHierarchyFilterNode = AccessAdvisor.copyBuiltinCallerFilterTree();
                 callersFilter = new ComplexFilter(callersFilterHierarchyFilterNode);
             }
-            for (URI uri : callerFilters) {
-                try {
-                    FilterConfigurationParser parser = new FilterConfigurationParser(callersFilter);
-                    parser.parseAndRegister(uri);
-                } catch (Exception e) {
-                    throw new ConfigurationUsageException("Cannot parse filter file " + uri + ": " + e);
-                }
-            }
-            callersFilter.getHierarchyFilterNode().removeRedundantNodes();
+            parseFilterFiles(callersFilter, callerFilters);
+        }
+        ComplexFilter accessFilter = null;
+        if (!accessFilters.isEmpty()) {
+            accessFilter = new ComplexFilter(AccessAdvisor.copyBuiltinAccessFilterTree());
+            parseFilterFiles(accessFilter, accessFilters);
         }
 
         ConfigurationSet configurationSet;
@@ -286,6 +287,9 @@ public class ConfigurationGenerateCommand extends ConfigurationCommand {
             advisor.setHeuristicsEnabled(builtinHeuristicFilter);
             if (callersFilter != null) {
                 advisor.setCallerFilterTree(callersFilter);
+            }
+            if (accessFilter != null) {
+                advisor.setAccessFilterTree(accessFilter);
             }
 
             TraceProcessor processor = new TraceProcessor(advisor);
@@ -329,6 +333,17 @@ public class ConfigurationGenerateCommand extends ConfigurationCommand {
                 configurationSet.getPredefinedClassesConfiguration().printJson(writer);
             }
         }
+    }
+
+    private static void parseFilterFiles(ComplexFilter filter, List<URI> filterFiles) {
+        for (URI uri : filterFiles) {
+            try {
+                new FilterConfigurationParser(filter).parseAndRegister(uri);
+            } catch (Exception e) {
+                throw new ConfigurationUsageException("Cannot parse filter file " + uri + ": " + e);
+            }
+        }
+        filter.getHierarchyFilterNode().removeRedundantNodes();
     }
 
     @SuppressWarnings("fallthrough")
