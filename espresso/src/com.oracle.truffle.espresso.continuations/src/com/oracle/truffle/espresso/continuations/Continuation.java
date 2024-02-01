@@ -488,7 +488,7 @@ public final class Continuation implements Externalizable {
         String declaringClassAsString = in.readUTF();
         String name = in.readUTF();
 
-        Class<?> returnType = !returnTypeAsString.equals("void") ? Class.forName(returnTypeAsString, true, classLoader) : null;
+        Class<?> returnType = classForTypeName(classLoader, returnTypeAsString);
         Class<?> declaringClass;
         // Lambda classes can't be looked up by name. This is a JVM optimization designed to avoid
         // contention on the global dictionary lock, but it means we need another way to get the
@@ -507,7 +507,9 @@ public final class Continuation implements Externalizable {
         var numArgs = in.readUnsignedByte();
         var argTypes = new Class<?>[numArgs];
         for (int i = 0; i < numArgs; i++) {
-            argTypes[i] = Class.forName(in.readUTF(), false, classLoader);
+            String typeName = in.readUTF();
+            Class<?> type = classForTypeName(classLoader, typeName);
+            argTypes[i] = type;
         }
 
         for (Method method : declaringClass.getDeclaredMethods()) {
@@ -520,6 +522,21 @@ public final class Continuation implements Externalizable {
         throw new NoSuchMethodException("%s %s(%s)".formatted(
                 returnTypeAsString, name, String.join(", ", Arrays.stream(argTypes).map(Object::toString).toList()))
         );
+    }
+
+    private static Class<?> classForTypeName(ClassLoader classLoader, String typeName) throws ClassNotFoundException {
+        return switch (typeName) {
+            case "void" -> null;
+            case "int" -> int.class;
+            case "long" -> long.class;
+            case "double" -> double.class;
+            case "float" -> float.class;
+            case "boolean" -> boolean.class;
+            case "char" -> char.class;
+            case "byte" -> byte.class;
+            case "short" -> short.class;
+            default -> Class.forName(typeName, false, classLoader);
+        };
     }
 
     /**
