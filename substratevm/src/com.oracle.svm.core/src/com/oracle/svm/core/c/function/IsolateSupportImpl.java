@@ -57,6 +57,10 @@ public final class IsolateSupportImpl implements IsolateSupport {
 
     @Override
     public IsolateThread createIsolate(CreateIsolateParameters parameters) throws IsolateException {
+        return createIsolate(parameters, false);
+    }
+
+    public static IsolateThread createIsolate(CreateIsolateParameters parameters, boolean compilationIsolate) throws IsolateException {
         if (!SubstrateOptions.SpawnIsolates.getValue()) {
             throw new IsolateException(ISOLATES_DISABLED_MESSAGE);
         }
@@ -100,11 +104,12 @@ public final class IsolateSupportImpl implements IsolateSupport {
             params.setReservedSpaceSize(parameters.getReservedAddressSpaceSize());
             params.setAuxiliaryImagePath(auxImagePath.get());
             params.setAuxiliaryImageReservedSpaceSize(parameters.getAuxiliaryImageReservedSpaceSize());
-            params.setVersion(4);
+            params.setVersion(5);
             params.setIgnoreUnrecognizedArguments(false);
             params.setExitWhenArgumentParsingFails(false);
             params.setArgc(argc);
             params.setArgv(argv);
+            params.setIsCompilationIsolate(compilationIsolate);
 
             // Try to create the isolate.
             IsolateThreadPointer isolateThreadPtr = UnsafeStackValue.get(IsolateThreadPointer.class);

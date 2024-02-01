@@ -39,6 +39,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.c.function.IsolateSupportImpl;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.handles.PrimitiveArrayView;
@@ -62,6 +63,33 @@ import jdk.vm.ci.code.InstalledCode;
 
 public final class IsolatedGraalUtils {
 
+    /**
+     * Creates a compilation isolate. The compilation isolate will inherit the values of some
+     * options from the main isolate, while using custom values for other options. Here is a list of
+     * sources for option values, sorted from least to highest priority. If options are specified
+     * multiple times, the highest priority takes precedence.
+     *
+     * <ol>
+     * <li>The compilation isolate implicitly inherits the values of hosted and runtime options that
+     * were specified during the image build.</li>
+     * <li>For runtime options, where {@link RuntimeOptionKey#shouldCopyToCompilationIsolate}
+     * returns true, the main isolate copies its option value to the compilation isolate
+     * arguments.</li>
+     * <li>Options that are specified in {@link SubstrateOptions#CompilationIsolateOptions} are
+     * copied to the compilation isolate arguments as well.</li>
+     * </ol>
+     *
+     * All Native Image-specific runtime options are passed to the compilation isolate during
+     * isolate creation. This is important for Native Image code that is used during early startup.
+     *
+     * All options outside the control of Native Image (e.g., Truffle or Graal) are encoded as
+     * binary data and applied to the compilation isolate after the isolate is already fully
+     * started. Note that these option values have the highest priority and take precedence.
+     *
+     * Note that the compilation isolate always parses the runtime options that it receives from the
+     * main isolate. This is even the case if {@link SubstrateOptions#ParseRuntimeOptions} is
+     * disabled.
+     */
     public static CompilerIsolateThread createCompilationIsolate() {
         CreateIsolateParameters.Builder builder = new CreateIsolateParameters.Builder();
         long addressSpaceSize = SubstrateOptions.CompilationIsolateAddressSpaceSize.getValue();
@@ -81,7 +109,7 @@ public final class IsolatedGraalUtils {
         appendOptionsExplicitlySetForCompilationIsolates(builder);
 
         CreateIsolateParameters params = builder.build();
-        CompilerIsolateThread isolate = (CompilerIsolateThread) Isolates.createIsolate(params);
+        CompilerIsolateThread isolate = (CompilerIsolateThread) IsolateSupportImpl.createIsolate(params, true);
         initializeCompilationIsolate(isolate);
         return isolate;
     }
@@ -97,13 +125,6 @@ public final class IsolatedGraalUtils {
 
         /* Compilation isolates do the reference handling manually to avoid the extra thread. */
         appendArgument(builder, SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling, false);
-
-        /*
-         * All compilation isolates should use the same folder for debug dumps, to avoid confusion
-         * of users. Always setting the DumpPath option in the compilation isolates is the easiest
-         * way to achieve that.
-         */
-        appendArgument(builder, DebugOptions.DumpPath, DebugOptions.getDumpDirectoryName(RuntimeOptionValues.singleton()));
     }
 
     private static void appendOptionsExplicitlySetForCompilationIsolates(CreateIsolateParameters.Builder builder) {
@@ -242,11 +263,7 @@ public final class IsolatedGraalUtils {
         IsolatedCompileContext.set(null);
     }
 
-    /**
-     * All options outside the control of Native Image (e.g., Truffle, Graal) are encoded as binary
-     * data and applied to the compilation isolate after the isolate is already fully started.
-     */
-    public static byte[] encodeNonNativeImageRuntimeOptionValues() {
+    private static byte[] encodeNonNativeImageRuntimeOptionValues() {
         EconomicMap<OptionKey<?>, Object> result = EconomicMap.create();
         var cur = RuntimeOptionValues.singleton().getMap().getEntries();
         while (cur.advance()) {
@@ -255,10 +272,17 @@ public final class IsolatedGraalUtils {
                 result.put(optionKey, cur.getValue());
             }
         }
+
+        /*
+         * All compilation isolates should use the same folder for debug dumps, to avoid confusion
+         * of users. Always setting the DumpPath option in the compilation isolates is the easiest
+         * way to achieve that.
+         */
+        result.put(DebugOptions.DumpPath, DebugOptions.getDumpDirectoryName(RuntimeOptionValues.singleton()));
         return OptionValuesEncoder.encode(result);
     }
 
-    public static void applyClientRuntimeOptionValues(PointerBase encodedOptionsPtr, int encodedOptionsLength) {
+    private static void applyClientRuntimeOptionValues(PointerBase encodedOptionsPtr, int encodedOptionsLength) {
         if (encodedOptionsPtr.isNull()) {
             return;
         }
