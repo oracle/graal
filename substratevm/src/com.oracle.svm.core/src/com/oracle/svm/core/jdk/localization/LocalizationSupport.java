@@ -77,8 +77,6 @@ public class LocalizationSupport {
 
     public final Map<String, Charset> charsets = new HashMap<>();
 
-    public final Locale defaultLocale;
-
     public final Locale[] allLocales;
 
     public final Set<String> supportedLanguageTags;
@@ -91,8 +89,7 @@ public class LocalizationSupport {
 
     private final EconomicMap<String, RuntimeConditionSet> registeredBundles = ImageHeapMap.create();
 
-    public LocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset) {
-        this.defaultLocale = defaultLocale;
+    public LocalizationSupport(Set<Locale> locales, Charset defaultCharset) {
         this.allLocales = locales.toArray(new Locale[0]);
         this.defaultCharset = defaultCharset;
         this.supportedLanguageTags = locales.stream().map(Locale::toString).collect(Collectors.toSet());
