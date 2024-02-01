@@ -107,9 +107,6 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
     }
 
     @Override
-    protected abstract void updateInterval();
-
-    @Override
     protected void stopSampling() {
         assert VMOperation.isInProgressAtSafepoint();
         assert getSignalHandlerIsolate().isNonNull();
@@ -152,7 +149,17 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
 
     protected abstract void installSignalHandler();
 
-    protected abstract void uninstallSignalHandler();
+    protected void uninstallSignalHandler() {
+        /*
+         * Do not replace the signal handler with the default one because a signal might be pending
+         * for some thread (the default signal handler would print "Profiling timer expired" to the
+         * output).
+         */
+    }
+
+    protected abstract void install0(IsolateThread thread);
+
+    protected abstract void uninstall0(IsolateThread thread);
 
     @Uninterruptible(reason = "Prevent VM operations that modify thread-local execution sampler state.")
     private static void install(IsolateThread thread) {
@@ -160,6 +167,7 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
 
         if (ExecutionSamplerInstallation.isAllowed(thread)) {
             ExecutionSamplerInstallation.installed(thread);
+            singleton().install0(thread);
         }
     }
 
@@ -175,6 +183,7 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
              */
             storeIsolateThreadInNativeThreadLocal(WordFactory.nullPointer());
             ExecutionSamplerInstallation.uninstalled(thread);
+            uninstall0(thread);
         }
     }
 
