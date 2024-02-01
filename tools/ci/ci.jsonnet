@@ -81,17 +81,13 @@
   },
 
   builds: [
-    common.linux_amd64   + common.oraclejdk20 + tools_gate,
-    common.linux_amd64   + common.oraclejdk17 + tools_gate,
+    common.linux_amd64   + common.oraclejdk21 + tools_gate,
 
-    common.linux_amd64   + common.oraclejdk20 + tools_javadoc,
-    common.linux_amd64   + common.oraclejdk17 + tools_coverage_weekly,
-    common.linux_aarch64 + common.labsjdk17   + tools_gate_lite,
+    common.linux_amd64   + common.oraclejdk21 + tools_coverage_weekly,
+    common.linux_aarch64 + common.labsjdk21   + tools_gate_lite,
 
-    common.windows_amd64 + common.oraclejdk20 + tools_gate_lite + devkits["windows-jdk20"],
-    common.windows_amd64 + common.oraclejdk17 + tools_gate_lite + devkits["windows-jdk17"],
+    common.windows_amd64 + common.oraclejdk21 + tools_gate_lite + devkits["windows-jdk21"],
 
-    common.darwin_amd64  + common.oraclejdk20 + tools_gate_lite,
-    common.darwin_amd64  + common.oraclejdk17 + tools_gate_lite,
+    common.darwin_amd64  + common.oraclejdk21 + tools_gate_lite,
   ],
 }
