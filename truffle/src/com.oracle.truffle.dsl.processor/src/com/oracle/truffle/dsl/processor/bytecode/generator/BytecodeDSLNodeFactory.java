@@ -290,6 +290,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         // Define serialization methods and helper fields.
         if (model.enableSerialization) {
             bytecodeNodeGen.add(createSerialize());
+            bytecodeNodeGen.add(createDoSerialize());
             bytecodeNodeGen.add(createDeserialize());
         }
 
@@ -982,6 +983,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         addDoc(method, true, """
                         Serializes the bytecode nodes parsed by the {@code parser}.
                         All metadata (e.g., source info) is serialized (even if it has not yet been parsed).
+                        <p>
+                        Unlike {@link BytecodeRootNodes#serialize}, this method does not use already-constructed root nodes,
+                        so it cannot serialize field values that get set outside of the parser.
 
                         @param buffer the buffer to write the byte output to.
                         @param callback the language-specific serializer for constants in the bytecode.
@@ -1001,11 +1005,33 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         b.declaration(bytecodeBuilderType, "builder", init.build());
 
+        b.startStatement();
+        b.startCall("doSerialize");
+        b.string("buffer");
+        b.string("callback");
+        b.string("builder");
+        b.string("null"); // existingNodes
+        b.end(2);
+
+        return withTruffleBoundary(method);
+    }
+
+    private CodeExecutableElement createDoSerialize() {
+        CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE, STATIC), context.getType(void.class), "doSerialize");
+        method.addParameter(new CodeVariableElement(context.getType(DataOutput.class), "buffer"));
+        method.addParameter(new CodeVariableElement(types.BytecodeSerializer, "callback"));
+        method.addParameter(new CodeVariableElement(bytecodeBuilderType, "builder"));
+        method.addParameter(new CodeVariableElement(generic(List.class, bytecodeNodeGen.asType()), "existingNodes"));
+        method.addThrownType(context.getType(IOException.class));
+
+        CodeTreeBuilder b = method.createBuilder();
+
         b.startTryBlock();
 
         b.startStatement().startCall("builder", "serialize");
         b.string("buffer");
         b.string("callback");
+        b.string("existingNodes");
         b.end().end();
 
         b.end().startCatchBlock(context.getType(IOError.class), "e");
@@ -2057,6 +2083,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             context.getType(void.class), "serialize");
             method.addParameter(new CodeVariableElement(type(DataOutput.class), "buffer"));
             method.addParameter(new CodeVariableElement(types.BytecodeSerializer, "callback"));
+
+            // When serializing existing BytecodeRootNodes, we want to use their field values rather
+            // than the ones that get stored on the dummy root nodes during the reparse.
+            TypeMirror nodeList = generic(List.class, bytecodeNodeGen.asType());
+            CodeVariableElement existingNodes = new CodeVariableElement(nodeList, "existingNodes");
+            mergeSuppressWarnings(existingNodes, "unused");
+            method.addParameter(existingNodes);
+
             method.addThrownType(context.getType(IOException.class));
             CodeTreeBuilder b = method.createBuilder();
 
@@ -2072,10 +2106,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.lineComment("1. Serialize the root nodes and their constants.");
                 b.startStatement().startCall("nodes.getParserImpl()", "parse").string("this").end(2);
 
-                b.lineComment("2. Serialize the fields stored on each root node.");
-                b.statement("short[][] nodeFields = new short[builtNodes.size()][]");
+                b.lineComment("2. Serialize the fields stored on each root node. If existingNodes is provided, serialize those fields instead of the new root nodes' fields.");
+
+                b.declaration(nodeList, "nodesToSerialize", "existingNodes != null ? existingNodes : builtNodes");
+
+                b.statement("short[][] nodeFields = new short[nodesToSerialize.size()][]");
                 b.startFor().string("int i = 0; i < nodeFields.length; i ++").end().startBlock();
-                b.declaration(bytecodeNodeGen.asType(), "node", "builtNodes.get(i)");
+                b.declaration(bytecodeNodeGen.asType(), "node", "nodesToSerialize.get(i)");
                 b.statement("short[] fields = nodeFields[i] = new short[" + model.serializedFields.size() + "]");
                 for (int i = 0; i < model.serializedFields.size(); i++) {
                     VariableElement var = model.serializedFields.get(i);
@@ -4728,11 +4765,26 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             addOverride(ex);
             CodeTreeBuilder b = ex.createBuilder();
 
+            b.declaration(generic(ArrayList.class, bytecodeNodeGen.asType()), "existingNodes", "new ArrayList<>(nodes.length)");
+            b.startFor().string("int i = 0; i < nodes.length; i++").end().startBlock();
+            b.startStatement().startCall("existingNodes", "add");
+            b.startGroup().cast(bytecodeNodeGen.asType()).string("nodes[i]").end();
+            b.end(2);
+            b.end();
+
             b.startStatement();
-            b.startStaticCall(bytecodeNodeGen.asType(), "serialize");
+            b.startStaticCall(bytecodeNodeGen.asType(), "doSerialize");
             b.string("buffer");
             b.string("callback");
-            b.string("getParserImpl()");
+
+            // Create a new Builder with this BytecodeRootNodes instance.
+            b.startNew(bytecodeBuilderType);
+            b.string("this");
+            b.staticReference(types.BytecodeConfig, "COMPLETE");
+            b.end();
+
+            b.string("existingNodes");
+
             b.end(2);
 
             return ex;
