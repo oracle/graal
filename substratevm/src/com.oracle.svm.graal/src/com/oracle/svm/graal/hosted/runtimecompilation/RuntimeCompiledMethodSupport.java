@@ -71,6 +71,7 @@ import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
@@ -78,6 +79,7 @@ import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphDecoder;
 import jdk.graal.compiler.nodes.GraphEncoder;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
 import jdk.graal.compiler.nodes.StateSplit;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -96,6 +98,8 @@ import jdk.graal.compiler.phases.common.IterativeConditionalEliminationPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.replacements.nodes.MacroNode;
+import jdk.graal.compiler.replacements.nodes.MacroWithExceptionNode;
 import jdk.graal.compiler.truffle.nodes.ObjectLocationIdentity;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BytecodeFrame;
@@ -466,6 +470,24 @@ public class RuntimeCompiledMethodSupport {
              * so this cannot be enabled at the moment.
              */
             return false;
+        }
+    }
+
+    /**
+     * Converts {@link MacroWithExceptionNode}s into explicit {@link InvokeWithExceptionNode}s. This
+     * is necessary to ensure a MacroNode within runtime compilation converted back to an invoke
+     * will always have a proper deoptimization target.
+     */
+    public static class ConvertMacroNodes extends Phase {
+        @Override
+        protected void run(StructuredGraph graph) {
+            for (Node n : graph.getNodes().snapshot()) {
+                VMError.guarantee(!(n instanceof MacroNode), "DeoptTarget Methods do not support Macro Nodes: method %s, node %s", graph.method(), n);
+
+                if (n instanceof MacroWithExceptionNode macro) {
+                    macro.replaceWithInvoke();
+                }
+            }
         }
     }
 

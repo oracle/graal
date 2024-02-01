@@ -748,6 +748,13 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         }
 
         @Override
+        public void afterParsingHook(AnalysisMethod method, StructuredGraph graph) {
+            if (method.isDeoptTarget()) {
+                new RuntimeCompiledMethodSupport.ConvertMacroNodes().apply(graph);
+            }
+        }
+
+        @Override
         public void initializeInlineBeforeAnalysisPolicy(SVMHost svmHost, InlineBeforeAnalysisPolicyUtils inliningUtils) {
             if (RuntimeCompilationFeature.Options.RuntimeCompilationInlineBeforeAnalysis.getValue()) {
                 assert runtimeInlineBeforeAnalysisPolicy == null;

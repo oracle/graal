@@ -35,6 +35,27 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 
+import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
+import com.oracle.svm.core.code.FrameInfoEncoder;
+import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
+import com.oracle.svm.core.deopt.DeoptTest;
+import com.oracle.svm.core.graal.GraalConfiguration;
+import com.oracle.svm.core.graal.code.StubCallingConvention;
+import com.oracle.svm.core.graal.nodes.DeoptTestNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
+import com.oracle.svm.core.graal.snippets.DeoptTester;
+import com.oracle.svm.core.graal.stackvalue.StackValueNode;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedUniverse;
+
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.iterators.NodePredicate;
@@ -64,30 +85,9 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
+import jdk.graal.compiler.replacements.nodes.MacroInvokable;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 import jdk.graal.compiler.virtual.phases.ea.ReadEliminationPhase;
-
-import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.svm.common.meta.MultiMethod;
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.core.code.FrameInfoEncoder;
-import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
-import com.oracle.svm.core.deopt.DeoptTest;
-import com.oracle.svm.core.graal.GraalConfiguration;
-import com.oracle.svm.core.graal.code.StubCallingConvention;
-import com.oracle.svm.core.graal.nodes.DeoptTestNode;
-import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
-import com.oracle.svm.core.graal.snippets.DeoptTester;
-import com.oracle.svm.core.graal.stackvalue.StackValueNode;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.HostedUniverse;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.site.Call;
@@ -424,12 +424,12 @@ public class DeoptimizationUtils {
                      * disappears. Therefore, this frame state cannot be a deoptimization target.
                      */
                     continue;
-                } else if (usage instanceof Invoke && ((Invoke) usage).stateAfter() == frameState) {
+                } else if (usage instanceof Invoke invoke && invoke.stateAfter() == frameState) {
                     /*
                      * If the FrameState is followed immediately by a dead end, then this state can
                      * never be reached and does not need to be registered.
                      */
-                    FixedNode next = ((Invoke) usage).next();
+                    FixedNode next = invoke.next();
                     while (next instanceof AbstractBeginNode) {
                         next = ((AbstractBeginNode) next).next();
                     }
@@ -457,19 +457,27 @@ public class DeoptimizationUtils {
             /*
              * graph.getInvokes() only iterates invokes that have a MethodCallTarget, so by using it
              * we would miss invocations that are already intrinsified to an indirect call.
+             *
+             * The FrameState for the invoke (which is visited by the above loop) is the state after
+             * the call (where deoptimization that happens after the call has returned will continue
+             * execution). We also need to register the state during the call (where deoptimization
+             * while the call is on the stack will continue execution).
+             *
+             * MacroInvokable nodes may revert back to an invoke; therefore we must also register
+             * the state during the reverted call.
+             *
+             * Note that the bci of the Invoke and the bci of the FrameState of the Invoke are
+             * different: the Invoke has the bci of the invocation bytecode, the FrameState has the
+             * bci of the next bytecode after the invoke.
              */
+            FrameState stateDuring = null;
             if (n instanceof Invoke invoke) {
-                /*
-                 * The FrameState for the invoke (which is visited by the above loop) is the state
-                 * after the call (where deoptimization that happens after the call has returned
-                 * will continue execution). We also need to register the state during the call
-                 * (where deoptimization while the call is on the stack will continue execution).
-                 *
-                 * Note that the bci of the Invoke and the bci of the FrameState of the Invoke are
-                 * different: the Invoke has the bci of the invocation bytecode, the FrameState has
-                 * the bci of the next bytecode after the invoke.
-                 */
-                FrameState stateDuring = invoke.stateAfter().duplicateModifiedDuringCall(invoke.bci(), invoke.asNode().getStackKind());
+                stateDuring = invoke.stateAfter().duplicateModifiedDuringCall(invoke.bci(), invoke.asNode().getStackKind());
+            } else if (n instanceof MacroInvokable macro) {
+                stateDuring = macro.stateAfter().duplicateModifiedDuringCall(macro.bci(), macro.asNode().getStackKind());
+            }
+
+            if (stateDuring != null) {
                 assert stateDuring.getStackState() == FrameState.StackState.AfterPop : stateDuring;
                 ResolvedJavaMethod method = deoptRetriever.getDeoptTarget(stateDuring.getMethod());
                 if (SubstrateCompilationDirectives.singleton().registerDeoptEntry(stateDuring, method)) {
