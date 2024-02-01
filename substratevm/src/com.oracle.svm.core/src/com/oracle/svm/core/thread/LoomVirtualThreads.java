@@ -153,7 +153,7 @@ final class LoomVirtualThreads implements VirtualThreads {
         if (!isVirtual(thread)) {
             return getPlatformThreadStackTrace(filterExceptions, thread, callerSP);
         }
-        if (thread == Thread.currentThread()) {
+        if (thread != null && thread == Thread.currentThread()) {
             return getVirtualThreadStackTrace(filterExceptions, thread, callerSP);
         }
         assert !filterExceptions : "exception stack traces can be taken only for the current thread";
@@ -217,7 +217,7 @@ final class LoomVirtualThreads implements VirtualThreads {
     }
 
     private static StackTraceElement[] getPlatformThreadStackTrace(boolean filterExceptions, Thread thread, Pointer callerSP) {
-        if (thread == PlatformThreads.currentThread.get()) {
+        if (thread != null && thread == PlatformThreads.currentThread.get()) {
             Pointer startSP = getCarrierSPOrElse(thread, callerSP);
             return StackTraceUtils.getStackTrace(filterExceptions, startSP, WordFactory.nullPointer());
         }

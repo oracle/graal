@@ -85,6 +85,9 @@ public class StackTraceUtils {
     @NeverInline("Potentially starting a stack walk in the caller frame")
     public static StackTraceElement[] getStackTraceAtSafepoint(Thread thread) {
         assert VMOperation.isInProgressAtSafepoint();
+        if (thread == null) {
+            return NO_ELEMENTS;
+        }
         if (VirtualThreads.isSupported()) { // NOTE: also for platform threads!
             return VirtualThreads.singleton().getVirtualOrPlatformThreadStackTraceAtSafepoint(thread, readCallerStackPointer());
         }
@@ -215,7 +218,7 @@ public class StackTraceUtils {
     }
 
     public static StackTraceElement[] asyncGetStackTrace(Thread thread) {
-        if (!thread.isAlive()) {
+        if (thread == null || !thread.isAlive()) {
             /* Avoid triggering a safepoint operation below if the thread is not even alive. */
             return NO_ELEMENTS;
         }
