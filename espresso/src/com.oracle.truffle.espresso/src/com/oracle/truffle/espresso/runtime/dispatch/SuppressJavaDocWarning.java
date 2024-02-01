@@ -21,11 +21,8 @@
  * questions.
  */
 
-/**
- * Polyglot interop related classes.
- */
-// TODO GR-43114 fix warnings
-@SuppressPackageWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
 package com.oracle.truffle.espresso.runtime.dispatch;
 
-import com.oracle.truffle.api.dsl.SuppressPackageWarnings;
+class SuppressJavaDocWarning {
+    // Javadoc complains about empty packages with no way to suppress the warning.
+}

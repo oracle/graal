@@ -721,8 +721,8 @@ public final class Target_sun_misc_Unsafe {
      * assigns to the elements of the given <tt>loadavg</tt> array. The system imposes a maximum of
      * 3 samples, representing averages over the last 1, 5, and 15 minutes, respectively.
      *
-     * @params loadavg an array of double of size nelems
-     * @params nelems the number of samples to be retrieved and must be 1 to 3.
+     * @param loadavg an array of double of size nelems
+     * @param nelems the number of samples to be retrieved and must be 1 to 3.
      *
      * @return the number of samples actually retrieved; or -1 if the load average is unobtainable.
      */
