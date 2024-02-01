@@ -38,7 +38,6 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -80,7 +79,6 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.asm.Assembler;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.code.CompilationResult;
-import jdk.graal.compiler.code.DataSection;
 import jdk.graal.compiler.core.GraalCompiler;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.CompilationIdentifier.Verbosity;
@@ -135,7 +133,6 @@ import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.Reference;
-import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.VMConstant;
@@ -172,7 +169,6 @@ public class CompileQueue {
     private Suites deoptTargetSuites = null;
     private LIRSuites regularLIRSuites = null;
     private LIRSuites deoptTargetLIRSuites = null;
-    private final ConcurrentMap<Constant, DataSection.Data> dataCache;
 
     protected final FeatureHandler featureHandler;
     protected final GlobalMetrics metricValues = new GlobalMetrics();
@@ -353,7 +349,6 @@ public class CompileQueue {
         this.runtimeConfig = runtimeConfiguration;
         this.metaAccess = runtimeConfiguration.getProviders().getMetaAccess();
         this.deoptimizeAll = deoptimizeAll;
-        this.dataCache = new ConcurrentHashMap<>();
         this.executor = new CompletionExecutor(debug, universe.getBigBang());
         this.featureHandler = featureHandler;
         this.graphTransplanter = createGraphTransplanter();
@@ -612,7 +607,7 @@ public class CompileQueue {
                 if (hMethod.isDeoptTarget() || SubstrateCompilationDirectives.isRuntimeCompiledMethod(hMethod)) {
                     /*
                      * Deoptimization targets are parsed in a later phase.
-                     * 
+                     *
                      * Runtime compiled methods are compiled and encoded in a separate process.
                      */
                     continue;
@@ -1144,7 +1139,6 @@ public class CompileQueue {
                             debug,
                             compilationResult,
                             uncompressedNullRegister,
-                            EconomicMap.wrapMap(dataCache),
                             CompilationResultBuilder.NO_VERIFIERS,
                             lir);
         }
