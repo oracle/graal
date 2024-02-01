@@ -68,6 +68,15 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNode;
  * }
  * </pre>
  *
+ * A serializer is responsible for encoding:
+ * <ul>
+ * <li>objects used as constants in the bytecode (i.e., objects passed to
+ * {@code emitLoadConstant})</li>
+ * <li>objects stored in non-{@code transient} fields of the root node</li>
+ * <li>{@link Source} objects passed in builder calls (i.e., sources passed to
+ * {@code beginSource})</li>
+ * </ul>
+ *
  * @see com.oracle.truffle.api.bytecode.GenerateBytecode#enableSerialization
  * @since 24.1
  */

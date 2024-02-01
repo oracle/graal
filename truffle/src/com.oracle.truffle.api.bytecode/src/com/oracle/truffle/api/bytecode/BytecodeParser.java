@@ -43,23 +43,30 @@ package com.oracle.truffle.api.bytecode;
 /**
  * Functional interface containing a method to parse one or more nodes using a
  * {@link BytecodeBuilder}.
- *
- * Implementations are commonly written as anonymous functions that perform a traversal over a given
- * tree representation. For example:
+ * <p>
+ * Implementations are commonly written as tree traversals. For example:
  *
  * <pre>
  * MyTree myTree = ...;
- * MyBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, b -> {
+ * BytecodeRootNodes<MyBytecodeRootNode> nodes = MyBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, b -> {
+ *     b.beginRoot(...);
  *     myTree.accept(new MyTreeVisitor(b));
+ *     b.endRoot();
  * })
  * </pre>
  *
  * In the above example, the visitor uses the builder {@code b} to emit bytecode.
- *
- * Note that a parser can be invoked multiple times in order to <a href=
+ * <p>
+ * The parser should be idempotent (i.e., it can be repeatedly invoked and produces the same
+ * result). This is because a parser can be invoked multiple times to <a href=
  * "https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/UserGuide.md#reparsing-metadata">reparse</a>
- * nodes (e.g., to add source information). Thus, the parse operation should be idempotent.
- *
+ * nodes (e.g., to add source information).
+ * <p>
+ * Additionally, if serialization is used, the parser should be free of most side effects. The only
+ * side effects permitted are field writes on the generated root nodes (since fields are
+ * serialized); all other side effects (e.g., non-builder method calls) will not be captured during
+ * serialization.
+ * <p>
  * Since the parser is kept alive for reparsing, it can also prevent garbage collection of any input
  * data stored on it (e.g. source code or ASTs). It may be preferable to construct the input data on
  * the fly (e.g., by reading it from disk) instead of storing it on the parser.
