@@ -545,8 +545,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     }
 
     // region Continuations
-    private static final Object hfrPassthroughSlotKey = new Object();
-
     // Possibly initializes the frame from the frame record passed through the
     // continuations-specific calling convention.
     private boolean maybePrepareForContinuation(VirtualFrame frame) {
@@ -569,7 +567,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         getRoot().setContinuationHostFrameRecord(frame, record);
 
         // Blindly copy stuff in.
-        // TODO: This will break when assertions are enabled because we're not copying tags.
         // TODO: Copy aux slots?
         // TODO: Be less blind, do some sanity checks.
         for (int i = 0; i < record.pointers.length; i++) {
