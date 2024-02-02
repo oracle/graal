@@ -1649,7 +1649,9 @@ suite = {
           "jdk.unsupported", # sun.misc.Unsafe
           "java.logging",
           "java.management",
-          "java.sql" # java.sql.date java.sql.Time
+          "java.sql", # java.sql.date java.sql.Time
+          "org.graalvm.collections",
+          "org.graalvm.nativeimage",
         ],
         "exports" : [
           # Unqualified exports
@@ -1728,6 +1730,8 @@ suite = {
         "TRUFFLE_API_VERSION",
       ],
       "distDependencies" : [
+        "sdk:COLLECTIONS",
+        "sdk:NATIVEIMAGE",
         "sdk:POLYGLOT",
       ],
       "description" : "Truffle is a multi-language framework for executing dynamic languages\nthat achieves high performance when combined with Graal.",
