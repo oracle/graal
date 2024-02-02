@@ -102,7 +102,7 @@ public class MethodHandleImplTest extends MethodSubstitutionTest {
             }
         }
 
-        private volatile int threadCount;
+        @SuppressWarnings("unused") private volatile int threadCount;
 
         public void incrementThreadCount() {
             THREAD_COUNT.getAndAdd(this, 1);
