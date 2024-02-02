@@ -456,7 +456,7 @@ public final class DFAGenerator implements JsonConvertible {
             if (isGenericCG()) {
                 transition.getTarget().incPredecessors();
             }
-            if (state.isUnAnchoredFinalState() && (!successorState.isUnAnchoredFinalState() || successorState != state)) {
+            if (state.isUnAnchoredFinalState() && successorState != state) {
                 // final state transition must not overwrite the single capture group result in
                 // simpleCG mode if there are more possible states after the current final state,
                 // mostly due to side effects from zero-width group matches, e.g.:
