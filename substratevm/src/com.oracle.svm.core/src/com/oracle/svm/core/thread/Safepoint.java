@@ -174,11 +174,11 @@ public final class Safepoint {
     }
 
     private static long getSafepointPromptnessWarningNanos() {
-        return Options.SafepointPromptnessWarningNanos.getValue().longValue();
+        return Options.SafepointPromptnessWarningNanos.getValue();
     }
 
     private static long getSafepointPromptnessFailureNanos() {
-        return Options.SafepointPromptnessFailureNanos.getValue().longValue();
+        return Options.SafepointPromptnessFailureNanos.getValue();
     }
 
     @Uninterruptible(reason = "Must not contain safepoint checks.")
@@ -220,7 +220,7 @@ public final class Safepoint {
             assert !ThreadingSupportImpl.isRecurringCallbackRegistered(myself) || ThreadingSupportImpl.isRecurringCallbackPaused();
         } else {
             do {
-                if (Master.singleton().getRequestingThread().isNonNull() || safepointSuspend.getVolatile() > 0) {
+                if (Master.singleton().getRequestingThread().isNonNull() || suspendedTL.getVolatile() > 0) {
                     Statistics.incFrozen();
                     freezeAtSafepoint(newStatus, callerHasJavaFrameAnchor);
                     SafepointListenerSupport.singleton().afterFreezeAtSafepoint();
@@ -344,7 +344,7 @@ public final class Safepoint {
     @Uninterruptible(reason = "Must not contain safepoint checks.")
     private static void notInlinedLockNoTransition() {
         VMThreads.THREAD_MUTEX.lockNoTransition();
-        while (safepointSuspend.get() > 0) {
+        while (suspendedTL.get() > 0) {
             COND_SUSPEND.blockNoTransition();
         }
     }
@@ -409,10 +409,11 @@ public final class Safepoint {
     }
 
     /**
-     * Per-thread counter for safepoint suspends. The possible value is {@code 0} (not suspended),
-     * or positive (blocked on {@link #COND_SUSPEND}).
+     * The possible value is {@code 0} (not suspended), or positive (suspended, possibly blocked on
+     * {@link #COND_SUSPEND}). This counter may only be modified while holding the
+     * {@link VMThreads#THREAD_MUTEX}.
      */
-    static final FastThreadLocalInt safepointSuspend = FastThreadLocalFactory.createInt("Safepoint.safepointSuspend");
+    static final FastThreadLocalInt suspendedTL = FastThreadLocalFactory.createInt("Safepoint.suspended");
 
     /** Condition on which to block when suspended. */
     static final VMCondition COND_SUSPEND = new VMCondition(VMThreads.THREAD_MUTEX);
@@ -594,7 +595,7 @@ public final class Safepoint {
          * safepoint and Java allocations are disabled as well.
          */
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "The safepoint logic must not allocate.")
-        protected boolean freeze(String reason) {
+        boolean freeze(String reason) {
             assert VMOperationControl.mayExecuteVmOperations();
             long startTicks = JfrTicks.elapsedTicks();
 
@@ -620,11 +621,11 @@ public final class Safepoint {
 
         /** Let all threads proceed from their safepoint. */
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "The safepoint logic must not allocate.")
-        protected void thaw(String reason, boolean unlock) {
+        void thaw(boolean unlock) {
             assert VMOperationControl.mayExecuteVmOperations();
             long startTicks = JfrTicks.elapsedTicks();
             safepointState = NOT_AT_SAFEPOINT;
-            releaseSafepoints(reason);
+            releaseSafepoints();
             SafepointEndEvent.emit(getSafepointId(), startTicks);
             ImageSingletons.lookup(Heap.class).endSafepoint();
             Statistics.setThawedNanos();
@@ -832,21 +833,17 @@ public final class Safepoint {
         }
 
         /** Release each thread at a safepoint. */
-        private static void releaseSafepoints(String reason) {
-            final Log trace = Log.noopLog().string("[Safepoint.Master.releaseSafepoints:").string("  reason: ").string(reason).newline();
+        private static void releaseSafepoints() {
             assert VMThreads.THREAD_MUTEX.isOwner() : "Must hold mutex when releasing safepoints.";
             // Set all the thread statuses that are at safepoint back to being in native code.
             for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                 if (!isMyself(vmThread) && !SafepointBehavior.ignoresSafepoints(vmThread)) {
-                    if (trace.isEnabled()) {
-                        trace.string("  vmThread status: ").string(StatusSupport.getStatusString(vmThread));
-                    }
+                    restoreSafepointRequestedValue(vmThread);
 
-                    if (safepointSuspend.get() > 0) {
+                    /* Skip suspended threads so that they remain in STATUS_IN_SAFEPOINT. */
+                    if (suspendedTL.get(vmThread) > 0) {
                         continue;
                     }
-
-                    restoreSafepointRequestedValue(vmThread);
 
                     /*
                      * Release the thread back to native code. Most threads will transition from
@@ -856,21 +853,17 @@ public final class Safepoint {
                      */
                     StatusSupport.setStatusNative(vmThread);
                     Statistics.incReleased();
-                    if (trace.isEnabled()) {
-                        trace.string("  ->  ").string(StatusSupport.getStatusString(vmThread)).newline();
-                    }
                 }
             }
-            trace.string("]").newline();
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected IsolateThread getRequestingThread() {
+        IsolateThread getRequestingThread() {
             return requestingThread;
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected boolean isFrozen() {
+        boolean isFrozen() {
             return safepointState == AT_SAFEPOINT;
         }
 
@@ -1057,7 +1050,7 @@ public final class Safepoint {
             }
         }
 
-        public static Log toLog(Log log, boolean newLine, String prefix) {
+        public static void toLog(Log log, boolean newLine, String prefix) {
             if (log.isEnabled() && Options.GatherSafepointStatistics.getValue()) {
                 if (newLine) {
                     log.newline();
@@ -1074,7 +1067,6 @@ public final class Safepoint {
                 log.string("  slowPathFrozen: ").signed(getSlowPathFrozen()).newline();
                 log.string("  slowPathThawed: ").signed(getSlowPathThawed()).string("]").newline();
             }
-            return log;
         }
     }
 }
