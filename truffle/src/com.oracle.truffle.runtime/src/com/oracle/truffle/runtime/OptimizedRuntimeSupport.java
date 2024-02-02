@@ -46,6 +46,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.SandboxPolicy;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -300,8 +301,8 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public Object createRuntimeData(Object engine, OptionValues engineOptions, Function<String, TruffleLogger> loggerFactory) {
-        return new EngineData(engine, engineOptions, loggerFactory);
+    public Object createRuntimeData(Object engine, OptionValues engineOptions, Function<String, TruffleLogger> loggerFactory, SandboxPolicy sandboxPolicy) {
+        return new EngineData(engine, engineOptions, loggerFactory, sandboxPolicy);
     }
 
     @Override
@@ -310,8 +311,8 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public void onEnginePatch(Object runtimeData, OptionValues runtimeOptions, Function<String, TruffleLogger> loggerFactory) {
-        ((EngineData) runtimeData).onEnginePatch(runtimeOptions, loggerFactory);
+    public void onEnginePatch(Object runtimeData, OptionValues runtimeOptions, Function<String, TruffleLogger> loggerFactory, SandboxPolicy sandboxPolicy) {
+        ((EngineData) runtimeData).onEnginePatch(runtimeOptions, loggerFactory, sandboxPolicy);
     }
 
     @Override
