@@ -56,7 +56,9 @@ import com.oracle.truffle.api.bytecode.test.error_tests.subpackage.NonPublicGuar
 import com.oracle.truffle.api.bytecode.test.error_tests.subpackage.NonPublicSpecializationOperationProxy;
 import com.oracle.truffle.api.bytecode.test.error_tests.subpackage.NestedNodeOperationProxy;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
@@ -124,6 +126,23 @@ public class ErrorTests {
     @GenerateBytecode(languageClass = ErrorLanguage.class)
     public abstract class MustBeStatic extends RootNode implements BytecodeRootNode {
         protected MustBeStatic(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+    }
+
+    @ExpectError({
+                    "Bytecode DSL always generates a cached interpreter.",
+                    "Set GenerateBytecode#enableUncachedInterpreter to generate an uncached interpreter.",
+                    "Bytecode DSL interpreters do not support the GenerateAOT annotation.",
+                    "Bytecode DSL interpreters do not support the GenerateInline annotation."
+    })
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
+    @GenerateCached
+    @GenerateUncached
+    @GenerateAOT
+    @GenerateInline
+    public abstract static class BadAnnotations extends RootNode implements BytecodeRootNode {
+        protected BadAnnotations(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
     }

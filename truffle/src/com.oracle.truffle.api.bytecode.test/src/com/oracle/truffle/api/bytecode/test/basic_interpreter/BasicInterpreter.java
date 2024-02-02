@@ -66,7 +66,6 @@ import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
 import com.oracle.truffle.api.bytecode.test.DebugBytecodeRootNode;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -96,7 +95,6 @@ import com.oracle.truffle.api.nodes.RootNode;
                 @Variant(suffix = "Production", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableUncachedInterpreter = true, //
                                 boxingEliminationTypes = {long.class}, decisionsFile = "basic_interpreter_decisions.json"))
 })
-@GenerateAOT
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScAnd", operator = Operator.AND_RETURN_VALUE)
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScOr", operator = Operator.OR_RETURN_VALUE)
 public abstract class BasicInterpreter extends DebugBytecodeRootNode implements BytecodeRootNode {
@@ -165,7 +163,6 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     }
 
     @Operation
-    @GenerateAOT
     static final class AddOperation {
         @Specialization
         public static long addLongs(long lhs, long rhs) {
@@ -180,7 +177,6 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     }
 
     @Operation
-    @GenerateAOT
     static final class LessThanOperation {
         @Specialization
         public static boolean lessThan(long lhs, long rhs) {
@@ -189,7 +185,6 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     }
 
     @Operation
-    @GenerateAOT
     static final class VeryComplexOperation {
         @Specialization
         public static long bla(long a1, @Variadic Object[] a2) {
@@ -198,7 +193,6 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     }
 
     @Operation
-    @GenerateAOT
     static final class ThrowOperation {
         @Specialization
         public static Object perform(long value,

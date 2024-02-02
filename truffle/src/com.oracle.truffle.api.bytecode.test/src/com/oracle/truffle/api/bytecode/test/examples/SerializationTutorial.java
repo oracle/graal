@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.bytecode.test.examples;
 
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
@@ -99,11 +98,16 @@ public class SerializationTutorial {
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableSerialization = true)
     @ShortCircuitOperation(name = "Or", operator = ShortCircuitOperation.Operator.OR_RETURN_CONVERTED, booleanConverter = SerializableBytecodeNode.AsBoolean.class)
     public abstract static class SerializableBytecodeNode extends RootNode implements BytecodeRootNode {
-        public static final TruffleLanguage<?> LANGUAGE = null;
         public static final Object NULL = new Object();
 
-        public String name = null; // will be serialized
-        public transient String transientField = null; // will not be serialized
+        /**
+         * All non-{@code transient} mutable fields will be included in serialization. This includes
+         * fields in parent classes. All of these fields must be visible to the generated root node
+         * (i.e., at least package-visible or {@code protected} if the class declaring the field is
+         * in another package).
+         */
+        protected String name = null; // will be serialized
+        protected transient String transientField = null; // will not be serialized
 
         protected SerializableBytecodeNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
@@ -181,9 +185,13 @@ public class SerializationTutorial {
                     new Planet("Jupiter", 142984), new Planet("Saturn", 120536), new Planet("Uranus", 51118), new Planet("Neptune", 49528)
     };
 
+    /**
+     * This parser hard-codes a program just for testing. Typically, your parser should call into a
+     * parser framework (e.g., a tree visitor) with a given input program.
+     */
     static final BytecodeParser<SerializableBytecodeNodeGen.Builder> PARSER = b -> {
         // @formatter:off
-        b.beginRoot(SerializableBytecodeNode.LANGUAGE);
+        b.beginRoot(null); // pass your TruffleLanguage here
             // return (n < 0 or PLANETS.length - 1 < n) ? NULL : PLANETS[n]
             b.beginReturn();
                 b.beginConditional();
@@ -379,7 +387,10 @@ public class SerializationTutorial {
         // Now, deserialize the bytes to produce a BytecodeRootNodes instance.
         Supplier<DataInput> supplier = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(serialized));
         BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.deserialize(
-                        SerializableBytecodeNode.LANGUAGE, BytecodeConfig.DEFAULT, supplier, new ExampleBytecodeDeserializer());
+                        null, // pass your TruffleLanguage here
+                        BytecodeConfig.DEFAULT,
+                        supplier,
+                        new ExampleBytecodeDeserializer());
 
         // It should produce a single root node.
         assertEquals(1, nodes.count());
@@ -429,7 +440,10 @@ public class SerializationTutorial {
         // Now, deserialize (just like before).
         Supplier<DataInput> supplier = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(serialized));
         BytecodeRootNodes<SerializableBytecodeNode> deserializedNodes = SerializableBytecodeNodeGen.deserialize(
-                        SerializableBytecodeNode.LANGUAGE, BytecodeConfig.DEFAULT, supplier, new ExampleBytecodeDeserializer());
+                        null, // pass your TruffleLanguage here
+                        BytecodeConfig.DEFAULT,
+                        supplier,
+                        new ExampleBytecodeDeserializer());
 
         // Test the result.
         assertEquals(1, deserializedNodes.count());
@@ -451,7 +465,7 @@ public class SerializationTutorial {
 
     static final BytecodeParser<SerializableBytecodeNodeGen.Builder> PARSER_WITH_SOURCES = b -> {
         // @formatter:off
-        b.beginRoot(SerializableBytecodeNode.LANGUAGE);
+        b.beginRoot(null); // pass your TruffleLanguage here
         b.beginSource(SOURCE);
             // return arg + 1
             b.beginSourceSection(0, 14);
@@ -565,7 +579,7 @@ public class SerializationTutorial {
         byte[] serialized = output.toByteArray();
         Supplier<DataInput> supplier = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(serialized));
         BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.deserialize(
-                        SerializableBytecodeNode.LANGUAGE,
+                        null, // pass your TruffleLanguage here
                         BytecodeConfig.DEFAULT,
                         supplier,
                         new ExampleBytecodeDeserializerWithSources());
@@ -586,9 +600,9 @@ public class SerializationTutorial {
      */
     static final BytecodeParser<SerializableBytecodeNodeGen.Builder> MULTIPLE_ROOT_NODES_PARSER = b -> {
         // @formatter:off
-        b.beginRoot(SerializableBytecodeNode.LANGUAGE);
+        b.beginRoot(null); // pass your TruffleLanguage here
             // def plusOne(x) = x + 1
-            b.beginRoot(SerializableBytecodeNode.LANGUAGE);
+            b.beginRoot(null);
                 b.beginReturn();
                     b.beginAdd();
                         b.emitLoadArgument(0);
@@ -599,7 +613,7 @@ public class SerializationTutorial {
             plusOne.name = "plusOne";
 
             // def timesTwo(x) = x + x
-            b.beginRoot(SerializableBytecodeNode.LANGUAGE);
+            b.beginRoot(null);
                 b.beginReturn();
                     b.beginAdd();
                         b.emitLoadArgument(0);
@@ -693,7 +707,7 @@ public class SerializationTutorial {
         byte[] serialized = output.toByteArray();
         Supplier<DataInput> supplier = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(serialized));
         BytecodeRootNodes<SerializableBytecodeNode> roundTripNodes = SerializableBytecodeNodeGen.deserialize(
-                        SerializableBytecodeNode.LANGUAGE,
+                        null, // pass your TruffleLanguage here
                         BytecodeConfig.DEFAULT,
                         supplier,
                         new ExampleBytecodeDeserializerWithRootNodes());

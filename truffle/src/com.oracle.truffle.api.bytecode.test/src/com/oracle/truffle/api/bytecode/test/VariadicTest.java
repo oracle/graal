@@ -54,8 +54,6 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.Variadic;
-import com.oracle.truffle.api.dsl.GenerateAOT;
-import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
@@ -130,8 +128,6 @@ public class VariadicTest {
     }
 
     @GenerateBytecode(boxingEliminationTypes = {long.class}, languageClass = TestLanguage.class, enableYield = true, enableSerialization = true)
-    @GenerateAOT
-    @GenerateUncached
     public abstract static class VariadicOperationsNode extends RootNode implements BytecodeRootNode {
 
         protected VariadicOperationsNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {

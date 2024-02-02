@@ -2,7 +2,9 @@
 
 Bytecode DSL is a DSL and runtime support component of Truffle that makes it easier to implement bytecode interpreters in Truffle. Just as Truffle DSL abstracts away the tricky and tedious details of AST interpreters, the goal of Bytecode DSL is to abstract away the tricky and tedious details of a bytecode interpreter – the bytecode format, control flow, quickening, and so on – leaving only the language-specific semantics for the language to implement.
 
-Note: At the moment, Bytecode DSL is an **experimental feature**. We encourage you to give it a try, but be forewarned that its APIs are susceptible to change.
+This document serves as an introduction to Bytecode DSL. It explains the [motivation](#why-a-bytecode-interpreter) and [conceptual basis](#operations) for the project, and it walks through an [example implementation](#simple-example). Please also refer to the [User guide](UserGuide.md) and the [Optimization guide](Optimization.md).
+
+Note: At the moment, Bytecode DSL is an **experimental feature**. We encourage you to give it a try, but be forewarned that its APIs are still susceptible to change a little bit between releases.
 
 
 

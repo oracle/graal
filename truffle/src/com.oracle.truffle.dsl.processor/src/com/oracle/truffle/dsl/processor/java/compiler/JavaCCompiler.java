@@ -50,26 +50,31 @@ import java.util.List;
 
 public class JavaCCompiler extends AbstractCompiler {
 
-    private static volatile Class<?> clsTrees = null;
-    private static volatile Method metTreesGetPath = null;
-    private static volatile Class<?> clsTreePath = null;
-    private static volatile Method metTreePathGetCompilationUnit = null;
-    private static volatile Class<?> clsCompilationUnitTree = null;
-    private static volatile Method metCompilationUnitTreeGetSourceFile = null;
+    private static volatile Reflection reflection;
 
-    private static void initializeClasses(Object classLoaderSupplier) throws ReflectiveOperationException {
-        if (metCompilationUnitTreeGetSourceFile == null) {
+    private static class Reflection {
+        final Class<?> clsTrees;
+        final Method metTreesGetPath;
+        final Method metTreePathGetCompilationUnit;
+        final Method metCompilationUnitTreeGetSourceFile;
+
+        Reflection(ClassLoader cl) throws ReflectiveOperationException {
+            clsTrees = Class.forName("com.sun.source.util.Trees", false, cl);
+            metTreesGetPath = clsTrees.getMethod("getPath", new Class<?>[]{Element.class});
+
+            Class<?> clsTreePath = Class.forName("com.sun.source.util.TreePath", false, cl);
+            metTreePathGetCompilationUnit = clsTreePath.getMethod("getCompilationUnit", new Class<?>[0]);
+
+            Class<?> clsCompilationUnitTree = Class.forName("com.sun.source.tree.CompilationUnitTree", false, cl);
+            metCompilationUnitTreeGetSourceFile = clsCompilationUnitTree.getDeclaredMethod("getSourceFile", new Class<?>[0]);
+        }
+    }
+
+    private static void initializeReflectionClasses(Object classLoaderSupplier) throws ReflectiveOperationException {
+        if (reflection == null) {
             synchronized (JavaCCompiler.class) {
-                if (metCompilationUnitTreeGetSourceFile == null) {
-                    ClassLoader cl = classLoaderSupplier.getClass().getClassLoader();
-                    clsTrees = Class.forName("com.sun.source.util.Trees", false, cl);
-                    metTreesGetPath = clsTrees.getMethod("getPath", new Class<?>[]{Element.class});
-
-                    clsTreePath = Class.forName("com.sun.source.util.TreePath", false, cl);
-                    metTreePathGetCompilationUnit = clsTreePath.getMethod("getCompilationUnit", new Class<?>[0]);
-
-                    clsCompilationUnitTree = Class.forName("com.sun.source.tree.CompilationUnitTree", false, cl);
-                    metCompilationUnitTreeGetSourceFile = clsCompilationUnitTree.getDeclaredMethod("getSourceFile", new Class<?>[0]);
+                if (reflection == null) {
+                    reflection = new Reflection(classLoaderSupplier.getClass().getClassLoader());
                 }
             }
         }
@@ -118,13 +123,13 @@ public class JavaCCompiler extends AbstractCompiler {
     }
 
     private static Object getTrees(ProcessingEnvironment environment, Element element) throws ReflectiveOperationException {
-        initializeClasses(element);
-        return staticMethod(clsTrees, "instance", new Class<?>[]{ProcessingEnvironment.class}, environment);
+        initializeReflectionClasses(element);
+        return staticMethod(reflection.clsTrees, "instance", new Class<?>[]{ProcessingEnvironment.class}, environment);
     }
 
     private static Object getTreePathForElement(ProcessingEnvironment environment, Element element) throws ReflectiveOperationException {
         Object trees = getTrees(environment, element);
-        return metTreesGetPath.invoke(trees, element);
+        return reflection.metTreesGetPath.invoke(trees, element);
     }
 
     private static Object getLog(Object javacContext) throws ReflectiveOperationException {
@@ -157,8 +162,8 @@ public class JavaCCompiler extends AbstractCompiler {
     public File getEnclosingSourceFile(ProcessingEnvironment processingEnv, Element element) {
         try {
             Object treePath = getTreePathForElement(processingEnv, element);
-            Object compilationUnit = metTreePathGetCompilationUnit.invoke(treePath);
-            JavaFileObject obj = (JavaFileObject) metCompilationUnitTreeGetSourceFile.invoke(compilationUnit);
+            Object compilationUnit = reflection.metTreePathGetCompilationUnit.invoke(treePath);
+            JavaFileObject obj = (JavaFileObject) reflection.metCompilationUnitTreeGetSourceFile.invoke(compilationUnit);
             return new File(obj.toUri());
         } catch (ReflectiveOperationException e) {
             throw new AssertionError("should not happen", e);
