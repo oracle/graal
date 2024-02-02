@@ -678,10 +678,19 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                         node.replaceAtUsages(null);
                         GraphUtil.unlinkAndKillExceptionEdge(withException);
                         GraphUtil.killWithUnusedFloatingInputs(withException);
-                    } else if (canonical instanceof FloatingNode) {
+                    } else if (canonical instanceof FloatingNode floating) {
                         // case 4
-                        withException.killExceptionEdge();
-                        graph.replaceSplitWithFloating(withException, (FloatingNode) canonical, withException.next());
+                        /*
+                         * In corner cases it is possible for the killing of the exception edge to
+                         * trigger the killing of the replacement node. We therefore wait to kill
+                         * the exception edge until after replacing the WithException node.
+                         */
+                        var exceptionEdge = withException.exceptionEdge();
+                        withException.setExceptionEdge(null);
+                        graph.replaceSplitWithFloating(withException, floating, withException.next());
+                        if (exceptionEdge != null) {
+                            GraphUtil.killCFG(exceptionEdge);
+                        }
                     } else {
                         assert canonical instanceof FixedNode : Assertions.errorMessage(canonical);
                         if (canonical.predecessor() == null) {
