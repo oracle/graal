@@ -50,16 +50,20 @@ public class ContinuationSupport {
         public final long[] primitives;
         public final byte[] slotTags;
         public final int sp;
+        public final int statementIndex;
         public final Method.MethodVersion methodVersion;
         public HostFrameRecord next;
 
         public HostFrameRecord(StaticObject[] pointers, long[] primitives, byte[] slotTags,
-                        int sp, Method.MethodVersion methodVersion,
-                        HostFrameRecord next) {
+                               int sp,
+                               int statementIndex,
+                               Method.MethodVersion methodVersion,
+                               HostFrameRecord next) {
             this.pointers = pointers;
             this.primitives = primitives;
             this.slotTags = slotTags;
             this.sp = sp;
+            this.statementIndex = statementIndex;
             this.methodVersion = methodVersion;
             this.next = next;
         }
@@ -87,6 +91,7 @@ public class ContinuationSupport {
                             StaticObject.wrap(primitives, meta),
                             methodVersion.getMethod().makeMirror(meta),
                             sp,
+                            statementIndex,
                             slotTags != null ? StaticObject.wrap(slotTags, meta) : StaticObject.NULL);
             return guestRecord;
         }
@@ -113,6 +118,7 @@ public class ContinuationSupport {
                 /* java.lang.reflect.Method */
                 StaticObject methodGuest = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_method.getObject(cursor);
                 int sp = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_sp.getInt(cursor);
+                int statementIndex = meta.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_statementIndex.getInt(cursor);
 
                 var language = context.getLanguage();
 
@@ -121,7 +127,7 @@ public class ContinuationSupport {
                 byte[] slotTags = reservedGuest != StaticObject.NULL ? reservedGuest.unwrap(language) : null;
                 Method method = Method.getHostReflectiveMethodRoot(methodGuest, meta);
 
-                var next = new HostFrameRecord(pointers, primitives, slotTags, sp, method.getMethodVersion(), null);
+                var next = new HostFrameRecord(pointers, primitives, slotTags, sp, statementIndex, method.getMethodVersion(), null);
                 if (hostCursor != null) {
                     hostCursor.next = next;
                 }

@@ -1217,7 +1217,7 @@ public final class Meta extends ContextAccessImpl {
                         Type.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord);
         com_oracle_truffle_espresso_continuations_Continuation_FrameRecord = loadKlassWithBootClassLoader(Type.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord);
         com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_init_ = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredMethod(
-                        Name._init_, Signature._void_FrameRecord_Object_array_long_array_Method_int_Object);
+                        Name._init_, Signature._void_FrameRecord_Object_array_long_array_Method_int_int_Object);
         com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_pointers = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
                         Name.pointers, Type.java_lang_Object_array);
         com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_primitives = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
@@ -1228,6 +1228,8 @@ public final class Meta extends ContextAccessImpl {
                         Name.next, Type.com_oracle_truffle_espresso_continuations_Continuation_FrameRecord);
         com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_sp = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
                         Name.sp, Type._int);
+        com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_statementIndex = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
+                        Name.statementIndex, Type._int);
         com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_reserved1 = com_oracle_truffle_espresso_continuations_Continuation_FrameRecord.requireDeclaredField(
                         Name.reserved1, Type.java_lang_Object);
         // Load Espresso's Polyglot API.
@@ -1927,6 +1929,7 @@ public final class Meta extends ContextAccessImpl {
     @CompilationFinal public Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_method;
     @CompilationFinal public Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_next;
     @CompilationFinal public Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_sp;
+    @CompilationFinal public Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_statementIndex;
     @CompilationFinal public Field com_oracle_truffle_espresso_continuations_Continuation_FrameRecord_reserved1;
 
     @CompilationFinal public ObjectKlass java_lang_management_MemoryUsage;

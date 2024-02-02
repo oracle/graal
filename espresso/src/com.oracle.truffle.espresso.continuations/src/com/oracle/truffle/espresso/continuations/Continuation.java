@@ -144,9 +144,15 @@ public final class Continuation implements Externalizable {
         public final Method method;
 
         /**
-         * The stack pointer (how many slots are used at the current bci).
+         * The stack pointer (how many slots are used at the current bytecode index).
          */
         public final int sp;
+
+        /**
+         * Location in the program source where the suspend happened (versus location in the
+         * bytecode).
+         */
+        public final int statementIndex;
 
         /**
          * Reserved. Will always be null when using release builds of the JVM.
@@ -154,11 +160,12 @@ public final class Continuation implements Externalizable {
         public final Object reserved1;
 
         // Invoked by the VM.
-        FrameRecord(Object[] pointers, long[] primitives, Method method, int sp, Object reserved1) {
+        FrameRecord(Object[] pointers, long[] primitives, Method method, int sp, int statementIndex, Object reserved1) {
             this.pointers = pointers;
             this.primitives = primitives;
             this.method = method;
             this.sp = sp;
+            this.statementIndex = statementIndex;
             this.reserved1 = reserved1;
         }
     }
@@ -368,12 +375,17 @@ public final class Continuation implements Externalizable {
         // We start by writing out a header byte. The high nibble contains a major version. Old
         // libraries will refuse to deserialize continuations with a higher version than what they
         // recognize. New libraries may choose to continue supporting the old formats. The low
-        // nibble contains flags. The first flag indicates if VM assertions are enabled, in
-        // which case we have to also record the slot tag array.
+        // nibble contains flags.
         int header = FORMAT_VERSION << 4;
-        boolean writeSlotTags = hasSlotTagsInFrame();
+        // The first flag indicates if VM assertions are enabled, in which case we have to also
+        // record the slot tag array.
+        boolean writeSlotTags = hasSlotTagsInFrames();
+        // We'll have statement indexes if the user is currently debugging.
+        boolean writeStatementIndexes = hasStatementIndexesInFrames();
         if (writeSlotTags)
             header |= 1;
+        if (writeStatementIndexes)
+            header |= 2;
         out.writeByte(header);
 
         out.writeObject(stateHolder);
@@ -387,14 +399,14 @@ public final class Continuation implements Externalizable {
             FrameRecord cursor = stackFrameHead;
             assert cursor != null;
             while (cursor != null) {
-                writeFrame(out, cursor, writeSlotTags);
+                writeFrame(out, cursor, writeSlotTags, writeStatementIndexes);
                 out.writeBoolean(cursor.next != null);
                 cursor = cursor.next;
             }
         }
     }
 
-    private static void writeFrame(ObjectOutput out, FrameRecord cursor, boolean writeSlotTags) throws IOException {
+    private static void writeFrame(ObjectOutput out, FrameRecord cursor, boolean writeSlotTags, boolean writeStatementIndexes) throws IOException {
         Method method = cursor.method;
         out.writeObject(cursor.pointers);
         out.writeObject(cursor.primitives);
@@ -402,12 +414,24 @@ public final class Continuation implements Externalizable {
         out.writeInt(cursor.sp);
         if (writeSlotTags)
             out.writeObject(cursor.reserved1);
+        if (writeStatementIndexes)
+            out.writeInt(cursor.statementIndex);
     }
 
-    private boolean hasSlotTagsInFrame() {
+    private boolean hasSlotTagsInFrames() {
         FrameRecord cursor = stackFrameHead;
         while (cursor != null) {
             if (cursor.reserved1 != null)
+                return true;
+            cursor = cursor.next;
+        }
+        return false;
+    }
+
+    private boolean hasStatementIndexesInFrames() {
+        FrameRecord cursor = stackFrameHead;
+        while (cursor != null) {
+            if (cursor.statementIndex != -1)
                 return true;
             cursor = cursor.next;
         }
@@ -437,6 +461,7 @@ public final class Continuation implements Externalizable {
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         int header = in.readByte();
         boolean hasSlotTags = (header & 1) == 1;
+        boolean hasStatementIndex = (header & 2) == 2;
         int version = (header >> 4) & 0xFF;
         if (version != FORMAT_VERSION)
             throw new FormatVersionException(version);
@@ -457,7 +482,7 @@ public final class Continuation implements Externalizable {
                     // We could walk the stack to find it just like ObjectInputStream does, but we
                     // go with the context classloader here to make it easier for the user to
                     // control.
-                    var frame = readFrame(in, Thread.currentThread().getContextClassLoader(), hasSlotTags);
+                    var frame = readFrame(in, Thread.currentThread().getContextClassLoader(), hasSlotTags, hasStatementIndex);
                     if (last == null) {
                         stackFrameHead = frame;
                     } else {
@@ -471,16 +496,22 @@ public final class Continuation implements Externalizable {
         }
     }
 
-    private FrameRecord readFrame(ObjectInput in, ClassLoader classLoader, boolean hasSlotTags) throws IOException, ClassNotFoundException, NoSuchMethodException {
+    private FrameRecord readFrame(ObjectInput in, ClassLoader classLoader, boolean hasSlotTags, boolean hasStatementIndex) throws IOException, ClassNotFoundException, NoSuchMethodException {
         Object[] pointers = (Object[]) in.readObject();
         long[] primitives = (long[]) in.readObject();
         // Slot zero is always primitive (bci), so this is in slot 1.
         Method method = readMethodNameAndTypes(in, classLoader, pointers.length > 1 ? pointers[1] : null);
         int sp = in.readInt();
+
         Object reserved1 = null;
         if (hasSlotTags)
             reserved1 = in.readObject();
-        return new FrameRecord(pointers, primitives, method, sp, reserved1);
+
+        int statementIndex = -1;
+        if (hasStatementIndex)
+            statementIndex = in.readInt();
+
+        return new FrameRecord(pointers, primitives, method, sp, statementIndex, reserved1);
     }
 
     private Method readMethodNameAndTypes(ObjectInput in, ClassLoader classLoader, Object possibleThis) throws IOException, ClassNotFoundException, NoSuchMethodException {
@@ -599,6 +630,9 @@ public final class Continuation implements Externalizable {
                 sb.append("\n");
                 sb.append("  Stack pointer: ");
                 sb.append(cursor.sp);
+                sb.append("\n");
+                sb.append("  Statement index: ");
+                sb.append(cursor.statementIndex);
                 sb.append("\n");
                 sb.append("  Pointers: [");
                 // We start at 1 because the first slot is always a primitive (the bytecode index).

@@ -749,11 +749,12 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         // Are we resuming a continuation?
         var hostFrameRecord = getRoot().getContinuationHostFrameRecord(frame);
         if (hostFrameRecord != null) {
-            // If yes then the frame was already set up, and we need to resume in the middle.
+            // If yes then the frame was already set up and we need to resume in the middle of
+            // the bytecodes so pass in the necessary indexes.
             return executeBodyFromBCI(frame,
                             getBCI(frame),
                             hostFrameRecord.sp,
-                            0,   // TODO
+                            hostFrameRecord.statementIndex,
                             false, // isOSR
                             true   // isContinuationResume
             );
@@ -812,7 +813,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                     // already in place. The continuation might suspend again, in which case the
                     // unwind will be processed as normal.
 
-                    // TODO(hearn): statementIndex
                     isContinuationResume = false;
                     top += resumeContinuation(frame, top, curBCI, curOpcode, statementIndex);
                     curBCI = curBCI + Bytecodes.lengthOf(curOpcode);
@@ -1566,12 +1566,12 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 assert (slotTags = materializedFrame.getIndexedTags()) != null;
 
                 // Extend the linked list of frame records as we unwind.
-                // TODO(hearn): statement index
                 unwindRequest.head = new ContinuationSupport.HostFrameRecord(
                                 localRefsStaticObj,
                                 materializedFrame.getIndexedPrimitiveLocals(),
                                 slotTags,
                                 top,
+                                statementIndex,
                                 methodVersion,
                                 unwindRequest.head);
 
