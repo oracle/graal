@@ -5,8 +5,7 @@ link_title: Basic Usage of Profile-Guided Optimizations
 permalink: /reference-manual/native-image/pgo/basic-usage
 ---
 
-Note: This document build on [Profile Guided Optimization for Native Image](PGO.md), we recommend reading that document before this one.
-
+Note: this document builds upon [Profile Guided Optimization for Native Image](PGO.md), so we recommend that you read that page first.
 
 # A Game Of Life example
 
