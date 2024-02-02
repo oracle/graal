@@ -2948,6 +2948,11 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         }
     }
 
+    @Override
+    public boolean hasParseTerminated() {
+        return lastInstr == null;
+    }
+
     private AbstractBeginNode updateWithExceptionNode(WithExceptionNode withExceptionNode) {
         if (withExceptionNode.exceptionEdge() == null) {
             AbstractBeginNode exceptionEdge = handleException(null, bci(), false);
