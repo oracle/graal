@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -480,6 +480,13 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         jmpWithoutAlignment(scratch);
         assert beforeJmp + bytesToEmit == position() : Assertions.errorMessage(beforeJmp, bytesToEmit, position());
         return beforeJmp;
+    }
+
+    public void jmp() {
+        mitigateJCCErratum(5);
+        annotatePatchingImmediate(1, 4);
+        emitByte(0xE9);
+        emitInt(0);
     }
 
     @SuppressWarnings("unused")
