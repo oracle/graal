@@ -60,6 +60,8 @@ public class InteropNodesProcessor extends BaseProcessor {
     private static final String GENERATE_INTEROP_NODES = "com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes";
     private static final String EXPORT_MESSAGE = "com.oracle.truffle.api.library.ExportMessage";
 
+    private static final String EXPORT_REPEAT_MESSAGE = "com.oracle.truffle.api.library.ExportMessage.Repeat";
+
     private static final String COLLECT = "com.oracle.truffle.espresso.substitutions.Collect";
     private static final String SPECIALIZATION = "com.oracle.truffle.api.dsl.Specialization";
     private static final String CACHED = "com.oracle.truffle.api.dsl.Cached";
@@ -83,6 +85,8 @@ public class InteropNodesProcessor extends BaseProcessor {
     private TypeElement generateInteropNodes;
     // @ExportMessage
     private TypeElement exportMessage;
+
+    private TypeElement exportRepeatMessage;
     // @Shareable
     private TypeElement shareable;
     // @Cached
@@ -102,6 +106,7 @@ public class InteropNodesProcessor extends BaseProcessor {
     private void collectAndCheckRequiredAnnotations() {
         generateInteropNodes = getTypeElement(GENERATE_INTEROP_NODES);
         exportMessage = getTypeElement(EXPORT_MESSAGE);
+        exportRepeatMessage = getTypeElement(EXPORT_REPEAT_MESSAGE);
         shareable = getTypeElement(SHAREABLE);
         cached = getTypeElement(CACHED);
         cachedLibrary = getTypeElement(CACHED_LIBRARY);
@@ -154,16 +159,18 @@ public class InteropNodesProcessor extends BaseProcessor {
         List<Message> nodes = new ArrayList<>();
         for (Element methodElement : cls.getEnclosedElements()) {
             List<AnnotationMirror> exportedMethods = getAnnotations(methodElement, exportMessage.asType());
-            // Look for exported messages. Note that a single method can export multiple message.
-            // Create one node per export.
+            // Look for exported messages. Create one node per export.
             for (AnnotationMirror exportAnnotation : exportedMethods) {
-                String targetMessageName = getAnnotationValue(exportAnnotation, "name", String.class);
-                if (targetMessageName == null || targetMessageName.length() == 0) {
-                    targetMessageName = methodElement.getSimpleName().toString();
+                collectNode(cls, methodElement, exportAnnotation, shareableCls, nodes, imports);
+            }
+            exportedMethods = getAnnotations(methodElement, exportRepeatMessage.asType());
+            // Look for repeated exported messages. Note that a single method can export multiple message.
+            // Create one node per export.
+            for (AnnotationMirror repeatAnnotation : exportedMethods) {
+                List<AnnotationMirror> repeatAnnotations = getAnnotationValueList(repeatAnnotation, "value", AnnotationMirror.class);
+                for (AnnotationMirror exportAnnotation : repeatAnnotations) {
+                    collectNode(cls, methodElement, exportAnnotation, shareableCls, nodes, imports);
                 }
-                String clsName = ProcessorUtils.capitalize(methodElement.getSimpleName().toString()) + "Node";
-                boolean isShareable = isShareable(methodElement, shareableCls);
-                nodes.add(new Message(processInteropNode(cls, (ExecutableElement) methodElement, targetMessageName, clsName, imports), targetMessageName, clsName, isShareable));
             }
         }
 
@@ -217,6 +224,16 @@ public class InteropNodesProcessor extends BaseProcessor {
             processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, e.getMessage(), cls);
         }
 
+    }
+
+    private void collectNode(TypeElement cls, Element methodElement, AnnotationMirror exportAnnotation, boolean shareableCls, List<Message> nodes, Imports imports) {
+        String targetMessageName = getAnnotationValue(exportAnnotation, "name", String.class);
+        if (targetMessageName == null || targetMessageName.isEmpty()) {
+            targetMessageName = methodElement.getSimpleName().toString();
+        }
+        String clsName = targetMessageName + "Node";
+        boolean isShareable = isShareable(methodElement, shareableCls);
+        nodes.add(new Message(processInteropNode(cls, (ExecutableElement) methodElement, methodElement.getSimpleName().toString(), clsName, imports), targetMessageName, clsName, isShareable));
     }
 
     private static ClassBuilder generateFactory(List<Message> nodes, TypeElement sourceDispatch) {
