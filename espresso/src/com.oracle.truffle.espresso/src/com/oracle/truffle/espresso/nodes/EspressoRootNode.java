@@ -207,7 +207,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     /**
      * Creates a root node that can execute a substitution e.g. an implementation of the method in
-     * host Java, instead of the original givenmethod.
+     * host Java, instead of the original given method.
      */
     public static EspressoRootNode createSubstitution(Method.MethodVersion methodVersion, JavaSubstitution.Factory factory) {
         return create(null, new IntrinsicSubstitutorNode(methodVersion, factory));
