@@ -928,7 +928,8 @@ suite = {
         "org.graalvm.polyglot.tck",
       ],
       "distDependencies" : [
-        "sdk:COLLECTIONS", "sdk:POLYGLOT",
+        "sdk:COLLECTIONS",
+        "sdk:POLYGLOT",
       ],
       "javadocType": "api",
       "description" : """GraalVM TCK SPI""",
