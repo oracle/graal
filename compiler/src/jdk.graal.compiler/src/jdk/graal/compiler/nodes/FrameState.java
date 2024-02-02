@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
+import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.Bytecodes;
@@ -927,6 +929,21 @@ public final class FrameState extends VirtualState implements IterableNodeType {
             for (EscapeObjectState state : virtualObjectMappings()) {
                 assertTrue(state != null, "must be non-null");
             }
+            if (stackState == StackState.BeforePop && Assertions.detailedAssertionsEnabled(graph().getOptions())) {
+                EconomicMap<VirtualObjectNode, EscapeObjectState> objectToState = EconomicMap.create();
+                FrameState current = this;
+                while (current != null && current.virtualObjectMappingCount() > 0) {
+                    for (EscapeObjectState state : current.virtualObjectMappings()) {
+                        objectToState.put(state.object(), state);
+                    }
+                    current = current.outerFrameState;
+                }
+                for (VirtualObjectNode object : values().filter(VirtualObjectNode.class)) {
+                    if (object.entryCount() > 0) {
+                        assertTrue(objectToState.containsKey(object), "must have associated state in %s: %s; found mappings: %s", this, object, objectToState);
+                    }
+                }
+            }
         }
 
         int allocatedLocals = values.size() - locksSize - stackSize;
@@ -1023,5 +1040,4 @@ public final class FrameState extends VirtualState implements IterableNodeType {
     public boolean isExceptionHandlingBCI() {
         return bci == BytecodeFrame.AFTER_EXCEPTION_BCI || bci == BytecodeFrame.UNWIND_BCI;
     }
-
 }
