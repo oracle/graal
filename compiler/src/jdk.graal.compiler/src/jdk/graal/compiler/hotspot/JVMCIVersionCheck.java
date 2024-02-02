@@ -52,7 +52,7 @@ public final class JVMCIVersionCheck {
      * default/fallback entry.
      */
     private static final Map<String, Map<String, Version>> JVMCI_MIN_VERSIONS = Map.of(
-                    "21", Map.of(DEFAULT_VENDOR_ENTRY, new Version(23, 1, 26)),
+                    "21", Map.of(DEFAULT_VENDOR_ENTRY, new Version(23, 1, 33)),
                     "23", Map.of(
                                     "Oracle Corporation", new Version("23+8", 1),
                                     DEFAULT_VENDOR_ENTRY, new Version("23+8", 1)));
