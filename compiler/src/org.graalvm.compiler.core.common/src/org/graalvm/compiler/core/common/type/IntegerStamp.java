@@ -83,6 +83,9 @@ public final class IntegerStamp extends PrimitiveStamp {
     }
 
     public static IntegerStamp create(int bits, long lowerBoundInput, long upperBoundInput, long downMask, long upMask) {
+        if (lowerBoundInput > upperBoundInput || (downMask & (~upMask)) != 0 || (upMask == 0 && (lowerBoundInput > 0 || upperBoundInput < 0))) {
+            return createEmptyStamp(bits);
+        }
         assert (downMask & ~upMask) == 0 : String.format("\u21ca: %016x \u21c8: %016x", downMask, upMask);
 
         // Set lower bound, use masks to make it more precise
