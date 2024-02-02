@@ -54,6 +54,13 @@ They are useful to users and language and tool implementers.
 - `--engine.DebugCacheCompileUseLastTier=true|false` : If true uses the last tier instead of the first tier compiler. By default the last tier compiler is used (default: true).
 - `--engine.BackgroundCompilation=true|false` : Enable asynchronous truffle compilation in background threads (default: true)
 - `--engine.Compilation=true|false` : Enable or disable Truffle compilation.
+- `--engine.CompilationFailureAction=Silent|Print|Throw|Diagnose|ExitVM` : Specifies the action to take when Truffle compilation fails.
+The accepted values are:
+    Silent - Print nothing to the console.
+     Print - Print the exception to the console.
+     Throw - Throw the exception to caller.
+  Diagnose - Retry compilation with extra diagnostics enabled.
+    ExitVM - Exit the VM process.
 - `--engine.CompilerIdleDelay=<ms>` : Set the time in milliseconds an idle Truffle compiler thread will wait for new tasks before terminating. New compiler threads will be started once new compilation tasks are submitted. Select '0' to never terminate the Truffle compiler thread. The option is not supported by all Truffle runtimes. On the runtime which doesn't support it the option has no effect. default: 10000
 - `--engine.CompilerThreads=[1, inf)` : Manually set the number of compiler threads. By default, the number of compiler threads is scaled with the number of available cores on the CPU.
 - `--engine.EncodedGraphCachePurgeDelay=<ms>` : Delay, in milliseconds, after which the encoded graph cache is dropped when a Truffle compiler thread becomes idle (default: 10000).
@@ -120,13 +127,6 @@ These are internal options for debugging language implementations and tools.
 - `--engine.DebugCacheStore` : Prepares the engine for caching and stores it a static field instead of writing it to disk.
 - `--engine.DebugTraceCache` : Enables tracing for the engine cache debug feature.
 - `--engine.ArgumentTypeSpeculation=true|false` : Speculate on arguments types at call sites (default: true)
-- `--engine.CompilationFailureAction=Silent|Print|Throw|Diagnose|ExitVM` : Specifies the action to take when Truffle compilation fails.
-The accepted values are:
-    Silent - Print nothing to the console.
-     Print - Print the exception to the console.
-     Throw - Throw the exception to caller.
-  Diagnose - Retry compilation with extra diagnostics enabled.
-    ExitVM - Exit the VM process.
 - `--engine.CompilationStatisticDetails` : Print additional more verbose Truffle compilation statistics at the end of a run.
 - `--engine.CompilationStatistics` : Print Truffle compilation statistics at the end of a run.
 - `--engine.CompileAOTOnCreate` : Compiles created call targets immediately with last tier. Disables background compilation if enabled.

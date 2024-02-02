@@ -1213,7 +1213,7 @@ public abstract class Accessor {
 
         public abstract void flushCompileQueue(Object runtimeData);
 
-        public abstract Object createRuntimeData(Object engine, OptionValues engineOptions, Function<String, TruffleLogger> loggerFactory);
+        public abstract Object createRuntimeData(Object engine, OptionValues engineOptions, Function<String, TruffleLogger> loggerFactory, SandboxPolicy sandboxPolicy);
 
         public abstract Object tryLoadCachedEngine(OptionValues runtimeData, Function<String, TruffleLogger> logger);
 
@@ -1221,7 +1221,7 @@ public abstract class Accessor {
 
         public abstract boolean isStoreEnabled(OptionValues options);
 
-        public abstract void onEnginePatch(Object runtimeData, OptionValues runtimeOptions, Function<String, TruffleLogger> logSupplier);
+        public abstract void onEnginePatch(Object runtimeData, OptionValues runtimeOptions, Function<String, TruffleLogger> logSupplier, SandboxPolicy sandboxPolicy);
 
         public abstract boolean onEngineClosing(Object runtimeData);
 
