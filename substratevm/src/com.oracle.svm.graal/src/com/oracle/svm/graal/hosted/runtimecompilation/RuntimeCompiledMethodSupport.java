@@ -53,6 +53,7 @@ import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.hosted.HeapBreakdownProvider;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
@@ -372,12 +373,12 @@ public class RuntimeCompiledMethodSupport {
 
         @Override
         protected void addObject(Object object) {
-            super.addObject(unwrap(object));
+            super.addObject(forRuntimeCompilation(object));
         }
 
         @Override
         protected void writeObjectId(Object object) {
-            super.writeObjectId(unwrap(object));
+            super.writeObjectId(forRuntimeCompilation(object));
         }
 
         @Override
@@ -385,12 +386,11 @@ public class RuntimeCompiledMethodSupport {
             return new RuntimeCompilationGraphDecoder(architecture, decodedGraph, heapScanner);
         }
 
-        private Object unwrap(Object object) {
-            if (object instanceof ImageHeapConstant ihc) {
-                VMError.guarantee(ihc.getHostedObject() != null);
-                return ihc.getHostedObject();
+        private Object forRuntimeCompilation(Object object) {
+            if (object instanceof ImageHeapConstant heapConstant) {
+                return SubstrateGraalUtils.forRuntimeCompilation(heapConstant);
             } else if (object instanceof ObjectLocationIdentity oli && oli.getObject() instanceof ImageHeapConstant heapConstant) {
-                return locationIdentityCache.computeIfAbsent(heapConstant, (hc) -> ObjectLocationIdentity.create(hc.getHostedObject()));
+                return locationIdentityCache.computeIfAbsent(heapConstant, (hc) -> ObjectLocationIdentity.create(SubstrateGraalUtils.forRuntimeCompilation(hc)));
             }
             return object;
         }
