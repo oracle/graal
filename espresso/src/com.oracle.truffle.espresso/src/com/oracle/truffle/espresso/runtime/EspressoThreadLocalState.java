@@ -37,6 +37,9 @@ public class EspressoThreadLocalState {
     private StaticObject currentPlatformThread;
     private StaticObject currentVirtualThread;
 
+    // A refcount, when >0 the serializable continuation mechanism will refuse to suspend.
+    private int suspensionBlocks;
+
     private int singleSteppingDisabledCounter;
 
     @SuppressWarnings("unused")
@@ -132,8 +135,6 @@ public class EspressoThreadLocalState {
     public boolean isSteppingDisabled() {
         return singleSteppingDisabledCounter > 0;
     }
-
-    public int suspensionBlocks = 0;
 
     /**
      * Prevents {@code Continuation.SuspendCapability.suspend()} being called, typically because

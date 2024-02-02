@@ -39,9 +39,15 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
     @Substitution
     @TruffleBoundary
     static void suspend0(@Inject EspressoLanguage language, @Inject Meta meta) {
-        if (language.getThreadLocalState().isContinuationSuspensionBlocked()) {
+        EspressoThreadLocalState tls = language.getThreadLocalState();
+        if (tls.isContinuationSuspensionBlocked()) {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalStateException, "Suspension is currently blocked by the presence of unsupported frames on the stack. Check for synchronized blocks, native calls and VM intrinsics in the stack trace of this exception.");
         }
+
+        // We don't want to let the user see our upcalls during the unwind process e.g. to do
+        // reflection or create the FrameRecords in the guest.
+        tls.disableSingleStepping();
+
         // This internal exception will be caught in BytecodeNode's interpreter loop. Frame records
         // will be added to the exception object in a linked list until it's caught in resume below.
         throw new ContinuationSupport.Unwind();
@@ -72,6 +78,9 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
         } catch (ContinuationSupport.Unwind unwind) {
             CompilerDirectives.transferToInterpreter();
             meta.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.setObject(self, unwind.toGuest(meta));
+            // Allow reporting of stepping in this thread again. It was blocked by the call to
+            // suspend0()
+            tls.enableSingleStepping();
         } finally {
             // Re-increment the block counter. It'll be reduced to zero again on our way back out
             // of the intrinsic.
@@ -98,6 +107,9 @@ public final class Target_com_oracle_truffle_espresso_continuations_Continuation
             // Guest called suspend(). By the time we get here the frame info has been gathered up
             // into host-side objects so we just need to copy the data into the guest world.
             meta.com_oracle_truffle_espresso_continuations_Continuation_stackFrameHead.setObject(self, unwind.toGuest(meta));
+            // Allow reporting of stepping in this thread again. It was blocked by the call to
+            // suspend0()
+            tls.enableSingleStepping();
         } finally {
             // Re-increment the block counter. It'll be reduced to zero again on our way back out
             // of the intrinsic.

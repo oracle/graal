@@ -150,6 +150,7 @@ public final class DebuggerController implements ContextsListener {
     }
 
     /**
+    /**
      * Installs a line breakpoint within a given method.
      *
      * @param command the command that represents the breakpoint
@@ -761,6 +762,7 @@ public final class DebuggerController implements ContextsListener {
             if (!instrument.hasConnection()) {
                 return;
             }
+
             Object currentThread = getContext().asGuestThread(hostThread);
             fine(() -> "Suspended at: " + event.getSourceSection() + " in thread: " + getThreadName(currentThread));
 
