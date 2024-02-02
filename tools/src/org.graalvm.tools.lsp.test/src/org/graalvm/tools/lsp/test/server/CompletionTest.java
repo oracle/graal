@@ -129,7 +129,7 @@ public class CompletionTest extends TruffleLSPTest {
         future.get();
 
         setTriggerCharacters();
-        replace(uri, Range.create(Position.create(2, 12), Position.create(2, 12)), ".", "extraneous input '.'");
+        replace(uri, Range.create(Position.create(2, 12), Position.create(2, 12)), ".", "missing IDENTIFIER");
         Future<CompletionList> futureC = truffleAdapter.completion(uri, 2, 13, null);
         CompletionList completionList = futureC.get();
         assertEquals(1, completionList.getItems().size());
@@ -174,7 +174,7 @@ public class CompletionTest extends TruffleLSPTest {
         futureCoverage.get();
 
         setTriggerCharacters();
-        replace(uri, Range.create(Position.create(8, 12), Position.create(8, 12)), ".", "extraneous input '.'");
+        replace(uri, Range.create(Position.create(8, 12), Position.create(8, 12)), ".", "missing IDENTIFIER");
         Future<CompletionList> futureC = truffleAdapter.completion(uri, 8, 13, null);
         CompletionList completionList = futureC.get();
         assertEquals(1, completionList.getItems().size());
