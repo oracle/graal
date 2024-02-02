@@ -895,12 +895,18 @@ suite = {
         "exports" : [
           "org.graalvm.launcher",
         ],
+        "requires" : [
+          "org.graalvm.collections",
+          "org.graalvm.nativeimage",
+        ],
       },
       "dependencies" : [
         "org.graalvm.launcher",
       ],
       "distDependencies" : [
-        "sdk:COLLECTIONS", "sdk:POLYGLOT",
+        "sdk:COLLECTIONS",
+        "sdk:NATIVEIMAGE",
+        "sdk:POLYGLOT",
         "JLINE3",
       ],
       "description" : "Common infrastructure to create language launchers using the Polyglot API.",
