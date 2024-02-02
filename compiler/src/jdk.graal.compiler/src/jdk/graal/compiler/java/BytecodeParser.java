@@ -1886,7 +1886,9 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         if (!parsingIntrinsic() && DeoptALot.getValue(options)) {
             append(new DeoptimizeNode(DeoptimizationAction.None, RuntimeConstraint));
             JavaKind resultType = initialTargetMethod.getSignature().getReturnKind();
-            frameState.pushReturn(resultType, ConstantNode.defaultForKind(resultType, graph));
+            if (resultType != JavaKind.Void) {
+                frameState.pushReturn(resultType, ConstantNode.defaultForKind(resultType, graph));
+            }
             return null;
         }
 
