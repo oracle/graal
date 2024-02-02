@@ -207,16 +207,14 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
         model.addDefault();
 
-        // check basic declaration properties
+        // Check basic declaration properties.
         Set<Modifier> modifiers = typeElement.getModifiers();
         if (!modifiers.contains(Modifier.ABSTRACT)) {
             model.addError(typeElement, "Bytecode DSL class must be declared abstract.");
         }
-
         if (!ElementUtils.isAssignable(typeElement.asType(), types.RootNode)) {
             model.addError(typeElement, "Bytecode DSL class must directly or indirectly subclass %s.", getSimpleName(types.RootNode));
         }
-
         if (!ElementUtils.isAssignable(typeElement.asType(), types.BytecodeRootNode)) {
             model.addError(typeElement, "Bytecode DSL class must directly or indirectly implement %s.", getSimpleName(types.BytecodeRootNode));
         }
@@ -226,6 +224,12 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         if (typeElement.getEnclosingElement().getKind() != ElementKind.PACKAGE && !modifiers.contains(Modifier.STATIC)) {
             model.addError(typeElement, "Bytecode DSL class must be static if it is a nested class.");
         }
+
+        List<? extends AnnotationMirror> annotations = typeElement.getAnnotationMirrors();
+        checkUnsupportedAnnotation(model, annotations, types.GenerateAOT, null);
+        checkUnsupportedAnnotation(model, annotations, types.GenerateInline, null);
+        checkUnsupportedAnnotation(model, annotations, types.GenerateCached, "Bytecode DSL always generates a cached interpreter.");
+        checkUnsupportedAnnotation(model, annotations, types.GenerateUncached, "Set GenerateBytecode#enableUncachedInterpreter to generate an uncached interpreter.");
 
         // Find the appropriate constructor.
         List<ExecutableElement> viableConstructors = ElementFilter.constructorsIn(typeElement.getEnclosedElements()).stream().filter(ctor -> {
@@ -523,8 +527,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
         /*
          * If boxing elimination is enabled and the language uses operations with statically known
-         * types we generate a quickening decisions for each operation and specialization in order
-         * to enable boxing elimination.
+         * types we generate quickening decisions for each operation and specialization in order to
+         * enable boxing elimination.
          */
         if (model.usesBoxingElimination()) {
             for (OperationModel operation : model.getOperations()) {
@@ -774,7 +778,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             }
         }
 
-        // serialization fields
+        // Validate fields for serialization.
         if (model.enableSerialization) {
             List<VariableElement> serializedFields = new ArrayList<>();
             TypeElement type = model.getTemplateType();
@@ -809,6 +813,14 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.finalizeInstructions();
 
         return;
+    }
+
+    private static void checkUnsupportedAnnotation(BytecodeDSLModel model, List<? extends AnnotationMirror> annotations, TypeMirror annotation, String error) {
+        AnnotationMirror mirror = ElementUtils.findAnnotationMirror(annotations, annotation);
+        if (mirror != null) {
+            String errorMessage = (error != null) ? error : String.format("Bytecode DSL interpreters do not support the %s annotation.", ElementUtils.getSimpleName(annotation));
+            model.addError(mirror, null, errorMessage);
+        }
     }
 
     /**
