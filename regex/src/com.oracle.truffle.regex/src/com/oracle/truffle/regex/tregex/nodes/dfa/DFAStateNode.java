@@ -209,9 +209,12 @@ public class DFAStateNode extends DFAAbstractStateNode {
      */
     private void checkFinalState(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
+        CompilerAsserts.partialEvaluationConstant(simpleCG);
         if (isFinalState()) {
-            storeResult(locals, executor, false);
-            if (simpleCG != null) {
+            if (simpleCG == null) {
+                storeResult(locals, executor, false);
+            } else if (!(isAnchoredFinalState() && executor.inputAtEnd(locals))) {
+                storeResult(locals, executor, false);
                 applySimpleCGFinalTransition(simpleCG.getTransitionToFinalState(), executor, locals);
             }
         }

@@ -275,4 +275,17 @@ public class JsTests extends RegexTestBase {
         test("(?:^|\\.?)([A-Z])", "g", "locationChanged", 0, true, 8, 9, 8, 9);
         test("(?:^|\\.?)([A-Z]|(?<=[a-z])\\d(?=\\d+))", "g", "helloWorld", 0, true, 5, 6, 5, 6);
     }
+
+    @Test
+    public void mergedLookAheadLiteral() {
+        test("(?:(?=(abc)))a", "", "abc", 0, true, 0, 1, 0, 3);
+    }
+
+    @Test
+    public void innerLiteralSurrogates() {
+        test("\\udf06", "", "\uD834\uDF06", 0, true, 1, 2);
+        test("x?\\udf06", "", "\uD834\uDF06", 0, true, 1, 2);
+        test("\\udf06", "u", "\uD834\uDF06", 0, false);
+        test("x?\\udf06", "u", "\uD834\uDF06", 0, false);
+    }
 }

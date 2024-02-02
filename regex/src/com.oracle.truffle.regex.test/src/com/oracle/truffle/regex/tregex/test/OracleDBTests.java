@@ -236,6 +236,11 @@ public class OracleDBTests extends RegexTestBase {
     }
 
     @Test
+    public void testAnchorPrecedence() {
+        test("a(\\z|())", "", "a", 0, true, 0, 1, 1, 1, -1, -1);
+    }
+
+    @Test
     public void generatedTests() {
         /* GENERATED CODE BEGIN - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
         test("abracadabra$", "", "abracadabracadabra", 0, true, 7, 18);
@@ -898,6 +903,11 @@ public class OracleDBTests extends RegexTestBase {
         test("[[=\u0132=]o]+", "i", "ij", 0, true, 0, 2);
         expectSyntaxError("[\\s-r]+", "", "invalid range in regular expression");
         test("[\\s-v]+", "", "\\stu", 0, true, 0, 4);
+        test("$(\\A|)", "", "x", 0, true, 1, 1, 1, 1);
+        test("(^\\w)|()^", "", "empty", 0, true, 0, 1, 0, 1, -1, -1);
+        test("x(y|())", "", "xy", 0, true, 0, 2, 1, 2, -1, -1);
+        test("(x|())*", "", "xxx", 0, true, 0, 3, 3, 3, 3, 3);
+        test("a(\\z|())", "", "a", 0, true, 0, 1, 1, 1, -1, -1);
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
     }
 }

@@ -1245,10 +1245,9 @@ public abstract class NFATraversalRegexASTVisitor {
 
         @Override
         public boolean equals(Object obj) {
-            if (obj == null || !(obj instanceof DeduplicationKey)) {
+            if (!(obj instanceof DeduplicationKey other)) {
                 return false;
             }
-            DeduplicationKey other = (DeduplicationKey) obj;
             return this.nodesInvolved.equals(other.nodesInvolved) && Objects.equals(this.quantifierGuards, other.quantifierGuards) &&
                             Objects.equals(insideEmptyGuardGroup, other.insideEmptyGuardGroup) && Objects.equals(captureGroupUpdates, other.captureGroupUpdates) &&
                             Objects.equals(captureGroupClears, other.captureGroupClears) && this.lastGroup == other.lastGroup;
