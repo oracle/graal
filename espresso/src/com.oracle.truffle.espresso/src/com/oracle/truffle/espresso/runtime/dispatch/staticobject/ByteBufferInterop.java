@@ -386,7 +386,7 @@ public class ByteBufferInterop extends EspressoInterop {
 
     @ExportMessage
     static void readBuffer(StaticObject receiver, long byteOffset, byte[] destination, int destinationOffset, int length,
-                    @Bind("getMeta().java_nio_ByteBuffer_get") Method get,
+                    @Bind("getMeta()") Meta meta,
                     @Cached LookupAndInvokeKnownMethodNode readBuffer,
                     @Cached.Shared("error") @Cached BranchProfile error) throws InvalidBufferOffsetException {
         if (byteOffset < 0 || Integer.MAX_VALUE < byteOffset + length) {
@@ -394,7 +394,17 @@ public class ByteBufferInterop extends EspressoInterop {
             throw InvalidBufferOffsetException.create(byteOffset, length);
         }
         try {
-            readBuffer.execute(receiver, get, new Object[]{byteOffset, StaticObject.wrap(destination, getMeta()), destinationOffset, length});
+            if (meta.getJavaVersion().java13OrLater()) {
+                readBuffer.execute(receiver, meta.java_nio_ByteBuffer_get, new Object[]{byteOffset, StaticObject.wrap(destination, getMeta()), destinationOffset, length});
+            } else {
+                // no bulk method available for older Java versions, so do a slow one by one fetch
+                byte[] copy = new byte[destination.length];
+                for (int i = 0; i < length; i++) {
+                    copy[i + destinationOffset] = (byte) readBuffer.execute(receiver, meta.java_nio_ByteBuffer_getByte, new Object[]{(byteOffset + i)});
+                }
+                // only store in destination array if all single byte reads succeed
+                System.arraycopy(copy, 0, destination, 0, copy.length);
+            }
         } catch (EspressoException ex) {
             error.enter();
             if (InterpreterToVM.instanceOf(ex.getGuestException(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {

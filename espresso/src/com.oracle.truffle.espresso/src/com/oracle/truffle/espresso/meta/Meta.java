@@ -398,7 +398,11 @@ public final class Meta extends ContextAccessImpl {
 
         java_nio_ByteBuffer = knownKlass(Type.java_nio_ByteBuffer);
         java_nio_ByteBuffer_wrap = java_nio_ByteBuffer.requireDeclaredMethod(Name.wrap, Signature.ByteBuffer_byte_array);
-        java_nio_ByteBuffer_get = java_nio_ByteBuffer.requireDeclaredMethod(Name.get, Signature.ByteBuffer_int_byte_array_int_int);
+        if (getJavaVersion().java13OrLater()) {
+            java_nio_ByteBuffer_get = java_nio_ByteBuffer.requireDeclaredMethod(Name.get, Signature.ByteBuffer_int_byte_array_int_int);
+        } else {
+            java_nio_ByteBuffer_get = null;
+        }
         java_nio_ByteBuffer_getByte = java_nio_ByteBuffer.requireDeclaredMethod(Name.get, Signature._byte_int);
         java_nio_ByteBuffer_getShort = java_nio_ByteBuffer.requireDeclaredMethod(Name.getShort, Signature._short_int);
         java_nio_ByteBuffer_getInt = java_nio_ByteBuffer.requireDeclaredMethod(Name.getInt, Signature._int_int);
@@ -1002,7 +1006,7 @@ public final class Meta extends ContextAccessImpl {
      * <p>
      * Espresso's Polyglot API (polyglot.jar) is injected on the boot CP, must be loaded after
      * modules initialization.
-     *
+     * <p>
      * The classes in module java.management become known after modules initialization.
      */
     public void postSystemInit() {
@@ -2031,7 +2035,7 @@ public final class Meta extends ContextAccessImpl {
      * asks the given class loader to perform the load, even for internal primitive types. This is
      * the method to use when loading symbols that are not directly taken from a constant pool, for
      * example, when loading a class whose name is given by a guest string.
-     *
+     * <p>
      * This method is designed to fail if given the type symbol for primitives (eg: 'Z' for
      * booleans).
      *
@@ -2419,7 +2423,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to a boolean.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2436,7 +2440,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to a byte.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2453,7 +2457,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to a short.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2470,7 +2474,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to a char.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2487,7 +2491,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to an int.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2504,7 +2508,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to a float.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2521,7 +2525,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to a double.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2538,7 +2542,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to a long.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2555,7 +2559,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a Object value to a StaticObject.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will return StaticObject.NULL when the Object value is not a StaticObject. If the conversion
      * is not possible, throws {@link EspressoError}.
@@ -2569,7 +2573,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Bitwise conversion from a boxed value to a long.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will fill the upper bits with 0. If the conversion is not possible, throws
      * {@link EspressoError}.
