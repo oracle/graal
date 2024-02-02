@@ -46,28 +46,7 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
 
     @Test
     public void testException() throws IOException, InterruptedException {
-        Path jfrFile;
-        if (SubprocessTestUtils.isSubprocess()) {
-            jfrFile = null;
-        } else {
-            jfrFile = Files.createTempFile("new_truffle_exception", ".jfr");
-        }
-        try {
-            SubprocessTestUtils.newBuilder(JFRPartialEvaluationTest.class, this::performTestException) //
-                            .prefixVmOption("-XX:+FlightRecorder", String.format("-XX:StartFlightRecording=exceptions=all,filename=%s", jfrFile)) //
-                            .onExit((p) -> {
-                                try {
-                                    assertTrue(String.format("JFR event file %s is missing", jfrFile), Files.size(jfrFile) > 0);
-                                } catch (IOException ioe) {
-                                    throw new AssertionError("Failed to stat JFR event file " + jfrFile, ioe);
-                                }
-                            }) //
-                            .run();
-        } finally {
-            if (jfrFile != null) {
-                Files.deleteIfExists(jfrFile);
-            }
-        }
+        runInSubprocessWithJFREnabled(this::performTestException);
     }
 
     private void performTestException() {
@@ -78,6 +57,26 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
         assertNotNull("The call to ThrowableTracer#traceThrowable was not inlined or is missing.", findAnyInvoke(graph,
                         "jdk.jfr.internal.instrument.ThrowableTracer#traceThrowable",
                         "jdk.internal.event.ThrowableTracer#traceThrowable"));
+        // Also make sure that the node count hasn't exploded.
+        assertTrue("The number of graal nodes for an exception instantiation exceeded 100.", graph.getNodeCount() < 100);
+    }
+
+    @Test
+    public void testError() throws IOException, InterruptedException {
+        runInSubprocessWithJFREnabled(this::performTestError);
+    }
+
+    private void performTestError() {
+        RootTestNode root = new RootTestNode(new FrameDescriptor(), "NewError", new NewErrorNode());
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) root.getCallTarget();
+        StructuredGraph graph = partialEval(callTarget, new Object[0]);
+        // The call from the exception constructor to the JFR tracing must not be inlined.
+        assertNotNull("The call to ThrowableTracer#traceThrowable was not inlined or is missing.", findAnyInvoke(graph,
+                        "jdk.jfr.internal.instrument.ThrowableTracer#traceThrowable",
+                        "jdk.internal.event.ThrowableTracer#traceThrowable"));
+        assertNotNull("The call to ThrowableTracer#traceError was not inlined or is missing.", findAnyInvoke(graph,
+                        "jdk.jfr.internal.instrument.ThrowableTracer#traceError",
+                        "jdk.internal.event.ThrowableTracer#traceError"));
         // Also make sure that the node count hasn't exploded.
         assertTrue("The number of graal nodes for an exception instantiation exceeded 100.", graph.getNodeCount() < 100);
     }
@@ -93,6 +92,31 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
         return null;
     }
 
+    private static void runInSubprocessWithJFREnabled(Runnable action) throws IOException, InterruptedException {
+        Path jfrFile;
+        if (SubprocessTestUtils.isSubprocess()) {
+            jfrFile = null;
+        } else {
+            jfrFile = Files.createTempFile("new_truffle_exception", ".jfr");
+        }
+        try {
+            SubprocessTestUtils.newBuilder(JFRPartialEvaluationTest.class, action) //
+                            .prefixVmOption(String.format("-XX:StartFlightRecording=exceptions=all,filename=%s", jfrFile)) //
+                            .onExit((p) -> {
+                                try {
+                                    assertTrue(String.format("JFR event file %s is missing", jfrFile), Files.size(jfrFile) > 0);
+                                } catch (IOException ioe) {
+                                    throw new AssertionError("Failed to stat JFR event file " + jfrFile, ioe);
+                                }
+                            }) //
+                            .run();
+        } finally {
+            if (jfrFile != null) {
+                Files.deleteIfExists(jfrFile);
+            }
+        }
+    }
+
     private static final class NewTruffleExceptionNode extends AbstractTestNode {
 
         @Override
@@ -100,6 +124,25 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
             new AbstractTruffleException() {
             };
             return 1;
+        }
+    }
+
+    private static final class NewErrorNode extends AbstractTestNode {
+
+        @Override
+        public int execute(VirtualFrame frame) {
+            new ErrorImpl();
+            return 1;
+        }
+
+        @SuppressWarnings("serial")
+        private static final class ErrorImpl extends Error {
+
+            @Override
+            @SuppressWarnings("sync-override")
+            public Throwable fillInStackTrace() {
+                return this;
+            }
         }
     }
 }
