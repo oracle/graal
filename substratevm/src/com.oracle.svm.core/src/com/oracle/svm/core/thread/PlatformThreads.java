@@ -433,8 +433,9 @@ public abstract class PlatformThreads {
         }
 
         /*
-         * First of all, ensure we are in RUNNABLE state. If !manuallyStarted, we race with the
-         * thread that launched us to set the status and we could still be in status NEW.
+         * First of all, ensure we are in RUNNABLE state. If this thread was started by the current
+         * isolate, we race with the thread that launched us to set the status and we could still be
+         * in status NEW.
          */
         setThreadStatus(thread, ThreadStatus.RUNNABLE);
         assignCurrent0(thread);
