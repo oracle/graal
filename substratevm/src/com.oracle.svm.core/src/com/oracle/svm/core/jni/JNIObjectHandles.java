@@ -32,7 +32,6 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
@@ -42,6 +41,7 @@ import com.oracle.svm.core.handles.ThreadLocalHandles;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.jni.headers.JNIObjectRefType;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 
@@ -410,7 +410,7 @@ final class JNIImageHeapHandles {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static JNIObjectHandle asLocal(Object target) {
         assert isInImageHeap(target);
-        SignedWord base = (SignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate());
+        SignedWord base = (SignedWord) KnownIntrinsics.heapBase();
         SignedWord offset = Word.objectToUntrackedPointer(target).subtract(base);
         // NOTE: we could support further bits due to the object alignment in the image heap
         assert offset.and(OBJ_OFFSET_BITS_MASK).equal(offset) : "does not fit in range";
@@ -437,7 +437,7 @@ final class JNIImageHeapHandles {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static <T> T getObject(JNIObjectHandle handle) {
         assert isInRange(handle);
-        UnsignedWord base = (UnsignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate());
+        UnsignedWord base = KnownIntrinsics.heapBase();
         Pointer offset = ((Pointer) handle).and(OBJ_OFFSET_BITS_MASK).add(base);
         @SuppressWarnings("unchecked")
         T obj = (T) offset.toObjectNonNull();

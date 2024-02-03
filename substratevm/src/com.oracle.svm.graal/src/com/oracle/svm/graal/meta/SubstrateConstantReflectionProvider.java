@@ -24,12 +24,10 @@
  */
 package com.oracle.svm.graal.meta;
 
-import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.SignedWord;
 
-import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -39,6 +37,7 @@ import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.word.Word;
@@ -188,7 +187,7 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
          * into yet another auxiliary image and the object offsets change.
          */
         if (Heap.getHeap().isInPrimaryImageHeap(object)) {
-            SignedWord base = (SignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate());
+            SignedWord base = (SignedWord) KnownIntrinsics.heapBase();
             SignedWord offset = Word.objectToUntrackedPointer(object).subtract(base);
             return NumUtil.safeToInt(offset.rawValue());
         } else {

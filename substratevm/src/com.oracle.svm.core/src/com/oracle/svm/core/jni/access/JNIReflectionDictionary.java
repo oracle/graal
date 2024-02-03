@@ -35,22 +35,20 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableMapCursor;
-import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
-import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jni.MissingJNIRegistrationUtils;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.Utf8.WrappedAsciiCString;
 import com.oracle.svm.core.util.VMError;
@@ -265,7 +263,7 @@ public final class JNIReflectionDictionary {
         if (method != null) {
             value = Word.objectToUntrackedPointer(method); // safe because it is in the image heap
             if (SubstrateOptions.SpawnIsolates.getValue()) { // use offset: valid across isolates
-                value = value.subtract((SignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate()));
+                value = value.subtract((SignedWord) KnownIntrinsics.heapBase());
             }
         }
         return (JNIMethodId) value;
@@ -275,7 +273,7 @@ public final class JNIReflectionDictionary {
     public static JNIAccessibleMethod getMethodByID(JNIMethodId method) {
         Pointer p = (Pointer) method;
         if (SubstrateOptions.SpawnIsolates.getValue()) {
-            p = p.add((UnsignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate()));
+            p = p.add(KnownIntrinsics.heapBase());
         }
         JNIAccessibleMethod jniMethod = p.toObject(JNIAccessibleMethod.class, false);
         VMError.guarantee(jniMethod == null || !jniMethod.isNegative(), "Existing methods can't correspond to a negative query");

@@ -640,15 +640,13 @@ public final class HeapImpl extends Heap {
 
     @Override
     public boolean printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
-        if (SubstrateOptions.SpawnIsolates.getValue()) {
-            Pointer heapBase = KnownIntrinsics.heapBase();
-            if (value.equal(heapBase)) {
-                log.string("is the heap base");
-                return true;
-            } else if (value.aboveThan(heapBase) && value.belowThan(getImageHeapStart())) {
-                log.string("points into the protected memory between the heap base and the image heap");
-                return true;
-            }
+        Pointer heapBase = KnownIntrinsics.heapBase();
+        if (value.equal(heapBase)) {
+            log.string("is the heap base");
+            return true;
+        } else if (value.aboveThan(heapBase) && value.belowThan(getImageHeapStart())) {
+            log.string("points into the protected memory between the heap base and the image heap");
+            return true;
         }
 
         if (objectHeaderImpl.isEncodedObjectHeader((Word) value)) {
@@ -835,9 +833,7 @@ public final class HeapImpl extends Heap {
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             log.string("Heap settings and statistics:").indent(true);
             log.string("Supports isolates: ").bool(SubstrateOptions.SpawnIsolates.getValue()).newline();
-            if (SubstrateOptions.SpawnIsolates.getValue()) {
-                log.string("Heap base: ").zhex(KnownIntrinsics.heapBase()).newline();
-            }
+            log.string("Heap base: ").zhex(KnownIntrinsics.heapBase()).newline();
             log.string("Object reference size: ").signed(ConfigurationValues.getObjectLayout().getReferenceSize()).newline();
             log.string("Reserved object header bits: 0b").number(Heap.getHeap().getObjectHeader().getReservedBitsMask(), 2, false).newline();
 

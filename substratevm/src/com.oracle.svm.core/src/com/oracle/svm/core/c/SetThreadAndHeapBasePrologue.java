@@ -26,7 +26,6 @@ package com.oracle.svm.core.c;
 
 import org.graalvm.nativeimage.IsolateThread;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
@@ -42,8 +41,6 @@ public class SetThreadAndHeapBasePrologue implements CEntryPointOptions.Prologue
     @Uninterruptible(reason = "prologue")
     public static void enter(IsolateThread thread) {
         WriteCurrentVMThreadNode.writeCurrentVMThread(thread);
-        if (SubstrateOptions.SpawnIsolates.getValue()) {
-            CEntryPointSnippets.setHeapBase(VMThreads.IsolateTL.get());
-        }
+        CEntryPointSnippets.setHeapBase(VMThreads.IsolateTL.get());
     }
 }
