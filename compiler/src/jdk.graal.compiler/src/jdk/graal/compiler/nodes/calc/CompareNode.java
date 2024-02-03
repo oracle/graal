@@ -323,28 +323,24 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
 
     public static LogicNode createCompareNode(CanonicalCondition condition, ValueNode x, ValueNode y, ConstantReflectionProvider constantReflection, NodeView view) {
         assert x.getStackKind() == y.getStackKind() : Assertions.errorMessageContext("condition", condition, "x", x, "y", y);
-        assert !x.getStackKind().isNumericFloat();
 
-        LogicNode comparison;
-        if (condition == CanonicalCondition.EQ) {
-            if (x.stamp(view) instanceof AbstractObjectStamp) {
-                comparison = ObjectEqualsNode.create(x, y, constantReflection, view);
-            } else if (x.stamp(view) instanceof AbstractPointerStamp) {
-                comparison = PointerEqualsNode.create(x, y, view);
-            } else {
-                assert x.getStackKind().isNumericInteger();
-                comparison = IntegerEqualsNode.create(x, y, view);
+        if (x.getStackKind().isNumericInteger()) {
+            switch (condition) {
+                case EQ:
+                    return IntegerEqualsNode.create(x, y, view);
+                case LT:
+                    return IntegerLessThanNode.create(x, y, view);
+                case BT:
+                    return IntegerBelowNode.create(x, y, view);
             }
-        } else if (condition == CanonicalCondition.LT) {
-            assert x.getStackKind().isNumericInteger();
-            comparison = IntegerLessThanNode.create(x, y, view);
-        } else {
-            assert condition == CanonicalCondition.BT : Assertions.errorMessage(condition, x, y);
-            assert x.getStackKind().isNumericInteger();
-            comparison = IntegerBelowNode.create(x, y, view);
+        } else if (condition == CanonicalCondition.EQ) {
+            if (x.stamp(view) instanceof AbstractObjectStamp) {
+                return ObjectEqualsNode.create(x, y, constantReflection, view);
+            } else if (x.stamp(view) instanceof AbstractPointerStamp) {
+                return PointerEqualsNode.create(x, y, view);
+            }
         }
-
-        return comparison;
+        throw GraalError.shouldNotReachHere("unhandled compare " + x + " " + y + " " + condition);
     }
 
     public static LogicNode createCompareNode(StructuredGraph graph, ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, Integer smallestCompareWidth,
