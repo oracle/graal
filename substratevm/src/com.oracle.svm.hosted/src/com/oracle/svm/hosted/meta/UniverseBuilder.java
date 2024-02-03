@@ -1021,7 +1021,7 @@ public class UniverseBuilder {
             int layoutHelper;
             boolean canInstantiateAsInstance = false;
             int monitorOffset = 0;
-            int optionalIdHashOffset = -1;
+            int optionalIdHashOffset = 0;
             if (type.isInstanceClass()) {
                 HostedInstanceClass instanceClass = (HostedInstanceClass) type;
                 if (instanceClass.isAbstract()) {
