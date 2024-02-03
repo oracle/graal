@@ -131,8 +131,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
             QuantifiableTerm quantifiable = zeroWidthQuantifiables.get(i);
             if (quantifiable.isGroup()) {
                 Group group = quantifiable.asGroup();
-                this.zeroWidthTermEnclosedCGLow[i] = group.getEnclosedCaptureGroupsLow();
-                offset += 2 * (group.getEnclosedCaptureGroupsHigh() - group.getEnclosedCaptureGroupsLow());
+                this.zeroWidthTermEnclosedCGLow[i] = group.getCaptureGroupsLow();
+                offset += 2 * (group.getCaptureGroupsHigh() - group.getCaptureGroupsLow());
             }
             this.zeroWidthQuantifierCGOffsets[i + 1] = offset;
         }
