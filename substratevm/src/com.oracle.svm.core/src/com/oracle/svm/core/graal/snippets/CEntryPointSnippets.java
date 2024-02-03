@@ -60,6 +60,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
@@ -69,7 +70,7 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
-import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
@@ -78,6 +79,7 @@ import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionParser;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -87,6 +89,7 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
+import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
@@ -134,7 +137,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     public static final SubstrateForeignCallDescriptor ENTER_BY_ISOLATE = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "enterByIsolate",
                     HAS_SIDE_EFFECT, LocationIdentity.any());
 
-    public static final SubstrateForeignCallDescriptor DETACH_THREAD = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "detachThread",
+    public static final SubstrateForeignCallDescriptor DETACH_CURRENT_THREAD = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "detachCurrentThread",
                     HAS_SIDE_EFFECT, LocationIdentity.any());
 
     public static final SubstrateForeignCallDescriptor REPORT_EXCEPTION = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "reportException",
@@ -147,7 +150,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                     LocationIdentity.any());
 
     public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = {CREATE_ISOLATE, INITIALIZE_ISOLATE, ATTACH_THREAD, ENSURE_JAVA_THREAD, ENTER_BY_ISOLATE,
-                    DETACH_THREAD, REPORT_EXCEPTION, TEAR_DOWN_ISOLATE, IS_ATTACHED, FAIL_FATALLY, VERIFY_ISOLATE_THREAD};
+                    DETACH_CURRENT_THREAD, REPORT_EXCEPTION, TEAR_DOWN_ISOLATE, IS_ATTACHED, FAIL_FATALLY, VERIFY_ISOLATE_THREAD};
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, CEntryPointCreateIsolateParameters parameters);
@@ -157,6 +160,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate);
+
+    @NodeIntrinsic(value = ForeignCallNode.class)
+    public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, IsolateThread thread);
@@ -484,7 +490,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         } else {
             int error = VMThreads.singleton().attachThread(thread, startedByIsolate);
             if (error != CEntryPointErrors.NO_ERROR) {
-                VMThreads.singleton().freeIsolateThread(thread);
+                VMThreads.singleton().freeCurrentIsolateThread();
                 return error;
             }
         }
@@ -536,16 +542,15 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     }
 
     @Snippet(allowMissingProbabilities = true)
-    public static int detachThreadSnippet() {
-        IsolateThread thread = CurrentIsolate.getCurrentThread();
-        return runtimeCall(DETACH_THREAD, thread);
+    public static int detachCurrentThreadSnippet() {
+        return runtimeCall(DETACH_CURRENT_THREAD);
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     @Uninterruptible(reason = "Thread state going away.")
-    private static int detachThread(IsolateThread currentThread) {
+    private static int detachCurrentThread() {
         try {
-            VMThreads.singleton().detachThread(currentThread);
+            VMThreads.singleton().detachCurrentThread();
         } catch (Throwable t) {
             return CEntryPointErrors.UNCAUGHT_EXCEPTION;
         }
@@ -558,29 +563,64 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    @Uninterruptible(reason = "All code executed after VMThreads#tearDown must be uninterruptible")
+    @Uninterruptible(reason = "Tear-down in progress - may still execute interruptible Java code in the beginning.")
     private static int tearDownIsolate() {
         try {
+            /* Execute interruptible code. */
             if (!initiateTearDownIsolateInterruptibly()) {
                 return CEntryPointErrors.UNSPECIFIED;
             }
 
-            VMThreads.singleton().tearDown();
-            IsolateThread finalThread = CurrentIsolate.getCurrentThread();
-            int result = Isolates.tearDownCurrent();
-            // release the heap memory associated with final isolate thread
-            VMThreads.singleton().freeIsolateThread(finalThread);
-            WriteCurrentVMThreadNode.writeCurrentVMThread(WordFactory.nullPointer());
-            return result;
+            /* After threadExit(), only uninterruptible code may be executed. */
+            ThreadingSupportImpl.pauseRecurringCallback("Execution of arbitrary code is prohibited during the last teardown steps.");
+
+            /* Shut down VM thread. */
+            if (VMOperationControl.useDedicatedVMOperationThread()) {
+                VMOperationControl.shutdownAndDetachVMOperationThread();
+            }
+
+            /* Wait until all other threads exited on the OS-level. */
+            VMThreads.singleton().waitUntilDetachedThreadsExitedOnOSLevel();
+
+            IsolateThread currentThread = CurrentIsolate.getCurrentThread();
+            VMError.guarantee(VMThreads.firstThreadUnsafe().equal(currentThread));
+            VMError.guarantee(VMThreads.nextThread(VMThreads.firstThreadUnsafe()).isNull());
+
+            /* Now that we are truly single-threaded, notify listeners about isolate teardown. */
+            IsolateListenerSupport.singleton().onIsolateTeardown();
+
+            /* Free the native resources of the last thread. */
+            PlatformThreads.detach(currentThread);
+            PlatformThreads.singleton().closeOSThreadHandle(VMThreads.getOSThreadHandle(currentThread));
+
+            /* Free VM-internal native memory and tear down the Java heap. */
+            CodeInfoTable.tearDown();
+            NonmovableArrays.tearDown();
+            Heap.getHeap().tearDown();
+
+            /* Tear down the heap address space, including the image heap. */
+            int code = CommittedMemoryProvider.get().tearDown();
+            if (code != CEntryPointErrors.NO_ERROR) {
+                return code;
+            }
+
+            /* Free the last thread. */
+            VMThreads.singleton().freeCurrentIsolateThread();
+            return CEntryPointErrors.NO_ERROR;
         } catch (Throwable t) {
             return reportException(t);
         }
     }
 
-    @Uninterruptible(reason = "Used as a transition between uninterruptible and interruptible code", calleeMustBe = false)
+    @Uninterruptible(reason = "Tear-down in progress - still safe to execute interruptible Java code.", calleeMustBe = false)
     private static boolean initiateTearDownIsolateInterruptibly() {
         RuntimeSupport.executeTearDownHooks();
-        return PlatformThreads.singleton().tearDown();
+        if (!PlatformThreads.tearDownOtherThreads()) {
+            return false;
+        }
+
+        VMThreads.singleton().threadExit();
+        return true;
     }
 
     @Snippet(allowMissingProbabilities = true)
@@ -739,7 +779,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     private final SnippetInfo enterByIsolate;
 
     private final SnippetInfo returnFromJavaToC;
-    private final SnippetInfo detachThread;
+    private final SnippetInfo detachCurrentThread;
     private final SnippetInfo reportException;
     private final SnippetInfo tearDownIsolate;
 
@@ -755,7 +795,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         this.enterByIsolate = snippet(providers, CEntryPointSnippets.class, "enterByIsolateSnippet");
 
         this.returnFromJavaToC = snippet(providers, CEntryPointSnippets.class, "returnFromJavaToCSnippet");
-        this.detachThread = snippet(providers, CEntryPointSnippets.class, "detachThreadSnippet");
+        this.detachCurrentThread = snippet(providers, CEntryPointSnippets.class, "detachCurrentThreadSnippet");
         this.reportException = snippet(providers, CEntryPointSnippets.class, "reportExceptionSnippet");
         this.tearDownIsolate = snippet(providers, CEntryPointSnippets.class, "tearDownIsolateSnippet");
 
@@ -815,7 +855,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                     args = new Arguments(returnFromJavaToC, node.graph().getGuardsStage(), tool.getLoweringStage());
                     break;
                 case DetachThread:
-                    args = new Arguments(detachThread, node.graph().getGuardsStage(), tool.getLoweringStage());
+                    args = new Arguments(detachCurrentThread, node.graph().getGuardsStage(), tool.getLoweringStage());
                     break;
                 case TearDownIsolate:
                     args = new Arguments(tearDownIsolate, node.graph().getGuardsStage(), tool.getLoweringStage());
