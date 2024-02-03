@@ -169,20 +169,7 @@ public final class OracleDBRegexParser implements RegexParser {
                         // quantifiers without target are ignored
                         break;
                     }
-                    Token.Quantifier quantifier = (Token.Quantifier) token;
-                    if (astBuilder.getCurTerm().isQuantifiableTerm() && astBuilder.getCurTerm().asQuantifiableTerm().hasQuantifier()) {
-                        Token.Quantifier existingQuantifier = astBuilder.getCurTerm().asQuantifiableTerm().getQuantifier();
-                        if (existingQuantifier.getMin() > 1) {
-                            astBuilder.wrapCurTermInGroup();
-                        } else {
-                            astBuilder.addQuantifier(Token.createQuantifier(
-                                            Math.max(quantifier.getMin(), existingQuantifier.getMin()),
-                                            (int) Math.max(Integer.toUnsignedLong(quantifier.getMax()), Integer.toUnsignedLong(existingQuantifier.getMax())),
-                                            quantifier.isGreedy() && existingQuantifier.isGreedy()));
-                            break;
-                        }
-                    }
-                    astBuilder.addQuantifier(quantifier);
+                    astBuilder.addQuantifier((Token.Quantifier) token);
                     break;
                 case alternation:
                     astBuilder.nextSequence();
