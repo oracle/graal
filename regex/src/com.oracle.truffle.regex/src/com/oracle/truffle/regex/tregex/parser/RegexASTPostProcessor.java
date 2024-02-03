@@ -258,8 +258,8 @@ public class RegexASTPostProcessor {
                 curGroup.setExpandedQuantifier(unroll);
                 curGroup.setQuantifier(quantifier);
                 if (term.isGroup()) {
-                    curGroup.setEnclosedCaptureGroupsLow(term.asGroup().getEnclosedCaptureGroupsLow());
-                    curGroup.setEnclosedCaptureGroupsHigh(term.asGroup().getEnclosedCaptureGroupsHigh());
+                    curGroup.setEnclosedCaptureGroupsLow(term.asGroup().getCaptureGroupsLow());
+                    curGroup.setEnclosedCaptureGroupsHigh(term.asGroup().getCaptureGroupsHigh());
                 }
                 if (quantifier.isGreedy()) {
                     createOptionalBranch(term, quantifier, copy, unroll, recurse, emptyGuard);
