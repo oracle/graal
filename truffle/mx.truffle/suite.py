@@ -905,6 +905,7 @@ suite = {
         "com.oracle.truffle.nfi.backend.spi",
       ],
       "checkstyle" : "com.oracle.truffle.api",
+      # GR-51699
       "javaCompliance" : "22+",
       "forceJavac": True,
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
@@ -1827,6 +1828,7 @@ suite = {
       },
       "subDir" : "src",
       "javaCompliance" : "22+",
+      # GR-51699
       "forceJavac": True,
       "dependencies" : [
         "com.oracle.truffle.nfi.backend.panama",
