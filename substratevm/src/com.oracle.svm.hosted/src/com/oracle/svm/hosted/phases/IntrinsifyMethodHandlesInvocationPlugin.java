@@ -47,7 +47,6 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.jdk.VarHandleFeature;
 import com.oracle.svm.core.util.VMError;
@@ -534,7 +533,6 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                         parsingProviders.getPlatformConfigurationProvider().getBarrierSet());
         graphBuilderPlugins.appendInlineInvokePlugin(wordOperationPlugin);
         graphBuilderPlugins.appendTypePlugin(wordOperationPlugin);
-        graphBuilderPlugins.appendTypePlugin(new TrustedInterfaceTypePlugin());
         graphBuilderPlugins.appendNodePlugin(wordOperationPlugin);
         graphBuilderPlugins.setClassInitializationPlugin(new NoClassInitializationPlugin());
 
