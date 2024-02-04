@@ -1013,8 +1013,17 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                         } else if (argConstant instanceof Throwable || argConstant instanceof UnresolvedJavaType) {
                             /* A nested constant dynamic threw. */
                             return argConstant;
+                        } else if (argConstant instanceof JavaConstant javaConstant) {
+                            currentNode = ConstantNode.forConstant(javaConstant, getMetaAccess(), getGraph());
                         } else {
-                            currentNode = ConstantNode.forConstant(getSnippetReflection().forObject(argConstant), getMetaAccess(), getGraph());
+                            throw VMError.shouldNotReachHere("Unexpected constant value: " + argConstant);
+                        }
+                        if (isVarargs && i + 4 >= parameterLength) {
+                            /* Primitive arguments in the vararg area have to be boxed. */
+                            JavaKind stackKind = currentNode.getStackKind();
+                            if (stackKind.isPrimitive()) {
+                                currentNode = append(BoxNode.create(currentNode, getMetaAccess().lookupJavaType(stackKind.toBoxedJavaClass()), stackKind));
+                            }
                         }
                     } else {
                         /*
@@ -1158,6 +1167,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
             private void addArgument(boolean isVarargs, ValueNode[] arguments, int i, ValueNode currentNode) {
                 if (isVarargs && i >= arguments.length - 1) {
+                    VMError.guarantee(currentNode.getStackKind() == JavaKind.Object, "Must have an Object value to store into an Objet[] array: %s at index %s", currentNode, i);
                     StoreIndexedNode storeIndexedNode = append(new StoreIndexedNode(arguments[arguments.length - 1], ConstantNode.forInt(i + 1 - arguments.length, getGraph()), null, null,
                                     JavaKind.Object, currentNode));
                     storeIndexedNode.setStateAfter(createFrameState(stream.nextBCI(), storeIndexedNode));
