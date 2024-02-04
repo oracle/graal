@@ -43,7 +43,6 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
-import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.graal.compiler.debug.GraalError;
@@ -54,10 +53,6 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class AnalysisField extends AnalysisElement implements WrappedJavaField, OriginalFieldProvider {
-
-    @SuppressWarnings("rawtypes")//
-    private static final AtomicReferenceFieldUpdater<AnalysisField, Object> OBSERVERS_UPDATER = //
-                    AtomicReferenceFieldUpdater.newUpdater(AnalysisField.class, Object.class, "observers");
 
     private static final AtomicReferenceFieldUpdater<AnalysisField, Object> isAccessedUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisField.class, Object.class, "isAccessed");
@@ -182,25 +177,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         return wrapped;
     }
 
-    public void copyAccessInfos(AnalysisField other) {
-        isAccessedUpdater.set(this, other.isAccessed);
-        isUnsafeAccessedUpdater.set(this, other.isUnsafeAccessed);
-        this.canBeNull = other.canBeNull;
-        isWrittenUpdater.set(this, other.isWritten);
-        isFoldedUpdater.set(this, other.isFolded);
-        isReadUpdater.set(this, other.isRead);
-        notifyUpdateAccessInfo();
-    }
-
-    public void intersectAccessInfos(AnalysisField other) {
-        isAccessedUpdater.set(this, this.isAccessed != null & other.isAccessed != null ? this.isAccessed : null);
-        this.canBeNull = this.canBeNull && other.canBeNull;
-        isWrittenUpdater.set(this, this.isWritten != null & other.isWritten != null ? this.isWritten : null);
-        isFoldedUpdater.set(this, this.isFolded != null & other.isFolded != null ? this.isFolded : null);
-        isReadUpdater.set(this, this.isRead != null & other.isRead != null ? this.isRead : null);
-        notifyUpdateAccessInfo();
-    }
-
     public int getId() {
         return id;
     }
@@ -223,14 +199,14 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         if (getType().getStorageKind() != JavaKind.Object) {
             return null;
         } else if (isStatic()) {
-            return interceptTypeState(staticFieldFlow.getState());
+            return staticFieldFlow.getState();
         } else {
             return getInstanceFieldTypeState();
         }
     }
 
     public TypeState getInstanceFieldTypeState() {
-        return interceptTypeState(instanceFieldFlow.getState());
+        return instanceFieldFlow.getState();
     }
 
     public FieldTypeFlow getInitialInstanceFieldFlow() {
@@ -264,7 +240,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
         assert isValidReason(reason) : "Registering a field as accessed needs to provide a valid reason.";
         boolean firstAttempt = AtomicUtils.atomicSet(this, reason, isAccessedUpdater);
-        notifyUpdateAccessInfo();
         if (firstAttempt) {
             onReachable();
             getUniverse().onFieldAccessed(this);
@@ -281,7 +256,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
         assert isValidReason(reason) : "Registering a field as read needs to provide a valid reason.";
         boolean firstAttempt = AtomicUtils.atomicSet(this, reason, isReadUpdater);
-        notifyUpdateAccessInfo();
         if (readBy != null) {
             readBy.put(reason, Boolean.TRUE);
         }
@@ -303,7 +277,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
         assert isValidReason(reason) : "Registering a field as written needs to provide a valid reason.";
         boolean firstAttempt = AtomicUtils.atomicSet(this, reason, isWrittenUpdater);
-        notifyUpdateAccessInfo();
         if (writtenBy != null && reason != null) {
             writtenBy.put(reason, Boolean.TRUE);
         }
@@ -363,7 +336,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
             }
             return true;
         }
-        notifyUpdateAccessInfo();
         return false;
     }
 
@@ -460,7 +432,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     public void setCanBeNull(boolean canBeNull) {
         this.canBeNull = canBeNull;
-        notifyUpdateAccessInfo();
     }
 
     public boolean canBeNull() {
@@ -559,33 +530,5 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
                 type.scheduledTypeReachableNotifications = null;
             }
         });
-    }
-
-    public void addAnalysisFieldObserver(AnalysisFieldObserver observer) {
-        ConcurrentLightHashSet.addElement(this, OBSERVERS_UPDATER, observer);
-    }
-
-    public void removeAnalysisFieldObserver(AnalysisFieldObserver observer) {
-        ConcurrentLightHashSet.removeElement(this, OBSERVERS_UPDATER, observer);
-    }
-
-    private void notifyUpdateAccessInfo() {
-        for (Object observer : ConcurrentLightHashSet.getElements(this, OBSERVERS_UPDATER)) {
-            ((AnalysisFieldObserver) observer).notifyUpdateAccessInfo(this);
-        }
-    }
-
-    private TypeState interceptTypeState(TypeState typestate) {
-        TypeState result = typestate;
-        for (Object observer : ConcurrentLightHashSet.getElements(this, OBSERVERS_UPDATER)) {
-            result = ((AnalysisFieldObserver) observer).interceptTypeState(this, typestate);
-        }
-        return result;
-    }
-
-    public interface AnalysisFieldObserver {
-        void notifyUpdateAccessInfo(AnalysisField field);
-
-        TypeState interceptTypeState(AnalysisField field, TypeState typestate);
     }
 }
