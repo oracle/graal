@@ -257,7 +257,7 @@ public class CompilationResult {
     private Assumption[] assumptions;
 
     /**
-     * The list of the methods whose bytecodes were used as input to the compilation. If
+     * The set of the methods whose bytecodes were used as input to the compilation. If
      * {@code null}, then the compilation did not record method dependencies. Otherwise, the first
      * element of this array is the root method of the compilation.
      */
@@ -361,45 +361,36 @@ public class CompilationResult {
     }
 
     /**
-     * Sets the methods whose bytecodes were used as input to the compilation.
+     * Records the set of methods whose bytecodes were used as input to the compilation.
      *
      * @param rootMethod the root method of the compilation
-     * @param inlinedMethods the methods inlined during compilation
+     * @param inlinedMethods the methods inlined during compilation (may contain duplicates)
      */
     public void setMethods(ResolvedJavaMethod rootMethod, Collection<ResolvedJavaMethod> inlinedMethods) {
         checkOpen();
         assert rootMethod != null;
         assert inlinedMethods != null;
-        if (inlinedMethods.contains(rootMethod)) {
-            methods = inlinedMethods.toArray(new ResolvedJavaMethod[inlinedMethods.size()]);
-            for (int i = 0; i < methods.length; i++) {
-                if (methods[i].equals(rootMethod)) {
-                    if (i != 0) {
-                        ResolvedJavaMethod tmp = methods[0];
-                        methods[0] = methods[i];
-                        methods[i] = tmp;
-                    }
-                    break;
-                }
-            }
-        } else {
-            methods = new ResolvedJavaMethod[1 + inlinedMethods.size()];
-            methods[0] = rootMethod;
-            int i = 1;
-            for (ResolvedJavaMethod m : inlinedMethods) {
-                methods[i++] = m;
-            }
+
+        EconomicSet<ResolvedJavaMethod> methodSet = EconomicSet.create(inlinedMethods.size());
+        methodSet.addAll(inlinedMethods);
+        methodSet.remove(rootMethod);
+        methods = new ResolvedJavaMethod[1 + methodSet.size()];
+        methods[0] = rootMethod;
+        int i = 1;
+        for (ResolvedJavaMethod m : methodSet) {
+            methods[i++] = m;
         }
     }
 
     /**
-     * Gets the methods whose bytecodes were used as input to the compilation.
+     * Gets the set of methods whose bytecodes were used as input to the compilation.
      *
      * The caller must not modify the contents of the returned array.
      *
      * @return {@code null} if the compilation did not record method dependencies otherwise the
      *         methods whose bytecodes were used as input to the compilation with the first element
-     *         being the root method of the compilation
+     *         being the root method of the compilation. The entries in a non-null returned array
+     *         are guaranteed to be unique.
      */
     public ResolvedJavaMethod[] getMethods() {
         return methods;
