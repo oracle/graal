@@ -179,18 +179,21 @@ public abstract class BaseProcessor extends AbstractProcessor {
      *         {@code element}
      */
     public AnnotationMirror getAnnotation(Element element, TypeMirror annotationType) {
-        List<AnnotationMirror> mirrors = getAnnotations(element, annotationType);
+        List<AnnotationMirror> mirrors = getAnnotations(element, annotationType, null);
         return mirrors.isEmpty() ? null : mirrors.get(0);
     }
 
     /**
      * Gets all annotations directly present on {@code element}.
      */
-    public List<AnnotationMirror> getAnnotations(Element element, TypeMirror typeMirror) {
+    public List<AnnotationMirror> getAnnotations(Element element, TypeMirror typeMirror, TypeMirror repeatTypeMirror) {
         List<AnnotationMirror> result = new ArrayList<>();
         for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
             if (processingEnv.getTypeUtils().isSameType(mirror.getAnnotationType(), typeMirror)) {
                 result.add(mirror);
+            }
+            if (repeatTypeMirror != null && processingEnv.getTypeUtils().isSameType(mirror.getAnnotationType(), repeatTypeMirror)) {
+                result.addAll(getAnnotationValueList(mirror, "value", AnnotationMirror.class));
             }
         }
         return result;
