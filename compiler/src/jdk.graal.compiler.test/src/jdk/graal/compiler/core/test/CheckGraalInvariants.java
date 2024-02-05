@@ -51,6 +51,7 @@ import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import jdk.graal.compiler.test.SubprocessUtil;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -231,6 +232,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
 
     @Test
     public void test() {
+        Assume.assumeFalse("JaCoCo causes failure", SubprocessUtil.isJaCoCoAttached()); // GR-50672
         assumeManagementLibraryIsLoadable();
         runTest(new InvariantsTool());
     }
