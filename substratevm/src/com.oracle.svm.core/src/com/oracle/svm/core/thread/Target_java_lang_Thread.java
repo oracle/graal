@@ -31,13 +31,10 @@ import java.security.AccessControlContext;
 import java.util.Map;
 import java.util.Objects;
 
-import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.replacements.ReplacementsUtil;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
@@ -49,9 +46,14 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
+import com.oracle.svm.core.jdk.JDK22OrEarlier;
 import com.oracle.svm.core.jdk.JDK22OrLater;
+import com.oracle.svm.core.jdk.JDK23OrLater;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.replacements.ReplacementsUtil;
 
 @TargetClass(Thread.class)
 @SuppressWarnings({"unused"})
@@ -271,10 +273,6 @@ public final class Target_java_lang_Thread {
     @Substitute
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private void start0() {
-        if (!SubstrateOptions.MultiThreaded.getValue()) {
-            throw VMError.unsupportedFeature("Single-threaded VM cannot create new threads");
-        }
-
         parentThreadId = JavaThreads.getThreadId(Thread.currentThread());
         long stackSize = PlatformThreads.getRequestedStackSize(JavaThreads.fromTarget(this));
         try {
@@ -321,17 +319,12 @@ public final class Target_java_lang_Thread {
      * underlying mechanisms.
      */
     @Substitute
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
     void interrupt0() {
         /*
          * The interrupted flag is maintained by the JDK in Java code, i.e., already set by the
          * caller. So we do not need to set any flag.
          */
-
-        if (!SubstrateOptions.MultiThreaded.getValue()) {
-            /* If the VM is single-threaded, this thread can not be blocked. */
-            return;
-        }
-
         Thread thread = JavaThreads.fromTarget(this);
         PlatformThreads.interruptSleep(thread);
         /*
@@ -505,7 +498,15 @@ public final class Target_java_lang_Thread {
     static native Object findScopedValueBindings();
 
     @Substitute
-    static void blockedOn(Target_sun_nio_ch_Interruptible b) {
+    @TargetElement(name = "blockedOn", onlyWith = JDK22OrEarlier.class)
+    static void blockedOnJDK22(Target_sun_nio_ch_Interruptible b) {
+        JavaThreads.blockedOn(b);
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK23OrLater.class)
+    @SuppressWarnings("static-method")
+    void blockedOn(Target_sun_nio_ch_Interruptible b) {
         JavaThreads.blockedOn(b);
     }
 

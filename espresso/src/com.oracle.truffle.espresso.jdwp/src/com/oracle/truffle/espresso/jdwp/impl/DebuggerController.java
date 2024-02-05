@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -830,124 +830,126 @@ public final class DebuggerController implements ContextsListener {
 
             boolean hit = false;
             boolean handledLineBreakpoint = false;
-            HashSet<Breakpoint> handled = new HashSet<>(event.getBreakpoints().size());
-            for (Breakpoint bp : event.getBreakpoints()) {
-                if (handled.contains(bp)) {
-                    continue;
-                }
-                BreakpointInfo info = breakpointInfos.get(bp);
-                suspendPolicy = info.getSuspendPolicy();
-
-                if (info.isLineBreakpoint()) {
-                    // only allow one line breakpoint to avoid confusing the debugger
-                    if (handledLineBreakpoint) {
+            if (steppingInfo == null) {
+                HashSet<Breakpoint> handled = new HashSet<>(event.getBreakpoints().size());
+                for (Breakpoint bp : event.getBreakpoints()) {
+                    if (handled.contains(bp)) {
                         continue;
                     }
-                    handledLineBreakpoint = true;
-                    hit = true;
-                    // check if breakpoint request limited to a specific thread
-                    Object thread = info.getThread();
-                    if (thread == null || thread == currentThread) {
-                        jobs.add(new Callable<>() {
-                            @Override
-                            public Void call() {
-                                eventListener.breakpointHit(info, callFrames[0], currentThread);
-                                return null;
-                            }
-                        });
-                    }
-                } else if (info.isExceptionBreakpoint()) {
-                    // get the specific exception type if any
-                    Throwable exception = event.getException().getRawException(context.getLanguageClass());
-                    if (exception == null) {
-                        fine(() -> "Unable to retrieve raw exception for " + event.getException());
-                        // failed to get the raw exception, so don't suspend here.
-                        return;
-                    }
-                    Object guestException = getContext().getGuestException(exception);
-                    fine(() -> "checking exception breakpoint for exception: " + exception);
-                    // TODO(Gregersen) - rewrite this when instanceof implementation in Truffle is
-                    // completed
-                    // See /browse/GR-10371
-                    // Currently, the Truffle Debug API doesn't filter on
-                    // type, so we end up here having to check also, the
-                    // ignore count set on the breakpoint will not work
-                    // properly due to this.
-                    // we need to do a real type check here, since subclasses
-                    // of the specified exception should also hit.
-                    KlassRef klass = info.getKlass(); // null means no filtering
-                    if (klass == null) {
-                        // always hit when broad exception filter is used
+                    BreakpointInfo info = breakpointInfos.get(bp);
+                    suspendPolicy = info.getSuspendPolicy();
+
+                    if (info.isLineBreakpoint()) {
+                        // only allow one line breakpoint to avoid confusing the debugger
+                        if (handledLineBreakpoint) {
+                            continue;
+                        }
+                        handledLineBreakpoint = true;
                         hit = true;
-                    } else if (klass == null || getContext().isInstanceOf(guestException, klass)) {
-                        fine(() -> "Exception type matched the klass type: " + klass.getNameAsString());
-                        // check filters if we should not suspend
-                        Pattern[] positivePatterns = info.getFilter().getIncludePatterns();
-                        // verify include patterns
-                        if (positivePatterns == null || positivePatterns.length == 0 || matchLocation(positivePatterns, callFrames[0])) {
-                            // verify exclude patterns
-                            Pattern[] negativePatterns = info.getFilter().getExcludePatterns();
-                            if (negativePatterns == null || negativePatterns.length == 0 || !matchLocation(negativePatterns, callFrames[0])) {
-                                hit = true;
+                        // check if breakpoint request limited to a specific thread
+                        Object thread = info.getThread();
+                        if (thread == null || thread == currentThread) {
+                            jobs.add(new Callable<>() {
+                                @Override
+                                public Void call() {
+                                    eventListener.breakpointHit(info, callFrames[0], currentThread);
+                                    return null;
+                                }
+                            });
+                        }
+                    } else if (info.isExceptionBreakpoint()) {
+                        // get the specific exception type if any
+                        Throwable exception = event.getException().getRawException(context.getLanguageClass());
+                        if (exception == null) {
+                            fine(() -> "Unable to retrieve raw exception for " + event.getException());
+                            // failed to get the raw exception, so don't suspend here.
+                            return;
+                        }
+                        Object guestException = getContext().getGuestException(exception);
+                        fine(() -> "checking exception breakpoint for exception: " + exception);
+                        // TODO(Gregersen) - rewrite this when instanceof implementation in Truffle
+                        // is
+                        // completed
+                        // See /browse/GR-10371
+                        // Currently, the Truffle Debug API doesn't filter on
+                        // type, so we end up here having to check also, the
+                        // ignore count set on the breakpoint will not work
+                        // properly due to this.
+                        // we need to do a real type check here, since subclasses
+                        // of the specified exception should also hit.
+                        KlassRef klass = info.getKlass(); // null means no filtering
+                        if (klass == null) {
+                            // always hit when broad exception filter is used
+                            hit = true;
+                        } else if (klass == null || getContext().isInstanceOf(guestException, klass)) {
+                            fine(() -> "Exception type matched the klass type: " + klass.getNameAsString());
+                            // check filters if we should not suspend
+                            Pattern[] positivePatterns = info.getFilter().getIncludePatterns();
+                            // verify include patterns
+                            if (positivePatterns == null || positivePatterns.length == 0 || matchLocation(positivePatterns, callFrames[0])) {
+                                // verify exclude patterns
+                                Pattern[] negativePatterns = info.getFilter().getExcludePatterns();
+                                if (negativePatterns == null || negativePatterns.length == 0 || !matchLocation(negativePatterns, callFrames[0])) {
+                                    hit = true;
+                                }
                             }
                         }
-                    }
-                    if (hit) {
-                        fine(() -> "Breakpoint hit in thread: " + getThreadName(currentThread));
+                        if (hit) {
+                            fine(() -> "Breakpoint hit in thread: " + getThreadName(currentThread));
 
+                            jobs.add(new Callable<>() {
+                                @Override
+                                public Void call() {
+                                    eventListener.exceptionThrown(info, currentThread, guestException, callFrames);
+                                    return null;
+                                }
+                            });
+                        } else {
+                            // don't suspend here
+                            suspendedInfos.put(currentThread, null);
+                            return;
+                        }
+                    }
+                    handled.add(bp);
+                }
+
+                // check if suspended for a field breakpoint
+                FieldBreakpointEvent fieldEvent = fieldBreakpointExpected.remove(Thread.currentThread());
+                if (fieldEvent != null) {
+                    FieldBreakpointInfo info = fieldEvent.getInfo();
+                    if (info.isAccessBreakpoint()) {
+                        hit = true;
                         jobs.add(new Callable<>() {
                             @Override
                             public Void call() {
-                                eventListener.exceptionThrown(info, currentThread, guestException, callFrames);
+                                eventListener.fieldAccessBreakpointHit(fieldEvent, currentThread, callFrames[0]);
                                 return null;
                             }
                         });
-                    } else {
-                        // don't suspend here
-                        suspendedInfos.put(currentThread, null);
-                        return;
+                    } else if (info.isModificationBreakpoint()) {
+                        hit = true;
+                        jobs.add(new Callable<>() {
+                            @Override
+                            public Void call() {
+                                eventListener.fieldModificationBreakpointHit(fieldEvent, currentThread, callFrames[0]);
+                                return null;
+                            }
+                        });
                     }
                 }
-                handled.add(bp);
-            }
-
-            // check if suspended for a field breakpoint
-            FieldBreakpointEvent fieldEvent = fieldBreakpointExpected.remove(Thread.currentThread());
-            if (fieldEvent != null) {
-                FieldBreakpointInfo info = fieldEvent.getInfo();
-                if (info.isAccessBreakpoint()) {
+                // check if suspended for a method breakpoint
+                MethodBreakpointEvent methodEvent = methodBreakpointExpected.remove(Thread.currentThread());
+                if (methodEvent != null) {
                     hit = true;
                     jobs.add(new Callable<>() {
                         @Override
                         public Void call() {
-                            eventListener.fieldAccessBreakpointHit(fieldEvent, currentThread, callFrames[0]);
-                            return null;
-                        }
-                    });
-                } else if (info.isModificationBreakpoint()) {
-                    hit = true;
-                    jobs.add(new Callable<>() {
-                        @Override
-                        public Void call() {
-                            eventListener.fieldModificationBreakpointHit(fieldEvent, currentThread, callFrames[0]);
+                            eventListener.methodBreakpointHit(methodEvent, currentThread, callFrames[0]);
                             return null;
                         }
                     });
                 }
-            }
-            // check if suspended for a method breakpoint
-            MethodBreakpointEvent methodEvent = methodBreakpointExpected.remove(Thread.currentThread());
-            if (methodEvent != null) {
-                hit = true;
-                jobs.add(new Callable<>() {
-                    @Override
-                    public Void call() {
-                        eventListener.methodBreakpointHit(methodEvent, currentThread, callFrames[0]);
-                        return null;
-                    }
-                });
-            }
-            if (steppingInfo != null) {
+            } else {
                 jobs.add(new Callable<>() {
                     @Override
                     public Void call() {

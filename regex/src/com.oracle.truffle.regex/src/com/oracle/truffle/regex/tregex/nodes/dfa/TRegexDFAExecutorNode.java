@@ -178,10 +178,6 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         return props.canFindStart();
     }
 
-    public boolean isRegressionTestMode() {
-        return props.isRegressionTestMode();
-    }
-
     @Override
     public int getNumberOfStates() {
         return states.length;

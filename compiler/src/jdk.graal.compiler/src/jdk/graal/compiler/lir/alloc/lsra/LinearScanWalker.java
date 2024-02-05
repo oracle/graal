@@ -48,7 +48,6 @@ import jdk.graal.compiler.lir.alloc.lsra.Interval.RegisterBinding;
 import jdk.graal.compiler.lir.alloc.lsra.Interval.RegisterPriority;
 import jdk.graal.compiler.lir.alloc.lsra.Interval.SpillState;
 import jdk.graal.compiler.lir.alloc.lsra.Interval.State;
-
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
@@ -277,7 +276,7 @@ class LinearScanWalker extends IntervalWalker {
             index++;
             assert 0 <= index && index < instructions.size() : "index out of bounds";
         }
-        assert 1 <= index && index < instructions.size() : "index out of bounds";
+        assert allocator.getLIRGenerationResult().getFirstInsertPosition() <= index && index < instructions.size() : "index out of bounds";
         assert instructions.get(index).id() == opId : "error in calculation";
 
         // insert new instruction before instruction at position index

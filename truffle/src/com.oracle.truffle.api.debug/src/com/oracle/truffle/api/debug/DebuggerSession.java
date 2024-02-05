@@ -205,6 +205,7 @@ public final class DebuggerSession implements Closeable {
     private final StableBoolean stepping = new StableBoolean(false);
     private final StableBoolean ignoreLanguageContextInitialization = new StableBoolean(false);
     private volatile boolean includeInternal = false;
+    private volatile boolean includeAvailableSourceSectionsOnly = false;
     private volatile boolean showHostStackFrames = false;
     private Predicate<Source> sourceFilter;
     @CompilationFinal private volatile Assumption suspensionFilterUnchanged = Truffle.getRuntime().createAssumption("Unchanged suspension filter");
@@ -350,11 +351,13 @@ public final class DebuggerSession implements Closeable {
         synchronized (this) {
             boolean oldIncludeInternal = this.includeInternal;
             this.includeInternal = steppingFilter.isInternalIncluded();
+            boolean oldIncludeOnlyAvailableSourceSections = this.includeAvailableSourceSectionsOnly;
+            this.includeAvailableSourceSectionsOnly = steppingFilter.isIncludeAvailableSourceSectionsOnly();
             Predicate<Source> oldSourceFilter = this.sourceFilter;
             this.sourceFilter = steppingFilter.getSourcePredicate();
             this.suspensionFilterUnchanged.invalidate();
             this.suspensionFilterUnchanged = Truffle.getRuntime().createAssumption("Unchanged suspension filter");
-            if (oldIncludeInternal != this.includeInternal || oldSourceFilter != this.sourceFilter) {
+            if (oldIncludeInternal != this.includeInternal || oldIncludeOnlyAvailableSourceSections != this.includeAvailableSourceSectionsOnly || oldSourceFilter != this.sourceFilter) {
                 removeBindings();
                 addBindings(this.includeInternal, this.sourceFilter);
             }
@@ -687,6 +690,7 @@ public final class DebuggerSession implements Closeable {
                     Class<?>... tags) {
         Builder builder = SourceSectionFilter.newBuilder().tagIs(tags);
         builder.includeInternal(includeInternalCode);
+        builder.sourceSectionAvailableOnly(includeAvailableSourceSectionsOnly);
         if (sFilter != null) {
             builder.sourceIs(new SourceSectionFilter.SourcePredicate() {
                 @Override
@@ -1393,10 +1397,14 @@ public final class DebuggerSession implements Closeable {
 
     private List<DebuggerNode> collectDebuggerNodes(Node iNode, SuspendAnchor suspendAnchor) {
         List<DebuggerNode> nodes = new ArrayList<>();
-        for (EventBinding<?> binding : allBindings) {
-            DebuggerNode node = (DebuggerNode) debugger.getInstrumenter().lookupExecutionEventNode(iNode, binding);
-            if (node != null && node.isActiveAt(suspendAnchor)) {
-                nodes.add(node);
+        synchronized (allBindings) {
+            // allBindings is a synchronized set, but we still need to synchronize
+            // iteration against manipulations, to avoid ConcurrentModificationExceptions
+            for (EventBinding<?> binding : allBindings) {
+                DebuggerNode node = (DebuggerNode) debugger.getInstrumenter().lookupExecutionEventNode(iNode, binding);
+                if (node != null && node.isActiveAt(suspendAnchor)) {
+                    nodes.add(node);
+                }
             }
         }
         return nodes;

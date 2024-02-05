@@ -25,24 +25,29 @@
 
 package jdk.graal.compiler.hotspot.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.math.BigInteger;
 import java.util.Collections;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.runtime.JVMCI;
+
+import org.junit.Test;
+import org.objectweb.asm.Type;
+
 import jdk.graal.compiler.api.runtime.GraalJVMCICompiler;
+import jdk.graal.compiler.core.test.TestGraphBuilderPhase;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.hotspot.meta.HotSpotJITClassInitializationPlugin;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.runtime.RuntimeProvider;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import org.junit.Test;
-import org.objectweb.asm.Type;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.runtime.JVMCI;
 
 public class LambdaStableNameTest {
     private String findStableLambdaName(ResolvedJavaType type) {
@@ -51,7 +56,8 @@ public class LambdaStableNameTest {
         GraalJVMCICompiler compiler = (GraalJVMCICompiler) JVMCI.getRuntime().getCompiler();
         Providers providers = compiler.getGraalRuntime().getCapability(RuntimeProvider.class).getHostBackend().getProviders();
         final HotSpotJITClassInitializationPlugin initializationPlugin = new HotSpotJITClassInitializationPlugin();
-        return LambdaUtils.findStableLambdaName(initializationPlugin, providers, type, options, debug, this);
+        return LambdaUtils.findStableLambdaName(initializationPlugin, providers, type, options, debug, this,
+                        config -> new TestGraphBuilderPhase.Instance(providers, config, OptimisticOptimizations.NONE, null));
     }
 
     @Test
@@ -69,20 +75,20 @@ public class LambdaStableNameTest {
         assertEquals("Both stable lambda names are the same as they reference the same method", name, acName);
 
         String myName = Type.getInternalName(getClass());
-        assertEquals("The name known in 19.3 version is computed", "L" + myName + "$$Lambda$0a7a1b7da3e20b4eff3f548c6ba3e47a0c3be612;", name);
+        assertEquals("The name known in 24.0 version is computed", "L" + myName + "$$Lambda.0x0a7a1b7da3e20b4eff3f548c6ba3e47a0c3be612;", name);
     }
 
     private static void assertLambdaName(String name) {
         String expectedPrefix = "L" + LambdaStableNameTest.class.getCanonicalName().replace('.', '/') +
-                        "$$Lambda$";
+                        LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING;
         if (!name.startsWith(expectedPrefix)) {
             fail("Expecting " + expectedPrefix + " as prefix in lambda class name: " + name);
         }
         assertTrue("semicolon at the end", name.endsWith(";"));
 
-        int last = name.lastIndexOf('$');
+        int index = name.indexOf(LambdaUtils.ADDRESS_PREFIX);
 
-        String hash = name.substring(last + 1, name.length() - 1);
+        String hash = name.substring(index + LambdaUtils.ADDRESS_PREFIX.length(), name.length() - 1);
 
         BigInteger aValue = new BigInteger(hash, 16);
         assertNotNull("Hash can be parsed as a hex number: " + hash, aValue);

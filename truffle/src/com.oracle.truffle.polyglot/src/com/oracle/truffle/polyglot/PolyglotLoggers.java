@@ -136,7 +136,6 @@ final class PolyglotLoggers {
     /**
      * Creates a default {@link Handler} for an engine when a {@link Handler} was not specified.
      *
-     * @param polyglot the polyglot owning the handler
      * @param out the {@link OutputStream} to print log messages into
      * @param sandboxPolicy the engine's sandbox policy
      */
@@ -218,6 +217,10 @@ final class PolyglotLoggers {
             }
         }
 
+        boolean isContextBoundLogger() {
+            return !useCurrentContext;
+        }
+
         void setOwner(VMObject owner) {
             if (ownerRef != null) {
                 throw new IllegalStateException("owner can only be set once");
@@ -226,7 +229,7 @@ final class PolyglotLoggers {
         }
 
         static LoggerCache newEngineLoggerCache(PolyglotEngineImpl engine) {
-            return newEngineLoggerCache(new PolyglotLogHandler(engine.logHandler), engine.logLevels, true, Collections.emptySet());
+            return newEngineLoggerCache(new PolyglotLogHandler(engine), engine.logLevels, true, Collections.emptySet());
         }
 
         static LoggerCache newEngineLoggerCache(LogHandler handler, Map<String, Level> logLevels, boolean useCurrentContext,
@@ -500,7 +503,7 @@ final class PolyglotLoggers {
 
             private static String possibleSimpleName(final String loggerName) {
                 int index = -1;
-                for (int i = 0; i >= 0; i = loggerName.indexOf('.', i + 1)) {
+                for (int i = loggerName.indexOf('.'); i >= 0; i = loggerName.indexOf('.', i + 1)) {
                     if (i + 1 < loggerName.length() && Character.isUpperCase(loggerName.charAt(i + 1))) {
                         index = i + 1;
                         break;
@@ -550,21 +553,22 @@ final class PolyglotLoggers {
 
         private static final LogHandler INSTANCE = new PolyglotLogHandler();
 
-        private final LogHandler fallBackHandler;
+        private final WeakReference<PolyglotEngineImpl> engineRef;
 
         PolyglotLogHandler() {
-            this.fallBackHandler = null;
+            this.engineRef = null;
         }
 
-        PolyglotLogHandler(LogHandler fallbackHandler) {
-            this.fallBackHandler = fallbackHandler;
+        PolyglotLogHandler(PolyglotEngineImpl engine) {
+            this.engineRef = new WeakReference<>(engine);
         }
 
         @Override
         public void publish(final LogRecord record) {
             LogHandler handler = findDelegate();
             if (handler == null) {
-                handler = fallBackHandler;
+                PolyglotEngineImpl engine = engineRef != null ? engineRef.get() : null;
+                handler = engine != null ? engine.logHandler : null;
             }
             if (handler != null) {
                 handler.publish(record);

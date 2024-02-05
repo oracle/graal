@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.stack;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
@@ -34,6 +32,9 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.Option;
 
 /**
  * This interface provides functions related to stack overflow checking that are invoked by other
@@ -115,8 +116,8 @@ public interface StackOverflowCheck {
 
     /**
      * Called for each thread when the thread is attached to the VM. The method is called very
-     * early, before the the heap is set up. Therefore, the implementation is severly limited to
-     * only operate on C memory and calling C functions.
+     * early, before the heap is set up. Therefore, the implementation is severely limited to only
+     * operate on C memory and calling C functions.
      */
     @Uninterruptible(reason = "Called while thread is being attached to the VM, i.e., when the thread state is not yet set up.")
     boolean initialize();

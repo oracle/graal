@@ -60,6 +60,7 @@ public class PosixDirectives implements CContext.Directives {
     private static final String[] darwinLibs = new String[]{
                     "<Foundation/Foundation.h>",
                     "<mach/mach.h>",
+                    "<mach/semaphore.h>",
                     "<mach/mach_time.h>",
                     "<mach-o/dyld.h>",
                     "<sys/sysctl.h>",

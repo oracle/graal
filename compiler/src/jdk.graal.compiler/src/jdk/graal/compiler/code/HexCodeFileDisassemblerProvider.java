@@ -28,10 +28,10 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Locale;
 
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.ServiceProvider;
-
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.CodeUtil.DefaultRefMapFormatter;
@@ -154,7 +154,7 @@ public class HexCodeFileDisassemblerProvider implements DisassemblerProvider {
                     arch = "amd64";
                 }
                 int wordWidth = arch.endsWith("64") ? 64 : Integer.parseInt(Services.getSavedProperty("sun.arch.data.model", "64"));
-                String hcf = new HexCodeFile(code, 0L, arch.toLowerCase(), wordWidth).toEmbeddedString();
+                String hcf = new HexCodeFile(code, 0L, arch.toLowerCase(Locale.ENGLISH), wordWidth).toEmbeddedString();
                 try {
                     toolMethod.invokeExact(hcf);
                 } catch (Throwable e) {

@@ -40,6 +40,7 @@ import java.util.Collections;
 import java.util.Formatter;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -48,11 +49,11 @@ import java.util.function.Supplier;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
+
+import jdk.graal.compiler.graphio.GraphOutput;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.graal.compiler.graphio.GraphOutput;
-
 import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -1895,7 +1896,7 @@ public final class DebugContext implements AutoCloseable {
 
         String res = sb.toString();
         if ((flags & UPPERCASE) == UPPERCASE) {
-            res = res.toUpperCase();
+            res = res.toUpperCase(Locale.ENGLISH);
         }
         return res;
     }

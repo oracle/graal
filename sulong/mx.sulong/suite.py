@@ -1799,7 +1799,10 @@ suite = {
       "useModulePath" : True,
       "subDir" : "projects",
       "dependencies" : ["com.oracle.truffle.llvm.nfi"],
-      "distDependencies" : ["truffle:TRUFFLE_NFI"],
+      "distDependencies" : [
+        "truffle:TRUFFLE_NFI",
+        "SULONG_CORE",  # The SULONG_NFI in the runtime needs llvm language
+      ],
       "maven" : {
         "artifactId" : "llvm-language-nfi",
         "tag": ["default", "public"],

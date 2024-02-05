@@ -29,13 +29,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
-import jdk.graal.compiler.code.CompilationResult;
-import jdk.graal.compiler.code.CompilationResult.CodeAnnotation;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.core.common.type.CompressibleConstant;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.Indent;
-import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
@@ -50,6 +43,7 @@ import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.DeoptimizationSourcePositionEncoder;
+import com.oracle.svm.core.code.FrameInfoDecoder;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.code.InstalledCodeObserver;
 import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandle;
@@ -74,6 +68,13 @@ import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.code.CompilationResult.CodeAnnotation;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.Indent;
+import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.ConstantReference;
@@ -269,7 +270,7 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
         codeInfoEncoder.addMethod(method, compilation, 0, compilation.getTargetCodeSize());
         codeInfoEncoder.encodeAllAndInstall(runtimeMethodInfo, adjuster);
 
-        assert !adjuster.isFinished() || CodeInfoEncoder.verifyMethod(method, compilation, 0, compilation.getTargetCodeSize(), runtimeMethodInfo);
+        assert !adjuster.isFinished() || CodeInfoEncoder.verifyMethod(method, compilation, 0, compilation.getTargetCodeSize(), runtimeMethodInfo, FrameInfoDecoder.SubstrateConstantAccess);
         assert !adjuster.isFinished() || codeInfoEncoder.verifyFrameInfo(runtimeMethodInfo);
 
         DeoptimizationSourcePositionEncoder sourcePositionEncoder = new DeoptimizationSourcePositionEncoder();

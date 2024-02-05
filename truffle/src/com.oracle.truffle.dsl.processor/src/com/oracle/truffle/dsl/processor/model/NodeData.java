@@ -512,6 +512,24 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return null;
     }
 
+    public boolean needsState(ProcessorContext context) {
+        int count = 0;
+        for (SpecializationData specialization : getSpecializations()) {
+            if (specialization.getMethod() == null) {
+                continue;
+            }
+            if (count == 1) {
+                return true;
+            }
+            if (specialization.needsState(context)) {
+                return true;
+            }
+            count++;
+        }
+
+        return false;
+    }
+
     public boolean needsRewrites(ProcessorContext context) {
         int count = 0;
         for (SpecializationData specialization : getSpecializations()) {

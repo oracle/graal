@@ -145,7 +145,7 @@ public class FrameStateAssignmentPhase extends Phase {
     protected void run(StructuredGraph graph) {
         assert !hasFloatingDeopts(graph);
         ReentrantNodeIterator.apply(new FrameStateAssignmentClosure(), graph.start(), null);
-        graph.getNodes(FrameState.TYPE).filter(state -> state.hasNoUsages()).forEach(GraphUtil::killWithUnusedFloatingInputs);
+        GraphUtil.killAllWithUnusedFloatingInputs(graph.getNodes(FrameState.TYPE).filter(state -> state.hasNoUsages()), false);
     }
 
     @Override

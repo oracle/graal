@@ -174,6 +174,15 @@ public class LabeledBlockGeneration {
         if (isLastBlockInThenBranch(block, stackifierData)) {
             return !isJumpingToAfterElseBranch(block, successor, stackifierData);
         }
+        if (isLastBlockInSwitchArm(block, stackifierData)) {
+            /*
+             * Always generate a labeled block around switch statements as a target for switch arms
+             * to jump out of. This can result in less than optimal code if all switch arms jump to
+             * the merge block after the switch, but determining that is tricky to do correctly
+             * without having knowing the order in which blocks will be lowered.
+             */
+            return true;
+        }
         return successor.getId() != block.getId() + 1;
     }
 
@@ -241,6 +250,36 @@ public class LabeledBlockGeneration {
             if (startBlock.getEndNode() instanceof IfNode) {
                 IfScopeContainer ifScopeContainer = (IfScopeContainer) stackifierData.getScopeEntry(startBlock.getEndNode());
                 return ifScopeContainer.getThenScope() == scope && scope.getLastBlock() == block;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Checks if the given block is the last block in one of the arms of an
+     * {@link IntegerSwitchNode}.
+     *
+     * Example:
+     *
+     * <pre>
+     * switch (x) {
+     *     case 1:
+     *         A();
+     *         B();
+     *         break;
+     * }
+     * C();
+     * </pre>
+     *
+     * For the example above this function returns true for the basic block {@code B} and false
+     * otherwise.
+     */
+    private static boolean isLastBlockInSwitchArm(HIRBlock block, StackifierData stackifierData) {
+        Scope scope = stackifierData.getEnclosingScope().get(block);
+        if (scope != null) {
+            HIRBlock startBlock = scope.getStartBlock();
+            if (startBlock.getEndNode() instanceof IntegerSwitchNode) {
+                return scope.getLastBlock() == block;
             }
         }
         return false;

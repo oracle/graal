@@ -26,6 +26,7 @@
 package com.oracle.svm.test;
 
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_DIR;
+import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_DIR_WITH_SPACE;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_EMPTY_DIR;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_1;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_2;
@@ -232,6 +233,20 @@ public class NativeImageResourceFileSystemProviderTest {
     }
 
     /**
+     * Query a directory with spaces in its name.
+     */
+    @Test
+    public void queryDirWithSpaces() {
+        Path dirWithSpaces = fileSystem.getPath(RESOURCE_DIR_WITH_SPACE);
+        try (Stream<Path> stream = Files.walk(dirWithSpaces)) {
+            Assert.assertEquals(1, stream.count());
+        } catch (IOException e) {
+            e.printStackTrace();
+            Assert.fail("IOException occurred during file system walk, starting from the root.");
+        }
+    }
+
+    /**
      * Reading from file using {@link java.nio.channels.ByteChannel}.
      */
     @Test
@@ -259,6 +274,7 @@ public class NativeImageResourceFileSystemProviderTest {
     /**
      * Writing into file using {@link java.nio.channels.ByteChannel}.
      */
+    @SuppressWarnings("CallToPrintStackTrace")
     @Test
     public void writingFileByteChannel() {
         Path resourceDirectory = fileSystem.getPath(RESOURCE_DIR);
@@ -280,7 +296,8 @@ public class NativeImageResourceFileSystemProviderTest {
         try (SeekableByteChannel channel = Files.newByteChannel(resourceFile1, StandardOpenOption.READ, StandardOpenOption.WRITE)) {
             writeInChannelAndCheck(channel);
         } catch (IOException ioException) {
-            Assert.fail("Exception occurs during writing into file!");
+            ioException.printStackTrace();
+            Assert.fail("Exception occurred while writing into the file: " + resourceFile1);
         }
     }
 

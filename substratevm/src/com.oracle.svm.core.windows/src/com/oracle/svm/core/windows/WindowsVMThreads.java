@@ -90,19 +90,6 @@ public final class WindowsVMThreads extends VMThreads {
         return true;
     }
 
-    /**
-     * Make sure the runtime is initialized for threading.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
-    @Override
-    protected boolean initializeOnce() {
-        /*
-         * TODO: Check for failures here.
-         */
-        WindowsVMLockSupport.initialize();
-        return true;
-    }
-
     @Uninterruptible(reason = "Thread state not set up.")
     @Override
     public void failFatally(int code, CCharPointer message) {

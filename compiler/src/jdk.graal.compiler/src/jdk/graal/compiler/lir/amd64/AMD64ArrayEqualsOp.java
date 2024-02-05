@@ -319,12 +319,15 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
                 // the length
                 masm.align(preferredBranchTargetAlignment(crb));
                 masm.bind(variants[StrideUtil.getDirectStubCallIndex(Stride.S4, Stride.S4)]);
+                masm.maybeEmitIndirectTargetMarker();
                 masm.shll(length, 1);
                 masm.align(preferredBranchTargetAlignment(crb));
                 masm.bind(variants[StrideUtil.getDirectStubCallIndex(Stride.S2, Stride.S2)]);
+                masm.maybeEmitIndirectTargetMarker();
                 masm.shll(length, 1);
                 masm.align(preferredBranchTargetAlignment(crb));
                 masm.bind(variants[StrideUtil.getDirectStubCallIndex(Stride.S1, Stride.S1)]);
+                masm.maybeEmitIndirectTargetMarker();
                 emitArrayCompare(crb, masm, Stride.S1, Stride.S1, Stride.S1, result, arrayA, arrayB, mask, length, done, false);
                 masm.jmp(done);
 
@@ -338,12 +341,14 @@ public final class AMD64ArrayEqualsOp extends AMD64ComplexVectorOp {
                             // use the same implementation for e.g. stride 1-2 and 2-1 by swapping
                             // the arguments in one variant
                             masm.bind(variants[StrideUtil.getDirectStubCallIndex(strideB, strideA)]);
+                            masm.maybeEmitIndirectTargetMarker();
                             masm.movq(tmp, arrayA);
                             masm.movq(arrayA, arrayB);
                             masm.movq(arrayB, tmp);
                         }
                         masm.align(crb.target.wordSize * 2);
                         masm.bind(variants[StrideUtil.getDirectStubCallIndex(strideA, strideB)]);
+                        masm.maybeEmitIndirectTargetMarker();
                         emitArrayCompare(crb, masm, strideA, strideB, strideB, result, arrayA, arrayB, mask, length, done, false);
                         masm.jmp(done);
                     }

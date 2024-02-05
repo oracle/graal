@@ -269,16 +269,28 @@ public final class DebuggerTester implements AutoCloseable {
     }
 
     /**
-     * Expects an suspended event and returns it for potential assertions. If the execution
-     * completed or was killed instead then an assertion error is thrown. The returned suspended
-     * event is only valid until on of {@link #expectKilled()},
-     * {@link #expectSuspended(SuspendedCallback)} or {@link #expectDone()} is called again. Throws
-     * an {@link IllegalStateException} if the tester is already closed.
+     * Expects a suspended event and returns it for potential assertions. If the execution completed
+     * or was killed instead then an assertion error is thrown. The returned suspended event is only
+     * valid until on of {@link #expectKilled()}, {@link #expectSuspended(SuspendedCallback)} or
+     * {@link #expectDone()} is called again. Throws an {@link IllegalStateException} if the tester
+     * is already closed.
      *
      * @param callback handler to be called when the execution is suspended
      * @since 0.16
      */
     public void expectSuspended(SuspendedCallback callback) {
+        expectSuspended(callback, null);
+    }
+
+    /**
+     * Expects a suspended event and returns it for potential assertions, allows to verify errors
+     * printed to the error output.
+     *
+     * @param callback handler to be called when the execution is suspended
+     * @param errorVerifier handler, which returns <code>true</code> when the error is expected
+     * @since 24.1
+     */
+    public void expectSuspended(SuspendedCallback callback, Function<String, Boolean> errorVerifier) {
         if (closed) {
             throw new IllegalStateException("Already closed.");
         }
@@ -290,7 +302,12 @@ public final class DebuggerTester implements AutoCloseable {
             event = takeEvent();
             String e = getErr();
             if (!e.isEmpty()) {
-                throw new AssertionError("Error output is not empty: " + e);
+                if (errorVerifier != null) {
+                    Assert.assertTrue(e, errorVerifier.apply(e));
+                    err.reset();
+                } else {
+                    throw new AssertionError("Error output is not empty: " + e);
+                }
             }
         } catch (InterruptedException e) {
             throw new AssertionError(e);

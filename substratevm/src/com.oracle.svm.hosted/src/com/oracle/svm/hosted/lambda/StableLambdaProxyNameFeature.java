@@ -60,7 +60,7 @@ final class StableLambdaProxyNameFeature implements InternalFeature {
             throw new AssertionError("Expensive check: should only run with assertions enabled.");
         }
         /* There should be no random lambda names visible to the analysis. */
-        if (types.stream().anyMatch(LambdaUtils::isLambdaType)) {
+        if (types.stream().anyMatch(type -> LambdaUtils.isLambdaType(type) && type.getWrapped().getClass() != LambdaSubstitutionType.class)) {
             throw new AssertionError("All lambda proxies should be substituted.");
         }
 
@@ -68,7 +68,7 @@ final class StableLambdaProxyNameFeature implements InternalFeature {
         Set<String> lambdaNames = new HashSet<>();
         types.stream()
                         .map(AnalysisType::getName)
-                        .filter(x -> x.contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING))
+                        .filter(LambdaUtils::isLambdaClassName)
                         .forEach(name -> {
                             if (lambdaNames.contains(name)) {
                                 throw new AssertionError("Duplicate lambda name: " + name);

@@ -107,6 +107,11 @@ public final class OracleDBRegexLexer extends RegexLexer {
     }
 
     @Override
+    protected boolean featureEnabledPossessiveQuantifiers() {
+        return false;
+    }
+
+    @Override
     protected boolean featureEnabledCharClassFirstBracketIsLiteral() {
         return true;
     }

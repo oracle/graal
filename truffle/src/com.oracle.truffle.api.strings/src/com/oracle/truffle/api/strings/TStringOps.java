@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -159,7 +159,6 @@ final class TStringOps {
         } else {
             if (array == null) {
                 // make sure that array has a non-null stamp
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw CompilerDirectives.shouldNotReachHere();
             }
             switch (stride) {
@@ -188,7 +187,6 @@ final class TStringOps {
         } else {
             if (array == null) {
                 // make sure that array has a non-null stamp
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw CompilerDirectives.shouldNotReachHere();
             }
             switch (stride) {
@@ -710,7 +708,9 @@ final class TStringOps {
     }
 
     static int hashCodeWithStride(Node location, AbstractTruffleString a, Object arrayA, int stride) {
-        return hashCodeWithStrideIntl(location, arrayA, a.offset(), a.length(), stride);
+        int offset = a.offset();
+        int length = a.length();
+        return hashCodeWithStrideIntl(location, arrayA, offset, length, stride);
     }
 
     private static int hashCodeWithStrideIntl(Node location, Object array, int offset, int length, int stride) {
@@ -876,100 +876,58 @@ final class TStringOps {
         return runCodePointIndexToByteIndexUTF16Valid(location, stubArray, stubOffset, length, index, isNative);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static int runReadS0Managed(byte[] array, long byteOffset) {
         return uInt(TStringUnsafe.getByteManaged(array, byteOffset));
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static int runReadS0Native(long array, long byteOffset) {
         return uInt(TStringUnsafe.getByteNative(array, byteOffset));
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static int runReadS1Managed(byte[] array, long byteOffset) {
         return TStringUnsafe.getCharManaged(array, byteOffset);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static int runReadS1Native(long array, long byteOffset) {
         return TStringUnsafe.getCharNative(array, byteOffset);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static int runReadS2Managed(byte[] array, long byteOffset) {
         return TStringUnsafe.getIntManaged(array, byteOffset);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static int runReadS2Native(long array, long byteOffset) {
         return TStringUnsafe.getIntNative(array, byteOffset);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static long runReadS3Managed(byte[] array, long byteOffset) {
         return TStringUnsafe.getLongManaged(array, byteOffset);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static long runReadS3Native(long array) {
         return TStringUnsafe.getLongNative(array);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static void runWriteS0Managed(byte[] array, long byteOffset, byte value) {
         TStringUnsafe.putByteManaged(array, byteOffset, value);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static void runWriteS0Native(long array, long byteOffset, byte value) {
         TStringUnsafe.putByteNative(array, byteOffset, value);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static void runWriteS1Managed(byte[] array, long byteOffset, char value) {
         TStringUnsafe.putCharManaged(array, byteOffset, value);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static void runWriteS1Native(long array, long byteOffset, char value) {
         TStringUnsafe.putCharNative(array, byteOffset, value);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static void runWriteS2Managed(byte[] array, long byteOffset, int value) {
         TStringUnsafe.putIntManaged(array, byteOffset, value);
     }
 
-    /**
-     * Intrinsic candidate.
-     */
     private static void runWriteS2Native(long array, long byteOffset, int value) {
         TStringUnsafe.putIntNative(array, byteOffset, value);
     }
@@ -1275,6 +1233,9 @@ final class TStringOps {
         return 0;
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static int runHashCode(Node location, byte[] array, long offset, int length, int stride, boolean isNative) {
         int hash = 0;
         for (int i = 0; i < length; i++) {
@@ -1636,7 +1597,6 @@ final class TStringOps {
 
     static void validateRegion(byte[] array, int offset, int length, int stride) {
         if ((Integer.toUnsignedLong(offset) + (Integer.toUnsignedLong(length) << stride)) > array.length) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw CompilerDirectives.shouldNotReachHere();
         }
     }
@@ -1644,7 +1604,6 @@ final class TStringOps {
     private static void validateRegion(char[] array, int offset, int length) {
         int charOffset = offset >> 1;
         if ((Integer.toUnsignedLong(charOffset) + (Integer.toUnsignedLong(length))) > array.length) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw CompilerDirectives.shouldNotReachHere();
         }
     }
@@ -1652,21 +1611,18 @@ final class TStringOps {
     private static void validateRegion(int[] array, int offset, int length) {
         int intOffset = offset >> 2;
         if ((Integer.toUnsignedLong(intOffset) + (Integer.toUnsignedLong(length))) > array.length) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
     private static void validateRegion(byte[] stubArray, int offset, int length, int stride, boolean isNative) {
         if (invalidOffsetOrLength(stubArray, offset, length, stride, isNative)) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
     private static void validateRegionIndex(byte[] stubArray, int offset, int length, int stride, int i, boolean isNative) {
         if (invalidOffsetOrLength(stubArray, offset, length, stride, isNative) || invalidIndex(length, i)) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw CompilerDirectives.shouldNotReachHere();
         }
     }

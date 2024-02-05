@@ -51,7 +51,9 @@ class Native {
     }
 
     void setNativeOption(String arg) {
-        if (arg.startsWith("Dgraal.")) {
+        if (arg.startsWith("Djdk.graal.")) {
+            setGraalStyleRuntimeOption(arg.substring("Djdk.graal.".length()));
+        } else if (arg.startsWith("Dgraal.")) {
             setGraalStyleRuntimeOption(arg.substring("Dgraal.".length()));
         } else if (arg.startsWith("D")) {
             setSystemProperty(arg.substring("D".length()));
@@ -111,7 +113,7 @@ class Native {
 
     private void setGraalStyleRuntimeOption(String arg) {
         if (arg.startsWith("+") || arg.startsWith("-")) {
-            throw abort("Dgraal option must use <name>=<value> format, not +/- prefix");
+            throw abort("Djdk.graal option must use <name>=<value> format, not +/- prefix");
         }
         int eqIdx = arg.indexOf('=');
         String key;

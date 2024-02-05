@@ -61,32 +61,78 @@ You can also disable output and error output for all tests but one:
 
 `mx tck -Dtck.verbose=false -Dtck.ErrorTypeTest.verbose=true`
 
-## Running TCK Tests without `mx`
+## Running TCK Tests with Apache Maven
+The Apache Maven can be used to execute Truffle TCK tests. First, create a Maven module (project) containing the language
+TCK provider. Ensure that this module has a test dependency on the language being tested and TCK tests `org.graalvm.truffle:truffle-tck-tests`.
+Configure the `maven-surefire-plugin` to identify tests in the `org.graalvm.truffle:truffle-tck-tests` artifact.
+This can be achieved using the following snippet within the <build> section of your project's pom.xml:
+```
+<build>
+    <plugins>
+        [...]
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>3.1.2</version>
+            <configuration>
+                <dependenciesToScan>
+                    <dependency>org.graalvm.truffle:truffle-tck-tests</dependency>
+                </dependenciesToScan>
+            </configuration>
+        </plugin>
+        [...]
+    </plugins>
+</build>
+```
+To include additional languages in the TCK execution add their TCK providers as test dependencies. For example, adding `org.graalvm.js:js-truffle-tck` will include JavaScript in the testing process.
+You can utilize the SimpleLanguage TCK provider [pom.xml](https://github.com/oracle/graal/blob/master/truffle/external_repos/simplelanguage/tck/pom.xml) as a template to get started.
+To test the runtime optimizations set the `JAVA_HOME` environment variable to the GraalVM location before running `mvn package`.
 
-The Python [TCK runner](https://github.com/oracle/graal/blob/master/truffle/mx.truffle/tck.py) can be used to execute the Truffle TCK on top of GraalVM. The script requires Maven for downloading the TCK artifacts.
+### Customize TCK Tests
+To restrict the TCK tests to test a certain language, use the `tck.language` property.
+The following example tests JavaScript with data types from all available languages.
+```
+<build>
+    <plugins>
+        [...]
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>3.1.2</version>
+            <configuration>
+                <argLine>
+                    -Dtck.language=js
+                </argLine>
+                [...]
+            </configuration>
+        </plugin>
+        [...]
+    </plugins>
+</build>
+```
 
-To execute TCK tests on GraalVM use:
+To restrict the data types to a certain language, use the `tck.values` property.
+The following example tests JavaScript with Java types.
+```
+<build>
+    <plugins>
+        [...]
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>3.1.2</version>
+            <configuration>
+                <argLine>
+                    -Dtck.values=java-host
+                    -Dtck.language=js
+                </argLine>
+                [...]
+            </configuration>
+        </plugin>
+        [...]
+    </plugins>
+</build>
+```
 
-`python tck.py -g <path_to_graalvm>`
-
-To include your own language and TCK provider use:
-
-`python tck.py -g <path_to_graalvm> -cp <path_to_tck_provider_jars> -lp <path_to_language_jars>`
-
-To restrict tests to a certain language, use the language ID as a first unnamed option.
-The following example executes tests only for the JavaScript language:
-
-`python tck.py -g <path_to_graalvm> js`
-
-To execute the tests under debugger use the `-d` or `--dbg <port>` option:
-
-`python tck.py -d -g <path_to_graalvm>`
-
-The TCK tests can be filtered by test names. To execute just the `ScriptTest` for the JavaScript TCK provider use:
-
-`python tck.py -g <path_to_graalvm> js default ScriptTest`
-
-The TCK tests can be executed in `compile` mode in which all calltargets are compiled before they are executed.
-To execute JavaScript tests in `compile` mode use:
-
-`python tck.py -g <path_to_graalvm> js compile`
+To execute a specific TCK test you can use the test parameter along with the `-Dtest` option.
+For example: `mvn test -Dtest=ScriptTest`

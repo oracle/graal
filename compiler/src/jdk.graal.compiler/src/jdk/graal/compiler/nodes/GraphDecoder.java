@@ -2550,7 +2550,8 @@ class LoopDetector implements Runnable {
     }
 
     /**
-     * Print information about irreducible loops, when enabled with -Dgraal.Log=IrreducibleLoops.
+     * Print information about irreducible loops, when enabled with
+     * -Djdk.graal.Log=IrreducibleLoops.
      */
     @SuppressWarnings("try")
     private void logIrreducibleLoops() {

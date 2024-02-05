@@ -52,13 +52,14 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.configure.ConditionalElement;
+import com.oracle.svm.core.configure.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
@@ -74,6 +75,7 @@ import com.oracle.svm.core.jni.access.JNIReflectionDictionary;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
@@ -81,10 +83,11 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.ProgressReporter;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
-import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
+import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
@@ -93,6 +96,7 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.KnownOffsetsFeature;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
+import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -154,9 +158,9 @@ public class JNIAccessFeature implements Feature {
 
     private boolean sealed = false;
     private final Map<String, JNICallTrampolineMethod> trampolineMethods = new ConcurrentHashMap<>();
-    private final Map<SimpleSignature, JNIJavaCallWrapperMethod> javaCallWrapperMethods = new ConcurrentHashMap<>();
-    private final Map<SimpleSignature, JNIJavaCallVariantWrapperGroup> callVariantWrappers = new ConcurrentHashMap<>();
-    private final Map<SimpleSignature, JNIJavaCallVariantWrapperGroup> nonvirtualCallVariantWrappers = new ConcurrentHashMap<>();
+    private final Map<ResolvedSignature<ResolvedJavaType>, JNIJavaCallWrapperMethod> javaCallWrapperMethods = new ConcurrentHashMap<>();
+    private final Map<ResolvedSignature<ResolvedJavaType>, JNIJavaCallVariantWrapperGroup> callVariantWrappers = new ConcurrentHashMap<>();
+    private final Map<ResolvedSignature<ResolvedJavaType>, JNIJavaCallVariantWrapperGroup> nonvirtualCallVariantWrappers = new ConcurrentHashMap<>();
     private final List<JNICallableJavaMethod> calledJavaMethods = new ArrayList<>();
 
     private int loadedConfigurations;
@@ -192,7 +196,9 @@ public class JNIAccessFeature implements Feature {
         runtimeSupport = new JNIRuntimeAccessibilitySupportImpl();
         ImageSingletons.add(RuntimeJNIAccessSupport.class, runtimeSupport);
 
-        ReflectionConfigurationParser<ConditionalElement<Class<?>>> parser = ConfigurationParserUtils.create(runtimeSupport, access.getImageClassLoader());
+        ConfigurationConditionResolver<ConfigurationCondition> conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(),
+                        ClassInitializationSupport.singleton());
+        ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(conditionResolver, runtimeSupport, access.getImageClassLoader());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "JNI",
                         ConfigurationFiles.Options.JNIConfigurationFiles, ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFile.JNI.getFileName());
     }
@@ -205,21 +211,21 @@ public class JNIAccessFeature implements Feature {
             assert !unsafeAllocated : "unsafeAllocated can be only set via Unsafe.allocateInstance, not via JNI.";
             Objects.requireNonNull(clazz, () -> nullErrorMessage("class"));
             abortIfSealed();
-            registerConditionalConfiguration(condition, () -> newClasses.add(clazz));
+            registerConditionalConfiguration(condition, (cnd) -> newClasses.add(clazz));
         }
 
         @Override
         public void register(ConfigurationCondition condition, boolean queriedOnly, Executable... executables) {
             requireNonNull(executables, "executable");
             abortIfSealed();
-            registerConditionalConfiguration(condition, () -> newMethods.addAll(Arrays.asList(executables)));
+            registerConditionalConfiguration(condition, (cnd) -> newMethods.addAll(Arrays.asList(executables)));
         }
 
         @Override
         public void register(ConfigurationCondition condition, boolean finalIsWritable, Field... fields) {
             requireNonNull(fields, "field");
             abortIfSealed();
-            registerConditionalConfiguration(condition, () -> registerFields(finalIsWritable, fields));
+            registerConditionalConfiguration(condition, (cnd) -> registerFields(finalIsWritable, fields));
         }
 
         private void registerFields(boolean finalIsWritable, Field[] fields) {
@@ -373,12 +379,12 @@ public class JNIAccessFeature implements Feature {
 
             ResolvedJavaMethod newObjectMethod = null;
             if (targetMethod.isConstructor() && !targetMethod.getDeclaringClass().isAbstract()) {
-                var aFactoryMethod = (AnalysisMethod) FactoryMethodSupport.singleton().lookup(access.getMetaAccess(), aTargetMethod, false);
+                var aFactoryMethod = FactoryMethodSupport.singleton().lookup(access.getMetaAccess(), aTargetMethod, false);
                 access.registerAsRoot(aFactoryMethod, true, "JNI constructor, registered in " + JNIAccessFeature.class);
                 newObjectMethod = aFactoryMethod.getWrapped();
             }
 
-            SimpleSignature compatibleSignature = JNIJavaCallWrapperMethod.getGeneralizedSignatureForTarget(targetMethod, originalMetaAccess);
+            var compatibleSignature = JNIJavaCallWrapperMethod.getGeneralizedSignatureForTarget(targetMethod, originalMetaAccess);
             JNIJavaCallWrapperMethod callWrapperMethod = javaCallWrapperMethods.computeIfAbsent(compatibleSignature,
                             signature -> factory.create(signature, originalMetaAccess, access.getBigBang().getWordTypes()));
             access.registerAsRoot(universe.lookup(callWrapperMethod), true, "JNI call wrapper, registered in " + JNIAccessFeature.class);
@@ -394,7 +400,7 @@ public class JNIAccessFeature implements Feature {
         });
     }
 
-    private JNIJavaCallVariantWrapperGroup createJavaCallVariantWrappers(DuringAnalysisAccessImpl access, SimpleSignature wrapperSignature, boolean nonVirtual) {
+    private JNIJavaCallVariantWrapperGroup createJavaCallVariantWrappers(DuringAnalysisAccessImpl access, ResolvedSignature<ResolvedJavaType> wrapperSignature, boolean nonVirtual) {
         var map = nonVirtual ? nonvirtualCallVariantWrappers : callVariantWrappers;
         return map.computeIfAbsent(wrapperSignature, signature -> {
             MetaAccessProvider originalMetaAccess = access.getUniverse().getOriginalMetaAccess();
@@ -474,11 +480,12 @@ public class JNIAccessFeature implements Feature {
         }
 
         CompilationAccessImpl access = (CompilationAccessImpl) a;
+        DynamicHubLayout dynamicHubLayout = DynamicHubLayout.singleton();
         for (JNIAccessibleClass clazz : JNIReflectionDictionary.singleton().getClasses()) {
             UnmodifiableMapCursor<CharSequence, JNIAccessibleField> cursor = clazz.getFields();
             while (cursor.advance()) {
                 String name = (String) cursor.getKey();
-                finishFieldBeforeCompilation(name, cursor.getValue(), access);
+                finishFieldBeforeCompilation(name, cursor.getValue(), access, dynamicHubLayout);
             }
         }
         for (JNICallableJavaMethod method : calledJavaMethods) {
@@ -588,15 +595,17 @@ public class JNIAccessFeature implements Feature {
         return map;
     }
 
-    private static void finishFieldBeforeCompilation(String name, JNIAccessibleField field, CompilationAccessImpl access) {
+    private static void finishFieldBeforeCompilation(String name, JNIAccessibleField field, CompilationAccessImpl access, DynamicHubLayout dynamicHubLayout) {
         try {
             Class<?> declaringClass = field.getDeclaringClass().getClassObject();
             Field reflField = declaringClass.getDeclaredField(name);
             HostedField hField = access.getMetaAccess().lookupJavaField(reflField);
             int offset;
-            if (HybridLayout.isHybridField(hField)) {
+            if (dynamicHubLayout.isInlinedField(hField)) {
+                throw VMError.shouldNotReachHere("DynamicHub inlined fields are not accessible %s", hField);
+            } else if (HybridLayout.isHybridField(hField)) {
                 assert !hField.hasLocation();
-                HybridLayout<?> hybridLayout = new HybridLayout<>((HostedInstanceClass) hField.getDeclaringClass(),
+                HybridLayout hybridLayout = new HybridLayout((HostedInstanceClass) hField.getDeclaringClass(),
                                 ImageSingletons.lookup(ObjectLayout.class), access.getMetaAccess());
                 assert hField.equals(hybridLayout.getArrayField()) : "JNI access to hybrid objects is implemented only for the array field";
                 offset = hybridLayout.getArrayBaseOffset();

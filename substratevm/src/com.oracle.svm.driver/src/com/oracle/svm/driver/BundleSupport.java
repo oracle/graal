@@ -228,7 +228,7 @@ final class BundleSupport {
     void createDockerfile(Path dockerfile) {
         nativeImage.showVerboseMessage(nativeImage.isVerbose(), BUNDLE_INFO_MESSAGE_PREFIX + "Creating default Dockerfile for native-image bundle.");
         String dockerfileText = DEFAULT_DOCKERFILE;
-        if (nativeImage.staticExecutable && nativeImage.libC.equals("musl")) {
+        if (nativeImage.staticExecutable && "musl".equals(nativeImage.targetLibC)) {
             dockerfileText += System.lineSeparator() + DEFAULT_DOCKERFILE_MUSLIB;
         }
         try {

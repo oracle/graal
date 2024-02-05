@@ -43,18 +43,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
-import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
-import jdk.graal.compiler.code.CompilationResult;
-import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.CHeader;
 import org.graalvm.nativeimage.c.CHeader.Header;
@@ -111,10 +106,17 @@ import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.image.RelocatableBuffer.Info;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
+import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.Indent;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
@@ -123,7 +125,6 @@ import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod.Parameter;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class NativeImage extends AbstractImage {
     public static final long RWDATA_CGLOBALS_PARTITION_OFFSET = 0;
@@ -185,9 +186,9 @@ public abstract class NativeImage extends AbstractImage {
 
     void writeHeaderFiles(Path outputDir, String imageName, boolean dynamic) {
         /* Group methods by header files. */
-        Map<? extends Class<? extends Header>, List<HostedMethod>> hostedMethods = uniqueEntryPoints.stream()
-                        .filter(this::shouldWriteHeader)
-                        .map(m -> Pair.create(cHeader(m), m))
+        Map<? extends Class<? extends Header>, List<HostedMethod>> hostedMethods = uniqueEntryPoints.stream() //
+                        .filter(this::shouldWriteHeader) //
+                        .map(m -> Pair.create(cHeader(m), m)) //
                         .collect(Collectors.groupingBy(Pair::getLeft, Collectors.mapping(Pair::getRight, Collectors.toList())));
 
         hostedMethods.forEach((headerClass, methods) -> {
@@ -199,7 +200,7 @@ public abstract class NativeImage extends AbstractImage {
 
     private void writeHeaderFile(Path outDir, Header header, List<HostedMethod> methods, boolean dynamic) {
         CSourceCodeWriter writer = new CSourceCodeWriter(outDir);
-        String imageHeaderGuard = "__" + header.name().toUpperCase().replaceAll("[^A-Z0-9]", "_") + "_H";
+        String imageHeaderGuard = "__" + header.name().toUpperCase(Locale.ENGLISH).replaceAll("[^A-Z0-9]", "_") + "_H";
         String dynamicSuffix = dynamic ? "_dynamic.h" : ".h";
 
         writer.appendln("#ifndef " + imageHeaderGuard);
@@ -209,8 +210,8 @@ public abstract class NativeImage extends AbstractImage {
 
         writer.writeCStandardHeaders();
 
-        List<String> dependencies = header.dependsOn().stream()
-                        .map(NativeImage::instantiateCHeader)
+        List<String> dependencies = header.dependsOn().stream() //
+                        .map(NativeImage::instantiateCHeader) //
                         .map(depHeader -> "<" + depHeader.name() + dynamicSuffix + ">").collect(Collectors.toList());
         writer.includeFiles(dependencies);
 
@@ -323,7 +324,7 @@ public abstract class NativeImage extends AbstractImage {
 
         AnnotatedType annotatedReturnType = getAnnotatedReturnType(m);
         writer.append(CSourceCodeWriter.toCTypeName(m,
-                        (ResolvedJavaType) m.getSignature().getReturnType(m.getDeclaringClass()),
+                        m.getSignature().getReturnType(),
                         Optional.ofNullable(annotatedReturnType.getAnnotation(CTypedef.class)).map(CTypedef::name),
                         false,
                         isUnsigned(annotatedReturnType),
@@ -347,7 +348,7 @@ public abstract class NativeImage extends AbstractImage {
             writer.append(sep);
             sep = ", ";
             writer.append(CSourceCodeWriter.toCTypeName(m,
-                            (ResolvedJavaType) m.getSignature().getParameterType(i, m.getDeclaringClass()),
+                            m.getSignature().getParameterType(i),
                             Optional.ofNullable(annotatedParameterTypes[i].getAnnotation(CTypedef.class)).map(CTypedef::name),
                             annotatedParameterTypes[i].isAnnotationPresent(CConst.class),
                             isUnsigned(annotatedParameterTypes[i]),
@@ -420,6 +421,8 @@ public abstract class NativeImage extends AbstractImage {
 
             BuildPhaseProvider.markHeapLayoutFinished();
 
+            heap.getLayouter().afterLayout(heap);
+
             imageHeapSize = heapLayout.getImageHeapSize();
 
             // Text section (code)
@@ -468,16 +471,17 @@ public abstract class NativeImage extends AbstractImage {
             heapSection = objectFile.newProgbitsSection(SectionName.SVM_HEAP.getFormatDependentName(objectFile.getFormat()), alignment, writable, false, heapSectionImpl);
             objectFile.createDefinedSymbol(heapSection.getName(), heapSection, 0, 0, false, false);
 
-            long offsetOfARelocatablePointer = writer.writeHeap(debug, heapSectionBuffer);
-            assert !SubstrateOptions.SpawnIsolates.getValue() || heapSectionBuffer.getByteBuffer().getLong((int) offsetOfARelocatablePointer) == 0L;
+            long sectionOffsetOfARelocatablePointer = writer.writeHeap(debug, heapSectionBuffer);
+            assert !SubstrateOptions.SpawnIsolates.getValue() || heapSectionBuffer.getByteBuffer().getLong((int) sectionOffsetOfARelocatablePointer) == 0L;
 
             defineDataSymbol(Isolates.IMAGE_HEAP_BEGIN_SYMBOL_NAME, heapSection, 0);
             defineDataSymbol(Isolates.IMAGE_HEAP_END_SYMBOL_NAME, heapSection, imageHeapSize);
-            defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getReadOnlyRelocatableOffset());
-            defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_END_SYMBOL_NAME, heapSection, heapLayout.getReadOnlyRelocatableOffset() + heapLayout.getReadOnlyRelocatableSize());
-            defineDataSymbol(Isolates.IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME, heapSection, offsetOfARelocatablePointer);
-            defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset());
-            defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset() + heapLayout.getWritableSize());
+            defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getReadOnlyRelocatableOffset() - heapLayout.getStartOffset());
+            defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_END_SYMBOL_NAME, heapSection,
+                            heapLayout.getReadOnlyRelocatableOffset() + heapLayout.getReadOnlyRelocatableSize() - heapLayout.getStartOffset());
+            defineDataSymbol(Isolates.IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME, heapSection, sectionOffsetOfARelocatablePointer);
+            defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset() - heapLayout.getStartOffset());
+            defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset() + heapLayout.getWritableSize() - heapLayout.getStartOffset());
 
             // Mark the sections with the relocations from the maps.
             markRelocationSitesFromBuffer(textBuffer, textImpl);
@@ -567,7 +571,7 @@ public abstract class NativeImage extends AbstractImage {
         return true;
     }
 
-    private void validateNoDirectRelocationsInTextSection(RelocatableBuffer.Info info) {
+    private static void validateNoDirectRelocationsInTextSection(RelocatableBuffer.Info info) {
         if (SubstrateOptions.NoDirectRelocationsInText.getValue() && RelocationKind.isDirect(info.getRelocationKind())) {
             String message = "%nFound direct relocation in text section. This means that the resulting generated image will have relocations present within the text section. If this is okay, you can skip this check by setting the flag %s";
             throw VMError.shouldNotReachHere(message, SubstrateOptionsParser.commandArgument(SubstrateOptions.NoDirectRelocationsInText, "-"));
@@ -623,8 +627,7 @@ public abstract class NativeImage extends AbstractImage {
         assert ConfigurationValues.getTarget().arch instanceof AArch64 || info.getRelocationSize() == 4 || info.getRelocationSize() == 8 : "AMD64 Data relocation size should be 4 or 8 bytes.";
         assert targetObjectInfo != null;
         String targetSectionName = heapSection.getName();
-        long address = targetObjectInfo.getAddress();
-        long relocationAddend = address + info.getAddend();
+        long relocationAddend = targetObjectInfo.getOffset() + info.getAddend();
         sectionImpl.markRelocationSite(offset, info.getRelocationKind(), targetSectionName, relocationAddend);
     }
 
@@ -659,7 +662,7 @@ public abstract class NativeImage extends AbstractImage {
         } else if (target instanceof ConstantReference) {
             // Direct object reference in code that must be patched (not a linker relocation)
             JavaConstant constant = (JavaConstant) ((ConstantReference) target).getConstant();
-            long address = heap.getConstantInfo(constant).getAddress();
+            long address = heap.getConstantInfo(constant).getOffset();
             int encShift = ImageSingletons.lookup(CompressEncoding.class).getShift();
             long targetValue = address >>> encShift;
             assert (targetValue << encShift) == address : "Reference compression shift discards non-zero bits: " + Long.toHexString(address);
@@ -917,8 +920,8 @@ public abstract class NativeImage extends AbstractImage {
                          * We've hit a signature with multiple methods. Choose the "more specific"
                          * of the two methods, i.e. the overriding covariant signature.
                          */
-                        final ResolvedJavaType existingReturnType = existing.getSignature().getReturnType(null).resolve(existing.getDeclaringClass());
-                        final ResolvedJavaType currentReturnType = current.getSignature().getReturnType(null).resolve(current.getDeclaringClass());
+                        HostedType existingReturnType = existing.getSignature().getReturnType();
+                        HostedType currentReturnType = current.getSignature().getReturnType();
                         if (existingReturnType.isAssignableFrom(currentReturnType)) {
                             /* current is more specific than existing */
                             final HostedMethod replaced = methodsBySignature.put(signatureString, current);

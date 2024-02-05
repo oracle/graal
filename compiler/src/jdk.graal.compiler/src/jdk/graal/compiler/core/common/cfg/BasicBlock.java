@@ -240,11 +240,11 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
     }
 
     public void setIndirectBranchTarget() {
-        this.indirectBranchTarget = true;
+        indirectBranchTarget = true;
     }
 
     public boolean isIndirectBranchTarget() {
-        return this.indirectBranchTarget;
+        return indirectBranchTarget;
     }
 
     @Override

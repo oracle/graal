@@ -45,7 +45,6 @@ import com.oracle.svm.core.jfr.traceid.JfrTraceIdMap;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.util.ModuleSupport;
 
 import jdk.internal.event.Event;
 import jdk.jfr.internal.JVM;
@@ -65,14 +64,6 @@ public class JfrEventFeature implements InternalFeature {
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         return Collections.singletonList(JfrFeature.class);
-    }
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrEventFeature.class, false, "jdk.jfr", "jdk.jfr.events");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrFeature.class, false, "jdk.jfr", "jdk.jfr.events");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrEventSubstitution.class, false, "jdk.internal.vm.ci", "jdk.vm.ci.hotspot");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrEventFeature.class, false, "java.base", "jdk.internal.event");
     }
 
     @Override

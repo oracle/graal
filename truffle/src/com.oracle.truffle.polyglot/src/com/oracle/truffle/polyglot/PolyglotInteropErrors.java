@@ -71,6 +71,12 @@ final class PolyglotInteropErrors {
         throw PolyglotEngineException.arrayIndexOutOfBounds(message);
     }
 
+    @TruffleBoundary
+    static RuntimeException invalidBufferOffset(PolyglotLanguageContext context, Object receiver, long offset) {
+        String message = String.format("Invalid offset %s for buffer %s.", offset, getValueInfo(context, receiver));
+        throw PolyglotEngineException.bufferIndexOutOfBounds(message);
+    }
+
     private static Object formatComponentType(Type componentType) {
         return (componentType == null || componentType == Object.class) ? "Object" : componentType.getTypeName();
     }
@@ -78,6 +84,12 @@ final class PolyglotInteropErrors {
     @TruffleBoundary
     static RuntimeException listUnsupported(PolyglotLanguageContext context, Object receiver, Type componentType, String operation) {
         String message = String.format("Unsupported operation %s for List<%s> %s.", operation, formatComponentType(componentType), getValueInfo(context, receiver));
+        throw PolyglotEngineException.unsupported(message);
+    }
+
+    @TruffleBoundary
+    static RuntimeException bufferUnsupported(PolyglotLanguageContext context, Object receiver, String operation) {
+        String message = String.format("Unsupported operation %s for buffer %s.", operation, getValueInfo(context, receiver));
         throw PolyglotEngineException.unsupported(message);
     }
 

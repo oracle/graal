@@ -46,7 +46,7 @@ import org.junit.Assume;
 public class TruffleTestAssumptions {
     private static final boolean spawnIsolate = Boolean.getBoolean("polyglot.engine.SpawnIsolate");
     private static final boolean aot = Boolean.getBoolean("com.oracle.graalvm.isaot");
-    private static final boolean isolationDisabled = Boolean.getBoolean("polyglotimpl.DisableClassPathIsolation");
+    private static final boolean isolationDisabled = Boolean.parseBoolean(System.getProperty("polyglotimpl.DisableClassPathIsolation", "true"));
 
     public static void assumeWeakEncapsulation() {
         assumeNoIsolateEncapsulation();

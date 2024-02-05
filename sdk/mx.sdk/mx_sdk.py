@@ -235,7 +235,7 @@ def jdk_enables_jvmci_by_default(jdk):
 
 def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                   root_module_names=None,
-                  missing_export_target_action='create',
+                  missing_export_target_action=None,
                   with_source=lambda x: True,
                   vendor_info=None,
                   use_upgrade_module_path=False,

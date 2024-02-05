@@ -266,8 +266,8 @@ public abstract class AbstractMergeNode extends BeginStateSplitNode implements I
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         assert !this.graph().getGraphState().getFrameStateVerification().implies(GraphState.FrameStateVerificationFeature.MERGES) || verifyState() : "Merge must have a state until FSA " + this;
-        return super.verify();
+        return super.verifyNode();
     }
 }

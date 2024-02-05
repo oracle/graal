@@ -28,8 +28,6 @@ import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-import jdk.graal.compiler.nodes.java.ArrayLengthNode;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -55,6 +53,9 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Support for allocating and accessing non-moving arrays. Such arrays are safe to access during
@@ -99,7 +100,7 @@ public final class NonmovableArrays {
 
         ObjectHeader header = Heap.getHeap().getObjectHeader();
         Word encodedHeader = header.encodeAsUnmanagedObjectHeader(hub);
-        header.initializeHeaderOfNewObject(array, encodedHeader);
+        header.initializeHeaderOfNewObject(array, encodedHeader, true);
 
         array.writeInt(ConfigurationValues.getObjectLayout().getArrayLengthOffset(), length);
         // already zero-initialized thanks to calloc()

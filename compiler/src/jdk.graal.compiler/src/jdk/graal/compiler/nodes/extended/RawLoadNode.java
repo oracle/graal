@@ -36,6 +36,7 @@ import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.GraphState;
@@ -82,7 +83,7 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
 
     /**
      * This constructor exists for node intrinsics that need a stamp based on the return type of the
-     * {@link Node.NodeIntrinsic} annotated method.
+     * {@link NodeIntrinsic} annotated method.
      */
     public RawLoadNode(@InjectedNodeParameter Stamp stamp, ValueNode object, ValueNode offset, LocationIdentity locationIdentity, JavaKind accessKind) {
         super(TYPE, stamp, object, offset, accessKind, locationIdentity, false, MemoryOrderMode.PLAIN);

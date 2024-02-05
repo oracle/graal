@@ -34,15 +34,15 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
-import jdk.vm.ci.meta.JavaKind;
-
 public class FieldTypeFlow extends TypeFlow<AnalysisField> {
 
     private static final AtomicReferenceFieldUpdater<FieldTypeFlow, FieldFilterTypeFlow> FILTER_FLOW_UPDATER = AtomicReferenceFieldUpdater.newUpdater(FieldTypeFlow.class, FieldFilterTypeFlow.class,
                     "filterFlow");
 
     private static TypeState initialFieldState(AnalysisField field) {
-        if (field.getJavaKind() == JavaKind.Object && field.canBeNull()) {
+        if (field.getStorageKind().isPrimitive()) {
+            return TypeState.forPrimitiveConstant(0);
+        } else if (field.canBeNull()) {
             /*
              * All object type instance fields of a new object can be null. Instance fields are null
              * in the time between the new-instance and the first write to a field. This is even
@@ -88,7 +88,7 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> {
     protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
         /*
          * When a field store is saturated conservatively assume that the field state can contain
-         * any subtype of its declared type.
+         * any subtype of its declared type or any primitive value for primitive fields.
          */
         getDeclaredType().getTypeFlow(bb, true).addUse(bb, this);
     }

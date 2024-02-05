@@ -24,14 +24,20 @@
  */
 package com.oracle.graal.pointsto.api;
 
-import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 import static jdk.graal.compiler.options.OptionType.Expert;
+import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
 import org.graalvm.collections.EconomicMap;
+
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 
+import java.util.Locale;
+
 public class PointstoOptions {
+
+    @Option(help = "Track primitive values using the infrastructure of points-to analysis.")//
+    public static final OptionKey<Boolean> TrackPrimitiveValues = new OptionKey<>(false);
 
     @Option(help = "Use experimental Reachability Analysis instead of points-to.")//
     public static final OptionKey<Boolean> UseExperimentalReachabilityAnalysis = new OptionKey<>(false);
@@ -128,8 +134,8 @@ public class PointstoOptions {
     @Option(help = "Allow a type flow state to contain types not compatible with its declared type.")//
     public static final OptionKey<Boolean> RelaxTypeFlowStateConstraints = new OptionKey<>(true);
 
-    @Option(help = "Report unresolved elements as errors.")//
-    public static final OptionKey<Boolean> UnresolvedIsError = new OptionKey<>(true);
+    @Option(help = "Deprecated, option no longer has any effect.", deprecated = true)//
+    static final OptionKey<Boolean> UnresolvedIsError = new OptionKey<>(true);
 
     @Option(help = "Report analysis statistics.")//
     public static final OptionKey<Boolean> PrintPointsToStatistics = new OptionKey<>(false);
@@ -164,7 +170,7 @@ public class PointstoOptions {
     public static final OptionKey<String> AnalysisContextSensitivity = new OptionKey<>("insens") {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
-            switch (newValue.toLowerCase()) {
+            switch (newValue.toLowerCase(Locale.ENGLISH)) {
                 case "insens":
                     AllocationSiteSensitiveHeap.update(values, false);
                     MinHeapContextDepth.update(values, 0);

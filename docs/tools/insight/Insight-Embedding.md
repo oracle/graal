@@ -10,8 +10,7 @@ permalink: /tools/graalvm-insight/embedding/
 ## Embedding Insight into Java
 
 GraalVM languages (languages implemented with the Truffle framework, i.e., JavaScript, Python, Ruby, R) can be embedded into custom Java applications via [Polyglot Context API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html).
-GraalVM Insight can also be controlled via the same API.
-For example:
+GraalVM Insight can also be controlled via the same API. Like:
 
 ```java
 final Engine engine = context.getEngine();
@@ -21,8 +20,54 @@ AutoCloseable handle = access.apply(agentSrc);
 ```
 
 Obtain `Engine` for `Context` and ask for the `insight` instrument.
+<p>
 Then create `Source` with the GraalVM Insight script and apply it while obtaining its instrumentation handle.
 Use `handle.close()` to disable all the script's instrumentations when when no longer needed.
+For Example:
+
+```java
+Source instrument = Source.create("js", """
+    insight.on('return', function(ctx, frame) {
+        console.log(`Instrumented where = ${frame.where}`);
+    }, {
+        roots: true,
+        rootNameFilter: 'end',
+    });
+    """);
+Source script = Source.create("js", """
+    function end() {
+        var where = 'end';
+        console.log(where + ' invoked')
+    }
+    end();
+    """);
+try (Context context = Context.newBuilder().build()) {
+    @SuppressWarnings("unchecked")
+    Function<Source, AutoCloseable> insight = context.getEngine().getInstruments().get("insight").lookup(Function.class);
+
+    // run without instrumentation
+    context.eval(script);
+
+    // run with instrumentation
+    try (AutoCloseable handle = insight.apply(instrument)) {
+        context.eval(script);
+    }
+
+    // run without instrumentation
+    context.eval(script);
+}
+```
+
+See [Embedding Dependency Setup](../../reference-manual/embedding/embed-languages.md#dependency-setup). Add a dependency on `insight`:
+```
+<dependency>
+    <groupId>org.graalvm.polyglot</groupId>
+    <!-- Select tools: profiler, inspect, coverage, dap, tools -->
+    <artifactId>insight</artifactId>
+    <version>23.1.1</version>
+    <type>pom</type>
+</dependency>
+```
 
 ### Ignoring Internal Scripts
 

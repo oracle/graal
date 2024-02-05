@@ -221,7 +221,10 @@ class NativeImageBenchmarkMixin(object):
         The returned options are added to the agentlib:native-image-agent option list.
         The config-output-dir is configured by the benchmark runner and cannot be overridden.
         """
-        return []
+
+        # All Renaissance Spark benchmarks require lambda class predefinition, so we need this additional option that
+        # is used for the class predefinition feature. See GR-37506
+        return ['experimental-class-define-support'] if (benchmark in ['chi-square', 'gauss-mix', 'movie-lens', 'page-rank']) else []
 
     def extra_profile_run_arg(self, benchmark, args, image_run_args, should_strip_run_args):
         """Returns all arguments passed to the profiling run.
@@ -247,13 +250,6 @@ class NativeImageBenchmarkMixin(object):
         parsed_args = parse_prefixed_args('-Dnative-image.benchmark.benchmark-output-dir=', args)
         if parsed_args:
             return parsed_args[0]
-        else:
-            return None
-
-    def pgo_iteration_num(self, _, args):
-        parsed_args = parse_prefixed_args('-Dnative-image.benchmark.pgo-iteration-num=', args)
-        if parsed_args:
-            return int(parsed_args[0])
         else:
             return None
 
@@ -326,7 +322,7 @@ def measureTimeToFirstResponse(bmSuite):
 class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImageBenchmarkMixin):
     """
     Base class for Microservice benchmark suites. A Microservice is an application that opens a port that is ready to
-    receive requests. This benchmark suite runs a tester process in the background (such as JMeter or Wrk2) and run a
+    receive requests. This benchmark suite runs a tester process in the background (such as Wrk2) and run a
     Microservice application in foreground. Once the tester finishes stress testing the application, the tester process
     terminates and the application is killed with SIGTERM.
 
@@ -360,7 +356,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         Returns the microservice name. The convention here is that the benchmark name contains two elements separated
         by a hyphen ('-'):
         - the microservice name (shopcart, for example);
-        - the tester tool name (jmeter, for example).
+        - the tester tool name (wrk, for example).
 
         :return: Microservice name.
         :rtype: str
@@ -569,13 +565,14 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                     mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                 if self.measureLatency:
-                    # Calibrate for latency measurements (without RSS tracker)
-                    with EmptyEnv(self.get_env()):
-                        measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, [self])
-                        returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
-                        measurementThread.join()
-                    if not self.validateReturnCode(returnCode):
-                        mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
+                    if not any([c.get("requests-per-second") for c in self.loadConfiguration("latency")]):
+                        # Calibrate for latency measurements (without RSS tracker) if no fixed request rate has been provided in the config
+                        with EmptyEnv(self.get_env()):
+                            measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, [self])
+                            returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                            measurementThread.join()
+                        if not self.validateReturnCode(returnCode):
+                            mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                     # Measure latency (without RSS tracker)
                     with EmptyEnv(self.get_env()):
@@ -696,12 +693,13 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                     measurementThread.join()
 
             if self.measureLatency:
-                # Calibrate for latency measurements (without RSS tracker)
-                mx_benchmark.disable_tracker()
-                with EmptyEnv(self.get_env()):
-                    measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, [self])
-                    datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
-                    measurementThread.join()
+                if not [c.get("requests-per-second") for c in self.loadConfiguration("latency") if c.get("requests-per-second")]:
+                    # Calibrate for latency measurements (without RSS tracker) if no fixed request rate has been provided in the config
+                    mx_benchmark.disable_tracker()
+                    with EmptyEnv(self.get_env()):
+                        measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, [self])
+                        datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
+                        measurementThread.join()
 
                 # Measure latency (without RSS tracker)
                 with EmptyEnv(self.get_env()):
@@ -855,7 +853,6 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
         self.addAverageAcrossLatestResults(results, "throughput")
         return results
 
-
 class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
     """Base class for Wrk based benchmark suites."""
 
@@ -875,6 +872,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
             "script" : [<lua scripts that will be executed sequentially>],
             "warmup-requests-per-second" : [<requests per second during the warmup run (one entry per lua script)>],
             "warmup-duration" : [<duration of the warmup run (one entry per lua script)>],
+            "requests-per-second" : [<requests per second during the run> (one entry per lua script)>],
             "duration" : [<duration of the test (one entry per lua script)>]
           }
         }
@@ -896,6 +894,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
             script = self.readConfig(group, "script")
             warmupRequestsPerSecond = self.readConfig(group, "warmup-requests-per-second")
             warmupDuration = self.readConfig(group, "warmup-duration")
+            requestsPerSecond = self.readConfig(group, "requests-per-second", optional=True)
             duration = self.readConfig(group, "duration")
 
             scalarScriptValue = self.isScalarValue(script)
@@ -912,6 +911,8 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                 result["warmup-requests-per-second"] = warmupRequestsPerSecond
                 result["warmup-duration"] = warmupDuration
                 result["duration"] = duration
+                if requestsPerSecond:
+                    result["requests-per-second"] = requestsPerSecond
                 results.append(result)
             else:
                 count = len(script)
@@ -927,15 +928,19 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                     result["warmup-requests-per-second"] = warmupRequestsPerSecond[i]
                     result["warmup-duration"] = warmupDuration[i]
                     result["duration"] = duration[i]
+                    if requestsPerSecond:
+                        result["requests-per-second"] = requestsPerSecond[i]
                     results.append(result)
 
             return results
 
-    def readConfig(self, config, key):
+    def readConfig(self, config, key, optional=False):
         if key in config:
             return config[key]
+        elif optional:
+            return None
         else:
-            mx.abort(key + " not specified in Wrk configuration.")
+            mx.abort(f"Mandatory entry {key} not specified in Wrk configuration.")
 
     def isScalarValue(self, value):
         return type(value) in (int, float, bool) or isinstance(value, ("".__class__, u"".__class__)) # pylint: disable=unidiomatic-typecheck
@@ -1012,7 +1017,12 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
         for i in range(numScripts):
             # Measure latency using a constant rate (based on the previously measured max throughput).
             config = configs[i]
-            expectedRate = int(self.calibratedThroughput[i] * 0.75)
+            if configs[i].get("requests-per-second"):
+                expectedRate = configs[i]["requests-per-second"]
+                mx.log(f"Using configured fixed throughput {expectedRate} ops/s for latency measurements.")
+            else:
+                expectedRate = int(self.calibratedThroughput[i] * 0.75)
+                mx.log(f"Using dynamically computed throughput {expectedRate} ops/s for latency measurements (75% of max throughput).")
             wrkFlags = self.getLatencyFlags(config, expectedRate)
             constantRateOutput = self.runWrk2(wrkFlags)
             self.verifyThroughput(constantRateOutput, expectedRate)

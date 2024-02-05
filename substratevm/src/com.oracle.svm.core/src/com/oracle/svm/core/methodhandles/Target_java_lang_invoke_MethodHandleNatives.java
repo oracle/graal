@@ -39,6 +39,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
 import jdk.graal.compiler.debug.GraalError;
+import org.graalvm.nativeimage.MissingReflectionRegistrationError;
 
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateUtil;
@@ -237,16 +238,25 @@ final class Util_java_lang_invoke_MethodHandleNatives {
         return lookupMethod(declaringClazz, name, parameterTypes, null);
     }
 
-    private static Method lookupMethod(Class<?> declaringClazz, String name, Class<?>[] parameterTypes, NoSuchMethodException originalException) throws NoSuchMethodException {
+    private static Method lookupMethod(Class<?> declaringClazz, String name, Class<?>[] parameterTypes, Throwable originalException) throws NoSuchMethodException {
         try {
             Method result = declaringClazz.getDeclaredMethod(name, parameterTypes);
             forceAccess(result);
             return result;
-        } catch (NoSuchMethodException e) {
+        } catch (NoSuchMethodException | MissingReflectionRegistrationError e) {
+            /*
+             * Getting a MissingReflectionRegistration error during lookup is not a problem if we
+             * find a matching method in a superclass, since if an overriding method existed a
+             * hiding method would have been registered.
+             */
             Class<?> superClass = declaringClazz.getSuperclass();
-            NoSuchMethodException newOriginalException = originalException == null ? e : originalException;
+            Throwable newOriginalException = originalException == null ? e : originalException;
             if (superClass == null) {
-                throw newOriginalException;
+                if (newOriginalException instanceof NoSuchMethodException noSuchMethodException) {
+                    throw noSuchMethodException;
+                } else {
+                    throw (Error) newOriginalException;
+                }
             } else {
                 return lookupMethod(superClass, name, parameterTypes, newOriginalException);
             }
@@ -257,16 +267,20 @@ final class Util_java_lang_invoke_MethodHandleNatives {
         return lookupField(declaringClazz, name, null);
     }
 
-    private static Field lookupField(Class<?> declaringClazz, String name, NoSuchFieldException originalException) throws NoSuchFieldException {
+    private static Field lookupField(Class<?> declaringClazz, String name, Throwable originalException) throws NoSuchFieldException {
         try {
             Field result = declaringClazz.getDeclaredField(name);
             forceAccess(result);
             return result;
-        } catch (NoSuchFieldException e) {
+        } catch (NoSuchFieldException | MissingReflectionRegistrationError e) {
             Class<?> superClass = declaringClazz.getSuperclass();
-            NoSuchFieldException newOriginalException = originalException == null ? e : originalException;
+            Throwable newOriginalException = originalException == null ? e : originalException;
             if (superClass == null) {
-                throw newOriginalException;
+                if (newOriginalException instanceof NoSuchFieldException noSuchFieldException) {
+                    throw noSuchFieldException;
+                } else {
+                    throw (Error) newOriginalException;
+                }
             } else {
                 return lookupField(superClass, name, newOriginalException);
             }
@@ -325,6 +339,12 @@ final class Util_java_lang_invoke_MethodHandleNatives {
                 self.flags |= field.getModifiers();
             }
             return self;
+        } catch (MissingReflectionRegistrationError e) {
+            if (speculativeResolve) {
+                return null;
+            } else {
+                throw e;
+            }
         } catch (NoSuchMethodException e) {
             if (speculativeResolve) {
                 return null;

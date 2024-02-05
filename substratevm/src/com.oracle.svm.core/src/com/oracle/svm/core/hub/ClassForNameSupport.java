@@ -35,6 +35,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticallyRegisteredImageSingleton
 public final class ClassForNameSupport {
@@ -56,22 +57,41 @@ public final class ClassForNameSupport {
         }
         String name = clazz.getName();
         Object currentValue = singleton().knownClasses.get(name);
-        VMError.guarantee(currentValue == null || currentValue == clazz || currentValue instanceof Throwable,
-                        "Invalid Class.forName value for %s: %s", name, currentValue);
         /*
-         * If the class has already been seen as throwing an error, we don't overwrite this error
+         * If the class is already registered as negative, it means that it exists but is not
+         * accessible through the builder class loader, and it was already registered by name (as
+         * negative query) before this point. In that case, we update the map to contain the actual
+         * class.
          */
-        singleton().knownClasses.putIfAbsent(name, clazz);
+        VMError.guarantee(currentValue == null || currentValue == clazz || currentValue instanceof Throwable ||
+                        (currentValue == NEGATIVE_QUERY && ReflectionUtil.lookupClass(true, name) == null),
+                        "Invalid Class.forName value for %s: %s", name, currentValue);
+
+        if (currentValue == NEGATIVE_QUERY) {
+            singleton().knownClasses.put(name, clazz);
+        } else {
+            /*
+             * If the class has already been seen as throwing an error, we don't overwrite this
+             * error
+             */
+            singleton().knownClasses.putIfAbsent(name, clazz);
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerExceptionForClass(String className, Throwable t) {
+        Object currentValue = singleton().knownClasses.get(className);
+        VMError.guarantee(currentValue == null || currentValue.getClass() == t.getClass());
         singleton().knownClasses.put(className, t);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerNegativeQuery(String className) {
-        singleton().knownClasses.put(className, NEGATIVE_QUERY);
+        /*
+         * If the class is not accessible by the builder class loader, but was already registered
+         * through registerClass(Class<?>), we don't overwrite the actual class or exception.
+         */
+        singleton().knownClasses.putIfAbsent(className, NEGATIVE_QUERY);
     }
 
     public static Class<?> forNameOrNull(String className, ClassLoader classLoader) {
@@ -91,7 +111,8 @@ public final class ClassForNameSupport {
             return null;
         }
         Object result = singleton().knownClasses.get(className);
-        if (result == NEGATIVE_QUERY) {
+        if (result == NEGATIVE_QUERY || className.endsWith("[]")) {
+            /* Querying array classes with their "TypeName[]" name always throws */
             result = new ClassNotFoundException(className);
         }
         if (result == null) {

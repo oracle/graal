@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,10 +51,12 @@ import jdk.graal.compiler.nodes.FieldLocationIdentity;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.spi.ArrayLengthProvider;
@@ -62,6 +64,8 @@ import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.nodes.spi.Simplifiable;
+import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.spi.Virtualizable;
 import jdk.graal.compiler.nodes.spi.VirtualizerTool;
 import jdk.graal.compiler.nodes.util.ConstantFoldUtil;
@@ -76,7 +80,8 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * Reads an {@linkplain FixedAccessNode accessed} value.
  */
 @NodeInfo(nameTemplate = "Read#{p#location/s}", cycles = CYCLES_2, size = SIZE_1)
-public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess, Canonicalizable, Virtualizable, GuardingNode, OrderedMemoryAccess, SingleMemoryKill, ExtendableMemoryAccess {
+public class ReadNode extends FloatableAccessNode
+                implements LIRLowerableAccess, Canonicalizable, Virtualizable, GuardingNode, OrderedMemoryAccess, SingleMemoryKill, ExtendableMemoryAccess, Simplifiable {
 
     public static final NodeClass<ReadNode> TYPE = NodeClass.create(ReadNode.class);
 
@@ -126,18 +131,44 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
         }
     }
 
+    private boolean canCanonicalizeRead() {
+        return !getUsedAsNullCheck() && !extendsAccess();
+    }
+
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (tool.allUsagesAvailable() && hasNoUsages()) {
             // Read without usages or guard can be safely removed.
             return null;
         }
-        if (!getUsedAsNullCheck() && !extendsAccess()) {
+        if (canCanonicalizeRead()) {
             return canonicalizeRead(this, getAddress(), getLocationIdentity(), tool);
         } else {
             // if this read is a null check, then replacing it with the value is incorrect for
             // guard-type usages
             return this;
+        }
+    }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        if (!tool.canonicalizeReads() || !canCanonicalizeRead()) {
+            return;
+        }
+        if (address instanceof OffsetAddressNode) {
+            OffsetAddressNode objAddress = (OffsetAddressNode) address;
+            ConstantReflectionProvider constantReflection = tool.getConstantReflection();
+            // Note: readConstant cannot be used to read the array length, so in order to avoid an
+            // unnecessary CompilerToVM.readFieldValue call ending in an IllegalArgumentException,
+            // check if we are reading the array length location first.
+            if (getLocationIdentity().equals(ARRAY_LENGTH_LOCATION)) {
+                ValueNode length = GraphUtil.arrayLength(objAddress.getBase(), ArrayLengthProvider.FindLengthMode.CANONICALIZE_READ, constantReflection);
+                if (length != null) {
+                    StructuredGraph graph = graph();
+                    ValueNode replacement = ArrayLengthNode.maybeAddPositivePi(length, this);
+                    graph.replaceFixedWithFloating(this, replacement);
+                }
+            }
         }
     }
 
@@ -204,7 +235,8 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
         // check if we are reading the array length location first.
         if (locationIdentity.equals(ARRAY_LENGTH_LOCATION)) {
             ValueNode length = GraphUtil.arrayLength(object, ArrayLengthProvider.FindLengthMode.CANONICALIZE_READ, constantReflection);
-            if (length != null) {
+            // only use length if we do not drop stamp precision here
+            if (length != null && !length.stamp(NodeView.DEFAULT).canBeImprovedWith(StampFactory.positiveInt())) {
                 assert length.stamp(view).isCompatible(accessStamp);
                 return length;
             }

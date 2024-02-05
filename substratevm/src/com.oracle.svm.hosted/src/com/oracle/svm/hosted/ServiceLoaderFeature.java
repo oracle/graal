@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.hosted.analysis.Inflation;
@@ -133,14 +134,24 @@ public class ServiceLoaderFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
         accessImpl.imageClassLoader.classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
-            if (servicesToSkip.contains(serviceName)) {
-                return;
-            }
             Class<?> serviceClass = access.findClassByName(serviceName);
-            if (serviceClass == null || serviceClass.isArray() || serviceClass.isPrimitive()) {
-                return;
+            boolean skipService = false;
+            /* If the service should not end up in the image, we remove all the providers with it */
+            Collection<String> providersToSkip = providers;
+            if (servicesToSkip.contains(serviceName)) {
+                skipService = true;
+            } else if (serviceClass == null || serviceClass.isArray() || serviceClass.isPrimitive()) {
+                skipService = true;
+            } else if (!accessImpl.getHostVM().platformSupported(serviceClass)) {
+                skipService = true;
+            } else {
+                providersToSkip = providers.stream().filter(serviceProvidersToSkip::contains).collect(Collectors.toList());
+                if (!providersToSkip.isEmpty()) {
+                    skipService = true;
+                }
             }
-            if (!accessImpl.getHostVM().platformSupported(serviceClass)) {
+            if (skipService) {
+                ServiceCatalogSupport.singleton().removeServicesFromServicesCatalog(serviceName, new HashSet<>(providersToSkip));
                 return;
             }
             access.registerReachabilityHandler(a -> handleServiceClassIsReachable(a, serviceClass, providers), serviceClass);

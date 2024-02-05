@@ -39,8 +39,8 @@ public final class IsolateUtil {
     }
 
     /**
-     * Gets an identifier for the current isolate or 0 if this not an isolate-aware runtime. The
-     * returned value is guaranteed to be unique for the first {@code 2^64 - 1} isolates in the
+     * Gets a non-zero identifier for the current isolate or 0 if this not an isolate-aware runtime.
+     * The returned value is guaranteed to be unique for the first {@code 2^64 - 1} isolates in the
      * process.
      */
     public static long getIsolateID() {

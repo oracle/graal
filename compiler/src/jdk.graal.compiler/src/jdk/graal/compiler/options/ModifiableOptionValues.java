@@ -34,7 +34,7 @@ import org.graalvm.collections.UnmodifiableMapCursor;
 /**
  * A context for obtaining values for {@link OptionKey}s that allows for key/value pairs to be
  * updated. Updates have atomic copy-on-write semantics which means a thread may see an old value
- * when reading but writers will never loose updates.
+ * when reading but writers will never lose updates.
  */
 public class ModifiableOptionValues extends OptionValues {
 

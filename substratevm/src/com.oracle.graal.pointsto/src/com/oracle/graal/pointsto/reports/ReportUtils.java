@@ -64,6 +64,12 @@ public class ReportUtils {
     static final Comparator<InvokeInfo> invokeInfoComparator = invokeInfoBCIComparator.thenComparing(i -> comparingMethodNames(i.getTargetMethod()));
     static final Comparator<BytecodePosition> positionMethodComparator = Comparator.comparing(pos -> pos.getMethod().format("%H.%n(%P):%R"));
     static final Comparator<BytecodePosition> positionComparator = positionMethodComparator.thenComparing(pos -> pos.getBCI());
+    static final Comparator<Object> reasonComparator = (o1, o2) -> {
+        if (o1 instanceof BytecodePosition p1 && o2 instanceof BytecodePosition p2) {
+            return positionComparator.compare(p1, p2);
+        }
+        return o1.toString().compareTo(o2.toString());
+    };
 
     /**
      *

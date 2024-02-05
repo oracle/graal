@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jdk.resources;
 
+import static com.oracle.svm.core.MissingRegistrationUtils.ERROR_EMPHASIS_INDENT;
+
 import java.nio.file.Files;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.Map;
@@ -43,7 +45,14 @@ public final class MissingResourceRegistrationUtils {
     }
 
     private static String errorMessage(String resourcePath) {
-        return "The program tried to access the resource at path " + resourcePath + " without it being registered as reachable. Add it to the resource metadata to solve this problem. " +
+        /* Can't use multi-line strings as they pull in format and bloat "Hello, World!" */
+        return "The program tried to access the resource at path " +
+                        System.lineSeparator() +
+                        System.lineSeparator() +
+                        ERROR_EMPHASIS_INDENT + resourcePath +
+                        System.lineSeparator() +
+                        System.lineSeparator() +
+                        " without it being registered as reachable. Add it to the resource metadata to solve this problem. " +
                         "See https://www.graalvm.org/latest/reference-manual/native-image/metadata/#resources-and-resource-bundles for help";
     }
 

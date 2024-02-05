@@ -48,6 +48,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -131,7 +132,7 @@ public class EngineAPITest {
             fail();
         } catch (NullPointerException e) {
         }
-        Assert.assertNotNull(Engine.newBuilder().useSystemProperties(false).build());
+        Assert.assertNotNull(Engine.newBuilder().useSystemProperties(false).err(OutputStream.nullOutputStream()).out(OutputStream.nullOutputStream()).build());
     }
 
     @Test
@@ -223,7 +224,7 @@ public class EngineAPITest {
     @Test
     public void testStableOption() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
-        try (Engine engine = Engine.newBuilder().option("optiontestinstr1.StringOption1", "Hello").build()) {
+        try (Engine engine = Engine.newBuilder().option("optiontestinstr1.StringOption1", "Hello").option("engine.WarnOptionDeprecation", "false").build()) {
             try (Context context = Context.newBuilder().engine(engine).build()) {
                 context.enter();
                 try {

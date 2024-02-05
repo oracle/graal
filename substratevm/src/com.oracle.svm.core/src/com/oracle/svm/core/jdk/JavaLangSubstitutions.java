@@ -32,6 +32,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.net.URL;
+import java.security.Permission;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
@@ -42,10 +43,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
-import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
-import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
-import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -75,6 +72,10 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import jdk.internal.loader.ClassLoaderValue;
 import jdk.internal.module.ServicesCatalog;
 
@@ -207,6 +208,11 @@ final class Target_java_lang_StringUTF16 {
 @SuppressWarnings({"unused"})
 final class Target_java_lang_Throwable {
 
+    @Alias //
+    @TargetElement(onlyWith = JDK22OrLater.class) //
+    @RecomputeFieldValue(kind = Kind.FromAlias, isFinal = true) //
+    static boolean jfrTracing = false;
+
     @Alias @RecomputeFieldValue(kind = Reset)//
     Object backtrace;
 
@@ -221,50 +227,14 @@ final class Target_java_lang_Throwable {
     // Checkstyle: resume
 
     /**
-     * Fills in the execution stack trace. {@link Throwable#fillInStackTrace()} cannot be
-     * {@code synchronized}, because it might be called in a {@link VMOperation} (via one of the
-     * {@link Throwable} constructors), where we are not allowed to block. To work around that, we
-     * do the following:
-     * <ul>
-     * <li>If we are not in a {@link VMOperation}, it executes {@link #fillInStackTrace(int)} in a
-     * block {@code synchronized} by the supplied {@link Throwable}. This is the default case.
-     * <li>If we are in a {@link VMOperation}, it checks if the {@link Throwable} is currently
-     * locked. If not, {@link #fillInStackTrace(int)} is called without synchronization, which is
-     * safe in a {@link VMOperation}. If it is locked, we do not do any filling (and thus do not
-     * collect the stack trace).
-     * </ul>
+     * Fills in the execution stack trace. Our {@link Throwable#fillInStackTrace()} cannot be
+     * declared {@code synchronized} because it might be called in a {@link VMOperation} (via one of
+     * the {@link Throwable} constructors), where we are not allowed to block. We work around that
+     * in {@link #fillInStackTrace(int)}.
      */
     @Substitute
-    @NeverInline("Starting a stack walk in the caller frame")
     public Target_java_lang_Throwable fillInStackTrace() {
-        if (VMOperation.isInProgress()) {
-            if (MonitorSupport.singleton().isLockedByAnyThread(this)) {
-                /*
-                 * The Throwable is locked. We cannot safely fill in the stack trace. Do nothing and
-                 * accept that we will not get a stack track.
-                 */
-            } else {
-                /*
-                 * The Throwable is not locked. We can safely fill the stack trace without
-                 * synchronization because we VMOperation is single threaded.
-                 */
-
-                /* Copy of `Throwable#fillInStackTrace()` */
-                if (stackTrace != null || backtrace != null) {
-                    fillInStackTrace(0);
-                    stackTrace = UNASSIGNED_STACK;
-                }
-            }
-        } else {
-            synchronized (this) {
-                /* Copy of `Throwable#fillInStackTrace()` */
-                if (stackTrace != null || backtrace != null) {
-                    fillInStackTrace(0);
-                    stackTrace = UNASSIGNED_STACK;
-                }
-            }
-        }
-        return this;
+        return fillInStackTrace(0);
     }
 
     /**
@@ -277,15 +247,42 @@ final class Target_java_lang_Throwable {
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
     Target_java_lang_Throwable fillInStackTrace(int dummy) {
-        /*
-         * Start out by clearing the backtrace for this object, in case the VM runs out of memory
-         * while allocating the stack trace.
-         */
-        backtrace = null;
+        if (VMOperation.isInProgress()) {
+            if (MonitorSupport.singleton().isLockedByAnyThread(this)) {
+                /*
+                 * The Throwable is locked. We cannot safely fill in the stack trace. Do nothing and
+                 * accept that we will not get a stack trace.
+                 */
+            } else {
+                /*
+                 * The Throwable is not locked. We can safely fill the stack trace without
+                 * synchronization because we VMOperation is single threaded.
+                 */
 
-        BacktraceVisitor visitor = new BacktraceVisitor();
-        JavaThreads.visitCurrentStackFrames(visitor);
-        backtrace = visitor.getArray();
+                if (stackTrace != null || backtrace != null) {
+                    backtrace = null;
+
+                    BacktraceVisitor visitor = new BacktraceVisitor();
+                    JavaThreads.visitCurrentStackFrames(visitor);
+                    backtrace = visitor.getArray();
+
+                    stackTrace = UNASSIGNED_STACK;
+                }
+            }
+        } else {
+            /* Execute with synchronization. This is the default case. */
+            synchronized (this) {
+                if (stackTrace != null || backtrace != null) {
+                    backtrace = null;
+
+                    BacktraceVisitor visitor = new BacktraceVisitor();
+                    JavaThreads.visitCurrentStackFrames(visitor);
+                    backtrace = visitor.getArray();
+
+                    stackTrace = UNASSIGNED_STACK;
+                }
+            }
+        }
         return this;
     }
 }
@@ -402,23 +399,35 @@ final class Target_java_lang_System {
     @Alias
     private static native void checkKey(String key);
 
-    /*
-     * Note that there is no substitution for getSecurityManager, but instead getSecurityManager it
-     * is intrinsified in SubstrateGraphBuilderPlugins to always return null. This allows better
-     * constant folding of SecurityManager code already during static analysis.
+    /**
+     * Force System.Never in case it was set at build time via the `-Djava.security.manager=allow`
+     * passed to the image builder.
+     */
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias, isFinal = true) //
+    private static int allowSecurityManager = 1;
+
+    /**
+     * We do not support the {@link SecurityManager} so this method must throw a
+     * {@link SecurityException} when 'java.security.manager' is set to anything but
+     * <code>disallow</code>.
+     * 
+     * @see System#setSecurityManager(SecurityManager)
+     * @see SecurityManager
      */
     @Substitute
-    private static void setSecurityManager(SecurityManager s) {
-        if (s != null) {
-            /*
-             * We deliberately treat this as a non-recoverable fatal error. We want to prevent bugs
-             * where an exception is silently ignored by an application and then necessary security
-             * checks are not in place.
-             */
-            throw VMError.shouldNotReachHere("Installing a SecurityManager is not yet supported");
+    @SuppressWarnings({"removal", "javadoc"})
+    private static void setSecurityManager(SecurityManager sm) {
+        if (sm != null) {
+            /* Read the property collected at isolate creation as that is what happens on the JVM */
+            String smp = SystemPropertiesSupport.singleton().getSavedProperties().get("java.security.manager");
+            if (smp != null && !smp.equals("disallow")) {
+                throw new SecurityException("Setting the SecurityManager is not supported by Native Image");
+            } else {
+                throw new UnsupportedOperationException(
+                                "The Security Manager is deprecated and will be removed in a future release");
+            }
         }
     }
-
 }
 
 final class NotAArch64 implements BooleanSupplier {
@@ -541,6 +550,17 @@ final class Target_java_lang_ClassValue {
 @TargetClass(java.lang.NullPointerException.class)
 final class Target_java_lang_NullPointerException {
 
+    /**
+     * {@link NullPointerException} overrides {@link Throwable#fillInStackTrace()} with a
+     * {@code synchronized} method which is not permitted in a {@link VMOperation}. We hand over to
+     * {@link Target_java_lang_Throwable#fillInStackTrace(int)} which already handles this properly.
+     */
+    @Substitute
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
+    Target_java_lang_Throwable fillInStackTrace() {
+        return SubstrateUtil.cast(this, Target_java_lang_Throwable.class).fillInStackTrace(0);
+    }
+
     @Substitute
     @SuppressWarnings("static-method")
     private String getExtendedNPEMessage() {
@@ -559,6 +579,10 @@ final class Target_jdk_internal_loader_ClassLoaders {
 
 @TargetClass(value = jdk.internal.loader.BootLoader.class)
 final class Target_jdk_internal_loader_BootLoader {
+    // Checkstyle: stop
+    @Delete //
+    static String JAVA_HOME;
+    // Checkstyle: resume
 
     @Substitute
     static Package getDefinedPackage(String name) {
@@ -621,6 +645,14 @@ final class Target_jdk_internal_loader_BootLoader {
     // Checkstyle: stop
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ClassLoaderValueMapFieldValueTransformer.class, isFinal = true)//
     static ConcurrentHashMap<?, ?> CLASS_LOADER_VALUE_MAP;
+    // Checkstyle: resume
+}
+
+@TargetClass(value = jdk.internal.logger.LoggerFinderLoader.class)
+final class Target_jdk_internal_logger_LoggerFinderLoader {
+    // Checkstyle: stop
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset, isFinal = true)//
+    static Permission READ_PERMISSION;
     // Checkstyle: resume
 }
 

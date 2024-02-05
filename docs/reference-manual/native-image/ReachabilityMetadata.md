@@ -442,6 +442,41 @@ The schema also includes further details and explanations how this configuration
 ]
 ```
 
+## Strict Metadata Mode
+
+Native Image's strict metadata mode helps ensure the correctness and composability of the Native Image metadata, by strengthening the metadata requirements for reflection queries.
+This mode can be activated with the `-H:ThrowMissingRegistrationErrors=` option and requires the following additional registrations over the default:
+
+### Reflection
+
+* If a reflectively-accessed element (`Class`, `Field`, `Method`, etc.) is not present on the image class- or module-path, it still needs to be registered to ensure the correct exception (`ClassNotFoundException` or similar) is thrown.
+  If an element is queried at run-time without having been registered, regardless of whether it is present on the class- or module-path, this query will throw a `MissingReflectionRegistrationError`.
+  This change ensures that the error is not ambiguous between a non-existent element and one that was not registered for reflection in the image;
+* This rationale also requires that any query that returns a collection of class members (`Class.getMethods()` or similar) has to be registered in full (with `"queryAllPublicMethods"` in this case) to succeed at run-time.
+  This additionally ensures that any of the registered elements can be queried individually, and non-existent elements of that type will throw the correct exception without having to be registered.
+  However, this means that `Class.getMethods()` does not return the subset of methods that were registered, but throws a `MissingReflectionRegistrationError` if `"queryAllPublicMethods"` is missing.
+
+### Resources
+
+* If a resource or resource bundle is not present on the image class- or module-path, it still needs to be registered to ensure the correct return value (`null`).
+  If a resource is queried at run-time without having been registered, regardless of whether it is present on the class- or module-path, this query will throw a `MissingResourceRegistrationError`.
+  This change ensures that the program behavior is not ambiguous between a non-existent resource and one that was not registered for run-time access;
+
+The Native Image agent does not support custom implementations of `ResourceBundle$Control` or `Bundles$Strategy` and requires manual registrations for the reflection and resource queries that they will perform.
+
+### Transition tools
+
+This mode will be made the default behavior of Native Image in a future release. We encourage you to start transitioning your code as soon as possible.
+The [Native Image agent](AutomaticMetadataCollection.md) outputs JSON files that conform to both the default and strict modes of operation.
+The following options are useful for debugging issues during the transition to the strict mode:
+
+* `-H:ThrowMissingRegistrationErrors=<package list>`: limits `MissingReflectionRegistrationError` to be thrown from a defined list of packages.
+  This is useful when using some library code that has not been ported to the new mode yet;
+* `-H:MissingRegistrationReportingMode`: sets how `MissingReflectionRegistrationError` is reported:
+    * `Throw` is the default. The error is simply thrown as a Java exception;
+    * `Warn` outputs a small stack trace for every error encountered, which results in a report of all the places the tested code is going to throw when the strict mode is enabled;
+    * `Exit` exits the program when encountering the error. This is useful to detect blanket `catch (Throwable t) {` blocks that would otherwise silence the error.
+
 ### Further Reading
 
 * [Metadata Collection with the Tracing Agent](AutomaticMetadataCollection.md)

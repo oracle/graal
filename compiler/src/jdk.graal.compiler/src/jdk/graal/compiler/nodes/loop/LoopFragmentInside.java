@@ -320,7 +320,7 @@ public class LoopFragmentInside extends LoopFragment {
                      * anchor point here ensuring nothing can flow above the original iteration.
                      */
                     if (!(lastCodeNode instanceof GuardingNode) || !(lastCodeNode instanceof AnchoringNode)) {
-                        ValueAnchorNode newAnchoringPointAfterPrevIteration = graph.add(new ValueAnchorNode(null));
+                        ValueAnchorNode newAnchoringPointAfterPrevIteration = graph.add(new ValueAnchorNode());
                         graph.addAfterFixed(lastCodeNode, newAnchoringPointAfterPrevIteration);
                         lastCodeNode = newAnchoringPointAfterPrevIteration;
                     }

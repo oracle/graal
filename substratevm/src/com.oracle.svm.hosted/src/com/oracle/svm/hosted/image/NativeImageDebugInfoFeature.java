@@ -29,6 +29,7 @@ import java.util.function.Function;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -107,7 +108,9 @@ class NativeImageDebugInfoFeature implements InternalFeature {
             var accessImpl = (FeatureImpl.BeforeImageWriteAccessImpl) access;
             var image = accessImpl.getImage();
             var debugContext = new DebugContext.Builder(HostedOptionValues.singleton(), new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
-            DebugInfoProvider provider = new NativeImageDebugInfoProvider(debugContext, image.getCodeCache(), image.getHeap(), image.getNativeLibs(), accessImpl.getHostedMetaAccess());
+            RuntimeConfiguration runtimeConfiguration = ((FeatureImpl.BeforeImageWriteAccessImpl) access).getRuntimeConfiguration();
+            DebugInfoProvider provider = new NativeImageDebugInfoProvider(debugContext, image.getCodeCache(), image.getHeap(), image.getNativeLibs(), accessImpl.getHostedMetaAccess(),
+                            runtimeConfiguration);
             var objectFile = image.getObjectFile();
             objectFile.installDebugInfo(provider);
 

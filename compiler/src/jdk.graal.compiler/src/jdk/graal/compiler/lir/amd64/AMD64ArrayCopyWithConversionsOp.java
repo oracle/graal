@@ -266,12 +266,15 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
             // length
             asm.align(preferredBranchTargetAlignment(crb));
             asm.bind(variants[StrideUtil.getDirectStubCallIndex(Stride.S4, Stride.S4)]);
+            asm.maybeEmitIndirectTargetMarker();
             asm.shll(len, 1);
             asm.align(preferredBranchTargetAlignment(crb));
             asm.bind(variants[StrideUtil.getDirectStubCallIndex(Stride.S2, Stride.S2)]);
+            asm.maybeEmitIndirectTargetMarker();
             asm.shll(len, 1);
             asm.align(preferredBranchTargetAlignment(crb));
             asm.bind(variants[StrideUtil.getDirectStubCallIndex(Stride.S1, Stride.S1)]);
+            asm.maybeEmitIndirectTargetMarker();
             emitOp(crb, asm, Stride.S1, Stride.S1, src, sro, dst, len);
             asm.jmp(end);
 
@@ -282,6 +285,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
                     }
                     asm.align(preferredBranchTargetAlignment(crb));
                     asm.bind(variants[StrideUtil.getDirectStubCallIndex(strideSrc, strideDst)]);
+                    asm.maybeEmitIndirectTargetMarker();
                     emitOp(crb, asm, strideSrc, strideDst, src, sro, dst, len);
                     asm.jmp(end);
                 }

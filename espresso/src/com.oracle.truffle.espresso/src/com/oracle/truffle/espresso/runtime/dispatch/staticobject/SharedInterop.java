@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
+import java.math.BigInteger;
 import java.nio.ByteOrder;
 import java.time.Duration;
 import java.time.Instant;
@@ -54,28 +55,27 @@ import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.espresso.meta.InteropKlassesDispatch;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.ArrayIterator;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.HashIterator;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactories;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**
  * Implementation of Espresso interop in a way that can be safely shared across contexts until code
  * sharing is implemented.
- * 
+ *
  * This works by looking up the context of the receiver, then selecting the context-specific
  * implementation for the object, based on the dispatch class that would have been selected when the
  * language is not shared.
- * 
+ *
  * In case an implementation cannot be found, the message will return the default value, as defined
  * in {@link InteropLibrary}.
- * 
+ *
  * @see #getTarget(StaticObject, InteropMessage.Message)
  * @see InteropMessageFactories
  */
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
-@SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class SharedInterop {
     @GenerateUncached
     abstract static class CallSharedInteropMessage extends EspressoNode {
@@ -481,6 +481,23 @@ public class SharedInterop {
     }
 
     @ExportMessage
+    public static boolean fitsInBigInteger(StaticObject receiver,
+                    @Cached IndirectCallNode callNode,
+                    @Cached CallSharedInteropMessage sharedCallNode) {
+        int dispatchId = receiver.getKlass().getDispatchId();
+        InteropMessage.Message message = InteropMessage.Message.FitsInBigInteger;
+        if (InteropMessageFactories.isShareable(dispatchId, message)) {
+            dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
+            return (boolean) sharedCallNode.call(dispatchId, message, receiver);
+        }
+        CallTarget target = getTarget(receiver, InteropMessage.Message.FitsInBigInteger);
+        if (target != null) {
+            return (boolean) callNode.call(target, receiver);
+        }
+        return false;
+    }
+
+    @ExportMessage
     public static byte asByte(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
                     @Cached CallSharedInteropMessage sharedCallNode) throws UnsupportedMessageException {
@@ -578,6 +595,23 @@ public class SharedInterop {
         CallTarget target = getTarget(receiver, InteropMessage.Message.AsDouble);
         if (target != null) {
             return (double) callNode.call(target, receiver);
+        }
+        throw unsupported();
+    }
+
+    @ExportMessage
+    public static BigInteger asBigInteger(StaticObject receiver,
+                    @Cached IndirectCallNode callNode,
+                    @Cached CallSharedInteropMessage sharedCallNode) throws UnsupportedMessageException {
+        int dispatchId = receiver.getKlass().getDispatchId();
+        InteropMessage.Message message = InteropMessage.Message.AsDouble;
+        if (InteropMessageFactories.isShareable(dispatchId, message)) {
+            dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
+            return (BigInteger) sharedCallNode.call(dispatchId, message, receiver);
+        }
+        CallTarget target = getTarget(receiver, InteropMessage.Message.AsDouble);
+        if (target != null) {
+            return (BigInteger) callNode.call(target, receiver);
         }
         throw unsupported();
     }
@@ -1320,6 +1354,23 @@ public class SharedInterop {
         CallTarget target = getTarget(receiver, InteropMessage.Message.ReadBufferByte);
         if (target != null) {
             return (byte) callNode.call(target, receiver, byteOffset);
+        }
+        throw unsupported();
+    }
+
+    @ExportMessage
+    public static void readBuffer(StaticObject receiver, long byteOffset, byte[] destination, int destinationOffset, int length,
+                    @Cached IndirectCallNode callNode,
+                    @Cached CallSharedInteropMessage sharedCallNode) throws UnsupportedMessageException {
+        int dispatchId = receiver.getKlass().getDispatchId();
+        InteropMessage.Message message = InteropMessage.Message.ReadBuffer;
+        if (InteropMessageFactories.isShareable(dispatchId, message)) {
+            dispatchId = InteropMessageFactories.sourceDispatch(dispatchId, message);
+            sharedCallNode.call(dispatchId, message, receiver, byteOffset, destination, destinationOffset, length);
+        }
+        CallTarget target = getTarget(receiver, InteropMessage.Message.ReadBuffer);
+        if (target != null) {
+            callNode.call(target, receiver, byteOffset, destination, destinationOffset, length);
         }
         throw unsupported();
     }

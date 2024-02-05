@@ -53,7 +53,6 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  */
 @GenerateInteropNodes
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
-@SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class MapInterop extends EspressoInterop {
     // region ### Hashes
 

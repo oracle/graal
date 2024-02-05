@@ -24,13 +24,48 @@
  */
 package com.oracle.svm.core;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
-public interface SubstrateControlFlowIntegrity {
+import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.vm.ci.code.Register;
+
+public class SubstrateControlFlowIntegrity {
+
+    public enum CFIOptions {
+        NONE,
+        HW,
+        SW,
+        SW_NONATIVE
+    }
+
+    public CFIOptions getCFIMode() {
+        return CFIOptions.NONE;
+    }
+
+    public Register getCFITargetRegister() {
+        throw VMError.shouldNotReachHere("No CFI Target Register is available");
+    }
+
+    public boolean continuationsSupported() {
+        return true;
+    }
 
     @Fold
-    static boolean enabled() {
-        return ImageSingletons.contains(SubstrateControlFlowIntegrity.class);
+    public static SubstrateControlFlowIntegrity singleton() {
+        return ImageSingletons.lookup(SubstrateControlFlowIntegrity.class);
+    }
+
+    @Fold
+    public static boolean enabled() {
+        var cfiMode = singleton().getCFIMode();
+        return cfiMode != CFIOptions.NONE;
+    }
+
+    @Fold
+    public static boolean useSoftwareCFI() {
+        var cfiMode = singleton().getCFIMode();
+        return cfiMode == CFIOptions.SW || cfiMode == CFIOptions.SW_NONATIVE;
     }
 }

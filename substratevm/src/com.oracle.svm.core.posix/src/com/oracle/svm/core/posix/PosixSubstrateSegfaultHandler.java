@@ -36,6 +36,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
@@ -60,6 +61,9 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
             dump(sigInfo, uContext);
             throw VMError.shouldNotReachHereAtRuntime();
         }
+
+        /* Attach failed - kill the process because the segfault handler must not return. */
+        LibC.abort();
     }
 
     @Override

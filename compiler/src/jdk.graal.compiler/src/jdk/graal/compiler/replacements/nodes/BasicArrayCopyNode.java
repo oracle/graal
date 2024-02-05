@@ -246,11 +246,8 @@ public abstract class BasicArrayCopyNode extends WithExceptionNode
         if ((srcType.getComponentType().getJavaKind().isPrimitive() && destType.getComponentType().equals(srcType.getComponentType())) || getSource() == getDestination()) {
             return true;
         }
-
         if (StampTool.isExactType(getDestination().stamp(NodeView.DEFAULT))) {
-            if (destType != null && destType.isAssignableFrom(srcType)) {
-                return true;
-            }
+            return destType.isAssignableFrom(srcType);
         }
         return false;
     }

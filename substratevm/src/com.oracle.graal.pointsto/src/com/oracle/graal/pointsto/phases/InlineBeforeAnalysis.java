@@ -30,7 +30,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.util.ClassUtil;
 
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.GraphDecoder;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
@@ -70,20 +69,8 @@ public class InlineBeforeAnalysis {
                         .build();
 
         try (DebugContext.Scope s = debug.scope("InlineBeforeAnalysis", result)) {
-
-            if (bb.strengthenGraalGraphs()) {
-                InlineBeforeAnalysisGraphDecoder decoder = bb.getHostVM().createInlineBeforeAnalysisGraphDecoder(bb, method, result);
-                decoder.decode(method);
-            } else {
-                /*
-                 * No inlining, so faithfully reconstruct the encoded graph without any
-                 * optimizations. We could skip the encoding in this case, but since inlining before
-                 * analysis is planned to be the default it is not worth optimizing for this case.
-                 */
-                GraphDecoder decoder = new GraphDecoder(AnalysisParsedGraph.HOST_ARCHITECTURE, result);
-                decoder.decode(analysisParsedGraph.getEncodedGraph());
-            }
-
+            InlineBeforeAnalysisGraphDecoder decoder = bb.getHostVM().createInlineBeforeAnalysisGraphDecoder(bb, method, result);
+            decoder.decode(method);
             debug.dump(DebugContext.BASIC_LEVEL, result, "InlineBeforeAnalysis after decode");
             return result;
         } catch (Throwable ex) {

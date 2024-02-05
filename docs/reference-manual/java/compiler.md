@@ -72,18 +72,18 @@ This mode is selected with the `-XX:-UseJVMCINativeLibrary` command line option.
 
 If an uncaught exception is thrown by the compiler, the compilation is simply discarded and execution continues.
 The Graal compiler can instead produce diagnostic data (such as immediate representation graphs) that can be submitted along with a bug report.
-This is enabled with `-Dgraal.CompilationFailureAction=Diagnose`.
-The default location of the diagnostics output is in `graal_dumps/` under the current working directory of the process but can be changed with the `-Dgraal.DumpPath` option.
+This is enabled with `-Djdk.graal.CompilationFailureAction=Diagnose`.
+The default location of the diagnostics output is in `graal_dumps/` under the current working directory of the process but can be changed with the `-Djdk.graal.DumpPath` option.
 During the VM shutdown, the location of the archive containing the diagnostic data is printed to the console.
 
-Furthermore, diagnostic data can be produced for any compilation performed by the Graal compiler with the `-Dgraal.Dump` option.
+Furthermore, diagnostic data can be produced for any compilation performed by the Graal compiler with the `-Djdk.graal.Dump` option.
 This will produce diagnostic data for every method compiled by the compiler.
-To refine the set of methods for which diagnostic data is produced, use the `-Dgraal.MethodFilter=<class>.<method>` option.
-For example, `-Dgraal.MethodFilter=java.lang.String.*,HashMap.get` will produce diagnostic data only for methods in the `java.lang.String` class as well as methods named `get` in a class whose non-qualified name is `HashMap`.
+To refine the set of methods for which diagnostic data is produced, use the `-Djdk.graal.MethodFilter=<class>.<method>` option.
+For example, `-Djdk.graal.MethodFilter=java.lang.String.*,HashMap.get` will produce diagnostic data only for methods in the `java.lang.String` class as well as methods named `get` in a class whose non-qualified name is `HashMap`.
 
 Instead of being written to a file, diagnostic data can also be sent over the network to the [Ideal Graph Visualizer](https://www.graalvm.org/latest/tools/igv/).
-This requires the `-Dgraal.PrintGraph=Network` option, upon which the compiler will try to send diagnostic data to _127.0.0.1:4445_.
-This network endpoint can be configured with the `-Dgraal.PrintGraphHost` and `-Dgraal.PrintGraphPort` options.
+This requires the `-Djdk.graal.PrintGraph=Network` option, upon which the compiler will try to send diagnostic data to _127.0.0.1:4445_.
+This network endpoint can be configured with the `-Djdk.graal.PrintGraphHost` and `-Djdk.graal.PrintGraphPort` options.
 
 ### Related Documentation
 

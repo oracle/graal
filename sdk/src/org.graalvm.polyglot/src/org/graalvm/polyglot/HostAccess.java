@@ -301,6 +301,7 @@ public final class HostAccess {
     public enum MutableTargetMapping {
         /**
          * Enables default mapping of guest object arrays to host object {@link java.util.List}.
+         * This mapping is also applied when the target host object is {@link java.util.Collection}.
          */
         ARRAY_TO_JAVA_LIST,
         /**

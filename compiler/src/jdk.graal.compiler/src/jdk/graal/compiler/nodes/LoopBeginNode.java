@@ -419,9 +419,9 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         assertTrue(loopEnds().isNotEmpty(), "missing loopEnd");
-        return super.verify();
+        return super.verifyNode();
     }
 
     int nextEndIndex() {

@@ -43,7 +43,6 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CodeUtil;
@@ -82,7 +81,7 @@ public final class AMD64ArrayCompareToOp extends AMD64ComplexVectorOp {
                     Value arrayB, Value lengthB) {
         super(TYPE, tool, runtimeCheckedCPUFeatures, AVXSize.ZMM);
 
-        assert CodeUtil.isPowerOf2(useAVX3Threshold) : "AVX3Threshold must be power of 2";
+        assert useAVX3Threshold == 0 || CodeUtil.isPowerOf2(useAVX3Threshold) : "AVX3Threshold must be 0 or a power of 2: " + useAVX3Threshold;
         this.useAVX3Threshold = useAVX3Threshold;
         this.strideA = strideA;
         this.strideB = strideB;

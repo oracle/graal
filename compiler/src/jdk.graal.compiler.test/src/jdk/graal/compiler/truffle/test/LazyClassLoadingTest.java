@@ -112,7 +112,7 @@ public class LazyClassLoadingTest extends TestWithPolyglotOptions {
         vmArgs.add("-Dpolyglot.engine.AllowExperimentalOptions=true");
         vmArgs.add("-XX:-UseJVMCICompiler");
 
-        // Remove -Dgraal.CompilationFailureAction as it drags in CompilationWrapper
+        // Remove -Djdk.graal.CompilationFailureAction as it drags in CompilationWrapper
         vmArgs = vmArgs.stream().filter(e -> !e.contains(GraalCompilerOptions.CompilationFailureAction.getName())).collect(Collectors.toList());
 
         Subprocess proc = SubprocessUtil.java(vmArgs, "com.oracle.mxtool.junit.MxJUnitWrapper", testClass.getName());

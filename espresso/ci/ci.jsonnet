@@ -2,6 +2,10 @@
   local common = import 'ci_common/common.jsonnet',
 
   suite_name: 'espresso',
+  basic_guard_includes: [],
+  compiler_guard_includes: [],
+  nativeimage_guard_includes: [],
+  vm_guard_includes: [],
 
   builds: common.builds + [
     // Benchmarks

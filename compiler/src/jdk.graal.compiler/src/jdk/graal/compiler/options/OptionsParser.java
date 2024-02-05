@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Formatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.ServiceLoader;
 
 import org.graalvm.collections.EconomicMap;
@@ -140,7 +141,7 @@ public class OptionsParser {
             }
             IllegalArgumentException iae = new IllegalArgumentException(msg.toString());
             if (isFromLibGraal(iae)) {
-                msg.format("%nIf %s is a libgraal option, it must be specified with '-Dlibgraal.%s' as opposed to '-Dgraal.%s'.", name, name, name);
+                msg.format("%nIf %s is a libgraal option, it must be specified with '-Djdk.libgraal.%s' as opposed to '-Djdk.graal.%s'.", name, name, name);
                 iae = new IllegalArgumentException(msg.toString());
             }
             throw iae;
@@ -211,7 +212,7 @@ public class OptionsParser {
     }
 
     private static long parseLong(String v) {
-        String valueString = v.toLowerCase();
+        String valueString = v.toLowerCase(Locale.ENGLISH);
         long scale = 1;
         if (valueString.endsWith("k")) {
             scale = 1024L;

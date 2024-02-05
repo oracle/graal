@@ -27,6 +27,8 @@ package com.oracle.svm.core.posix.darwin;
 import static com.oracle.svm.core.posix.headers.darwin.DarwinTime.NoTransitions.mach_absolute_time;
 import static com.oracle.svm.core.posix.headers.darwin.DarwinTime.NoTransitions.mach_timebase_info;
 
+import java.util.Objects;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -52,6 +54,7 @@ final class Target_java_lang_System_Darwin {
 
     @Substitute
     public static String mapLibraryName(String libname) {
+        Objects.requireNonNull(libname);
         return "lib" + libname + ".dylib";
     }
 }

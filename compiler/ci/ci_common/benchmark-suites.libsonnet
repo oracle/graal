@@ -10,17 +10,15 @@
   groups:: {
     open_suites:: unique_suites([$.awfy, $.dacapo, $.scala_dacapo, $.renaissance]),
     spec_suites:: unique_suites([$.specjvm2008, $.specjbb2015]),
-    legacy_and_secondary_suites:: unique_suites([$.renaissance_0_11, $.renaissance_legacy]),
     jmh_micros_suites:: unique_suites([$.micros_graal_dist, $.micros_misc_graal_dist , $.micros_shootout_graal_dist]),
     graal_internals_suites:: unique_suites([$.micros_graal_whitebox]),
-    special_suites:: unique_suites([$.dacapo_size_variants, $.scala_dacapo_size_variants, $.specjbb2015_full_machine]),
+    special_suites:: unique_suites([$.dacapo_size_variants, $.scala_dacapo_size_variants]),
     microservice_suites:: unique_suites([$.microservice_benchmarks]),
 
     main_suites:: unique_suites([$.specjvm2008] + self.open_suites),
     all_suites:: unique_suites(self.main_suites + self.spec_suites + self.jmh_micros_suites + self.special_suites + self.microservice_suites),
 
     weekly_forks_suites:: self.main_suites,
-    profiled_suites::     std.setDiff(self.main_suites, [$.specjbb2015], keyF=_suite_key),
     all_but_main_suites:: std.setDiff(self.all_suites, self.main_suites, keyF=_suite_key),
   },
 
@@ -66,16 +64,6 @@
     max_jdk_version:: null
   },
 
-  dacapo_timing: cc.compiler_benchmark + c.heap.default + {
-    suite:: "dacapo-timing",
-    run+: [
-      self.benchmark_cmd + ["dacapo-timing:*", "--"] + self.extra_vm_args
-    ],
-    timelimit: "45:00",
-    min_jdk_version:: 8,
-    max_jdk_version:: null
-  },
-
   scala_dacapo: cc.compiler_benchmark + c.heap.default + {
     suite:: "scala-dacapo",
     run+: [
@@ -109,16 +97,6 @@
     max_jdk_version:: null
   },
 
-  scala_dacapo_timing: cc.compiler_benchmark + c.heap.default + {
-    suite:: "scala-dacapo-timing",
-    run+: [
-      self.benchmark_cmd + ["scala-dacapo-timing:*", "--"] + self.extra_vm_args
-    ],
-    timelimit: "45:00",
-    min_jdk_version:: 8,
-    max_jdk_version:: null
-  },
-
   renaissance_template(suite_version=null, suite_name="renaissance", max_jdk_version=null):: cc.compiler_benchmark + c.heap.default + {
     suite:: suite_name,
     local suite_version_args = if suite_version != null then ["--bench-suite-version=" + suite_version] else [],
@@ -132,34 +110,7 @@
     max_jdk_version:: max_jdk_version
   },
 
-  renaissance: self.renaissance_template() + {
-    # [JDK-8303076] [GR-44499] requires extra stack size for C1
-    extra_vm_args+:: if self.platform == "c1" then ["-Xss1090K"] else []
-  },
-
-  renaissance_0_11: self.renaissance_template(suite_version="0.11.0", suite_name="renaissance-0-11", max_jdk_version=11) + {
-    environment+: {
-      "SPARK_LOCAL_IP": "127.0.0.1"
-    }
-  },
-
-  renaissance_legacy: cc.compiler_benchmark + c.heap.default + {
-    suite:: "renaissance-legacy",
-    downloads+: {
-      "RENAISSANCE_LEGACY": { name: "renaissance", version: "0.1" }
-    },
-    environment+: {
-      "SPARK_LOCAL_IP": "127.0.0.1"
-    },
-    run+: [
-      self.benchmark_cmd + ["renaissance-legacy:*", "--"] + self.extra_vm_args
-    ],
-    timelimit: "2:45:00",
-    forks_batches:: 4,
-    forks_timelimit:: "06:30:00",
-    min_jdk_version:: 8,
-    max_jdk_version:: 11
-  },
+  renaissance: self.renaissance_template(),
 
   specjbb2015: cc.compiler_benchmark + c.heap.large_with_large_young_gen + {
     suite:: "specjbb2015",
@@ -176,19 +127,6 @@
     max_jdk_version:: null
   },
 
-  specjbb2015_full_machine: cc.compiler_benchmark + c.heap.large_with_large_young_gen + {
-    suite:: "specjbb2015-full-machine",
-    downloads+: {
-      "SPECJBB2015": { name: "specjbb2015", version: "1.03" }
-    },
-    run+: [
-      self.plain_benchmark_cmd + ["specjbb2015", "--"] + self.extra_vm_args
-    ],
-    timelimit: "3:00:00",
-    min_jdk_version:: 8,
-    max_jdk_version:: null
-  },
-
   specjvm2008: cc.compiler_benchmark + c.heap.default + {
     suite:: "specjvm2008",
     downloads+: {
@@ -196,9 +134,6 @@
     },
     run+: [
       self.benchmark_cmd + ["specjvm2008:*", "--"] + self.extra_vm_args + ["--", "-ikv", "-it", "240s", "-wt", "120s"]
-    ],
-    teardown+: [
-      ["rm", "-r", "${SPECJVM2008}/results"]
     ],
     timelimit: "3:00:00",
     forks_batches:: 5,
@@ -239,7 +174,7 @@
       bench_upload,
       self.benchmark_cmd + ["petclinic-wrk:mixed-medium"]                + hwlocBind_4C_4T   + ["--"] + self.extra_vm_args + ["-Xms80m",   "-Xmx256m",  "-XX:ActiveProcessorCount=4"],
       bench_upload,
-      self.benchmark_cmd + ["petclinic-wrk:mixed-large"]                 + hwlocBind_16C_16T + ["--"] + self.extra_vm_args + ["-Xms320m",  "-Xmx1280m", "-XX:ActiveProcessorCount=16"],
+      self.benchmark_cmd + ["petclinic-wrk:mixed-large"]                 + hwlocBind_16C_16T + ["--"] + self.extra_vm_args + ["-Xms128m",  "-Xmx512m", "-XX:ActiveProcessorCount=16"],
       bench_upload,
       self.benchmark_cmd + ["petclinic-wrk:mixed-huge"]                  + hwlocBind_16C_32T + ["--"] + self.extra_vm_args + ["-Xms640m",  "-Xmx3072m", "-XX:ActiveProcessorCount=32"],
       bench_upload,
@@ -251,7 +186,6 @@
       bench_upload
     ],
     timelimit: "7:00:00",
-    restricted_archs:: ["amd64"],  # load testers only work on amd64 at the moment: GR-35619
     min_jdk_version:: 11,
     max_jdk_version:: null
   },
@@ -260,7 +194,7 @@
   micros_graal_whitebox: cc.compiler_benchmark + c.heap.default + {
     suite:: "micros-graal-whitebox",
     run+: [
-      self.benchmark_cmd + ["jmh-whitebox:*", "--"] + self.extra_vm_args
+      self.benchmark_cmd + ["jmh-whitebox:*", "--"] + self.extra_vm_args + ["--", "jdk.graal.compiler"]
     ],
     timelimit: "6:00:00",
     min_jdk_version:: 8,

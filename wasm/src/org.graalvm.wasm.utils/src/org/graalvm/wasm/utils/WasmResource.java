@@ -60,7 +60,7 @@ public class WasmResource {
         InputStream stream = WasmResource.class.getResourceAsStream(resourceName);
         if (stream == null) {
             if (fail) {
-                Assert.fail(String.format("Could not find resource: %s", resourceName));
+                throw new RuntimeException(String.format("Could not find resource: %s", resourceName));
             } else {
                 return null;
             }
@@ -85,7 +85,7 @@ public class WasmResource {
             return text;
         }
         if (fail) {
-            Assert.fail(String.format("Could not find test (neither .wasm or .wat): %s", baseName));
+            throw new RuntimeException(String.format("Could not find test (neither .wasm or .wat): %s", baseName));
         }
         return null;
     }

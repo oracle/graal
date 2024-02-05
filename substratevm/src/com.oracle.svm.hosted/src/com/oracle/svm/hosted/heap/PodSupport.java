@@ -98,7 +98,7 @@ public interface PodSupport {
 
     boolean isPodClass(Class<?> clazz);
 
-    boolean mustReserveLengthField(Class<?> clazz);
+    boolean mustReserveArrayFields(Class<?> clazz);
 }
 
 @AutomaticallyRegisteredFeature
@@ -114,7 +114,7 @@ final class PodFeature implements PodSupport, InternalFeature {
      * other fields where the length field must be. If a pod subclasses {@link Object} itself, it is
      * itself included in this set.
      */
-    private final Set<Class<?>> classesNeedingLengthFields = ConcurrentHashMap.newKeySet();
+    private final Set<Class<?>> classesNeedingArrayFields = ConcurrentHashMap.newKeySet();
 
     private BeforeAnalysisAccess analysisAccess;
     private volatile boolean instantiated = false;
@@ -189,7 +189,7 @@ final class PodFeature implements PodSupport, InternalFeature {
         while (sup.getSuperclass() != Object.class) {
             sup = sup.getSuperclass();
         }
-        classesNeedingLengthFields.add(sup);
+        classesNeedingArrayFields.add(sup);
     }
 
     /**
@@ -278,8 +278,8 @@ final class PodFeature implements PodSupport, InternalFeature {
     }
 
     @Override
-    public boolean mustReserveLengthField(Class<?> clazz) {
-        return classesNeedingLengthFields.contains(clazz);
+    public boolean mustReserveArrayFields(Class<?> clazz) {
+        return classesNeedingArrayFields.contains(clazz);
     }
 
     @Override

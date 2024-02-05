@@ -29,16 +29,16 @@ import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import java.util.BitSet;
 
-import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
-import jdk.graal.compiler.hotspot.meta.HotSpotWordOperationPlugin;
 import org.graalvm.collections.EconomicSet;
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+
 import jdk.graal.compiler.bytecode.Bytecode;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
+import jdk.graal.compiler.hotspot.meta.HotSpotWordOperationPlugin;
 import jdk.graal.compiler.hotspot.word.HotSpotOperation;
 import jdk.graal.compiler.java.GraphBuilderPhase.Instance;
 import jdk.graal.compiler.nodes.Invoke;
@@ -59,7 +59,6 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.replacements.IntrinsicGraphBuilder;
 import jdk.graal.compiler.replacements.ReplacementsImpl;
-
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -71,12 +70,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * them.
  */
 public class HotSpotReplacementsImpl extends ReplacementsImpl {
-    public HotSpotReplacementsImpl(HotSpotProviders providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider, TargetDescription target) {
-        super(new GraalDebugHandlersFactory(snippetReflection), providers, snippetReflection, bytecodeProvider, target);
+    public HotSpotReplacementsImpl(HotSpotProviders providers, BytecodeProvider bytecodeProvider, TargetDescription target) {
+        super(new GraalDebugHandlersFactory(providers.getSnippetReflection()), providers, bytecodeProvider, target);
     }
 
     HotSpotReplacementsImpl(HotSpotReplacementsImpl replacements, HotSpotProviders providers) {
-        super(new GraalDebugHandlersFactory(replacements.snippetReflection), providers, replacements.snippetReflection,
+        super(new GraalDebugHandlersFactory(replacements.getProviders().getSnippetReflection()), providers,
                         replacements.getDefaultReplacementBytecodeProvider(), replacements.target);
     }
 

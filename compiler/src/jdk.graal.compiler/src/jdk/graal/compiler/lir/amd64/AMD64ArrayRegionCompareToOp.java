@@ -203,6 +203,7 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
                 for (Stride strideB : new Stride[]{Stride.S1, Stride.S2, Stride.S4}) {
                     masm.align(preferredBranchTargetAlignment(crb));
                     masm.bind(variants[StrideUtil.getDirectStubCallIndex(strideA, strideB)]);
+                    masm.maybeEmitIndirectTargetMarker();
                     emitArrayCompare(crb, masm, strideA, strideB, result, arrayA, arrayB, length, tmp1, tmp2);
                     masm.jmp(done);
                 }

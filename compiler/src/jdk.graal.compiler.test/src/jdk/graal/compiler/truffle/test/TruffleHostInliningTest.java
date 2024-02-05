@@ -76,10 +76,10 @@ public class TruffleHostInliningTest {
         } else {
             File logFile = File.createTempFile(getClass().getSimpleName(), "test");
             SubprocessTestUtils.newBuilder(getClass(), inProcess).failOnNonZeroExit(true).//
-                            prefixVmOption("-Dgraal.Log=HostInliningPhase,~CanonicalizerPhase,~InlineGraph",
-                                            "-Dgraal.MethodFilter=" + TruffleHostInliningTest.class.getSimpleName() + ".*",
-                                            "-Dgraal.CompilationFailureAction=Print",
-                                            "-Dgraal.LogFile=" + logFile.getAbsolutePath(),
+                            prefixVmOption("-Djdk.graal.Log=HostInliningPhase,~CanonicalizerPhase,~InlineGraph",
+                                            "-Djdk.graal.MethodFilter=" + TruffleHostInliningTest.class.getSimpleName() + ".*",
+                                            "-Djdk.graal.CompilationFailureAction=Print",
+                                            "-Djdk.graal.LogFile=" + logFile.getAbsolutePath(),
                                             "-Xbatch").// force synchronous compilation
                             postfixVmOption("-XX:+UseJVMCICompiler").// force Graal host compilation
                             onExit((process) -> {

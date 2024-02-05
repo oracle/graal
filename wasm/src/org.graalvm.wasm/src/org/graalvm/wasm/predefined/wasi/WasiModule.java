@@ -60,39 +60,58 @@ public final class WasiModule extends BuiltinModule {
         } else {
             importMemory(context, module, "main", "memory", 0, MAX_MEMORY_DECLARATION_SIZE, false, false);
         }
-        defineFunction(context, module, "args_sizes_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsSizesGetNode(language, module));
         defineFunction(context, module, "args_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsGetNode(language, module));
-        defineFunction(context, module, "environ_sizes_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiEnvironSizesGetNode(language, module));
+        defineFunction(context, module, "args_sizes_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsSizesGetNode(language, module));
         defineFunction(context, module, "environ_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiEnvironGetNode(language, module));
+        defineFunction(context, module, "environ_sizes_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiEnvironSizesGetNode(language, module));
+        defineFunction(context, module, "clock_res_get", types(I32_TYPE), types(I32_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_clock_res_get"));
         defineFunction(context, module, "clock_time_get", types(I32_TYPE, I64_TYPE, I32_TYPE), types(I32_TYPE), new WasiClockTimeGetNode(language, module));
-        defineFunction(context, module, "proc_exit", types(I32_TYPE), types(), new WasiProcExitNode(language, module));
-        defineFunction(context, module, "fd_write", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdWriteNode(language, module));
-        defineFunction(context, module, "fd_read", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdReadNode(language, module));
+        defineFunction(context, module, "fd_advise", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_advise"));
+        defineFunction(context, module, "fd_allocate", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_allocate"));
         defineFunction(context, module, "fd_close", types(I32_TYPE), types(I32_TYPE), new WasiFdCloseNode(language, module));
-        defineFunction(context, module, "fd_seek", types(I32_TYPE, I64_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdSeekNode(language, module));
+        defineFunction(context, module, "fd_datasync", types(I32_TYPE), types(I32_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_datasync"));
         defineFunction(context, module, "fd_fdstat_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdFdstatGetNode(language, module));
         defineFunction(context, module, "fd_fdstat_set_flags", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdFdstatSetFlagsNode(language, module));
+        defineFunction(context, module, "fd_fdstat_set_rights", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_fdstat_set_rights"));
+        defineFunction(context, module, "fd_filestat_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdFilestatGetNode(language, module));
+        defineFunction(context, module, "fd_filestat_set_size", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_filestat_set_size"));
+        defineFunction(context, module, "fd_filestat_set_times", types(I32_TYPE, I64_TYPE, I64_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdFilestatSetTimesNode(language, module));
+        defineFunction(context, module, "fd_pread", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_pread"));
         defineFunction(context, module, "fd_prestat_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdPrestatGetNode(language, module));
         defineFunction(context, module, "fd_prestat_dir_name", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdPrestatDirNameNode(language, module));
-        defineFunction(context, module, "fd_filestat_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdFilestatGetNode(language, module));
-        defineFunction(context, module, "path_open", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I64_TYPE, I64_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE),
-                        new WasiPathOpenNode(language, module));
+        defineFunction(context, module, "fd_pwrite", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_pwrite"));
+        defineFunction(context, module, "fd_read", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdReadNode(language, module));
+        defineFunction(context, module, "fd_readdir", types(I32_TYPE, I32_TYPE, I32_TYPE, I64_TYPE), types(I32_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_readdir"));
+        defineFunction(context, module, "fd_renumber", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_renumber"));
+        defineFunction(context, module, "fd_seek", types(I32_TYPE, I64_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdSeekNode(language, module));
+        defineFunction(context, module, "fd_sync", types(I32_TYPE), types(I32_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_sync"));
+        defineFunction(context, module, "fd_tell", types(I32_TYPE), types(I32_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_fd_tell"));
+        defineFunction(context, module, "fd_write", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdWriteNode(language, module));
         defineFunction(context, module, "path_create_directory", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiPathCreateDirectoryNode(language, module));
-        defineFunction(context, module, "path_remove_directory", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiPathRemoveDirectoryNode(language, module));
+        defineFunction(context, module, "path_filestat_get", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiPathFileStatGetNode(language, module));
         defineFunction(context, module, "path_filestat_set_times", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I64_TYPE, I64_TYPE, I32_TYPE), types(I32_TYPE),
                         new WasiPathFilestatSetTimesNode(language, module));
         defineFunction(context, module, "path_link", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiPathLinkNode(language, module));
+        defineFunction(context, module, "path_open", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I64_TYPE, I64_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE),
+                        new WasiPathOpenNode(language, module));
+        defineFunction(context, module, "path_readlink", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiPathReadLinkNode(language, module));
+        defineFunction(context, module, "path_remove_directory", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiPathRemoveDirectoryNode(language, module));
         defineFunction(context, module, "path_rename", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiPathRenameNode(language, module));
         defineFunction(context, module, "path_symlink", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiPathSymlinkNode(language, module));
         defineFunction(context, module, "path_unlink_file", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiPathUnlinkFileNode(language, module));
-        defineFunction(context, module, "path_readlink", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiPathReadLinkNode(language, module));
-        defineFunction(context, module, "path_filestat_get", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiPathFileStatGetNode(language, module));
+        defineFunction(context, module, "poll_oneoff", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_poll_oneoff"));
+        defineFunction(context, module, "proc_exit", types(I32_TYPE), types(), new WasiProcExitNode(language, module));
+        defineFunction(context, module, "proc_raise", types(I32_TYPE), types(I32_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_proc_raise"));
         defineFunction(context, module, "sched_yield", types(), types(I32_TYPE), new WasiSchedYieldNode(language, module));
         if (context.getContextOptions().constantRandomGet()) {
             defineFunction(context, module, "random_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiConstantRandomGetNode(language, module));
         } else {
             defineFunction(context, module, "random_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiRandomGetNode(language, module));
         }
+        defineFunction(context, module, "sock_accept", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_sock_accept"));
+        defineFunction(context, module, "sock_recv", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_sock_recv"));
+        defineFunction(context, module, "sock_send", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_sock_send"));
+        defineFunction(context, module, "sock_shutdown", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiUnsupportedFunctionNode(language, module, "__wasi_sock_shutdown"));
         return module;
     }
 

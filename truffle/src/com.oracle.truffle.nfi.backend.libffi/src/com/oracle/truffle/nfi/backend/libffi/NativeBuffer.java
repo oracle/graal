@@ -105,16 +105,24 @@ abstract class NativeBuffer implements TruffleObject {
                         @Shared("exception") @Cached InlinedBranchProfile exception) throws InvalidBufferOffsetException {
             if (Long.compareUnsigned(offset, content.length) >= 0) {
                 exception.enter(node);
-                throw InvalidBufferOffsetException.create(offset, content.length);
+                throw InvalidBufferOffsetException.create(offset, 1);
             }
             return content[(int) offset];
+        }
+
+        @ExportMessage
+        void readBuffer(long offset, byte[] destination, int destinationOffset, int length,
+                        @Bind("$node") Node node,
+                        @Shared("exception") @Cached InlinedBranchProfile exception) throws InvalidBufferOffsetException {
+            ByteArraySupport support = byteArraySupport(ByteOrder.BIG_ENDIAN);
+            System.arraycopy(content, check(support, offset, length, exception, node), destination, destinationOffset, length);
         }
 
         private int check(ByteArraySupport support, long offset, int len, InlinedBranchProfile exception, Node node) throws InvalidBufferOffsetException {
             int ret = (int) offset;
             if (ret != offset || !support.inBounds(content, ret, len)) {
                 exception.enter(node);
-                throw InvalidBufferOffsetException.create(offset, content.length);
+                throw InvalidBufferOffsetException.create(offset, len);
             }
             return ret;
         }

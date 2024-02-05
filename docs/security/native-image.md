@@ -82,6 +82,9 @@ netty-codec-http2    4.1.76.Final   CVE-2022-24823  Medium
 
 You can then use this report to update any vulnerable dependencies found in your executable.
 
+> Note that if `native-image-inspect` is used without the `--sbom` option, it will execute parts of the specified native binary to extract the method-level information.
+This functionality should not be used on native image executables from unknown or untrusted sources.
+
 ## Java serialization in Native Image
 
 Native Image supports Serialization to help users deserialize the constructors for classes, contained in a native executable.
@@ -92,6 +95,8 @@ The [serialization and deserialization Secure Coding Guidelines for Java SE](htt
 The security report section of the native image [build output](../reference-manual/native-image/BuildOutput.md#security-report) provides information on whether deserialization code is part of a native image's attack surface or not.
 
 ## Miscellaneous
+
+Setting the security manager is not allowed. For more information see the [compatibility documentation](../reference-manual/native-image/Compatibility.md#security-manager).
 
 Native Image provides multiple ways to specify a certificate file used to define the default TrustStore.
 While the default behavior for `native-image` is to capture and use the default TrustStore from the build-time host environment, this can be changed at run time by setting the "javax.net.ssl.trustStore\*" system properties.

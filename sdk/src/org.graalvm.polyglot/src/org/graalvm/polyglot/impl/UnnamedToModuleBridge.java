@@ -418,6 +418,13 @@ public final class UnnamedToModuleBridge {
             return new UnnamedToModuleFileSystemGen(value);
         }
 
+        static ByteSequence fromByteSequence(Object value) {
+            if (value == null) {
+                return null;
+            }
+            return new UnnamedToModuleByteSequenceGen(value);
+        }
+
         static ThreadScope fromThreadScope(Object value) {
             if (value == null) {
                 return null;

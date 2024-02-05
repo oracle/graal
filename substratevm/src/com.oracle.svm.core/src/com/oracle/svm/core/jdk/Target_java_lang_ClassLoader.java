@@ -36,6 +36,8 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
+import jdk.graal.compiler.java.LambdaUtils;
+
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -320,6 +322,10 @@ public final class Target_java_lang_ClassLoader {
     @Substitute
     @SuppressWarnings("unused")
     private static Class<?> defineClass0(ClassLoader loader, Class<?> lookup, String name, byte[] b, int off, int len, ProtectionDomain pd, boolean initialize, int flags, Object classData) {
+        if (LambdaUtils.isLambdaClassName(name)) {
+            String newName = name + LambdaUtils.digest(b);
+            return PredefinedClassesSupport.loadClass(loader, newName.replace('/', '.'), b, off, b.length, null);
+        }
         throw VMError.unsupportedFeature("Defining hidden classes at runtime is not supported.");
     }
 

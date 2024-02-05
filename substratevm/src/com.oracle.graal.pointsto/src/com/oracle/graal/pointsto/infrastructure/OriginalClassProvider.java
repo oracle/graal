@@ -28,16 +28,21 @@ import java.util.Objects;
 
 import com.oracle.graal.pointsto.util.GraalAccess;
 
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public interface OriginalClassProvider {
 
-    static Class<?> getJavaClass(ResolvedJavaType javaType) {
+    static Class<?> getJavaClass(JavaType javaType) {
         Class<?> result;
         if (javaType instanceof OriginalClassProvider) {
             result = ((OriginalClassProvider) javaType).getJavaClass();
         } else {
-            result = GraalAccess.getOriginalSnippetReflection().originalClass(javaType);
+            /*
+             * The static analysis and the image generator never use unresolved types. The JavaType
+             * in the method signature is just to avoid casts in the callers.
+             */
+            result = GraalAccess.getOriginalSnippetReflection().originalClass((ResolvedJavaType) javaType);
         }
 
         /*

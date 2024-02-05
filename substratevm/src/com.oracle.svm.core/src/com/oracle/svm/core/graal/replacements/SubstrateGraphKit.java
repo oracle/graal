@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,9 +25,19 @@
 package com.oracle.svm.core.graal.replacements;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
+import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
+import com.oracle.svm.core.nodes.CFunctionCaptureNode;
+import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
+import com.oracle.svm.core.nodes.CFunctionPrologueNode;
+import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.core.util.VMError;
+
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -71,20 +81,6 @@ import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.GraphKit;
-import jdk.graal.compiler.word.WordTypes;
-import org.graalvm.word.WordBase;
-
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
-import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
-import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
-import com.oracle.svm.core.nodes.CFunctionCaptureNode;
-import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
-import com.oracle.svm.core.nodes.CFunctionPrologueNode;
-import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
-import com.oracle.svm.core.thread.VMThreads.StatusSupport;
-import com.oracle.svm.core.util.VMError;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.Constant;
@@ -99,31 +95,29 @@ public class SubstrateGraphKit extends GraphKit {
 
     private final FrameStateBuilder frameState;
     private int nextBCI;
-
-    private static boolean trackNodeSourcePosition(boolean forceTrackNodeSourcePosition) {
-        return forceTrackNodeSourcePosition || SubstrateOptions.parseOnce();
-    }
+    private final List<ValueNode> initialArguments;
 
     @SuppressWarnings("this-escape")
-    public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes,
-                    GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId, boolean forceTrackNodeSourcePosition, boolean recordInlinedMethods) {
-        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null, trackNodeSourcePosition(forceTrackNodeSourcePosition), recordInlinedMethods);
-        assert wordTypes != null : "Support for Word types is mandatory";
+    public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers,
+                    GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId, boolean recordInlinedMethods) {
+        super(debug, stubMethod, providers, graphBuilderPlugins, compilationId, null, true, recordInlinedMethods);
+        assert getWordTypes() != null : "Support for Word types is mandatory";
         frameState = new FrameStateBuilder(this, stubMethod, graph);
         frameState.disableKindVerification();
         frameState.disableStateVerification();
-        frameState.initializeForMethodStart(null, true, graphBuilderPlugins);
+        List<ValueNode> collectedArguments = new ArrayList<>();
+        frameState.initializeForMethodStart(null, true, graphBuilderPlugins, collectedArguments);
+        initialArguments = Collections.unmodifiableList(collectedArguments);
         graph.start().setStateAfter(frameState.create(bci(), graph.start()));
     }
 
-    public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes,
-                    GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId, boolean forceTrackNodeSourcePosition) {
-        this(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, forceTrackNodeSourcePosition, false);
+    public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId) {
+        this(debug, stubMethod, providers, graphBuilderPlugins, compilationId, false);
     }
 
     @Override
-    protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, int bci) {
-        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, null, null, null);
+    public MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, int bci) {
+        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp);
     }
 
     public SubstrateLoweringProvider getLoweringProvider() {
@@ -142,22 +136,8 @@ public class SubstrateGraphKit extends GraphKit {
         frameState.storeLocal(index, slotKind, value);
     }
 
-    public List<ValueNode> loadArguments(JavaType[] paramTypes) {
-        List<ValueNode> arguments = new ArrayList<>();
-        int numOfParams = paramTypes.length;
-        int javaIndex = 0;
-
-        for (int i = 0; i < numOfParams; i++) {
-            JavaType type = paramTypes[i];
-            JavaKind kind = type.getJavaKind();
-
-            assert frameState.loadLocal(javaIndex, kind) != null;
-            arguments.add(frameState.loadLocal(javaIndex, kind));
-
-            javaIndex += kind.getSlotCount();
-        }
-
-        return arguments;
+    public List<ValueNode> getInitialArguments() {
+        return initialArguments;
     }
 
     public LoadFieldNode createLoadField(ValueNode object, ResolvedJavaField field) {
@@ -188,24 +168,24 @@ public class SubstrateGraphKit extends GraphKit {
         return createInvokeWithExceptionAndUnwind(findMethod(declaringClass, name, invokeKind == InvokeKind.Static), invokeKind, frameState, bci(), args);
     }
 
-    public InvokeWithExceptionNode createJavaCallWithException(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... arguments) {
-        return startInvokeWithException(targetMethod, kind, frameState, bci(), arguments);
+    public InvokeWithExceptionNode createJavaCallWithException(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... args) {
+        return startInvokeWithException(targetMethod, kind, frameState, bci(), args);
     }
 
-    public InvokeWithExceptionNode createJavaCallWithExceptionAndUnwind(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... arguments) {
-        return createInvokeWithExceptionAndUnwind(targetMethod, kind, frameState, bci(), arguments);
+    public InvokeWithExceptionNode createJavaCallWithExceptionAndUnwind(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... args) {
+        return createInvokeWithExceptionAndUnwind(targetMethod, kind, frameState, bci(), args);
     }
 
     public ConstantNode createConstant(Constant value, JavaKind kind) {
         return ConstantNode.forConstant(StampFactory.forKind(kind), value, getMetaAccess(), getGraph());
     }
 
-    public ValueNode createCFunctionCall(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, int newThreadStatus, boolean emitDeoptTarget) {
-        return createCFunctionCallWithCapture(targetAddress, arguments, signature, newThreadStatus, emitDeoptTarget, SubstrateCallingConventionKind.Native.toType(true),
+    public ValueNode createCFunctionCall(ValueNode targetAddress, List<ValueNode> args, Signature signature, int newThreadStatus, boolean emitDeoptTarget) {
+        return createCFunctionCallWithCapture(targetAddress, args, signature, newThreadStatus, emitDeoptTarget, SubstrateCallingConventionKind.Native.toType(true),
                         null, null, null);
     }
 
-    public ValueNode createCFunctionCallWithCapture(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, int newThreadStatus, boolean emitDeoptTarget,
+    public ValueNode createCFunctionCallWithCapture(ValueNode targetAddress, List<ValueNode> args, Signature signature, int newThreadStatus, boolean emitDeoptTarget,
                     CallingConvention.Type convention, ForeignCallDescriptor captureFunction, ValueNode statesToCapture, ValueNode captureBuffer) {
         assert ((captureFunction == null) && (statesToCapture == null) && (captureBuffer == null)) ||
                         ((captureFunction != null) && (statesToCapture != null) && (captureBuffer != null));
@@ -231,7 +211,7 @@ public class SubstrateGraphKit extends GraphKit {
         JavaKind cReturnKind = javaReturnKind.getStackKind();
         JavaType returnType = signature.getReturnType(null);
         Stamp returnStamp = returnStamp(returnType, cReturnKind);
-        InvokeNode invoke = createIndirectCall(targetAddress, arguments, signature.toParameterTypes(null), returnStamp, cReturnKind, convention);
+        InvokeNode invoke = createIndirectCall(targetAddress, args, signature.toParameterTypes(null), returnStamp, cReturnKind, convention);
 
         if (fixedStatesToCapture != null) {
             append(new CFunctionCaptureNode(captureFunction, fixedStatesToCapture, captureBuffer));
@@ -263,26 +243,26 @@ public class SubstrateGraphKit extends GraphKit {
         return getLoweringProvider().implicitLoadConvertWithBooleanCoercionIfNecessary(getGraph(), asKind(returnType), result);
     }
 
-    public InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, SubstrateCallingConventionKind callKind) {
-        assert arguments.size() == signature.getParameterCount(false);
+    public InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> args, Signature signature, SubstrateCallingConventionKind callKind) {
+        assert args.size() == signature.getParameterCount(false);
         assert callKind != SubstrateCallingConventionKind.Native : "return kind and stamp would be incorrect";
         JavaKind returnKind = signature.getReturnKind().getStackKind();
         Stamp returnStamp = returnStamp(signature.getReturnType(null), returnKind);
-        return createIndirectCall(targetAddress, arguments, signature.toParameterTypes(null), returnStamp, returnKind, callKind);
+        return createIndirectCall(targetAddress, args, signature.toParameterTypes(null), returnStamp, returnKind, callKind);
     }
 
-    private InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> arguments, JavaType[] parameterTypes, Stamp returnStamp, JavaKind returnKind,
+    private InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> args, JavaType[] parameterTypes, Stamp returnStamp, JavaKind returnKind,
                     SubstrateCallingConventionKind callKind) {
-        return createIndirectCall(targetAddress, arguments, parameterTypes, returnStamp, returnKind, callKind.toType(true));
+        return createIndirectCall(targetAddress, args, parameterTypes, returnStamp, returnKind, callKind.toType(true));
     }
 
-    private InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> arguments, JavaType[] parameterTypes, Stamp returnStamp, JavaKind returnKind,
+    private InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> args, JavaType[] parameterTypes, Stamp returnStamp, JavaKind returnKind,
                     CallingConvention.Type convention) {
         frameState.clearStack();
 
         int bci = bci();
         CallTargetNode callTarget = getGraph().add(
-                        new IndirectCallTargetNode(targetAddress, arguments.toArray(new ValueNode[arguments.size()]), StampPair.createSingle(returnStamp), parameterTypes, null,
+                        new IndirectCallTargetNode(targetAddress, args.toArray(new ValueNode[args.size()]), StampPair.createSingle(returnStamp), parameterTypes, null,
                                         convention, InvokeKind.Static));
         InvokeNode invoke = append(new InvokeNode(callTarget, bci));
 
@@ -310,8 +290,7 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     public ConstantNode createObject(Object value) {
-        SnippetReflectionProvider snippetReflection = getProviders().getSnippetReflection();
-        return ConstantNode.forConstant(snippetReflection.forObject(value), getMetaAccess(), graph);
+        return ConstantNode.forConstant(getSnippetReflection().forObject(value), getMetaAccess(), graph);
     }
 
     public ValueNode createBoxing(ValueNode value, JavaKind kind, ResolvedJavaType targetType) {
@@ -334,10 +313,6 @@ public class SubstrateGraphKit extends GraphKit {
         return nextBCI++;
     }
 
-    public static boolean isWord(Class<?> klass) {
-        return WordBase.class.isAssignableFrom(klass);
-    }
-
     public StructuredGraph finalizeGraph() {
         if (lastFixedNode != null) {
             throw VMError.shouldNotReachHere("Manually constructed graph does not terminate control flow properly. lastFixedNode: " + lastFixedNode);
@@ -345,7 +320,7 @@ public class SubstrateGraphKit extends GraphKit {
 
         mergeUnwinds();
         assert graph.verify();
-        assert wordTypes.ensureGraphContainsNoWordTypeReferences(graph);
+        assert getWordTypes().ensureGraphContainsNoWordTypeReferences(graph);
         return graph;
     }
 
@@ -400,15 +375,9 @@ public class SubstrateGraphKit extends GraphKit {
         return withExceptionNode;
     }
 
-    public void appendStateSplitProxy(FrameState state) {
-        StateSplitProxyNode proxy = new StateSplitProxyNode(null);
+    public void appendStateSplitProxy() {
+        StateSplitProxyNode proxy = new StateSplitProxyNode();
         append(proxy);
-        proxy.setStateAfter(state);
-    }
-
-    public void appendStateSplitProxy(FrameStateBuilder stateBuilder) {
-        StateSplitProxyNode proxy = new StateSplitProxyNode(null);
-        append(proxy);
-        proxy.setStateAfter(stateBuilder.create(bci(), proxy));
+        proxy.setStateAfter(frameState.create(bci(), proxy));
     }
 }

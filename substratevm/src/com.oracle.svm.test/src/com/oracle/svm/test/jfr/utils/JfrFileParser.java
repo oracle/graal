@@ -39,7 +39,7 @@ import java.util.Collection;
 import java.util.HashMap;
 
 import com.oracle.svm.core.jfr.JfrCheckpointType;
-import com.oracle.svm.core.jfr.JfrChunkWriter;
+import com.oracle.svm.core.jfr.JfrChunkFileWriter;
 import com.oracle.svm.core.jfr.JfrReservedEvent;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.JfrType;
@@ -54,6 +54,7 @@ import com.oracle.svm.test.jfr.utils.poolparsers.GCWhenConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.MethodConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.ModuleConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.MonitorInflationCauseConstantPoolParser;
+import com.oracle.svm.test.jfr.utils.poolparsers.OldObjectConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.PackageConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.StacktraceConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.SymbolConstantPoolParser;
@@ -90,6 +91,7 @@ public class JfrFileParser {
         addParser(JfrType.VMOperation, new VMOperationConstantPoolParser(this));
         addParser(JfrType.MonitorInflationCause, new MonitorInflationCauseConstantPoolParser(this));
         addParser(JfrType.GCWhen, new GCWhenConstantPoolParser(this));
+        addParser(JfrType.OldObject, new OldObjectConstantPoolParser(this));
     }
 
     private void addParser(JfrType type, ConstantPoolParser parser) {
@@ -127,11 +129,11 @@ public class JfrFileParser {
     }
 
     private static FileHeaderInfo parseFileHeader(RecordingInput input) throws IOException {
-        byte[] fileMagic = new byte[JfrChunkWriter.FILE_MAGIC.length];
+        byte[] fileMagic = new byte[JfrChunkFileWriter.FILE_MAGIC.length];
         input.readFully(fileMagic); // File magic.
-        assertEquals("File magic is not correct!", new String(JfrChunkWriter.FILE_MAGIC), new String(fileMagic));
-        assertEquals("JFR version major is not correct!", JfrChunkWriter.JFR_VERSION_MAJOR, input.readRawShort());
-        assertEquals("JFR version minor is not correct!", JfrChunkWriter.JFR_VERSION_MINOR, input.readRawShort());
+        assertEquals("File magic is not correct!", new String(JfrChunkFileWriter.FILE_MAGIC), new String(fileMagic));
+        assertEquals("JFR version major is not correct!", JfrChunkFileWriter.JFR_VERSION_MAJOR, input.readRawShort());
+        assertEquals("JFR version minor is not correct!", JfrChunkFileWriter.JFR_VERSION_MINOR, input.readRawShort());
         assertTrue("Chunk size is invalid!", input.readRawLong() > 0);
 
         long checkpointPosition = input.readRawLong();

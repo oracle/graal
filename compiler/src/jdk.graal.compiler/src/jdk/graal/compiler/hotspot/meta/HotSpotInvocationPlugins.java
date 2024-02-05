@@ -157,7 +157,7 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
                 if (invocationPlugin.canBeDisabled()) {
                     if (invocationPlugin.isGraalOnly()) {
                         if (shouldLogDisabledIntrinsics(options)) {
-                            TTY.println("[Warning] Intrinsic for %s is only implemented in Graal and cannot be disabled via HotSpot flags. Use -Dgraal.DisableIntrinsics= instead.",
+                            TTY.println("[Warning] Intrinsic for %s is only implemented in Graal and cannot be disabled via HotSpot flags. Use -Djdk.graal.DisableIntrinsics= instead.",
                                             method.format("%H.%n(%p)"));
                         }
                     } else {

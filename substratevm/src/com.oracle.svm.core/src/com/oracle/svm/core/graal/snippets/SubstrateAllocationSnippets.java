@@ -36,6 +36,36 @@ import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import java.util.Arrays;
 import java.util.Map;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
+
+import com.oracle.svm.core.MissingRegistrationUtils;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.allocationprofile.AllocationCounter;
+import com.oracle.svm.core.allocationprofile.AllocationSite;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.configure.ConfigurationFile;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.graal.nodes.ForeignCallWithExceptionNode;
+import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
+import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
+import com.oracle.svm.core.graal.nodes.SubstrateNewHybridInstanceNode;
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.Pod;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
+import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
+import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
+import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.thread.ContinuationSupport;
+import com.oracle.svm.core.util.VMError;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Snippet;
@@ -76,36 +106,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.word.BarrieredAccess;
 import jdk.graal.compiler.word.ObjectAccess;
 import jdk.graal.compiler.word.Word;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
-
-import com.oracle.svm.core.MissingRegistrationUtils;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.allocationprofile.AllocationCounter;
-import com.oracle.svm.core.allocationprofile.AllocationSite;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.configure.ConfigurationFile;
-import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
-import com.oracle.svm.core.graal.nodes.ForeignCallWithExceptionNode;
-import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
-import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
-import com.oracle.svm.core.graal.nodes.SubstrateNewHybridInstanceNode;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.Pod;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
-import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
-import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
-import com.oracle.svm.core.thread.ContinuationSupport;
-import com.oracle.svm.core.util.VMError;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -492,8 +492,8 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     private static native Object callNewMultiArray(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word hub, int rank, Word dimensions);
 
     @Override
-    public void initializeObjectHeader(Word memory, Word objectHeader, boolean isArray) {
-        Heap.getHeap().getObjectHeader().initializeHeaderOfNewObject(memory, objectHeader);
+    public void initializeObjectHeader(Word memory, Word objectHeader, boolean isArrayLike) {
+        Heap.getHeap().getObjectHeader().initializeHeaderOfNewObject(memory, objectHeader, isArrayLike);
     }
 
     @Override

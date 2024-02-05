@@ -2,6 +2,13 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 24.1.0
+* GR-51253 Extend allowed DynamicObject shape flags from 8 to 16 bits.
+* GR-42882 Changed behavior: Java host interop no longer exposes bridge methods.
+
+* GR-51385 Added an instrumentation filter to include available source sections only: `SourceSectionFilter.Builder#sourceSectionAvailableOnly(boolean)`
+* GR-51385 Added a debugger filter to suspend in available source sections only: `SuspensionFilter.Builder#sourceSectionAvailableOnly(boolean)`.
+
 ## Version 24.0.0
 
 * GR-45863 Yield and resume events added to the instrumentation:
@@ -14,6 +21,10 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * [GR-21361] Remove support for legacy `<language-id>.home` system property. Only `org.graalvm.language.<language-id>.home` will be used.
 * GR-41302 Added the `--engine.AssertProbes` option, which asserts that enter and return are always called in pairs on ProbeNode, verifies correct behavior of wrapper nodes. Java asserts need to be turned on for this option to have an effect.
 * GR-48816 Added new interpreted performance warning to Truffle DSL.
+* GR-44706 Relaxed `InteropLibrary` invariant assertions for side-effecting members (i.e. `hasMemberReadSideEffects` or `hasMemberWriteSideEffects`) for `readMember`, `invokeMember`, `writeMember`, and `removeMember`, allowing them to succeed even if `isMemberReadable`, `isMemberInvocable`, `isMemberWritable`, and `isMemberRemovable`, respectively, returned `false` for that member. This avoids spurious assertion failures for accessor and proxy members.
+* GR-49386 Added `InteropLibrary#readBuffer(long, byte[], int, int)` to enable bulk reads of buffers into byte arrays.
+
+* [GR-50262] Added the system property `-Dtruffle.UseFallbackRuntime=true`. This property is preferred over the usage of `-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime`.
 
 ## Version 23.1.0
 

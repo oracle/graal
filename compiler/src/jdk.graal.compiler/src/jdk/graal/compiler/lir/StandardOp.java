@@ -159,6 +159,7 @@ public class StandardOp {
                 crb.asm.align(alignment);
             }
             crb.asm.bind(label);
+            crb.asm.maybeEmitIndirectTargetMarker(crb, label);
         }
 
         @Override

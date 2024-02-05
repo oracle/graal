@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.test.wrapper;
 
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Map;
@@ -87,7 +88,8 @@ final class HostEntryPoint {
     public long remoteCreateEngine(SandboxPolicy sandboxPolicy) {
         // host access needs to be replaced
         GuestHostLanguage hostLanguage = new GuestHostLanguage(guestPolyglot, (AbstractHostAccess) guestPolyglot.createHostAccess());
-        Object engine = guestPolyglot.buildEngine(new String[0], sandboxPolicy, null, null, null, new HashMap<>(), false, false, null, null, hostLanguage, false, false, null);
+        Object engine = guestPolyglot.buildEngine(new String[0], sandboxPolicy, OutputStream.nullOutputStream(), OutputStream.nullOutputStream(), null, new HashMap<>(), false, false, null, null,
+                        hostLanguage, false, false, null);
         return guestToHost(engine);
     }
 

@@ -66,6 +66,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.RuntimeModuleSupport;
 import com.oracle.svm.core.util.VMError;
@@ -139,6 +140,14 @@ public final class ModuleLayerFeature implements InternalFeature {
     private Object replaceHostedModules(Object source) {
         if (source instanceof Module module) {
             return moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(module);
+        } else if (source instanceof Class<?> clazz) {
+            /*
+             * If the field Class(=DynamicHub).module is not reachable, we do not see all Module
+             * instances directly. So we also need to scan the module in Class/DynamicHub objects.
+             */
+            moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(clazz.getModule());
+        } else if (source instanceof DynamicHub hub) {
+            moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(hub.getModule());
         }
         return source;
     }

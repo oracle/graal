@@ -34,8 +34,6 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import org.junit.Assert;
 
-import jdk.vm.ci.meta.SpeculationLog;
-
 public class GraphScheduleTest extends GraalCompilerTest {
 
     protected void assertOrderedAfterSchedule(StructuredGraph graph, Node a, Node b) {
@@ -69,10 +67,5 @@ public class GraphScheduleTest extends GraalCompilerTest {
             }
             Assert.fail("block of " + a + " doesn't dominate the block of " + b);
         }
-    }
-
-    @Override
-    protected SpeculationLog getSpeculationLog() {
-        return getCodeCache().createSpeculationLog();
     }
 }

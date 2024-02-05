@@ -927,7 +927,7 @@ fn main() -> Result<()> {
 fn generate_case_fold_data() -> Result<()> {
     let mut multi_character_strings: HashMap<String, IElement> = HashMap::new();
 
-    let unicode_version = "15.0.0";
+    let unicode_version = "15.1.0";
     let unicode_version_oracle_db = "12.1.0";
     let unicode_data_txt = fetch(format!("https://www.unicode.org/Public/{}/ucd/UnicodeData.txt", unicode_version))?;
     let unicode_case_folding_txt = fetch(format!("https://www.unicode.org/Public/{}/ucd/CaseFolding.txt", unicode_version))?;
@@ -974,6 +974,9 @@ fn java_string_escape(s: &str) -> String {
     s.chars().map(|c| {
         if c == '\\' {
             return "\\\\".to_string();
+        }
+        if c == '\n' {
+            return "\\n".to_string();
         }
         if ' ' <= c && c <= '~' {
             return c.to_string();
@@ -2010,6 +2013,11 @@ fn oracledb_generate_tests() -> Result<()> {
         ("[[=\u{0132}=]o]+", "i", "ij"),
         ("[\\s-r]+", "", "\\stu"),
         ("[\\s-v]+", "", "\\stu"),
+        ("$(\\A|)", "", "x"),
+        ("(^\\w)|()^", "", "empty"),
+        ("x(y|())", "", "xy"),
+        ("(x|())*", "", "xxx"),
+        ("a(\\z|())", "", "a"),
     ] {
         let from_index = 1;
         let e_pattern = java_string_escape(pattern);

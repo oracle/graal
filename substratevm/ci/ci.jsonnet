@@ -6,6 +6,7 @@
   local tools      = import "ci_common/tools.libsonnet",
   local sg         = import "ci_common/svm-gate.libsonnet",
   local run_spec   = import "../../ci/ci_common/run-spec.libsonnet",
+  local galahad    = import "../../ci/ci_common/galahad-common.libsonnet",
   local exclude    = run_spec.exclude,
 
   local task_spec = run_spec.task_spec,
@@ -53,7 +54,7 @@
   // JDKs
   local jdk_name_to_dict = {
     "jdk21"+: common.labsjdk21,
-    "jdk-latest"+: common.labsjdkLatest,
+    "jdk-latest"+: common.labsjdkLatest + galahad.include,
   },
 
   local default_os_arch(b) = {

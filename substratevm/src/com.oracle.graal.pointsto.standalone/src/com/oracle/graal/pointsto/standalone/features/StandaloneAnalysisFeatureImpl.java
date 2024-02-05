@@ -38,7 +38,6 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.debug.DebugContext;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
@@ -50,6 +49,8 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.standalone.StandaloneHost;
 import com.oracle.svm.util.UnsafePartitionKind;
+
+import jdk.graal.compiler.debug.DebugContext;
 
 public class StandaloneAnalysisFeatureImpl {
     public abstract static class FeatureAccessImpl implements Feature.FeatureAccess {
@@ -207,11 +208,7 @@ public class StandaloneAnalysisFeatureImpl {
 
         public boolean registerAsUnsafeAccessed(AnalysisField aField, Object reason) {
             if (!aField.isUnsafeAccessed()) {
-                /* Register the field as unsafe accessed. */
-                aField.registerAsAccessed(reason);
                 aField.registerAsUnsafeAccessed(reason);
-                /* Force the update of registered unsafe loads and stores. */
-                bb.forceUnsafeUpdate(aField);
                 return true;
             }
             return false;
@@ -222,7 +219,7 @@ public class StandaloneAnalysisFeatureImpl {
         }
 
         public void registerAsFrozenUnsafeAccessed(AnalysisField aField) {
-            aField.setUnsafeFrozenTypeState(true);
+            aField.registerAsFrozenUnsafeAccessed();
             registerAsUnsafeAccessed(aField, "registered from standalone feature");
         }
 
@@ -232,11 +229,7 @@ public class StandaloneAnalysisFeatureImpl {
 
         public void registerAsUnsafeAccessed(AnalysisField aField, UnsafePartitionKind partitionKind, Object reason) {
             if (!aField.isUnsafeAccessed()) {
-                /* Register the field as unsafe accessed. */
-                aField.registerAsAccessed(reason);
                 aField.registerAsUnsafeAccessed(partitionKind, reason);
-                /* Force the update of registered unsafe loads and stores. */
-                bb.forceUnsafeUpdate(aField);
             }
         }
 

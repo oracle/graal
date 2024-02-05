@@ -24,11 +24,13 @@
  */
 package jdk.graal.compiler.microbenchmarks.graal;
 
+import org.openjdk.jmh.annotations.Benchmark;
+
 import jdk.graal.compiler.microbenchmarks.graal.util.GraalState;
 import jdk.graal.compiler.microbenchmarks.graal.util.GraphState;
 import jdk.graal.compiler.microbenchmarks.graal.util.MethodSpec;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.ConditionalEliminationPhase;
-import org.openjdk.jmh.annotations.Benchmark;
 
 public class ConditionalEliminationBenchmark extends GraalBenchmark {
 
@@ -108,12 +110,12 @@ public class ConditionalEliminationBenchmark extends GraalBenchmark {
 
     @Benchmark
     public void nullness(Nullness s, GraalState g) {
-        new ConditionalEliminationPhase(false).apply(s.graph, g.providers);
+        new ConditionalEliminationPhase(CanonicalizerPhase.create(), false).apply(s.graph, g.providers);
     }
 
     @Benchmark
     public void newDominatorConditionalElimination(Nullness s, GraalState g) {
-        new ConditionalEliminationPhase(false).apply(s.graph, g.providers);
+        new ConditionalEliminationPhase(CanonicalizerPhase.create(), false).apply(s.graph, g.providers);
     }
 
     @MethodSpec(declaringClass = ConditionalEliminationBenchmark.class, name = "searchSnippet")
@@ -164,6 +166,6 @@ public class ConditionalEliminationBenchmark extends GraalBenchmark {
 
     @Benchmark
     public void search(Search s, GraalState g) {
-        new ConditionalEliminationPhase(false).apply(s.graph, g.providers);
+        new ConditionalEliminationPhase(CanonicalizerPhase.create(), false).apply(s.graph, g.providers);
     }
 }

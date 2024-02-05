@@ -24,8 +24,12 @@
  */
 package jdk.graal.compiler.hotspot.stubs;
 
-import static jdk.vm.ci.meta.DeoptimizationReason.RuntimeConstraint;
 import static jdk.graal.compiler.hotspot.stubs.StubUtil.fatal;
+import static jdk.vm.ci.meta.DeoptimizationReason.RuntimeConstraint;
+
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Fold.InjectedParameter;
@@ -44,10 +48,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.word.Word;
-import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
-
 import jdk.vm.ci.meta.DeoptimizationAction;
 
 public class ForeignCallSnippets implements Snippets {
@@ -56,7 +56,6 @@ public class ForeignCallSnippets implements Snippets {
 
         final SnippetInfo handlePendingException;
         final SnippetInfo getAndClearObjectResult;
-        final SnippetInfo verifyObject;
 
         @SuppressWarnings("this-escape")
         public Templates(OptionValues options, HotSpotProviders providers) {
@@ -64,7 +63,6 @@ public class ForeignCallSnippets implements Snippets {
 
             this.handlePendingException = snippet(providers, ForeignCallSnippets.class, "handlePendingException");
             this.getAndClearObjectResult = snippet(providers, ForeignCallSnippets.class, "getAndClearObjectResult", OBJECT_RESULT_LOCATION);
-            this.verifyObject = snippet(providers, ForeignCallSnippets.class, "verifyObject");
         }
     }
 

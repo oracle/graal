@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,12 +25,18 @@
 package jdk.graal.compiler.replacements.test;
 
 import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.StructuredGraph;
+
 import org.junit.Test;
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.BoxingSnippets;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class MonitorTest extends GraalCompilerTest {
 
@@ -115,6 +121,14 @@ public class MonitorTest extends GraalCompilerTest {
         char[] dst = new char[src.length];
         int n = Math.min(32, Runtime.getRuntime().availableProcessors());
         testN(n, "copyArr", src, dst, 100);
+    }
+
+    @Override
+    protected CompilationResult compile(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, CompilationResult compilationResult, CompilationIdentifier compilationId, OptionValues options) {
+        synchronized (this) {
+            // Mitigate concurrent modifications in speculation logs for multithreaded tests.
+            return super.compile(installedCodeOwner, graph, compilationResult, compilationId, options);
+        }
     }
 
     private static String setAndGet(String[] box, String value) {

@@ -48,6 +48,7 @@ import static org.graalvm.wasm.Assert.assertUnsignedIntLessOrEqual;
 import static org.graalvm.wasm.Assert.assertUnsignedLongGreaterOrEqual;
 import static org.graalvm.wasm.Assert.assertUnsignedLongLessOrEqual;
 import static org.graalvm.wasm.Assert.fail;
+import static org.graalvm.wasm.BinaryStreamParser.rawPeekI128;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekI32;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekI64;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekI8;
@@ -59,6 +60,7 @@ import static org.graalvm.wasm.WasmType.F64_TYPE;
 import static org.graalvm.wasm.WasmType.FUNCREF_TYPE;
 import static org.graalvm.wasm.WasmType.I32_TYPE;
 import static org.graalvm.wasm.WasmType.I64_TYPE;
+import static org.graalvm.wasm.WasmType.V128_TYPE;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -87,6 +89,7 @@ import org.graalvm.wasm.Linker.ResolutionDag.InitializeGlobalSym;
 import org.graalvm.wasm.Linker.ResolutionDag.Resolver;
 import org.graalvm.wasm.Linker.ResolutionDag.Sym;
 import org.graalvm.wasm.SymbolTable.FunctionType;
+import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.GlobalModifier;
@@ -315,26 +318,7 @@ public class Linker {
 
     public static void initializeGlobal(WasmContext context, WasmInstance instance, int globalIndex, byte[] initBytecode) {
         Object initValue = evalConstantExpression(context, instance, initBytecode);
-        final int address = instance.globalAddress(globalIndex);
-        final GlobalRegistry globals = context.globals();
-        switch (instance.module().globalValueType(globalIndex)) {
-            case I32_TYPE:
-                globals.storeInt(address, (int) initValue);
-                break;
-            case I64_TYPE:
-                globals.storeLong(address, (long) initValue);
-                break;
-            case F32_TYPE:
-                globals.storeInt(address, Float.floatToIntBits((float) initValue));
-                break;
-            case F64_TYPE:
-                globals.storeLong(address, Double.doubleToLongBits((double) initValue));
-                break;
-            case FUNCREF_TYPE:
-            case EXTERNREF_TYPE:
-                globals.storeReference(address, initValue);
-                break;
-        }
+        context.globals().store(instance.module().globalValueType(globalIndex), instance.globalAddress(globalIndex), initValue);
     }
 
     void resolveGlobalInitialization(WasmContext context, WasmInstance instance, int globalIndex, byte[] initBytecode) {
@@ -455,6 +439,8 @@ public class Linker {
                 return context.globals().loadAsLong(globalAddress);
             case F64_TYPE:
                 return Double.longBitsToDouble(context.globals().loadAsLong(globalAddress));
+            case V128_TYPE:
+                return context.globals().loadAsVector128(globalAddress);
             case FUNCREF_TYPE:
             case EXTERNREF_TYPE:
                 return context.globals().loadAsReference(globalAddress);
@@ -515,6 +501,12 @@ public class Linker {
                 case Bytecode.F64_CONST: {
                     double value = Double.longBitsToDouble(rawPeekI64(bytecode, offset));
                     offset += 8;
+                    stack.add(value);
+                    break;
+                }
+                case Bytecode.VECTOR_V128_CONST: {
+                    Vector128 value = rawPeekI128(bytecode, offset);
+                    offset += 16;
                     stack.add(value);
                     break;
                 }
@@ -595,6 +587,9 @@ public class Linker {
                 case Bytecode.I64_CONST_I64:
                 case Bytecode.F64_CONST:
                     offset += 8;
+                    break;
+                case Bytecode.VECTOR_V128_CONST:
+                    offset += 16;
                     break;
                 case Bytecode.REF_FUNC:
                     final int functionIndex = rawPeekI32(bytecode, offset);

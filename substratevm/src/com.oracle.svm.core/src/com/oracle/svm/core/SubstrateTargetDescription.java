@@ -24,16 +24,15 @@
  */
 package com.oracle.svm.core;
 
+import java.util.EnumSet;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.code.RuntimeCodeCache;
-import com.oracle.svm.core.deopt.DeoptimizedFrame;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.TargetDescription;
-
-import java.util.EnumSet;
 
 public class SubstrateTargetDescription extends TargetDescription {
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -45,22 +44,12 @@ public class SubstrateTargetDescription extends TargetDescription {
         return SubstrateOptions.SpawnIsolates.getValue() && RuntimeCodeCache.Options.WriteableCodeCache.getValue();
     }
 
-    private final int deoptScratchSpace;
     private final EnumSet<?> runtimeCheckedCPUFeatures;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateTargetDescription(Architecture arch, boolean isMP, int stackAlignment, int implicitNullCheckLimit, int deoptScratchSpace, EnumSet<?> runtimeCheckedCPUFeatures) {
+    public SubstrateTargetDescription(Architecture arch, boolean isMP, int stackAlignment, int implicitNullCheckLimit, EnumSet<?> runtimeCheckedCPUFeatures) {
         super(arch, isMP, stackAlignment, implicitNullCheckLimit, shouldInlineObjectsInImageCode());
-        this.deoptScratchSpace = deoptScratchSpace;
         this.runtimeCheckedCPUFeatures = runtimeCheckedCPUFeatures;
-    }
-
-    /**
-     * Returns the amount of scratch space which must be reserved for return value registers in
-     * {@link DeoptimizedFrame}.
-     */
-    public int getDeoptScratchSpace() {
-        return deoptScratchSpace;
     }
 
     public EnumSet<?> getRuntimeCheckedCPUFeatures() {

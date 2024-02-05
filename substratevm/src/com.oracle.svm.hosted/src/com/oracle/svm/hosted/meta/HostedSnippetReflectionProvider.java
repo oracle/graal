@@ -30,11 +30,11 @@ import org.graalvm.word.WordBase;
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
-import com.oracle.svm.core.FrameAccess;
+import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.JavaConstant;
@@ -58,11 +58,22 @@ public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionP
             /* Relocated pointers are subject to relocation, so we don't know their value yet. */
             return new RelocatableConstant(pointer);
         } else if (object instanceof WordBase word) {
-            return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), word.rawValue());
+            return JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), word.rawValue());
         }
-        AnalysisConstantReflectionProvider.validateRawObjectConstant(object);
+        validateRawObjectConstant(object);
         /* Redirect constant lookup through the shadow heap. */
         return heapScanner.createImageHeapConstant(super.forObject(object), OtherReason.UNKNOWN);
+    }
+
+    /**
+     * The raw object may never be an {@link ImageHeapConstant}. However, it can be a
+     * {@link SubstrateObjectConstant} coming from graphs prepared for run time compilation. In that
+     * case we'll get a double wrapping: the {@link SubstrateObjectConstant} parameter value will be
+     * wrapped in another {@link SubstrateObjectConstant} which will then be stored in a
+     * {@link ImageHeapConstant} in the shadow heap.
+     */
+    public static void validateRawObjectConstant(Object object) {
+        AnalysisError.guarantee(!(object instanceof ImageHeapConstant), "Unexpected ImageHeapConstant %s", object);
     }
 
     @Override
@@ -71,14 +82,6 @@ public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionP
             return forObject(value);
         }
         return JavaConstant.forBoxedPrimitive(value);
-    }
-
-    @Override
-    public JavaConstant unwrapConstant(JavaConstant constant) {
-        if (constant instanceof ImageHeapConstant heapConstant && heapConstant.getHostedObject() != null) {
-            return heapConstant.getHostedObject();
-        }
-        return constant;
     }
 
     @Override

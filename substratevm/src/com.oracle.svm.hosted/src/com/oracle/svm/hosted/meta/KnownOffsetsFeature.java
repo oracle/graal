@@ -24,39 +24,34 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.ImageCodeInfo;
-import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.c.info.AccessorInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
-import com.oracle.svm.hosted.config.HybridLayout;
-import com.oracle.svm.hosted.thread.VMThreadMTFeature;
+import com.oracle.svm.hosted.config.DynamicHubLayout;
+import com.oracle.svm.hosted.thread.VMThreadFeature;
 import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticallyRegisteredFeature
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 public final class KnownOffsetsFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            return Arrays.asList(VMThreadMTFeature.class);
-        } else {
-            return Collections.emptyList();
-        }
+        return List.of(VMThreadFeature.class);
     }
 
     @Override
@@ -68,20 +63,17 @@ public final class KnownOffsetsFeature implements InternalFeature {
     public void beforeCompilation(BeforeCompilationAccess a) {
         BeforeCompilationAccessImpl access = (BeforeCompilationAccessImpl) a;
 
-        HybridLayout<DynamicHub> hubLayout = new HybridLayout<>(DynamicHub.class, ConfigurationValues.getObjectLayout(), access.getMetaAccess());
-        int vtableBaseOffset = hubLayout.getArrayBaseOffset();
-        int vtableEntrySize = ConfigurationValues.getObjectLayout().sizeInBytes(hubLayout.getArrayElementStorageKind());
-        int typeIDSlotsOffset = HybridLayout.getTypeIDSlotsFieldOffset(ConfigurationValues.getObjectLayout());
+        DynamicHubLayout dynamicHubLayout = DynamicHubLayout.singleton();
+        int vtableBaseOffset = dynamicHubLayout.vTableOffset();
+        int vtableEntrySize = dynamicHubLayout.vTableSlotSize;
+        int typeIDSlotsOffset = dynamicHubLayout.typeIDSlotsOffset;
 
         int componentHubOffset = findFieldOffset(access, DynamicHub.class, "componentType");
 
         int javaFrameAnchorLastSPOffset = findStructOffset(access, JavaFrameAnchor.class, "getLastJavaSP");
         int javaFrameAnchorLastIPOffset = findStructOffset(access, JavaFrameAnchor.class, "getLastJavaIP");
 
-        int vmThreadStatusOffset = -1;
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            vmThreadStatusOffset = ImageSingletons.lookup(VMThreadMTFeature.class).offsetOf(VMThreads.StatusSupport.statusTL);
-        }
+        int vmThreadStatusOffset = ImageSingletons.lookup(VMThreadFeature.class).offsetOf(VMThreads.StatusSupport.statusTL);
 
         int imageCodeInfoCodeStartOffset = findFieldOffset(access, ImageCodeInfo.class, "codeStart");
 

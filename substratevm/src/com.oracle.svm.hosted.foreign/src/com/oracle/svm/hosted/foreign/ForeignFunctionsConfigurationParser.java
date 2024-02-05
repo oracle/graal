@@ -114,7 +114,12 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
 
     static {
         try {
-            OPTION_CRITICAL = (Linker.Option) ReflectionUtil.lookupMethod(Linker.Option.class, JavaVersionUtil.JAVA_SPEC >= 22 ? "critical" : "isTrivial").invoke(null);
+            if (JavaVersionUtil.JAVA_SPEC >= 22) {
+                boolean allowHeapAccess = false;
+                OPTION_CRITICAL = (Linker.Option) ReflectionUtil.lookupMethod(Linker.Option.class, "critical", boolean.class).invoke(null, allowHeapAccess);
+            } else {
+                OPTION_CRITICAL = (Linker.Option) ReflectionUtil.lookupMethod(Linker.Option.class, "isTrivial").invoke(null);
+            }
         } catch (ReflectiveOperationException ex) {
             throw VMError.shouldNotReachHere(ex);
         }

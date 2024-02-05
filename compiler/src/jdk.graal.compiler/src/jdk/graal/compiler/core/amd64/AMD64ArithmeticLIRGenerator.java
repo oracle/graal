@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -107,6 +107,7 @@ import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.calc.FloatConvert;
+import jdk.graal.compiler.core.common.calc.FloatConvertCategory;
 import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.debug.Assertions;
@@ -122,6 +123,7 @@ import jdk.graal.compiler.lir.amd64.AMD64Binary;
 import jdk.graal.compiler.lir.amd64.AMD64BinaryConsumer;
 import jdk.graal.compiler.lir.amd64.AMD64BitSwapOp;
 import jdk.graal.compiler.lir.amd64.AMD64ClearRegisterOp;
+import jdk.graal.compiler.lir.amd64.AMD64ConvertFloatToIntegerOp;
 import jdk.graal.compiler.lir.amd64.AMD64FloatToHalfFloatOp;
 import jdk.graal.compiler.lir.amd64.AMD64HalfFloatToFloatOp;
 import jdk.graal.compiler.lir.amd64.AMD64MathCopySignOp;
@@ -816,6 +818,17 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         return result;
     }
 
+    /**
+     * Emit a floating point to integer conversion that needs fixup code to adjust the result to
+     * Java semantics.
+     */
+    private AllocatableValue emitFloatConvertWithFixup(LIRKind kind, AMD64RMOp op, OperandSize size, Value input, boolean canBeNaN, boolean canOverflow) {
+        Variable result = getLIRGen().newVariable(kind);
+        AMD64ConvertFloatToIntegerOp.OpcodeEmitter emitter = (crb, masm, dst, src) -> op.emit(masm, size, dst, src);
+        getLIRGen().append(new AMD64ConvertFloatToIntegerOp(getLIRGen(), emitter, result, input, canBeNaN, canOverflow));
+        return result;
+    }
+
     @Override
     public Value emitReinterpret(LIRKind to, Value inputVal) {
         ValueKind<?> from = inputVal.getValueKind();
@@ -874,20 +887,26 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     }
 
     @Override
-    public Value emitFloatConvert(FloatConvert op, Value input) {
+    public Value emitFloatConvert(FloatConvert op, Value input, boolean canBeNaN, boolean canOverflow) {
+        if (op.getCategory().equals(FloatConvertCategory.FloatingPointToInteger)) {
+            switch (op) {
+                case D2I:
+                    return emitFloatConvertWithFixup(LIRKind.combine(input).changeType(AMD64Kind.DWORD), SSEOp.CVTTSD2SI, DWORD, input, canBeNaN, canOverflow);
+                case D2L:
+                    return emitFloatConvertWithFixup(LIRKind.combine(input).changeType(AMD64Kind.QWORD), SSEOp.CVTTSD2SI, QWORD, input, canBeNaN, canOverflow);
+                case F2I:
+                    return emitFloatConvertWithFixup(LIRKind.combine(input).changeType(AMD64Kind.DWORD), SSEOp.CVTTSS2SI, DWORD, input, canBeNaN, canOverflow);
+                case F2L:
+                    return emitFloatConvertWithFixup(LIRKind.combine(input).changeType(AMD64Kind.QWORD), SSEOp.CVTTSS2SI, QWORD, input, canBeNaN, canOverflow);
+                default:
+                    throw GraalError.shouldNotReachHereUnexpectedValue(op); // ExcludeFromJacocoGeneratedReport
+            }
+        }
         switch (op) {
             case D2F:
                 return emitConvertOp(LIRKind.combine(input).changeType(AMD64Kind.SINGLE), SSEOp.CVTSD2SS, SD, input);
-            case D2I:
-                return emitConvertOp(LIRKind.combine(input).changeType(AMD64Kind.DWORD), SSEOp.CVTTSD2SI, DWORD, input);
-            case D2L:
-                return emitConvertOp(LIRKind.combine(input).changeType(AMD64Kind.QWORD), SSEOp.CVTTSD2SI, QWORD, input);
             case F2D:
                 return emitConvertOp(LIRKind.combine(input).changeType(AMD64Kind.DOUBLE), SSEOp.CVTSS2SD, SS, input);
-            case F2I:
-                return emitConvertOp(LIRKind.combine(input).changeType(AMD64Kind.DWORD), SSEOp.CVTTSS2SI, DWORD, input);
-            case F2L:
-                return emitConvertOp(LIRKind.combine(input).changeType(AMD64Kind.QWORD), SSEOp.CVTTSS2SI, QWORD, input);
             case I2D:
                 return emitConvertOp(LIRKind.combine(input).changeType(AMD64Kind.DOUBLE), SSEOp.CVTSI2SD, DWORD, input);
             case I2F:
@@ -903,12 +922,41 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
 
     @Override
     public Value emitNarrow(Value inputVal, int bits) {
-        if (inputVal.getPlatformKind() == AMD64Kind.QWORD && bits <= 32) {
+        if ((inputVal instanceof ConstantValue con) && (con.getConstant() instanceof JavaConstant jCon)) {
+            /*
+             * Narrow constants explicitly. Otherwise, assumptions in the remaining LIR generation
+             * might be violated.
+             */
+            JavaKind jKind = jCon.getJavaKind();
+            assert jKind.isNumericInteger() : "Can only narrow integer constants.";
+            assert bits <= jKind.getByteCount() * 8 : "Narrow input has fewer bits than narrow output.";
+
+            long mask = CodeUtil.mask(bits);
+            long narrowed = CodeUtil.signExtend(jCon.asLong() & mask, bits);
+
+            switch (jKind) {
+                case Byte:
+                    return new ConstantValue(LIRKind.combine(inputVal), JavaConstant.forByte((byte) narrowed));
+                case Short:
+                    return new ConstantValue(LIRKind.combine(inputVal), JavaConstant.forShort((short) narrowed));
+                case Char:
+                    return new ConstantValue(LIRKind.combine(inputVal), JavaConstant.forChar((char) narrowed));
+                case Int:
+                    return new ConstantValue(LIRKind.combine(inputVal), JavaConstant.forInt((int) narrowed));
+                case Long:
+                    if (bits <= 32) {
+                        return new ConstantValue(LIRKind.combine(inputVal).changeType(AMD64Kind.DWORD), JavaConstant.forInt((int) narrowed));
+                    } else {
+                        return new ConstantValue(LIRKind.combine(inputVal), JavaConstant.forLong(narrowed));
+                    }
+                default:
+                    GraalError.shouldNotReachHere("Unexpected Java kind for constant during narrowing: " + jKind);
+            }
+        } else if (inputVal.getPlatformKind() == AMD64Kind.QWORD && bits <= 32) {
             // TODO make it possible to reinterpret Long as Int in LIR without move
             return emitConvertOp(LIRKind.combine(inputVal).changeType(AMD64Kind.DWORD), AMD64RMOp.MOV, DWORD, inputVal);
-        } else {
-            return inputVal;
         }
+        return inputVal;
     }
 
     @Override

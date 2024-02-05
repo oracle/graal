@@ -97,7 +97,7 @@ public class MethodArgsUtils {
     }
 
     @TruffleBoundary
-    public static CandidateMethodWithArgs ensureVarArgsArrayCreated(CandidateMethodWithArgs matched, ToEspressoNode.DynamicToEspresso toEspressoNode) {
+    public static CandidateMethodWithArgs ensureVarArgsArrayCreated(CandidateMethodWithArgs matched) {
         int varArgsIndex = matched.getParameterTypes().length - 1;
         Klass varArgsArrayType = matched.getParameterTypes()[varArgsIndex];
         Klass varArgsType = ((ArrayKlass) varArgsArrayType).getComponentType();
@@ -111,24 +111,15 @@ public class MethodArgsUtils {
 
         StaticObject varArgsArray = isPrimitive ? varArgsType.getAllocator().createNewPrimitiveArray(varArgsType, varArgsLength) : varArgsType.allocateReferenceArray(varArgsLength);
 
-        if (isPrimitive) {
-            varArgsType = primitiveTypeToBoxedType((PrimitiveKlass) varArgsType);
-        }
-
         int index = 0;
         for (int i = varArgsIndex; i < matched.getConvertedArgs().length; i++) {
-            Object inputArg = matched.getConvertedArgs()[i];
-            try {
-                Object convertedArg = toEspressoNode.execute(inputArg, varArgsType);
-                if (!isPrimitive) {
-                    Object[] array = varArgsArray.unwrap(matched.getMethod().getLanguage());
-                    array[index++] = convertedArg;
-                } else {
-                    putPrimitiveArg(varArgsArray, inputArg, index, matched.getMethod().getLanguage());
-                    index++;
-                }
-            } catch (UnsupportedTypeException e) {
-                throw EspressoError.shouldNotReachHere();
+            Object convertedArg = matched.getConvertedArgs()[i];
+            if (!isPrimitive) {
+                Object[] array = varArgsArray.unwrap(matched.getMethod().getLanguage());
+                array[index++] = convertedArg;
+            } else {
+                putPrimitiveArg(varArgsArray, convertedArg, index, matched.getMethod().getLanguage());
+                index++;
             }
         }
         Object[] finalConvertedArgs = new Object[matched.getParameterTypes().length];

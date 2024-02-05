@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix.thread;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -48,10 +47,11 @@ import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Time.timespec;
 import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
 import com.oracle.svm.core.posix.linux.LinuxLibCHelper;
-import com.oracle.svm.core.posix.pthread.PthreadVMLockSupport;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 @AutomaticallyRegisteredImageSingleton(VMThreads.class)
 public final class PosixVMThreads extends VMThreads {
@@ -107,12 +107,6 @@ public final class PosixVMThreads extends VMThreads {
     @Override
     public boolean supportsNativeYieldAndSleep() {
         return true;
-    }
-
-    @Uninterruptible(reason = "Thread state not set up.")
-    @Override
-    protected boolean initializeOnce() {
-        return PthreadVMLockSupport.initialize();
     }
 
     interface FILE extends PointerBase {

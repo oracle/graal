@@ -26,6 +26,7 @@
 package com.oracle.svm.test;
 
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_DIR;
+import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_DIR_WITH_SPACE;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_1;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_2;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_3;
@@ -128,6 +129,19 @@ public class NativeImageResourceTest {
         Assert.assertTrue("Two URLs must be the same!", compareTwoURLs(url1, url2));
 
         String nonCanonicalResourceDirectoryName = RESOURCE_DIR + "/./";
+        resourceNameToURL(nonCanonicalResourceDirectoryName, false);
+    }
+
+    @Test
+    public void classGetDirectoryWithSpaceResource() {
+        URL url1 = resourceNameToURL(RESOURCE_DIR_WITH_SPACE + "/", true);
+        Assert.assertTrue("The URL should end with slash!", url1.toString().endsWith("/"));
+
+        URL url2 = resourceNameToURL(RESOURCE_DIR_WITH_SPACE, true);
+        Assert.assertFalse("The URL should not end with slash!", url2.toString().endsWith("/"));
+        Assert.assertTrue("Two URLs must be the same!", compareTwoURLs(url1, url2));
+
+        String nonCanonicalResourceDirectoryName = RESOURCE_DIR_WITH_SPACE + "/./";
         resourceNameToURL(nonCanonicalResourceDirectoryName, false);
     }
 

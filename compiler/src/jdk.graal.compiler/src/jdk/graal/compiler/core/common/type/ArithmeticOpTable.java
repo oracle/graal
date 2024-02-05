@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import java.util.Objects;
 import java.util.function.Function;
 
 import jdk.graal.compiler.core.common.calc.FloatConvert;
+import jdk.graal.compiler.core.common.calc.FloatConvertCategory;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Add;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.And;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Compress;
@@ -59,7 +60,6 @@ import jdk.graal.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Not;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.UnaryOp.Sqrt;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.util.CollectionsUtil;
-
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -201,7 +201,7 @@ public final class ArithmeticOpTable {
                         compress, expand, floatConvert);
     }
 
-    protected ArithmeticOpTable(UnaryOp<Neg> neg, BinaryOp<Add> add, BinaryOp<Sub> sub, BinaryOp<Mul> mul, BinaryOp<MulHigh> mulHigh, BinaryOp<UMulHigh> umulHigh, BinaryOp<Div> div, BinaryOp<Rem> rem,
+    public ArithmeticOpTable(UnaryOp<Neg> neg, BinaryOp<Add> add, BinaryOp<Sub> sub, BinaryOp<Mul> mul, BinaryOp<MulHigh> mulHigh, BinaryOp<UMulHigh> umulHigh, BinaryOp<Div> div, BinaryOp<Rem> rem,
                     UnaryOp<Not> not, BinaryOp<And> and, BinaryOp<Or> or, BinaryOp<Xor> xor, ShiftOp<Shl> shl, ShiftOp<Shr> shr, ShiftOp<UShr> ushr, UnaryOp<Abs> abs, UnaryOp<Sqrt> sqrt,
                     IntegerConvertOp<ZeroExtend> zeroExtend, IntegerConvertOp<SignExtend> signExtend, IntegerConvertOp<Narrow> narrow, BinaryOp<Max> max, BinaryOp<Min> min, BinaryOp<UMax> umax,
                     BinaryOp<UMin> umin, ReinterpretOp reinterpret, BinaryOp<Compress> compress, BinaryOp<Expand> expand, FloatConvertOp... floatConvert) {
@@ -906,6 +906,23 @@ public final class ArithmeticOpTable {
         @Override
         public FloatConvertOp unwrap() {
             return this;
+        }
+
+        /** Determine if this input is a floating-point stamp that can be NaN. */
+        public boolean inputCanBeNaN(Stamp inputStamp) {
+            return inputStamp instanceof FloatStamp floatStamp && floatStamp.canBeNaN();
+        }
+
+        /**
+         * Determine if this is a floating-point to integer conversion whose result may be outside
+         * the range of the target type.
+         */
+        @SuppressWarnings("unused")
+        public boolean canOverflowInteger(Stamp inputStamp) {
+            if (op.getCategory().equals(FloatConvertCategory.FloatingPointToInteger)) {
+                throw GraalError.unimplementedOverride();
+            }
+            return false;
         }
 
         @Override

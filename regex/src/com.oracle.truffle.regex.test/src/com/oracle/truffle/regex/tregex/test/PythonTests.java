@@ -351,37 +351,31 @@ public class PythonTests extends RegexTestBase {
         // ...when the verbose flag is passed to re.compile,
         test("#(?i)\nfoo", "x", "foo", 0, true, 0, 3, -1);
         test("#(?i)\nfoo", "x", "FOO", 0, false);
-        // when the verbose flag is set inline, either before or after,
+        // ...when the verbose flag is set inline,
         test("(?x)#(?i)\nfoo", "", "foo", 0, true, 0, 3, -1);
         test("(?x)#(?i)\nfoo", "", "FOO", 0, false);
-        test("#(?i)\n(?x)foo", "", "foo", 0, true, 0, 3, -1);
-        test("#(?i)\n(?x)foo", "", "FOO", 0, false);
         // and when the verbose flag is set in a local group.
         test("(?x:#(?i)\n)foo", "", "foo", 0, true, 0, 3, -1);
         test("(?x:#(?i)\n)foo", "", "FOO", 0, false);
-        // The (?x) inline flag can be hidden in a comment.
-        test("#(?x)(?i)\nfoo", "", "foo", 0, true, 0, 3, -1);
-        test("#(?x)(?i)\nfoo", "", "FOO", 0, false);
-
-        // Comments should be disabled in (?-x:...) blocks, inline flags within should be respected.
-        test("(?x:(?-x:#(?i)\n))foo", "", "#\nfoo", 0, true, 0, 5, -1);
-        test("(?x:(?-x:#(?i)\n))foo", "", "#\nFOO", 0, true, 0, 5, -1);
-        // This throws an internal exception inside CPython's sre due to a bug, but it should work.
-        test("(?-x:#(?i)\n)foo", "x", "#\nfoo", 0, true, 0, 5, -1);
-        test("(?-x:#(?i)\n)foo", "x", "#\nFOO", 0, true, 0, 5, -1);
-        test("(?x)(?-x:#(?i)\n)foo", "", "#\nfoo", 0, true, 0, 5, -1);
-        test("(?x)(?-x:#(?i)\n)foo", "", "#\nFOO", 0, true, 0, 5, -1);
 
         test("(?##)(?i)(?#\n)foo", "x", "foo", 0, true, 0, 3, -1);
         test("(?##)(?i)(?#\n)foo", "x", "FOO", 0, true, 0, 3, -1);
 
         test("(?#[)(?i)(?#])foo", "", "foo", 0, true, 0, 3, -1);
         test("(?#[)(?i)(?#])foo", "", "FOO", 0, true, 0, 3, -1);
+
+        // NB: The verbose flag can no longer be set inline in the middle of a regexp.
+        expectSyntaxError("#(?i)\n(?x)foo", "", "global flags not at the start of the expression", 1);
+        expectSyntaxError("#(?x)(?i)\nfoo", "", "global flags not at the start of the expression", 1);
+        expectSyntaxError("(?x:(?-x:#(?i)\n))foo", "", "global flags not at the start of the expression", 10);
+        expectSyntaxError("(?-x:#(?i)\n)foo", "x", "global flags not at the start of the expression", 6);
+        expectSyntaxError("(?x)(?-x:#(?i)\n)foo", "", "global flags not at the start of the expression", 10);
     }
 
     @Test
     public void testInlineGlobalFlagsEscaped() {
-        test("\\\\(?i)foo", "", "\\FOO", 0, true, 0, 4, -1);
+        // NB: The verbose flag can no longer be set inline in the middle of a regexp.
+        expectSyntaxError("\\\\(?i)foo", "", "global flags not at the start of the expression", 2);
     }
 
     @Test
@@ -507,6 +501,67 @@ public class PythonTests extends RegexTestBase {
             Value result = execRegex(compiledRegex, "xxxxxxabxx", 0);
             Assert.assertEquals(1, result.getMember("lastGroup").asInt());
         }
+    }
+
+    @Test
+    public void testCasefixEquivalences() {
+        // Generated using re._casefix._EXTRA_CASES from CPython 3.11.4
+        test("\u0069", "i", "\u0131", 0, true, 0, 1);
+        test("\u0073", "i", "\u017f", 0, true, 0, 1);
+        test("\u00b5", "i", "\u03bc", 0, true, 0, 1);
+        test("\u0131", "i", "\u0069", 0, true, 0, 1);
+        test("\u017f", "i", "\u0073", 0, true, 0, 1);
+        test("\u0345", "i", "\u03b9", 0, true, 0, 1);
+        test("\u0345", "i", "\u1fbe", 0, true, 0, 1);
+        test("\u0390", "i", "\u1fd3", 0, true, 0, 1);
+        test("\u03b0", "i", "\u1fe3", 0, true, 0, 1);
+        test("\u03b2", "i", "\u03d0", 0, true, 0, 1);
+        test("\u03b5", "i", "\u03f5", 0, true, 0, 1);
+        test("\u03b8", "i", "\u03d1", 0, true, 0, 1);
+        test("\u03b9", "i", "\u0345", 0, true, 0, 1);
+        test("\u03b9", "i", "\u1fbe", 0, true, 0, 1);
+        test("\u03ba", "i", "\u03f0", 0, true, 0, 1);
+        test("\u03bc", "i", "\u00b5", 0, true, 0, 1);
+        test("\u03c0", "i", "\u03d6", 0, true, 0, 1);
+        test("\u03c1", "i", "\u03f1", 0, true, 0, 1);
+        test("\u03c2", "i", "\u03c3", 0, true, 0, 1);
+        test("\u03c3", "i", "\u03c2", 0, true, 0, 1);
+        test("\u03c6", "i", "\u03d5", 0, true, 0, 1);
+        test("\u03d0", "i", "\u03b2", 0, true, 0, 1);
+        test("\u03d1", "i", "\u03b8", 0, true, 0, 1);
+        test("\u03d5", "i", "\u03c6", 0, true, 0, 1);
+        test("\u03d6", "i", "\u03c0", 0, true, 0, 1);
+        test("\u03f0", "i", "\u03ba", 0, true, 0, 1);
+        test("\u03f1", "i", "\u03c1", 0, true, 0, 1);
+        test("\u03f5", "i", "\u03b5", 0, true, 0, 1);
+        test("\u0432", "i", "\u1c80", 0, true, 0, 1);
+        test("\u0434", "i", "\u1c81", 0, true, 0, 1);
+        test("\u043e", "i", "\u1c82", 0, true, 0, 1);
+        test("\u0441", "i", "\u1c83", 0, true, 0, 1);
+        test("\u0442", "i", "\u1c84", 0, true, 0, 1);
+        test("\u0442", "i", "\u1c85", 0, true, 0, 1);
+        test("\u044a", "i", "\u1c86", 0, true, 0, 1);
+        test("\u0463", "i", "\u1c87", 0, true, 0, 1);
+        test("\u1c80", "i", "\u0432", 0, true, 0, 1);
+        test("\u1c81", "i", "\u0434", 0, true, 0, 1);
+        test("\u1c82", "i", "\u043e", 0, true, 0, 1);
+        test("\u1c83", "i", "\u0441", 0, true, 0, 1);
+        test("\u1c84", "i", "\u0442", 0, true, 0, 1);
+        test("\u1c84", "i", "\u1c85", 0, true, 0, 1);
+        test("\u1c85", "i", "\u0442", 0, true, 0, 1);
+        test("\u1c85", "i", "\u1c84", 0, true, 0, 1);
+        test("\u1c86", "i", "\u044a", 0, true, 0, 1);
+        test("\u1c87", "i", "\u0463", 0, true, 0, 1);
+        test("\u1c88", "i", "\ua64b", 0, true, 0, 1);
+        test("\u1e61", "i", "\u1e9b", 0, true, 0, 1);
+        test("\u1e9b", "i", "\u1e61", 0, true, 0, 1);
+        test("\u1fbe", "i", "\u0345", 0, true, 0, 1);
+        test("\u1fbe", "i", "\u03b9", 0, true, 0, 1);
+        test("\u1fd3", "i", "\u0390", 0, true, 0, 1);
+        test("\u1fe3", "i", "\u03b0", 0, true, 0, 1);
+        test("\ua64b", "i", "\u1c88", 0, true, 0, 1);
+        test("\ufb05", "i", "\ufb06", 0, true, 0, 1);
+        test("\ufb06", "i", "\ufb05", 0, true, 0, 1);
     }
 
     @Test

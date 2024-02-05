@@ -46,7 +46,16 @@ public class FieldFilterTypeFlow extends TypeFlow<AnalysisField> {
 
     @Override
     public TypeState filter(PointsToAnalysis bb, TypeState update) {
-        if (declaredType.equals(bb.getObjectType())) {
+        if (isPrimitiveFlow) {
+            if (!update.isPrimitive()) {
+                /*
+                 * Sources for these inconsistent updates are unsafe flows, but unsafe accessed
+                 * primitive fields are saturated anyway, so we can return any primitive state.
+                 */
+                return TypeState.anyPrimitiveState();
+            }
+            return update;
+        } else if (declaredType.equals(bb.getObjectType())) {
             /* No need to filter. */
             return update;
         } else {

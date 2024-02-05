@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,20 +42,32 @@ package com.oracle.truffle.dsl.processor.generator;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 
+import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 
 /**
- * Constants per generated specialized node.
+ * Constants and helper methods per generated specialized node.
  */
 public final class NodeConstants {
 
     public final Map<String, CodeVariableElement> updaterReferences = new LinkedHashMap<>();
+    private final Map<String, CodeExecutableElement> helperMethods = new LinkedHashMap<>();
 
-    public void prependToClass(CodeTypeElement clazz) {
+    public void addToClass(CodeTypeElement clazz) {
+        // prepend constant fields.
         clazz.getEnclosedElements().addAll(0, updaterReferences.values());
         updaterReferences.clear();
+
+        // append helper methods
+        clazz.getEnclosedElements().addAll(helperMethods.values());
+        helperMethods.clear();
+    }
+
+    public void addHelperMethod(String name, Supplier<CodeExecutableElement> method) {
+        helperMethods.computeIfAbsent(name, k -> method.get());
     }
 
 }

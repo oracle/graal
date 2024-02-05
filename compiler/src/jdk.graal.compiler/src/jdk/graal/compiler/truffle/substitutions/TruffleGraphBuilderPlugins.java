@@ -36,6 +36,10 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.function.Supplier;
 
+import org.graalvm.word.LocationIdentity;
+
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
@@ -97,16 +101,17 @@ import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
-import jdk.graal.compiler.truffle.nodes.asserts.NeverPartOfCompilationNode;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.PerformanceInformationHandler;
 import jdk.graal.compiler.truffle.TruffleCompilation;
 import jdk.graal.compiler.truffle.TruffleCompilerOptions.PerformanceWarningKind;
 import jdk.graal.compiler.truffle.TruffleDebugJavaMethod;
 import jdk.graal.compiler.truffle.nodes.AnyExtendNode;
+import jdk.graal.compiler.truffle.nodes.AnyNarrowNode;
 import jdk.graal.compiler.truffle.nodes.IsCompilationConstantNode;
 import jdk.graal.compiler.truffle.nodes.ObjectLocationIdentity;
 import jdk.graal.compiler.truffle.nodes.TruffleAssumption;
+import jdk.graal.compiler.truffle.nodes.asserts.NeverPartOfCompilationNode;
 import jdk.graal.compiler.truffle.nodes.frame.AllowMaterializeNode;
 import jdk.graal.compiler.truffle.nodes.frame.ForceMaterializeNode;
 import jdk.graal.compiler.truffle.nodes.frame.NewFrameNode;
@@ -120,10 +125,6 @@ import jdk.graal.compiler.truffle.nodes.frame.VirtualFrameIsNode;
 import jdk.graal.compiler.truffle.nodes.frame.VirtualFrameSetNode;
 import jdk.graal.compiler.truffle.nodes.frame.VirtualFrameSwapNode;
 import jdk.graal.compiler.truffle.phases.TruffleSafepointInsertionPhase;
-import org.graalvm.word.LocationIdentity;
-
-import com.oracle.truffle.compiler.TruffleCompilationTask;
-
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -922,6 +923,13 @@ public class TruffleGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.addPush(JavaKind.Long, new AnyExtendNode(value));
+                return true;
+            }
+        });
+        r.register(new RequiredInvocationPlugin("narrow", long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.addPush(JavaKind.Int, new AnyNarrowNode(value));
                 return true;
             }
         });

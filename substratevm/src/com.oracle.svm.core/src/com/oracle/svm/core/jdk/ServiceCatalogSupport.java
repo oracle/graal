@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.lang.module.ModuleDescriptor;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -78,6 +79,18 @@ public class ServiceCatalogSupport {
                 }
             });
             return res;
+        });
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(ModuleDescriptor.Provides.class, "providers"), (receiver, original) -> {
+            VMError.guarantee(sealed, "Service provider detector must be registered before the analysis starts");
+            List<String> providers = (List<String>) original;
+            String service = ((ModuleDescriptor.Provides) receiver).service();
+            if (omittedServiceProviders.containsKey(service)) {
+                var omittedProviders = omittedServiceProviders.get(service);
+                providers = providers.stream()
+                                .filter(p -> !omittedProviders.contains(p))
+                                .collect(Collectors.toList());
+            }
+            return providers;
         });
     }
 }

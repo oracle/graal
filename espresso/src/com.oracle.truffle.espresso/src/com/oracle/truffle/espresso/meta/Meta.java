@@ -130,6 +130,7 @@ public final class Meta extends ContextAccessImpl {
         java_lang_Class_forName_String_boolean_ClassLoader = java_lang_Class.requireDeclaredMethod(Name.forName, Signature.Class_String_boolean_ClassLoader);
 
         java_lang_String = knownKlass(Type.java_lang_String);
+        java_lang_String_array = java_lang_String.array();
         java_lang_CharSequence = knownKlass(Type.java_lang_CharSequence);
 
         // Primitives.
@@ -286,6 +287,8 @@ public final class Meta extends ContextAccessImpl {
         java_lang_NoSuchFieldException = knownKlass(Type.java_lang_NoSuchFieldException);
         java_lang_NoSuchMethodException = knownKlass(Type.java_lang_NoSuchMethodException);
         java_lang_UnsupportedOperationException = knownKlass(Type.java_lang_UnsupportedOperationException);
+        java_util_NoSuchElementException = knownKlass(Type.java_util_NoSuchElementException);
+        java_lang_NumberFormatException = knownKlass(Type.java_lang_NumberFormatException);
 
         java_lang_StackOverflowError = knownKlass(Type.java_lang_StackOverflowError);
         java_lang_OutOfMemoryError = knownKlass(Type.java_lang_OutOfMemoryError);
@@ -390,9 +393,31 @@ public final class Meta extends ContextAccessImpl {
         sun_nio_ch_DirectBuffer = knownKlass(Type.sun_nio_ch_DirectBuffer);
         java_nio_Buffer_address = java_nio_Buffer.requireDeclaredField(Name.address, Type._long);
         java_nio_Buffer_capacity = java_nio_Buffer.requireDeclaredField(Name.capacity, Type._int);
+        java_nio_Buffer_limit = java_nio_Buffer.requireDeclaredMethod(Name.limit, Signature._int);
+        java_nio_Buffer_isReadOnly = java_nio_Buffer.requireDeclaredMethod(Name.isReadOnly, Signature._boolean);
 
         java_nio_ByteBuffer = knownKlass(Type.java_nio_ByteBuffer);
         java_nio_ByteBuffer_wrap = java_nio_ByteBuffer.requireDeclaredMethod(Name.wrap, Signature.ByteBuffer_byte_array);
+        if (getJavaVersion().java13OrLater()) {
+            java_nio_ByteBuffer_get = java_nio_ByteBuffer.requireDeclaredMethod(Name.get, Signature.ByteBuffer_int_byte_array_int_int);
+        } else {
+            java_nio_ByteBuffer_get = null;
+        }
+        java_nio_ByteBuffer_getByte = java_nio_ByteBuffer.requireDeclaredMethod(Name.get, Signature._byte_int);
+        java_nio_ByteBuffer_getShort = java_nio_ByteBuffer.requireDeclaredMethod(Name.getShort, Signature._short_int);
+        java_nio_ByteBuffer_getInt = java_nio_ByteBuffer.requireDeclaredMethod(Name.getInt, Signature._int_int);
+        java_nio_ByteBuffer_getLong = java_nio_ByteBuffer.requireDeclaredMethod(Name.getLong, Signature._long_int);
+        java_nio_ByteBuffer_getFloat = java_nio_ByteBuffer.requireDeclaredMethod(Name.getFloat, Signature._float_int);
+        java_nio_ByteBuffer_getDouble = java_nio_ByteBuffer.requireDeclaredMethod(Name.getDouble, Signature._double_int);
+        java_nio_ByteBuffer_putByte = java_nio_ByteBuffer.requireDeclaredMethod(Name.put, Signature.ByteBuffer_int_byte);
+        java_nio_ByteBuffer_putShort = java_nio_ByteBuffer.requireDeclaredMethod(Name.putShort, Signature.ByteBuffer_int_short);
+        java_nio_ByteBuffer_putInt = java_nio_ByteBuffer.requireDeclaredMethod(Name.putInt, Signature.ByteBuffer_int_int);
+        java_nio_ByteBuffer_putLong = java_nio_ByteBuffer.requireDeclaredMethod(Name.putLong, Signature.ByteBuffer_int_long);
+        java_nio_ByteBuffer_putFloat = java_nio_ByteBuffer.requireDeclaredMethod(Name.putFloat, Signature.ByteBuffer_int_float);
+        java_nio_ByteBuffer_putDouble = java_nio_ByteBuffer.requireDeclaredMethod(Name.putDouble, Signature.ByteBuffer_int_double);
+        java_nio_ByteBuffer_order = java_nio_ByteBuffer.requireDeclaredMethod(Name.order, Signature.ByteOrder);
+        java_nio_ByteBuffer_setOrder = java_nio_ByteBuffer.requireDeclaredMethod(Name.order, Signature.ByteBuffer_ByteOrder);
+
         java_nio_DirectByteBuffer = knownKlass(Type.java_nio_DirectByteBuffer);
         java_nio_DirectByteBuffer_init_long_int = diff() //
                         .method(lower(20), Name._init_, Signature._void_long_int) //
@@ -400,6 +425,7 @@ public final class Meta extends ContextAccessImpl {
                         .method(java_nio_DirectByteBuffer);
         java_nio_ByteOrder = knownKlass(Type.java_nio_ByteOrder);
         java_nio_ByteOrder_LITTLE_ENDIAN = java_nio_ByteOrder.requireDeclaredField(Name.LITTLE_ENDIAN, Type.java_nio_ByteOrder);
+        java_nio_ByteOrder_BIG_ENDIAN = java_nio_ByteOrder.requireDeclaredField(Name.BIG_ENDIAN, Type.java_nio_ByteOrder);
 
         java_lang_Thread = knownKlass(Type.java_lang_Thread);
         // The interrupted field is no longer hidden as of JDK14+
@@ -854,6 +880,7 @@ public final class Meta extends ContextAccessImpl {
         java_util_List_set = java_util_List.requireDeclaredMethod(Name.set, Signature.Object_int_Object);
         java_util_List_size = java_util_List.requireDeclaredMethod(Name.size, Signature._int);
         java_util_List_add = java_util_List.requireDeclaredMethod(Name.add, Signature._boolean_Object);
+        java_util_List_remove = java_util_List.requireDeclaredMethod(Name.remove, Signature.Object_int);
         assert java_util_List.isInterface();
 
         java_util_Set = knownKlass(Type.java_util_Set);
@@ -878,14 +905,13 @@ public final class Meta extends ContextAccessImpl {
 
         java_math_BigInteger = knownKlass(Type.java_math_BigInteger);
         java_math_BigInteger_init = java_math_BigInteger.requireDeclaredMethod(Name._init_, Signature._void_byte_array);
+        java_math_BigInteger_toByteArray = java_math_BigInteger.requireDeclaredMethod(Name.toByteArray, Signature._byte_array);
 
         java_math_BigDecimal = knownKlass(Type.java_math_BigDecimal);
         java_math_BigDecimal_init = java_math_BigDecimal.requireDeclaredMethod(Name._init_, Signature._void_BigInteger_int_MathContext);
 
         java_math_MathContext = knownKlass(Type.java_math_MathContext);
         java_math_MathContext_init = java_math_MathContext.requireDeclaredMethod(Name._init_, Signature._void_int);
-
-        java_util_NoSuchElementException = knownKlass(Type.java_util_NoSuchElementException);
 
         jdk_internal_misc_UnsafeConstants = diff() //
                         .klass(higher(13), Type.jdk_internal_misc_UnsafeConstants) //
@@ -980,7 +1006,7 @@ public final class Meta extends ContextAccessImpl {
      * <p>
      * Espresso's Polyglot API (polyglot.jar) is injected on the boot CP, must be loaded after
      * modules initialization.
-     *
+     * <p>
      * The classes in module java.management become known after modules initialization.
      */
     public void postSystemInit() {
@@ -1054,6 +1080,7 @@ public final class Meta extends ContextAccessImpl {
     public final ArrayKlass java_lang_Object_array;
 
     public final ObjectKlass java_lang_String;
+    public final ArrayKlass java_lang_String_array;
     public final ObjectKlass java_lang_Class;
     public final ObjectKlass java_lang_CharSequence;
     public final Field HIDDEN_MIRROR_KLASS;
@@ -1258,6 +1285,8 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass java_lang_NoSuchFieldException;
     public final ObjectKlass java_lang_NoSuchMethodException;
     public final ObjectKlass java_lang_UnsupportedOperationException;
+    public final ObjectKlass java_util_NoSuchElementException;
+    public final ObjectKlass java_lang_NumberFormatException;
 
     public final ObjectKlass java_lang_Throwable;
     public final Method java_lang_Throwable_getStackTrace;
@@ -1309,15 +1338,33 @@ public final class Meta extends ContextAccessImpl {
 
     public final ObjectKlass sun_nio_ch_DirectBuffer;
     public final ObjectKlass java_nio_Buffer;
+    public final Method java_nio_Buffer_isReadOnly;
     public final Field java_nio_Buffer_address;
     public final Field java_nio_Buffer_capacity;
+    public final Method java_nio_Buffer_limit;
 
     public final ObjectKlass java_nio_ByteBuffer;
     public final Method java_nio_ByteBuffer_wrap;
+    public final Method java_nio_ByteBuffer_get;
+    public final Method java_nio_ByteBuffer_getByte;
+    public final Method java_nio_ByteBuffer_getShort;
+    public final Method java_nio_ByteBuffer_getInt;
+    public final Method java_nio_ByteBuffer_getLong;
+    public final Method java_nio_ByteBuffer_getFloat;
+    public final Method java_nio_ByteBuffer_getDouble;
+    public final Method java_nio_ByteBuffer_putByte;
+    public final Method java_nio_ByteBuffer_putShort;
+    public final Method java_nio_ByteBuffer_putInt;
+    public final Method java_nio_ByteBuffer_putLong;
+    public final Method java_nio_ByteBuffer_putFloat;
+    public final Method java_nio_ByteBuffer_putDouble;
+    public final Method java_nio_ByteBuffer_order;
+    public final Method java_nio_ByteBuffer_setOrder;
     public final ObjectKlass java_nio_DirectByteBuffer;
     public final Method java_nio_DirectByteBuffer_init_long_int;
     public final ObjectKlass java_nio_ByteOrder;
     public final Field java_nio_ByteOrder_LITTLE_ENDIAN;
+    public final Field java_nio_ByteOrder_BIG_ENDIAN;
 
     public final ObjectKlass java_lang_BaseVirtualThread;
     public final ObjectKlass java_lang_ThreadGroup;
@@ -1557,6 +1604,7 @@ public final class Meta extends ContextAccessImpl {
     public final Method java_util_List_set;
     public final Method java_util_List_size;
     public final Method java_util_List_add;
+    public final Method java_util_List_remove;
 
     public final ObjectKlass java_util_Set;
     public final Method java_util_Set_add;
@@ -1577,14 +1625,13 @@ public final class Meta extends ContextAccessImpl {
 
     public final ObjectKlass java_math_BigInteger;
     public final Method java_math_BigInteger_init;
+    public final Method java_math_BigInteger_toByteArray;
 
     public final ObjectKlass java_math_BigDecimal;
     public final Method java_math_BigDecimal_init;
 
     public final ObjectKlass java_math_MathContext;
     public final Method java_math_MathContext_init;
-
-    public final ObjectKlass java_util_NoSuchElementException;
 
     public final ObjectKlass jdk_internal_misc_UnsafeConstants;
     public final Field jdk_internal_misc_UnsafeConstants_ADDRESS_SIZE0;
@@ -1668,12 +1715,13 @@ public final class Meta extends ContextAccessImpl {
         public final Method VMHelper_getDynamicModuleDescriptor;
 
         public final ObjectKlass EspressoForeignList;
-        public final Field EspressoForeignList_foreignObject;
         public final ObjectKlass EspressoForeignCollection;
         public final ObjectKlass EspressoForeignIterable;
         public final ObjectKlass EspressoForeignIterator;
         public final ObjectKlass EspressoForeignMap;
         public final ObjectKlass EspressoForeignSet;
+
+        public final ObjectKlass EspressoForeignNumber;
 
         private PolyglotSupport() {
             boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
@@ -1737,12 +1785,13 @@ public final class Meta extends ContextAccessImpl {
             VMHelper_getDynamicModuleDescriptor = VMHelper.requireDeclaredMethod(Name.getDynamicModuleDescriptor, Signature.ModuleDescriptor_String_String);
 
             EspressoForeignList = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignList);
-            EspressoForeignList_foreignObject = EspressoForeignList.requireDeclaredField(Name.foreignObject, Type.java_lang_Object);
             EspressoForeignCollection = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignCollection);
             EspressoForeignIterable = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignIterable);
             EspressoForeignIterator = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignIterator);
             EspressoForeignMap = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignMap);
             EspressoForeignSet = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignSet);
+
+            EspressoForeignNumber = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_impl_EspressoForeignNumber);
         }
     }
 
@@ -1986,7 +2035,7 @@ public final class Meta extends ContextAccessImpl {
      * asks the given class loader to perform the load, even for internal primitive types. This is
      * the method to use when loading symbols that are not directly taken from a constant pool, for
      * example, when loading a class whose name is given by a guest string.
-     *
+     * <p>
      * This method is designed to fail if given the type symbol for primitives (eg: 'Z' for
      * booleans).
      *
@@ -2374,7 +2423,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to a boolean.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2391,7 +2440,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to a byte.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2408,7 +2457,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to a short.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2425,7 +2474,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to a char.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2442,7 +2491,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to an int.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2459,7 +2508,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to a float.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2476,7 +2525,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to a double.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2493,7 +2542,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to a long.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2510,7 +2559,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a Object value to a StaticObject.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will return StaticObject.NULL when the Object value is not a StaticObject. If the conversion
      * is not possible, throws {@link EspressoError}.
@@ -2524,7 +2573,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Bitwise conversion from a boxed value to a long.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will fill the upper bits with 0. If the conversion is not possible, throws
      * {@link EspressoError}.

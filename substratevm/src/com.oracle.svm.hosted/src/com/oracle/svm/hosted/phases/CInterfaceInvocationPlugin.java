@@ -29,7 +29,35 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput
 
 import java.util.Arrays;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
+import org.graalvm.word.LocationIdentity;
+
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
+import com.oracle.svm.core.c.struct.CInterfaceLocationIdentity;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
+import com.oracle.svm.core.graal.nodes.CInterfaceWriteNode;
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.c.CInterfaceError;
+import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.c.info.AccessorInfo;
+import com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind;
+import com.oracle.svm.hosted.c.info.ConstantInfo;
+import com.oracle.svm.hosted.c.info.ElementInfo;
+import com.oracle.svm.hosted.c.info.PointerToInfo;
+import com.oracle.svm.hosted.c.info.SizableInfo;
+import com.oracle.svm.hosted.c.info.StructBitfieldInfo;
+import com.oracle.svm.hosted.c.info.StructFieldInfo;
+import com.oracle.svm.hosted.c.info.StructInfo;
+import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
+import com.oracle.svm.hosted.code.CEntryPointJavaCallStubMethod;
+import com.oracle.svm.hosted.code.CFunctionPointerCallStubSupport;
+
 import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
@@ -62,37 +90,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
-import jdk.graal.compiler.word.WordTypes;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
-import org.graalvm.word.LocationIdentity;
-
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
-import com.oracle.svm.core.c.struct.CInterfaceLocationIdentity;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
-import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
-import com.oracle.svm.core.graal.nodes.CInterfaceWriteNode;
-import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.c.CInterfaceError;
-import com.oracle.svm.hosted.c.NativeLibraries;
-import com.oracle.svm.hosted.c.info.AccessorInfo;
-import com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind;
-import com.oracle.svm.hosted.c.info.ConstantInfo;
-import com.oracle.svm.hosted.c.info.ElementInfo;
-import com.oracle.svm.hosted.c.info.PointerToInfo;
-import com.oracle.svm.hosted.c.info.SizableInfo;
-import com.oracle.svm.hosted.c.info.StructBitfieldInfo;
-import com.oracle.svm.hosted.c.info.StructFieldInfo;
-import com.oracle.svm.hosted.c.info.StructInfo;
-import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
-import com.oracle.svm.hosted.code.CEntryPointJavaCallStubMethod;
-import com.oracle.svm.hosted.code.CFunctionPointerCallStubSupport;
-import com.oracle.svm.hosted.meta.HostedMetaAccess;
-import com.oracle.svm.hosted.meta.HostedMethod;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -100,22 +97,18 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class CInterfaceInvocationPlugin implements NodePlugin {
-    private final WordTypes wordTypes;
-
     private final NativeLibraries nativeLibs;
 
     private final ResolvedJavaType functionPointerType;
-    private final SnippetReflectionProvider snippetReflection;
 
-    public CInterfaceInvocationPlugin(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, WordTypes wordTypes, NativeLibraries nativeLibs) {
-        this.wordTypes = wordTypes;
+    public CInterfaceInvocationPlugin(MetaAccessProvider metaAccess, NativeLibraries nativeLibs) {
         this.nativeLibs = nativeLibs;
         this.functionPointerType = metaAccess.lookupJavaType(CFunctionPointer.class);
-        this.snippetReflection = snippetReflection;
     }
 
     @Override
-    public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+    public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod m, ValueNode[] args) {
+        AnalysisMethod method = (AnalysisMethod) m;
         ElementInfo methodInfo = nativeLibs.findElementInfo(method);
         if (methodInfo instanceof AccessorInfo) {
             ElementInfo parentInfo = methodInfo.getParent();
@@ -140,13 +133,8 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         } else if (method.getAnnotation(InvokeJavaFunctionPointer.class) != null) {
             return replaceJavaFunctionPointerInvoke(b, method, args);
         } else if (method.getAnnotation(CEntryPoint.class) != null) {
-            AnalysisMethod aMethod = (AnalysisMethod) (method instanceof HostedMethod ? ((HostedMethod) method).getWrapped() : method);
-            assert !(aMethod.getWrapped() instanceof CEntryPointJavaCallStubMethod) : "Call stub should never have a @CEntryPoint annotation";
-            ResolvedJavaMethod stub = CEntryPointCallStubSupport.singleton().registerJavaStubForMethod(aMethod);
-            if (method instanceof HostedMethod) {
-                HostedMetaAccess hMetaAccess = (HostedMetaAccess) b.getMetaAccess();
-                stub = hMetaAccess.getUniverse().lookup(stub);
-            }
+            assert !(method.getWrapped() instanceof CEntryPointJavaCallStubMethod) : "Call stub should never have a @CEntryPoint annotation";
+            AnalysisMethod stub = CEntryPointCallStubSupport.singleton().registerJavaStubForMethod(method);
             assert !b.getMethod().equals(stub) : "Plugin should not be called for the invoke in the stub itself";
             b.handleReplacedInvoke(InvokeKind.Static, stub, args, false);
             return true;
@@ -155,19 +143,19 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         }
     }
 
-    private boolean replaceOffsetOf(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, AccessorInfo accessorInfo, int displacement) {
+    private static boolean replaceOffsetOf(GraphBuilderContext b, AnalysisMethod method, ValueNode[] args, AccessorInfo accessorInfo, int displacement) {
         /*
          * A method annotated with @OffsetOf can be static, but does not need to be. If it is
          * non-static, we just ignore the receiver.
          */
         assert args.length == accessorInfo.parameterCount(!method.isStatic());
 
-        JavaKind kind = wordTypes.asKind(b.getInvokeReturnType());
+        JavaKind kind = b.getWordTypes().asKind(b.getInvokeReturnType());
         b.addPush(pushKind(method), ConstantNode.forIntegerKind(kind, displacement, b.getGraph()));
         return true;
     }
 
-    private boolean replaceAccessor(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, AccessorInfo accessorInfo, int displacement) {
+    private static boolean replaceAccessor(GraphBuilderContext b, AnalysisMethod method, ValueNode[] args, AccessorInfo accessorInfo, int displacement) {
         StructuredGraph graph = b.getGraph();
         SizableInfo sizableInfo = (SizableInfo) accessorInfo.getParent();
         int elementSize = sizableInfo.getSizeInfo().getProperty();
@@ -177,7 +165,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         assert args.length == accessorInfo.parameterCount(true);
 
         ValueNode base = args[AccessorInfo.baseParameterNumber(true)];
-        assert base.getStackKind() == FrameAccess.getWordKind();
+        assert base.getStackKind() == ConfigurationValues.getWordKind();
 
         switch (accessorInfo.getAccessorKind()) {
             case ADDRESS: {
@@ -186,7 +174,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                 return true;
             }
             case GETTER: {
-                JavaKind resultKind = wordTypes.asKind(b.getInvokeReturnType());
+                JavaKind resultKind = b.getWordTypes().asKind(b.getInvokeReturnType());
                 JavaKind readKind = kindFromSize(elementSize, resultKind);
                 if (readKind == JavaKind.Object) {
                     assert resultKind == JavaKind.Object;
@@ -194,7 +182,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                     readKind = resultKind;
                 }
                 AddressNode offsetAddress = makeOffsetAddress(graph, args, accessorInfo, base, displacement, elementSize);
-                LocationIdentity locationIdentity = makeLocationIdentity(b, snippetReflection, method, args, accessorInfo);
+                LocationIdentity locationIdentity = makeLocationIdentity(b, method, args, accessorInfo);
                 final Stamp stamp;
                 if (readKind == JavaKind.Object) {
                     stamp = b.getInvokeReturnStamp(null).getTrustedStamp();
@@ -218,7 +206,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                 JavaKind valueKind = value.getStackKind();
                 JavaKind writeKind = kindFromSize(elementSize, valueKind);
                 AddressNode offsetAddress = makeOffsetAddress(graph, args, accessorInfo, base, displacement, elementSize);
-                LocationIdentity locationIdentity = makeLocationIdentity(b, snippetReflection, method, args, accessorInfo);
+                LocationIdentity locationIdentity = makeLocationIdentity(b, method, args, accessorInfo);
                 if (isPinnedObject) {
                     b.add(new JavaWriteNode(writeKind, offsetAddress, locationIdentity, value, BarrierType.NONE, true));
                 } else {
@@ -232,7 +220,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         }
     }
 
-    private boolean replaceBitfieldAccessor(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, StructBitfieldInfo bitfieldInfo, AccessorInfo accessorInfo) {
+    private static boolean replaceBitfieldAccessor(GraphBuilderContext b, AnalysisMethod method, ValueNode[] args, StructBitfieldInfo bitfieldInfo, AccessorInfo accessorInfo) {
         int byteOffset = bitfieldInfo.getByteOffsetInfo().getProperty();
         int startBit = bitfieldInfo.getStartBitInfo().getProperty();
         int endBit = bitfieldInfo.getEndBitInfo().getProperty();
@@ -293,7 +281,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
          * bits around the written bitfield unchanged.
          */
         AddressNode address = makeOffsetAddress(graph, args, accessorInfo, base, byteOffset, -1);
-        LocationIdentity locationIdentity = makeLocationIdentity(b, snippetReflection, method, args, accessorInfo);
+        LocationIdentity locationIdentity = makeLocationIdentity(b, method, args, accessorInfo);
         Stamp stamp = IntegerStamp.create(memoryKind.getBitCount());
         ValueNode cur = readPrimitive(b, address, locationIdentity, stamp, accessorInfo);
         cur = adaptPrimitiveType(graph, cur, memoryKind, computeKind, true);
@@ -316,7 +304,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                     cur = graph.unique(new RightShiftNode(cur, ConstantNode.forInt(computeBits - numBits, graph)));
                 }
 
-                JavaKind resultKind = wordTypes.asKind(b.getInvokeReturnType());
+                JavaKind resultKind = b.getWordTypes().asKind(b.getInvokeReturnType());
                 b.push(pushKind(method), adaptPrimitiveType(graph, cur, computeKind, resultKind == JavaKind.Boolean ? resultKind : resultKind.getStackKind(), isUnsigned));
                 return true;
             }
@@ -371,13 +359,13 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
     }
 
     private static ValueNode makeOffset(StructuredGraph graph, ValueNode[] args, AccessorInfo accessorInfo, int displacement, int indexScaling) {
-        ValueNode offset = ConstantNode.forIntegerKind(FrameAccess.getWordKind(), displacement, graph);
+        ValueNode offset = ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), displacement, graph);
 
         if (accessorInfo.isIndexed()) {
             ValueNode index = args[accessorInfo.indexParameterNumber(true)];
             assert index.getStackKind().isPrimitive();
-            ValueNode wordIndex = adaptPrimitiveType(graph, index, index.getStackKind(), FrameAccess.getWordKind(), false);
-            ValueNode scaledIndex = graph.unique(new MulNode(wordIndex, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), indexScaling, graph)));
+            ValueNode wordIndex = adaptPrimitiveType(graph, index, index.getStackKind(), ConfigurationValues.getWordKind(), false);
+            ValueNode scaledIndex = graph.unique(new MulNode(wordIndex, ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), indexScaling, graph)));
 
             offset = graph.unique(new AddNode(scaledIndex, offset));
         }
@@ -389,7 +377,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         return graph.addOrUniqueWithInputs(new OffsetAddressNode(base, makeOffset(graph, args, accessorInfo, displacement, indexScaling)));
     }
 
-    private static LocationIdentity makeLocationIdentity(GraphBuilderContext b, SnippetReflectionProvider snippetReflection, ResolvedJavaMethod method, ValueNode[] args, AccessorInfo accessorInfo) {
+    private static LocationIdentity makeLocationIdentity(GraphBuilderContext b, AnalysisMethod method, ValueNode[] args, AccessorInfo accessorInfo) {
         LocationIdentity locationIdentity;
         if (accessorInfo.hasLocationIdentityParameter()) {
             ValueNode locationIdentityNode = args[accessorInfo.locationIdentityParameterNumber(true)];
@@ -398,7 +386,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                                 "locationIdentity is not a compile time constant for call to " + method.format("%H.%n(%p)") + " in " + b.getMethod().asStackTraceElement(b.bci()),
                                 method).getMessage());
             }
-            locationIdentity = snippetReflection.asObject(LocationIdentity.class, locationIdentityNode.asJavaConstant());
+            locationIdentity = b.getSnippetReflection().asObject(LocationIdentity.class, locationIdentityNode.asJavaConstant());
         } else if (accessorInfo.hasUniqueLocationIdentity()) {
             StructFieldInfo fieldInfo = (StructFieldInfo) accessorInfo.getParent();
             assert fieldInfo.getLocationIdentity() != null;
@@ -471,9 +459,9 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         throw shouldNotReachHere("Unsupported size: " + sizeInBytes);
     }
 
-    private boolean replaceConstant(GraphBuilderContext b, ResolvedJavaMethod method, ConstantInfo constantInfo) {
+    private static boolean replaceConstant(GraphBuilderContext b, AnalysisMethod method, ConstantInfo constantInfo) {
         Object value = constantInfo.getValueInfo().getProperty();
-        JavaKind kind = wordTypes.asKind(b.getInvokeReturnType());
+        JavaKind kind = b.getWordTypes().asKind(b.getInvokeReturnType());
 
         ConstantNode valueNode;
         switch (constantInfo.getKind()) {
@@ -490,7 +478,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                 break;
             case STRING:
             case BYTEARRAY:
-                valueNode = ConstantNode.forConstant(snippetReflection.forObject(value), b.getMetaAccess(), b.getGraph());
+                valueNode = ConstantNode.forConstant(b.getSnippetReflection().forObject(value), b.getMetaAccess(), b.getGraph());
                 break;
             default:
                 throw shouldNotReachHere("Unexpected constant kind " + constantInfo);
@@ -499,10 +487,8 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         return true;
     }
 
-    private boolean replaceCFunctionPointerInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-        boolean hosted = method instanceof HostedMethod;
-        AnalysisMethod aMethod = (AnalysisMethod) (hosted ? ((HostedMethod) method).getWrapped() : method);
-        if (CFunctionPointerCallStubSupport.singleton().isStub(aMethod)) {
+    private boolean replaceCFunctionPointerInvoke(GraphBuilderContext b, AnalysisMethod method, ValueNode[] args) {
+        if (CFunctionPointerCallStubSupport.singleton().isStub(method)) {
             return false;
         }
         if (!functionPointerType.isAssignableFrom(method.getDeclaringClass())) {
@@ -510,15 +496,12 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                             " must be in a type that extends " + CFunctionPointer.class.getSimpleName(), method).getMessage());
         }
         assert b.getInvokeKind() == InvokeKind.Interface;
-        ResolvedJavaMethod stub = CFunctionPointerCallStubSupport.singleton().getOrCreateStubForMethod(aMethod);
-        if (hosted) {
-            stub = ((HostedMetaAccess) b.getMetaAccess()).getUniverse().lookup(stub);
-        }
+        AnalysisMethod stub = CFunctionPointerCallStubSupport.singleton().getOrCreateStubForMethod(method);
         b.handleReplacedInvoke(InvokeKind.Static, stub, args, false);
         return true;
     }
 
-    private boolean replaceJavaFunctionPointerInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+    private boolean replaceJavaFunctionPointerInvoke(GraphBuilderContext b, AnalysisMethod method, ValueNode[] args) {
         if (!functionPointerType.isAssignableFrom(method.getDeclaringClass())) {
             throw UserError.abort(new CInterfaceError("Function pointer invocation method " + method.format("%H.%n(%p)") +
                             " must be in a type that extends " + CFunctionPointer.class.getSimpleName(), method).getMessage());
@@ -533,8 +516,8 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         assert argsWithoutReceiver.length == parameterTypes.length;
 
         Stamp returnStamp;
-        if (wordTypes.isWord(b.getInvokeReturnType())) {
-            returnStamp = wordTypes.getWordStamp((ResolvedJavaType) b.getInvokeReturnType());
+        if (b.getWordTypes().isWord(b.getInvokeReturnType())) {
+            returnStamp = b.getWordTypes().getWordStamp((AnalysisType) b.getInvokeReturnType());
         } else {
             returnStamp = b.getInvokeReturnStamp(null).getTrustedStamp();
         }
@@ -545,7 +528,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         return true;
     }
 
-    public static JavaKind pushKind(ResolvedJavaMethod method) {
+    public static JavaKind pushKind(AnalysisMethod method) {
         return method.getSignature().getReturnKind().getStackKind();
     }
 }

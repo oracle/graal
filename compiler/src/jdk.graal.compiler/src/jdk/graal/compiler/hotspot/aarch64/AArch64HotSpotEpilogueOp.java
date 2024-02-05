@@ -42,7 +42,6 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.aarch64.AArch64BlockEndOp;
 import jdk.graal.compiler.lir.aarch64.AArch64Call;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
@@ -71,7 +70,7 @@ abstract class AArch64HotSpotEpilogueOp extends AArch64BlockEndOp {
         assert crb.frameContext != null : "We never elide frames in aarch64";
         crb.frameContext.leave(crb);
         if (requiresReservedStackAccessCheck) {
-            HotSpotForeignCallsProvider foreignCalls = (HotSpotForeignCallsProvider) crb.foreignCalls;
+            HotSpotForeignCallsProvider foreignCalls = (HotSpotForeignCallsProvider) crb.getForeignCalls();
             Label noReserved = new Label();
             try (ScratchRegister sc = masm.getScratchRegister()) {
                 Register scratch = sc.getRegister();

@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import jdk.graal.compiler.core.common.type.TypedConstant;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 
+import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -98,5 +98,18 @@ public class RelocatableConstant implements JavaConstant, TypedConstant {
     @Override
     public int getIdentityHashCode() {
         return 0;
+    }
+
+    @Override
+    public int hashCode() {
+        return pointer.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof RelocatableConstant rc) {
+            return pointer == rc.pointer;
+        }
+        return false;
     }
 }

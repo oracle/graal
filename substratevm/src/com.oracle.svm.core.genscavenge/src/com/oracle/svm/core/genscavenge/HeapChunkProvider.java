@@ -32,7 +32,6 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.HeapChunk.Header;
@@ -68,7 +67,7 @@ final class HeapChunkProvider {
      * head}, but this is OK because we only need the number of chunks for policy code (to avoid
      * running down the list and counting the number of chunks).
      */
-    private final AtomicUnsigned bytesInUnusedAlignedChunks = new AtomicUnsigned();
+    private final AtomicUnsigned numUnusedAlignedChunks = new AtomicUnsigned();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     HeapChunkProvider() {
@@ -76,7 +75,7 @@ final class HeapChunkProvider {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnsignedWord getBytesInUnusedChunks() {
-        return bytesInUnusedAlignedChunks.get();
+        return numUnusedAlignedChunks.get().multiply(HeapParameters.getAlignedHeapChunkSize());
     }
 
     private static final OutOfMemoryError ALIGNED_OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Could not allocate an aligned heap chunk");
@@ -175,13 +174,11 @@ final class HeapChunkProvider {
      */
     private void pushUnusedAlignedChunk(AlignedHeader chunk) {
         assert VMOperation.isGCInProgress();
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            VMThreads.guaranteeOwnsThreadMutex("Should hold the lock when pushing to the global list.");
-        }
+        VMThreads.guaranteeOwnsThreadMutex("Should hold the lock when pushing to the global list.");
 
         HeapChunk.setNext(chunk, unusedAlignedChunks.get());
         unusedAlignedChunks.set(chunk);
-        bytesInUnusedAlignedChunks.addAndGet(HeapParameters.getAlignedHeapChunkSize());
+        numUnusedAlignedChunks.addAndGet(WordFactory.unsigned(1));
     }
 
     /**
@@ -199,7 +196,7 @@ final class HeapChunkProvider {
         if (result.isNull()) {
             return WordFactory.nullPointer();
         } else {
-            bytesInUnusedAlignedChunks.subtractAndGet(HeapParameters.getAlignedHeapChunkSize());
+            numUnusedAlignedChunks.subtractAndGet(WordFactory.unsigned(1));
             return result;
         }
     }
@@ -235,7 +232,7 @@ final class HeapChunkProvider {
             released = released.add(1);
         }
         unusedAlignedChunks.set(chunk);
-        bytesInUnusedAlignedChunks.subtractAndGet(released.multiply(HeapParameters.getAlignedHeapChunkSize()));
+        numUnusedAlignedChunks.subtractAndGet(released);
     }
 
     /** Acquire an UnalignedHeapChunk from the operating system. */

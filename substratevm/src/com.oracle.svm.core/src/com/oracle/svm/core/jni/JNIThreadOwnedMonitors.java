@@ -41,7 +41,7 @@ public class JNIThreadOwnedMonitors {
     @SuppressWarnings("unchecked")
     private static IdentityHashMap<Object, Integer> mutableMap() {
         if (ownedMonitors.get() == null) {
-            ownedMonitors.set(new IdentityHashMap<Object, Integer>());
+            ownedMonitors.set(new IdentityHashMap<>());
         }
         return ownedMonitors.get();
     }

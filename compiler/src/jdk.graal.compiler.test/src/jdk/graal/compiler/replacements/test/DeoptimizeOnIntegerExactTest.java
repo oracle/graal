@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.replacements.test;
 
-import jdk.vm.ci.meta.SpeculationLog;
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.debug.DebugContext;
@@ -36,15 +35,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class DeoptimizeOnIntegerExactTest extends GraalCompilerTest {
 
-    private final SpeculationLog speculationLog;
-
     static boolean highlyLikely = true;
     static boolean highlyUnlikely = false;
-
-    @SuppressWarnings("this-escape")
-    public DeoptimizeOnIntegerExactTest() {
-        speculationLog = getCodeCache().createSpeculationLog();
-    }
 
     public static int testAddExactSnippet(int x, int y) {
         if (highlyLikely) {
@@ -141,14 +133,8 @@ public class DeoptimizeOnIntegerExactTest extends GraalCompilerTest {
     }
 
     @Override
-    protected SpeculationLog getSpeculationLog() {
-        speculationLog.collectFailedSpeculations();
-        return speculationLog;
-    }
-
-    @Override
     protected InstalledCode addMethod(DebugContext debug, final ResolvedJavaMethod method, final CompilationResult compilationResult) {
-        assert speculationLog == compilationResult.getSpeculationLog();
+        assert getSpeculationLog() == compilationResult.getSpeculationLog();
         return getBackend().createInstalledCode(debug, method, compilationResult, null, false);
     }
 }

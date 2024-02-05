@@ -50,7 +50,7 @@ import com.oracle.svm.core.util.VMError;
  * This class is almost an abstract base class for VMMutex. Sub-classes replace instances of VMMutex
  * with platform-specific implementations.
  */
-public class VMMutex {
+public class VMMutex extends VMLockingPrimitive {
     static final UnsignedWord UNSPECIFIED_OWNER = WordFactory.unsigned(-1);
 
     private final String name;

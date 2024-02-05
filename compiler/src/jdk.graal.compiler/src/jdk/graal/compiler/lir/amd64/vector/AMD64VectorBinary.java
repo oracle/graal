@@ -30,8 +30,10 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import jdk.graal.compiler.asm.amd64.AMD64Address;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRRIOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVROp;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.asm.amd64.AVXKind;
 import jdk.graal.compiler.debug.Assertions;
@@ -153,6 +155,29 @@ public class AMD64VectorBinary {
                 crb.recordImplicitException(masm.position(), state);
             }
             opcode.emit(masm, size, asRegister(result), asRegister(x), y.toAddress());
+        }
+    }
+
+    public static final class AVXOpMaskBinaryOp extends AMD64VectorInstruction {
+        public static final LIRInstructionClass<AVXOpMaskBinaryOp> TYPE = LIRInstructionClass.create(AVXOpMaskBinaryOp.class);
+
+        @Opcode private final VexRVROp opcode;
+
+        @Def({OperandFlag.REG}) protected AllocatableValue result;
+        @Use({OperandFlag.REG}) protected AllocatableValue x;
+        @Use({OperandFlag.REG}) protected AllocatableValue y;
+
+        public AVXOpMaskBinaryOp(AMD64Assembler.VexRVROp opcode, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue x, AllocatableValue y) {
+            super(TYPE, size);
+            this.opcode = opcode;
+            this.result = result;
+            this.x = x;
+            this.y = y;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            opcode.emit(masm, size, asRegister(result), asRegister(x), asRegister(y));
         }
     }
 }

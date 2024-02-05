@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.ameta;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -36,6 +35,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.GraalAccess;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -85,13 +85,8 @@ final class AnalysisMethodHandleAccessProvider implements MethodHandleAccessProv
         return analysisUniverse.lookup(method);
     }
 
-    private JavaConstant toOriginalConstant(JavaConstant c) {
-        JavaConstant constant = c;
-        if (constant instanceof ImageHeapConstant imageHeapConstant) {
-            constant = imageHeapConstant.getHostedObject();
-        }
-
-        if (constant == null) {
+    private JavaConstant toOriginalConstant(JavaConstant constant) {
+        if (constant instanceof ImageHeapConstant imageHeapConstant && !imageHeapConstant.isBackedByHostedObject()) {
             return null;
         }
         Object obj = analysisUniverse.getSnippetReflection().asObject(Object.class, constant);

@@ -641,7 +641,7 @@ Finally, on native images, `--vm.XX:+TraceDeoptimizationDetails` prints addition
 ```
 
 You might notice the presence of a `debugId` or `debug_id` in the output of these options.
-This id might only be set if you also enable dumping, e.g., via `--vm.Dgraal.Dump=Truffle:1` (see below).
+This id might only be set if you also enable dumping, e.g., via `--vm.Djdk.graal.Dump=Truffle:1` (see below).
 In that case, the debug id will correspond to the id of a node in the IGV graph.
 First, open the first phase of the relevant compilation.
 That id can be searched via `id=NUMBER` in IGV's `Search in Nodes` search box,
@@ -663,17 +663,17 @@ The `--engine.TraceCompilation` option also shows CallTarget invalidations with 
 
 The [Ideal Graph Visualizer (IGV)](../../docs/tools/ideal-graph-visualizer.md) is a tool to understand Truffle ASTs and the Graal Compiler graphs.
 
-A typical usage is to run with `--vm.Dgraal.Dump=Truffle:1 --vm.Dgraal.PrintGraph=Network`, which will show you Truffle ASTs, guest-language call graphs, and the Graal graphs as they leave the Truffle phase.
-If the `-Dgraal.PrintGraph=Network` flag is omitted then the dump files are placed in the `graal_dumps` directory, which you should then open in IGV.
+A typical usage is to run with `--vm.Djdk.graal.Dump=Truffle:1 --vm.Djdk.graal.PrintGraph=Network`, which will show you Truffle ASTs, guest-language call graphs, and the Graal graphs as they leave the Truffle phase.
+If the `-Djdk.graal.PrintGraph=Network` flag is omitted then the dump files are placed in the `graal_dumps` directory, which you should then open in IGV.
 
-Use `--vm.Dgraal.Dump=Truffle:2` to dump Graal graphs between each compiler phase.
+Use `--vm.Djdk.graal.Dump=Truffle:2` to dump Graal graphs between each compiler phase.
 
 ## C1 Visualizer
 
 The C1 Visualizer is a tool to understand the Low Level IR (LIR), register allocation, and
 code generation stages of GraalVM. It is available [here](http://lafo.ssw.uni-linz.ac.at/c1visualizer/).
 
-A typical usage is `--vm.Dgraal.Dump=:3`.
+A typical usage is `--vm.Djdk.graal.Dump=:3`.
 Files are put into a `graal_dumps` directory which you should then open in the C1 Visualizer.
 
 ## Disassembler
@@ -681,7 +681,7 @@ Files are put into a `graal_dumps` directory which you should then open in the C
 THe `--vm.XX:+UnlockDiagnosticVMOptions --vm.XX:+PrintAssembly` commands combination prints assembly code.
 You will need to install `hsdis` using `mx hsdis` in `graal/compiler`, or manually install it into the current directory from [here](https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/hsdis/intel/).
 
-Typical usage is `--vm.Dgraal.Dump --vm.Dgraal.PrintBackendCFG=true`. Files are
+Typical usage is `--vm.Djdk.graal.Dump --vm.Djdk.graal.PrintBackendCFG=true`. Files are
 put into a `graal_dumps` directory which you should then open in the
 C1 Visualizer.
 

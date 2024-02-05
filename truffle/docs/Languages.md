@@ -13,6 +13,7 @@ The following language implementations exist already:
 * [FastR](https://github.com/graalvm/fastr), an implementation of GNU R. *
 * [Graal.js](https://github.com/graalvm/graaljs), an ECMAScript 2020 compliant JavaScript implementation. *
 * [GraalPy](https://github.com/graalvm/graalpython), an early-stage implementation of Python. *
+* [GraalWasm](https://github.com/oracle/graal/tree/master/wasm), a compliant WebAssembly implementation. *
 * [grCUDA](https://github.com/NVIDIA/grcuda), a polyglot CUDA integration.
 * [SimpleLanguage](https://github.com/graalvm/simplelanguage), a toy language implementation to demonstrate Truffle features.
 * [SOMns](https://github.com/smarr/SOMns), a Newspeak implementation for Concurrency Research.
@@ -35,6 +36,7 @@ The following language implementations exist already:
 * [DynSem](https://github.com/metaborg/dynsem), a DSL for declarative specification of dynamic semantics of languages.
 * [Heap Language](https://github.com/jaroslavtulach/heapdump), a tutorial showing the embedding of Truffle languages via interoperability.
 * [hextruffe](https://bitbucket.org/hexafraction/truffles), an implementation of Hex.
+* [islisp-truffle](https://github.com/arvyy/islisp-truffle), an implemention of the ISLISP 2007 standard.
 * [LuaTruffle](https://github.com/lucasallan/LuaTruffle), an implementation of the Lua language.
 * [Mozart-Graal](https://github.com/eregon/mozart-graal), an implementation of the Oz programming language.
 * [Mumbler](https://github.com/cesquivias/mumbler), an experimental Lisp programming language.

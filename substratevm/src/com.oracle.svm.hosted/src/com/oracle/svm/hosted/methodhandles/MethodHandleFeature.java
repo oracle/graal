@@ -33,11 +33,11 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -53,6 +53,7 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import sun.invoke.util.ValueConversions;
 import sun.invoke.util.Wrapper;
 
@@ -312,7 +313,7 @@ public class MethodHandleFeature implements InternalFeature {
         String srcType = src.primitiveSimpleName();
         String destType = dest.primitiveSimpleName();
         /* Capitalize first letter of destination type */
-        return srcType + "To" + destType.substring(0, 1).toUpperCase() + destType.substring(1);
+        return srcType + "To" + destType.substring(0, 1).toUpperCase(Locale.ENGLISH) + destType.substring(1);
     }
 
     private static void registerValueConversionIgnoreForReflection(DuringAnalysisAccess access) {
@@ -417,6 +418,6 @@ public class MethodHandleFeature implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        assert substitutionProcessor.checkAllTypeNames();
+        assert substitutionProcessor == null || substitutionProcessor.checkAllTypeNames();
     }
 }

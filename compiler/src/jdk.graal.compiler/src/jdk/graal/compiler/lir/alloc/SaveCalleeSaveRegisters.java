@@ -38,7 +38,6 @@ import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.MoveFactory;
 import jdk.graal.compiler.lir.phases.PreAllocationOptimizationPhase;
 import jdk.graal.compiler.lir.util.RegisterMap;
-
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;
@@ -71,7 +70,7 @@ public class SaveCalleeSaveRegisters extends PreAllocationOptimizationPhase {
     private static RegisterMap<Variable> saveAtEntry(LIR lir, LIRGeneratorTool lirGen, LIRGenerationResult lirGenRes, RegisterArray calleeSaveRegisters, Architecture arch) {
         BasicBlock<?> startBlock = lir.getControlFlowGraph().getStartBlock();
         ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(startBlock);
-        int insertionIndex = 1;
+        int insertionIndex = lirGenRes.getFirstInsertPosition();
         LIRInsertionBuffer buffer = new LIRInsertionBuffer();
         buffer.init(instructions);
         StandardOp.LabelOp entry = (StandardOp.LabelOp) instructions.get(insertionIndex - 1);

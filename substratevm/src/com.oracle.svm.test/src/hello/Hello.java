@@ -237,9 +237,9 @@ public class Hello {
         noInlinePassConstants();
         System.out.println(lambda.get());
         // create and manipulate some foreign types
-        CStructTests tests = new CStructTests();
-        tests.composite();
-        tests.weird();
+        CStructTests.composite();
+        CStructTests.weird();
+        CStructTests.mixedArguments();
         System.exit(0);
     }
     /*

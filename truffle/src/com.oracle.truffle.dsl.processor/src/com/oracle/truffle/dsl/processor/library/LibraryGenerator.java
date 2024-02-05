@@ -779,14 +779,13 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         builder = implConstructor.createBuilder();
         builder.startStatement();
         builder.startSuperCall().staticReference(libraryClassLiteral);
-        builder.startStaticCall(context.getType(Collections.class), "unmodifiableList");
-        builder.startStaticCall(context.getType(Arrays.class), "asList");
+        builder.startStaticCall(context.getType(List.class), "of");
         for (MessageObjects message : methods) {
             if (message.messageField != null) {
                 builder.field(null, message.messageField);
             }
         }
-        builder.end().end(); // unmodfiiableList, asList
+        builder.end(); // of
         builder.end(); // superCall
         builder.end(); // statement
 

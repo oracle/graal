@@ -154,7 +154,7 @@ public class NestedLoopEffectsPhaseComplexityTest extends GraalCompilerTest {
 
     private StructuredGraph parseBytecodes(ResolvedJavaMethod method, HighTierContext context, CanonicalizerPhase canonicalizer) {
         OptionValues options = getInitialOptions();
-        StructuredGraph newGraph = new StructuredGraph.Builder(options, getDebugContext(options, null, method), AllowAssumptions.NO).method(method).build();
+        StructuredGraph newGraph = new StructuredGraph.Builder(options, getDebugContext(options, null, method), AllowAssumptions.NO).method(method).speculationLog(getSpeculationLog()).build();
         context.getGraphBuilderSuite().apply(newGraph, context);
         new DeadCodeEliminationPhase(Optional).apply(newGraph);
         canonicalizer.apply(newGraph, context);

@@ -594,7 +594,7 @@ public class UninterruptibleUtils {
          * Writes the encoded {@code string} into the given {@code buffer} using the modified UTF8
          * encoding (null characters that are present in the input will be encoded in a way that
          * they do not interfere with the null terminator).
-         * 
+         *
          * @return pointer on new position in buffer.
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -604,8 +604,13 @@ public class UninterruptibleUtils {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static Pointer toModifiedUTF8(java.lang.String string, Pointer buffer, Pointer bufferEnd, boolean addNullTerminator, CharReplacer replacer) {
+            return toModifiedUTF8(string, string.length(), buffer, bufferEnd, addNullTerminator, replacer);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static Pointer toModifiedUTF8(java.lang.String string, int stringLength, Pointer buffer, Pointer bufferEnd, boolean addNullTerminator, CharReplacer replacer) {
             Pointer pos = buffer;
-            for (int index = 0; index < string.length(); index++) {
+            for (int index = 0; index < stringLength; index++) {
                 char ch = StringUtil.charAt(string, index);
                 if (replacer != null) {
                     ch = replacer.replace(ch);

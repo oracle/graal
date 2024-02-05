@@ -30,20 +30,24 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.core.common.util.FieldKey;
-import jdk.graal.compiler.core.common.util.MethodKey;
-import jdk.graal.compiler.hotspot.HotSpotGraalServices;
-import jdk.graal.compiler.nodes.EncodedGraph;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.truffle.PartialEvaluator;
-import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
-import jdk.graal.compiler.truffle.TruffleElementCache;
 
 import com.oracle.truffle.compiler.ConstantFieldInfo;
 import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
 
+import jdk.graal.compiler.core.common.util.FieldKey;
+import jdk.graal.compiler.core.common.util.MethodKey;
+import jdk.graal.compiler.hotspot.HotSpotGraalServices;
+import jdk.graal.compiler.hotspot.HotSpotGraphBuilderInstance;
+import jdk.graal.compiler.java.GraphBuilderPhase;
+import jdk.graal.compiler.nodes.EncodedGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.truffle.PartialEvaluator;
+import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
+import jdk.graal.compiler.truffle.TruffleElementCache;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -74,6 +78,11 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
 
     public int getJvmciReservedReference0Offset() {
         return jvmciReservedReference0Offset;
+    }
+
+    @Override
+    protected GraphBuilderPhase.Instance createGraphBuilderPhaseInstance(CoreProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
+        return new HotSpotGraphBuilderInstance(providers, graphBuilderConfig, optimisticOpts, null);
     }
 
     @Override

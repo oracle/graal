@@ -1,8 +1,8 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion": "6.27.1",
+    "mxversion": "7.5.0",
     "name": "substratevm",
-    "version" : "24.0.0",
+    "version" : "24.1.0",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -194,6 +194,14 @@ suite = {
                 }
             }
         },
+        "SVM_TEST_RESOURCE_WITH_SPACE": {
+            # This jar only contains a resource with a space in its path.
+            # We cannot have folder with spaces in the source tree, as it
+            # does not work well with certain build tools, for example
+            # make. [GR-50375]
+            "path": "mx.substratevm/jar-with-space-in-resource-dir.jar",
+            "digest": "sha512:270bffd158c92b04b16db147f4ef336dcb4d830bf3503cc25be1227b351597a3254544b3c4a5183dcc53f2f3ab10b282722dbf7f1b5e9d9a2741878a7057eb40",
+        },
     },
 
     "projects": {
@@ -297,6 +305,7 @@ suite = {
                     "jdk.internal.reflect",
                     "jdk.internal.vm",
                     "jdk.internal.util",
+                    "jdk.internal.org.objectweb.asm",
                 ],
                 "java.management": [
                     "com.sun.jmx.mbeanserver",
@@ -681,13 +690,13 @@ suite = {
                 "jdk.internal.vm.ci" : [
                 ],
             },
-            "javaCompliance" : "21+",
-            "javaPreviewNeeded": "21+",
+            "javaCompliance" : "22+",
+            # GR-51699
+            "forceJavac": True,
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javac.lint.overrides": "-preview",
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
             "jacoco" : "include",
@@ -711,13 +720,13 @@ suite = {
                     "jdk.vm.ci.code"
                 ],
             },
-            "javaCompliance" : "21+",
-            "javaPreviewNeeded": "21+",
+            "javaCompliance" : "22+",
+            # GR-51699
+            "forceJavac": True,
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javac.lint.overrides": "-preview",
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
             "jacoco" : "include",
@@ -732,21 +741,21 @@ suite = {
         "com.oracle.svm.native.libchelper": {
             "subDir": "src",
             "native": "static_lib",
-            "os_arch": {
+            "multitarget": {
+                "libc": ["glibc", "musl", "default"],
+            },
+            "os": {
                 "solaris": {
-                    "<others>": {
-                        "ignore": "solaris is not supported",
-                    },
+                    "ignore": "solaris is not supported",
                 },
                 "windows": {
-                    "<others>": {
-                        "cflags": ["-Zi", "-O2", "-D_LITTLE_ENDIAN"],
-                    },
+                    "cflags": ["-Zi", "-O2", "-D_LITTLE_ENDIAN"],
+                },
+                "linux": {
+                    "cflags": ["-g", "-gdwarf-4", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
                 },
                 "<others>": {
-                    "<others>": {
-                        "cflags": ["-g", "-gdwarf-4", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
-                    },
+                    "cflags": ["-g", "-gdwarf-4", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
                 },
             },
             "jacoco" : "exclude",
@@ -796,21 +805,18 @@ suite = {
             "native": "static_lib",
             "deliverable" : "jvm",
             "use_jdk_headers" : True,
-            "os_arch" : {
+            "multitarget": {
+                "libc": ["glibc", "musl", "default"],
+            },
+            "os" : {
                 "darwin": {
-                    "<others>" : {
-                        "cflags": ["-g", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden"],
-                    },
+                    "cflags": ["-g", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden"],
                 },
                 "linux": {
-                    "<others>" : {
-                        "cflags": ["-g", "-gdwarf-4", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0", "-D_GNU_SOURCE"],
-                    },
+                    "cflags": ["-g", "-gdwarf-4", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0", "-D_GNU_SOURCE"],
                 },
                 "<others>": {
-                    "<others>": {
-                        "ignore": "only darwin and linux are supported",
-                    },
+                    "ignore": "only darwin and linux are supported",
                 },
             },
             "dependencies": [
@@ -936,6 +942,24 @@ suite = {
             },
             "checkstyle": "com.oracle.svm.test",
             "checkstyleVersion" : "10.7.0",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "SVM_PROCESSOR",
+            ],
+            "javaCompliance" : "21+",
+            "spotbugs": "false",
+            "jacoco" : "exclude",
+        },
+
+        "com.oracle.svm.with.space.test": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "mx:JUNIT_TOOL",
+                "sdk:NATIVEIMAGE",
+            ],
+            "checkstyle": "com.oracle.svm.test",
             "workingSets": "SVM",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -1373,6 +1397,7 @@ suite = {
             ],
             "javaCompliance" : "21+",
             "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
         },
     },
 
@@ -1435,6 +1460,7 @@ suite = {
                             org.graalvm.nativeimage.foreign,
                             org.graalvm.truffle.runtime.svm,
                             com.oracle.truffle.enterprise.svm""",
+                    "com.oracle.svm.hosted.c.libc to com.oracle.graal.sandbox",
                 ],
                 "opens" : [
                     "com.oracle.svm.core                          to jdk.graal.compiler",
@@ -1603,6 +1629,16 @@ suite = {
             },
         },
 
+        "TRUFFLE_RUNTIME_SVM_VERSION": {
+            "type": "dir",
+            "platformDependent": False,
+            "layout": {
+                "META-INF/graalvm/org.graalvm.truffle.runtime.svm/version": "dependency:sdk:VERSION/version",
+            },
+            "description": "SVM Runtime for Truffle version.",
+            "maven": False,
+        },
+
         "TRUFFLE_RUNTIME_SVM": {
             "subDir": "src",
             "description" : "SVM Runtime for Truffle languages.",
@@ -1611,6 +1647,7 @@ suite = {
                 "com.oracle.svm.truffle.nfi",
                 "com.oracle.svm.truffle.nfi.posix",
                 "com.oracle.svm.truffle.nfi.windows",
+                "TRUFFLE_RUNTIME_SVM_VERSION",
             ],
             "distDependencies": [
                 "SVM",
@@ -1718,13 +1755,30 @@ suite = {
                 "darwin-amd64",
                 "windows-amd64",
             ],
-            "layout": {
-                "<os>-<arch>/": [
-                    "dependency:com.oracle.svm.native.libchelper/*",
-                    "dependency:com.oracle.svm.native.darwin/*",
-                    "dependency:com.oracle.svm.native.jvm.posix/*",
-                    "dependency:com.oracle.svm.native.jvm.windows/*",
-                ],
+            "os": {
+                "linux": {
+                    "layout": {
+                        # on linux we want os-arch/libc directory structure
+                        "./": [
+                            "dependency:com.oracle.svm.native.libchelper/*",
+                            "dependency:com.oracle.svm.native.jvm.posix/*",
+                        ],
+                    },
+                },
+                "<others>": {
+                    "layout": {
+                        # on all other os's we don't want libc specific subdirectories
+                        "include/": [
+                            "dependency:com.oracle.svm.native.libchelper/include/*",
+                        ],
+                        "<os>-<arch>/": [
+                            "dependency:com.oracle.svm.native.libchelper/<os>-<arch>/default/*",
+                            "dependency:com.oracle.svm.native.jvm.posix/<os>-<arch>/default/*",
+                            "dependency:com.oracle.svm.native.darwin/*",
+                            "dependency:com.oracle.svm.native.jvm.windows/*",
+                        ],
+                    },
+                },
             },
             "description" : "SubstrateVM image builder native components",
             "noMavenJavadoc": True,
@@ -1982,6 +2036,7 @@ suite = {
             "com.oracle.svm.test",
             "com.oracle.svm.configure.test",
             "com.oracle.svm.graal.test",
+            "SVM_TEST_RESOURCE_WITH_SPACE",
           ],
           "distDependencies": [
             "mx:JUNIT_TOOL",
@@ -1990,6 +2045,21 @@ suite = {
             "SVM_CONFIGURE",
           ],
           "testDistribution" : True,
+        },
+
+        # Special test distribution used for testing inclusion of resources from jar files with a space in their name.
+        # The space in the distribution name is intentional.
+        "SVM_TESTS WITH SPACE" : {
+            "subDir": "src",
+            "relpath" : True,
+            "dependencies" : [
+                "com.oracle.svm.with.space.test",
+            ],
+            "distDependencies": [
+                "sdk:NATIVEIMAGE",
+                "mx:JUNIT_TOOL",
+            ],
+            "testDistribution" : True,
         },
 
         "POLYGLOT_NATIVE_API" : {
@@ -2002,7 +2072,16 @@ suite = {
                 "sdk:POLYGLOT",
                 "SVM",
             ],
-            "maven": False
+            "moduleInfo" : {
+                "name" : "org.graalvm.polyglot.nativeapi",
+                "requires" : [
+                    "org.graalvm.polyglot",
+                    "org.graalvm.nativeimage",
+                    "org.graalvm.nativeimage.builder",
+                ],
+            },
+            "useModulePath": True,
+            "maven": False,
         },
 
         "POLYGLOT_NATIVE_API_HEADERS" : {
@@ -2117,13 +2196,13 @@ suite = {
                     "org.graalvm.nativeimage.builder"
                 ],
                 "exports" : [
-                    "* to org.graalvm.nativeimage.builder",
+                    "* to org.graalvm.nativeimage.builder"
                 ],
                 "requiresConcealed": {
                     "jdk.internal.vm.ci" : [
                         "jdk.vm.ci.meta",
                         "jdk.vm.ci.code",
-                    	"jdk.vm.ci.amd64",
+                        "jdk.vm.ci.amd64",
                     ],
                     "java.base": [
                         "jdk.internal.foreign",

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -72,6 +72,7 @@ import com.oracle.svm.core.ClassLoaderSupport.ResourceCollector;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.configure.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
@@ -87,13 +88,14 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
+import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -159,20 +161,14 @@ public final class ResourcesFeature implements InternalFeature {
     private int loadedConfigurations;
     private ImageClassLoader imageClassLoader;
 
-    private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry {
-        private final ConfigurationTypeResolver configurationTypeResolver;
+    private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry<ConfigurationCondition> {
         private final Set<String> alreadyAddedResources = new HashSet<>();
 
-        ResourcesRegistryImpl(ConfigurationTypeResolver configurationTypeResolver) {
-            this.configurationTypeResolver = configurationTypeResolver;
+        ResourcesRegistryImpl() {
         }
 
         @Override
         public void addResources(ConfigurationCondition condition, String pattern) {
-            if (configurationTypeResolver.resolveConditionType(condition.getTypeName()) == null) {
-                return;
-            }
-
             try {
                 resourcePatternWorkSet.add(new ConditionalPattern(condition, pattern));
             } catch (UnsupportedOperationException e) {
@@ -201,10 +197,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void ignoreResources(ConfigurationCondition condition, String pattern) {
-            if (configurationTypeResolver.resolveConditionType(condition.getTypeName()) == null) {
-                return;
-            }
-            registerConditionalConfiguration(condition, () -> {
+            registerConditionalConfiguration(condition, (cnd) -> {
                 UserError.guarantee(!sealed, "Resources ignored too late: %s", pattern);
 
                 excludedResourcePatterns.add(pattern);
@@ -213,26 +206,17 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void addResourceBundles(ConfigurationCondition condition, String name) {
-            if (configurationTypeResolver.resolveConditionType(condition.getTypeName()) == null) {
-                return;
-            }
-            registerConditionalConfiguration(condition, () -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(name));
+            registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(name));
         }
 
         @Override
         public void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className) {
-            if (configurationTypeResolver.resolveConditionType(condition.getTypeName()) == null) {
-                return;
-            }
-            registerConditionalConfiguration(condition, () -> ImageSingletons.lookup(LocalizationFeature.class).prepareClassResourceBundle(basename, className));
+            registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareClassResourceBundle(basename, className));
         }
 
         @Override
         public void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales) {
-            if (configurationTypeResolver.resolveConditionType(condition.getTypeName()) == null) {
-                return;
-            }
-            registerConditionalConfiguration(condition, () -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(basename, locales));
+            registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(basename, locales));
         }
 
         /*
@@ -281,12 +265,12 @@ public final class ResourcesFeature implements InternalFeature {
                     }
                 }
 
-                InputStream is = module.getResourceAsStream(resourcePath);
                 boolean isDirectory = Files.isDirectory(Path.of(resourcePath));
                 if (isDirectory) {
                     String content = getDirectoryContent(resourcePath, false);
                     Resources.singleton().registerDirectoryResource(module, resourcePath, content, false);
                 } else {
+                    InputStream is = module.getResourceAsStream(resourcePath);
                     registerResource(module, resourcePath, false, is);
                 }
             } catch (IOException e) {
@@ -307,16 +291,23 @@ public final class ResourcesFeature implements InternalFeature {
                 throw VMError.shouldNotReachHere("getResources for resourcePath " + resourcePath + " failed", e);
             }
 
+            // getResources could return same entry that was found by different(parent) classLoaders
+            Set<String> alreadyProcessedResources = new HashSet<>();
             while (urls.hasMoreElements()) {
                 URL url = urls.nextElement();
+                if (alreadyProcessedResources.contains(url.toString())) {
+                    continue;
+                }
+
+                alreadyProcessedResources.add(url.toString());
                 try {
-                    InputStream is = url.openStream();
                     boolean fromJar = url.getProtocol().equalsIgnoreCase("jar");
                     boolean isDirectory = resourceIsDirectory(url, fromJar, resourcePath);
                     if (isDirectory) {
                         String content = getDirectoryContent(fromJar ? url.toString() : Paths.get(url.toURI()).toString(), fromJar);
                         Resources.singleton().registerDirectoryResource(null, resourcePath, content, fromJar);
                     } else {
+                        InputStream is = url.openStream();
                         registerResource(null, resourcePath, fromJar, is);
                     }
                 } catch (IOException e) {
@@ -345,8 +336,8 @@ public final class ResourcesFeature implements InternalFeature {
         /* Util functions for resource attributes calculations */
         private String urlToJarPath(URL url) {
             try {
-                return ((JarURLConnection) url.openConnection()).getJarFileURL().getFile();
-            } catch (IOException e) {
+                return ((JarURLConnection) url.openConnection()).getJarFileURL().toURI().getPath();
+            } catch (IOException | URISyntaxException e) {
                 throw new RuntimeException(e);
             }
         }
@@ -415,7 +406,7 @@ public final class ResourcesFeature implements InternalFeature {
     public void afterRegistration(AfterRegistrationAccess a) {
         FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
         imageClassLoader = access.getImageClassLoader();
-        ResourcesRegistryImpl resourcesRegistry = new ResourcesRegistryImpl(new ConfigurationTypeResolver("resource configuration", imageClassLoader));
+        ResourcesRegistryImpl resourcesRegistry = new ResourcesRegistryImpl();
         ImageSingletons.add(ResourcesRegistry.class, resourcesRegistry);
         ImageSingletons.add(RuntimeResourceSupport.class, resourcesRegistry);
     }
@@ -426,7 +417,10 @@ public final class ResourcesFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        ResourceConfigurationParser parser = new ResourceConfigurationParser(ImageSingletons.lookup(ResourcesRegistry.class), ConfigurationFiles.Options.StrictConfiguration.getValue());
+        ConfigurationConditionResolver<ConfigurationCondition> conditionResolver = new NativeImageConditionResolver(((FeatureImpl.BeforeAnalysisAccessImpl) access).getImageClassLoader(),
+                        ClassInitializationSupport.singleton());
+        ResourceConfigurationParser<ConfigurationCondition> parser = new ResourceConfigurationParser<>(conditionResolver, ResourcesRegistry.singleton(),
+                        ConfigurationFiles.Options.StrictConfiguration.getValue());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "resource",
                         ConfigurationFiles.Options.ResourceConfigurationFiles, ConfigurationFiles.Options.ResourceConfigurationResources,
                         ConfigurationFile.RESOURCES.getFileName());
@@ -551,7 +545,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void addResourceConditionally(Module module, String resourceName, ConfigurationCondition condition) {
-            access.registerReachabilityHandler(e -> addResource(module, resourceName), access.findClassByName(condition.getTypeName()));
+            access.registerReachabilityHandler(e -> addResource(module, resourceName), condition.getType());
         }
 
         @Override
@@ -615,7 +609,7 @@ public final class ResourcesFeature implements InternalFeature {
     }
 
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+    public void registerInvocationPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
         if (!reason.duringAnalysis() || reason == ParsingReason.JITCompilation) {
             return;
         }
@@ -627,11 +621,11 @@ public final class ResourcesFeature implements InternalFeature {
         Method resolveResourceName = ReflectionUtil.lookupMethod(Class.class, "resolveName", String.class);
 
         for (Method method : resourceMethods) {
-            registerResourceRegistrationPlugin(plugins.getInvocationPlugins(), method, snippetReflection, resolveResourceName, reason);
+            registerResourceRegistrationPlugin(plugins.getInvocationPlugins(), method, providers, resolveResourceName, reason);
         }
     }
 
-    private void registerResourceRegistrationPlugin(InvocationPlugins plugins, Method method, SnippetReflectionProvider snippetReflectionProvider, Method resolveResourceName, ParsingReason reason) {
+    private void registerResourceRegistrationPlugin(InvocationPlugins plugins, Method method, Providers providers, Method resolveResourceName, ParsingReason reason) {
         List<Class<?>> parameterTypes = new ArrayList<>();
         assert !Modifier.isStatic(method.getModifiers());
         parameterTypes.add(InvocationPlugin.Receiver.class);
@@ -647,8 +641,8 @@ public final class ResourcesFeature implements InternalFeature {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 try {
                     if (!sealed && receiver.isConstant() && arg.isJavaConstant() && !arg.isNullConstant()) {
-                        Class<?> clazz = snippetReflectionProvider.asObject(Class.class, receiver.get().asJavaConstant());
-                        String resource = snippetReflectionProvider.asObject(String.class, arg.asJavaConstant());
+                        Class<?> clazz = providers.getSnippetReflection().asObject(Class.class, receiver.get().asJavaConstant());
+                        String resource = providers.getSnippetReflection().asObject(String.class, arg.asJavaConstant());
                         String resourceName = (String) resolveResourceName.invoke(clazz, resource);
                         b.add(ReachabilityRegistrationNode.create(() -> RuntimeResourceAccess.addResource(clazz.getModule(), resourceName), reason));
                         return true;

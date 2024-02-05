@@ -66,8 +66,8 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         testHelper(Collections.emptyList(), Arrays.asList("-XX:-TieredCompilation",
                         "-XX:+UseJVMCICompiler",
                         "-XX:JVMCIThreads=1",
-                        "-Dgraal.CompilationFailureAction=ExitVM",
-                        "-Dgraal.CrashAt=TestProgram.*",
+                        "-Djdk.graal.CompilationFailureAction=ExitVM",
+                        "-Djdk.graal.CrashAt=TestProgram.*",
                         "-Xcomp",
                         "-XX:CompileCommand=compileonly,*/TestProgram.print*",
                         TestProgram.class.getName()));
@@ -147,10 +147,10 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         testHelper(Arrays.asList(probes), Arrays.asList("-XX:-TieredCompilation",
                         "-XX:+UseJVMCICompiler",
                         "-XX:JVMCIThreads=1",
-                        "-Dgraal.SystemicCompilationFailureRate=0",
-                        "-Dgraal.CompilationFailureAction=Diagnose",
-                        "-Dgraal.MaxCompilationProblemsPerAction=" + maxProblems,
-                        "-Dgraal.CrashAt=TestProgram.*",
+                        "-Djdk.graal.SystemicCompilationFailureRate=0",
+                        "-Djdk.graal.CompilationFailureAction=Diagnose",
+                        "-Djdk.graal.MaxCompilationProblemsPerAction=" + maxProblems,
+                        "-Djdk.graal.CrashAt=TestProgram.*",
                         "-Xcomp",
                         "-XX:CompileCommand=compileonly,*/TestProgram.print*",
                         TestProgram.class.getName()));
@@ -165,10 +165,10 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         testHelper(Collections.emptyList(),
                         Arrays.asList(
                                         SubprocessUtil.PACKAGE_OPENING_OPTIONS,
-                                        "-Dgraal.CompilationFailureAction=ExitVM",
+                                        "-Djdk.graal.CompilationFailureAction=ExitVM",
                                         "-Dpolyglot.engine.CompilationFailureAction=ExitVM",
                                         "-Dpolyglot.engine.TreatPerformanceWarningsAsErrors=all",
-                                        "-Dgraal.CrashAt=root test1"),
+                                        "-Djdk.graal.CrashAt=root test1"),
                         SLTruffleGraalTestSuite.class.getName(), "test");
     }
 
@@ -184,10 +184,10 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         testHelper(Arrays.asList(probes),
                         Arrays.asList(
                                         SubprocessUtil.PACKAGE_OPENING_OPTIONS,
-                                        "-Dgraal.CompilationFailureAction=Silent",
+                                        "-Djdk.graal.CompilationFailureAction=Silent",
                                         "-Dpolyglot.engine.CompilationFailureAction=ExitVM",
                                         "-Dpolyglot.engine.TreatPerformanceWarningsAsErrors=all",
-                                        "-Dgraal.CrashAt=root test1:PermanentBailout"),
+                                        "-Djdk.graal.CrashAt=root test1:PermanentBailout"),
                         SLTruffleGraalTestSuite.class.getName(), "test");
     }
 
@@ -196,12 +196,12 @@ public class CompilationWrapperTest extends GraalCompilerTest {
     private static void testHelper(List<Probe> initialProbes, List<String> extraVmArgs, String... mainClassAndArgs) throws IOException, InterruptedException {
         final File dumpPath = new File(CompilationWrapperTest.class.getSimpleName() + "_" + System.currentTimeMillis()).getAbsoluteFile();
         List<String> vmArgs = withoutDebuggerArguments(getVMCommandLine());
-        vmArgs.removeIf(a -> a.startsWith("-Dgraal."));
+        vmArgs.removeIf(a -> a.startsWith("-Djdk.graal."));
         vmArgs.remove("-esa");
         vmArgs.remove("-ea");
-        vmArgs.add("-Dgraal.DumpPath=" + dumpPath);
+        vmArgs.add("-Djdk.graal.DumpPath=" + dumpPath);
         // Force output to a file even if there's a running IGV instance available.
-        vmArgs.add("-Dgraal.PrintGraphFile=true");
+        vmArgs.add("-Djdk.graal.PrintGraphFile=true");
         vmArgs.addAll(extraVmArgs);
 
         Subprocess proc = SubprocessUtil.java(vmArgs, mainClassAndArgs);

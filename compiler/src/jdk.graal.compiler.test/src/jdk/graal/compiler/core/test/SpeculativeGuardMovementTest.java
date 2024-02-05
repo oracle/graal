@@ -41,14 +41,8 @@ import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.SpeculationLog;
 
 public class SpeculativeGuardMovementTest extends GraalCompilerTest {
-
-    @Override
-    protected SpeculationLog getSpeculationLog() {
-        return getCodeCache().createSpeculationLog();
-    }
 
     public static void snippet01(int init, int limit, int offset) {
         for (int i = init; GraalDirectives.injectIterationCount(1000, i < limit); i++) {

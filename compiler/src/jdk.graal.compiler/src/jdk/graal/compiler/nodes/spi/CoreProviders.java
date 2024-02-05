@@ -28,7 +28,8 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
-
+import jdk.graal.compiler.word.WordTypes;
+import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -54,7 +55,9 @@ public interface CoreProviders {
 
     LoopsDataProvider getLoopsDataProvider();
 
-    WordVerification getWordVerification();
+    WordTypes getWordTypes();
+
+    CodeCacheProvider getCodeCache();
 
     SnippetReflectionProvider getSnippetReflection();
 }

@@ -68,6 +68,8 @@ public final class HierarchyFilterNode implements ConfigurationFilter {
 
     public static HierarchyFilterNode createInclusiveRoot() {
         HierarchyFilterNode root = new HierarchyFilterNode("");
+        /* Needed to ensure that the empty string is matched by the filter as well. */
+        root.inclusion = Inclusion.Include;
         root.addOrGetChildren("**", ConfigurationFilter.Inclusion.Include);
         return root;
     }

@@ -34,28 +34,50 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import jdk.graal.compiler.java.LambdaUtils;
+import jdk.internal.org.objectweb.asm.ClassVisitor;
+import jdk.internal.org.objectweb.asm.FieldVisitor;
+import jdk.internal.org.objectweb.asm.MethodVisitor;
+import jdk.internal.org.objectweb.asm.Opcodes;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser;
 import com.oracle.svm.core.configure.PredefinedClassesRegistry;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
+import com.oracle.svm.hosted.reflect.ReflectionFeature;
+import com.oracle.svm.util.ModuleSupport;
 
 import jdk.internal.org.objectweb.asm.ClassReader;
 import jdk.internal.org.objectweb.asm.ClassWriter;
+
+import static jdk.internal.org.objectweb.asm.Opcodes.ACC_FINAL;
+import static jdk.internal.org.objectweb.asm.Opcodes.ACC_PUBLIC;
+import static jdk.internal.org.objectweb.asm.Opcodes.ACC_STATIC;
 
 @AutomaticallyRegisteredFeature
 public class ClassPredefinitionFeature implements InternalFeature {
     private final Map<String, PredefinedClass> nameToRecord = new HashMap<>();
     private boolean sealed = false;
+
+    @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        /*
+         * We are registering all predefined lambda classes for reflection. If the reflection
+         * feature is not executed before this feature, class RuntimeReflectionSupport won't be
+         * present in the ImageSingletons.
+         */
+        return List.of(ReflectionFeature.class);
+    }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess arg) {
@@ -72,6 +94,7 @@ public class ClassPredefinitionFeature implements InternalFeature {
         ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "class predefinition",
                         ConfigurationFiles.Options.PredefinedClassesConfigurationFiles, ConfigurationFiles.Options.PredefinedClassesConfigurationResources,
                         ConfigurationFile.PREDEFINED_CLASSES_NAME.getFileName());
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, PredefinedClassesSupport.class, false, "java.base", "jdk.internal.org.objectweb.asm");
     }
 
     @Override
@@ -133,8 +156,20 @@ public class ClassPredefinitionFeature implements InternalFeature {
                 try (InputStream in = PredefinedClassesConfigurationParser.openClassdataStream(baseUri, providedHash)) {
                     data = in.readAllBytes();
                 }
+
                 // Compute our own hash code, the files could have been messed with.
                 String hash = PredefinedClassesSupport.hash(data, 0, data.length);
+
+                if (LambdaUtils.isLambdaClassName(nameInfo)) {
+                    /**
+                     * We have to cut off calculated hash since lambda's name in the bytecode does
+                     * not contain it. Also, the name in the bytecode must match the name we load
+                     * class with, so we have to update it in the bytecode.
+                     */
+                    data = PredefinedClassesSupport.changeLambdaClassName(data, nameInfo.substring(0, nameInfo.indexOf(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING) +
+                                    LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING.length()), nameInfo);
+                    data = makeLambdaInstanceFieldAndConstructorPublic(data);
+                }
 
                 /*
                  * Compute a "canonical hash" that does not incorporate debug information such as
@@ -279,5 +314,35 @@ public class ClassPredefinitionFeature implements InternalFeature {
             }
             pendingSupertypes.add(record);
         }
+    }
+
+    /**
+     * We need to make field LAMBDA_INSTANCE$ and lambda class constructor public in order to be
+     * able to predefine lambda classes so that {@code java.lang.invoke.InnerClassLambdaMetafactory}
+     * can access them.
+     */
+    private static byte[] makeLambdaInstanceFieldAndConstructorPublic(byte[] classBytes) {
+        ClassReader cr = new ClassReader(classBytes);
+        ClassWriter cw = new ClassWriter(cr, 0);
+
+        cr.accept(new ClassVisitor(Opcodes.ASM5, cw) {
+            @Override
+            public FieldVisitor visitField(int access, String name, String descriptor, String signature, Object value) {
+                if (name.equals("LAMBDA_INSTANCE$")) {
+                    return super.visitField(ACC_PUBLIC | ACC_STATIC | ACC_FINAL, name, descriptor, signature, value);
+                }
+                return super.visitField(access, name, descriptor, signature, value);
+            }
+
+            @Override
+            public MethodVisitor visitMethod(final int access, final String name, final String descriptor, final String signature, final String[] exceptions) {
+                if (name.equals("<init>")) {
+                    return super.visitMethod(ACC_PUBLIC, name, descriptor, signature, exceptions);
+                }
+                return super.visitMethod(access, name, descriptor, signature, exceptions);
+            }
+        }, 0);
+
+        return cw.toByteArray();
     }
 }

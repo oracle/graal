@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@ import static com.oracle.truffle.api.strings.TStringGuards.isUnsupportedEncoding
 
 import java.util.Arrays;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -215,7 +214,6 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
      */
     static TruffleStringBuilderGeneric createGeneric(Encoding encoding, int initialCapacity) {
         if (encoding == Encoding.UTF_8 || encoding == Encoding.UTF_16 || encoding == Encoding.UTF_32) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw InternalErrors.illegalArgument("use createUTF* methods for UTF encodings!");
         }
         return new TruffleStringBuilderGeneric(encoding, initialCapacity);

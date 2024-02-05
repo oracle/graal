@@ -50,22 +50,22 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
     LookupProxyKlassNode() {
     }
 
-    public abstract ProxyKlass execute(Object metaObject, String metaName, Klass targetType) throws ClassCastException;
+    public abstract WrappedProxyKlass execute(Object metaObject, String metaName, Klass targetType) throws ClassCastException;
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"targetType == cachedTargetType", "cachedMetaName.equals(metaName)"}, limit = "LIMIT")
-    ProxyKlass doCached(Object metaObject, String metaName, Klass targetType,
+    WrappedProxyKlass doCached(Object metaObject, String metaName, Klass targetType,
                     @Cached("metaObject") Object cachedMetaObject,
                     @Cached("targetType") Klass cachedTargetType,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached("metaName") String cachedMetaName,
-                    @Cached("doUncached(metaObject, metaName, targetType, interop)") ProxyKlass cachedProxyKlass) throws ClassCastException {
+                    @Cached("doUncached(metaObject, metaName, targetType, interop)") WrappedProxyKlass cachedProxyKlass) throws ClassCastException {
         return cachedProxyKlass;
     }
 
     @TruffleBoundary
     @Specialization(replaces = "doCached")
-    ProxyKlass doUncached(Object metaObject, String metaName, Klass targetType,
+    WrappedProxyKlass doUncached(Object metaObject, String metaName, Klass targetType,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws ClassCastException {
         if (!getContext().interfaceMappingsEnabled()) {
             return null;
@@ -81,15 +81,7 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
                     if (!targetType.isAssignableFrom(superKlass)) {
                         throw new ClassCastException("super klass is not instance of expected type: " + targetType.getName());
                     }
-                    /*
-                     * If special handling of generated proxy klasses are required, e.g. if the
-                     * proxy itself can't be a foreign object like EspressoForeignList add a
-                     * subclass of ProxyKlass.
-                     */
-                    if (superKlass == getMeta().polyglot.EspressoForeignList) {
-                        return new WrappedProxyKlass(superKlass, getContext(), superKlass);
-                    }
-                    return new ProxyKlass(superKlass);
+                    return new WrappedProxyKlass(superKlass);
                 }
                 return null;
             }
@@ -100,7 +92,7 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
         if (!targetType.isAssignableFrom(proxyKlass)) {
             throw new ClassCastException("proxy object is not instance of expected type: " + targetType.getName());
         }
-        return proxyBytes.getProxyKlass(getContext(), (ObjectKlass) proxyKlass);
+        return proxyBytes.getProxyKlass((ObjectKlass) proxyKlass);
     }
 
     private static Klass lookupOrDefineInBindingsLoader(EspressoForeignProxyGenerator.GeneratedProxyBytes proxyBytes, EspressoContext context) {

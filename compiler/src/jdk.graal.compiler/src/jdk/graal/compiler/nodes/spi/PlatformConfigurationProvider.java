@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.nodes.spi;
 
+import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 
 public interface PlatformConfigurationProvider {
@@ -37,4 +38,48 @@ public interface PlatformConfigurationProvider {
      * in a byte array.
      */
     boolean canVirtualizeLargeByteArrayAccess();
+
+    /**
+     * Returns whether the underlying VM enforces strict monitorenter order.
+     */
+    default boolean requiresStrictLockOrder() {
+        return false;
+    }
+
+    /**
+     * Returns whether locks of thread local objects are side effect free and can be safely
+     * virtualized.
+     * <p>
+     * The underlying problem is that materializing locks requires creating a
+     * {@link jdk.graal.compiler.nodes.java.MonitorEnterNode} which must have a valid
+     * {@code stateAfter} {@link FrameState}. The {@code stateAfter} chosen is the previous side
+     * effecting state which will may not include the current objects or locks. Even if it does
+     * contain those objects and locks they still virtual since the
+     * {@link jdk.graal.compiler.nodes.virtual.CommitAllocationNode} is in the process of
+     * materializing them. If a deopt occurs using that {@link FrameState} then execution will
+     * resume before those locks are acquired and the objects created by the
+     * {@link jdk.graal.compiler.nodes.virtual.CommitAllocationNode} will be reclaimed by the
+     * garbage collector. In that case the locks may not be released leaving internal lock
+     * bookkeeping in an inconsistent state.
+     * <p>
+     * The trivial example of a piece of code with this problem is this:
+     *
+     * <pre>
+     *     Dummy v = new Dummy();
+     *     v.f1 = 2;
+     *     synchronized (v) {
+     *         v.f1 +;
+     *         sink = v;
+     *     }
+     * </pre>
+     *
+     * The object {@code v} escapes at the store to {@code sink} so the
+     * {@link jdk.graal.compiler.nodes.virtual.CommitAllocationNode} would be materialized just
+     * before that store. The {@code stateAFter} chosen for it will be the previous side effecting
+     * state before the allocation which will obviously doesn't contain those locks. Any deopt using
+     * that state will leave {@code v} to reclaimed.
+     */
+    default boolean areLocksSideEffectFree() {
+        return true;
+    }
 }

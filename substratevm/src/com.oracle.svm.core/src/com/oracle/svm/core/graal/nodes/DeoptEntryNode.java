@@ -80,7 +80,9 @@ public final class DeoptEntryNode extends WithExceptionNode implements DeoptEntr
             exceptionRef = null;
         } else {
             /* Only register exception handler if it is meaningful. */
-            exceptionRef = ((NodeLIRBuilder) gen).getLIRBlock(exceptionNode);
+            NodeLIRBuilder nodeLIRBuilder = (NodeLIRBuilder) gen;
+            exceptionRef = nodeLIRBuilder.getLIRBlock(exceptionNode);
+            exceptionRef.getTargetBlock().setIndirectBranchTarget();
         }
         gen.getLIRGeneratorTool().append(new DeoptEntryOp(((NodeLIRBuilder) gen).stateForWithExceptionEdge(this, stateAfter(), exceptionRef)));
 

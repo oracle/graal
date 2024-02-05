@@ -188,7 +188,7 @@ public class PathUtilities {
         } else {
             prefix = id;
         }
-        for (;;) {
+        for (;;) {  // TERMINATION ARGUMENT: Time stamps make collisions very unlikely.
             int fileNameLengthWithoutLabel = uniqueTag.length() + ext.length() + prefix.length() + "[]".length();
             int labelLengthLimit = MAX_FILE_NAME_LENGTH - fileNameLengthWithoutLabel;
             String fileName;
@@ -229,6 +229,10 @@ public class PathUtilities {
                 }
             } catch (FileAlreadyExistsException e) {
                 uniqueTag = "_" + dumpCounter++;
+                if (dumpCounter > 10) {
+                    /* Try harder to build a unique tag. */
+                    uniqueTag += "_" + System.nanoTime();
+                }
             }
         }
     }

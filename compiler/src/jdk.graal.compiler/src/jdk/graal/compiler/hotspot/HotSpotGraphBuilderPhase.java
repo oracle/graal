@@ -37,6 +37,11 @@ public class HotSpotGraphBuilderPhase extends GraphBuilderPhase {
     }
 
     @Override
+    public GraphBuilderPhase copyWithConfig(GraphBuilderConfiguration config) {
+        return new HotSpotGraphBuilderPhase(config);
+    }
+
+    @Override
     protected Instance createInstance(CoreProviders providers, GraphBuilderConfiguration instanceGBConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
         return new HotSpotGraphBuilderInstance(providers, instanceGBConfig, optimisticOpts, initialIntrinsicContext);
     }

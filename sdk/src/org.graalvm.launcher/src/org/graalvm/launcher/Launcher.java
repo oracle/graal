@@ -1378,8 +1378,8 @@ public abstract class Launcher {
         // Only parses --jvm/--native to find the VMType and --vm.* to pass/set the VM options.
 
         private void setNativeOption(String arg) {
-            if (arg.startsWith("Dgraal.")) {
-                setGraalStyleRuntimeOption(arg.substring("Dgraal.".length()));
+            if (arg.startsWith("Djdk.graal.")) {
+                setGraalStyleRuntimeOption(arg.substring("Djdk.graal.".length()));
             } else if (arg.startsWith("D")) {
                 setSystemProperty(arg.substring("D".length()));
             } else if (arg.startsWith("XX:")) {

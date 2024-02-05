@@ -61,22 +61,28 @@ class ShadedLibraryProject(mx.JavaProject):
         ],
         "shade": {
             "packages" : {
-                # a list of package name/path prefixes that should be shaded.
+                # a dict of package name/path prefixes that should be shaded.
                 # only .java/.class files that are in one of these packages are included.
                 # package names must contain at least one '.' (i.e., two package parts).
                 "old.pkg.name": "new.pkg.name",
             },
-            "include" : [
-                # a list of resource path patterns that should be copied.
-                # by default, only shaded .java/.class files are included.
+            "include" : {
+                # either: a list/set of path glob patterns of resources that should be copied.
+                # package-prefixed paths are automatically replaced according to "packages".
                 "pkg/name/**",
-            ],
+                # or: a dict of resources that should be copied in the form of:
+                # {"path glob pattern" : {"path prefix" : "substitution"}}
+                "old/path/prefix/*.res" : {
+                    "old/path/prefix" : "new/path/prefix",
+                },
+                # by default, only shaded .java/.class files are included.
+            },
             "exclude" : [
                 # a list of (re)source path patterns that should be excluded from the generated jar
                 "**/*.html",
             ],
             "patch" : {
-                # a list of (re)source path patterns that should be patched with regex substitutions
+                # a dict of (re)source path patterns that should be patched with regex substitutions
                 "pkg/name/my.properties" : {
                     "<pattern>" : "<replacement>",
                 },
@@ -121,7 +127,8 @@ class ShadedLibraryProject(mx.JavaProject):
         return self.shade.get('packages', {})
 
     def included_paths(self):
-        return self.shade.get('include', [])
+        includes = self.shade.get('include', {})
+        return includes if isinstance(includes, dict) else {i: None for i in includes}
 
     def excluded_paths(self):
         return self.shade.get('exclude', [])
@@ -196,6 +203,8 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
                 continue
 
             for zipFilePath, outDir in [(srcFilePath, proj.source_gen_dir())]:
+                excludedPaths = proj.excluded_paths()
+                includedPaths = proj.included_paths()
                 try:
                     with zipfile.ZipFile(zipFilePath, 'r') as zf:
                         for zi in zf.infolist():
@@ -204,12 +213,14 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
 
                             old_filename = zi.filename
                             filepath = PurePosixPath(old_filename)
-                            if any(glob_match(filepath, i) for i in proj.excluded_paths()):
-                                continue
-                            if filepath.suffix not in ['.java', '.class'] and not any(glob_match(filepath, i) for i in proj.included_paths()):
+                            if any(glob_match(filepath, i) for i in excludedPaths):
                                 continue
 
-                            new_filename = proj.substitute_path(old_filename)
+                            path_mappings = None
+                            if filepath.suffix not in ['.java', '.class'] and not any((i, path_mappings := m) for (i, m) in includedPaths.items() if glob_match(filepath, i)):
+                                continue
+
+                            new_filename = proj.substitute_path(old_filename, mappings=path_mappings)
                             src_gen_path = os.path.join(outDir, new_filename)
                             if filepath.suffix == '.java':
                                 javafiles.setdefault(src_gen_path, os.path.join(binDir, new_filename[:-len('.java')] + '.class'))
@@ -222,9 +233,9 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
     def build(self):
         dist = self.subject
         shadedDeps = dist.shaded_deps()
+        excludedPaths = dist.excluded_paths()
         includedPaths = dist.included_paths()
         patch = dist.shade.get('patch', {})
-        excludedPaths = dist.excluded_paths()
 
         binDir = dist.output_dir()
         srcDir = dist.source_gen_dir()
@@ -261,11 +272,12 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
                             mx.logv(f'ignoring file {old_filename} (matches {", ".join(i for i in excludedPaths if glob_match(filepath, i))})')
                             continue
 
-                        if filepath.suffix not in ['.java', '.class'] and not any(glob_match(filepath, i) for i in includedPaths):
+                        path_mappings = None
+                        if filepath.suffix not in ['.java', '.class'] and not any((i, path_mappings := m) for (i, m) in includedPaths.items() if glob_match(filepath, i)):
                             mx.warn(f'file {old_filename} is not included (if this is intended, please add the file to the exclude list)')
                             continue
 
-                        new_filename = dist.substitute_path(old_filename)
+                        new_filename = dist.substitute_path(old_filename, mappings=path_mappings)
                         applicableSubs = []
 
                         if filepath.suffix == '.java':

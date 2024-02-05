@@ -70,6 +70,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+import org.graalvm.home.Version;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
@@ -168,6 +169,10 @@ import jdk.vm.ci.services.Services;
 public abstract class OptimizedTruffleRuntime implements TruffleRuntime, TruffleCompilerRuntime {
 
     private static final int JAVA_SPECIFICATION_VERSION = Runtime.version().feature();
+    public static final Version MIN_COMPILER_VERSION = Version.create(23, 1, 2);
+    public static final int MIN_JDK_VERSION = 21;
+    public static final int MAX_JDK_VERSION = 25;
+    public static final Version NEXT_VERSION_UPDATE = Version.create(25, 1);
 
     /**
      * Used only to reset state for native image compilation.
@@ -1232,7 +1237,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
             final OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
             final StringBuilder messageBuilder = new StringBuilder();
             messageBuilder.append(reason).append(" at\n");
-            runtime.iterateFrames(new FrameInstanceVisitor<Object>() {
+            runtime.iterateFrames(new FrameInstanceVisitor<>() {
                 int frameIndex = 0;
 
                 @Override

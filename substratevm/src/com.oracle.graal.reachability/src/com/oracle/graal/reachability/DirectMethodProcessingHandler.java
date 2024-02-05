@@ -27,6 +27,12 @@ package com.oracle.graal.reachability;
 import java.lang.reflect.Modifier;
 import java.util.Optional;
 
+import org.graalvm.nativeimage.AnnotationAccess;
+
+import com.oracle.graal.pointsto.AbstractAnalysisEngine;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.common.meta.MultiMethod;
+
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
@@ -48,12 +54,6 @@ import jdk.graal.compiler.nodes.virtual.VirtualInstanceNode;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.MacroInvokable;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
-import org.graalvm.nativeimage.AnnotationAccess;
-
-import com.oracle.graal.pointsto.AbstractAnalysisEngine;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.common.meta.MultiMethod;
-
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -82,11 +82,11 @@ public class DirectMethodProcessingHandler implements ReachabilityMethodProcessi
             int parameterCount = method.getSignature().getParameterCount(!isStatic);
             int offset = isStatic ? 0 : 1;
             for (int i = offset; i < parameterCount; i++) {
-                bb.registerTypeAsReachable((ReachabilityAnalysisType) method.getSignature().getParameterType(i - offset, method.getDeclaringClass()),
+                bb.registerTypeAsReachable(method.getSignature().getParameterType(i - offset),
                                 "Parameter type for " + method.format("%H.%n(%p)"));
             }
 
-            bb.registerTypeAsReachable((ReachabilityAnalysisType) method.getSignature().getReturnType(method.getDeclaringClass()), "Return type for " + method.format("%H.%n(%p)"));
+            bb.registerTypeAsReachable(method.getSignature().getReturnType(), "Return type for " + method.format("%H.%n(%p)"));
         }
 
         for (Node n : graph.getNodes()) {

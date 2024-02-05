@@ -58,8 +58,8 @@ public class ExitDuringCompilationTest extends TestWithPolyglotOptions {
                 throw new AssertionError("Interrupted", ie);
             }
         },
-                        "-Dgraal.MethodFilter=RootNode.Constant",
-                        "-Dgraal.InjectedCompilationDelay=100");
+                        "-Djdk.graal.MethodFilter=RootNode.Constant",
+                        "-Djdk.graal.InjectedCompilationDelay=100");
         if (SubprocessTestUtils.isSubprocess()) {
             assert subprocess == null;
         } else {

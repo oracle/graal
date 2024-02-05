@@ -29,6 +29,8 @@ import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.VE
 
 import java.lang.ref.Reference;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Fold.InjectedParameter;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -58,10 +60,7 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.graal.compiler.replacements.nodes.ReadRegisterNode;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.word.Word;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
@@ -293,11 +292,9 @@ public class HotSpotReplacementsUtil {
      * After that, it is never changed. In the presence of virtual threads from JDK 19 onwards, this
      * value can change when a virtual thread is unmounted and then mounted again.
      */
-    public static final LocationIdentity JAVA_THREAD_CURRENT_THREAD_OBJECT_LOCATION = JavaVersionUtil.JAVA_SPEC < 19 ? NamedLocationIdentity.immutable("JavaThread::_threadObj")
-                    : NamedLocationIdentity.mutable("JavaThread::_vthread");
+    public static final LocationIdentity JAVA_THREAD_CURRENT_THREAD_OBJECT_LOCATION = NamedLocationIdentity.mutable("JavaThread::_vthread");
 
-    public static final LocationIdentity JAVA_THREAD_CARRIER_THREAD_OBJECT_LOCATION = JavaVersionUtil.JAVA_SPEC < 19 ? JAVA_THREAD_CURRENT_THREAD_OBJECT_LOCATION
-                    : NamedLocationIdentity.mutable("JavaThread::_threadObj");
+    public static final LocationIdentity JAVA_THREAD_CARRIER_THREAD_OBJECT_LOCATION = NamedLocationIdentity.mutable("JavaThread::_threadObj");
 
     public static final LocationIdentity JAVA_THREAD_OSTHREAD_LOCATION = NamedLocationIdentity.mutable("JavaThread::_osthread");
 
@@ -884,17 +881,16 @@ public class HotSpotReplacementsUtil {
      * This represents the contents of the OopHandle used to store the current thread. Virtual
      * thread support makes this mutable.
      */
-    public static final LocationIdentity HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION = JavaVersionUtil.JAVA_SPEC < 19 ? HOTSPOT_OOP_HANDLE_LOCATION
-                    : OopHandleLocationIdentity.mutable("_vthread OopHandle contents");
+    public static final LocationIdentity HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION = OopHandleLocationIdentity.mutable("_vthread OopHandle contents");
 
-    public static final LocationIdentity HOTSPOT_CARRIER_THREAD_OOP_HANDLE_LOCATION = JavaVersionUtil.JAVA_SPEC < 19 ? HOTSPOT_OOP_HANDLE_LOCATION
-                    : OopHandleLocationIdentity.mutable("_threadObj OopHandle contents");
+    public static final LocationIdentity HOTSPOT_CARRIER_THREAD_OOP_HANDLE_LOCATION = OopHandleLocationIdentity.mutable("_threadObj OopHandle contents");
 
     public static final LocationIdentity HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION = OopHandleLocationIdentity.mutable("_scopedValueCache OopHandle contents");
 
     public static final LocationIdentity HOTSPOT_VTMS_NOTIFY_JVMTI_EVENTS = NamedLocationIdentity.mutable("JvmtiVTMSTransitionDisabler::_VTMS_notify_jvmti_events");
     public static final LocationIdentity HOTSPOT_JAVA_THREAD_IS_IN_VTMS_TRANSITION = NamedLocationIdentity.mutable("JavaThread::_is_in_VTMS_transition");
     public static final LocationIdentity HOTSPOT_JAVA_THREAD_IS_IN_TMP_VTMS_TRANSITION = NamedLocationIdentity.mutable("JavaThread::_is_in_tmp_VTMS_transition");
+    public static final LocationIdentity HOTSPOT_JAVA_THREAD_IS_DISABLE_SUSPEND = NamedLocationIdentity.mutable("JavaThread::_is_disable_suspend");
     public static final LocationIdentity HOTSPOT_JAVA_LANG_THREAD_IS_IN_VTMS_TRANSITION = NamedLocationIdentity.mutable("Thread::_is_in_VTMS_transition");
 
     @Fold

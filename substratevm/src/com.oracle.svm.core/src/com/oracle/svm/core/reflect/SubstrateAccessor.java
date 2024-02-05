@@ -33,6 +33,8 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 @InternalVMMethod
 public abstract class SubstrateAccessor {
     /**
@@ -42,6 +44,14 @@ public abstract class SubstrateAccessor {
      */
     @Platforms(Platform.HOSTED_ONLY.class) //
     final Executable member;
+
+    /**
+     * The actual target method. For @{@link SubstrateConstructorAccessor} this is a factory method.
+     * For {@link SubstrateMethodAccessor} it can be the member itself or an adapter for caller
+     * sensitive methods.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    final ResolvedJavaMethod targetMethod;
 
     /**
      * The first-level function that is invoked. It expands the boxed Object[] signature to the
@@ -62,14 +72,24 @@ public abstract class SubstrateAccessor {
     final DynamicHub initializeBeforeInvoke;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    SubstrateAccessor(Executable member, CFunctionPointer expandSignature, CFunctionPointer directTarget, DynamicHub initializeBeforeInvoke) {
+    SubstrateAccessor(Executable member, CFunctionPointer expandSignature, CFunctionPointer directTarget, ResolvedJavaMethod targetMethod, DynamicHub initializeBeforeInvoke) {
         this.member = member;
         this.expandSignature = expandSignature;
         this.directTarget = directTarget;
         this.initializeBeforeInvoke = initializeBeforeInvoke;
+        this.targetMethod = targetMethod;
     }
 
     public Executable getMember() {
         return member;
+    }
+
+    public CFunctionPointer getExpandSignature() {
+        return expandSignature;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public ResolvedJavaMethod getTargetMethod() {
+        return targetMethod;
     }
 }

@@ -15,7 +15,7 @@ These are general options for setting/getting configuration details.
 
 * `-XX:-UseJVMCICompiler`: This disables use of the Graal compiler as the top tier JIT.
 This is useful when wanting to compare performance of the Graal compiler against the native JIT compilers.
-* `-Dgraal.CompilerConfiguration=<name>`: Selects the Graal compiler configuration to use. If omitted, the compiler
+* `-Djdk.graal.CompilerConfiguration=<name>`: Selects the Graal compiler configuration to use. If omitted, the compiler
 configuration with the highest auto-selection priority is used. To see the set
 of available configurations, supply the value help to this option.
 
@@ -24,10 +24,10 @@ of available configurations, supply the value help to this option.
     * `community`: To produce reasonably optimized code with a faster compilation time.
     * `economy`: To compile as fast as possible with less optimal throughput of the generated code.
 
-* `-Dgraal.ShowConfiguration=none`: Prints information about the Graal compiler configuration selected.
+* `-Djdk.graal.ShowConfiguration=none`: Prints information about the Graal compiler configuration selected.
     This option only produces output when the compiler is initialized. By default, the Graal compiler is
     initialized on the first top-tier compilation. For this reason, the way to use this option
-    is as follows: `java -XX:+EagerJVMCI -Dgraal.ShowConfiguration=info -version`.
+    is as follows: `java -XX:+EagerJVMCI -Djdk.graal.ShowConfiguration=info -version`.
 
     The accepted values for this option are:
     * `none`: To show no information.
@@ -35,7 +35,7 @@ of available configurations, supply the value help to this option.
        and whether it is loaded from a Native Image ("libgraal") or from class files ("jargraal").
     * `verbose`: To print detailed compiler configuration information.
 
-* `-Dgraal.MitigateSpeculativeExecutionAttacks=None`: Selects a strategy to mitigate speculative
+* `-Djdk.graal.MitigateSpeculativeExecutionAttacks=None`: Selects a strategy to mitigate speculative
     execution attacks (e.g., SPECTRE).
 
     Accepted values are:
@@ -49,19 +49,19 @@ of available configurations, supply the value help to this option.
 
 ### Performance Tuning Options
 
-* `-Dgraal.UsePriorityInlining=true`: This can be used to disable use of the advanced inlining
+* `-Djdk.graal.UsePriorityInlining=true`: This can be used to disable use of the advanced inlining
 algorithm that favours throughput over compilation speed. <a href="https://www.oracle.com/downloads/graalvm-downloads.html" class="enterprise">[Oracle GraalVM]</a>
-* `-Dgraal.Vectorization=true`: This can be used to disable the auto vectorization optimization.
+* `-Djdk.graal.Vectorization=true`: This can be used to disable the auto vectorization optimization.
 <a href="https://www.oracle.com/downloads/graalvm-downloads.html" class="enterprise">[Oracle GraalVM]</a>
-* `-Dgraal.OptDuplication=true`: This can be used to disable the [path duplication optimization](http://ssw.jku.at/General/Staff/Leopoldseder/DBDS_CGO18_Preprint.pdf). <a href="https://www.oracle.com/downloads/graalvm-downloads.html" class="enterprise">[Oracle GraalVM]</a>
-* `-Dgraal.TuneInlinerExploration=0`: This can be used to try tune for better peak performance or faster warmup.
+* `-Djdk.graal.OptDuplication=true`: This can be used to disable the [path duplication optimization](http://ssw.jku.at/General/Staff/Leopoldseder/DBDS_CGO18_Preprint.pdf). <a href="https://www.oracle.com/downloads/graalvm-downloads.html" class="enterprise">[Oracle GraalVM]</a>
+* `-Djdk.graal.TuneInlinerExploration=0`: This can be used to try tune for better peak performance or faster warmup.
 It automatically adjusts values governing the effort spent during inlining. The value of the option is
 a float clamped between `-1` and `1` inclusive. Anything below
 `0` reduces inlining effort and anything above `0` increases
 inlining effort. In general, peak performance is improved with more inlining effort
 while less inlining effort improves warmup (albeit to a lower peak). Note that this
 option is only a heuristic and the optimal value can differ from application to application. <a href="https://www.oracle.com/downloads/graalvm-downloads.html" class="enterprise">[Oracle GraalVM]</a>
-* `-Dgraal.TraceInlining=false`: Enables tracing of inlining decisions. This can be used
+* `-Djdk.graal.TraceInlining=false`: Enables tracing of inlining decisions. This can be used
     for advanced tuning where it may be possible to change the source code of the program.
     The output format is shown below:
 
@@ -90,7 +90,7 @@ compilation of java.lang.Character.toUpperCaseEx(int):
 
 ### Diagnostic Options
 
-* `-Dgraal.CompilationFailureAction=Silent`: Specifies the action to take when compilation fails by
+* `-Djdk.graal.CompilationFailureAction=Silent`: Specifies the action to take when compilation fails by
     throwing an exception.
 
     The accepted values are:
@@ -105,12 +105,12 @@ Graal diagnostic output saved in /Users/graal/graal_dumps/1549459528316/graal_di
     * `ExitVM`: Same as `Diagnose` except that the VM process exits after retrying.
 
     For all values except for `ExitVM`, the VM continues executing.
-* `-Dgraal.CompilationBailoutAsFailure=false`: The compiler may not complete compilation of a method due
+* `-Djdk.graal.CompilationBailoutAsFailure=false`: The compiler may not complete compilation of a method due
  to some property or code shape in the method (e.g., exotic uses of the jsr and ret bytecodes). In this
  case the compilation _bails out_. If you want to be informed of such bailouts, this option makes GraalVM
  treat bailouts as failures and thus be subject to the action specified by the
- `-Dgraal.CompilationFailureAction` option.
-* `-Dgraal.PrintCompilation=false`: Prints an informational line to the console for each completed compilation.
+ `-Djdk.graal.CompilationFailureAction` option.
+* `-Djdk.graal.PrintCompilation=false`: Prints an informational line to the console for each completed compilation.
   For example:
   ```shell
   HotSpotCompilation-11  Ljava/lang/Object;                            wait          ()V       |  591ms    12B    92B  4371kB
@@ -125,12 +125,12 @@ The Graal compiler properties above are usable with some other GraalVM launchers
 The prefix for specifying the properties is slightly different.
 For example:
 ```shell
-java -XX:+EagerJVMCI -Dgraal.ShowConfiguration=info -version
+java -XX:+EagerJVMCI -Djdk.graal.ShowConfiguration=info -version
 ```
 
 Becomes:
 ```shell
-js --vm.Dgraal.ShowConfiguration=info -version
+js --vm.Djdk.graal.ShowConfiguration=info -version
 ```
 
 > Note the `-D` prefix is replaced by `--vm.D`.

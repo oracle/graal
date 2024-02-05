@@ -24,7 +24,8 @@
  */
 package jdk.graal.compiler.truffle.phases;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime.InlineKind;
+
 import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeSourcePosition;
@@ -32,9 +33,6 @@ import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.truffle.TruffleTierContext;
-
-import com.oracle.truffle.compiler.TruffleCompilerRuntime.InlineKind;
-
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
@@ -45,20 +43,20 @@ import jdk.vm.ci.meta.JavaConstant;
  * The phase is enabled with the following flag:
  *
  * <pre>
- * -Dgraal.TruffleInstrumentBoundaries
+ * -Djdk.graal.TruffleInstrumentBoundaries
  * </pre>
  *
  * The phase can be configured to only instrument callsites in specific methods, by providing the
  * following method filter flag:
  *
  * <pre>
- * -Dgraal.TruffleInstrumentBoundariesFilter
+ * -Djdk.graal.TruffleInstrumentBoundariesFilter
  * </pre>
  *
  * The flag:
  *
  * <pre>
- * -Dgraal.TruffleInstrumentBoundariesPerInlineSite
+ * -Djdk.graal.TruffleInstrumentBoundariesPerInlineSite
  * </pre>
  *
  * decides whether to treat different inlining sites separately when tracking the execution counts.
@@ -67,8 +65,8 @@ public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
 
     private final boolean isInstrumentPerInlineSite;
 
-    public InstrumentTruffleBoundariesPhase(SnippetReflectionProvider snippetReflection, Instrumentation instrumentation, boolean instrumentPerInlineSite) {
-        super(snippetReflection, instrumentation);
+    public InstrumentTruffleBoundariesPhase(Instrumentation instrumentation, boolean instrumentPerInlineSite) {
+        super(instrumentation);
         isInstrumentPerInlineSite = instrumentPerInlineSite;
     }
 

@@ -34,9 +34,7 @@ import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
-import jdk.graal.compiler.core.common.spi.CodeGenProviders;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
-import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRFrameState;
@@ -45,8 +43,7 @@ import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.LabelRef;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.VirtualStackSlot;
-
-import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.StackSlot;
@@ -56,12 +53,11 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
-public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindFactory<LIRKind> {
+public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorTool, ValueKindFactory<LIRKind> {
 
     abstract class BlockScope implements AutoCloseable {
 
@@ -76,15 +72,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     BarrierSetLIRGeneratorTool getBarrierSet();
 
-    CodeGenProviders getProviders();
-
     TargetDescription target();
-
-    MetaAccessProvider getMetaAccess();
-
-    CodeCacheProvider getCodeCache();
-
-    ForeignCallsProvider getForeignCalls();
 
     BasicBlock<?> getCurrentBlock();
 

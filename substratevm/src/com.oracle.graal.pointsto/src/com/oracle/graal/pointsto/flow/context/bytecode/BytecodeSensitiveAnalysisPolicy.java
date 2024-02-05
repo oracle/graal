@@ -394,7 +394,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
     @Override
     public TypeState forContextInsensitiveTypeState(PointsToAnalysis bb, TypeState state) {
-        if (state.isEmpty() || state.isNull()) {
+        if (state.isEmpty() || state.isNull() || state.isPrimitive()) {
             /* The type state is already context insensitive. */
             return state;
         } else {

@@ -31,7 +31,7 @@ import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 
 @TargetClass(className = "jdk.internal.misc.Unsafe")
 @SuppressWarnings({"static-method"})
@@ -80,13 +80,10 @@ class UnsafeUtil {
             throw new NullPointerException();
         }
         int offset = field.root == null ? field.offset : field.root.offset;
-        if (offset > 0) {
-            return offset;
+        if (offset <= 0) {
+            throw MissingReflectionRegistrationUtils.errorForQueriedOnlyField(SubstrateUtil.cast(field, Field.class));
         }
-        throw VMError.unsupportedFeature("The offset of " + field + " is accessed without the field being first registered as unsafe accessed. " +
-                        "Please register the field as unsafe accessed. You can do so with a reflection configuration that " +
-                        "contains an entry for the field with the attribute \"allowUnsafeAccess\": true. Such a configuration " +
-                        "file can be generated for you. Read BuildConfiguration.md and Reflection.md for details.");
+        return offset;
     }
 
 }

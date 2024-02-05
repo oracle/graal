@@ -200,6 +200,10 @@ public final class EngineData {
         return OptimizedRuntimeAccessor.ENGINE.getEngineLock(this.polyglotEngine);
     }
 
+    public Object getEngineLogHandler() {
+        return OptimizedRuntimeAccessor.ENGINE.getEngineLogHandler(this.polyglotEngine);
+    }
+
     @SuppressWarnings("unchecked")
     public <T> T getEngineLocal(Class<T> symbol) {
         Map<Class<?>, Object> data = this.engineLocals;
@@ -325,6 +329,8 @@ public final class EngineData {
         if (compilationFailureAction == ExceptionAction.ExitVM) {
             options.put("compiler.DiagnoseFailure", "true");
         } else if (compilationFailureAction == ExceptionAction.Diagnose) {
+            options.put("compiler.DiagnoseFailure", "true");
+        } else if (compilationFailureAction == ExceptionAction.Throw) {
             options.put("compiler.DiagnoseFailure", "true");
         }
         if (TruffleOptions.AOT && traceTransferToInterpreter) {

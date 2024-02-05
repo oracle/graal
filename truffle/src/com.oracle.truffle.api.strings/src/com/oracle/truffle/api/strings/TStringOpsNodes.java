@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -70,7 +70,7 @@ final class TStringOpsNodes {
         }
     }
 
-    abstract static class IndexOfAnyCharNode extends AbstractInternalNode {
+    abstract static class IndexOfAnyCharUTF16Node extends AbstractInternalNode {
 
         abstract int execute(Node node, AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, char[] values);
 

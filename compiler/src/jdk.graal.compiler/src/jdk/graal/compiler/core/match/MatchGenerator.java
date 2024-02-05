@@ -31,8 +31,8 @@ import jdk.graal.compiler.core.gen.NodeMatchRules;
  */
 public interface MatchGenerator {
     /**
-     * @returns null if the match can't be generated or a {@link ComplexMatchResult} that can be
-     *          evaluated during LIR generation to produce the final LIR value.
+     * @return null if the match can't be generated or a {@link ComplexMatchResult} that can be
+     *         evaluated during LIR generation to produce the final LIR value.
      */
     ComplexMatchResult match(NodeMatchRules matchRules, Object... args);
 

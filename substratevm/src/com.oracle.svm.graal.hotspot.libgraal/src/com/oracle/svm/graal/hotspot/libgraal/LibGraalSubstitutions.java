@@ -61,6 +61,9 @@ final class Target_jdk_vm_ci_hotspot_Cleaner {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, isFinal = true, declClass = ReferenceQueue.class)//
     private static ReferenceQueue<Object> queue;
+
+    @Alias
+    static native void clean();
 }
 
 @TargetClass(className = "jdk.vm.ci.hotspot.HotSpotJDKReflection", onlyWith = LibGraalFeature.IsEnabled.class)

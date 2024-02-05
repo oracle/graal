@@ -31,25 +31,28 @@ import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
+
 import jdk.graal.compiler.util.json.JSONParserException;
 
-public class SerializationConfigurationParser extends ConfigurationParser {
+public class SerializationConfigurationParser<C> extends ConfigurationParser {
 
     public static final String NAME_KEY = "name";
     public static final String CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY = "customTargetConstructorClass";
     private static final String SERIALIZATION_TYPES_KEY = "types";
     private static final String LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY = "lambdaCapturingTypes";
     private static final String PROXY_SERIALIZATION_TYPES_KEY = "proxies";
-    private final RuntimeSerializationSupport serializationSupport;
-    private final ProxyConfigurationParser proxyConfigurationParser;
 
-    public SerializationConfigurationParser(RuntimeSerializationSupport serializationSupport, boolean strictConfiguration) {
+    private final ConfigurationConditionResolver<C> conditionResolver;
+    private final RuntimeSerializationSupport<C> serializationSupport;
+    private final ProxyConfigurationParser<C> proxyConfigurationParser;
+
+    public SerializationConfigurationParser(ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport, boolean strictConfiguration) {
         super(strictConfiguration);
         this.serializationSupport = serializationSupport;
-        this.proxyConfigurationParser = new ProxyConfigurationParser(
-                        (conditionalElement) -> serializationSupport.registerProxyClass(conditionalElement.getCondition(), conditionalElement.getElement()), strictConfiguration);
+        this.proxyConfigurationParser = new ProxyConfigurationParser<>(conditionResolver, strictConfiguration, serializationSupport::registerProxyClass);
+        this.conditionResolver = conditionResolver;
     }
 
     @Override
@@ -96,15 +99,19 @@ public class SerializationConfigurationParser extends ConfigurationParser {
             checkAttributes(data, "serialization descriptor object", Collections.singleton(NAME_KEY), Arrays.asList(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY, CONDITIONAL_KEY));
         }
 
-        ConfigurationCondition unresolvedCondition = parseCondition(data);
+        UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data);
+        var condition = conditionResolver.resolveCondition(unresolvedCondition);
+        if (!condition.isPresent()) {
+            return;
+        }
         String targetSerializationClass = asString(data.get(NAME_KEY));
 
         if (lambdaCapturingType) {
-            serializationSupport.registerLambdaCapturingClass(unresolvedCondition, targetSerializationClass);
+            serializationSupport.registerLambdaCapturingClass(condition.get(), targetSerializationClass);
         } else {
             Object optionalCustomCtorValue = data.get(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY);
             String customTargetConstructorClass = optionalCustomCtorValue != null ? asString(optionalCustomCtorValue) : null;
-            serializationSupport.registerWithTargetConstructorClass(unresolvedCondition, targetSerializationClass, customTargetConstructorClass);
+            serializationSupport.registerWithTargetConstructorClass(condition.get(), targetSerializationClass, customTargetConstructorClass);
         }
     }
 }

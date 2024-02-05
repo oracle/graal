@@ -30,16 +30,8 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     },
   },
 
-  linux_amd64: self.common + self.linux + graal_common.linux_amd64 + {
-    packages+: {
-      '00:devtoolset': '==11', # GCC 11.2, make 4.3, binutils 2.36, valgrind 3.17
-    },
-  },
-  linux_aarch64: self.common + self.linux + graal_common.linux_aarch64 + {
-    packages+: {
-      '00:devtoolset': '==10', # GCC 10.2.1, make 4.2.1, binutils 2.35, valgrind 3.16.1
-    },
-  },
+  linux_amd64: self.common + self.linux + graal_common.linux_amd64,
+  linux_aarch64: self.common + self.linux + graal_common.linux_aarch64,
 
   x52: {
     capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
@@ -47,10 +39,10 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   darwin_amd64: self.common + graal_common.darwin_amd64 + {
     environment+: {
-      // for compatibility with macOS High Sierra
-      MACOSX_DEPLOYMENT_TARGET: '10.13',
+      // for compatibility with macOS Big Sur
+      MACOSX_DEPLOYMENT_TARGET: '11.0',
     },
-    capabilities+: ['darwin_mojave', 'ram32gb'],
+    capabilities+: ['ram32gb'],
   },
 
   darwin_aarch64: self.common + graal_common.darwin_aarch64 + {
@@ -61,6 +53,34 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   },
 
   windows: self.common + graal_common.windows_amd64,
+
+  predicates(with_compiler, with_native_image, with_vm): {
+    assert !with_native_image || with_compiler,
+    guard+: {
+      includes: [
+        "<graal>/sdk/**",
+        "<graal>/truffle/**",
+        "<graal>/espresso/**",
+        "<graal>/tools/**",
+        "<graal>/sulong/**",
+        "<graal>/java-benchmarks/**",
+      ] + base.basic_guard_includes + (if with_compiler then [
+        "<graal>/common.json",
+        "<graal>/compiler/**",
+        "<graal>/regex/**",
+      ] + base.compiler_guard_includes else []) + (if with_native_image then [
+        "<graal>/substratevm/**",
+      ] + base.nativeimage_guard_includes else []) + (if with_vm then [
+        "<graal>/vm/**",
+      ] + base.vm_guard_includes else []),
+    },
+    setup+: [
+      ['mx', 'sversions'],
+      ['apply-predicates', '--delete-excluded', '--pattern-root', '..'] # we are the espresso directory
+        + (if std.objectHasAll(self.guard, 'excludes') then ['--exclude=' + e for e in  self.guard.excludes] else [])
+        + ['--include=' + e for e in  self.guard.includes]
+    ],
+  },
 
   // generic targets
   gate:            {targets+: ['gate'], timelimit: "1:00:00"},
@@ -250,6 +270,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   builds: [
     // Gates
-    that.jdk21_gate_linux_amd64 + that.eclipse + that.jdt + that.espresso_gate(allow_warnings=false, tags='style,fullbuild', timelimit='35:00', name='gate-espresso-style-jdk21-linux-amd64'),
+    that.jdk21_gate_linux_amd64 + that.eclipse + that.jdt + that.predicates(false, false, false) + that.espresso_gate(allow_warnings=false, tags='style,fullbuild', timelimit='35:00', name='gate-espresso-style-jdk21-linux-amd64'),
   ],
 }

@@ -25,7 +25,6 @@
 package jdk.graal.compiler.phases.util;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.core.common.spi.CodeGenProviders;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -35,10 +34,7 @@ import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
 import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.nodes.spi.StampProvider;
-import jdk.graal.compiler.nodes.spi.WordVerification;
 import jdk.graal.compiler.word.WordTypes;
-import jdk.graal.compiler.word.WordVerificationImpl;
-
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -46,7 +42,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 /**
  * A set of providers, some of which may not be present (i.e., null).
  */
-public class Providers implements CoreProviders, CodeGenProviders {
+public class Providers implements CoreProviders {
 
     protected final MetaAccessProvider metaAccess;
     protected final ConstantReflectionProvider constantReflection;
@@ -58,7 +54,6 @@ public class Providers implements CoreProviders, CodeGenProviders {
     protected final PlatformConfigurationProvider platformConfigurationProvider;
     protected final MetaAccessExtensionProvider metaAccessExtensionProvider;
     protected final LoopsDataProvider loopsDataProvider;
-    protected final WordVerification wordVerification;
     protected final CodeCacheProvider codeCache;
     protected final SnippetReflectionProvider snippetReflection;
     protected final WordTypes wordTypes;
@@ -76,7 +71,6 @@ public class Providers implements CoreProviders, CodeGenProviders {
         this.platformConfigurationProvider = platformConfigurationProvider;
         this.metaAccessExtensionProvider = metaAccessExtensionProvider;
         this.loopsDataProvider = loopsDataProvider;
-        this.wordVerification = new WordVerificationImpl(wordTypes);
         this.codeCache = codeCache;
         this.snippetReflection = snippetReflection;
         this.wordTypes = wordTypes;
@@ -139,11 +133,6 @@ public class Providers implements CoreProviders, CodeGenProviders {
     }
 
     @Override
-    public WordVerification getWordVerification() {
-        return wordVerification;
-    }
-
-    @Override
     public CodeCacheProvider getCodeCache() {
         return codeCache;
     }
@@ -153,6 +142,7 @@ public class Providers implements CoreProviders, CodeGenProviders {
         return snippetReflection;
     }
 
+    @Override
     public WordTypes getWordTypes() {
         return wordTypes;
     }

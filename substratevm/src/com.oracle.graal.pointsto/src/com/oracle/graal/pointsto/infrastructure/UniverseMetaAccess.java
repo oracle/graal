@@ -31,10 +31,9 @@ import java.lang.reflect.Field;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import jdk.graal.compiler.core.common.type.TypedConstant;
-
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 
+import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -90,7 +89,7 @@ public abstract class UniverseMetaAccess implements WrappedMetaAccess {
     }
 
     public boolean isInstanceOf(JavaConstant constant, Class<?> clazz) {
-        if (constant == null || constant.isNull()) {
+        if (constant == null || constant.isNull() || constant.getJavaKind().isPrimitive()) {
             return false;
         }
         return lookupJavaType(clazz).isAssignableFrom(lookupJavaType(constant));

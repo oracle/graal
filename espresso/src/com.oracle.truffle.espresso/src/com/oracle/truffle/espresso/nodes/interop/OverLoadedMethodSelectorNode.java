@@ -76,14 +76,14 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
         if (fitByType.size() == 1) {
             CandidateMethodWithArgs matched = fitByType.get(0);
             if (matched.getMethod().isVarargs()) {
-                return MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
+                return MethodArgsUtils.ensureVarArgsArrayCreated(matched);
             }
             return matched;
         }
         // still multiple candidates, so try to select the best one
         CandidateMethodWithArgs mostSpecificOverload = findMostSpecificOverload(fitByType, arguments);
         if (mostSpecificOverload != null && mostSpecificOverload.getMethod().isVarargs()) {
-            return MethodArgsUtils.ensureVarArgsArrayCreated(mostSpecificOverload, toEspressoNode);
+            return MethodArgsUtils.ensureVarArgsArrayCreated(mostSpecificOverload);
         }
         return mostSpecificOverload;
     }

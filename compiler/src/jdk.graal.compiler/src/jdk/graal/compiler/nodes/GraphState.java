@@ -26,6 +26,7 @@ package jdk.graal.compiler.nodes;
 
 import java.util.EnumSet;
 import java.util.Formatter;
+import java.util.Locale;
 import java.util.Objects;
 
 import jdk.graal.compiler.api.replacements.Snippet;
@@ -773,7 +774,7 @@ public final class GraphState {
          *         is found, returns {@link #COMMUNITY}.
          */
         public static MandatoryStages getFromName(String name) {
-            switch (name.toLowerCase()) {
+            switch (name.toLowerCase(Locale.ENGLISH)) {
                 case "economy":
                     return ECONOMY;
                 case "community":

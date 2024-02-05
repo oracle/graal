@@ -117,6 +117,7 @@ public abstract class HotSpotHostBackend extends HotSpotBackend implements LIRGe
             lowerer.initialize(options, factories, providers, config);
         }
         providers.getReplacements().closeSnippetRegistration();
+        providers.getReplacements().getGraphBuilderPlugins().getInvocationPlugins().maybePrintIntrinsics(options);
     }
 
     protected CallingConvention makeCallingConvention(StructuredGraph graph, Stub stub) {

@@ -30,13 +30,14 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.ClassPlugins;
 import jdk.graal.compiler.nodes.type.StampTool;
-
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -468,6 +469,17 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
     @Override
     public String toString() {
         return getClass().getName() + " {" + (isStatic ? "static " : "") + name + argumentsDescriptor + '}';
+    }
+
+    /**
+     * Gets a string representation of the method associated with this plugin in the format used by
+     * {@link jdk.graal.compiler.debug.DebugOptions#MethodFilter}.
+     */
+    public String asMethodFilterString() {
+        return name + Stream.of(argumentTypes)//
+                        .skip(isStatic ? 0 : 1)//
+                        .map(Type::getTypeName)//
+                        .collect(Collectors.joining(";", "(", ")"));
     }
 
     public abstract static class InlineOnlyInvocationPlugin extends InvocationPlugin {

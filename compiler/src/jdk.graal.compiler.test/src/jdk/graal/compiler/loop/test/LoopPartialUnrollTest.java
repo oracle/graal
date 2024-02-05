@@ -62,7 +62,6 @@ import jdk.graal.compiler.phases.common.RemoveValueProxyPhase;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.SpeculationLog;
 
 public class LoopPartialUnrollTest extends GraalCompilerTest {
 
@@ -343,13 +342,13 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
             new FloatingReadPhase(canonicalizer).apply(graph, context);
             new RemoveValueProxyPhase(canonicalizer).apply(graph, context);
             new DeadCodeEliminationPhase().apply(graph);
-            new ConditionalEliminationPhase(true).apply(graph, context);
+            new ConditionalEliminationPhase(canonicalizer, true).apply(graph, context);
             new GuardLoweringPhase().apply(graph, context);
             new MidTierLoweringPhase(canonicalizer).apply(graph, context);
             new FrameStateAssignmentPhase().apply(graph);
             new DeoptimizationGroupingPhase().apply(graph, context);
             canonicalizer.apply(graph, context);
-            new ConditionalEliminationPhase(true).apply(graph, context);
+            new ConditionalEliminationPhase(canonicalizer, true).apply(graph, context);
             if (partialUnroll) {
                 LoopsData dataCounted = getDefaultMidTierContext().getLoopsDataProvider().getLoopsData(graph);
                 dataCounted.detectCountedLoops();
@@ -424,26 +423,9 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
         return res;
     }
 
-    SpeculationLog speculationLog;
-    boolean useSpeculationLog;
-
-    @Override
-    protected SpeculationLog getSpeculationLog() {
-        if (!useSpeculationLog) {
-            speculationLog = null;
-            return null;
-        }
-        if (speculationLog == null) {
-            speculationLog = getCodeCache().createSpeculationLog();
-        }
-        speculationLog.collectFailedSpeculations();
-        return speculationLog;
-    }
-
     @Test
     public void strideOverflow() {
         check = false;
-        useSpeculationLog = true;
         OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
         for (int i = -1000; i < 1000; i++) {
             for (int j = 0; j < 100; j++) {
@@ -451,6 +433,5 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
             }
         }
         check = true;
-        useSpeculationLog = false;
     }
 }

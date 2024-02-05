@@ -38,6 +38,7 @@ import java.util.Set;
 
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
+import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -173,6 +174,17 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaType OptimizedAssumption = lookupType("com.oracle.truffle.runtime.OptimizedAssumption");
     public final ResolvedJavaType[] skippedExceptionTypes = createSkippedExceptionTypes();
 
+    /**
+     * JDK 22+24 introduced JFR tracing in Java code of the constructors for {@link Throwable} and
+     * {@link Error}. This complicates exception handlers used in Truffle code that call up to one
+     * of those. We cannot just deopt in case JFR tracing is enabled as that can cause repeated
+     * deopts for hot exceptions (e.g. ControlFlowExceptions). Additionally, we cannot just move the
+     * methods called under the {@code Throwable.jfrTracing)} flag behind a Truffle boundary since
+     * Truffle does not yet support marking arbitrary methods as Truffle boundaries. GR-50226 will
+     * take care of this and rework how the jfrTracing is handled in Truffle here.
+     */
+    public final ResolvedJavaField Throwable_jfrTracing;
+
     // Checkstyle: resume field name check
     protected final ConstantReflectionProvider constantReflection;
 
@@ -202,6 +214,28 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
                         JavaKind.Illegal,
         });
         FrameSlotKind_javaKindToTagIndex = createJavaKindMap(FrameSlotKind_tagIndexToJavaKind);
+        Throwable_jfrTracing = getThrowableJFRTracingField(metaAccess);
+    }
+
+    public static final int JDK = Runtime.version().feature();
+
+    private static boolean throwableUsesJFRTracing() {
+        return JDK >= 22;
+    }
+
+    private static ResolvedJavaField getThrowableJFRTracingField(MetaAccessProvider metaAccess) {
+        if (throwableUsesJFRTracing()) {
+            ResolvedJavaType throwableType = metaAccess.lookupJavaType(Throwable.class);
+            for (ResolvedJavaField staticField : throwableType.getStaticFields()) {
+                if (staticField.getName().equals("jfrTracing") &&
+                                staticField.getType().equals(metaAccess.lookupJavaType(boolean.class)) && staticField.isVolatile()) {
+                    return staticField;
+                }
+            }
+            throw GraalError.shouldNotReachHere("Field Throwable.jfrTracing not found. This field was added in JDK-22+24 and must be present. " +
+                            "This either means this field was removed in which case this code needs to be adapted or the meta access lookup above failed which should never happen.");
+        }
+        return null;
     }
 
     private ResolvedJavaType[] createSkippedExceptionTypes() {

@@ -89,4 +89,8 @@ public interface TruffleCompilationSupport {
         return false;
     }
 
+    default String getCompilerVersion() {
+        return null;
+    }
+
 }

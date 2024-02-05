@@ -38,10 +38,10 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
-import jdk.graal.compiler.util.json.JSONParserException;
 
-import com.oracle.svm.core.configure.ConditionalElement;
+import com.oracle.svm.core.configure.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
@@ -50,10 +50,14 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
 
+import jdk.graal.compiler.util.json.JSONParserException;
+
 public final class ConfigurationParserUtils {
 
-    public static ReflectionConfigurationParser<ConditionalElement<Class<?>>> create(ReflectionRegistry registry, ImageClassLoader imageClassLoader) {
-        return new ReflectionConfigurationParser<>(RegistryAdapter.create(registry, imageClassLoader),
+    public static ReflectionConfigurationParser<ConfigurationCondition, Class<?>> create(
+                    ConfigurationConditionResolver<ConfigurationCondition> conditionResolver, ReflectionRegistry registry, ImageClassLoader imageClassLoader) {
+        return new ReflectionConfigurationParser<>(conditionResolver,
+                        RegistryAdapter.create(registry, imageClassLoader),
                         ConfigurationFiles.Options.StrictConfiguration.getValue(),
                         ConfigurationFiles.Options.WarnAboutMissingReflectionOrJNIMetadataElements.getValue());
     }

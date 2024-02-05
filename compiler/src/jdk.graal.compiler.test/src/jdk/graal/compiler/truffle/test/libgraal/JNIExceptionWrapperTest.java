@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.truffle.test.libgraal;
 
+import static jdk.graal.compiler.hotspot.HotSpotGraalOptionValues.GRAAL_OPTION_PROPERTY_PREFIX;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -64,7 +65,7 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
     }
 
     private static boolean isSilent() {
-        Object value = System.getProperty(String.format("graal.%s", GraalCompilerOptions.CompilationFailureAction.getName()));
+        Object value = System.getProperty(String.format("%s%s", GRAAL_OPTION_PROPERTY_PREFIX, GraalCompilerOptions.CompilationFailureAction.getName()));
         return CompilationWrapper.ExceptionAction.Silent.toString().equals(value);
     }
 
@@ -78,8 +79,9 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
 
     private static List<String> makeSilent(List<? extends String> vmArgs) {
         List<String> newVmArgs = new ArrayList<>();
-        newVmArgs.addAll(vmArgs.stream().filter((vmArg) -> !vmArg.contains(GraalCompilerOptions.CompilationFailureAction.getName())).collect(Collectors.toList()));
-        newVmArgs.add(1, String.format("-Dgraal.%s=%s", GraalCompilerOptions.CompilationFailureAction.getName(), CompilationWrapper.ExceptionAction.Silent.toString()));
+        newVmArgs.addAll(vmArgs.stream().filter((vmArg) -> !vmArg.contains(GraalCompilerOptions.CompilationFailureAction.getName())).toList());
+        newVmArgs.add(1, String.format("-D%s%s=%s", GRAAL_OPTION_PROPERTY_PREFIX, GraalCompilerOptions.CompilationFailureAction.getName(),
+                        CompilationWrapper.ExceptionAction.Silent));
         return newVmArgs;
     }
 

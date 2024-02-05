@@ -136,7 +136,7 @@ public class HotSpotDeoptExplicitExceptions extends SubprocessTest {
     public void explicitExceptions() throws IOException, InterruptedException {
         Assume.assumeTrue("required entry point is missing", ((HotSpotBackend) getBackend()).getRuntime().getVMConfig().deoptBlobUnpackWithExceptionInTLS != 0);
         if (!CreateExceptionStub.Options.HotSpotDeoptExplicitExceptions.getValue(getInitialOptions())) {
-            launchSubprocess(this::testBody, "-Dgraal.HotSpotDeoptExplicitExceptions=true");
+            launchSubprocess(this::testBody, "-Djdk.graal.HotSpotDeoptExplicitExceptions=true");
         } else {
             testBody();
         }

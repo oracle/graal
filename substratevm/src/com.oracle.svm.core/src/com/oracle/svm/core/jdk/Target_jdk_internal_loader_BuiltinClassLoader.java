@@ -69,7 +69,7 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
     @Substitute
     public InputStream findResourceAsStream(String mn, String name) throws IOException {
-        return ResourcesHelper.nameToResourceInputStream(name);
+        return ResourcesHelper.nameToResourceInputStream(mn, name);
     }
 
     @Substitute

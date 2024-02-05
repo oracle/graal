@@ -213,7 +213,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
 
     public static final class MultiValueStack {
         private long[] primitiveStack;
-        private Object[] referenceStack;
+        private Object[] objectStack;
         // Initialize size to 1, so we only create the stack for more than 1 result value.
         private int size = 1;
 
@@ -225,10 +225,10 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         }
 
         /**
-         * @return the current reference multi-value stack or null if it has never been resized.
+         * @return the current object multi-value stack or null if it has never been resized.
          */
-        public Object[] referenceStack() {
-            return referenceStack;
+        public Object[] objectStack() {
+            return objectStack;
         }
 
         /**
@@ -241,7 +241,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         public void resize(int expectedSize) {
             if (expectedSize > size) {
                 primitiveStack = new long[expectedSize];
-                referenceStack = new Object[expectedSize];
+                objectStack = new Object[expectedSize];
                 size = expectedSize;
             }
         }

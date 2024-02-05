@@ -302,7 +302,7 @@ public class JTTTest extends GraalCompilerTest {
         failureInfoBuf.format("Command to retry:%n");
         RuntimeProvider runtime = Graal.getRequiredCapability(RuntimeProvider.class);
         if (plan instanceof FullFuzzedCompilationPlan) {
-            failureInfoBuf.format("mx phaseplan-fuzz-jtt-tests -D%s=%s -D%s=%s -D%s=%s -D%s=%s -Dgraal.CompilerConfiguration=%s %s%n",
+            failureInfoBuf.format("mx phaseplan-fuzz-jtt-tests -D%s=%s -D%s=%s -D%s=%s -D%s=%s -Djdk.graal.CompilerConfiguration=%s %s%n",
                             SEED_SYSTEM_PROPERTY, plan.getRandomSeed(),
                             HIGH_TIER_PHASE_SKIP_ODDS_SYSTEM_PROPERTY, ((FullFuzzedTierPlan<HighTierContext>) plan.getHighTier()).getPhaseSkipOdds(),
                             MID_TIER_PHASE_SKIP_ODDS_SYSTEM_PROPERTY, ((FullFuzzedTierPlan<MidTierContext>) plan.getMidTier()).getPhaseSkipOdds(),
@@ -310,7 +310,7 @@ public class JTTTest extends GraalCompilerTest {
                             runtime.getCompilerConfigurationName(),
                             testName);
         } else {
-            failureInfoBuf.format("mx phaseplan-fuzz-jtt-tests -D%s=%s -D%s=true -Dgraal.CompilerConfiguration=%s %s%n",
+            failureInfoBuf.format("mx phaseplan-fuzz-jtt-tests -D%s=%s -D%s=true -Djdk.graal.CompilerConfiguration=%s %s%n",
                             SEED_SYSTEM_PROPERTY, plan.getRandomSeed(),
                             MINIMAL_PLAN_SYSTEM_PROPERTY,
                             runtime.getCompilerConfigurationName(),

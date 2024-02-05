@@ -14,7 +14,7 @@ To build a native executable for a Java application that uses Java reflection, d
 You can create configuration file(s) by hand, but a more convenient approach is to generate the configuration using the Tracing agent (from now on, the agent). 
 This guide demonstrates how to configure `native-image` with the agent. The agent generates the configuration for you automatically when you run an application on a JVM.
 
-To learn how to build a native executable with the metadata pre-computed in the code, [follow this guide](use-reachability-metadata-repository-gradle.md).
+To learn how to build a native executable with the metadata pre-computed in the code, [see the documentation](../ReachabilityMetadata.md).
 
 The example application in this guide uses Java reflection. The `native-image` tool only partially detects application elements that are accessed using the Java Reflection API. So, you need to provide it with details about reflectively accessed classes, methods, and fields.
 ## Example with No Configuration

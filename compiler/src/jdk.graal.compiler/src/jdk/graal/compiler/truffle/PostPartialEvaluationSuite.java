@@ -44,8 +44,8 @@ public class PostPartialEvaluationSuite extends PhaseSuite<TruffleTierContext> {
         CanonicalizerPhase canonicalizerPhase = CanonicalizerPhase.create();
         appendPhase(new ConvertDeoptimizeToGuardPhase(canonicalizerPhase));
         appendPhase(new InlineReplacementsPhase());
-        appendPhase(new ConditionalEliminationPhase(false));
         appendPhase(canonicalizerPhase);
+        appendPhase(new ConditionalEliminationPhase(canonicalizerPhase, false));
         appendPhase(new FrameAccessVerificationPhase());
         appendPhase(new PartialEscapePhase(iterativePartialEscape, canonicalizerPhase, optionValues));
         appendPhase(new PhiTransformPhase(canonicalizerPhase));

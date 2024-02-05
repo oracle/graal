@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,21 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Pair;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -54,7 +69,6 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.LLVMContext.TLSInitializerAccess;
-import com.oracle.truffle.llvm.runtime.LLVMLanguageFactory.InitializeContextNodeGen;
 import com.oracle.truffle.llvm.runtime.config.Configuration;
 import com.oracle.truffle.llvm.runtime.config.Configurations;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
@@ -77,20 +91,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.target.TargetTriple;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Pair;
-import org.graalvm.options.OptionDescriptors;
-import org.graalvm.options.OptionValues;
-
-import java.lang.ref.ReferenceQueue;
-import java.lang.ref.WeakReference;
-import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE, LLVMLanguage.LLVM_MACHO_MIME_TYPE,
@@ -745,7 +745,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         if (sulongInitContextCode == null) {
             throw new IllegalStateException("Context cannot be initialized:" + LLVMContext.SULONG_INIT_CONTEXT + " was not found");
         }
-        return InitializeContextNodeGen.create(sulongInitContextCode);
+        return LLVMLanguageFactory.InitializeContextNodeGen.create(sulongInitContextCode);
     }
 
     /**

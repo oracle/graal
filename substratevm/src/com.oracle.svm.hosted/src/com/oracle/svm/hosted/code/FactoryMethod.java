@@ -24,15 +24,8 @@
  */
 package com.oracle.svm.hosted.code;
 
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.UnwindNode;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.NeverInlineTrivial;
@@ -42,8 +35,13 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.UnwindNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.vm.ci.meta.ConstantPool;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
@@ -82,20 +80,19 @@ public final class FactoryMethod extends NonBytecodeMethod {
     }
 
     @Override
-    public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
+    public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         FactoryMethodSupport support = ImageSingletons.lookup(FactoryMethodSupport.class);
 
-        UniverseMetaAccess metaAccess = (UniverseMetaAccess) providers.getMetaAccess();
-        ResolvedJavaMethod universeTargetConstructor = lookupMethodInUniverse(metaAccess, targetConstructor);
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
+        AnalysisMethod aTargetConstructor = kit.getMetaAccess().getUniverse().lookup(targetConstructor);
 
-        AbstractNewObjectNode newInstance = support.createNewInstance(kit, universeTargetConstructor.getDeclaringClass(), true);
+        AbstractNewObjectNode newInstance = support.createNewInstance(kit, aTargetConstructor.getDeclaringClass(), true);
 
-        ValueNode[] originalArgs = kit.loadArguments(method.toParameterTypes()).toArray(ValueNode.EMPTY_ARRAY);
+        ValueNode[] originalArgs = kit.getInitialArguments().toArray(ValueNode.EMPTY_ARRAY);
         ValueNode[] invokeArgs = new ValueNode[originalArgs.length + 1];
         invokeArgs[0] = newInstance;
         System.arraycopy(originalArgs, 0, invokeArgs, 1, originalArgs.length);
-        kit.createInvokeWithExceptionAndUnwind(universeTargetConstructor, InvokeKind.Special, kit.getFrameState(), kit.bci(), invokeArgs);
+        kit.createInvokeWithExceptionAndUnwind(aTargetConstructor, InvokeKind.Special, kit.getFrameState(), kit.bci(), invokeArgs);
 
         if (throwAllocatedObject) {
             kit.append(new UnwindNode(newInstance));
@@ -105,21 +102,7 @@ public final class FactoryMethod extends NonBytecodeMethod {
         return kit.finalizeGraph();
     }
 
-    private ResolvedJavaMethod lookupMethodInUniverse(UniverseMetaAccess metaAccess, ResolvedJavaMethod method) {
-        ResolvedJavaMethod universeMethod = method;
-        MetaAccessProvider wrappedMetaAccess = metaAccess.getWrapped();
-        if (wrappedMetaAccess instanceof UniverseMetaAccess) {
-            universeMethod = lookupMethodInUniverse((UniverseMetaAccess) wrappedMetaAccess, universeMethod);
-        }
-        return metaAccess.getUniverse().lookup(universeMethod);
-    }
-
     public ResolvedJavaMethod getTargetConstructor() {
         return targetConstructor;
-    }
-
-    @Override
-    public ResolvedJavaType getDeclaringClass() {
-        return super.getDeclaringClass();
     }
 }

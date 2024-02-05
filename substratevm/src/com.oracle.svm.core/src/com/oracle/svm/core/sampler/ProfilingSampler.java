@@ -30,4 +30,6 @@ public interface ProfilingSampler {
     LockFreePrefixTree prefixTree();
 
     void reset();
+
+    boolean isAsyncSampler();
 }

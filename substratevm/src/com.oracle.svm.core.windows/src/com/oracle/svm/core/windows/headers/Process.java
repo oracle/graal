@@ -145,6 +145,9 @@ public class Process {
         public static native void LeaveCriticalSection(PCRITICAL_SECTION mutex);
 
         @CFunction(transition = Transition.NO_TRANSITION)
+        public static native void DeleteCriticalSection(PCRITICAL_SECTION mutex);
+
+        @CFunction(transition = Transition.NO_TRANSITION)
         public static native void InitializeConditionVariable(PCONDITION_VARIABLE cond);
 
         @CFunction(transition = Transition.NO_TRANSITION)
