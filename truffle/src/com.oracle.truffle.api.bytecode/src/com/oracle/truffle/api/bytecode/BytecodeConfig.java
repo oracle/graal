@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.api.bytecode;
 
+import java.util.Objects;
+
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.instrumentation.Tag;
 
 /**
@@ -50,48 +54,47 @@ import com.oracle.truffle.api.instrumentation.Tag;
  */
 public final class BytecodeConfig {
 
+    private static final long SOURCE_ENCODING = 0xb1L;
+
     /**
      * Retain no sources or instrumentation information.
      *
      * @since 24.1
      */
-    public static final BytecodeConfig DEFAULT = new BytecodeConfig(false, false, null, null, null);
+    public static final BytecodeConfig DEFAULT = new BytecodeConfig(null, 0L);
     /**
      * Retain source information.
      *
      * @since 24.1
      */
-    public static final BytecodeConfig WITH_SOURCE = new BytecodeConfig(true, false, null, null, null);
+    public static final BytecodeConfig WITH_SOURCE = new BytecodeConfig(null, SOURCE_ENCODING);
 
     /**
      * Retain all information.
      *
      * @since 24.1
      */
-    public static final BytecodeConfig COMPLETE = new BytecodeConfig(true, true, null, null, null);
+    public static final BytecodeConfig COMPLETE = new BytecodeConfig(null, 0xFFFF_FFFF_FFFF_FFFFL);
 
-    final boolean addSource;
-    final boolean addAllInstrumentationData;
-    final Class<?>[] addInstrumentations;
-    final Class<?>[] removeInstrumentations;
-    final Class<?>[] addTags;
+    final BytecodeConfigEncoder encoder;
+    final long encoding;
 
-    BytecodeConfig(boolean withSource, boolean addAllInstrumentationData, Class<?>[] addInstrumentations, Class<?>[] removeInstrumentations, Class<?>[] tags) {
-        this.addSource = withSource;
-        this.addAllInstrumentationData = addAllInstrumentationData;
-        this.addInstrumentations = addInstrumentations;
-        this.removeInstrumentations = removeInstrumentations;
-        this.addTags = tags;
+    BytecodeConfig(BytecodeConfigEncoder encoder, long encoding) {
+        this.encoder = encoder;
+        this.encoding = encoding;
     }
 
     /**
      * Produces a new {@link Builder} that can be used to programmatically build a
      * {@link BytecodeConfig}.
+     * <p>
+     * Note this method is not intended to be used directly. Use the generated method, for example
+     * <code>MyBytecodeRootNode.newConfigBuilder()</code> instead.
      *
      * @since 24.1
      */
-    public static Builder newBuilder() {
-        return new Builder();
+    public static Builder newBuilder(BytecodeConfigEncoder encoder) {
+        return new Builder(encoder);
     }
 
     /**
@@ -100,18 +103,10 @@ public final class BytecodeConfig {
      * @since 24.1
      */
     public static class Builder {
-        private boolean addSource;
-        private boolean addAllInstrumentationData;
-        private Class<?>[] addTags;
-        private Class<?>[] addInstrumentations;
-        private Class<?>[] removeInstrumentations;
-
-        /**
-         * Default constructor.
-         *
-         * @since 24.1
-         */
-        Builder() {
+        private final BytecodeConfigEncoder encoder;
+        private long encoding;
+        Builder(BytecodeConfigEncoder encoder) {
+            this.encoder = encoder;
         }
 
         /**
@@ -120,18 +115,8 @@ public final class BytecodeConfig {
          * @since 24.1
          */
         public Builder addSource() {
-            this.addSource = true;
-            return this;
-        }
-
-        /**
-         * Sets whether all instrumentation data should be included. This value, if {@code true},
-         * supersedes the tag and instrumentation values.
-         *
-         * @since 24.1
-         */
-        public Builder addAllInstrumentationData() {
-            this.addAllInstrumentationData = true;
+            CompilerAsserts.neverPartOfCompilation();
+            this.encoding |= SOURCE_ENCODING;
             return this;
         }
 
@@ -140,9 +125,12 @@ public final class BytecodeConfig {
          *
          * @since 24.1
          */
-        @SuppressWarnings("unchecked")
-        public Builder addTags(Class<? extends Tag>... tags) {
-            this.addTags = tags;
+        public Builder addTag(Class<? extends Tag> tag) {
+            CompilerAsserts.neverPartOfCompilation();
+            Objects.requireNonNull(tag);
+            long encodedTag = encoder.encodeTag(tag);
+            assert encodedTag != SOURCE_ENCODING && Long.bitCount(encodedTag) == 1 : "generated code invariant violated";
+            this.encoding |= encodedTag;
             return this;
         }
 
@@ -151,19 +139,12 @@ public final class BytecodeConfig {
          *
          * @since 24.1
          */
-        public Builder addInstrumentations(Class<?>... instrumentations) {
-            this.addInstrumentations = instrumentations;
-            return this;
-        }
-
-        /**
-         * Sets a specific set of instrumentations to be removed.
-         *
-         * @since 24.1
-         */
-
-        public Builder removeInstrumentations(Class<?>... instrumentations) {
-            this.removeInstrumentations = instrumentations;
+        public Builder addInstrumentations(Class<?> instrumentation) {
+            CompilerAsserts.neverPartOfCompilation();
+            Objects.requireNonNull(instrumentation);
+            long encodedTag = encoder.encodeInstrumentation(instrumentation);
+            assert encodedTag != SOURCE_ENCODING && Long.bitCount(encodedTag) == 1 : "generated code invariant violated";
+            this.encoding |= encodedTag;
             return this;
         }
 
@@ -172,8 +153,10 @@ public final class BytecodeConfig {
          *
          * @since 24.1
          */
+        @TruffleBoundary
         public BytecodeConfig build() {
-            return new BytecodeConfig(addSource, addAllInstrumentationData, addInstrumentations, removeInstrumentations, addTags);
+            return new BytecodeConfig(encoder, encoding);
         }
     }
+
 }

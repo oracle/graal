@@ -348,6 +348,8 @@ public class TruffleTypes {
     // Bytecode DSL API
     public static final String BytecodeBuilder_Name = "com.oracle.truffle.api.bytecode.BytecodeBuilder";
     public static final String BytecodeConfig_Name = "com.oracle.truffle.api.bytecode.BytecodeConfig";
+    public static final String BytecodeConfig_Builder_Name = "com.oracle.truffle.api.bytecode.BytecodeConfig.Builder";
+    public static final String BytecodeConfigEncoder_Name = "com.oracle.truffle.api.bytecode.BytecodeConfigEncoder";
     public static final String BytecodeInstrumentTreeNode_Name = "com.oracle.truffle.api.bytecode.BytecodeInstrumentTreeNode";
     public static final String BytecodeLabel_Name = "com.oracle.truffle.api.bytecode.BytecodeLabel";
     public static final String BytecodeLocal_Name = "com.oracle.truffle.api.bytecode.BytecodeLocal";
@@ -393,6 +395,8 @@ public class TruffleTypes {
 
     public final DeclaredType BytecodeBuilder = c.getDeclaredTypeOptional(BytecodeBuilder_Name);
     public final DeclaredType BytecodeConfig = c.getDeclaredTypeOptional(BytecodeConfig_Name);
+    public final DeclaredType BytecodeConfigEncoder = c.getDeclaredTypeOptional(BytecodeConfigEncoder_Name);
+    public final DeclaredType BytecodeConfig_Builder = c.getDeclaredTypeOptional(BytecodeConfig_Builder_Name);
     public final DeclaredType BytecodeInstrumentTreeNode = c.getDeclaredTypeOptional(BytecodeInstrumentTreeNode_Name);
     public final DeclaredType BytecodeLabel = c.getDeclaredTypeOptional(BytecodeLabel_Name);
     public final DeclaredType BytecodeLocal = c.getDeclaredTypeOptional(BytecodeLocal_Name);

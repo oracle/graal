@@ -42,6 +42,7 @@ package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -99,6 +100,25 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         assertEquals(location2.getSourceLocation().getSource(), source);
         assertEquals(location2.getSourceLocation().getCharIndex(), 0);
         assertEquals(location2.getSourceLocation().getCharLength(), 8);
+    }
+
+    @Test
+    public void testWithoutSource() {
+        BasicInterpreter node = parseNode("source", b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginReturn();
+            b.emitLoadConstant(1L);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        BytecodeNode bytecode = node.getBytecodeNode();
+        List<Instruction> instructions = bytecode.getIntrospectionData().getInstructions();
+        BytecodeLocation location1 = instructions.get(0).getLocation();
+        BytecodeLocation location2 = instructions.get(1).getLocation();
+
+        assertNull(location1.getSourceLocation());
+        assertNull(location2.getSourceLocation());
     }
 
     @Test

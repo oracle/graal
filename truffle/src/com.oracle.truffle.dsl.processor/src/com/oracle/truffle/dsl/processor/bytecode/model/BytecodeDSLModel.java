@@ -141,6 +141,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel[] popVariadicInstruction;
     public InstructionModel mergeVariadicInstruction;
     public InstructionModel storeNullInstruction;
+    public final List<OperationModel> instrumentations = new ArrayList<>();
 
     public String getName() {
         return templateType.getSimpleName() + suffix;
@@ -294,7 +295,6 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         }
         mergeVariadicInstruction = instruction(InstructionKind.MERGE_VARIADIC, "merge.variadic", signature(Object.class, Object.class));
         storeNullInstruction = instruction(InstructionKind.STORE_NULL, "store.variadic_end", signature(Object.class));
-
     }
 
     private static TypeMirror array(TypeMirror el) {
@@ -309,6 +309,10 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         OperationModel op = new OperationModel(this, operationId++, kind, name);
         operations.put(name, op);
         return op;
+    }
+
+    public List<OperationModel> getInstrumentations() {
+        return instrumentations;
     }
 
     public CustomOperationModel customRegularOperation(OperationKind kind, String name, TypeElement typeElement, AnnotationMirror mirror) {
