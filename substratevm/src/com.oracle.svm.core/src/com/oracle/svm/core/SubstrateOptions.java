@@ -108,6 +108,10 @@ public class SubstrateOptions {
         if (!Platform.includedIn(Platform.LINUX.class)) {
             throw UserError.invalidOptionValue(key, key.getValue(), "Building static executable images is currently only supported on Linux. Remove the '--static' option or build on a Linux machine");
         }
+        if (!LibCBase.targetLibCIs(MuslLibC.class)) {
+            throw UserError.invalidOptionValue(key, key.getValue(),
+                            "Building static executable images is only supported with musl libc. Remove the '--static' option or add the '--libc=musl' option.");
+        }
     });
 
     @APIOption(name = "libc")//
