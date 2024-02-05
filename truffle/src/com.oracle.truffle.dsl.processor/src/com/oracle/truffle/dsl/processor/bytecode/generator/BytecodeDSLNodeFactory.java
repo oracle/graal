@@ -400,7 +400,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.declaration(cachedBytecodeNode.asType(), "bytecode", CodeTreeBuilder.createBuilder().cast(cachedBytecodeNode.asType(), "getParent()").build());
         b.declaration(type(int.class), "bci", "bytecode.findBytecodeIndexOfOperationNode(this)");
         b.startReturn().string("bytecode.findSourceLocation(bci)").end();
-        return ex;
+        return withTruffleBoundary(ex);
     }
 
     private CodeVariableElement createBytecodeUpdater() {
@@ -5098,7 +5098,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.string("new Object[]{0, instructions.toArray(), exHandlersInfo, sourceData.toArray()}");
             b.end(2);
 
-            return ex;
+            return withTruffleBoundary(ex);
         }
 
         private CodeExecutableElement createFindInstruction() {
@@ -5445,7 +5445,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(types.Node, "operationNode"));
 
             CodeTreeBuilder b = ex.createBuilder();
-            b.tree(createNeverPartOfCompilation());
             if (!tier.isCached()) {
                 mergeSuppressWarnings(ex, "static-method");
                 b.startReturn().string("-1").end();
@@ -5513,7 +5512,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             // Fallback: the node wasn't found.
             b.startReturn().string("-1").end();
 
-            return ex;
+            return withTruffleBoundary(ex);
 
         }
 

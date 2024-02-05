@@ -46,6 +46,7 @@ import java.util.function.Predicate;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.bytecode.introspection.BytecodeIntrospection;
 import com.oracle.truffle.api.bytecode.introspection.ExceptionHandler;
 import com.oracle.truffle.api.bytecode.introspection.Instruction;
@@ -170,6 +171,7 @@ public abstract class BytecodeNode extends Node {
         return dump(null);
     }
 
+    @TruffleBoundary
     public final String dump(BytecodeLocation highlighedLocation) {
         if (highlighedLocation != null && highlighedLocation.getBytecodeNode() != this) {
             throw new IllegalArgumentException("Invalid highlighted location. Belongs to a different BytecodeNode.");
