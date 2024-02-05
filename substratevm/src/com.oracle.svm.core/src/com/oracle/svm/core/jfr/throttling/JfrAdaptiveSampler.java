@@ -118,7 +118,7 @@ abstract class JfrAdaptiveSampler {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static double computeEwmaAlphaCoefficient(long lookbackCount) {
-        return lookbackCount <= 1 ? 1 : 1d / lookbackCount;
+        return lookbackCount <= 1 ? 1d : 1d / lookbackCount;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
