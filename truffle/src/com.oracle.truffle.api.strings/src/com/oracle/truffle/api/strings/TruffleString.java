@@ -67,8 +67,9 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.HashMap;
+import java.util.Map;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
@@ -1045,23 +1046,26 @@ public final class TruffleString extends AbstractTruffleString {
         @CompilationFinal(dimensions = 1) private static final Encoding[] ENCODINGS_TABLE;
         @CompilationFinal(dimensions = 1) private static final byte[] MAX_COMPATIBLE_CODE_RANGE;
         @CompilationFinal(dimensions = 1) private static final TruffleString[] EMPTY_STRINGS;
-        private static final EconomicMap<String, Encoding> J_CODINGS_NAME_MAP;
+        private static final Map<String, Encoding> JCODINGS_NAME_MAP;
 
         static {
             final Encoding[] encodingValues = Encoding.values();
             ENCODINGS_TABLE = new Encoding[encodingValues.length];
             MAX_COMPATIBLE_CODE_RANGE = new byte[encodingValues.length];
             EMPTY_STRINGS = new TruffleString[encodingValues.length];
-            J_CODINGS_NAME_MAP = EconomicMap.create(encodingValues.length);
+            // Java 17 compatible version of (Java 19) newHashMap(encodingValues.length)
+            Map<String, Encoding> jcodingsNameMap = new HashMap<>(encodingValues.length + encodingValues.length / 3);
 
             for (Encoding e : encodingValues) {
                 assert ENCODINGS_TABLE[e.id] == null;
                 ENCODINGS_TABLE[e.id] = e;
                 MAX_COMPATIBLE_CODE_RANGE[e.id] = e.maxCompatibleCodeRange;
                 if (JCodings.ENABLED) {
-                    J_CODINGS_NAME_MAP.put(e.jCodingName, e);
+                    jcodingsNameMap.put(e.jCodingName, e);
                 }
             }
+            JCODINGS_NAME_MAP = Map.copyOf(jcodingsNameMap);
+
             assert UTF_16.naturalStride == 1;
             assert UTF_32.naturalStride == 2;
             EMPTY_STRINGS[US_ASCII.id] = createConstant(new byte[0], 0, 0, US_ASCII, 0, TSCodeRange.get7Bit());
@@ -1112,7 +1116,7 @@ public final class TruffleString extends AbstractTruffleString {
          */
         @TruffleBoundary
         public static Encoding fromJCodingName(String name) {
-            Encoding encoding = J_CODINGS_NAME_MAP.get(name, null);
+            Encoding encoding = JCODINGS_NAME_MAP.get(name);
             if (encoding == null) {
                 throw InternalErrors.unknownEncoding(name);
             }
