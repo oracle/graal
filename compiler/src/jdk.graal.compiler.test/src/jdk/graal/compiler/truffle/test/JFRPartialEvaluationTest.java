@@ -33,6 +33,8 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.truffle.test.nodes.AbstractTestNode;
 import jdk.graal.compiler.truffle.test.nodes.RootTestNode;
+import jdk.jfr.Event;
+import jdk.jfr.Name;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -77,6 +79,24 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
         assertNotNull("The call to ThrowableTracer#traceError was not inlined or is missing.", findAnyInvoke(graph,
                         "jdk.jfr.internal.instrument.ThrowableTracer#traceError",
                         "jdk.internal.event.ThrowableTracer#traceError"));
+        // Also make sure that the node count hasn't exploded.
+        assertTrue("The number of graal nodes for an exception instantiation exceeded 100.", graph.getNodeCount() < 100);
+    }
+
+    @Test
+    public void testJFREvent() throws IOException, InterruptedException {
+        runInSubprocessWithJFREnabled(this::performTestJFREvent);
+    }
+
+    private void performTestJFREvent() {
+        RootTestNode root = new RootTestNode(new FrameDescriptor(), "JFREvent", new JFREventNode());
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) root.getCallTarget();
+        StructuredGraph graph = partialEval(callTarget, new Object[0]);
+        // Calls to JFR event methods must not be inlined.
+        assertNotNull("The call to TestEvent#shouldCommit was not inlined or is missing.", findAnyInvoke(graph,
+                        "jdk.graal.compiler.truffle.test.JFRPartialEvaluationTest$TestEvent#shouldCommit"));
+        assertNotNull("The call to TestEvent#commit was not inlined or is missing.", findAnyInvoke(graph,
+                        "jdk.graal.compiler.truffle.test.JFRPartialEvaluationTest$TestEvent#commit"));
         // Also make sure that the node count hasn't exploded.
         assertTrue("The number of graal nodes for an exception instantiation exceeded 100.", graph.getNodeCount() < 100);
     }
@@ -144,5 +164,21 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
                 return this;
             }
         }
+    }
+
+    private static final class JFREventNode extends AbstractTestNode {
+
+        @Override
+        public int execute(VirtualFrame frame) {
+            TestEvent event = new TestEvent();
+            if (event.shouldCommit()) {
+                event.commit();
+            }
+            return 1;
+        }
+    }
+
+    @Name("test.JFRPartialEvaluationTestEvent")
+    private static class TestEvent extends Event {
     }
 }
