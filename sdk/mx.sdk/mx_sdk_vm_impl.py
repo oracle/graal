@@ -2490,7 +2490,7 @@ class JmodModifierBuildTask(mx.ProjectBuildTask, metaclass=ABCMeta):
         # 1. copy the jmod file from the jimage to the output path
         jmod_copy_src = join(graalvm_jimage_home, 'jmods', self.subject.jmod_file)
         jmod_copy_dst = self.subject.output_file()
-        assert mx.exists(jmod_copy_src), "Library projects {} have an invalid 'add_to_modules' attribute: '{}' does not exist".format([lp.name for lp in self.subject.library_projects], jmod_copy_src)
+        assert os.path.exists(jmod_copy_src), "Library projects {} have an invalid 'add_to_modules' attribute: '{}' does not exist".format([lp.name for lp in self.subject.library_projects], jmod_copy_src)
         mx.copyfile(jmod_copy_src, jmod_copy_dst)
         for library_project in [lp for lp in self.subject.library_projects if not lp.is_skipped()]:
             # 2. append the native libraries defined by the library projects to the copy of the jmod file
@@ -3056,7 +3056,7 @@ _stage1_graalvm_distribution = 'uninitialized'
 
 
 def _platform_classpath(cp_entries):
-    return os.pathsep.join(mx.normpath(entry) for entry in cp_entries)
+    return os.pathsep.join(os.path.normpath(entry) for entry in cp_entries)
 
 
 def get_stage1_graalvm_distribution_name():

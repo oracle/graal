@@ -563,7 +563,7 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
         self.cmake_config_variant = cmakeConfigVariant or {}
         super(SulongCMakeTestSuite, self).__init__(suite, name, deps, workingSets, subDir,
                                                    ninja_install_targets=ninja_install_targets or ["install"], max_jobs=max_jobs, **args)
-        self._install_dir = mx.join(self.out_dir, "result")
+        self._install_dir = os.path.join(self.out_dir, "result")
         # self._ninja_targets = self.getResults()
         _config = self._cmake_config_raw
         _config.setdefault('CMAKE_BUILD_TYPE', 'Sulong')
@@ -670,12 +670,12 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
     def _archivable_results(self, target_arch, use_relpath, single):
         out_dir_arch = self._install_dir
         for file_path in self.getResults():
-            assert not mx.isabs(file_path)
-            abs_path = mx.join(out_dir_arch, file_path)
-            archive_path = file_path if use_relpath else mx.basename(file_path)
+            assert not os.path.isabs(file_path)
+            abs_path = os.path.join(out_dir_arch, file_path)
+            archive_path = file_path if use_relpath else os.path.basename(file_path)
 
             # if test.skip exists the test should be skipped
-            if mx.exists(mx.join(mx.dirname(abs_path), "test.skip")):
+            if os.path.exists(os.path.join(os.path.dirname(abs_path), "test.skip")):
                 continue
 
             yield abs_path, archive_path

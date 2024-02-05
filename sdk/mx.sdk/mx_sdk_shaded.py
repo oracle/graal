@@ -94,7 +94,7 @@ class ShadedLibraryProject(mx.JavaProject):
         self.shade = args.pop('shade')
         subDir = args.pop('subDir', 'src')
         srcDirs = args.pop('sourceDirs', ['src']) # + [source_gen_dir()], added below
-        d = mx.join(suite.dir, subDir, name)
+        d = os.path.join(suite.dir, subDir, name)
         shadedLibraries = args.pop('shadedDependencies', [])
         self.shadedDeps = list(set(mx.dependency(d) for d in shadedLibraries))
         assert all(dep.isLibrary() for dep in self.shadedDeps), f"shadedDependencies must all be libraries: {self.shadedDeps}"
@@ -294,7 +294,7 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
                             zf.extract(zi, outDir)
                         else:
                             output_file = os.path.join(outDir, new_filename)
-                            mx.ensure_dir_exists(mx.dirname(output_file))
+                            mx.ensure_dir_exists(os.path.dirname(output_file))
                             if len(applicableSubs) == 0:
                                 with zf.open(zi) as src, open(output_file, 'wb') as dst:
                                     shutil.copyfileobj(src, dst)
