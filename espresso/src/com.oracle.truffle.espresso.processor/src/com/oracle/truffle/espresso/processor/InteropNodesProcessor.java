@@ -158,19 +158,16 @@ public class InteropNodesProcessor extends BaseProcessor {
         boolean shareableCls = isShareable(cls, false);
         List<Message> nodes = new ArrayList<>();
         for (Element methodElement : cls.getEnclosedElements()) {
-            List<AnnotationMirror> exportedMethods = getAnnotations(methodElement, exportMessage.asType());
+            List<AnnotationMirror> exportedMethods = getAnnotations(methodElement, exportMessage.asType(), exportRepeatMessage.asType());
             // Look for exported messages. Create one node per export.
             for (AnnotationMirror exportAnnotation : exportedMethods) {
-                collectNode(cls, methodElement, exportAnnotation, shareableCls, nodes, imports);
-            }
-            exportedMethods = getAnnotations(methodElement, exportRepeatMessage.asType());
-            // Look for repeated exported messages. Note that a single method can export multiple message.
-            // Create one node per export.
-            for (AnnotationMirror repeatAnnotation : exportedMethods) {
-                List<AnnotationMirror> repeatAnnotations = getAnnotationValueList(repeatAnnotation, "value", AnnotationMirror.class);
-                for (AnnotationMirror exportAnnotation : repeatAnnotations) {
-                    collectNode(cls, methodElement, exportAnnotation, shareableCls, nodes, imports);
+                String targetMessageName = getAnnotationValue(exportAnnotation, "name", String.class);
+                if (targetMessageName == null || targetMessageName.isEmpty()) {
+                    targetMessageName = methodElement.getSimpleName().toString();
                 }
+                String clsName = targetMessageName + "Node";
+                boolean isShareable = isShareable(methodElement, shareableCls);
+                nodes.add(new Message(processInteropNode(cls, (ExecutableElement) methodElement, methodElement.getSimpleName().toString(), clsName, imports), targetMessageName, clsName, isShareable));
             }
         }
 
@@ -224,16 +221,6 @@ public class InteropNodesProcessor extends BaseProcessor {
             processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, e.getMessage(), cls);
         }
 
-    }
-
-    private void collectNode(TypeElement cls, Element methodElement, AnnotationMirror exportAnnotation, boolean shareableCls, List<Message> nodes, Imports imports) {
-        String targetMessageName = getAnnotationValue(exportAnnotation, "name", String.class);
-        if (targetMessageName == null || targetMessageName.isEmpty()) {
-            targetMessageName = methodElement.getSimpleName().toString();
-        }
-        String clsName = targetMessageName + "Node";
-        boolean isShareable = isShareable(methodElement, shareableCls);
-        nodes.add(new Message(processInteropNode(cls, (ExecutableElement) methodElement, methodElement.getSimpleName().toString(), clsName, imports), targetMessageName, clsName, isShareable));
     }
 
     private static ClassBuilder generateFactory(List<Message> nodes, TypeElement sourceDispatch) {
