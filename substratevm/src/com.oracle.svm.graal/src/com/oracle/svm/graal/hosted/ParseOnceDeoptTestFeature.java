@@ -119,6 +119,13 @@ public class ParseOnceDeoptTestFeature implements InternalFeature {
         }
 
         @Override
+        public void afterParsingHook(AnalysisMethod method, StructuredGraph graph) {
+            if (method.isDeoptTarget()) {
+                new ParseOnceRuntimeCompilationFeature.ConvertMacroNodes().apply(graph);
+            }
+        }
+
+        @Override
         public boolean allowAssumptions(AnalysisMethod method) {
             /* Assumptions are not allowed it AOT compiled methods */
             return false;
