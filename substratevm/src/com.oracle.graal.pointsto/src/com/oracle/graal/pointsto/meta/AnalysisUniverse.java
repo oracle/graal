@@ -50,6 +50,7 @@ import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.Universe;
@@ -276,7 +277,7 @@ public class AnalysisUniverse implements Universe {
         }
 
         try {
-            JavaKind storageKind = originalMetaAccess.lookupJavaType(WordBase.class).isAssignableFrom(substitutions.resolve(type)) ? wordKind : type.getJavaKind();
+            JavaKind storageKind = originalMetaAccess.lookupJavaType(WordBase.class).isAssignableFrom(OriginalClassProvider.getOriginalType(type)) ? wordKind : type.getJavaKind();
             AnalysisType newValue = analysisFactory.createType(this, type, storageKind, objectClass, cloneableClass);
 
             synchronized (this) {

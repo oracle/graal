@@ -37,6 +37,7 @@ import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -160,7 +161,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     private static AnalysisType getDeclaredType(AnalysisUniverse universe, ResolvedJavaField wrappedField) {
         ResolvedJavaType resolvedType;
         try {
-            resolvedType = wrappedField.getType().resolve(universe.substitutions.resolve(wrappedField.getDeclaringClass()));
+            resolvedType = wrappedField.getType().resolve(OriginalClassProvider.getOriginalType(wrappedField.getDeclaringClass()));
         } catch (LinkageError e) {
             /*
              * Type resolution fails if the declared type is missing. Just erase the type by

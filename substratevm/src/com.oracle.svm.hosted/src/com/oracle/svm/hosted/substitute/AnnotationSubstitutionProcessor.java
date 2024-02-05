@@ -167,16 +167,6 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     @Override
-    public ResolvedJavaType resolve(ResolvedJavaType type) {
-        if (type instanceof SubstitutionType) {
-            return ((SubstitutionType) type).getAnnotated();
-        } else if (type instanceof InjectedFieldsType) {
-            return ((InjectedFieldsType) type).getOriginal();
-        }
-        return type;
-    }
-
-    @Override
     public ResolvedJavaField lookup(ResolvedJavaField field) {
         Delete deleteAnnotation = deleteAnnotations.get(field);
         if (deleteAnnotation != null) {

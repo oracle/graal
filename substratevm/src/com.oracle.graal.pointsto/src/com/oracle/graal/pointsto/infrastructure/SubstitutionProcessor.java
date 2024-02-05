@@ -40,16 +40,6 @@ public abstract class SubstitutionProcessor {
         return type;
     }
 
-    /**
-     * Get the original type.
-     * 
-     * @param type the result of a substitution
-     * @return the original type of the substitution
-     */
-    public ResolvedJavaType resolve(ResolvedJavaType type) {
-        return type;
-    }
-
     public ResolvedJavaField lookup(ResolvedJavaField field) {
         return field;
     }
@@ -119,11 +109,6 @@ public abstract class SubstitutionProcessor {
         @Override
         public ResolvedJavaType lookup(ResolvedJavaType type) {
             return second.lookup(first.lookup(type));
-        }
-
-        @Override
-        public ResolvedJavaType resolve(ResolvedJavaType type) {
-            return first.resolve(second.resolve(type));
         }
 
         @Override

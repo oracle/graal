@@ -74,15 +74,6 @@ public class LambdaProxyRenamingSubstitutionProcessor extends SubstitutionProces
         }
     }
 
-    @Override
-    public ResolvedJavaType resolve(ResolvedJavaType type) {
-        if (type instanceof LambdaSubstitutionType) {
-            return ((LambdaSubstitutionType) type).getOriginal();
-        } else {
-            return type;
-        }
-    }
-
     private LambdaSubstitutionType getSubstitution(ResolvedJavaType original) {
         return typeSubstitutions.computeIfAbsent(original, (key) -> {
             OptionValues options = bb.getOptions();
