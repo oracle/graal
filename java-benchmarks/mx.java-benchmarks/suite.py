@@ -34,7 +34,7 @@ suite = {
   "libraries" : {
     "TIKA_1.0.11": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/tika-1.0.11.zip"],
-      "digest": "sha512:1afcd6ab8cffe4d373633458aa1801dcc139247c0f03e20bcfeaee5f5f44a8cc6eee77909ac07866a7bf7a8a804b8843758afb6640e438f06ca4aca6d0b690c3",
+      "digest": "sha512:0d45935c428bb3226b0d22b8ea8a8f2eb9e145a72225c6320eeb7c7d1cebc644921f6b77d379a9356bfcbdb66e9daf351d2aef18ff47fa67dad2d5cb15def875",
       "packedResource": True,
     },
 
@@ -70,7 +70,7 @@ suite = {
 
     "QUARKUS_HW_1.0.6": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/quarkus-hello-world-1.0.6.zip"],
-      "digest": "sha512:dcbecf130b789972b860465d72c35f0092321423055ee5d3e70502914f8eccabb31551103b63da045979794a813cd6be0432412108e3d310e3b8f0db758a5373",
+      "digest": "sha512:c7678c9169dc6ba445fff8dbef7bc61579084c74eee4233d3deb3d56e73429b9cd894a3e98f7d8d7fe39b4f181b77ba916afa559a2f91de30a309fb9bdd5c56b",
       "packedResource": True,
     },
 
