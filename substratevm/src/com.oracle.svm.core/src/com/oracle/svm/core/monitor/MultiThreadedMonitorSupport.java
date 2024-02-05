@@ -26,9 +26,8 @@ package com.oracle.svm.core.monitor;
 
 import java.lang.ref.ReferenceQueue;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.LockSupport;
@@ -105,10 +104,11 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
      * Types that are used to implement the secondary storage for monitor slots cannot themselves
      * use the additionalMonitors map. That could result in recursive manipulation of the
      * additionalMonitors map which could lead to table corruptions and double insertion of a
-     * monitor for the same object. Therefore these types will always get a monitor slot.
+     * monitor for the same object. Therefore, these types will always get a monitor slot. The
+     * boolean value specifies if the monitor slot is also needed for subtypes.
      */
     @Platforms(Platform.HOSTED_ONLY.class)//
-    public static final Set<Class<?>> FORCE_MONITOR_SLOT_TYPES;
+    public static final Map<Class<?>, Boolean> FORCE_MONITOR_SLOT_TYPES;
 
     static {
         try {
@@ -117,16 +117,16 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
              * com.oracle.svm.core.monitor.MultiThreadedMonitorSupport#additionalMonitors map uses
              * java.lang.ref.ReferenceQueue internally.
              */
-            HashSet<Class<?>> monitorTypes = new HashSet<>();
+            HashMap<Class<?>, Boolean> monitorTypes = new HashMap<>();
             if (JavaVersionUtil.JAVA_SPEC <= 17) {
                 /*
                  * Until JDK 17, the ReferenceQueue uses the inner static class Lock for all its
                  * locking needs.
                  */
-                monitorTypes.add(Class.forName("java.lang.ref.ReferenceQueue$Lock"));
+                monitorTypes.put(Class.forName("java.lang.ref.ReferenceQueue$Lock"), false);
             }
             /* The WeakIdentityHashMap also synchronizes on its internal ReferenceQueue field. */
-            monitorTypes.add(java.lang.ref.ReferenceQueue.class);
+            monitorTypes.put(java.lang.ref.ReferenceQueue.class, false);
 
             /*
              * Whenever the monitor allocation in
@@ -135,7 +135,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
              * LinuxPhysicalMemory$PhysicalMemorySupportImpl.sizeFromCGroup() is called which
              * triggers file IO using the synchronized java.io.FileDescriptor.attach().
              */
-            monitorTypes.add(java.io.FileDescriptor.class);
+            monitorTypes.put(java.io.FileDescriptor.class, false);
 
             /*
              * LinuxPhysicalMemory$PhysicalMemorySupportImpl.sizeFromCGroup() also calls
@@ -146,7 +146,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
              * This should also take care of the synchronization in
              * ReferenceInternals.processPendingReferences().
              */
-            monitorTypes.add(java.lang.Object.class);
+            monitorTypes.put(java.lang.Object.class, false);
 
             /*
              * The map access in MultiThreadedMonitorSupport.getOrCreateMonitorFromMap() calls
@@ -155,7 +155,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
              * SplittableRandomAccessors.initialize() which synchronizes on an instance of
              * SplittableRandomAccessors.
              */
-            monitorTypes.add(Class.forName("com.oracle.svm.core.jdk.SplittableRandomAccessors"));
+            monitorTypes.put(Class.forName("com.oracle.svm.core.jdk.SplittableRandomAccessors"), false);
 
             if (JavaVersionUtil.JAVA_SPEC >= 11) {
                 /*
@@ -164,16 +164,24 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
                  * slow-path-new-instance allocation which in turn can trigger a GC which processes
                  * all the pending cleaners.
                  */
-                monitorTypes.add(Class.forName("jdk.internal.ref.PhantomCleanable"));
+                monitorTypes.put(Class.forName("jdk.internal.ref.PhantomCleanable"), false);
             }
 
             /*
              * Use as the delegate for locking on {@link Class} (i.e. {@link DynamicHub}) since the
              * hub itself must be immutable.
              */
-            monitorTypes.add(DynamicHubCompanion.class);
+            monitorTypes.put(DynamicHubCompanion.class, false);
 
-            FORCE_MONITOR_SLOT_TYPES = Collections.unmodifiableSet(monitorTypes);
+            /*
+             * When a thread exits, it locks its own thread mutex and changes its state to
+             * TERMINATED. Without an explict monitor slot, the thread could get parked when
+             * unlocking its own mutex (because we need to lock the shared monitor map). If the
+             * thread gets blocked during unlocking, its thread state would change unexpectedly.
+             */
+            monitorTypes.put(Thread.class, true);
+
+            FORCE_MONITOR_SLOT_TYPES = Collections.unmodifiableMap(monitorTypes);
         } catch (ClassNotFoundException e) {
             throw VMError.shouldNotReachHere("Error building the list of types that always need a monitor slot.", e);
         }

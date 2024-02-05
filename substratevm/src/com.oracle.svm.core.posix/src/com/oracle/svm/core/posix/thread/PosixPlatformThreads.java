@@ -26,17 +26,12 @@ package com.oracle.svm.core.posix.thread;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
-import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -44,19 +39,12 @@ import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
-import com.oracle.svm.core.c.function.CEntryPointActions;
-import com.oracle.svm.core.c.function.CEntryPointErrors;
-import com.oracle.svm.core.c.function.CEntryPointOptions;
-import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.os.IsDefined;
@@ -76,6 +64,7 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.Parker;
 import com.oracle.svm.core.thread.Parker.ParkerFactory;
 import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -117,18 +106,33 @@ public final class PosixPlatformThreads extends PlatformThreads {
                 }
             }
 
-            ThreadStartData startData = prepareStart(thread, SizeOf.get(ThreadStartData.class));
+            /*
+             * Prevent stack overflow errors so that starting the thread and reverting back to a
+             * safe state (in case of an error) works reliably.
+             */
+            StackOverflowCheck.singleton().makeYellowZoneAvailable();
+            try {
+                return doStartThread0(thread, attributes);
+            } finally {
+                StackOverflowCheck.singleton().protectYellowZone();
+            }
+        } finally {
+            Pthread.pthread_attr_destroy(attributes);
+        }
+    }
 
+    /** Starts a thread to the point so that it is executing. */
+    private boolean doStartThread0(Thread thread, pthread_attr_t attributes) {
+        ThreadStartData startData = prepareStart(thread, SizeOf.get(ThreadStartData.class));
+        try {
             Pthread.pthread_tPointer newThread = UnsafeStackValue.get(Pthread.pthread_tPointer.class);
-            if (Pthread.pthread_create(newThread, attributes, PosixPlatformThreads.pthreadStartRoutine.getFunctionPointer(), startData) != 0) {
+            if (Pthread.pthread_create(newThread, attributes, threadStartRoutine.getFunctionPointer(), startData) != 0) {
                 undoPrepareStartOnError(thread, startData);
                 return false;
             }
-
-            setPthreadIdentifier(thread, newThread.read());
             return true;
-        } finally {
-            Pthread.pthread_attr_destroy(attributes);
+        } catch (Throwable e) {
+            throw VMError.shouldNotReachHere("No exception must be thrown after creating the thread start data.", e);
         }
     }
 
@@ -154,8 +158,8 @@ public final class PosixPlatformThreads extends PlatformThreads {
     protected void setNativeName(Thread thread, String name) {
         if (!hasThreadIdentifier(thread)) {
             /*
-             * The thread was not started from Java code, but started from C code and attached
-             * manually to SVM. We do not want to interfere with such threads.
+             * The thread was a. not started yet, b. not started from Java code (i.e., only attached
+             * to SVM). We do not want to interfere with such threads.
              */
             return;
         }
@@ -186,32 +190,11 @@ public final class PosixPlatformThreads extends PlatformThreads {
         Sched.sched_yield();
     }
 
-    private static final CEntryPointLiteral<CFunctionPointer> pthreadStartRoutine = CEntryPointLiteral.create(PosixPlatformThreads.class, "pthreadStartRoutine", ThreadStartData.class);
-
-    private static class PthreadStartRoutinePrologue implements CEntryPointOptions.Prologue {
-        private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString("Failed to attach a newly launched thread.");
-
-        @SuppressWarnings("unused")
-        @Uninterruptible(reason = "prologue")
-        static void enter(ThreadStartData data) {
-            int code = CEntryPointActions.enterAttachThread(data.getIsolate(), true, false);
-            if (code != CEntryPointErrors.NO_ERROR) {
-                CEntryPointActions.failFatally(code, errorMessage.get());
-            }
-        }
-    }
-
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
-    @CEntryPointOptions(prologue = PthreadStartRoutinePrologue.class, epilogue = LeaveDetachThreadEpilogue.class)
-    static WordBase pthreadStartRoutine(ThreadStartData data) {
-        ObjectHandle threadHandle = data.getThreadHandle();
-        freeStartData(data);
-
-        threadStartRoutine(threadHandle);
-
-        return WordFactory.nullPointer();
-    }
-
+    /**
+     * Note that this method is only executed for Java threads that are started via
+     * {@link Thread#start()}. It is not executed if an existing native thread is attached to an
+     * isolate.
+     */
     @Override
     protected void beforeThreadRun(Thread thread) {
         /* Complete the initialization of the thread, now that it is (nearly) running. */
@@ -254,7 +237,7 @@ public final class PosixPlatformThreads extends PlatformThreads {
                 return WordFactory.nullPointer();
             }
 
-            return (OSThreadHandle) newThread.read();
+            return newThread.read();
         } finally {
             Pthread.pthread_attr_destroy_no_transition(attributes);
         }
@@ -265,13 +248,6 @@ public final class PosixPlatformThreads extends PlatformThreads {
     public boolean joinThreadUnmanaged(OSThreadHandle threadHandle, WordPointer threadExitStatus) {
         int status = Pthread.pthread_join_no_transition((Pthread.pthread_t) threadHandle, threadExitStatus);
         return status == 0;
-    }
-
-    @Override
-    @SuppressWarnings("unused")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void closeOSThreadHandle(OSThreadHandle threadHandle) {
-        // pthread_t doesn't need closing
     }
 }
 
