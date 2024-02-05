@@ -123,6 +123,10 @@ public final class JavaVersion implements Comparable<JavaVersion> {
         return version <= 13;
     }
 
+    public boolean java13OrLater() {
+        return version >= 13;
+    }
+
     public boolean java15OrLater() {
         return version >= 15;
     }

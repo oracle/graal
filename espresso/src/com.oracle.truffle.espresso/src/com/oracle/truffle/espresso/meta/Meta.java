@@ -393,9 +393,31 @@ public final class Meta extends ContextAccessImpl {
         sun_nio_ch_DirectBuffer = knownKlass(Type.sun_nio_ch_DirectBuffer);
         java_nio_Buffer_address = java_nio_Buffer.requireDeclaredField(Name.address, Type._long);
         java_nio_Buffer_capacity = java_nio_Buffer.requireDeclaredField(Name.capacity, Type._int);
+        java_nio_Buffer_limit = java_nio_Buffer.requireDeclaredMethod(Name.limit, Signature._int);
+        java_nio_Buffer_isReadOnly = java_nio_Buffer.requireDeclaredMethod(Name.isReadOnly, Signature._boolean);
 
         java_nio_ByteBuffer = knownKlass(Type.java_nio_ByteBuffer);
         java_nio_ByteBuffer_wrap = java_nio_ByteBuffer.requireDeclaredMethod(Name.wrap, Signature.ByteBuffer_byte_array);
+        if (getJavaVersion().java13OrLater()) {
+            java_nio_ByteBuffer_get = java_nio_ByteBuffer.requireDeclaredMethod(Name.get, Signature.ByteBuffer_int_byte_array_int_int);
+        } else {
+            java_nio_ByteBuffer_get = null;
+        }
+        java_nio_ByteBuffer_getByte = java_nio_ByteBuffer.requireDeclaredMethod(Name.get, Signature._byte_int);
+        java_nio_ByteBuffer_getShort = java_nio_ByteBuffer.requireDeclaredMethod(Name.getShort, Signature._short_int);
+        java_nio_ByteBuffer_getInt = java_nio_ByteBuffer.requireDeclaredMethod(Name.getInt, Signature._int_int);
+        java_nio_ByteBuffer_getLong = java_nio_ByteBuffer.requireDeclaredMethod(Name.getLong, Signature._long_int);
+        java_nio_ByteBuffer_getFloat = java_nio_ByteBuffer.requireDeclaredMethod(Name.getFloat, Signature._float_int);
+        java_nio_ByteBuffer_getDouble = java_nio_ByteBuffer.requireDeclaredMethod(Name.getDouble, Signature._double_int);
+        java_nio_ByteBuffer_putByte = java_nio_ByteBuffer.requireDeclaredMethod(Name.put, Signature.ByteBuffer_int_byte);
+        java_nio_ByteBuffer_putShort = java_nio_ByteBuffer.requireDeclaredMethod(Name.putShort, Signature.ByteBuffer_int_short);
+        java_nio_ByteBuffer_putInt = java_nio_ByteBuffer.requireDeclaredMethod(Name.putInt, Signature.ByteBuffer_int_int);
+        java_nio_ByteBuffer_putLong = java_nio_ByteBuffer.requireDeclaredMethod(Name.putLong, Signature.ByteBuffer_int_long);
+        java_nio_ByteBuffer_putFloat = java_nio_ByteBuffer.requireDeclaredMethod(Name.putFloat, Signature.ByteBuffer_int_float);
+        java_nio_ByteBuffer_putDouble = java_nio_ByteBuffer.requireDeclaredMethod(Name.putDouble, Signature.ByteBuffer_int_double);
+        java_nio_ByteBuffer_order = java_nio_ByteBuffer.requireDeclaredMethod(Name.order, Signature.ByteOrder);
+        java_nio_ByteBuffer_setOrder = java_nio_ByteBuffer.requireDeclaredMethod(Name.order, Signature.ByteBuffer_ByteOrder);
+
         java_nio_DirectByteBuffer = knownKlass(Type.java_nio_DirectByteBuffer);
         java_nio_DirectByteBuffer_init_long_int = diff() //
                         .method(lower(20), Name._init_, Signature._void_long_int) //
@@ -403,6 +425,7 @@ public final class Meta extends ContextAccessImpl {
                         .method(java_nio_DirectByteBuffer);
         java_nio_ByteOrder = knownKlass(Type.java_nio_ByteOrder);
         java_nio_ByteOrder_LITTLE_ENDIAN = java_nio_ByteOrder.requireDeclaredField(Name.LITTLE_ENDIAN, Type.java_nio_ByteOrder);
+        java_nio_ByteOrder_BIG_ENDIAN = java_nio_ByteOrder.requireDeclaredField(Name.BIG_ENDIAN, Type.java_nio_ByteOrder);
 
         java_lang_Thread = knownKlass(Type.java_lang_Thread);
         // The interrupted field is no longer hidden as of JDK14+
@@ -983,7 +1006,7 @@ public final class Meta extends ContextAccessImpl {
      * <p>
      * Espresso's Polyglot API (polyglot.jar) is injected on the boot CP, must be loaded after
      * modules initialization.
-     *
+     * <p>
      * The classes in module java.management become known after modules initialization.
      */
     public void postSystemInit() {
@@ -1315,15 +1338,33 @@ public final class Meta extends ContextAccessImpl {
 
     public final ObjectKlass sun_nio_ch_DirectBuffer;
     public final ObjectKlass java_nio_Buffer;
+    public final Method java_nio_Buffer_isReadOnly;
     public final Field java_nio_Buffer_address;
     public final Field java_nio_Buffer_capacity;
+    public final Method java_nio_Buffer_limit;
 
     public final ObjectKlass java_nio_ByteBuffer;
     public final Method java_nio_ByteBuffer_wrap;
+    public final Method java_nio_ByteBuffer_get;
+    public final Method java_nio_ByteBuffer_getByte;
+    public final Method java_nio_ByteBuffer_getShort;
+    public final Method java_nio_ByteBuffer_getInt;
+    public final Method java_nio_ByteBuffer_getLong;
+    public final Method java_nio_ByteBuffer_getFloat;
+    public final Method java_nio_ByteBuffer_getDouble;
+    public final Method java_nio_ByteBuffer_putByte;
+    public final Method java_nio_ByteBuffer_putShort;
+    public final Method java_nio_ByteBuffer_putInt;
+    public final Method java_nio_ByteBuffer_putLong;
+    public final Method java_nio_ByteBuffer_putFloat;
+    public final Method java_nio_ByteBuffer_putDouble;
+    public final Method java_nio_ByteBuffer_order;
+    public final Method java_nio_ByteBuffer_setOrder;
     public final ObjectKlass java_nio_DirectByteBuffer;
     public final Method java_nio_DirectByteBuffer_init_long_int;
     public final ObjectKlass java_nio_ByteOrder;
     public final Field java_nio_ByteOrder_LITTLE_ENDIAN;
+    public final Field java_nio_ByteOrder_BIG_ENDIAN;
 
     public final ObjectKlass java_lang_BaseVirtualThread;
     public final ObjectKlass java_lang_ThreadGroup;
@@ -1994,7 +2035,7 @@ public final class Meta extends ContextAccessImpl {
      * asks the given class loader to perform the load, even for internal primitive types. This is
      * the method to use when loading symbols that are not directly taken from a constant pool, for
      * example, when loading a class whose name is given by a guest string.
-     *
+     * <p>
      * This method is designed to fail if given the type symbol for primitives (eg: 'Z' for
      * booleans).
      *
@@ -2382,7 +2423,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to a boolean.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2399,7 +2440,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to a byte.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2416,7 +2457,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to a short.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2433,7 +2474,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to a char.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2450,7 +2491,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to an int.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2467,7 +2508,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to a float.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2484,7 +2525,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to a double.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2501,7 +2542,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a boxed value to a long.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
@@ -2518,7 +2559,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Converts a Object value to a StaticObject.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will return StaticObject.NULL when the Object value is not a StaticObject. If the conversion
      * is not possible, throws {@link EspressoError}.
@@ -2532,7 +2573,7 @@ public final class Meta extends ContextAccessImpl {
 
     /**
      * Bitwise conversion from a boxed value to a long.
-     *
+     * <p>
      * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will fill the upper bits with 0. If the conversion is not possible, throws
      * {@link EspressoError}.
