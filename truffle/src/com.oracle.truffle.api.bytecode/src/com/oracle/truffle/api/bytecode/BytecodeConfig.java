@@ -54,7 +54,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
  */
 public final class BytecodeConfig {
 
-    private static final long SOURCE_ENCODING = 0xb1L;
+    private static final long SOURCE_ENCODING = 0b1L;
 
     /**
      * Retain no sources or instrumentation information.
@@ -105,6 +105,7 @@ public final class BytecodeConfig {
     public static class Builder {
         private final BytecodeConfigEncoder encoder;
         private long encoding;
+
         Builder(BytecodeConfigEncoder encoder) {
             this.encoder = encoder;
         }
