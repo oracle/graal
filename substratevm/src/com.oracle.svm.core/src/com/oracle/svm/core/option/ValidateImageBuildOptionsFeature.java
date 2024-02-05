@@ -27,13 +27,15 @@ package com.oracle.svm.core.option;
 import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.options.OptionKey;
 
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+
+import jdk.graal.compiler.options.OptionKey;
 
 @AutomaticallyRegisteredFeature
 public class ValidateImageBuildOptionsFeature implements InternalFeature {
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
         UnmodifiableMapCursor<OptionKey<?>, Object> cursor = RuntimeOptionValues.singleton().getMap().getEntries();
         while (cursor.advance()) {
             validate(cursor.getKey());
