@@ -387,7 +387,7 @@ public final class TruffleBaseFeature implements InternalFeature {
                         To disable this version check the '-Dpolyglotimpl.DisableVersionChecks=true' system property can be used.
                         It is not recommended to disable version checks.
                         """);
-        throw new IllegalStateException(errorMessage.toString());
+        throw UserError.abort(errorMessage.toString());
     }
 
     @SuppressWarnings({"null", "unused"})
