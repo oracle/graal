@@ -350,7 +350,6 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     @Operation
     public static final class GetSourcePosition {
         @Specialization
-        @TruffleBoundary
         public static Object doOperation(VirtualFrame frame,
                         @Bind("$node") Node node,
                         @Bind("$bytecode") BytecodeNode bytecode) {
