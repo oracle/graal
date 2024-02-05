@@ -15,11 +15,11 @@ The profile is a summary of how a particular method has been executing during ru
 The JIT compiler then assumes that the method will continue to behave in the same manner, and uses the information in the profile to optimize that method better.
 
 AOT compilers typically do not have profiling information, and are usually limited to a static view of the code they are compiling.
-This means that, barring heuristics, an AOT compiler sees each branch of every if statement as equally likely to happen at run time, 
+This means that, barring heuristics, an AOT compiler sees each branch of every if statement as equally likely to happen at run time,
 each method is as likely to be invoked as every other and each loop will repeat an equal number of times.
 This puts the AOT compiler at a disadvantage - without profile information, it is hard to generate machine code of the same quality as a JIT compiler.
 
-Profile Guided Optimization (PGO), described in this document, 
+Profile Guided Optimization (PGO), described in this document,
 is a technique that brings profile information to an AOT compiler to improve the quality of it's output in terms of performance and size.
 
 ## What is a _profile_?
@@ -38,23 +38,23 @@ Examples of such events are:
 ## How Do I Obtain a Profile of My Application?
 
 When running an application on a runtime with a JIT compiler the profiling of the application is handled by the runtime environment, with no extra steps needed from the developer.
-While this is undoubtedly simpler, the profiling that the runtime does is not free - it introduces execution overheads of the code being profiled - 
+While this is undoubtedly simpler, the profiling that the runtime does is not free - it introduces execution overheads of the code being profiled -
 both in terms of execution time and memory usage.
-This causes warmup issues - 
+This causes warmup issues -
 the application will reach predictable peak performance only after sufficient time has passed for the key parts of the application to be profiled and JIT compiled.
-For long-running applications, this overhead usually pays for itself, yielding a performance boost later. 
+For long-running applications, this overhead usually pays for itself, yielding a performance boost later.
 On the other hand, for short-lived applications and applications that need to start with good, predictable performance as soon as possible, this is counterproductive.
 
 Gathering a profile for an AOT-compiled application is more involved, and requires extra steps by the developer, but introduces no overhead in the final application.
 Here, profiles must be gathered by observing the application while it is running.
-This is commonly done by compiling the application in a special mode that inserts *instrumentation code* into the application binary. 
+This is commonly done by compiling the application in a special mode that inserts *instrumentation code* into the application binary.
 The instrumentation code increments counters for the events that are of interest to the profile.
 We call this an *instrumented image*, and the process of adding these counters is called *instrumentation*.
-Naturally, the instrumented image of the application will not be as performant as the default build due to the overhead of the instrumentation code, 
+Naturally, the instrumented image of the application will not be as performant as the default build due to the overhead of the instrumentation code,
 so it is not recommended to regularly run instrumented images in production.
-But, executing synthetic representative workloads on the instrumented build allows us to gather a representative profile of the application 
+But, executing synthetic representative workloads on the instrumented build allows us to gather a representative profile of the application
 (just as the runtime would do for the JIT compiler).
-When building an optimized image, the AOT compiler has both the static view and the dynamic profile of the application - 
+When building an optimized image, the AOT compiler has both the static view and the dynamic profile of the application -
 an optimized image performs better than the default AOT-compiled image.
 
 ## How Does a Profile "Guide" Optimization?
@@ -75,14 +75,14 @@ private int run(String[] args) {
 For illustrative purposes, let's imagine that the inlining optimization has a limit on how much code can be generated, and can hence only inline one of the calls.
 Looking only at the static view of the code being compiled, both the `doActualWork` and `handleNotEnoughArguments` invocations look pretty much indistinguishable.
 Without any heuristics, the phase would have to guess which is the better choice to inline.
-However, making the incorrect choice can lead to code that is less efficient. 
+However, making the incorrect choice can lead to code that is less efficient.
 Let's assume that `run` is most commonly called with the right number of arguments at run time.
-Then inlining `handleNotEnoughArguments` would increase the code size of the compilation unit without giving any performance benefit since the call to `doActualWork` 
+Then inlining `handleNotEnoughArguments` would increase the code size of the compilation unit without giving any performance benefit since the call to `doActualWork`
 needs to still be made most of the time.
 
 Having a run-time profile of the application can give the compiler data with which differentiating between which call should be inlined is trivial.
 For example, if our run-time profile recorded this if condition as being `false` 100 times and `true` 3 times - we probably should inline `doActualWork`.
-This is the essence of PGO - using information from the profile i.e. from the run time behaviour of the application being compiled, 
+This is the essence of PGO - using information from the profile i.e. from the run time behaviour of the application being compiled,
 to give the compiler grounding in data when making decisions.
 The actual decisions and the actual events the profile records vary from phase to phase, but the preceding example illustrates the general idea.
 

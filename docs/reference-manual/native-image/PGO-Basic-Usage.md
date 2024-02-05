@@ -12,7 +12,7 @@ Note: this document builds upon [Profile Guided Optimization for Native Image](P
 To understand the usage of PGO in the context of GraalVM native image, let's consider an example application.
 This application is an implementation of Conway's Game of Life simulation (https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life) on a 4000 by 4000 grid.
 Please note that this a very simple and not-illustrative-of-the-real-world application, but it should serve well as a running example.
-The application takes as input a file specifying the inital state of the world, 
+The application takes as input a file specifying the inital state of the world,
 a file path to output the final state of the world to, and an integer declaring how many iterations of the simulation to run.
 
 The entire source code of the application follows, and it's here as a reference for reproduction of results.
@@ -155,16 +155,16 @@ We also need to build a native image of the application, as follows.
 
 ```
 $ $GRAALVM_HOME/bin/native-image -cp . GameOfLife -o gameoflife-default
-	========================================================================================================================
-	GraalVM Native Image: Generating 'gameoflife-default' (executable)...
-	========================================================================================================================
-	For detailed information and explanations on the build output, visit:
-	https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/BuildOutput.md
-	------------------------------------------------------------------------------------------------------------------------
-	[1/8] Initializing...                                                                                    (3.5s @ 0.14GB)
-	 Java version: 21.0.1+12, vendor version: Oracle GraalVM 21.0.1+12.1
-	 Graal compiler: optimization level: 2, target machine: x86-64-v3, PGO: ML-inferred
-	...
+    ========================================================================================================================
+    GraalVM Native Image: Generating 'gameoflife-default' (executable)...
+    ========================================================================================================================
+    For detailed information and explanations on the build output, visit:
+    https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/BuildOutput.md
+    ------------------------------------------------------------------------------------------------------------------------
+    [1/8] Initializing...                                                                                    (3.5s @ 0.14GB)
+     Java version: 21.0.1+12, vendor version: Oracle GraalVM 21.0.1+12.1
+     Graal compiler: optimization level: 2, target machine: x86-64-v3, PGO: ML-inferred
+    ...
 ```
 
 Now we can move on to building a PGO enabled native image.
@@ -173,25 +173,25 @@ We do this by adding the `--pgo-instrumented` flag to the native image command a
 
 ```
 $ $GRAALVM_HOME/bin/native-image -cp . GameOfLife -o gameoflife-instrumented --pgo-instrument
-	========================================================================================================================
-	GraalVM Native Image: Generating 'gameoflife-instrumented' (executable)...
-	========================================================================================================================
-	For detailed information and explanations on the build output, visit:
-	https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/BuildOutput.md
-	------------------------------------------------------------------------------------------------------------------------
-	[1/8] Initializing...                                                                                    (3.6s @ 0.14GB)
-	 Java version: 21.0.1+12, vendor version: Oracle GraalVM 21.0.1+12.1
-	 Graal compiler: optimization level: 2, target machine: x86-64-v3, PGO: instrument
-	...
+    ========================================================================================================================
+    GraalVM Native Image: Generating 'gameoflife-instrumented' (executable)...
+    ========================================================================================================================
+    For detailed information and explanations on the build output, visit:
+    https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/BuildOutput.md
+    ------------------------------------------------------------------------------------------------------------------------
+    [1/8] Initializing...                                                                                    (3.6s @ 0.14GB)
+     Java version: 21.0.1+12, vendor version: Oracle GraalVM 21.0.1+12.1
+     Graal compiler: optimization level: 2, target machine: x86-64-v3, PGO: instrument
+    ...
 ```
 
 This will result in the `gameoflife-instrumented` executable which is in fact the instrumented build of out application.
-It will do everything our application normally does, 
+It will do everything our application normally does,
 but just before exiting it will produce a file with the `.iprof` extension, which is the format native image uses to store the run-time profiles.
 By default the instrumented build will store the profiles into `default.iprof` but we can specify the exact name/path of the iprof file where we want the profiles saved.
 We do this by specifying the `-XX:ProfilesDumpFile` argument when launching the instrumented build of the application.
 Below we see how we run the instrumented build of the application, specifying that we want the profile in the `gameoflife.iprof` file.
-We also provide the standard expected inputs to the application - the initial state of the world (`input.txt`), 
+We also provide the standard expected inputs to the application - the initial state of the world (`input.txt`),
 where we want the final state of the world (`output.txt`) and how many iterations of the simulation we want (in this case `10`).
 
 ```
@@ -199,21 +199,21 @@ $ ./gameoflife-instrumented -XX:ProfilesDumpFile=gameoflife.iprof input.txt outp
 ```
 
 Once this run finishes, we have a run-time profile of our application contained in the `gameoflife.iprof` file.
-This enables us to finally build the optimized build of the application, 
+This enables us to finally build the optimized build of the application,
 by providing the run-time profile of the application using the `--pgo` flag as shown below.
 
 ```
 $ $GRAALVM_HOME/bin/native-image -cp . GameOfLife -o gameoflife-pgo --pgo=gameoflife.iprof
-	========================================================================================================================
-	GraalVM Native Image: Generating 'gameoflife-pgo' (executable)...
-	========================================================================================================================
-	For detailed information and explanations on the build output, visit:
-	https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/BuildOutput.md
-	------------------------------------------------------------------------------------------------------------------------
-	[1/8] Initializing...                                                                                    (3.6s @ 0.14GB)
-	 Java version: 21.0.1+12, vendor version: Oracle GraalVM 21.0.1+12.1
-	 Graal compiler: optimization level: 3, target machine: x86-64-v3, PGO: user-provided
-	...
+    ========================================================================================================================
+    GraalVM Native Image: Generating 'gameoflife-pgo' (executable)...
+    ========================================================================================================================
+    For detailed information and explanations on the build output, visit:
+    https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/BuildOutput.md
+    ------------------------------------------------------------------------------------------------------------------------
+    [1/8] Initializing...                                                                                    (3.6s @ 0.14GB)
+     Java version: 21.0.1+12, vendor version: Oracle GraalVM 21.0.1+12.1
+     Graal compiler: optimization level: 3, target machine: x86-64-v3, PGO: user-provided
+    ...
 ```
 
 With all this in place we can finally move on the evaluating the run-time performance of our application running in the different modes.
@@ -230,14 +230,14 @@ The commands and output of both our application builds is shown below.
 
 ```
 $ time  ./gameoflife-default input.txt output.txt 1
-	>> Elapsed: 1.67s
+    >> Elapsed: 1.67s
 
 $ time  ./gameoflife-pgo input.txt output.txt 1
-	>> Elapsed: 0.97s
+    >> Elapsed: 0.97s
 ```
 
 Looking at the elapsed time, we see that running the PGO image is substantially faster in terms of percentage.
-With that in mind the half a second of difference does not have a huge impact for a single run of this application, 
+With that in mind the half a second of difference does not have a huge impact for a single run of this application,
 but if this was a serverless application that executes frequently, then the cumulative performance gain would start to add up.
 
 ## 100 Iterations
@@ -247,16 +247,16 @@ Same as before, the executed commands and the time output is shown below.
 
 ```
 $ time  ./gameoflife-default input.txt output.txt 100
-	>> Elapsed: 24.02s
+    >> Elapsed: 24.02s
 
 $ time  ./gameoflife-pgo input.txt output.txt 100
-	>> Elapsed: 13.25s
+    >> Elapsed: 13.25s
 ```
 
 In both of our example runs (1 and 100 iterations), the PGO build outperforms the default native-image build significantly.
 The amount of improvement that PGO provides in this case is of course not representative of the PGO gains for real world applications,
 since our Game Of Life application is small and does exactly one thing so the profiles provided are based on the exact same workload we are measuring.
-But it illustrates the general point - 
+But it illustrates the general point -
 profile guided optimizations allow AOT compilers to perform similar tricks that JIT compilers can do in order to improve the performance of the code they generate.
 
 ## Image size
@@ -266,10 +266,10 @@ We will use the Linux `du` command as shown below.
 
 ```
 $ du -hs gameoflife-default
-	7.9M	gameoflife-default
+    7.9M    gameoflife-default
 
 $ du -hs gameoflife-pgo
-	6.7M	gameoflife-pgo
+    6.7M    gameoflife-pgo
 ```
 
 As we can see, the PGO build produces a ~15% smaller binary than the default build.
@@ -277,8 +277,8 @@ Recall that the PGO version outperformed the default version for both iteration 
 Recall also that certain optimizations, such as function inlining that was mentioned earlier, increase the binary size in order to improve performance.
 So how can PGO builds produce smaller but better-performing binaries?
 
-This is because the profiles we provided for the optimizing build allow the compiler to differentiate between code important for performance 
-(i.e. hot code, code where most of the time is spent during run time) 
+This is because the profiles we provided for the optimizing build allow the compiler to differentiate between code important for performance
+(i.e. hot code, code where most of the time is spent during run time)
 and code that is not important for performance (i.e. cold code, code where we do not spend a lot of time during run time, such as error handling).
 With this differentiation available, the compiler can decide to focus more heavily on optimizing the hot code and less or not at all on the cold code.
 This is a very similar idea to what a JVM does - identifies the hot parts of the code at run time and compile those parts at run time.
@@ -287,7 +287,7 @@ The main difference is that native image PGO does the profiling and the optimizi
 # Conclusion
 
 In this text we presented an overview of the main ideas behind Profile-Guided Optimization (PGO) with a special focus on the implementation of PGO for Native Image.
-We discussed how recording the behaviour of an application at run time (i.e. Profiling) and storing this information for later use 
+We discussed how recording the behaviour of an application at run time (i.e. Profiling) and storing this information for later use
 (i.e. the profile stored in an `.iprof` file for native image) can enable an ahead-of-time compiler to have access to information that it normally does not have.
 This information can be used to guide decision making in the compiler, which can result in better performance as well as smaller binaries.
 We illustrated the benefits of PGO on a toy Game-of-Life example.
@@ -295,6 +295,6 @@ We illustrated the benefits of PGO on a toy Game-of-Life example.
 It is also important to note that PGO is not a trivial technique to use.
 This is because PGO, in order to be beneficial, requires executing the instrumented build with realistic workloads.
 So bear in mind that PGO is only as good as the profiles provided to the optimizing build.
-This means that profile gathered on a counter-productive workload could be counter-productive, 
+This means that profile gathered on a counter-productive workload could be counter-productive,
 and workloads that cover only a part of the application's functionality will likely yield a smaller performance gain compared to a realistic workload with a better coverage.
 

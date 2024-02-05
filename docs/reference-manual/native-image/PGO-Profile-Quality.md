@@ -33,7 +33,7 @@ Periodically gathering the profiles uses compute time, so it should be balanced 
 If the application is question is relatively stable and the source code changes infrequently, then it is fine to re-profile less often.
 Some things to keep in mind:
 - It is important to align the profiling gathering with the application-release schedule, to avoid building the releases with stale profiles.
-- Ideally, convert the production workload into a synthetic workload, collect the profiles as part of your build, and then create an optimized image with profiles that are always fresh. 
+- Ideally, convert the production workload into a synthetic workload, collect the profiles as part of your build, and then create an optimized image with profiles that are always fresh.
 That way, you do not risk having stale or misaligned profiles as long as your workload executes the same parts of the application that will later execute in production.
 
 ## Approach 3: Track the Profile-Quality Metrics Over Time
@@ -49,20 +49,20 @@ The larger the change - the stronger the signal.
 
 We discuss the details of how we calculate these metrics in the following subsections, but let's take a look at an example of how they can be used first.
 Let's consider the example Game Of Life application, which we previously explored in [PGO Basic Usage](PGO-Basic-Usage.md).
-If we follow the build instructions as laid out in that document, but we add the `-H:+PGOPrintProfileQuality` flag when building the optimized build, 
+If we follow the build instructions as laid out in that document, but we add the `-H:+PGOPrintProfileQuality` flag when building the optimized build,
 we should see an additional INFO line reporting said metrics.
 
 ```bash
 $ $GRAALVM_HOME/bin/native-image -cp . GameOfLife -o gameoflife-pgo --pgo=gameoflife.iprof
-	========================================================================================================================
-	GraalVM Native Image: Generating 'gameoflife-pgo' (executable)...
-	========================================================================================================================
-	For detailed information and explanations on the build output, visit:
-	...
+    ========================================================================================================================
+    GraalVM Native Image: Generating 'gameoflife-pgo' (executable)...
+    ========================================================================================================================
+    For detailed information and explanations on the build output, visit:
+    ...
     [5/8] Inlining methods...     [***]                                                                      (0.4s @ 0.28GB)
     Info: PGO: Profile applicability is 21.74%. Profile relevance is 72.71%.
     [6/8] Compiling methods...    [***]                                                                      (6.8s @ 0.29GB)
-	...
+    ...
 ```
 
 The absolute values of these metrics do not tell us much, and should not be considered in isolation.
@@ -95,20 +95,20 @@ index d229305..e8c6932 100644
          if ((grid[l][m] == 1) && (aliveNeighbours < 2)) {
 ```
 
-From the profile's perspective the `applyRules` method was removed from the set of methods in the application and a new method called `applyGameRules` was introduced. 
+From the profile's perspective the `applyRules` method was removed from the set of methods in the application and a new method called `applyGameRules` was introduced.
 Rerunning the optimized build with the same profile and the modified applications gives us the following output.
 
 ```bash
 $ $GRAALVM_HOME/bin/native-image -cp . GameOfLife -o gameoflife-pgo --pgo=gameoflife.iprof
-	========================================================================================================================
-	GraalVM Native Image: Generating 'gameoflife-pgo' (executable)...
-	========================================================================================================================
-	For detailed information and explanations on the build output, visit:
-	...
+    ========================================================================================================================
+    GraalVM Native Image: Generating 'gameoflife-pgo' (executable)...
+    ========================================================================================================================
+    For detailed information and explanations on the build output, visit:
+    ...
     [5/8] Inlining methods...     [***]                                                                      (0.4s @ 0.28GB)
     Info: PGO: Profile applicability is 21.67%. Profile relevance is 72.66%.
     [6/8] Compiling methods...    [***]                                                                      (6.8s @ 0.29GB)
-	...
+    ...
 ```
 
 Recall that the profile applicability in our original build was 21.74% and in this new one it is 21.67%.
@@ -116,10 +116,10 @@ Similarly, the profile relevance in our original build was 72.71% and in this ne
 The small change we made to the code resulted in a small change in these metrics,
 informing us that the profile might be slightly out-of-date.
 
-NOTE: The change that we made in this example is a rename of a very hot method. 
+NOTE: The change that we made in this example is a rename of a very hot method.
 This change is very likely to cause a performance regression since profiles cannot be applied to a hot method.
-A similar change made in the cold code of the application would result in a similar reduction in these metrics, 
-but this would likely not impact performance. 
+A similar change made in the cold code of the application would result in a similar reduction in these metrics,
+but this would likely not impact performance.
 It is important to keep in mind that these metrics are a measure of the relationship between the provided profile and the set of methods in the application,
 and are not in any way a measurement or prediction of any performance impact a change of the profile, application source code or dependencies may have.
 It is also important to keep in mind that there numbers have very little utility when observed in one single build.
@@ -130,7 +130,7 @@ Their utility comes from observing the change of these metrics when re-using pro
 Profile applicability as a metric aims to answer the following question:
 "To what extent do the methods of the application have a corresponding profile that can be applied to them?".
 Put differently: "How applicable is this profile to the methods of the application?".
-During the compilation of individual methods in the application, we keep track of how many locations N in the code needed a profile, 
+During the compilation of individual methods in the application, we keep track of how many locations N in the code needed a profile,
 as well as how many times S a profile was found for those locations.
 The profile applicability metric is the ratio `S / N`, expressed as a percentage.
 
@@ -154,7 +154,7 @@ When loading a profile, all its data is checked against the set of methods of th
 For example, if we remove a method from a class but use a profile that still has entries for that method, then all those entries will be dropped during profile-loading.
 Profile relevance is the percentage of data that was *not* dropped (i.e. was relevant) during loading.
 
-This means that removing code from the application (and not from the profile) should result in a reduction in profile relevance, 
+This means that removing code from the application (and not from the profile) should result in a reduction in profile relevance,
 as the percent of data in the profile which is relevant to the new application version is reduced.
 
 On the other hand, adding new code (say a new class or dependency) to the application would not affect this metric since the amount of data we need to drop from the profile does not change.
