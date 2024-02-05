@@ -13,9 +13,10 @@ To understand the usage of PGO in the context of GraalVM native image, let's con
 This application is an implementation of Conway's Game of Life simulation (https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life) on a 4000 by 4000 grid.
 Please note that this a very simple and not-illustrative-of-the-real-world application, but it should serve well as a running example.
 The application takes as input a file specifying the inital state of the world, 
-a file to output the final state of the world to and an integer declaring how many iterations of the simulation to run.
+a file path to output the final state of the world to, and an integer declaring how many iterations of the simulation to run.
 
-The entire source code of the application follows, and it's here as a reference for reproduction of results, feel free to not read or understand it for now.
+The entire source code of the application follows, and it's here as a reference for reproduction of results.
+Feel free to skip past it, as there is no need to understand it in detail for now.
 
 ```java
 import java.io.BufferedReader;
@@ -52,7 +53,6 @@ public class GameOfLife {
 
     static int[][] nextGeneration(int[][] grid) {
         int[][] future = new int[M][N];
-        // Loop through every cell
         for (int l = 0; l < M; l++) {
             for (int m = 0; m < N; m++) {
                 applyRules(grid, future, l, m, getAliveNeighbours(grid, l, m));
@@ -62,8 +62,6 @@ public class GameOfLife {
     }
 
     private static void applyRules(int[][] grid, int[][] future, int l, int m, int aliveNeighbours) {
-        // Implementing the Rules of Life
-
         if ((grid[l][m] == 1) && (aliveNeighbours < 2)) {
             // Cell is lonely and dies
             future[l][m] = 0;
@@ -80,7 +78,6 @@ public class GameOfLife {
     }
 
     private static int getAliveNeighbours(int[][] grid, int l, int m) {
-        // finding no Of Neighbours that are alive
         int aliveNeighbours = 0;
         for (int i = -1; i <= 1; i++) {
             for (int j = -1; j <= 1; j++) {
@@ -89,8 +86,7 @@ public class GameOfLife {
                 }
             }
         }
-        // The cell needs to be subtracted from
-        // its neighbours as it was counted before
+        // The cell needs to be subtracted from its neighbours as it was counted before
         aliveNeighbours -= grid[l][m];
         return aliveNeighbours;
     }
@@ -173,7 +169,7 @@ $ $GRAALVM_HOME/bin/native-image -cp . GameOfLife -o gameoflife-default
 
 Now we can move on to building a PGO enabled native image.
 As outlined before, the first step is to build an instrumented image that will produce a profile for the run-time behaviour of our application.
-We do this by adding the `--pgo-instrumented` flag to the native image command as shown bellow.
+We do this by adding the `--pgo-instrumented` flag to the native image command as shown below.
 
 ```
 $ $GRAALVM_HOME/bin/native-image -cp . GameOfLife -o gameoflife-instrumented --pgo-instrument
@@ -191,10 +187,10 @@ $ $GRAALVM_HOME/bin/native-image -cp . GameOfLife -o gameoflife-instrumented --p
 
 This will result in the `gameoflife-instrumented` executable which is in fact the instrumented build of out application.
 It will do everything our application normally does, 
-but just before exiting it will produce a `.iprof` file which is the format native image uses to store the run-time profiles.
+but just before exiting it will produce a `.iprof` file, which is the format native image uses to store the run-time profiles.
 By default the instrumented build will store the profiles into `default.iprof` but we can specify the exact name/path of the iprof file where we want the profiles saved.
 We do this by specifying the `-XX:ProfilesDumpFile` argument when launching the instrumented build of the application.
-Bellow we see how we run the instrumented build of the application, specifying we want the profile in the `gameoflife.iprof` file.
+Below we see how we run the instrumented build of the application, specifying that we want the profile in the `gameoflife.iprof` file.
 We also provide the standard expected inputs to the application - the initial state of the world (`input.txt`), 
 where we want the final state of the world (`output.txt`) and how many iterations of the simulation we want (in this case `10`).
 
@@ -202,9 +198,9 @@ where we want the final state of the world (`output.txt`) and how many iteration
 $ ./gameoflife-instrumented -XX:ProfilesDumpFile=gameoflife.iprof input.txt output.txt 10
 ```
 
-Once this run has finished we have a run-time profile of our application contained in the `gameoflife.iprof` file.
+Once this run finishes, we have a run-time profile of our application contained in the `gameoflife.iprof` file.
 This enables us to finally build the optimized build of the application, 
-by providing the run-time profile of the application using the `--pgo` flag as shown bellow.
+by providing the run-time profile of the application using the `--pgo` flag as shown below.
 
 ```
 $ $GRAALVM_HOME/bin/native-image -cp . GameOfLife -o gameoflife-pgo --pgo=gameoflife.iprof
@@ -226,11 +222,11 @@ With all this in place we can finally move on the evaluating the run-time perfor
 
 We will run both of our application executables using the same inputs.
 We measure our elapsed time sing the Linux `time` command with a custom output format (`--format=>> Elapsed: %es`).
-Note: We fixed the CPU clock 2.5GHz during all the measurements in an attempt to minimize noise.
+Note: We fixed the CPU clock 2.5GHz during all the measurements to minimize noise and improve reproducibility.
 
 ## 1 iteration
 
-The commands and output of both our application builds is shown bellow.
+The commands and output of both our application builds is shown below.
 
 ```
 $ time  ./gameoflife-default input.txt output.txt 1
@@ -241,14 +237,14 @@ $ time  ./gameoflife-pgo input.txt output.txt 1
 	>> Elapsed: 0.97s
 ```
 
-Looking at the elapsed time we see that running the PGO build is substantially faster in terms of percentage.
+Looking at the elapsed time, we see that running the PGO image is substantially faster in terms of percentage.
 With that in mind the half a second of difference does not have a huge impact for a single run of this application, 
-but if this was a serverless application that would execute frequently the cumulative performance gain would start to add up.
+but if this was a serverless application that executes frequently, then the cumulative performance gain would start to add up.
 
 ## 100 Iterations
 
 We now move on to running our application for 100 iterations.
-Same as before, the executed commands and the time output is shown bellow.
+Same as before, the executed commands and the time output is shown below.
 
 ```
 $ time  ./gameoflife-default input.txt output.txt 100
@@ -260,16 +256,16 @@ $ time  ./gameoflife-pgo input.txt output.txt 100
 
 ```
 
-In both of our example runs (1 and 100 iterations) the PGO build outperformes the default native image build significantly.
-The amount of improvement that PGO provides in this case is offcourse not representative of the PGO gains for real world applications,
+In both of our example runs (1 and 100 iterations), the PGO build outperforms the default native-image build significantly.
+The amount of improvement that PGO provides in this case is of course not representative of the PGO gains for real world applications,
 since our Game Of Life application is small and does exactly one thing so the profiles provided are based on the exact same workload we are measuring.
 But it illustrates the general point - 
 profile guided optimizations allow AOT compilers to perform similar tricks that JIT compilers can do in order to improve the performance of the code they generate.
 
 ## Image size
 
-As a bonus perk of using PGO for our native-image build let's look at the size of the executable of the default build as well as the PGO build of our application.
-We will use the Linux `du` command as shown bellow.
+As a bonus perk of using PGO for our native-image build, let's look at the size of the executable of the default image as well as the PGO image of our application
+We will use the Linux `du` command as shown below.
 
 ```
 $ du -hs gameoflife-default
@@ -281,27 +277,28 @@ $ du -hs gameoflife-pgo
 ```
 
 As we can see, the PGO build produces a ~15% smaller binary than the default build.
-Recall that the PGO version outperformed the default version for all three iterations counts we tested with.
-Recall also that certain optimizations, such as function inlining we mentioned, increase the binary size in order to improve performance.
-So how can PGO builds produce smaller but higher-performing binaries?
+Recall that the PGO version outperformed the default version for both iteration counts we tested with.
+Recall also that certain optimizations, such as function inlining that was mentioned earlier, increase the binary size in order to improve performance.
+So how can PGO builds produce smaller but better-performing binaries?
 
 This is because the profiles we provided for the optimizing build allow the compiler to differentiate between code important for performance 
 (i.e. hot code, code where most of the time is spent during run time) 
-and code not important for performance (i.e. cold code, code where we don't spend a lot of time during run time, e.g. error handling).
-With this differentiation available the compiler can decide to focus more heavily on optimizing the hot code and less or not at all on the cold code.
+and code that is not important for performance (i.e. cold code, code where we do not spend a lot of time during run time, such as error handling).
+With this differentiation available, the compiler can decide to focus more heavily on optimizing the hot code and less or not at all on the cold code.
 This is a very similar idea to what a JVM does - identifies the hot parts of the code at run time and compile those parts at run time.
 The main difference is that native image PGO does the profiling and the optimizing ahead-of-time.
 
 # Conclusion
 
-In this text we presented an overview of the main ideas behind Profile Guided Optimization (PGO) with a special focus on the implementation of PGO for Native Image.
-We've discussed how recoding the behaviour of an application at run time (i.e. Profiling) and storing this information for later use 
-(i.e. The profile stored in an `.iprof` file for native image) can enable an Ahead-of-time compiler to have access to information it normally does not have.
-This information can be used to guide decision making in the compiler which can result in better performance as well as smaller binaries.
-We illustrated the benefits of PGO on a toy Game Of Life example.
+In this text we presented an overview of the main ideas behind Profile-Guided Optimization (PGO) with a special focus on the implementation of PGO for Native Image.
+We discussed how recording the behaviour of an application at run time (i.e. Profiling) and storing this information for later use 
+(i.e. the profile stored in an `.iprof` file for native image) can enable an ahead-of-time compiler to have access to information that it normally does not have.
+This information can be used to guide decision making in the compiler, which can result in better performance as well as smaller binaries.
+We illustrated the benefits of PGO on a toy Game-of-Life example.
 
 It is also important to note that PGO is not a trivial technique to use.
-This is because PGO, in order to be beneficial, requires executing the instrumented build with realistic workloads, which is not always trivial to achieve.
+This is because PGO, in order to be beneficial, requires executing the instrumented build with realistic workloads.
 So bear in mind that PGO is only as good as the profiles provided to the optimizing build.
 This means that profile gathered on a counter-productive workload could be counter-productive, 
-and realistic workloads covering a part of the application's functionality will likely give less performance gain compared to realistic workloads with better coverage.
+and workloads that cover only a part of the application's functionality will likely yield a smaller performance gain compared to a realistic workload with a better coverage.
+
