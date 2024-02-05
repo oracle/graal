@@ -54,6 +54,7 @@ import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.flow.context.object.ConstantContextSensitiveObject;
 import com.oracle.graal.pointsto.heap.TypeData;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -1113,17 +1114,21 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public AnalysisMethod resolveConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
         Object resolvedMethod = resolvedMethods.get(method);
         if (resolvedMethod == null) {
-            ResolvedJavaMethod substMethod = universe.substitutions.resolve(((AnalysisMethod) method).wrapped);
-            /*
-             * We do not want any access checks to be performed, so we use the method's declaring
-             * class as the caller type.
-             */
-            ResolvedJavaType substCallerType = substMethod.getDeclaringClass();
+            ResolvedJavaMethod originalMethod = OriginalMethodProvider.getOriginalMethod(method);
+            Object newResolvedMethod = null;
+            if (originalMethod != null) {
+                /*
+                 * We do not want any access checks to be performed, so we use the method's
+                 * declaring class as the caller type.
+                 */
+                ResolvedJavaType originalCallerType = originalMethod.getDeclaringClass();
 
-            Object newResolvedMethod = universe.lookup(wrapped.resolveConcreteMethod(substMethod, substCallerType));
-            if (newResolvedMethod == null) {
-                newResolvedMethod = getUniverse().getBigbang().fallbackResolveConcreteMethod(this, (AnalysisMethod) method);
+                newResolvedMethod = universe.lookup(wrapped.resolveConcreteMethod(originalMethod, originalCallerType));
+                if (newResolvedMethod == null) {
+                    newResolvedMethod = getUniverse().getBigbang().fallbackResolveConcreteMethod(this, (AnalysisMethod) method);
+                }
             }
+
             if (newResolvedMethod == null) {
                 newResolvedMethod = NULL_METHOD;
             }

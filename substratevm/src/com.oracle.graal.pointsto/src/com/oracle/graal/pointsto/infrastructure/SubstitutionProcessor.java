@@ -58,10 +58,6 @@ public abstract class SubstitutionProcessor {
         return method;
     }
 
-    public ResolvedJavaMethod resolve(ResolvedJavaMethod method) {
-        return method;
-    }
-
     public static final SubstitutionProcessor IDENTITY = new IdentitySubstitutionProcessor();
 
     public static void extendsTheChain(SubstitutionProcessor head, SubstitutionProcessor[] tail) {
@@ -138,11 +134,6 @@ public abstract class SubstitutionProcessor {
         @Override
         public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
             return second.lookup(first.lookup(method));
-        }
-
-        @Override
-        public ResolvedJavaMethod resolve(ResolvedJavaMethod method) {
-            return first.resolve(second.resolve(method));
         }
     }
 

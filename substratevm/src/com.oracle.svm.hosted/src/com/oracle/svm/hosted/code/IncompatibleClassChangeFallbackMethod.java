@@ -68,6 +68,11 @@ public final class IncompatibleClassChangeFallbackMethod extends NonBytecodeMeth
     }
 
     @Override
+    public ResolvedJavaMethod unwrapTowardsOriginalMethod() {
+        return original;
+    }
+
+    @Override
     public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         AnalysisMethod constructor = kit.getMetaAccess().lookupJavaMethod(ReflectionUtil.lookupConstructor(resolutionError));
