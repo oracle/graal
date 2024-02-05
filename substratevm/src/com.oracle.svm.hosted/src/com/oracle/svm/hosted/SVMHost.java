@@ -86,6 +86,7 @@ import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.core.heap.UnknownClass;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.HubType;
+import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.hub.ReferenceType;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
@@ -414,6 +415,8 @@ public class SVMHost extends HostVM {
         boolean isVMInternal = type.isAnnotationPresent(InternalVMMethod.class);
         boolean isLambdaFormHidden = type.isAnnotationPresent(LambdaFormHiddenMethod.class);
         boolean isLinked = type.isLinked();
+
+        nestHost = PredefinedClassesSupport.maybeAdjustLambdaNestHost(className, javaClass, classLoader, nestHost);
 
         return new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type), superHub, componentHub, sourceFileName, modifiers, hubClassLoader,
                         isHidden, isRecord, nestHost, assertionStatus, type.hasDefaultMethods(), type.declaresDefaultMethods(), isSealed, isVMInternal, isLambdaFormHidden, isLinked, simpleBinaryName,

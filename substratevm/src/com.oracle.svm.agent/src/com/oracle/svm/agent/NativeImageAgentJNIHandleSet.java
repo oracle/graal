@@ -91,6 +91,10 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
     final JNIMethodId javaLangModuleGetName;
 
+    private JNIMethodId javaLangInvokeCallSiteMakeSite = WordFactory.nullPointer();
+    private JNIMethodId javaLangInvokeMethodHandleNativesLinkCallSiteImpl = WordFactory.nullPointer();
+    private JNIMethodId javaLangInvokeMethodHandleNativesLinkCallSite = WordFactory.nullPointer();
+
     NativeImageAgentJNIHandleSet(JNIEnvironment env) {
         super(env);
         javaLangClass = newClassGlobalRef(env, "java/lang/Class");
@@ -262,5 +266,33 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
             javaUtilResourceBundleGetLocale = getMethodId(env, javaUtilResourceBundle, "getLocale", "()Ljava/util/Locale;", false);
         }
         return javaUtilResourceBundleGetLocale;
+    }
+
+    public JNIMethodId getJavaLangInvokeCallSiteMakeSite(JNIEnvironment env) {
+        if (javaLangInvokeCallSiteMakeSite.isNull()) {
+            JNIObjectHandle javaLangInvokeCallSite = findClass(env, "java/lang/invoke/CallSite");
+            javaLangInvokeCallSiteMakeSite = getMethodId(env, javaLangInvokeCallSite, "makeSite",
+                            "(Ljava/lang/invoke/MethodHandle;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/Object;Ljava/lang/Class;)Ljava/lang/invoke/CallSite;", true);
+        }
+        return javaLangInvokeCallSiteMakeSite;
+    }
+
+    public JNIMethodId getJavaLangInvokeMethodHandleNativesLinkCallSiteImpl(JNIEnvironment env) {
+        if (javaLangInvokeMethodHandleNativesLinkCallSiteImpl.isNull()) {
+            JNIObjectHandle javaLangInvokeMethodHandleNatives = findClass(env, "java/lang/invoke/MethodHandleNatives");
+            javaLangInvokeMethodHandleNativesLinkCallSiteImpl = getMethodId(env, javaLangInvokeMethodHandleNatives, "linkCallSiteImpl",
+                            "(Ljava/lang/Class;Ljava/lang/invoke/MethodHandle;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/invoke/MemberName;",
+                            true);
+        }
+        return javaLangInvokeMethodHandleNativesLinkCallSiteImpl;
+    }
+
+    public JNIMethodId getJavaLangInvokeMethodHandleNativesLinkCallSite(JNIEnvironment env) {
+        if (javaLangInvokeMethodHandleNativesLinkCallSite.isNull()) {
+            JNIObjectHandle javaLangInvokeMethodHandleNatives = findClass(env, "java/lang/invoke/MethodHandleNatives");
+            javaLangInvokeMethodHandleNativesLinkCallSite = getMethodIdOptional(env, javaLangInvokeMethodHandleNatives, "linkCallSite",
+                            "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/invoke/MemberName;", true);
+        }
+        return javaLangInvokeMethodHandleNativesLinkCallSite;
     }
 }

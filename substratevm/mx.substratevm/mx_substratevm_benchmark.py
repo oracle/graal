@@ -59,7 +59,19 @@ def list_jars(path):
 
 
 force_buildtime_init_slf4j_1_7_73 = '--initialize-at-build-time=org.slf4j,org.apache.log4j'
+force_buildtime_init_slf4j_1_7_73_spark = '--initialize-at-build-time=org.apache.logging.slf4j.Log4jLoggerFactory,\
+org.apache.logging.slf4j.SLF4JServiceProvider,org.apache.logging.slf4j.Log4jMarkerFactory,org.apache.logging.slf4j.Log4jMDCAdapter,\
+org.apache.logging.log4j,org.apache.logging.log4j,org.apache.logging.log4j.core.util.WatchManager,org.apache.logging.log4j.core.config.xml.XmlConfiguration, \
+org.apache.logging.log4j.core.config.AbstractConfiguration,org.apache.logging.log4j.util.ServiceLoaderUtil,org.slf4j.LoggerFactory'
+force_buildtime_init_netty_4_1_72 = '--initialize-at-build-time=io.netty.util.internal.logging'
+force_runtime_init_slf4j_1_7_73 = '--initialize-at-run-time=org.apache.log4j.LogManager'
 force_runtime_init_netty_4_1_72 = '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
+force_runtime_init_netty_4_1_72_spark = '--initialize-at-run-time=io.netty.buffer.AbstractByteBufAllocator\
+io.netty.channel.AbstractChannelHandlerContext,io.netty.channel.ChannelInitializer,io.netty.channel.ChannelOutboundBuffer,\
+io.netty.util.internal.SystemPropertyUtil,io.netty.channel.AbstractChannel,io.netty.util.internal.PlatformDependent,\
+io.netty.util.internal.InternalThreadLocalMap,io.netty.channel.socket.nio.SelectorProviderUtil,io.netty.util.concurrent.DefaultPromise, \
+io.netty.util.NetUtil,io.netty.channel.DefaultChannelPipeline,io.netty.util.concurrent.FastThreadLocalThread,io.netty.util.internal.StringUtil, \
+io.netty.util.internal.PlatformDependent0,io.netty.util,io.netty.bootstrap,io.netty.channel,io.netty.buffer,io.netty.resolver,io.netty.handler.codec.CodecOutputList'
 _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
     'als'               : [
                            '--report-unsupported-elements-at-runtime',
@@ -69,7 +81,11 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
     'chi-square'        : [
                            '--report-unsupported-elements-at-runtime',
                            force_buildtime_init_slf4j_1_7_73,
-                           force_runtime_init_netty_4_1_72
+                           force_buildtime_init_slf4j_1_7_73_spark,
+                           force_buildtime_init_netty_4_1_72,
+                           force_runtime_init_netty_4_1_72,
+                           force_runtime_init_netty_4_1_72_spark,
+                           force_runtime_init_slf4j_1_7_73
                           ],
     'finagle-chirper'   : [
                             force_buildtime_init_slf4j_1_7_73,
@@ -87,7 +103,11 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
     'movie-lens'        : [
                            '--report-unsupported-elements-at-runtime',
                            force_buildtime_init_slf4j_1_7_73,
-                           force_runtime_init_netty_4_1_72
+                           force_buildtime_init_slf4j_1_7_73_spark,
+                           force_buildtime_init_netty_4_1_72,
+                           force_runtime_init_netty_4_1_72,
+                           force_runtime_init_netty_4_1_72_spark,
+                           force_runtime_init_slf4j_1_7_73
                           ],
     'dec-tree'          : [
                            '--report-unsupported-elements-at-runtime',
@@ -97,7 +117,11 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
     'page-rank'         : [
                            '--report-unsupported-elements-at-runtime',
                            force_buildtime_init_slf4j_1_7_73,
-                           force_runtime_init_netty_4_1_72
+                           force_buildtime_init_slf4j_1_7_73_spark,
+                           force_buildtime_init_netty_4_1_72,
+                           force_runtime_init_netty_4_1_72,
+                           force_runtime_init_netty_4_1_72_spark,
+                           force_runtime_init_slf4j_1_7_73
                           ],
     'naive-bayes'       : [
                             '--report-unsupported-elements-at-runtime',
@@ -107,7 +131,11 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
     'gauss-mix'       :   [
                             '--report-unsupported-elements-at-runtime',
                             force_buildtime_init_slf4j_1_7_73,
-                            force_runtime_init_netty_4_1_72
+                            force_buildtime_init_slf4j_1_7_73_spark,
+                            force_buildtime_init_netty_4_1_72,
+                            force_runtime_init_netty_4_1_72,
+                            force_runtime_init_netty_4_1_72_spark,
+                            force_runtime_init_slf4j_1_7_73
                           ],
     'neo4j-analytics':    [
                             '--report-unsupported-elements-at-runtime',

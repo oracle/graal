@@ -125,13 +125,20 @@ public final class LambdaUtils {
         return createStableLambdaName(lambdaType, invokedMethods);
     }
 
+    /**
+     * Checks if the passed type is lambda class type based on set flags and the type name.
+     *
+     * @param type type to be checked
+     * @return true if the passed type is lambda type, false otherwise
+     */
+
     public static boolean isLambdaType(ResolvedJavaType type) {
         String typeName = type.getName();
         return type.isFinalFlagSet() && isLambdaName(typeName);
     }
 
     public static boolean isLambdaName(String name) {
-        return name.contains(LAMBDA_CLASS_NAME_SUBSTRING) && lambdaMatcher(name).find();
+        return isLambdaClassName(name) && lambdaMatcher(name).find();
     }
 
     private static String createStableLambdaName(ResolvedJavaType lambdaType, List<ResolvedJavaMethod> targetMethods) {
@@ -157,17 +164,59 @@ public final class LambdaUtils {
         return r.toString();
     }
 
+    /**
+     * Hashing a passed string parameter using SHA-1 hashing algorithm.
+     *
+     * @param value string to be hashed
+     * @return hexadecimal hashed value of the passed string parameter
+     */
     public static String digest(String value) {
+        return digest(value.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Hashing a passed byte array parameter using SHA-1 hashing algorithm.
+     *
+     * @param bytes byte array to be hashed
+     * @return hexadecimal hashed value of the passed byte array parameter
+     */
+    public static String digest(byte[] bytes) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-1");
-            md.update(value.getBytes(StandardCharsets.UTF_8));
+            md.update(bytes);
             return toHex(md.digest());
         } catch (NoSuchAlgorithmException ex) {
             throw new JVMCIError(ex);
         }
     }
 
+    /**
+     * Extracts lambda capturing class name from the lambda class name.
+     *
+     * @param className name of the lambda class
+     * @return name of the lambda capturing class
+     */
     public static String capturingClass(String className) {
         return className.split(LambdaUtils.SERIALIZATION_TEST_LAMBDA_CLASS_SPLIT_PATTERN)[0];
+    }
+
+    /**
+     * Checks if the passed class is lambda class.
+     *
+     * @param clazz class to be checked
+     * @return true if the clazz is lambda class, false instead
+     */
+    public static boolean isLambdaClass(Class<?> clazz) {
+        return isLambdaClassName(clazz.getName());
+    }
+
+    /**
+     * Checks if the passed class name is lambda class name.
+     *
+     * @param className name of the class
+     * @return true if the className is lambda class name, false instead
+     */
+    public static boolean isLambdaClassName(String className) {
+        return className.contains(LAMBDA_CLASS_NAME_SUBSTRING);
     }
 }

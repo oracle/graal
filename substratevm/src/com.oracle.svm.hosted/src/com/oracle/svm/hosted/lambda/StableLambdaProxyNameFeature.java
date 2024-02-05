@@ -68,7 +68,7 @@ final class StableLambdaProxyNameFeature implements InternalFeature {
         Set<String> lambdaNames = new HashSet<>();
         types.stream()
                         .map(AnalysisType::getName)
-                        .filter(x -> x.contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING))
+                        .filter(LambdaUtils::isLambdaClassName)
                         .forEach(name -> {
                             if (lambdaNames.contains(name)) {
                                 throw new AssertionError("Duplicate lambda name: " + name);
