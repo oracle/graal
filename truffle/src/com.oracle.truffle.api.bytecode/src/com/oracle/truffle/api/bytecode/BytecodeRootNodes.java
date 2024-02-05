@@ -45,10 +45,11 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer;
-import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
@@ -126,37 +127,24 @@ public abstract class BytecodeRootNodes<T extends RootNode & BytecodeRootNode> {
         return parser;
     }
 
-    @SuppressWarnings("static-method")
-    protected final boolean isAddSource(BytecodeConfig config) {
-        return config.addSource;
-    }
-
-    @SuppressWarnings("static-method")
-    protected final Class<?>[] getAddInstrumentations(BytecodeConfig config) {
-        return config.addInstrumentations;
-    }
-
-    @SuppressWarnings("static-method")
-    protected final Class<?>[] getRemoveInstrumentations(BytecodeConfig config) {
-        return config.removeInstrumentations;
-    }
-
     /**
      * Updates the configuration for the given bytecode nodes. If the new configuration requires
      * more information (e.g., sources or instrumentation tags), triggers a reparse to obtain it.
      * <p>
-     * Returns whether a reparse was performed.
+     * Performance considerations: This method may be used in compiled code, but the bytecode config
+     * must be a {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
+     * constant}. If the bytecode config is changed in compiled code then
+     * {@link CompilerDirectives#transferToInterpreter() deoptimization} will be triggered. If an
+     * update does not require any operation then this operation will be a no-op in compiled code.
+     * In the interpreter it is also reasonably fast (read and compare of a volatile field), for
+     * example it should reasonable to call this method repeatedly in the
+     * {@link BytecodeRootNode#executeProlog(VirtualFrame) prolog}.
      *
      * @since 24.1
      */
-    @TruffleBoundary
-    public final void reparse(BytecodeConfig config) {
-        reparseImpl(config);
-    }
-
-    @SuppressWarnings("static-method")
-    protected final Class<?>[] getAddTags(BytecodeConfig config) {
-        return config.addTags;
+    public final boolean update(BytecodeConfig config) {
+        CompilerAsserts.partialEvaluationConstant(config);
+        return updateImpl(config.encoder, config.encoding);
     }
 
     /**
@@ -166,7 +154,7 @@ public abstract class BytecodeRootNodes<T extends RootNode & BytecodeRootNode> {
      *
      * @since 24.1
      */
-    protected abstract boolean reparseImpl(BytecodeConfig config);
+    protected abstract boolean updateImpl(BytecodeConfigEncoder encoder, long encoding);
 
     /**
      * Serializes the nodes to a byte buffer. This method will always fail unless serialization is
@@ -189,35 +177,16 @@ public abstract class BytecodeRootNodes<T extends RootNode & BytecodeRootNode> {
      * @since 24.1
      */
     public final boolean ensureSources() {
-        return reparseImpl(BytecodeConfig.WITH_SOURCE);
+        return updateImpl(null, BytecodeConfig.WITH_SOURCE.encoding);
     }
 
     /**
-     * Ensures the given instrumentations are available, reparsing if necessary.
+     * Checks if the sources are present, and if not, reparses to get them.
      *
      * @since 24.1
      */
-    public final boolean enableInstrumentations(Class<?>... instrumentations) {
-        return reparseImpl(BytecodeConfig.newBuilder().addInstrumentations(instrumentations).build());
-    }
-
-    /**
-     * Ensures the given tags are available, reparsing if necessary.
-     *
-     * @since 24.1
-     */
-    @SuppressWarnings("unchecked")
-    public final boolean ensureTags(Class<? extends Tag>... tags) {
-        return reparseImpl(BytecodeConfig.newBuilder().addTags(tags).build());
-    }
-
-    /**
-     * Removes the given instrumentations, reparsing if necessary.
-     *
-     * @since 24.1
-     */
-    public final boolean disableInstrumentations(Class<?>... instrumentations) {
-        return reparseImpl(BytecodeConfig.newBuilder().removeInstrumentations(instrumentations).build());
+    public final boolean ensureComplete() {
+        return updateImpl(null, BytecodeConfig.COMPLETE.encoding);
     }
 
     /**
@@ -229,4 +198,5 @@ public abstract class BytecodeRootNodes<T extends RootNode & BytecodeRootNode> {
     public String toString() {
         return String.format("BytecodeNodes %s", Arrays.toString(nodes));
     }
+
 }

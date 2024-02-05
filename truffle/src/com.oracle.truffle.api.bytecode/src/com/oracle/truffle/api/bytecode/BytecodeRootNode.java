@@ -348,6 +348,10 @@ public interface BytecodeRootNode {
         return getBytecodeNode().getIntrospectionData();
     }
 
+    default BytecodeRootNodes<?> getRootNodes() {
+        return null;
+    }
+
     /**
      * Helper method to dump the root node's bytecode.
      *
