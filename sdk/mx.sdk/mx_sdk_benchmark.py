@@ -188,16 +188,28 @@ class StagesInfo:
 
     Is used to pass data between the benchmark suite and the underlying :class:`mx_benchmark.Vm`.
 
-    TODO naming. We need to clearly differentiate between stages requested by the user (maybe implicitly) and the effective stages selected for the given configuration
+    The information about the stages comes from two layers:
+
+    * The stages requested by the user and passed into the object during creation
+    * And the effectively executed stages, which are determined in the `NativeImageBenchmarkConfig` class and passed to
+      this object the first time we call into the ``NativeImageVM``.
+      The effective stages are determined by removing stages that don't need to run in the current benchmark
+      configuration from the requested changes.
+      This information is only available if :attr:`is_set_up` returns ``True``.
     """
 
     def __init__(self, requested_stages: List[str], fallback_mode: bool = False):
+        """
+        :param requested_stages: List of stages requested by the user. See also :meth:`NativeImageBenchmarkMixin.stages`
+                                 and :attr:`StagesInfo.effective_stages`
+        """
         self._is_set_up: bool = False
         self._requested_stages = requested_stages
         self._removed_stages: Set[str] = set()
-        self._effective_stages: List[str] = requested_stages
+        self._effective_stages: Optional[List[str]] = None
         self._stages_till_now: List[str] = []
-        self._current_stage: Optional[str] = None
+        self._requested_stage: Optional[str] = None
+        self._skip_current_stage: bool = False
         self._failed: bool = False
         self._fallback_mode = fallback_mode
 
@@ -213,7 +225,8 @@ class StagesInfo:
         """
         Fully configures the object with information about removed stages.
 
-        From that, the effective list of stages can be computed
+        From that, the effective list of stages can be computed.
+        Only after this method is called for the first time can the effective stages be accessed
 
         :param removed_stages: Set of stages that should not be executed under this benchmark configuration
         """
@@ -224,33 +237,46 @@ class StagesInfo:
         else:
             self._removed_stages = removed_stages
             # requested_stages - removed_stages while preserving order of requested_stages
-            self._effective_stages = [s for s in self.requested_stages if s not in removed_stages]
+            self._effective_stages = [s for s in self._requested_stages if s not in removed_stages]
             self._is_set_up = True
+            self._update_skip()
 
-    @property
-    def requested_stages(self) -> List[str]:
-        """
-        List of stages requested by the user.
-
-        See also :meth:`NativeImageBenchmarkMixin.stages`
-        """
-        return self._requested_stages
+    def _update_skip(self):
+        # At this point, no stage may have been requested yet
+        if self._requested_stage:
+            self._skip_current_stage = self._requested_stage not in self.effective_stages
 
     @property
     def effective_stages(self) -> List[str]:
         """
         List of stages that are actually executed for this benchmark (is equal to requested_stages - removed_stages)
         """
+        assert self.is_set_up
         return self._effective_stages
 
     @property
-    def stage(self) -> Optional[str]:
+    def skip_current_stage(self) -> bool:
+        return self._skip_current_stage
+
+    @property
+    def requested_stage(self) -> str:
         """
-        The stage to run in this call. Can be None, in which case no stage is run
+        The stage that was last requested to be executed.
+        It is not guaranteed that this stage will be executed, it could be a skipped stage (see
+        :attr:`StagesInfo.skip_current_stage`)
+
+        Use this for informational output, prefer :attr:`StagesInfo.effective_stage` to compare against the effectively
+        executed stage.
         """
-        # TODO store value instead of computing on demand
-        # TODO rename
-        return self._current_stage if self._current_stage in self.effective_stages else None
+        assert self._requested_stage, "No current stage set"
+        return self._requested_stage
+
+    @property
+    def effective_stage(self) -> Optional[str]:
+        """
+        Same as :meth:`StagesInfo.requested_stage`, but returns None if the stage is skipped.
+        """
+        return None if self.skip_current_stage else self.requested_stage
 
     @property
     def last_stage(self) -> str:
@@ -269,17 +295,14 @@ class StagesInfo:
         """
         return self._stages_till_now
 
-    def set_current_stage(self, stage_name: str) -> None:
-        self._current_stage = stage_name
-
-    def get_current_stage(self) -> str:
-        assert self._current_stage, "No current stage set"
-        return self._current_stage
+    def change_stage(self, stage_name: str) -> None:
+        self._requested_stage = stage_name
+        self._update_skip()
 
     def success(self) -> None:
         assert self.is_set_up
         """Called when the current stage has finished successfully"""
-        self._stages_till_now.append(self.get_current_stage())
+        self._stages_till_now.append(self.requested_stage)
 
     def fail(self) -> None:
         assert self.is_set_up
@@ -312,7 +335,7 @@ class NativeImageBenchmarkMixin(object):
         """
         Reason why this Native Image benchmark should run in fallback mode.
 
-        :return: None if no fallback is required. Otherwise a non-empty string describing why fallback mode is necessary
+        :return: None if no fallback is required. Otherwise,, a non-empty string describing why fallback mode is necessary
         """
         return None
 
@@ -357,7 +380,7 @@ class NativeImageBenchmarkMixin(object):
             self.stages_info = StagesInfo(requested_stages)
 
             for stage in requested_stages:
-                self.stages_info.set_current_stage(stage)
+                self.stages_info.change_stage(stage)
                 # Start the actual benchmark execution. The stages_info attribute will be used by the NativeImageVM to
                 # determine which stage to run this time.
                 datapoints += super_delegate.run(benchmarks, bm_suite_args)

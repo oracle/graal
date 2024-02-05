@@ -420,7 +420,7 @@ class JMHNativeImageBenchmarkMixin(mx_benchmark.JMHBenchmarkSuiteBase, mx_sdk_be
         TODO GR-50022 Once we can track where datapoints come from, allow for a JMH result file in other run stages as
         well (instrument-run and maybe also agent), if requested
         """
-        if not self.is_native_mode(bm_suite_args) or self.stages_info.fallback_mode or self.stages_info.get_current_stage() == "run":
+        if not self.is_native_mode(bm_suite_args) or self.stages_info.fallback_mode or self.stages_info.effective_stage == "run":
             return super().get_jmh_result_file(bm_suite_args)
         else:
             return None
