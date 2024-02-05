@@ -187,7 +187,7 @@ $ $GRAALVM_HOME/bin/native-image -cp . GameOfLife -o gameoflife-instrumented --p
 
 This will result in the `gameoflife-instrumented` executable which is in fact the instrumented build of out application.
 It will do everything our application normally does, 
-but just before exiting it will produce a `.iprof` file, which is the format native image uses to store the run-time profiles.
+but just before exiting it will produce a file with the `.iprof` extension, which is the format native image uses to store the run-time profiles.
 By default the instrumented build will store the profiles into `default.iprof` but we can specify the exact name/path of the iprof file where we want the profiles saved.
 We do this by specifying the `-XX:ProfilesDumpFile` argument when launching the instrumented build of the application.
 Below we see how we run the instrumented build of the application, specifying that we want the profile in the `gameoflife.iprof` file.
