@@ -1043,7 +1043,6 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         @CompilationFinal(dimensions = 1) private static final Encoding[] ENCODINGS_TABLE;
-        @CompilationFinal(dimensions = 1) private static final JCodings.Encoding[] J_CODINGS_TABLE;
         @CompilationFinal(dimensions = 1) private static final byte[] MAX_COMPATIBLE_CODE_RANGE;
         @CompilationFinal(dimensions = 1) private static final TruffleString[] EMPTY_STRINGS;
         private static final EconomicMap<String, Encoding> J_CODINGS_NAME_MAP;
@@ -1051,7 +1050,6 @@ public final class TruffleString extends AbstractTruffleString {
         static {
             final Encoding[] encodingValues = Encoding.values();
             ENCODINGS_TABLE = new Encoding[encodingValues.length];
-            J_CODINGS_TABLE = new JCodings.Encoding[encodingValues.length];
             MAX_COMPATIBLE_CODE_RANGE = new byte[encodingValues.length];
             EMPTY_STRINGS = new TruffleString[encodingValues.length];
             J_CODINGS_NAME_MAP = EconomicMap.create(encodingValues.length);
@@ -1059,8 +1057,6 @@ public final class TruffleString extends AbstractTruffleString {
             for (Encoding e : encodingValues) {
                 assert ENCODINGS_TABLE[e.id] == null;
                 ENCODINGS_TABLE[e.id] = e;
-                assert J_CODINGS_TABLE[e.id] == null;
-                J_CODINGS_TABLE[e.id] = e.jCoding;
                 MAX_COMPATIBLE_CODE_RANGE[e.id] = e.maxCompatibleCodeRange;
                 if (JCodings.ENABLED) {
                     J_CODINGS_NAME_MAP.put(e.jCodingName, e);
@@ -1125,11 +1121,6 @@ public final class TruffleString extends AbstractTruffleString {
 
         static Encoding get(int encoding) {
             return ENCODINGS_TABLE[encoding];
-        }
-
-        static JCodings.Encoding getJCoding(int encoding) {
-            assert J_CODINGS_TABLE[encoding] == get(encoding).jCoding;
-            return J_CODINGS_TABLE[encoding];
         }
 
         static int getMaxCompatibleCodeRange(int encoding) {
