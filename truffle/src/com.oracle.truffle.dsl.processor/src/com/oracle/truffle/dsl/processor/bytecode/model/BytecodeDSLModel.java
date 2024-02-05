@@ -261,7 +261,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                         .setOperationArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to store to")) //
                         .setInstruction(instruction(InstructionKind.STORE_LOCAL_MATERIALIZED, "store.local.mat",
                                         signature(void.class, Object.class, Object.class)) //
-                                                        .addImmediate(ImmediateKind.INTEGER, "index"));
+                                        .addImmediate(ImmediateKind.INTEGER, "index"));
         operation(OperationKind.RETURN, "Return") //
                         .setNumChildren(1) //
                         .setChildrenMustBeValues(true) //

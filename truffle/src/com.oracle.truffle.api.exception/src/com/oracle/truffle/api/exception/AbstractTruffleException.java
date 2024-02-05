@@ -270,7 +270,7 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      * Returns a source section associated with the exception. This method may return {@code null}
      * to indicate that the source section is not available.
      *
-     * @since 24.0
+     * @since 24.1
      */
     public SourceSection getSourceSection() {
         if (location == null) {

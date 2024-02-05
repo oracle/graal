@@ -929,7 +929,7 @@ public interface Frame {
      *
      * @param srcSlot the slot of the source local variable
      * @param destSlot the slot of the target local variable
-     * @since XXX
+     * @since 24.1
      */
     default void copyObject(int srcSlot, int destSlot) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -941,7 +941,7 @@ public interface Frame {
      *
      * @param srcSlot the slot of the source local variable
      * @param destSlot the slot of the target local variable
-     * @since XXX
+     * @since 24.1
      */
     default void copyPrimitive(int srcSlot, int destSlot) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -956,7 +956,7 @@ public interface Frame {
      * @param dst the destination frame
      * @param dstOffset the first slot to copy locals into
      * @param length the number of slots to copy
-     * @since XXX
+     * @since 24.1
      */
     @SuppressWarnings("unused")
     default void copyTo(int srcOffset, Frame dst, int dstOffset, int length) {

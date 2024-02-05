@@ -4779,12 +4779,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createPerformUpdate() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, Modifier.SYNCHRONIZED), type(boolean.class), "performUpdate");
-            ex.addParameter(new CodeVariableElement(type(long.class), "encoding"));
+            ex.addParameter(new CodeVariableElement(type(long.class), "maskedEncoding"));
             ex.getModifiers().add(Modifier.SYNCHRONIZED);
             CodeTreeBuilder b = ex.createBuilder();
 
             b.declaration(type(long.class), "oldEncoding", "this.encoding");
-            b.declaration(type(long.class), "newEncoding", "encoding | oldEncoding");
+            b.declaration(type(long.class), "newEncoding", "maskedEncoding | oldEncoding");
             b.startIf().string("(oldEncoding | newEncoding) == oldEncoding").end().startBlock();
             b.lineComment("double checked locking");
             b.returnFalse();
