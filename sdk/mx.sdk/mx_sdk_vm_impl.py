@@ -62,6 +62,7 @@ import zipfile
 
 import mx
 import mx_gate
+import mx_javamodules
 import mx_native
 import mx_subst
 import mx_sdk
@@ -4719,7 +4720,7 @@ def default_jlink_missing_export_action():
 def mx_post_parse_cmd_line(args):
     for component in registered_graalvm_components():
         for boot_jar in component.boot_jars:
-            if not mx.get_module_name(mx.distribution(boot_jar)):
+            if not mx_javamodules.get_module_name(mx.distribution(boot_jar)):
                 mx.abort("Component '{}' declares a boot jar distribution ('{}') that does not define a module.\nPlease set 'moduleInfo' or 'moduleName'.".format(component.name, boot_jar))
 
 
