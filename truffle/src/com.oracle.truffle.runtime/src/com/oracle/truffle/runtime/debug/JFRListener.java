@@ -285,9 +285,20 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
             return false;
         }
 
-        if (("traceThrowable".equals(method.getName()) || "traceError".equals(method.getName())) &&
-                        (/* JDK-11 to JDK-21 */ "Ljdk/jfr/internal/instrument/ThrowableTracer;".equals(method.getDeclaringClass().getName()) ||
-                                        /* JDK-22+ */ "Ljdk/internal/event/ThrowableTracer;".equals(method.getDeclaringClass().getName()))) {
+        /*
+         * Between JDK-11 and JDK-21, JFR utilizes instrumentation to inject calls to
+         * jdk.jfr.internal.instrument.ThrowableTracer into constructors of Throwable and Error.
+         * These calls must never be inlined. However, in JDK-22,
+         * jdk.jfr.internal.instrument.ThrowableTracer was renamed to
+         * jdk.internal.event.ThrowableTracer, and the calls are no longer injected via
+         * instrumentation. Instead, a volatile field, Throwable#jfrTracing, is used. This field
+         * necessitates a volatile read. To prevent this in a PE code, PartialEvaluator modifies the
+         * reading of jfrTracing to a compilation constant `false`, effectively removing the JFR
+         * code during bytecode parsing. See PartialEvaluator#appendJFRTracingPlugin. This should
+         * not pose an issue because general-purpose exceptions are typically created after the
+         * TruffleBoundary.
+         */
+        if (("traceThrowable".equals(method.getName()) || "traceError".equals(method.getName())) && "Ljdk/jfr/internal/instrument/ThrowableTracer;".equals(method.getDeclaringClass().getName())) {
             return true;
         }
 

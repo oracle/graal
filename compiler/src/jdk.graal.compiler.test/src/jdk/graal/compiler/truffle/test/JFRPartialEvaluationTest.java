@@ -35,16 +35,20 @@ import jdk.graal.compiler.truffle.test.nodes.AbstractTestNode;
 import jdk.graal.compiler.truffle.test.nodes.RootTestNode;
 import jdk.jfr.Event;
 import jdk.jfr.Name;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Set;
 
 import static org.junit.Assert.assertNotNull;
 
 public class JFRPartialEvaluationTest extends PartialEvaluationTest {
+
+    public static Object constant42() {
+        return 42;
+    }
 
     @Test
     public void testException() throws IOException, InterruptedException {
@@ -53,14 +57,27 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
 
     private void performTestException() {
         RootTestNode root = new RootTestNode(new FrameDescriptor(), "NewException", new NewTruffleExceptionNode());
-        OptimizedCallTarget callTarget = (OptimizedCallTarget) root.getCallTarget();
-        StructuredGraph graph = partialEval(callTarget, new Object[0]);
-        // The call from the exception constructor to the JFR tracing must not be inlined.
-        assertNotNull("The call to ThrowableTracer#traceThrowable was not inlined or is missing.", findAnyInvoke(graph,
-                        "jdk.jfr.internal.instrument.ThrowableTracer#traceThrowable",
-                        "jdk.internal.event.ThrowableTracer#traceThrowable"));
-        // Also make sure that the node count hasn't exploded.
-        assertTrue("The number of graal nodes for an exception instantiation exceeded 100.", graph.getNodeCount() < 100);
+        if (Runtime.version().feature() < 22) {
+            Class<?> throwableTracer = findThrowableTracerClass();
+            ResolvedJavaMethod traceThrowable = getResolvedJavaMethod(throwableTracer, "traceThrowable");
+            OptimizedCallTarget callTarget = (OptimizedCallTarget) root.getCallTarget();
+            StructuredGraph graph = partialEval(callTarget, new Object[0]);
+            // The call from the exception constructor to the JFR tracing must not be inlined.
+            assertNotNull("The call to ThrowableTracer#traceThrowable was not inlined or is missing.", findInvoke(graph, traceThrowable));
+            // Also make sure that the node count hasn't exploded.
+            assertTrue("The number of graal nodes for an exception instantiation exceeded 100.", graph.getNodeCount() < 100);
+        } else {
+            // On JDK-22+ JFR exception tracing is unconditionally disabled by PartialEvaluator
+            assertPartialEvalEquals(JFRPartialEvaluationTest::constant42, root);
+        }
+    }
+
+    private static Class<?> findThrowableTracerClass() {
+        try {
+            return Class.forName("jdk.jfr.internal.instrument.ThrowableTracer");
+        } catch (ClassNotFoundException cnf) {
+            throw new RuntimeException("ThrowableTracer not found", cnf);
+        }
     }
 
     @Test
@@ -70,17 +87,21 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
 
     private void performTestError() {
         RootTestNode root = new RootTestNode(new FrameDescriptor(), "NewError", new NewErrorNode());
-        OptimizedCallTarget callTarget = (OptimizedCallTarget) root.getCallTarget();
-        StructuredGraph graph = partialEval(callTarget, new Object[0]);
-        // The call from the exception constructor to the JFR tracing must not be inlined.
-        assertNotNull("The call to ThrowableTracer#traceThrowable was not inlined or is missing.", findAnyInvoke(graph,
-                        "jdk.jfr.internal.instrument.ThrowableTracer#traceThrowable",
-                        "jdk.internal.event.ThrowableTracer#traceThrowable"));
-        assertNotNull("The call to ThrowableTracer#traceError was not inlined or is missing.", findAnyInvoke(graph,
-                        "jdk.jfr.internal.instrument.ThrowableTracer#traceError",
-                        "jdk.internal.event.ThrowableTracer#traceError"));
-        // Also make sure that the node count hasn't exploded.
-        assertTrue("The number of graal nodes for an exception instantiation exceeded 100.", graph.getNodeCount() < 100);
+        if (Runtime.version().feature() < 22) {
+            Class<?> throwableTracer = findThrowableTracerClass();
+            ResolvedJavaMethod traceThrowable = getResolvedJavaMethod(throwableTracer, "traceThrowable");
+            ResolvedJavaMethod traceError = getResolvedJavaMethod(throwableTracer, "traceError");
+            OptimizedCallTarget callTarget = (OptimizedCallTarget) root.getCallTarget();
+            StructuredGraph graph = partialEval(callTarget, new Object[0]);
+            // The call from the exception constructor to the JFR tracing must not be inlined.
+            assertNotNull("The call to ThrowableTracer#traceThrowable was not inlined or is missing.", findInvoke(graph, traceThrowable));
+            assertNotNull("The call to ThrowableTracer#traceError was not inlined or is missing.", findInvoke(graph, traceError));
+            // Also make sure that the node count hasn't exploded.
+            assertTrue("The number of graal nodes for an exception instantiation exceeded 100.", graph.getNodeCount() < 100);
+        } else {
+            // On JDK-22+ JFR exception tracing is unconditionally disabled by PartialEvaluator
+            assertPartialEvalEquals(JFRPartialEvaluationTest::constant42, root);
+        }
     }
 
     @Test
@@ -89,23 +110,22 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
     }
 
     private void performTestJFREvent() {
+        ResolvedJavaMethod shouldCommit = getResolvedJavaMethod(TestEvent.class, "shouldCommit");
+        ResolvedJavaMethod commit = getResolvedJavaMethod(TestEvent.class, "commit");
         RootTestNode root = new RootTestNode(new FrameDescriptor(), "JFREvent", new JFREventNode());
         OptimizedCallTarget callTarget = (OptimizedCallTarget) root.getCallTarget();
         StructuredGraph graph = partialEval(callTarget, new Object[0]);
         // Calls to JFR event methods must not be inlined.
-        assertNotNull("The call to TestEvent#shouldCommit was not inlined or is missing.", findAnyInvoke(graph,
-                        "jdk.graal.compiler.truffle.test.JFRPartialEvaluationTest$TestEvent#shouldCommit"));
-        assertNotNull("The call to TestEvent#commit was not inlined or is missing.", findAnyInvoke(graph,
-                        "jdk.graal.compiler.truffle.test.JFRPartialEvaluationTest$TestEvent#commit"));
+        assertNotNull("The call to TestEvent#shouldCommit was not inlined or is missing.", findInvoke(graph, shouldCommit));
+        assertNotNull("The call to TestEvent#commit was not inlined or is missing.", findInvoke(graph, commit));
         // Also make sure that the node count hasn't exploded.
         assertTrue("The number of graal nodes for an exception instantiation exceeded 100.", graph.getNodeCount() < 100);
     }
 
-    private static MethodCallTargetNode findAnyInvoke(StructuredGraph graph, String... expectedMethodNames) {
-        Set<String> expectedSet = Set.of(expectedMethodNames);
+    private static MethodCallTargetNode findInvoke(StructuredGraph graph, ResolvedJavaMethod expectedMethod) {
         for (MethodCallTargetNode node : graph.getNodes(MethodCallTargetNode.TYPE)) {
-            String targetMethodName = node.targetMethod().format("%H#%n");
-            if (expectedSet.contains(targetMethodName)) {
+            ResolvedJavaMethod targetMethod = node.targetMethod();
+            if (expectedMethod.equals(targetMethod)) {
                 return node;
             }
         }
@@ -141,9 +161,20 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
 
         @Override
         public int execute(VirtualFrame frame) {
-            new AbstractTruffleException() {
-            };
-            return 1;
+            try {
+                throw new TruffleExceptionImpl(42);
+            } catch (TruffleExceptionImpl e) {
+                return e.value;
+            }
+        }
+
+        @SuppressWarnings("serial")
+        private static final class TruffleExceptionImpl extends AbstractTruffleException {
+            final int value;
+
+            TruffleExceptionImpl(int value) {
+                this.value = value;
+            }
         }
     }
 
@@ -151,12 +182,21 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
 
         @Override
         public int execute(VirtualFrame frame) {
-            new ErrorImpl();
-            return 1;
+            try {
+                throw new ErrorImpl(42);
+            } catch (ErrorImpl e) {
+                return e.value;
+            }
         }
 
         @SuppressWarnings("serial")
         private static final class ErrorImpl extends Error {
+
+            final int value;
+
+            ErrorImpl(int value) {
+                this.value = value;
+            }
 
             @Override
             @SuppressWarnings("sync-override")
