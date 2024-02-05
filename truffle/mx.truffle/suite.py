@@ -464,6 +464,7 @@ suite = {
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle",
+      "graalCompilerSourceEdition": "ignore",
     },
 
     "com.oracle.truffle.api.bytecode.test" : {
