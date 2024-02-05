@@ -437,6 +437,7 @@ public final class Target_jdk_jfr_internal_JVM {
         return SubstrateJVM.get().setCutoff(eventTypeId, cutoffTicks);
     }
 
+    /** See {@link JVM#setThrottle}. */
     @Substitute
     @TargetElement(onlyWith = JDK22OrLater.class)
     public static boolean setThrottle(long eventTypeId, long eventSampleSize, long periodMs) {

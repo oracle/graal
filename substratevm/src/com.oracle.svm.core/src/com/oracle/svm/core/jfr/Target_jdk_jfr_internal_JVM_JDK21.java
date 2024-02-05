@@ -286,6 +286,7 @@ final class Target_jdk_jfr_internal_JVM_JDK21 {
         return SubstrateJVM.get().setCutoff(eventTypeId, cutoffTicks);
     }
 
+    /** See {@link JVM#setThrottle}. */
     @Substitute
     public boolean setThrottle(long eventTypeId, long eventSampleSize, long periodMs) {
         return SubstrateJVM.get().setThrottle(eventTypeId, eventSampleSize, periodMs);

@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,13 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jfr;
+package com.oracle.svm.core.collections;
 
-import com.oracle.svm.core.annotate.Alias;
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.Uninterruptible;
 
-@TargetClass(className = "jdk.jfr.internal.settings.ThrottleSetting", onlyWith = HasJfrSupport.class)
-final class Target_jdk_jfr_internal_settings_ThrottleSetting {
-    @Alias static long OFF;
+public final class EnumBitmask {
+    private EnumBitmask() {
+    }
+
+    public static int computeBitmask(Enum<?>[] flags) {
+        int result = 0;
+        for (Enum<?> flag : flags) {
+            assert flag.ordinal() <= Integer.SIZE - 1;
+            result |= flagBit(flag);
+        }
+        return result;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean hasBit(int bitmask, Enum<?> flag) {
+        return (bitmask & flagBit(flag)) != 0;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static int flagBit(Enum<?> flag) {
+        assert flag.ordinal() < 32;
+        return 1 << flag.ordinal();
+    }
 }

@@ -440,13 +440,14 @@ public class UninterruptibleUtils {
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static long floor(double a) {
-            return (long) a;
+        public static long floorToLong(double value) {
+            assert value == value : "must not be NaN";
+            return (long) value;
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static long ceil(double a) {
-            long floor = floor(a);
+        public static long ceilToLong(double a) {
+            long floor = floorToLong(a);
             return a > floor ? floor + 1 : floor;
         }
     }

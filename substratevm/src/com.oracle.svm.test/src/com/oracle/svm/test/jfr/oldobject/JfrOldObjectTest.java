@@ -85,7 +85,7 @@ public abstract class JfrOldObjectTest extends JfrRecordingTest {
         boolean success;
         long endTime = System.currentTimeMillis() + TimeUtils.secondsToMillis(5);
         do {
-            success = SubstrateJVM.getJfrOldObjectProfiler().sample(obj, WordFactory.unsigned(1024 * 1024 * 1024), arrayLength);
+            success = SubstrateJVM.getOldObjectProfiler().sample(obj, WordFactory.unsigned(1024 * 1024 * 1024), arrayLength);
         } while (!success && System.currentTimeMillis() < endTime);
 
         Assert.assertTrue("Timed out waiting for sampling to complete", success);

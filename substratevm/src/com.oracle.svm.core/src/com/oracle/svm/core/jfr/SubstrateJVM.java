@@ -41,7 +41,7 @@ import com.oracle.svm.core.jfr.logging.JfrLogging;
 import com.oracle.svm.core.jfr.oldobject.JfrOldObjectProfiler;
 import com.oracle.svm.core.jfr.oldobject.JfrOldObjectRepository;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
-import com.oracle.svm.core.jfr.utils.JfrRandom;
+import com.oracle.svm.core.jfr.throttling.JfrEventThrottling;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.sampler.SamplerBufferPool;
 import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
@@ -88,8 +88,9 @@ public class SubstrateJVM {
     private final JfrUnlockedChunkWriter unlockedChunkWriter;
     private final JfrRecorderThread recorderThread;
     private final JfrOldObjectProfiler oldObjectProfiler;
+
     private final JfrLogging jfrLogging;
-    private final JfrRandom jfrRandom;
+    private final JfrEventThrottling eventThrottler;
 
     private boolean initialized;
     /*
@@ -127,7 +128,7 @@ public class SubstrateJVM {
         oldObjectProfiler = new JfrOldObjectProfiler();
 
         jfrLogging = new JfrLogging();
-        jfrRandom = new JfrRandom();
+        eventThrottler = new JfrEventThrottling();
 
         initialized = false;
         recording = false;
@@ -194,31 +195,27 @@ public class SubstrateJVM {
     }
 
     @Fold
-    public static JfrLogging getJfrLogging() {
+    public static JfrLogging getLogging() {
         return get().jfrLogging;
     }
 
     @Fold
-    public static JfrOldObjectProfiler getJfrOldObjectProfiler() {
+    public static JfrOldObjectProfiler getOldObjectProfiler() {
         return get().oldObjectProfiler;
     }
 
     @Fold
-    public static JfrOldObjectRepository getJfrOldObjectRepository() {
+    public static JfrOldObjectRepository getOldObjectRepository() {
         return get().oldObjectRepo;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static double getNextRandomUniform() {
-        return get().jfrRandom.nextUniform();
-    }
-
-    public static JfrRandom getJfrRandom() {
-        return get().jfrRandom;
+    @Fold
+    public static JfrEventThrottling getEventThrottling() {
+        return get().eventThrottler;
     }
 
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
-    public boolean isRecording() {
+    protected boolean isRecording() {
         return recording;
     }
 
@@ -686,28 +683,6 @@ public class SubstrateJVM {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean shouldCommit(JfrEvent event) {
-        JfrThrottler throttler = event.getThrottler();
-        if (throttler != null) {
-            return throttler.sample();
-        }
-        return true;
-    }
-
-    public boolean setThrottle(long eventTypeId, long eventSampleSize, long periodMs) {
-        for (JfrEvent event : JfrEvent.getEvents()) {
-            if (eventTypeId == event.getId()) {
-                JfrThrottler throttler = event.getThrottler();
-                if (throttler != null) {
-                    throttler.setThrottle(eventSampleSize, periodMs);
-                    break;
-                }
-            }
-        }
-        return true;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void setLarge(JfrEvent event, boolean large) {
         eventSettings[(int) event.getId()].setLarge(large);
     }
@@ -715,6 +690,13 @@ public class SubstrateJVM {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isLarge(JfrEvent event) {
         return eventSettings[(int) event.getId()].isLarge();
+    }
+
+    /**
+     * See {@link JVM#setThrottle}.
+     */
+    public boolean setThrottle(long eventTypeId, long eventSampleSize, long periodMs) {
+        return eventThrottler.setThrottle(eventTypeId, eventSampleSize, periodMs);
     }
 
     /**
@@ -754,11 +736,8 @@ public class SubstrateJVM {
 
         @Override
         protected void operate() {
-            SubstrateJVM.getJfrOldObjectProfiler().initialize();
-
-            for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
-                JfrAllocationEvents.resetLastAllocationSize(isolateThread);
-            }
+            SubstrateJVM.getOldObjectProfiler().reset();
+            JfrAllocationEvents.reset();
 
             SubstrateJVM.get().recording = true;
             /* Recording is enabled, so JFR events can be triggered at any time. */
@@ -799,7 +778,7 @@ public class SubstrateJVM {
             SubstrateJVM.getThreadLocal().teardown();
             SubstrateJVM.getSamplerBufferPool().teardown();
             SubstrateJVM.getGlobalMemory().clear();
-            SubstrateJVM.getJfrOldObjectProfiler().teardown();
+            SubstrateJVM.getOldObjectProfiler().teardown();
         }
     }
 

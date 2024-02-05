@@ -23,38 +23,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
-package com.oracle.svm.core.jfr.utils;
+package com.oracle.svm.core.jfr.throttling;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import java.util.concurrent.ThreadLocalRandom;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.core.jfr.JfrTicks;
 
-/**
- * This class is based on the JDK 23+8 version of the HotSpot class {@code JfrPRNG} (see
- * hotspot/share/jfr/utilities/jfrRandom.inline.hpp).
- */
-public class JfrRandom {
-    private static final long PrngMult = 25214903917L;
-    private static final long PrngAdd = 11;
-    private static final long PrngModPower = 48;
-    private static final long PrngModMask = (1L << PrngModPower) - 1;
-    private static final double PrngDivisor = 67108864;
+public class JfrEventThrottling {
+    private final JfrEventThrottler objectAllocationSampleEventThrottler;
 
-    private long random;
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public JfrEventThrottling() {
+        objectAllocationSampleEventThrottler = new JfrEventThrottler();
+    }
 
-    public JfrRandom() {
-        random = ThreadLocalRandom.current().nextLong();
+    public boolean setThrottle(long eventTypeId, long eventSampleSize, long periodMs) {
+        if (eventTypeId == JfrEvent.ObjectAllocationSample.getId()) {
+            objectAllocationSampleEventThrottler.configure(eventSampleSize, periodMs);
+        }
+        return true;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public double nextUniform() {
-        long rnd = (PrngMult * random + PrngAdd) & PrngModMask;
-        random = rnd;
+    public boolean shouldCommit(JfrEvent event) {
+        if (event == JfrEvent.ObjectAllocationSample) {
+            return objectAllocationSampleEventThrottler.isDisabled() || objectAllocationSampleEventThrottler.sample(JfrTicks.now());
+        }
 
-        int value = (int) (rnd >> (PrngModPower - 26));
-        return value / PrngDivisor;
+        assert !event.supportsThrottling();
+        return true;
     }
 }

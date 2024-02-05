@@ -59,8 +59,8 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrTicks;
-import com.oracle.svm.core.jfr.events.JfrAllocationEvents;
 import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.core.jfr.events.JfrAllocationEvents;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -532,7 +532,7 @@ public final class ThreadLocalAllocation {
 
     private static void sampleSlowPathAllocation(Object obj, UnsignedWord allocatedSize, int arrayLength) {
         if (HasJfrSupport.get()) {
-            SubstrateJVM.getJfrOldObjectProfiler().sample(obj, allocatedSize, arrayLength);
+            SubstrateJVM.getOldObjectProfiler().sample(obj, allocatedSize, arrayLength);
         }
     }
 }

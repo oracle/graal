@@ -23,38 +23,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jfr.throttling;
 
-package com.oracle.svm.core.jfr.utils;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
-
-import java.util.concurrent.ThreadLocalRandom;
-
-import com.oracle.svm.core.Uninterruptible;
-
-/**
- * This class is based on the JDK 23+8 version of the HotSpot class {@code JfrPRNG} (see
- * hotspot/share/jfr/utilities/jfrRandom.inline.hpp).
- */
-public class JfrRandom {
-    private static final long PrngMult = 25214903917L;
-    private static final long PrngAdd = 11;
-    private static final long PrngModPower = 48;
-    private static final long PrngModMask = (1L << PrngModPower) - 1;
-    private static final double PrngDivisor = 67108864;
-
-    private long random;
-
-    public JfrRandom() {
-        random = ThreadLocalRandom.current().nextLong();
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public double nextUniform() {
-        long rnd = (PrngMult * random + PrngAdd) & PrngModMask;
-        random = rnd;
-
-        int value = (int) (rnd >> (PrngModPower - 26));
-        return value / PrngDivisor;
-    }
+@TargetClass(className = "jdk.jfr.internal.settings.ThrottleSetting", onlyWith = HasJfrSupport.class)
+final class Target_jdk_jfr_internal_settings_ThrottleSetting {
+    @Alias static long OFF;
 }

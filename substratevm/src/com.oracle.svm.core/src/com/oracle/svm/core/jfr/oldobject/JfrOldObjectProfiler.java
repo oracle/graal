@@ -62,7 +62,7 @@ public final class JfrOldObjectProfiler {
         this.queueSize = oldObjectQueueSize;
     }
 
-    public void initialize() {
+    public void reset() {
         this.sampler = new JfrOldObjectSampler(queueSize);
     }
 

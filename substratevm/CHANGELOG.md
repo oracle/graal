@@ -6,12 +6,12 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-51106) Fields that are accessed via a `VarHandle` or `MethodHandle` are no longer marked as "unsafe accessed" when the `VarHandle`/`MethodHandle` can be fully intrinsified.
 * (GR-49996) Ensure explicitly set image name (e.g., via `-o imagename`) is not accidentally overwritten by `-jar jarfile` option.
 * (GR-48683) Together with Red Hat, we added partial support for the JFR event `OldObjectSample`.
+* (GR-47109) JFR event throttling support was added, along with the `ObjectAllocationSample` event.
 
 ## GraalVM for JDK 22 (Internal Version 24.0.0)
 * (GR-48304) Red Hat added support for the JFR event ThreadAllocationStatistics.
 * (GR-48343) Red Hat added support for the JFR events AllocationRequiringGC and SystemGC.
 * (GR-48612) Enable `--strict-image-heap` by default. The option is now deprecated and can be removed from your argument list. A blog post with more information will follow shortly.
-* (GR-47109) JFR event throttling support was added, along with the jdk.ObjectAllocationSample event.
 * (GR-48354) Remove native-image-agent legacy `build`-option
 * (GR-49221) Support for thread dumps can now be enabled with `--enable-monitoring=threaddump`. The option `-H:±DumpThreadStacksOnSignal` is deprecated and marked for removal.
 * (GR-48579) Options ParseOnce, ParseOnceJIT, and InlineBeforeAnalysis are deprecated and no longer have any effect.
