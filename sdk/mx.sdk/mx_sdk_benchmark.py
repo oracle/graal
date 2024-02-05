@@ -47,7 +47,7 @@ import signal
 import threading
 import json
 import argparse
-from typing import List, Optional, MutableSequence
+from typing import List, Optional, MutableSequence, Set
 
 import mx
 import mx_benchmark
@@ -186,14 +186,46 @@ class StagesInfo:
     Holds information about benchmark stages that should be persisted across multiple stages in the same
     ``mx benchmark`` command.
 
-    Is used to pass data from the benchmark suite to the underlying :class:`mx_benchmark.BenchmarkSuite`.
+    Is used to pass data between the benchmark suite and the underlying :class:`mx_benchmark.Vm`.
+
+    TODO naming. We need to clearly differentiate between stages requested by the user (maybe implicitly) and the effective stages selected for the given configuration
     """
 
-    def __init__(self, requested_stages: List[str]):
+    def __init__(self, requested_stages: List[str], fallback_mode: bool = False):
+        self._is_set_up: bool = False
         self._requested_stages = requested_stages
+        self._removed_stages: Set[str] = set()
+        self._effective_stages: List[str] = requested_stages
         self._stages_till_now: List[str] = []
         self._current_stage: Optional[str] = None
         self._failed: bool = False
+        self._fallback_mode = fallback_mode
+
+    @property
+    def fallback_mode(self) -> bool:
+        return self._fallback_mode
+
+    @property
+    def is_set_up(self) -> bool:
+        return self._is_set_up
+
+    def setup(self, removed_stages: Set[str]) -> None:
+        """
+        Fully configures the object with information about removed stages.
+
+        From that, the effective list of stages can be computed
+
+        :param removed_stages: Set of stages that should not be executed under this benchmark configuration
+        """
+        if self.is_set_up:
+            # This object is used again for an additional stage.
+            # Sanity check to make sure the removed stages are the same as in the first call
+            assert self._removed_stages == removed_stages, f"Removed stages differ between executed stages: {self._removed_stages} != {removed_stages}"
+        else:
+            self._removed_stages = removed_stages
+            # requested_stages - removed_stages while preserving order of requested_stages
+            self._effective_stages = [s for s in self.requested_stages if s not in removed_stages]
+            self._is_set_up = True
 
     @property
     def requested_stages(self) -> List[str]:
@@ -203,6 +235,26 @@ class StagesInfo:
         See also :meth:`NativeImageBenchmarkMixin.stages`
         """
         return self._requested_stages
+
+    @property
+    def effective_stages(self) -> List[str]:
+        """
+        List of stages that are actually executed for this benchmark (is equal to requested_stages - removed_stages)
+        """
+        return self._effective_stages
+
+    @property
+    def stage(self) -> Optional[str]:
+        """
+        The stage to run in this call. Can be None, in which case no stage is run
+        """
+        # TODO store value instead of computing on demand
+        # TODO rename
+        return self._current_stage if self._current_stage in self.effective_stages else None
+
+    @property
+    def last_stage(self) -> str:
+        return self.effective_stages[-1]
 
     @property
     def failed(self) -> bool:
@@ -225,10 +277,12 @@ class StagesInfo:
         return self._current_stage
 
     def success(self) -> None:
+        assert self.is_set_up
         """Called when the current stage has finished successfully"""
         self._stages_till_now.append(self.get_current_stage())
 
     def fail(self) -> None:
+        assert self.is_set_up
         """Called when the current stage finished with an error"""
         self._failed = True
 
@@ -241,7 +295,8 @@ class NativeImageBenchmarkMixin(object):
     explicitly call :meth:`NativeImageBenchmarkMixin.intercept_run` in order for benchmarking to work.
     See description of that method for more information.
 
-    TODO document how to use this class and caveats (file-rules)
+    TODO document how to use this class and caveats (file-rules, dispatching into the VM multiple times)
+    TODO document fallback mode
     """
 
     def __init__(self):
@@ -253,7 +308,15 @@ class NativeImageBenchmarkMixin(object):
             raise NotImplementedError()
         return self.benchmark_name
 
-    def intercept_run(self, super_delegate: BenchmarkSuite, benchmarks, bmSuiteArgs) -> DataPoints:
+    def fallback_mode_reason(self, bm_suite_args: List[str]) -> Optional[str]:
+        """
+        Reason why this Native Image benchmark should run in fallback mode.
+
+        :return: None if no fallback is required. Otherwise a non-empty string describing why fallback mode is necessary
+        """
+        return None
+
+    def intercept_run(self, super_delegate: BenchmarkSuite, benchmarks, bm_suite_args: List[str]) -> DataPoints:
         """
         Intercepts the main benchmark execution (:meth:`BenchmarkSuite.run`) and runs a series of benchmark stages
         required for Native Image benchmarks in series.
@@ -265,31 +328,39 @@ class NativeImageBenchmarkMixin(object):
         :class:`BenchmarkSuite` subclass that is intended for Native Image benchmarking needs to make sure that the
         :meth:`BenchmarkSuite.run` calls into this method like this::
 
-            def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
-                return self.intercept_run(super(), benchmarks, bmSuiteArgs)
+            def run(self, benchmarks, bm_suite_args: List[str]) -> DataPoints:
+                return self.intercept_run(super(), benchmarks, bm_suite_args)
 
         It is fine if this implemented in a common (Native Image-specific) superclass of multiple benchmark suites, as
-        long as it comes first in python's method-resolution-order (MRO).
+        long as the method is not overriden in a subclass in an incompatible way.
 
         :param super_delegate: A reference to the caller class' superclass (in MRO).
         :param benchmarks: Passed to :meth:`BenchmarkSuite.run`
-        :param bmSuiteArgs: Passed to :meth:`BenchmarkSuite.run`
+        :param bm_suite_args: Passed to :meth:`BenchmarkSuite.run`
         :return: Datapoints accumulated from all stages
         """
-        if not self.is_native_mode(bmSuiteArgs):
+        if not self.is_native_mode(bm_suite_args):
             # This is not a Native Image benchmark, just run the benchmark as regular
-            return super_delegate.run(benchmarks, bmSuiteArgs)
+            return super_delegate.run(benchmarks, bm_suite_args)
 
         datapoints: MutableSequence[DataPoint] = []
 
-        requested_stages = self.stages(self.vmArgs(bmSuiteArgs))
-        self.stages_info = StagesInfo(requested_stages)
+        requested_stages = self.stages(bm_suite_args)
 
-        for stage in requested_stages:
-            self.stages_info.set_current_stage(stage)
-            # Start the actual benchmark execution. The stages_info attribute will be used by the NativeImageVM to
-            # determine which stage to run this time.
-            datapoints += super_delegate.run(benchmarks, bmSuiteArgs)
+        fallback_reason = self.fallback_mode_reason(bm_suite_args)
+        if fallback_reason:
+            # In fallback mode, all stages are run at once. There is matching code in `NativeImageVM.run_java` for this.
+            mx.log(f"Running benchmark in fallback mode (reason: {fallback_reason})")
+            self.stages_info = StagesInfo(requested_stages, True)
+            datapoints += super_delegate.run(benchmarks, bm_suite_args)
+        else:
+            self.stages_info = StagesInfo(requested_stages)
+
+            for stage in requested_stages:
+                self.stages_info.set_current_stage(stage)
+                # Start the actual benchmark execution. The stages_info attribute will be used by the NativeImageVM to
+                # determine which stage to run this time.
+                datapoints += super_delegate.run(benchmarks, bm_suite_args)
 
         self.stages_info = None
         return datapoints
@@ -301,9 +372,9 @@ class NativeImageBenchmarkMixin(object):
 
         return mx.run(final_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
 
-    def is_native_mode(self, bmSuiteArgs):
+    def is_native_mode(self, bm_suite_args: List[str]):
         """Checks whether the given arguments request a Native Image benchmark"""
-        return "native-image" in self.jvm(bmSuiteArgs)
+        return "native-image" in self.jvm(bm_suite_args)
 
     def apply_command_mapper_hooks(self, cmd, vm):
         return mx.apply_command_mapper_hooks(cmd, vm.command_mapper_hooks)
@@ -379,13 +450,23 @@ class NativeImageBenchmarkMixin(object):
         else:
             return None
 
-    def stages(self, args):
+    def stages(self, bm_suite_args: List[str]) -> List[str]:
         """
         Benchmark stages requested by the user with ``-Dnative-image.benchmark.stages=``.
 
         Falls back to :meth:`NativeImageBenchmarkMixin.default_stages` if not specified.
         """
+        args = self.vmArgs(bm_suite_args)
         parsed_arg = parse_prefixed_arg('-Dnative-image.benchmark.stages=', args, 'Native Image benchmark stages should only be specified once.')
+
+        fallback_reason = self.fallback_mode_reason(bm_suite_args)
+        if parsed_arg and fallback_reason:
+            mx.abort(
+                "This benchmarking configuration is running in fallback mode and does not support selection of benchmark stages using -Dnative-image.benchmark.stages"
+                f"Reason: {fallback_reason}\n"
+                f"Arguments: {bm_suite_args}"
+            )
+
         return parsed_arg.split(',') if parsed_arg else self.default_stages()
 
     def default_stages(self) -> List[str]:

@@ -146,7 +146,7 @@ class NativeImageBenchmarkConfig:
         self.params = ['extra-image-build-argument', 'extra-jvm-arg', 'extra-run-arg', 'extra-agent-run-arg', 'extra-profile-run-arg',
                        'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages', 'skip-agent-assertions']
 
-        # These stages are not run, even if explicitly requested.
+        # These stages are not executed, even if explicitly requested.
         # Some configurations don't need to/can't run certain stages
         removed_stages = set()
 
@@ -220,15 +220,8 @@ class NativeImageBenchmarkConfig:
         self.is_runnable = self.check_runnable()
         base_image_build_args += self.extra_image_build_arguments
 
-        # requested_stages - removed_stages while preserving order of requested_stages
-        actual_requested_stages = [s for s in bm_suite.stages_info.requested_stages if s not in removed_stages]
-
-        current_stage = bm_suite.stages_info.get_current_stage()
-        # The stage to run in this call. May be None, in which case no stage is run
-        self.stage: Optional[str] = current_stage if current_stage in actual_requested_stages else None
-
-        # The last requested stage
-        self.last_stage = actual_requested_stages[-1]
+        # Inform the StagesInfo object about removed stages
+        bm_suite.stages_info.setup(removed_stages)
 
         # benchmarks are allowed to use experimental options
         self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')] + svm_experimental_options(base_image_build_args)
@@ -315,7 +308,7 @@ class NativeImageStages:
             if self.config.split_run:
                 with open(self.config.split_run, 'a') as stdout:
                     stdout.write(self.get_timestamp() + self.config.bm_suite.name() + ':' + self.config.benchmark_name + ' ' + self.stages_info.get_current_stage() + ': PASS\n')
-            if self.stages_info.get_current_stage() == self.config.last_stage:
+            if self.stages_info.get_current_stage() == self.stages_info.last_stage:
                 self.bench_out(self.get_timestamp() + 'Successfully finished the last specified stage:' + ' ' + self.stages_info.get_current_stage() + ' for ' + self.final_image_name)
             else:
                 self.bench_out(self.get_timestamp() + 'Successfully finished stage:' + ' ' + self.stages_info.get_current_stage())
@@ -400,7 +393,7 @@ class NativeImageStages:
         return self
 
     def execute_command(self, vm=None):
-        write_output = self.config.stage in ["run", "image"] or self.is_gate
+        write_output = self.stages_info.stage in ["run", "image"] or self.is_gate
 
         cmd = self.command
         self.exit_code = self.config.bm_suite.run_stage(vm, self.stages_info.get_current_stage(), cmd, self.stdout(write_output), self.stderr(write_output), self.cwd, False)
@@ -876,10 +869,10 @@ class NativeImageVM(GraalVm):
     def rules(self, output, benchmarks, bmSuiteArgs):
         rules = super().rules(output, benchmarks, bmSuiteArgs)
 
-        if self.config.stage == "image":
+        if self.stages_info.stage == "image":
             # Only apply image build rules for the image build stages
             rules += self.image_build_rules(output, benchmarks, bmSuiteArgs)
-        elif self.config.stage == "run":
+        elif self.stages_info.stage == "run":
             # TODO Remove again. Only here so that we produce two binary-size datapoints (one in image and one in run stage) and match existing behavior
             rules += self.image_build_general_rules(output, benchmarks, bmSuiteArgs)
 
@@ -1066,25 +1059,34 @@ class NativeImageVM(GraalVm):
         os.makedirs(self.config.output_dir, exist_ok=True)
         os.makedirs(self.config.config_dir, exist_ok=True)
 
-        stage_to_run = self.config.stage
-
-        if stage_to_run == "agent":
-            self.run_stage_agent()
-        elif stage_to_run == "instrument-image":
-            self.run_stage_instrument_image(out)
-        elif stage_to_run == "instrument-run":
-            self.run_stage_instrument_run()
-        elif stage_to_run == "image":
-            self.run_stage_image(out)
-        elif stage_to_run == "run":
-            self.run_stage_run(out)
+        if self.stages_info.fallback_mode:
+            # In fallback mode, we have to run all requested stages in the same `run_java` invocation.
+            # We simply emulate the dispatching of the individual stages as in `NativeImageBenchmarkMixin.intercept_run`
+            for stage in self.stages_info.effective_stages:
+                self.stages_info.set_current_stage(stage)
+                self.run_single_stage(stage, out)
         else:
-            # The stage may be None, which means run no stage in this run
-            assert stage_to_run is None, f"Unknown stage {stage_to_run}"
-            self.stages.bench_out(f"Skipping stage: {self.stages_info.get_current_stage()}")
+            self.run_single_stage(self.stages_info.stage, out)
 
         if self.stages_info.failed:
             mx.abort('Exiting the benchmark due to the failure.')
+
+    def run_single_stage(self, stage: Optional[str], out):
+        if stage == "agent":
+            self.run_stage_agent()
+        elif stage == "instrument-image":
+            self.run_stage_instrument_image(out)
+        elif stage == "instrument-run":
+            self.run_stage_instrument_run()
+        elif stage == "image":
+            self.run_stage_image(out)
+        elif stage == "run":
+            self.run_stage_run(out)
+        else:
+            # The stage may be None, which means run no stage in this run
+            assert stage is None, f"Unknown stage {stage}"
+            self.stages.bench_out(f"Skipping stage: {self.stages_info.get_current_stage()}")
+
 
 
 class AnalysisReportJsonFileRule(mx_benchmark.JsonBaseRule):

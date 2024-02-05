@@ -420,8 +420,24 @@ class JMHNativeImageBenchmarkMixin(mx_benchmark.JMHBenchmarkSuiteBase, mx_sdk_be
         TODO GR-50022 Once we can track where datapoints come from, allow for a JMH result file in other run stages as
         well (instrument-run and maybe also agent), if requested
         """
-        if not self.is_native_mode(bm_suite_args) or self.stages_info.get_current_stage() == "run":
+        if not self.is_native_mode(bm_suite_args) or self.stages_info.fallback_mode or self.stages_info.get_current_stage() == "run":
             return super().get_jmh_result_file(bm_suite_args)
+        else:
+            return None
+
+    def fallback_mode_reason(self, bm_suite_args: List[str]) -> Optional[str]:
+        """
+        JMH benchmarks need to use the fallback mode if --jmh-run-individually is used.
+        The flag causes one native image to be built per JMH benchmark. This is fundamentally incompatible with the
+        default benchmarking mode of running each stage on its own because a benchmark will overwrite the intermediate
+        files of the previous benchmark if not all stages are run at once.
+
+        In the fallback mode, collection of performance data is limited. Only performance data of the ``run`` stage can
+        reliably be collected. Other metrics, such as image build statistics or profiling performance cannot reliably be
+        collected because they cannot be attributed so a specific individual JMH benchmark.
+        """
+        if self.jmhArgs(bm_suite_args).jmh_run_individually:
+            return "--jmh-run-individually is not compatible with selecting individual stages"
         else:
             return None
 
