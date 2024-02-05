@@ -232,7 +232,6 @@ The commands and output of both our application builds is shown below.
 $ time  ./gameoflife-default input.txt output.txt 1
 	>> Elapsed: 1.67s
 
-
 $ time  ./gameoflife-pgo input.txt output.txt 1
 	>> Elapsed: 0.97s
 ```
@@ -250,10 +249,8 @@ Same as before, the executed commands and the time output is shown below.
 $ time  ./gameoflife-default input.txt output.txt 100
 	>> Elapsed: 24.02s
 
-
 $ time  ./gameoflife-pgo input.txt output.txt 100
 	>> Elapsed: 13.25s
-
 ```
 
 In both of our example runs (1 and 100 iterations), the PGO build outperforms the default native-image build significantly.
@@ -270,7 +267,6 @@ We will use the Linux `du` command as shown below.
 ```
 $ du -hs gameoflife-default
 	7.9M	gameoflife-default
-
 
 $ du -hs gameoflife-pgo
 	6.7M	gameoflife-pgo

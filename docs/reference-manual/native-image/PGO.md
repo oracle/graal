@@ -62,7 +62,6 @@ an optimized image performs better than the default AOT-compiled image.
 Compiler optimizations often have to make decisions during compilation.
 For example, in the following method, the function-inlining optimization needs to decide which call sites to inline, and which not.
 
-
 ```
 private int run(String[] args) {
     if (args.length < 3) {
@@ -86,7 +85,6 @@ For example, if our run-time profile recorded this if condition as being `false`
 This is the essence of PGO - using information from the profile i.e. from the run time behaviour of the application being compiled, 
 to give the compiler grounding in data when making decisions.
 The actual decisions and the actual events the profile records vary from phase to phase, but the preceding example illustrates the general idea.
-
 
 Notice here that PGO expects a representative workload to be run on the instrumented build of the application.
 Providing a counter-productive profile - i.e. a profile that records the exact opposite of the actual run-time behaviour of the app - will be counter-productive.

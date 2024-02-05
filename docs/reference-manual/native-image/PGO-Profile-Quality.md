@@ -36,7 +36,6 @@ Some things to keep in mind:
 - Ideally, convert the production workload into a synthetic workload, collect the profiles as part of your build, and then create an optimized image with profiles that are always fresh. 
 That way, you do not risk having stale or misaligned profiles as long as your workload executes the same parts of the application that will later execute in production.
 
-
 ## Approach 3: Track the Profile-Quality Metrics Over Time
 
 To allow users to understand the quality of the profiles they are using for an optimized image,

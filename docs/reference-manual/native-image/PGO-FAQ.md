@@ -58,7 +58,6 @@ What we recommend instead is to either:
   I.e. the benchmark would model how often a file of a particular size was requested in production,
   as well as the compression ratios of the files.
 
-
 2. Are PGO profiles sufficiently cross platform, or should each target be instrumented separately?
 
 Yes, in almost all cases, the PGO profiles are sufficiently cross-platform.
@@ -80,7 +79,6 @@ but this is something to be aware of.
 In conclusion, the best practice is always to collect the profiles on the same platform
 that is the target for the optimized image.
 However, using the profiles collected on a different platform will typically work well.
-
 
 3. Can the profiling information be reused after a code change, provided it is limited,
    or do you need to collect new profiling information for each build?
@@ -113,7 +111,6 @@ then using the old profile will usually not compromise the performance of the op
 
 For more information on this topic consult the [Tracking Profile Quality Over Time](PGO-Profile-Quality.md) page.
 
-
 4. Can you also run the benchmark with an instrumented image?
 
 Yes, an instrumented native image can be produced for any program, including a benchmark.
@@ -138,11 +135,9 @@ In conclusion, if the benchmark accurately represents the workload that you will
 then it is a good idea to collect the profiles on the instrumented benchmark image,
 and subsequently use these profiles to build an optimized image for your production workload.
 
-
 5. How to find out which code paths were missed during profiling?
 
 DRAFT: see [LCOV coverage](PGO-LCOV.md).
-
 
 6. How does GraalVM generate a workload for profiling a web application?
 
@@ -163,7 +158,6 @@ For simple web applications, duration of 1 minute is typically sufficient
 to produce profiles of good quality (but again, this depends on your particular application).
 After the load-test completes and the web application exits,
 it will dump the profiles to a file.
-
 
 7. Why not collect profile in the production environment for a while?
    For example, collect it only on one instance of the service on Monday from 8:00 till 12:00.
