@@ -44,6 +44,7 @@ import mx_sdk_vm
 import mx_sdk_vm_impl
 import mx_javamodules
 import mx_subst
+import mx_util
 import mx_substratevm_benchmark  # pylint: disable=unused-import
 from mx_compiler import GraalArchiveParticipant
 from mx_gate import Task
@@ -620,7 +621,7 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
 
     run_args = run_args or ['--verbose']
     junit_native_dir = join(svmbuild_dir(), platform_name(), 'junit')
-    mx.ensure_dir_exists(junit_native_dir)
+    mx_util.ensure_dir_exists(junit_native_dir)
     junit_test_dir = junit_native_dir if preserve_image else tempfile.mkdtemp(dir=junit_native_dir)
     try:
         unittest_deps = []
@@ -790,7 +791,7 @@ def _cinterfacetutorial(native_image, args=None):
     # clean / create output directory
     if exists(build_dir):
         mx.rmtree(build_dir)
-    mx.ensure_dir_exists(build_dir)
+    mx_util.ensure_dir_exists(build_dir)
 
     # Build the shared library from Java code
     native_image(['--shared', '-o', join(build_dir, 'libcinterfacetutorial'), '-Dcom.oracle.svm.tutorial.headerfile=' + join(c_source_dir, 'mydata.h'),
@@ -854,7 +855,7 @@ void main() {
 
 
 def _helloworld(native_image, javac_command, path, build_only, args, variant=list(_helloworld_variants.keys())[0]):
-    mx.ensure_dir_exists(path)
+    mx_util.ensure_dir_exists(path)
     hello_file = os.path.join(path, 'HelloWorld.java')
     envkey = 'HELLO_WORLD_MESSAGE'
     output = 'Hello from native-image!'
@@ -953,7 +954,7 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
 
     def build_debug_test(variant_name, image_name, extra_args):
         per_build_path = join(path, variant_name)
-        mx.ensure_dir_exists(per_build_path)
+        mx_util.ensure_dir_exists(per_build_path)
         build_args = native_image_args + extra_args + [
             '-o', join(per_build_path, image_name)
         ]
@@ -987,7 +988,7 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
 
 def _javac_image(native_image, path, args=None):
     args = [] if args is None else args
-    mx.ensure_dir_exists(path)
+    mx_util.ensure_dir_exists(path)
 
     # Build an image for the javac compiler, so that we test and gate-check javac all the time.
     # Dynamic class loading code is reachable (used by the annotation processor), so -H:+ReportUnsupportedElementsAtRuntime is a necessary option
@@ -1583,7 +1584,7 @@ def clinittest(args):
         # clean / create output directory
         if exists(build_dir):
             mx.rmtree(build_dir)
-        mx.ensure_dir_exists(build_dir)
+        mx_util.ensure_dir_exists(build_dir)
 
         # Build and run the example
         binary_path = join(build_dir, 'clinittest')
@@ -1835,7 +1836,7 @@ JNIEXPORT void JNICALL {0}() {{
                 if same_content:
                     mx.TimeStampFile(jvm_fallbacks_path).touch()
                 else:
-                    mx.ensure_dir_exists(dirname(jvm_fallbacks_path))
+                    mx_util.ensure_dir_exists(dirname(jvm_fallbacks_path))
                     with open(jvm_fallbacks_path, mode='w') as new_fallback_file:
                         new_fallback_file.write(new_fallback.getvalue())
                         mx.log('Updated ' + jvm_fallbacks_path)
@@ -1907,7 +1908,7 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
         """
         if not hasattr(self, '.results'):
             graal_compiler_flags_map = self.compute_graal_compiler_flags_map()
-            mx.ensure_dir_exists(self.output_dir())
+            mx_util.ensure_dir_exists(self.output_dir())
             versions = sorted(graal_compiler_flags_map.keys())
             file_paths = []
             changed = self.config_file_update(self.result_file_path("versions"), versions, file_paths)

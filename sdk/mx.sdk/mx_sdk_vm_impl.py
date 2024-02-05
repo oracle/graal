@@ -66,6 +66,7 @@ import mx_native
 import mx_subst
 import mx_sdk
 import mx_sdk_vm
+import mx_util
 
 
 if sys.version_info[0] < 3:
@@ -1499,7 +1500,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
         return self._contents
 
     def build(self):
-        with mx.SafeFileCreation(self.subject.properties_output_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
+        with mx_util.SafeFileCreation(self.subject.properties_output_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
             f.write(self.contents())
 
     def needsBuild(self, newestInput):
@@ -1651,7 +1652,7 @@ class JvmciParentClasspathBuildTask(mx.ProjectBuildTask):  # based NativePropert
         return "Creating '{}' file".format(GraalVmJvmciParentClasspath.output_file_name())
 
     def build(self):
-        with mx.SafeFileCreation(self.subject.output_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
+        with mx_util.SafeFileCreation(self.subject.output_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
             f.write(self.contents())
 
     def needsBuild(self, newestInput):
@@ -2050,7 +2051,7 @@ class PolyglotConfigBuildTask(mx.ProjectBuildTask, metaclass=ABCMeta):
         return mx.TimeStampFile.newest(paths)
 
     def build(self):
-        with mx.SafeFileCreation(self.subject.polyglot_config_output_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
+        with mx_util.SafeFileCreation(self.subject.polyglot_config_output_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
             f.write(self.polyglot_config_contents())
 
     def clean(self, forBuild=False):
@@ -2119,7 +2120,7 @@ class NativeImageResourcesFileListBuildTask(mx.ProjectBuildTask, metaclass=ABCMe
         return mx.TimeStampFile.newest(paths)
 
     def build(self):
-        with mx.SafeFileCreation(self.subject.native_image_resources_filelist_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
+        with mx_util.SafeFileCreation(self.subject.native_image_resources_filelist_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
             f.write(self.native_image_resources_filelist_contents())
 
     def clean(self, forBuild=False):
@@ -2178,7 +2179,7 @@ class GraalVmNativeImageBuildTask(mx.ProjectBuildTask, metaclass=ABCMeta):
 
     def build(self):
         if self.with_polyglot_config():
-            with mx.SafeFileCreation(self.subject.polyglot_config_output_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
+            with mx_util.SafeFileCreation(self.subject.polyglot_config_output_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
                 f.write(self.polyglot_config_contents())
 
     def clean(self, forBuild=False):
@@ -2217,7 +2218,7 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
     def build(self):
         super(GraalVmBashLauncherBuildTask, self).build()
         output_file = self.subject.output_file()
-        mx.ensure_dir_exists(dirname(output_file))
+        mx_util.ensure_dir_exists(dirname(output_file))
         graal_vm = self.subject.get_containing_graalvm()
         script_destination_directory = dirname(graal_vm.find_single_source_location('dependency:' + self.subject.name))
         jre_bin = _get_graalvm_archive_path('bin', graal_vm=graal_vm)
@@ -2278,7 +2279,7 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
             with open(add_exports_argfile, 'w') as argfile:
                 argfile.write('\n'.join(_get_add_exports().split()))
 
-        with open(self._template_file(), 'r') as template, mx.SafeFileCreation(output_file) as sfc, open(sfc.tmpPath, 'w') as launcher:
+        with open(self._template_file(), 'r') as template, mx_util.SafeFileCreation(output_file) as sfc, open(sfc.tmpPath, 'w') as launcher:
             for line in template:
                 launcher.write(_template_subst.substitute(line))
         os.chmod(output_file, 0o755)
@@ -2371,7 +2372,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
         super(GraalVmSVMNativeImageBuildTask, self).build()
         build_args = self.get_build_args()
         output_file = self.subject.output_file()
-        mx.ensure_dir_exists(dirname(output_file))
+        mx_util.ensure_dir_exists(dirname(output_file))
 
         # Disable build server (different Java properties on each build prevent server reuse)
         self.svm_support.native_image(build_args, output_file)
@@ -2484,7 +2485,7 @@ class JmodModifierBuildTask(mx.ProjectBuildTask, metaclass=ABCMeta):
         return False, None
 
     def build(self):
-        mx.ensure_dir_exists(dirname(self.subject.output_file()))
+        mx_util.ensure_dir_exists(dirname(self.subject.output_file()))
         graalvm_jimage_home = self.subject.jimage_project.output_directory()
 
         # 1. copy the jmod file from the jimage to the output path

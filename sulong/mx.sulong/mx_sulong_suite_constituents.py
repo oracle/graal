@@ -39,6 +39,7 @@ import mx_cmake
 import mx_native
 import mx_unittest
 import mx_subst
+import mx_util
 import os
 
 import mx_sulong
@@ -403,7 +404,7 @@ class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
         return False, 'up to date'
 
     def build(self):
-        mx.ensure_dir_exists(self.subject.get_output_root())
+        mx_util.ensure_dir_exists(self.subject.get_output_root())
         for result, tool, exe in self.subject.launchers():
             with open(result, "w") as f:
                 f.write(self.contents(tool, exe))
@@ -576,7 +577,7 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
     def getTestFile(self):
         if not hasattr(self, '_testfile'):
             self._testfile = os.path.join(self.out_dir, 'tests.cache')
-            with mx.SafeFileCreation(self._testfile) as sfc, open(sfc.tmpPath, "w") as f:
+            with mx_util.SafeFileCreation(self._testfile) as sfc, open(sfc.tmpPath, "w") as f:
                 mx.logv("Writing test file: " + self._testfile)
                 tests = ';'.join([x.replace('\\', '\\\\') for x in self.getTests()])
                 f.write('set(SULONG_TESTS {} CACHE FILEPATH "test files")'.format(tests))

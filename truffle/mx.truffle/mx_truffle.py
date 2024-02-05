@@ -61,6 +61,7 @@ import mx_subst
 import mx_unittest
 import mx_jardistribution
 import mx_pomdistribution
+import mx_util
 from mx_gate import Task
 from mx_javamodules import as_java_module, get_module_name
 from mx_sigtest import sigtest
@@ -1037,7 +1038,7 @@ def tck(args):
     if tckConfiguration == "default":
         unittest(unitTestOptions + ["--"] + jvmOptions + tests)
     elif tckConfiguration == "debugger":
-        with mx.SafeFileCreation(os.path.join(tempfile.gettempdir(), "debugalot")) as sfc:
+        with mx_util.SafeFileCreation(os.path.join(tempfile.gettempdir(), "debugalot")) as sfc:
             _execute_debugger_test(tests, sfc.tmpPath, False, unitTestOptions, jvmOptions)
     elif tckConfiguration == "compile":
         if '--use-graalvm' in unitTestOptions:

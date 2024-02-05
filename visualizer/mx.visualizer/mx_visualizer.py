@@ -20,6 +20,7 @@
 # questions.
 
 import mx
+import mx_util
 import os
 import tempfile
 import zipfile
@@ -118,7 +119,7 @@ class NetBeansBuildTask(mx.BuildTask):
     def build(self):
         if self.subject.mxLibs:
             libs_dir = os.path.join(self.subject.dir, self.subject.subDir or 'IdealGraphVisualizer', self.subject.name, 'lib')
-            mx.ensure_dir_exists(libs_dir)
+            mx_util.ensure_dir_exists(libs_dir)
             for lib in self.subject.mxLibs:
                 lib_path = lib.classpath_repr(resolve=False)
                 link_name = os.path.join(libs_dir, os.path.basename(lib_path))
