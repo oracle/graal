@@ -708,6 +708,14 @@ public class CompilationResultBuilder {
         this.conservativeLabelOffsets = true;
     }
 
+    /**
+     * Query, whether this {@link CompilationResultBuilder} uses conservative label ranges. This
+     * allows for larger jump distances at the cost of increased code size.
+     */
+    public boolean usesConservativeLabelRanges() {
+        return this.conservativeLabelOffsets;
+    }
+
     public final boolean needsClearUpperVectorRegisters() {
         for (int blockId : lir.getBlocks()) {
             if (LIR.isBlockDeleted(blockId)) {
