@@ -24,15 +24,48 @@
  */
 package com.oracle.svm.core.posix.linux;
 
+import com.oracle.svm.core.posix.headers.PosixDirectives;
+
+import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
+
+import jdk.graal.compiler.api.replacements.Fold;
+
 import org.graalvm.nativeimage.c.function.CLibrary;
 
+// Checkstyle: stop
+
 @CLibrary(value = "libchelper", requireStatic = true)
+@CContext(PosixDirectives.class)
 public class LinuxLibCHelper {
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int getThreadId();
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native long getThreadUserTimeSlow(int tid);
+
+    @CConstant
+    public static native int MREMAP_FIXED();
+
+    @CConstant
+    public static native int MREMAP_MAYMOVE();
+
+    @Fold
+    public static int MREMAP_DONTUNMAP() {
+        /*
+         * Hardcode this constant, as it was introduced in Linux 5.7 and may not always be available
+         * on a target system. If so, an mremap call fails with EINVAL.
+         */
+        return 4;
+    }
+
+    public static class NoTransitions {
+        @CFunction(transition = Transition.NO_TRANSITION)
+        public static native Pointer mremapP(PointerBase oldAddress, UnsignedWord oldSize, UnsignedWord newSize, int flags, PointerBase newAddress);
+    }
 }
