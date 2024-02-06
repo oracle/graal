@@ -594,6 +594,7 @@ public abstract class ImageHeapScanner {
                 TypeData typeData = field.getDeclaringClass().getOrComputeData();
                 AnalysisFuture<JavaConstant> fieldTask = patchStaticField(typeData, field, fieldValue, OtherReason.RESCAN, null);
                 if (field.isRead() || field.isFolded()) {
+                    // this is confusing to me
                     rescanCollectionElements(fieldTask.ensureDone());
                 }
             }
