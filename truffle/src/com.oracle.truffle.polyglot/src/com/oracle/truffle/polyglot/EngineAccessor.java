@@ -74,7 +74,6 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
-import com.oracle.truffle.api.Truffle;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionKey;
@@ -95,6 +94,7 @@ import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.ThreadLocalAction;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
@@ -295,6 +295,11 @@ final class EngineAccessor extends Accessor {
             PolyglotContextImpl context = PolyglotContextImpl.requireContext();
             PolyglotLanguage foundLanguage = context.engine.findLanguage(null, languageId, mimeType, true, true);
             return context.getContextInitialized(foundLanguage, null).env;
+        }
+
+        @Override
+        public boolean isInstrumentReadyForContextEvents(Object polyglotInstrument) {
+            return ((PolyglotInstrument) polyglotInstrument).isReadyForContextEvents();
         }
 
         @Override
