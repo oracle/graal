@@ -578,12 +578,8 @@ public final class NativeImageHeap implements ImageHeap {
             try {
                 recursiveAddObject(hub, false, info);
                 if (hMetaAccess.isInstanceOf(constant, Object[].class)) {
-                    if (constant instanceof ImageHeapConstant) {
-                        relocatable = addConstantArrayElements(constant, length, false, info);
-                    } else {
-                        Object object = hUniverse.getSnippetReflection().asObject(Object.class, constant);
-                        relocatable = addArrayElements((Object[]) object, false, info);
-                    }
+                    VMError.guarantee(constant instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", constant);
+                    relocatable = addConstantArrayElements(constant, length, false, info);
                     references = true;
                 }
                 written = true; /* How to know if any of the array elements are written? */
