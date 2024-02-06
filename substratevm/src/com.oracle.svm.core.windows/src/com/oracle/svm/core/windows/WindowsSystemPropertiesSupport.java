@@ -38,7 +38,6 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -47,6 +46,8 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
+import com.oracle.svm.core.memory.NullableNativeMemory;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
@@ -245,12 +246,11 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
                 break;
             }
 
-            VoidPointer versionInfo = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(WordFactory.unsigned(versionSize));
+            VoidPointer versionInfo = NullableNativeMemory.malloc(WordFactory.unsigned(versionSize), NmtCategory.Other);
             if (versionInfo.isNull()) {
                 break;
             }
             try {
-
                 if (WinVer.GetFileVersionInfoW(kernel32Path, 0, versionSize, versionInfo) == 0) {
                     break;
                 }
@@ -267,7 +267,7 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
                 minorVersion = (short) fileInfo.dwProductVersionMS(); // LOWORD
                 buildNumber = (short) (fileInfo.dwProductVersionLS() >> 16); // HIWORD
             } finally {
-                ImageSingletons.lookup(UnmanagedMemorySupport.class).free(versionInfo);
+                NullableNativeMemory.free(versionInfo);
             }
         } while (false);
 

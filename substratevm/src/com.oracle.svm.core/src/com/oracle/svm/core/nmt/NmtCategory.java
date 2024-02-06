@@ -23,34 +23,46 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.svm.core.nmt;
 
 import com.oracle.svm.core.Uninterruptible;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.Platform;
 
-public class MallocMemorySnapshot {
-    private MallocMemoryInfo[] categories;
-    private MallocMemoryInfo total;
+/** Categories for native memory tracking. */
+public enum NmtCategory {
+    /** JIT compiler. */
+    Compiler("Compiler"),
+    /** JIT compiled code. */
+    Code("Code"),
+    /** Garbage collector. */
+    GC("GC"),
+    /** Heap dumping infrastructure. */
+    HeapDump("Heap Dump"),
+    /** Java Flight Recorder. */
+    JFR("JFR"),
+    /** Java Native Interface. */
+    JNI("JNI"),
+    /** JVM stat / perf data. */
+    JvmStat("jvmstat"),
+    /** NMT itself. */
+    NMT("Native Memory Tracking"),
+    /** Profile-guided optimizations. */
+    PGO("PGO"),
+    /** Threading. */
+    Threading("Threading"),
+    /** Memory allocated via Unsafe. */
+    Unsafe("Unsafe"),
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    MallocMemorySnapshot() {
-        total = new MallocMemoryInfo();
-        categories = new MallocMemoryInfo[NmtFlag.values().length];
-        for (int i = 0; i < categories.length; i++) {
-            categories[i] = new MallocMemoryInfo();
-        }
+    /** Some other VM internal reason - avoid if possible, better to add a new category. */
+    Other("Other");
+
+    private final String name;
+
+    NmtCategory(String name) {
+        this.name = name;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    MallocMemoryInfo getInfoByCategory(int flag) {
-        assert flag < categories.length;
-        return categories[flag];
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public MallocMemoryInfo getTotalInfo() {
-        return total;
+    public String getName() {
+        return name;
     }
 }

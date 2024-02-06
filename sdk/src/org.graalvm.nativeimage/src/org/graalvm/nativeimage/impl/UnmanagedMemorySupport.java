@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,21 +43,13 @@ package org.graalvm.nativeimage.impl;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
-/** Implemented by operating-system specific code. */
+/** Implemented by platform or operating-system specific code. */
 public interface UnmanagedMemorySupport {
     <T extends PointerBase> T malloc(UnsignedWord size);
 
-    <T extends PointerBase> T malloc(UnsignedWord size, int flag);
-
     <T extends PointerBase> T calloc(UnsignedWord size);
-
-    <T extends PointerBase> T calloc(UnsignedWord size, int flag);
 
     <T extends PointerBase> T realloc(T ptr, UnsignedWord size);
 
-    <T extends PointerBase> T realloc(T ptr, UnsignedWord size, int flag);
-
     void free(PointerBase ptr);
-
-    void untrackedFree(PointerBase ptr);
 }

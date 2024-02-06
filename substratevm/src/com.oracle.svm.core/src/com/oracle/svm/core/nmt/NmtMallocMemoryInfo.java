@@ -23,33 +23,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.svm.core.nmt;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.UnsignedWord;
+
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicLong;
 
-/** These category flag names match their counterparts in Hotspot. */
-public enum NmtFlag {
-    mtJavaHeap("Java Heap"),
-    mtThread("Thread"),
-    mtThreadStack("Thread Stack"),
-    mtServiceability("Serviceability"),
-    mtGC("GC"),
-    mtInternal("Internal"), // Memory used by VM, outside other categories
-    mtCode("Code"),
-    mtOther("Other"), // Memory not used by VM (Unsafe)
-    mtNMT("Native Memory Tracking"), // Memory used by NMT itself
-    mtTest("Test"), // Test type for verifying NMT
-    mtTracing("Tracing"), // JFR
-    mtNone("Unknown"); // This is the default category
+class NmtMallocMemoryInfo {
+    private final AtomicLong count = new AtomicLong(0);
+    private final AtomicLong used = new AtomicLong(0);
 
-    private final String name;
-
-    NmtFlag(String name) {
-        this.name = name;
+    @Platforms(Platform.HOSTED_ONLY.class)
+    NmtMallocMemoryInfo() {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public String getName() {
-        return name;
+    void track(UnsignedWord allocationSize) {
+        count.incrementAndGet();
+        used.addAndGet(allocationSize.rawValue());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    void untrack(UnsignedWord allocationSize) {
+        long lastCount = count.decrementAndGet();
+        long lastSize = used.addAndGet(-allocationSize.rawValue());
+        assert lastSize >= 0 && lastCount >= 0;
+    }
+
+    long getUsed() {
+        return used.get();
+    }
+
+    long getCount() {
+        return count.get();
     }
 }

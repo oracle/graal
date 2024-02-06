@@ -26,18 +26,33 @@
 
 package com.oracle.svm.core.nmt;
 
-import java.util.function.BooleanSupplier;
-import jdk.graal.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 
-public class HasNmtSupport implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return get();
-    }
+/**
+ * A "malloc header" stores metadata about the native allocation (malloc/calloc/realloc). To do
+ * this, a small amount of additional space is requested contiguous to the user allocation. This
+ * metadata is used to update the memory tracking once the block is freed.
+ */
+@RawStructure
+public interface NmtMallocHeader extends PointerBase {
+    @RawField
+    UnsignedWord getAllocationSize();
 
-    @Fold
-    public static boolean get() {
-        return ImageSingletons.contains(NativeMemoryTracking.class);
-    }
+    @RawField
+    void setAllocationSize(UnsignedWord value);
+
+    @RawField
+    int getCategory();
+
+    @RawField
+    void setCategory(int value);
+
+    @RawField
+    int getMagic();
+
+    @RawField
+    void setMagic(int value);
 }

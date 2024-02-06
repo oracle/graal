@@ -61,9 +61,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
-import com.oracle.svm.core.jni.headers.JNIMode;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -88,6 +85,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
+import com.oracle.svm.core.jni.headers.JNIMode;
 import com.oracle.svm.core.jni.headers.JNINativeMethod;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.jni.headers.JNIValue;
@@ -105,6 +103,9 @@ import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventMode;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiFrameInfo;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiInterface;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiLocationFormat;
+
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.java.LambdaUtils;
 
 /**
  * Intercepts events of interest via breakpoints in Java code.

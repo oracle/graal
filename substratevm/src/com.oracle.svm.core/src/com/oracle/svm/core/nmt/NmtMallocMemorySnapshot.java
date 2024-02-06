@@ -26,41 +26,37 @@
 
 package com.oracle.svm.core.nmt;
 
-import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicLong;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Uninterruptible;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.Platform;
 
-class MallocMemoryInfo {
-    private AtomicLong count;
-    private AtomicLong size;
+class NmtMallocMemorySnapshot {
+    private final NmtMallocMemoryInfo[] categories;
+    private final NmtMallocMemoryInfo total;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    MallocMemoryInfo() {
-        count = new AtomicLong(0);
-        size = new AtomicLong(0);
+    NmtMallocMemorySnapshot() {
+        total = new NmtMallocMemoryInfo();
+        categories = new NmtMallocMemoryInfo[NmtCategory.values().length];
+        for (int i = 0; i < categories.length; i++) {
+            categories[i] = new NmtMallocMemoryInfo();
+        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void recordMalloc(UnsignedWord allocationSize) {
-        count.incrementAndGet();
-        size.addAndGet(allocationSize.rawValue());
+    NmtMallocMemoryInfo getInfoByCategory(NmtCategory category) {
+        return getInfoByCategory(category.ordinal());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void deaccountMalloc(long allocationSize) {
-        long lastCount = count.decrementAndGet();
-        long lastSize = size.addAndGet(-allocationSize);
-        assert lastSize >= 0 && lastCount >= 0;
+    NmtMallocMemoryInfo getInfoByCategory(int category) {
+        assert category < categories.length;
+        return categories[category];
     }
 
-    long getSize() {
-        return size.get();
-    }
-
-    long getCount() {
-        return count.get();
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    NmtMallocMemoryInfo getTotalInfo() {
+        return total;
     }
 }

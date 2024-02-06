@@ -923,9 +923,6 @@ public class SubstrateOptions {
     @Option(help = "file:doc-files/FlightRecorderOptionsHelp.txt")//
     public static final RuntimeOptionKey<String> FlightRecorderOptions = new RuntimeOptionKey<>("", Immutable);
 
-    @Option(help = "Enable native memory tracking")//
-    public static final RuntimeOptionKey<Boolean> NativeMemoryTracking = new RuntimeOptionKey<>(false);
-
     public static String reportsPath() {
         Path reportsPath = ImageSingletons.lookup(ReportingSupport.class).reportsPath;
         if (reportsPath.isAbsolute()) {

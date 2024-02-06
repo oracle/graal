@@ -30,13 +30,10 @@ import java.util.List;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionType;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.WINDOWS;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.heap.dump.HeapDumping;
 import com.oracle.svm.core.jdk.management.ManagementAgentModule;
@@ -46,6 +43,11 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.LogUtils;
+
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionType;
 
 public final class VMInspectionOptions {
     private static final String ENABLE_MONITORING_OPTION = "enable-monitoring";
@@ -62,8 +64,8 @@ public final class VMInspectionOptions {
     private static final List<String> MONITORING_ALL_VALUES = List.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME, MONITORING_JVMSTAT_NAME, MONITORING_JMXCLIENT_NAME, MONITORING_JMXSERVER_NAME,
                     MONITORING_THREADDUMP_NAME, MONITORING_NMT_NAME, MONITORING_ALL_NAME, MONITORING_DEFAULT_NAME);
     private static final String MONITORING_ALLOWED_VALUES_TEXT = "'" + MONITORING_HEAPDUMP_NAME + "', '" + MONITORING_JFR_NAME + "', '" + MONITORING_JVMSTAT_NAME + "', '" + MONITORING_JMXSERVER_NAME +
-                    "' (experimental), '" + MONITORING_JMXCLIENT_NAME + "' (experimental), '" + MONITORING_THREADDUMP_NAME + "', '" + MONITORING_NMT_NAME + "', or '" + MONITORING_ALL_NAME +
-                    "' (deprecated behavior: defaults to '" + MONITORING_ALL_NAME + "' if no argument is provided)";
+                    "' (experimental), '" + MONITORING_JMXCLIENT_NAME + "' (experimental), '" + MONITORING_THREADDUMP_NAME + "', '" + MONITORING_NMT_NAME + "' (experimental), or '" +
+                    MONITORING_ALL_NAME + "' (deprecated behavior: defaults to '" + MONITORING_ALL_NAME + "' if no argument is provided)";
 
     static {
         assert MONITORING_ALL_VALUES.stream().allMatch(v -> MONITORING_DEFAULT_NAME.equals(v) || MONITORING_ALLOWED_VALUES_TEXT.contains(v)) : "A value is missing in the user-facing help text";
@@ -165,8 +167,10 @@ public final class VMInspectionOptions {
     }
 
     @Fold
-    public static boolean hasNmtSupport() {
-        return hasAllOrKeywordMonitoringSupport(MONITORING_NMT_NAME) && !Platform.includedIn(WINDOWS.class);
+    public static boolean hasNativeMemoryTrackingSupport() {
+        // TEMP (chaeubl): for testing in the CI.
+        return Platform.includedIn(InternalPlatform.NATIVE_ONLY.class);
+        // return hasAllOrKeywordMonitoringSupport(MONITORING_NMT_NAME);
     }
 
     @Option(help = "Dumps all runtime compiled methods on SIGUSR2.", type = OptionType.User) //

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.test.debug;
 
-import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CFieldAddress;
@@ -38,6 +37,8 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.memory.NativeMemory;
+import com.oracle.svm.core.nmt.NmtCategory;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 
@@ -119,7 +120,7 @@ public class CStructTests {
         ])
      */
     public static void weird() {
-        Weird wd = UnmanagedMemory.malloc(SizeOf.get(Weird.class));
+        Weird wd = NativeMemory.malloc(SizeOf.get(Weird.class), NmtCategory.Other);
 
         wd.setf_short((short) 42);
         wd.setf_int(43);
@@ -208,7 +209,7 @@ public class CStructTests {
         ])
      */
     public static void composite() {
-        CompositeStruct cs = UnmanagedMemory.malloc(3 * SizeOf.get(CompositeStruct.class));
+        CompositeStruct cs = NativeMemory.malloc(3 * SizeOf.get(CompositeStruct.class), NmtCategory.Other);
         cs.setC1((byte) 7);
         cs.setC3(13);
         cs.setC5((short) 32000);
@@ -220,8 +221,8 @@ public class CStructTests {
     }
 
     public static void mixedArguments() {
-        SimpleStruct ss1 = UnmanagedMemory.malloc(SizeOf.get(SimpleStruct.class));
-        SimpleStruct2 ss2 = UnmanagedMemory.malloc(SizeOf.get(SimpleStruct2.class));
+        SimpleStruct ss1 = NativeMemory.malloc(SizeOf.get(SimpleStruct.class), NmtCategory.Other);
+        SimpleStruct2 ss2 = NativeMemory.malloc(SizeOf.get(SimpleStruct2.class), NmtCategory.Other);
         String m1 = "a message in a bottle";
         String m2 = "a ship in a bottle";
         String m3 = "courage in a bottle";
@@ -251,6 +252,6 @@ public class CStructTests {
 
     @NeverInline("Used as a hook to inspect the caller frame in GDB")
     static void free(PointerBase ptr) {
-        UnmanagedMemory.free(ptr);
+        NativeMemory.free(ptr);
     }
 }

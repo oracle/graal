@@ -31,7 +31,6 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
-import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -39,6 +38,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
+import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.posix.PosixSystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Limits;
 import com.oracle.svm.core.posix.headers.Stdlib;
@@ -105,7 +105,7 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
                 CCharPointer osVersionStr = Foundation.systemVersionPlatform();
                 if (osVersionStr.isNonNull()) {
                     osVersionValue = CTypeConversion.toJavaString(osVersionStr);
-                    UnmanagedMemory.untrackedFree(osVersionStr);
+                    UntrackedNullableNativeMemory.free(osVersionStr);
                     return osVersionValue;
                 }
             } else {
@@ -120,7 +120,7 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
         CCharPointer osVersionStr = Foundation.systemVersionPlatformFallback();
         if (osVersionStr.isNonNull()) {
             osVersionValue = CTypeConversion.toJavaString(osVersionStr);
-            UnmanagedMemory.untrackedFree(osVersionStr);
+            UntrackedNullableNativeMemory.free(osVersionStr);
             return osVersionValue;
         }
         return osVersionValue = "Unknown";

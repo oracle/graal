@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,8 +62,7 @@ public final class UnmanagedMemory {
     /**
      * Allocates {@code size} bytes of unmanaged memory. The content of the memory is undefined.
      * <p>
-     * If {@code size} is 0, the method is allowed but not required to return the null pointer. This
-     * method never returns a the null pointer, but instead throws a {@link OutOfMemoryError} when
+     * This method never returns a null pointer, but instead throws an {@link OutOfMemoryError} when
      * allocation fails.
      *
      * @since 19.0
@@ -76,19 +75,10 @@ public final class UnmanagedMemory {
         return result;
     }
 
-    public static <T extends PointerBase> T malloc(UnsignedWord size, int flag) {
-        T result = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(size, flag);
-        if (result.isNull()) {
-            throw new OutOfMemoryError("malloc of unmanaged memory");
-        }
-        return result;
-    }
-
     /**
      * Allocates {@code size} bytes of unmanaged memory. The content of the memory is undefined.
      * <p>
-     * If {@code size} is 0, the method is allowed but not required to return the null pointer. This
-     * method never returns a the null pointer, but instead throws a {@link OutOfMemoryError} when
+     * This method never returns a null pointer, but instead throws an {@link OutOfMemoryError} when
      * allocation fails.
      *
      * @since 19.0
@@ -100,8 +90,7 @@ public final class UnmanagedMemory {
     /**
      * Allocates {@code size} bytes of unmanaged memory. The content of the memory is set to 0.
      * <p>
-     * If {@code size} is 0, the method is allowed but not required to return the null pointer. This
-     * method never returns a the null pointer, but instead throws a {@link OutOfMemoryError} when
+     * This method never returns a null pointer, but instead throws an {@link OutOfMemoryError} when
      * allocation fails.
      *
      * @since 19.0
@@ -117,8 +106,7 @@ public final class UnmanagedMemory {
     /**
      * Allocates {@code size} bytes of unmanaged memory. The content of the memory is set to 0.
      * <p>
-     * If {@code size} is 0, the method is allowed but not required to return the null pointer. This
-     * method never returns a the null pointer, but instead throws a {@link OutOfMemoryError} when
+     * This method never returns a null pointer, but instead throws an {@link OutOfMemoryError} when
      * allocation fails.
      *
      * @since 19.0
@@ -132,9 +120,8 @@ public final class UnmanagedMemory {
      * If the new size is larger than the old size, the content of the additional memory is
      * undefined.
      * <p>
-     * If {@code size} is 0, the method is allowed but not required to return the null pointer. This
-     * method never returns a the null pointer, but instead throws a {@link OutOfMemoryError} when
-     * allocation fails.
+     * This method never returns a null pointer, but instead throws an {@link OutOfMemoryError} when
+     * allocation fails. In that case, the old data is not deallocated and remains unchanged.
      *
      * @since 19.0
      */
@@ -146,29 +133,13 @@ public final class UnmanagedMemory {
         return result;
     }
 
-    public static <T extends PointerBase> T realloc(T ptr, UnsignedWord size, int flag) {
-        T result = ImageSingletons.lookup(UnmanagedMemorySupport.class).realloc(ptr, size, flag);
-        if (result.isNull()) {
-            throw new OutOfMemoryError("realloc of unmanaged memory");
-        }
-        return result;
-    }
-
     /**
-     * Frees unmanaged memory that was previously allocated using methods of this class.
+     * Frees unmanaged memory that was previously allocated using methods of this class. This method
+     * is a no-op if the given pointer is {@code null}.
      *
      * @since 19.0
      */
     public static void free(PointerBase ptr) {
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(ptr);
-    }
-
-    /**
-     * Will not attempt to perform any NMT operations. This is crucial for releasing memory
-     * allocated by C libraries which will not have NMT "malloc headers". If
-     * {@link UnmanagedMemory#free(PointerBase)} is used instead, a segfault will occur.
-     */
-    public static void untrackedFree(PointerBase ptr) {
-        ImageSingletons.lookup(UnmanagedMemorySupport.class).untrackedFree(ptr);
     }
 }
