@@ -98,6 +98,7 @@ public class ImageCodeInfo {
         info.setFrameInfoObjectConstants(NonmovableArrays.fromImageHeap(frameInfoObjectConstants));
         info.setFrameInfoSourceClasses(NonmovableArrays.fromImageHeap(frameInfoSourceClasses));
         info.setFrameInfoSourceMethodNames(NonmovableArrays.fromImageHeap(frameInfoSourceMethodNames));
+        info.setIsAOTImageCode(true);
 
         return info;
     }
@@ -369,6 +370,16 @@ public class ImageCodeInfo {
         @Override
         public boolean getAllObjectsAreInImageHeap() {
             throw VMError.shouldNotReachHere("not supported for image code");
+        }
+
+        @Override
+        public void setIsAOTImageCode(boolean value) {
+            throw VMError.shouldNotReachHere("not supported for image code");
+        }
+
+        @Override
+        public boolean getIsAOTImageCode() {
+            return true;
         }
 
         @Override

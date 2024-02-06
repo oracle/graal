@@ -27,7 +27,6 @@ package com.oracle.svm.core.code;
 import java.lang.module.ModuleDescriptor;
 import java.util.Optional;
 
-import jdk.graal.compiler.nodes.FrameState;
 import org.graalvm.nativeimage.c.function.CodePointer;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
@@ -37,6 +36,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 
+import jdk.graal.compiler.nodes.FrameState;
 import jdk.internal.loader.BuiltinClassLoader;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;

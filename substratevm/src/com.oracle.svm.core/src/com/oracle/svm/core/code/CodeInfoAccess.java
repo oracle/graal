@@ -93,7 +93,7 @@ public final class CodeInfoAccess {
          * Do not interact with the tether object during GCs, as the reference might be forwarded
          * and therefore not safe to access. Tethering is not needed then, either.
          */
-        assert info.equal(CodeInfoTable.getImageCodeInfo()) || VMOperation.isGCInProgress() || ((CodeInfoTether) tether).incrementCount() > 0;
+        assert UntetheredCodeInfoAccess.isAOTImageCode(info) || VMOperation.isGCInProgress() || ((CodeInfoTether) tether).incrementCount() > 0;
         return tether;
     }
 
@@ -101,7 +101,7 @@ public final class CodeInfoAccess {
     @NeverInline("Prevent elimination of object reference in caller.")
     public static void releaseTether(UntetheredCodeInfo info, Object tether) {
         assert VMOperation.isGCInProgress() || UntetheredCodeInfoAccess.getTetherUnsafe(info) == null || UntetheredCodeInfoAccess.getTetherUnsafe(info) == tether;
-        assert info.equal(CodeInfoTable.getImageCodeInfo()) || VMOperation.isGCInProgress() || ((CodeInfoTether) tether).decrementCount() >= 0;
+        assert UntetheredCodeInfoAccess.isAOTImageCode(info) || VMOperation.isGCInProgress() || ((CodeInfoTether) tether).decrementCount() >= 0;
     }
 
     /**
@@ -375,6 +375,11 @@ public final class CodeInfoAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static NonmovableObjectArray<String> getFrameInfoSourceMethodNames(CodeInfo info) {
         return cast(info).getFrameInfoSourceMethodNames();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isAOTImageCode(CodeInfo info) {
+        return cast(info).getIsAOTImageCode();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

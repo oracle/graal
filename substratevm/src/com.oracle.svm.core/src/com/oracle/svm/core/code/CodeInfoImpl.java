@@ -261,4 +261,10 @@ interface CodeInfoImpl extends CodeInfo {
 
     @RawField
     boolean getAllObjectsAreInImageHeap();
+
+    @RawField
+    void setIsAOTImageCode(boolean value);
+
+    @RawField
+    boolean getIsAOTImageCode();
 }

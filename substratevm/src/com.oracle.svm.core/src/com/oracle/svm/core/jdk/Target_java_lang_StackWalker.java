@@ -54,6 +54,7 @@ import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.SimpleCodeInfoQueryResult;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
+import com.oracle.svm.core.code.UntetheredCodeInfoAccess;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
@@ -325,7 +326,7 @@ final class Target_java_lang_StackWalker {
             SimpleCodeInfoQueryResult queryResult = UnsafeStackValue.get(SimpleCodeInfoQueryResult.class);
             try {
                 CodeInfo info = CodeInfoAccess.convert(untetheredInfo, tether);
-                VMError.guarantee(walk.getIPCodeInfo().equal(CodeInfoTable.getImageCodeInfo()));
+                VMError.guarantee(UntetheredCodeInfoAccess.isAOTImageCode(walk.getIPCodeInfo()));
                 CodeInfoAccess.lookupCodeInfo(info, CodeInfoAccess.relativeIP(info, ip), queryResult);
 
                 JavaStackWalker.continueWalk(walk, queryResult, null);

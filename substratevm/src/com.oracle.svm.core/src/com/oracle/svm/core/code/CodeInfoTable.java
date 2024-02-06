@@ -170,7 +170,7 @@ public class CodeInfoTable {
     public static SubstrateInstalledCode lookupInstalledCode(CodePointer ip) {
         counters().lookupInstalledCodeCount.inc();
         UntetheredCodeInfo untetheredInfo = lookupCodeInfo(ip);
-        if (untetheredInfo.isNull() || untetheredInfo.equal(getImageCodeInfo())) {
+        if (untetheredInfo.isNull() || UntetheredCodeInfoAccess.isAOTImageCode(untetheredInfo)) {
             return null; // not within a runtime-compiled method
         }
 
