@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.replacements.test;
+package org.graalvm.compiler.replacements.test;
 
 import org.junit.Test;
 
@@ -40,7 +40,7 @@ public class HotSpotReflectionGetCallerClassTest extends MethodSubstitutionTest 
             return ext;
         }
         try {
-            Class.forName("jdk.graal.compiler.replacements.test.HotSpotReflectionGetCallerClassTest");
+            Class.forName("org.graalvm.compiler.replacements.test.HotSpotReflectionGetCallerClassTest");
             ext = instance;
         } catch (ClassNotFoundException e) {
             synchronized (HotSpotReflectionGetCallerClassTest.class) {
