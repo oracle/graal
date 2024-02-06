@@ -27,6 +27,7 @@ See [graalvm_ce_jdk8_options](https://chriswhocodes.com/graalvm_ce_jdk8_options.
 
 ## Default Language Launcher Options
 
+```shell
 - `--vm.[option]` : Pass options to the host VM. To see available options, use `--help:vm`.
 - `--log.file=<String>` : Redirect guest languages logging into a given file.
 - `--log.[logger].level=<String>` : Set language log level to OFF, SEVERE, WARNING, INFO, CONFIG, FINE, FINER, FINEST or ALL.
@@ -38,6 +39,7 @@ See [graalvm_ce_jdk8_options](https://chriswhocodes.com/graalvm_ce_jdk8_options.
 - `--help:tools` : Print options for all installed tools.
 - `--help:expert` : Print additional options for experts.
 - `--help:internal` : Print internal options for debugging language implementations and tools.
+```
 
 ## Expert Engine Options
 
@@ -45,6 +47,7 @@ These are advanced options for controlling the engine.
 They are useful to users and language and tool implementers.
 
 <!-- BEGIN: expert-engine-options -->
+```shell
 - `--engine.PreinitializeContexts` : Preinitialize language contexts for given languages.
 - `--engine.RelaxStaticObjectSafetyChecks` : On property accesses, the Static Object Model does not perform shape checks and uses unsafe casts
 - `--engine.TraceStackTraceInterval=[1, inf)` : Prints the stack trace for all threads for a time interval. By default 0, which disables the output.
@@ -83,6 +86,7 @@ They are useful to users and language and tool implementers.
 - `--engine.HostCallStackHeadRoom=[1, inf)<B>|<KB>|<MB>|<GB>` : Stack space headroom for calls to the host.
 - `--engine.IsolateMemoryProtection=true|false` : Enable memory protection for the isolate.
 - `--engine.IsolateOption.<key>=<value>` : Isolate VM options.
+```
 <!-- END: expert-engine-options -->
 
 ## Internal Engine Options
@@ -90,6 +94,7 @@ They are useful to users and language and tool implementers.
 These are internal options for debugging language implementations and tools.
 
 <!-- BEGIN: internal-engine-options -->
+```shell
 - `--engine.AssertProbes=true|false` : Asserts that enter and return are always called in pairs on ProbeNode, verifies correct behavior of wrapper nodes. Java asserts need to be turned on for this option to have an effect. (default: false)
 - `--engine.DisableCodeSharing` : Option to force disable code sharing for this engine, even if the context was created with an explicit engine. This option is intended for testing purposes only.
 - `--engine.ForceCodeSharing` : Option to force enable code sharing for this engine, even if the context was created with a bound engine. This option is intended for testing purposes only.
@@ -213,4 +218,5 @@ The accepted values are:
 - `--engine.TraceStackTraceLimit` : Number of stack trace elements printed by TraceTruffleTransferToInterpreter, TraceTruffleAssumptions and TraceDeoptimizeFrame (default: 20). Syntax: [1, inf).
 - `--engine.TreatPerformanceWarningsAsErrors` : Treat performance warnings as error. Handling of the error depends on the CompilationFailureAction option value. Performance warnings are: call, instanceof, store, frame_merge, trivial. (syntax: none|all|<perfWarning>,<perfWarning>,...)
 - `--engine.IsolateLibrary=<path>` : Path to the isolate library.
+```
 <!-- END: internal-engine-options -->
