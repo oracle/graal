@@ -1095,7 +1095,7 @@ public abstract class NFATraversalRegexASTVisitor {
                     boolean keptAliveByCaptureGroups = false;
                     // Search for the last enterZeroWidth guard of the same group.
                     QuantifierGuardsLinkedList curGuard = quantifierGuards;
-                    while (curGuard != null && (!(curGuard.getGuard().getKind() == QuantifierGuard.Kind.enterZeroWidth && curGuard.getGuard().getIndex() == guard.getIndex()))) {
+                    while (curGuard != null && (!(curGuard.getGuard().getKind() == QuantifierGuard.Kind.enterZeroWidth && curGuard.getGuard().getQuantifier().getZeroWidthIndex() == guard.getQuantifier().getZeroWidthIndex()))) {
                         if (ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() && curGuard.getGuard().getKind() == QuantifierGuard.Kind.updateCG) {
                             keptAliveByCaptureGroups = true;
                         }
@@ -1126,7 +1126,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 // updates in between, then this new enterZeroWidth is redundant.
                 QuantifierGuardsLinkedList curGuard = quantifierGuards;
                 while (curGuard != null && (!ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() || curGuard.getGuard().getKind() != QuantifierGuard.Kind.updateCG)) {
-                    if (curGuard.getGuard().getKind() == QuantifierGuard.Kind.enterZeroWidth && curGuard.getGuard().getIndex() == guard.getIndex()) {
+                    if (curGuard.getGuard().getKind() == QuantifierGuard.Kind.enterZeroWidth && curGuard.getGuard().getQuantifier().getZeroWidthIndex() == guard.getQuantifier().getZeroWidthIndex()) {
                         return;
                     }
                     curGuard = curGuard.getPrev();
