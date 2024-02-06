@@ -532,7 +532,7 @@ public abstract class NativeImageCodeCache {
     }
 
     private static boolean verifyDeoptEntry(CodeInfo codeInfo, HostedMethod method, Entry<Long, DeoptSourceFrameInfo> sourceFrameInfo, ConstantAccess constantAccess) {
-        int deoptOffsetInImage = method.getDeoptOffsetInImage();
+        int deoptOffsetInImage = method.getImageCodeDeoptOffset();
         long encodedBci = sourceFrameInfo.getKey();
 
         if (sourceFrameInfo.getValue() == DeoptSourceFrameInfo.INVALID_DEOPT_SOURCE_FRAME) {

@@ -26,7 +26,6 @@ package com.oracle.svm.core.stack;
 
 import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
@@ -46,6 +45,7 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.stack.InspectedFrame;
 import jdk.vm.ci.code.stack.InspectedFrameVisitor;
 import jdk.vm.ci.code.stack.StackIntrospection;
@@ -166,7 +166,7 @@ class PhysicalStackFrameVisitor<T> extends StackFrameVisitor {
             return true;
         }
         for (ResolvedJavaMethod method : haystack) {
-            if (((SharedMethod) method).getDeoptOffsetInImage() == needle) {
+            if (((SharedMethod) method).getImageCodeDeoptOffset() == needle) {
                 return true;
             }
         }
@@ -337,7 +337,7 @@ class SubstrateInspectedFrame implements InspectedFrame {
     @Override
     public boolean isMethod(ResolvedJavaMethod method) {
         checkDeoptimized();
-        return ((SharedMethod) method).getDeoptOffsetInImage() == frameInfo.getDeoptMethodOffset();
+        return ((SharedMethod) method).getImageCodeDeoptOffset() == frameInfo.getDeoptMethodOffset();
     }
 
     @Override

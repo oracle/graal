@@ -151,7 +151,7 @@ public class FrameInfoEncoder {
     public abstract static class SourceFieldsFromImage extends Customization {
         @Override
         protected void fillSourceFields(ResolvedJavaMethod method, FrameInfoQueryResult resultFrameInfo) {
-            final int deoptOffsetInImage = ((SharedMethod) method).getDeoptOffsetInImage();
+            final int deoptOffsetInImage = ((SharedMethod) method).getImageCodeDeoptOffset();
             if (deoptOffsetInImage != 0) {
                 CodeInfoQueryResult targetCodeInfo = CodeInfoTable.lookupDeoptimizationEntrypoint(deoptOffsetInImage, resultFrameInfo.encodedBci);
                 if (targetCodeInfo != null) {
@@ -573,7 +573,7 @@ public class FrameInfoEncoder {
                 frameInfo.deoptMethod = method;
                 encoders.objectConstants.addObject(constantAccess.forObject(method, false));
             }
-            frameInfo.deoptMethodOffset = method.getDeoptOffsetInImage();
+            frameInfo.deoptMethodOffset = method.getImageCodeDeoptOffset();
 
             frameInfo.numLocals = frame.numLocals;
             frameInfo.numStack = frame.numStack;
@@ -932,7 +932,7 @@ public class FrameInfoEncoder {
             if (cur.deoptMethod != null) {
                 deoptMethodIndex = -1 - encoders.objectConstants.getIndex(constantAccess.forObject(cur.deoptMethod, false));
                 assert deoptMethodIndex < 0 : cur;
-                assert cur.getDeoptMethodOffset() == cur.deoptMethod.getDeoptOffsetInImage() : cur;
+                assert cur.getDeoptMethodOffset() == cur.deoptMethod.getImageCodeDeoptOffset() : cur;
             } else {
                 deoptMethodIndex = cur.deoptMethodOffset;
                 assert deoptMethodIndex >= 0 : cur;

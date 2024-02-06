@@ -48,5 +48,5 @@ public interface SharedRuntimeMethod extends SharedMethod {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    int getDeoptOffsetInImage();
+    int getImageCodeDeoptOffset();
 }
