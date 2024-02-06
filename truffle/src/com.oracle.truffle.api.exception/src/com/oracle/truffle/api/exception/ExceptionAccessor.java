@@ -259,12 +259,12 @@ final class ExceptionAccessor extends Accessor {
 
         @Override
         public boolean hasSourceLocation(Object receiver) {
-            return ((AbstractTruffleException) receiver).getSourceSection() != null;
+            return ((AbstractTruffleException) receiver).getEncapsulatingSourceSection() != null;
         }
 
         @Override
         public SourceSection getSourceLocation(Object receiver) {
-            SourceSection sourceSection = ((AbstractTruffleException) receiver).getSourceSection();
+            SourceSection sourceSection = ((AbstractTruffleException) receiver).getEncapsulatingSourceSection();
             if (sourceSection == null) {
                 throw throwUnsupportedMessageException();
             }
