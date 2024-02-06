@@ -286,10 +286,10 @@ public class InteropNodesProcessor extends BaseProcessor {
 
     private ClassBuilder processInteropNode(TypeElement processingClass, ExecutableElement element, String exportedMessageName, String clsName, Imports imports) {
         String targetMethodName = element.getSimpleName().toString();
-        /*- abstract static class [exportedMessageName]Node extends InteropMessage.[targetMethodName] */
+        /*- abstract static class [exportedMessageName]Node extends InteropMessage.[exportedMessageName] */
         ClassBuilder result = new ClassBuilder(clsName) //
                         .withQualifiers(new ModifierBuilder().asStatic().asAbstract()) //
-                        .withSuperClass(INTEROP_MESSAGE + "." + ProcessorUtils.capitalize(targetMethodName));
+                        .withSuperClass(INTEROP_MESSAGE + "." + ProcessorUtils.capitalize(exportedMessageName));
 
         /*- 
             @Specialization
