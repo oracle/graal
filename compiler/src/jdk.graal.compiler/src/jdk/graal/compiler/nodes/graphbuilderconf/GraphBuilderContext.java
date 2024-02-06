@@ -302,6 +302,13 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     }
 
     /**
+     * Returns true if control flow has terminated in some fashion, such as a deoptimization.
+     */
+    default boolean hasParseTerminated() {
+        throw GraalError.unimplementedParent(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    /**
      * Determines if a graph builder plugin is enabled under current context.
      */
     default boolean isPluginEnabled(GraphBuilderPlugin plugin) {

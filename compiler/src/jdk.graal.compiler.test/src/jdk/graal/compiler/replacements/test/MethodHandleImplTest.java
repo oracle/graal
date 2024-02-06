@@ -27,8 +27,19 @@ package jdk.graal.compiler.replacements.test;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.lang.invoke.VarHandle;
 
 import org.junit.Test;
+
+import jdk.graal.compiler.nodes.DeoptimizeNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class MethodHandleImplTest extends MethodSubstitutionTest {
 
@@ -63,4 +74,48 @@ public class MethodHandleImplTest extends MethodSubstitutionTest {
         testGraph("invokeSquare");
     }
 
+    @Override
+    protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
+        conf.getPlugins().prependNodePlugin(new NodePlugin() {
+            @Override
+            public boolean handleLoadField(GraphBuilderContext b, ValueNode object, ResolvedJavaField field) {
+                if (field.getName().equals("fieldOffset") && b.getGraph().method().getName().equals("incrementThreadCount")) {
+                    // Force a deopt in the testFlock test case
+                    b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved));
+                    return true;
+                }
+                return false;
+            }
+        });
+        return super.editGraphBuilderConfiguration(conf);
+    }
+
+    public static class ThreadFlock {
+        private static final VarHandle THREAD_COUNT;
+
+        static {
+            try {
+                MethodHandles.Lookup l = MethodHandles.lookup();
+                THREAD_COUNT = l.findVarHandle(ThreadFlock.class, "threadCount", int.class);
+            } catch (Exception e) {
+                throw new InternalError(e);
+            }
+        }
+
+        @SuppressWarnings("unused") private volatile int threadCount;
+
+        public void incrementThreadCount() {
+            THREAD_COUNT.getAndAdd(this, 1);
+        }
+    }
+
+    @Test
+    public void testFlock() {
+        ThreadFlock flock = new ThreadFlock();
+        for (int i = 0; i < 10_000; i++) {
+            flock.incrementThreadCount();
+        }
+        ResolvedJavaMethod method = getResolvedJavaMethod(ThreadFlock.class, "incrementThreadCount");
+        getCode(method);
+    }
 }
