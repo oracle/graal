@@ -416,14 +416,22 @@ class JMHNativeImageBenchmarkMixin(mx_benchmark.JMHBenchmarkSuiteBase, mx_sdk_be
         Only generate a JMH result file in the run stage. Otherwise the file-based rule (see
         :class:`mx_benchmark.JMHJsonRule`) will produce datapoints at every stage, based on results from a previous
         stage.
-
-        TODO GR-50022 Once we can track where datapoints come from, allow for a JMH result file in other run stages as
-        well (instrument-run and maybe also agent), if requested
         """
-        if not self.is_native_mode(bm_suite_args) or self.stages_info.fallback_mode or self.stages_info.effective_stage == "run":
-            return super().get_jmh_result_file(bm_suite_args)
-        else:
-            return None
+        if self.is_native_mode(bm_suite_args) and not self.stages_info.fallback_mode:
+            # At this point, the StagesInfo class may not have all the information yet, in that case we rely on the
+            # requested stage. But if this function is called later again when it is fully set up, we have to use the
+            # effective stage instead.
+            # This is important so that the JMH parsing rule is only enabled when the stage actually ran (if it is
+            # skipped, it would otherwise pick up a previous result file)
+            if self.stages_info.is_set_up:
+                current_stage = self.stages_info.effective_stage
+            else:
+                current_stage = self.stages_info.requested_stage
+
+            if current_stage not in ["agent", "instrument-run", "run"]:
+                return None
+
+        return super().get_jmh_result_file(bm_suite_args)
 
     def fallback_mode_reason(self, bm_suite_args: List[str]) -> Optional[str]:
         """
