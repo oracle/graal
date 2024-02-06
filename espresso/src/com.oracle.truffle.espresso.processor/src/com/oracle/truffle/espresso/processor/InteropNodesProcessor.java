@@ -168,7 +168,7 @@ public class InteropNodesProcessor extends BaseProcessor {
                 String capitalizedMessageName = ProcessorUtils.capitalize(exportedMessageName);
                 String clsName = capitalizedMessageName + "Node";
                 boolean isShareable = isShareable(methodElement, shareableCls);
-                nodes.add(new Message(processInteropNode(cls, (ExecutableElement) methodElement, exportedMessageName, methodElement.getSimpleName().toString(), clsName, imports),
+                nodes.add(new Message(processInteropNode(cls, (ExecutableElement) methodElement, exportedMessageName, clsName, imports),
                                 capitalizedMessageName, clsName, isShareable));
             }
         }
@@ -284,16 +284,17 @@ public class InteropNodesProcessor extends BaseProcessor {
         return classBuilder;
     }
 
-    private ClassBuilder processInteropNode(TypeElement processingClass, ExecutableElement element, String exportedMessageName, String targetMessageName, String clsName, Imports imports) {
-        /*- abstract static class [exportedMessageName]Node extends InteropMessage.[targetMessageName] */
+    private ClassBuilder processInteropNode(TypeElement processingClass, ExecutableElement element, String exportedMessageName, String clsName, Imports imports) {
+        String targetMethodName = element.getSimpleName().toString();
+        /*- abstract static class [exportedMessageName]Node extends InteropMessage.[targetMethodName] */
         ClassBuilder result = new ClassBuilder(clsName) //
                         .withQualifiers(new ModifierBuilder().asStatic().asAbstract()) //
-                        .withSuperClass(INTEROP_MESSAGE + "." + ProcessorUtils.capitalize(targetMessageName));
+                        .withSuperClass(INTEROP_MESSAGE + "." + ProcessorUtils.capitalize(targetMethodName));
 
         /*- 
             @Specialization
             static [returnType] [exportedMessageName]([signature]) throws [thrownExceptions] {
-                [return] [processingClass].[targetMessageName]([args]);
+                [return] [processingClass].[targetMethodName]([args]);
             }
          */
         MethodBuilder m = new MethodBuilder(exportedMessageName) //
@@ -348,7 +349,7 @@ public class InteropNodesProcessor extends BaseProcessor {
         }
         m.withSignature(declaredSig);
         String returnOrEmpty = element.getReturnType().toString().equals("void") ? "" : "return ";
-        m.addBodyLine(returnOrEmpty, processingClass.getQualifiedName(), ".", targetMessageName, invokeSig.toString(), ";");
+        m.addBodyLine(returnOrEmpty, processingClass.getQualifiedName(), ".", targetMethodName, invokeSig.toString(), ";");
 
         result.withMethod(m);
 
