@@ -272,7 +272,7 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      *
      * @since 24.1
      */
-    public SourceSection getSourceSection() {
+    public SourceSection getEncapsulatingSourceSection() {
         if (location == null) {
             return null;
         }

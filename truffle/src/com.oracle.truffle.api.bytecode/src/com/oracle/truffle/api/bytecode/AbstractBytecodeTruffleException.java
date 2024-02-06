@@ -129,9 +129,9 @@ public abstract class AbstractBytecodeTruffleException extends AbstractTruffleEx
      * @since 24.1
      */
     @Override
-    public SourceSection getSourceSection() {
+    public SourceSection getEncapsulatingSourceSection() {
         if (bci == INVALID_BCI) {
-            return super.getSourceSection();
+            return super.getEncapsulatingSourceSection();
         }
         return BytecodeLocation.get(getLocation(), bci).getSourceLocation();
     }
