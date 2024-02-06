@@ -209,7 +209,8 @@ class StagesInfo:
         self._effective_stages: Optional[List[str]] = None
         self._stages_till_now: List[str] = []
         self._requested_stage: Optional[str] = None
-        self._skip_current_stage: bool = False
+        # Computed lazily
+        self._skip_current_stage: Optional[bool] = None
         self._failed: bool = False
         self._fallback_mode = fallback_mode
 
@@ -239,12 +240,6 @@ class StagesInfo:
             # requested_stages - removed_stages while preserving order of requested_stages
             self._effective_stages = [s for s in self._requested_stages if s not in removed_stages]
             self._is_set_up = True
-            self._update_skip()
-
-    def _update_skip(self):
-        # At this point, no stage may have been requested yet
-        if self._requested_stage:
-            self._skip_current_stage = self._requested_stage not in self.effective_stages
 
     @property
     def effective_stages(self) -> List[str]:
@@ -256,6 +251,8 @@ class StagesInfo:
 
     @property
     def skip_current_stage(self) -> bool:
+        if self._skip_current_stage is None:
+            self._skip_current_stage = self._requested_stage not in self.effective_stages
         return self._skip_current_stage
 
     @property
@@ -297,7 +294,8 @@ class StagesInfo:
 
     def change_stage(self, stage_name: str) -> None:
         self._requested_stage = stage_name
-        self._update_skip()
+        # Force recomputation
+        self._skip_current_stage = None
 
     def success(self) -> None:
         assert self.is_set_up
