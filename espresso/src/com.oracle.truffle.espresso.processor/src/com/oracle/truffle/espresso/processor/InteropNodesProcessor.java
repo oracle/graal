@@ -161,13 +161,15 @@ public class InteropNodesProcessor extends BaseProcessor {
             List<AnnotationMirror> exportedMethods = getAnnotations(methodElement, exportMessage.asType(), exportRepeatMessage.asType());
             // Look for exported messages. Create one node per export.
             for (AnnotationMirror exportAnnotation : exportedMethods) {
-                String targetMessageName = getAnnotationValue(exportAnnotation, "name", String.class);
-                if (targetMessageName == null || targetMessageName.isEmpty()) {
-                    targetMessageName = methodElement.getSimpleName().toString();
+                String exportedMessageName = getAnnotationValue(exportAnnotation, "name", String.class);
+                if (exportedMessageName == null || exportedMessageName.isEmpty()) {
+                    exportedMessageName = methodElement.getSimpleName().toString();
                 }
-                String clsName = targetMessageName + "Node";
+                String capitalizedMessageName = ProcessorUtils.capitalize(exportedMessageName);
+                String clsName = capitalizedMessageName + "Node";
                 boolean isShareable = isShareable(methodElement, shareableCls);
-                nodes.add(new Message(processInteropNode(cls, (ExecutableElement) methodElement, methodElement.getSimpleName().toString(), clsName, imports), targetMessageName, clsName, isShareable));
+                nodes.add(new Message(processInteropNode(cls, (ExecutableElement) methodElement, exportedMessageName, methodElement.getSimpleName().toString(), clsName, imports),
+                                capitalizedMessageName, clsName, isShareable));
             }
         }
 
@@ -201,7 +203,7 @@ public class InteropNodesProcessor extends BaseProcessor {
 
         // For all messages, add a line in registerMessages, and create the corresponding class
         for (Message m : nodes) {
-            registerMessages.addBodyLine(INTEROP_MESSAGE_FACTORIES, ".register(cls, ", INTEROP_MESSAGE_MESSAGE, ".", ProcessorUtils.capitalize(m.targetMessage), ", ", FACTORY_FIELD_NAME, ",",
+            registerMessages.addBodyLine(INTEROP_MESSAGE_FACTORIES, ".register(cls, ", INTEROP_MESSAGE_MESSAGE, ".", m.targetMessage, ", ", FACTORY_FIELD_NAME, ",",
                             m.isShareable, ");");
             nodesClass.withInnerClass(m.cls);
         }
@@ -260,7 +262,7 @@ public class InteropNodesProcessor extends BaseProcessor {
         createMethod.addBodyLine("switch (message) {");
         String clsName = sourceDispatch.getSimpleName().toString() + ADDED_CLASS_SUFFIX;
         for (Message m : nodes) {
-            String targetMessageEnum = ProcessorUtils.capitalize(m.targetMessage);
+            String targetMessageEnum = m.targetMessage;
             String targetMessageImpl = clsName + "Factory." + m.clsName + "Gen";
             createMethod.addIndentedBodyLine(1, "case ", targetMessageEnum, ": return ", targetMessageImpl, ".create();");
         }
@@ -282,19 +284,19 @@ public class InteropNodesProcessor extends BaseProcessor {
         return classBuilder;
     }
 
-    private ClassBuilder processInteropNode(TypeElement processingClass, ExecutableElement element, String targetMessageName, String clsName, Imports imports) {
-        /*- abstract static class [MessageName]Node extends InteropMessage.[messageName] */
+    private ClassBuilder processInteropNode(TypeElement processingClass, ExecutableElement element, String exportedMessageName, String targetMessageName, String clsName, Imports imports) {
+        /*- abstract static class [exportedMessageName]Node extends InteropMessage.[targetMessageName] */
         ClassBuilder result = new ClassBuilder(clsName) //
                         .withQualifiers(new ModifierBuilder().asStatic().asAbstract()) //
                         .withSuperClass(INTEROP_MESSAGE + "." + ProcessorUtils.capitalize(targetMessageName));
 
         /*- 
             @Specialization
-            static [returnType] [messageName]([signature]) throws [thrownExceptions] {
-                [return] [processingClass].[messageName]([args]);
+            static [returnType] [exportedMessageName]([signature]) throws [thrownExceptions] {
+                [return] [processingClass].[targetMessageName]([args]);
             }
          */
-        MethodBuilder m = new MethodBuilder(targetMessageName) //
+        MethodBuilder m = new MethodBuilder(exportedMessageName) //
                         .withAnnotation(new AnnotationBuilder(SPECIALIZATION).withLineBreak()) //
                         .withModifiers(new ModifierBuilder().asStatic()) //
                         .withReturnType(element.getReturnType().toString());
