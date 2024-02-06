@@ -310,14 +310,62 @@ class StagesInfo:
 
 class NativeImageBenchmarkMixin(object):
     """
-    Mixin extended by :class:`BenchmarkSuite` classes to enable a bench suite to run as a Native Image benchmark.
+    Mixin extended by :class:`BenchmarkSuite` classes to enable a JVM bench suite to run as a Native Image benchmark.
 
     IMPORTANT: All Native Image benchmarks (including JVM benchmarks that are also used in Native Image benchmarks) must
     explicitly call :meth:`NativeImageBenchmarkMixin.intercept_run` in order for benchmarking to work.
     See description of that method for more information.
 
-    TODO document how to use this class and caveats (file-rules, dispatching into the VM multiple times)
-    TODO document fallback mode
+    Native Image benchmarks are run in stages: agent, instrument-image, instrument-run, image, run
+    Each stage produces intermediate files required by subsequent phases until the final ``run`` stage runs the final
+    Native Image executable to produce performance results.
+    However, it is worth collecting certain performance metrics from any of the other stages as well (e.g. compiler
+    performance).
+
+    The mixin's ``intercept_run`` method calls into the ``mx_vm_benchmark.NativeImageVM`` once per stage to run that
+    stage and produce datapoints for that stage only.
+    This is a bit of a hack since each stage can be seen as its own full benchmark execution (does some operations and
+    produces datapoints), but it works well in most cases.
+
+    Limitations
+    -----------
+
+    This mode of benchmarking cannot fully support arbitrary benchmarking suites without modification.
+
+    Because of each stage effectively being its own benchmark execution, rules that unconditionally produce datapoints
+    will misbehave as they will produce datapoints in each stage (even though, it is likely only meant to produce
+    benchmark performance datapoints).
+    For example, if a benchmark suite has rules that read the performance data from a file (e.g. JMH), those rules will
+    happily read that file and produce performance data in every stage (even the ``image`` stages).
+    Such rules need to be modified to only trigger in the desired stages. Either by parsing the file location out of the
+    benchmark output or by writing some Native Image specific logic (with :meth:`is_native_mode`)
+
+    If the benchmark suite itself dispatches into the VM multiple times (in addition to the mixin doing it once per
+    stage), care must be taken in which order this happens.
+    If these multiple dispatches happen in a (transitive) callee of ``intercept_run``, each dispatch will first happen
+    for the first stage and only after the next stage will be run. In that order, a subsequent dispatch may overwrite
+    intermediate files of the previous dispatch of the same stage (e.g. executables).
+    For this to work as expected, ``intercept_run`` needs to be a callee of these multiple dispatches, i.e. these
+    multiple dispatches also need to happen in the ``run`` method and (indirectly) call ``intercept_run``.
+
+    If these limitations cannot be worked around, using the fallback mode may be required, with the caveat that it
+    provides limited functionality.
+
+    Fallback Mode
+    -------------
+
+    Fallback mode is for benchmarks that are fundamentally incompatible with how this mixin dispatches into the
+    ``NativeImageVM`` once per stage (e.g. JMH with the ``--jmh-run-individually`` flag).
+    The conditional logic to enable fallback mode can be implemented by overriding :meth:`fallback_mode_reason`.
+
+    In fallback mode, we only call into the VM once and it runs all stages in sequence. This limits what kind of
+    performance data we can accurately collect (e.g. it is impossible to distinguish benchmark output from the
+    ``instrument-run`` and ``run`` phases).
+    Because of that, only the output of the ``image`` and ``run`` stages is returned from the VM (the remainder is still
+    printed, but not used for regex matching when creating datapoints).
+
+    Additionally, the user cannot select only a subset of stages to run (using ``-Dnative-image.benchmark.stages``).
+    All stages required for that benchmark are always run together.
     """
 
     def __init__(self):
@@ -333,7 +381,7 @@ class NativeImageBenchmarkMixin(object):
         """
         Reason why this Native Image benchmark should run in fallback mode.
 
-        :return: None if no fallback is required. Otherwise,, a non-empty string describing why fallback mode is necessary
+        :return: None if no fallback is required. Otherwise, a non-empty string describing why fallback mode is necessary
         """
         return None
 
@@ -355,7 +403,7 @@ class NativeImageBenchmarkMixin(object):
         It is fine if this implemented in a common (Native Image-specific) superclass of multiple benchmark suites, as
         long as the method is not overriden in a subclass in an incompatible way.
 
-        :param super_delegate: A reference to the caller class' superclass (in MRO).
+        :param super_delegate: A reference to the caller class' superclass in method-resolution order (MRO).
         :param benchmarks: Passed to :meth:`BenchmarkSuite.run`
         :param bm_suite_args: Passed to :meth:`BenchmarkSuite.run`
         :return: Datapoints accumulated from all stages
@@ -408,7 +456,6 @@ class NativeImageBenchmarkMixin(object):
 
         for dp in dps:
             dp["host-vm-config"] += host_vm_suffix
-
 
     def run_stage(self, vm, stage, command, out, err, cwd, nonZeroIsFatal):
         final_command = command

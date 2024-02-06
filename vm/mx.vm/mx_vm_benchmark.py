@@ -403,13 +403,10 @@ class NativeImageStages:
 
 class NativeImageVM(GraalVm):
     """
-    This is a VM that should be used for running all Native Image benchmarks. This VM should support all the benchmarks
-    that a regular Java VM supports as it:
-       1) Runs a benchmark with the Native Image Agent.
-       2) Builds an image based on the configuration collected by the agent.
-       3) Runs the image of the benchmark with supported VM arguments and with run-time arguments.
+    A VM implementation to build and run Native Image benchmarks.
 
-    TODO update comment since this now runs only a single stage
+    Runs individual stages of the benchmarking process (or all stages in sequence in the fallback mode).
+    See also :class:`NativeImageBenchmarkMixin` for more information on the Native Image benchmarking process.
     """
 
     def __init__(self, name, config_name, extra_java_args=None, extra_launcher_args=None):
