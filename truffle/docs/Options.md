@@ -109,23 +109,23 @@ These are internal options for debugging language implementations and tools.
 - `--engine.TriggerUncaughtExceptionHandlerForCancel` : Propagates cancel execution exception into UncaughtExceptionHandler. For testing purposes only.
 - `--engine.UseConservativeContextReferences` : Enables conservative context references. This allows invalid sharing between contexts. For testing purposes only.
 - `--engine.UsePreInitializedContext=true|false` : Use pre-initialized context when it's available (default: true).
-- `--engine.DebugCacheCompile=none|compiled|hot|aot|executed` : Policy to use to to force compilation for executed call targets before persisting the engine. Possible values are:  
-  - 'none':     No compilations will be persisted and existing compilations will be invalidated.  
-  - 'compiled': No compilations will be forced but finished compilations will be persisted.  
-  - 'hot':      (default) All started compilations will be completed and then persisted.   
-  - 'aot':      All started and AOT compilable roots will be forced to compile and persisted.  
+- `--engine.DebugCacheCompile=none|compiled|hot|aot|executed` : Policy to use to to force compilation for executed call targets before persisting the engine. Possible values are:
+  - 'none':     No compilations will be persisted and existing compilations will be invalidated.
+  - 'compiled': No compilations will be forced but finished compilations will be persisted.
+  - 'hot':      (default) All started compilations will be completed and then persisted.
+  - 'aot':      All started and AOT compilable roots will be forced to compile and persisted.
   - 'executed': All executed and all AOT compilable roots will be forced to compile.
 - `--engine.DebugCacheLoad` : Prepares the engine to take the stored engine from the static field instead of reading it from disk.
 - `--engine.DebugCachePreinitializeContext=true|false` : Preinitialize a new context with all languages that support it and that were used during the run (default: true).
 - `--engine.DebugCacheStore` : Prepares the engine for caching and stores it a static field instead of writing it to disk.
 - `--engine.DebugTraceCache` : Enables tracing for the engine cache debug feature.
 - `--engine.ArgumentTypeSpeculation=true|false` : Speculate on arguments types at call sites (default: true)
-- `--engine.CompilationFailureAction=Silent|Print|Throw|Diagnose|ExitVM` : Specifies the action to take when Truffle compilation fails.  
-The accepted values are:  
-    Silent - Print nothing to the console.  
-     Print - Print the exception to the console.  
-     Throw - Throw the exception to caller.  
-  Diagnose - Retry compilation with extra diagnostics enabled.  
+- `--engine.CompilationFailureAction=Silent|Print|Throw|Diagnose|ExitVM` : Specifies the action to take when Truffle compilation fails.
+The accepted values are:
+    Silent - Print nothing to the console.
+     Print - Print the exception to the console.
+     Throw - Throw the exception to caller.
+  Diagnose - Retry compilation with extra diagnostics enabled.
     ExitVM - Exit the VM process.
 - `--engine.CompilationStatisticDetails` : Print additional more verbose Truffle compilation statistics at the end of a run.
 - `--engine.CompilationStatistics` : Print Truffle compilation statistics at the end of a run.
@@ -179,14 +179,42 @@ The accepted values are:
 - `--compiler.IterativePartialEscape` : Run the partial escape analysis iteratively in Truffle compilation.
 - `--compiler.LogInlinedTargets` : Logs inlined targets for statistical purposes (default: false).
 - `--compiler.MaximumGraalGraphSize` : Stop partial evaluation when the graph exceeded this size (default: 150000, syntax: [1, inf))
-- `--compiler.MethodExpansionStatistics` : Print statistics on expanded Java methods during partial evaluation at the end of a run.(syntax: true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...)%nAccepted values are:%n    true - Collect data for the default tier 'truffleTier'.%n    false - No data will be collected.%nOr one or multiple tiers separated by comma (e.g. truffleTier,lowTier):%n    peTier - After partial evaluation without additional phases applied.%n    truffleTier - After partial evaluation with additional phases applied.%n    lowTier - After low tier phases were applied.
-- `--compiler.NodeExpansionStatistics` : Print statistics on expanded Truffle nodes during partial evaluation at the end of a run.(syntax: true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...)%nAccepted values are:%n    true - Collect data for the default tier 'truffleTier'.%n    false - No data will be collected.%nOr one or multiple tiers separated by comma (e.g. truffleTier,lowTier):%n    peTier - After partial evaluation without additional phases applied.%n    truffleTier - After partial evaluation with additional phases applied.%n    lowTier - After low tier phases were applied.
+- `--compiler.MethodExpansionStatistics` : Print statistics on expanded Java methods during partial evaluation at the end of a run.(syntax: true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...)
+  Accepted values are:
+      true - Collect data for the default tier 'truffleTier'.
+      false - No data will be collected.
+  Or one or multiple tiers separated by comma (e.g. truffleTier,lowTier):
+      peTier - After partial evaluation without additional phases applied.
+      truffleTier - After partial evaluation with additional phases applied.
+      lowTier - After low tier phases were applied.
+- `--compiler.NodeExpansionStatistics` : Print statistics on expanded Truffle nodes during partial evaluation at the end of a run.(syntax: true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...)
+  Accepted values are:
+      true - Collect data for the default tier 'truffleTier'.
+      false - No data will be collected.
+  Or one or multiple tiers separated by comma (e.g. truffleTier,lowTier):
+      peTier - After partial evaluation without additional phases applied.
+      truffleTier - After partial evaluation with additional phases applied.
+      lowTier - After low tier phases were applied.
 - `--compiler.NodeSourcePositions` : Enable node source positions in truffle partial evaluations.
 - `--compiler.ParsePEGraphsWithAssumptions` : Allow assumptions during parsing of seed graphs for partial evaluation. Disables the persistent encoded graph cache 'engine.EncodedGraphCache'. (default: false).
 - `--compiler.TraceInlining` : Print information for inlining decisions.
 - `--compiler.TraceInliningDetails` : Print detailed information for inlining (i.e. the entire explored call tree).
-- `--compiler.TraceMethodExpansion` : Print a tree of all expanded Java methods with statistics after each compilation. (syntax: true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...)%nAccepted values are:%n    true - Collect data for the default tier 'truffleTier'.%n    false - No data will be collected.%nOr one or multiple tiers separated by comma (e.g. truffleTier,lowTier):%n    peTier - After partial evaluation without additional phases applied.%n    truffleTier - After partial evaluation with additional phases applied.%n    lowTier - After low tier phases were applied.
-- `--compiler.TraceNodeExpansion` : Print a tree of all expanded Truffle nodes with statistics after each compilation. (syntax: true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...)%nAccepted values are:%n    true - Collect data for the default tier 'truffleTier'.%n    false - No data will be collected.%nOr one or multiple tiers separated by comma (e.g. truffleTier,lowTier):%n    peTier - After partial evaluation without additional phases applied.%n    truffleTier - After partial evaluation with additional phases applied.%n    lowTier - After low tier phases were applied.
+- `--compiler.TraceMethodExpansion` : Print a tree of all expanded Java methods with statistics after each compilation. (syntax: true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...)
+  Accepted values are:
+      true - Collect data for the default tier 'truffleTier'.
+      false - No data will be collected.
+  Or one or multiple tiers separated by comma (e.g. truffleTier,lowTier):
+      peTier - After partial evaluation without additional phases applied.
+      truffleTier - After partial evaluation with additional phases applied.
+      lowTier - After low tier phases were applied.
+- `--compiler.TraceNodeExpansion` : Print a tree of all expanded Truffle nodes with statistics after each compilation. (syntax: true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...)
+  Accepted values are:
+      true - Collect data for the default tier 'truffleTier'.
+      false - No data will be collected.
+  Or one or multiple tiers separated by comma (e.g. truffleTier,lowTier):
+      peTier - After partial evaluation without additional phases applied.
+      truffleTier - After partial evaluation with additional phases applied.
+      lowTier - After low tier phases were applied.
 - `--compiler.TracePerformanceWarnings` : Print potential performance problems, Performance warnings are: call, instanceof, store, frame_merge, trivial. (syntax: none|all|<perfWarning>,<perfWarning>,...)
 - `--compiler.TraceStackTraceLimit` : Number of stack trace elements printed by TraceTruffleTransferToInterpreter, TraceTruffleAssumptions and TraceDeoptimizeFrame (default: 20). Syntax: [1, inf).
 - `--compiler.TreatPerformanceWarningsAsErrors` : Treat performance warnings as error. Handling of the error depends on the CompilationFailureAction option value. Performance warnings are: call, instanceof, store, frame_merge, trivial. (syntax: none|all|<perfWarning>,<perfWarning>,...)
@@ -206,14 +234,42 @@ The accepted values are:
 - `--engine.IterativePartialEscape` : Run the partial escape analysis iteratively in Truffle compilation.
 - `--engine.LogInlinedTargets` : Logs inlined targets for statistical purposes (default: false).
 - `--engine.MaximumGraalGraphSize` : Stop partial evaluation when the graph exceeded this size (default: 150000, syntax: [1, inf))
-- `--engine.MethodExpansionStatistics` : Print statistics on expanded Java methods during partial evaluation at the end of a run.(syntax: true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...)%nAccepted values are:%n    true - Collect data for the default tier 'truffleTier'.%n    false - No data will be collected.%nOr one or multiple tiers separated by comma (e.g. truffleTier,lowTier):%n    peTier - After partial evaluation without additional phases applied.%n    truffleTier - After partial evaluation with additional phases applied.%n    lowTier - After low tier phases were applied.
-- `--engine.NodeExpansionStatistics` : Print statistics on expanded Truffle nodes during partial evaluation at the end of a run.(syntax: true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...)%nAccepted values are:%n    true - Collect data for the default tier 'truffleTier'.%n    false - No data will be collected.%nOr one or multiple tiers separated by comma (e.g. truffleTier,lowTier):%n    peTier - After partial evaluation without additional phases applied.%n    truffleTier - After partial evaluation with additional phases applied.%n    lowTier - After low tier phases were applied.
+- `--engine.MethodExpansionStatistics` : Print statistics on expanded Java methods during partial evaluation at the end of a run.(syntax: true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...)
+  Accepted values are:
+      true - Collect data for the default tier 'truffleTier'.
+      false - No data will be collected.
+  Or one or multiple tiers separated by comma (e.g. truffleTier,lowTier):
+      peTier - After partial evaluation without additional phases applied.
+      truffleTier - After partial evaluation with additional phases applied.
+      lowTier - After low tier phases were applied.
+- `--engine.NodeExpansionStatistics` : Print statistics on expanded Truffle nodes during partial evaluation at the end of a run.(syntax: true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...)
+  Accepted values are:
+      true - Collect data for the default tier 'truffleTier'.
+      false - No data will be collected.
+  Or one or multiple tiers separated by comma (e.g. truffleTier,lowTier):
+      peTier - After partial evaluation without additional phases applied.
+      truffleTier - After partial evaluation with additional phases applied.
+      lowTier - After low tier phases were applied.
 - `--engine.NodeSourcePositions` : Enable node source positions in truffle partial evaluations.
 - `--engine.ParsePEGraphsWithAssumptions` : Allow assumptions during parsing of seed graphs for partial evaluation. Disables the persistent encoded graph cache 'engine.EncodedGraphCache'. (default: false).
 - `--engine.TraceInlining` : Print information for inlining decisions.
 - `--engine.TraceInliningDetails` : Print detailed information for inlining (i.e. the entire explored call tree).
-- `--engine.TraceMethodExpansion` : Print a tree of all expanded Java methods with statistics after each compilation. (syntax: true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...)%nAccepted values are:%n    true - Collect data for the default tier 'truffleTier'.%n    false - No data will be collected.%nOr one or multiple tiers separated by comma (e.g. truffleTier,lowTier):%n    peTier - After partial evaluation without additional phases applied.%n    truffleTier - After partial evaluation with additional phases applied.%n    lowTier - After low tier phases were applied.
-- `--engine.TraceNodeExpansion` : Print a tree of all expanded Truffle nodes with statistics after each compilation. (syntax: true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...)%nAccepted values are:%n    true - Collect data for the default tier 'truffleTier'.%n    false - No data will be collected.%nOr one or multiple tiers separated by comma (e.g. truffleTier,lowTier):%n    peTier - After partial evaluation without additional phases applied.%n    truffleTier - After partial evaluation with additional phases applied.%n    lowTier - After low tier phases were applied.
+- `--engine.TraceMethodExpansion` : Print a tree of all expanded Java methods with statistics after each compilation. (syntax: true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...)
+  Accepted values are:
+      true - Collect data for the default tier 'truffleTier'.
+      false - No data will be collected.
+  Or one or multiple tiers separated by comma (e.g. truffleTier,lowTier):
+      peTier - After partial evaluation without additional phases applied.
+      truffleTier - After partial evaluation with additional phases applied.
+      lowTier - After low tier phases were applied.
+- `--engine.TraceNodeExpansion` : Print a tree of all expanded Truffle nodes with statistics after each compilation. (syntax: true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...)
+  Accepted values are:
+      true - Collect data for the default tier 'truffleTier'.
+      false - No data will be collected.
+  Or one or multiple tiers separated by comma (e.g. truffleTier,lowTier):
+      peTier - After partial evaluation without additional phases applied.
+      truffleTier - After partial evaluation with additional phases applied.
+      lowTier - After low tier phases were applied.
 - `--engine.TracePerformanceWarnings` : Print potential performance problems, Performance warnings are: call, instanceof, store, frame_merge, trivial. (syntax: none|all|<perfWarning>,<perfWarning>,...)
 - `--engine.TraceStackTraceLimit` : Number of stack trace elements printed by TraceTruffleTransferToInterpreter, TraceTruffleAssumptions and TraceDeoptimizeFrame (default: 20). Syntax: [1, inf).
 - `--engine.TreatPerformanceWarningsAsErrors` : Treat performance warnings as error. Handling of the error depends on the CompilationFailureAction option value. Performance warnings are: call, instanceof, store, frame_merge, trivial. (syntax: none|all|<perfWarning>,<perfWarning>,...)
