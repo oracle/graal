@@ -37,9 +37,6 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     short_name:: $.edition,
     setup+: [
       ['set-export', 'VM_ENV', self.short_name],
-      ['set-export', 'RELEASE_CATALOG', 'https://www.graalvm.org/component-catalog/v2/graal-updater-component-catalog-java${BASE_JDK_SHORT_VERSION}.properties|{ee=GraalVM Enterprise Edition}rest://gds.oracle.com/api/20220101/'],
-      ['set-export', 'RELEASE_PRODUCT_ID', 'D53FAE8052773FFAE0530F15000AA6C6'],
-      ['set-export', 'SNAPSHOT_CATALOG', ['mx', 'urlrewrite', 'http://www.graalvm.org/catalog/ce/java${BASE_JDK_SHORT_VERSION}']],
       ['cd', $.vm_dir],
     ],
   },
@@ -55,9 +52,9 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     ],
     runAfter: [
       'post-merge-deploy-vm-base-java-latest-linux-amd64',
-      'post-merge-deploy-vm-installables-standalones-java-latest-linux-amd64',
+      'post-merge-deploy-vm-standalones-java-latest-linux-amd64',
       'post-merge-deploy-vm-base-java-latest-linux-aarch64',
-      'post-merge-deploy-vm-installables-standalones-java-latest-linux-aarch64',
+      'post-merge-deploy-vm-standalones-java-latest-linux-aarch64',
       'post-merge-deploy-vm-base-java-latest-darwin-amd64',
       'post-merge-deploy-vm-standalones-java-latest-darwin-amd64',
       'post-merge-deploy-vm-base-java-latest-darwin-aarch64',
@@ -189,25 +186,25 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
 
 
     #
-    # Deploy GraalVM Base and Installables
+    # Deploy GraalVM Base and Standalones
     # NOTE: After adding or removing deploy jobs, please make sure you modify ce-release-artifacts.json accordingly.
     #
 
     # Linux/AMD64
     # - JDK-Latest
     vm_common.deploy_vm_base_javaLatest_linux_amd64,
-    vm_common.deploy_vm_installables_standalones_javaLatest_linux_amd64,
+    vm_common.deploy_vm_standalones_javaLatest_linux_amd64,
     # - JDK21
     vm_common.deploy_vm_base_java21_linux_amd64,
-    vm_common.deploy_vm_installables_standalones_java21_linux_amd64,
+    vm_common.deploy_vm_standalones_java21_linux_amd64,
 
     # Linux/AARCH64
     # - JDK-Latest
     vm_common.deploy_vm_base_javaLatest_linux_aarch64,
-    vm_common.deploy_vm_installables_standalones_javaLatest_linux_aarch64,
+    vm_common.deploy_vm_standalones_javaLatest_linux_aarch64,
     # - JDK21
     vm_common.deploy_vm_base_java21_linux_aarch64,
-    vm_common.deploy_vm_installables_standalones_java21_linux_aarch64,
+    vm_common.deploy_vm_standalones_java21_linux_aarch64,
 
     # Darwin/AMD64
     # - JDK-Latest
@@ -215,8 +212,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     vm_common.deploy_vm_standalones_javaLatest_darwin_amd64,
     # - JDK21
     vm_common.deploy_vm_base_java21_darwin_amd64,
-    vm_common.deploy_vm_installables_java21_darwin_amd64,
-    vm_common.deploy_vm_standalones_java21_darwin_amd64,
+        vm_common.deploy_vm_standalones_java21_darwin_amd64,
 
     # Darwin/AARCH64
     # - JDK-Latest
@@ -224,7 +220,6 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     vm_common.deploy_vm_standalones_javaLatest_darwin_aarch64,
     # - JDK21
     vm_common.deploy_vm_base_java21_darwin_aarch64,
-    vm_common.deploy_vm_installables_java21_darwin_aarch64,
     vm_common.deploy_vm_standalones_java21_darwin_aarch64,
 
     # Windows/AMD64
@@ -233,7 +228,6 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     vm_common.deploy_vm_standalones_javaLatest_windows_amd64,
     # - JDK21
     vm_common.deploy_vm_base_java21_windows_amd64,
-    vm_common.deploy_vm_installables_java21_windows_amd64,
     vm_common.deploy_vm_standalones_java21_windows_amd64,
 
     #
