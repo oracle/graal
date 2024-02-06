@@ -5,6 +5,8 @@ link_title: Frequently Asked Questions
 permalink: /reference-manual/native-image/pgo/faq
 ---
 
+# Frequently Asked Questions
+
 1. Can we use unit tests for profiling?
 
 Yes, that is possible, but usually not recommended.
@@ -137,7 +139,6 @@ and subsequently use these profiles to build an optimized image for your product
 
 5. How to find out which code paths were missed during profiling?
 
-DRAFT: see [LCOV coverage](PGO-LCOV.md).
 
 6. How does GraalVM generate a workload for profiling a web application?
 

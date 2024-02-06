@@ -15,12 +15,11 @@ Optimizations](PGO-Basic-Usage.md).*
 * [Profile Visualization Generation](#profile-visualization-generation)
 * [Profile Inspection using Build Report](#profile-inspection-using-build-report)
 
-Profiles play essential part in efficient AOT compilation by Native Image. They contain the information
-about a particular application execution and are used the guide the additional optimizations that
-further improve application performance. These profiles exist in the form of individual iprof files.
-Since the profiling information is of such importance, it is of great importance to be able to
-display such information in a useful way. This document will show you how to first generate the
-visualization (using Build Report tool) and then how it can be used for profile exploration.
+Profiles play an essential part in efficient AOT compilation by Native Image. They contain the information
+about a particular execution of the application, and are used to guide the additional optimizations that
+further improve application performance.
+It is often useful to visualize the information in the profile.
+This section explains how to inspect parts of the profile using the Build Report tool.
 
 ## Profile Visualization Generation
 
@@ -32,9 +31,9 @@ used for profile-guided optimization in a subsequent build.
 Build Report is a tool for displaying various data about the image build. Among other things, Build
 Report can be used for visualizing profiling information recorded by the sampler. The samples are
 aggregated into a single flame graph. This is particularly useful for exploring how different methods
-contribute to overall execution time. Also, the graph is specifically colored to show how context-aware
-inliner made the inlining decisions during the compilation (more on that in [the following section](
-#profile-inspection-using-build-report)).
+contribute to overall execution time.
+Also, the graph is color-coded to show how the inliner made the inlining decisions during the compilation
+(more on that in [the following section](#profile-inspection-using-build-report)).
 
 To generate a report with the visualization for the Game-Of-Life example, we only have to pass the
 additional `-H:+BuildReport` and `-H:+BuildReportSamplerFlamegraph` options to the optimized image
