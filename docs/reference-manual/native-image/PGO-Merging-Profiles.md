@@ -11,7 +11,7 @@ The PGO infrastructure enables you to combine multiple profiles into a single on
 Merging profiles implies that the resulting profile will contain the union of all types, methods, and profile entries from the provided profiles.
 
 
-# Usage
+## Usage
 
 Here is the command that merges two profiles, `profile_1.iprof` and `profile_2.iprof`, into the `output_profile.iprof`:
 
