@@ -364,7 +364,7 @@ class NativeImageBenchmarkMixin(object):
             # This is not a Native Image benchmark, just run the benchmark as regular
             return super_delegate.run(benchmarks, bm_suite_args)
 
-        datapoints: MutableSequence[DataPoint] = []
+        datapoints: List[DataPoint] = []
 
         requested_stages = self.stages(bm_suite_args)
 
@@ -381,10 +381,34 @@ class NativeImageBenchmarkMixin(object):
                 self.stages_info.change_stage(stage)
                 # Start the actual benchmark execution. The stages_info attribute will be used by the NativeImageVM to
                 # determine which stage to run this time.
-                datapoints += super_delegate.run(benchmarks, bm_suite_args)
+                stage_dps = super_delegate.run(benchmarks, bm_suite_args)
+                NativeImageBenchmarkMixin._inject_stage_keys(stage_dps, stage)
+                datapoints += stage_dps
 
         self.stages_info = None
         return datapoints
+
+    @staticmethod
+    def _inject_stage_keys(dps: DataPoints, stage: str) -> None:
+        """
+        Modifies the ``host-vm-config`` key based on the current stage.
+        For the agent and instrument stages ``-agent`` and ``-instrument`` are appended to distinguish the datapoints
+        from the main ``image`` and ``run`` phases.
+
+        :param dps: List of datapoints, modified in-place
+        :param stage: The stage the datapoints were generated in
+        """
+
+        if stage == "agent":
+            host_vm_suffix = "-agent"
+        elif stage in ["instrument-image", "instrument-run"]:
+            host_vm_suffix = "-instrument"
+        else:
+            host_vm_suffix = ""
+
+        for dp in dps:
+            dp["host-vm-config"] += host_vm_suffix
+
 
     def run_stage(self, vm, stage, command, out, err, cwd, nonZeroIsFatal):
         final_command = command
