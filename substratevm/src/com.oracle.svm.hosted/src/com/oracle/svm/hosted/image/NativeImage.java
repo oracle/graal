@@ -200,7 +200,7 @@ public abstract class NativeImage extends AbstractImage {
 
     private void writeHeaderFile(Path outDir, Header header, List<HostedMethod> methods, boolean dynamic) {
         CSourceCodeWriter writer = new CSourceCodeWriter(outDir);
-        String imageHeaderGuard = "__" + header.name().toUpperCase(Locale.ENGLISH).replaceAll("[^A-Z0-9]", "_") + "_H";
+        String imageHeaderGuard = "__" + header.name().toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9]", "_") + "_H";
         String dynamicSuffix = dynamic ? "_dynamic.h" : ".h";
 
         writer.appendln("#ifndef " + imageHeaderGuard);

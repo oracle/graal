@@ -774,7 +774,7 @@ public final class GraphState {
          *         is found, returns {@link #COMMUNITY}.
          */
         public static MandatoryStages getFromName(String name) {
-            switch (name.toLowerCase(Locale.ENGLISH)) {
+            switch (name.toLowerCase(Locale.ROOT)) {
                 case "economy":
                     return ECONOMY;
                 case "community":

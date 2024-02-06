@@ -120,7 +120,7 @@ public class NativeImage {
     static final String platform = getPlatform();
 
     private static String getPlatform() {
-        return (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase(Locale.ENGLISH);
+        return (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase(Locale.ROOT);
     }
 
     static final String graalvmVendor = VM.getVendor();
@@ -1211,10 +1211,10 @@ public class NativeImage {
                     if (getHostedOptionArgumentValue(imageBuilderArgs, oHName) == null) {
                         /* Also no explicit image name given as customImageBuilderArgs */
                         if (explicitMainClass) {
-                            imageBuilderArgs.add(oH(SubstrateOptions.Name, "main-class lower case as image name") + mainClass.toLowerCase(Locale.ENGLISH));
+                            imageBuilderArgs.add(oH(SubstrateOptions.Name, "main-class lower case as image name") + mainClass.toLowerCase(Locale.ROOT));
                         } else if (getHostedOptionArgumentValue(imageBuilderArgs, oHName) == null) {
                             if (hasMainClassModule) {
-                                imageBuilderArgs.add(oH(SubstrateOptions.Name, "image-name from module-name") + mainClassModule.toLowerCase(Locale.ENGLISH));
+                                imageBuilderArgs.add(oH(SubstrateOptions.Name, "image-name from module-name") + mainClassModule.toLowerCase(Locale.ROOT));
                             } else if (!listModules) {
                                 /* Although very unlikely, report missing image-name if needed. */
                                 throw showError("Missing image-name. Use -o <imagename> to provide one.");
@@ -1447,7 +1447,7 @@ public class NativeImage {
         if (targetPlatform == null) {
             return;
         }
-        targetPlatform = targetPlatform.toLowerCase(Locale.ENGLISH);
+        targetPlatform = targetPlatform.toLowerCase(Locale.ROOT);
 
         String[] parts = targetPlatform.split("-");
         if (parts.length != 2) {
@@ -1782,7 +1782,7 @@ public class NativeImage {
         Function<String, String> keyMapper;
         if (OS.WINDOWS.isCurrent()) {
             requiredKeys.addAll(List.of("TEMP", "INCLUDE", "LIB"));
-            keyMapper = s -> s.toUpperCase(Locale.ENGLISH);
+            keyMapper = s -> s.toUpperCase(Locale.ROOT);
         } else {
             keyMapper = Function.identity();
         }
@@ -2114,7 +2114,7 @@ public class NativeImage {
     }
 
     private static boolean hasJarFileSuffix(Path p) {
-        return p.getFileName().toString().toLowerCase(Locale.ENGLISH).endsWith(".jar");
+        return p.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".jar");
     }
 
     /**

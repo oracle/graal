@@ -304,7 +304,7 @@ class MinimalFuzzedTierPlan<C> extends AbstractTierPlan<C> {
             return "Every phase that was given is in the resulting tier plan.";
         }
         Formatter formatter = new Formatter();
-        formatter.format("Phase%s in %s ignored by the fuzzer:%n", getIgnoredPhases().size() > 1 ? "s" : "", getTierName().toLowerCase(Locale.ENGLISH));
+        formatter.format("Phase%s in %s ignored by the fuzzer:%n", getIgnoredPhases().size() > 1 ? "s" : "", getTierName().toLowerCase(Locale.ROOT));
         for (BasePhase<? super C> phase : getIgnoredPhases()) {
             if (phase instanceof PhaseSuite) {
                 formatter.format("%s", PrintingUtils.indent(phase.toString()));
