@@ -43,15 +43,13 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public class FieldValueTransformation {
     protected final FieldValueTransformer fieldValueTransformer;
     protected final Class<?> transformedValueAllowedType;
-    protected final boolean disableCaching;
 
     private final EconomicMap<JavaConstant, JavaConstant> valueCache = EconomicMap.create();
     private final ReentrantReadWriteLock valueCacheLock = new ReentrantReadWriteLock();
 
-    public FieldValueTransformation(Class<?> transformedValueAllowedType, FieldValueTransformer fieldValueTransformer, boolean disableCaching) {
+    public FieldValueTransformation(Class<?> transformedValueAllowedType, FieldValueTransformer fieldValueTransformer) {
         this.fieldValueTransformer = fieldValueTransformer;
         this.transformedValueAllowedType = transformedValueAllowedType;
-        this.disableCaching = disableCaching;
     }
 
     public FieldValueTransformer getFieldValueTransformer() {
@@ -142,9 +140,6 @@ public class FieldValueTransformation {
     }
 
     private void putCached(JavaConstant receiver, JavaConstant result) {
-        if (disableCaching) {
-            return;
-        }
         JavaConstant key = receiver == null ? JavaConstant.NULL_POINTER : receiver;
         valueCache.put(key, result);
     }
