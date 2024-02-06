@@ -26,7 +26,10 @@ package com.oracle.svm.junit;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -35,9 +38,11 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.junit.internal.JUnitSystem;
 import org.junit.internal.RealSystem;
+import org.junit.runner.Description;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.Request;
 import org.junit.runner.Result;
+import org.junit.runner.manipulation.Filter;
 import org.junit.runner.notification.Failure;
 
 import com.oracle.mxtool.junit.MxJUnitRequest;
@@ -118,6 +123,7 @@ public class SVMJUnitRunner {
         system.out().println("JUnit version " + Version.id());
 
         MxJUnitConfig config = new MxJUnitConfig();
+        var testsToRun = new HashSet<String>();
         int i = 0;
         while (i < args.length) {
             String arg = args[i++];
@@ -155,13 +161,36 @@ public class SVMJUnitRunner {
                 case "--eager-stacktrace":
                     config.eagerStackTrace = true;
                     break;
+                case "--run-only":
+                    if (i < args.length) {
+                        String classToRunOnly = args[i++];
+                        testsToRun.add(classToRunOnly);
+                    } else {
+                        system.out().println("Missing argument to --run-only");
+                    }
+                    break;
                 default:
                     system.out().println("Unknown command line argument: " + arg);
                     break;
             }
         }
 
-        Result result = MxJUnitWrapper.runRequest(junitCore, system, config, request);
+        var filter = testsToRun.isEmpty() ? Filter.ALL : new Filter() {
+
+            @Override
+            public boolean shouldRun(Description description) {
+                var className = description.getClassName();
+                if (className == null) return false;
+                return testsToRun.contains(className);
+            }
+
+            @Override
+            public String describe() {
+                return "Run tests specified by the command line.";
+            }
+        };
+
+        Result result = MxJUnitWrapper.runRequest(junitCore, system, config, request, filter);
 
         if (result.wasSuccessful()) {
             system.out().println("Test run PASSED. Exiting with status 0.");

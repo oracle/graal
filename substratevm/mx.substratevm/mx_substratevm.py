@@ -596,7 +596,7 @@ def javac_image_command(javac_path):
     )
 
 
-def _native_junit(native_image, unittest_args, build_args=None, run_args=None, blacklist=None, whitelist=None, preserve_image=False, force_builder_on_cp=False):
+def _native_junit(native_image, unittest_args, build_args=None, run_args=None, blacklist=None, whitelist=None, preserve_image=False, force_builder_on_cp=False, test_classes_per_run=None):
     build_args = build_args or []
     javaProperties = {}
     for dist in suite.dists:
@@ -621,7 +621,9 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
         if not exists(unittest_file):
             mx.abort('No matching unit tests found. Skip image build and execution.')
         with open(unittest_file, 'r') as f:
-            mx.log('Building junit image for matching: ' + ' '.join(l.rstrip() for l in f))
+            lines = f.readlines()
+            test_classes = [line.rstrip() for line in lines]
+            mx.log('Building junit image for matching: ' + ' '.join(test_classes))
         extra_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk, exclude_names=mx_sdk_vm_impl.NativePropertiesBuildTask.implicit_excludes)
         macro_junit = '--macro:junit'
         if force_builder_on_cp:
@@ -634,7 +636,19 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
         image_pattern_replacement = unittest_image + ".exe" if mx.is_windows() else unittest_image
         run_args = [arg.replace('${unittest.image}', image_pattern_replacement) for arg in run_args]
         mx.log('Running: ' + ' '.join(map(pipes.quote, [unittest_image] + run_args)))
-        mx.run([unittest_image] + run_args)
+
+        if test_classes_per_run is None or test_classes_per_run == 0:
+            mx.run([unittest_image] + run_args)
+        else:
+            failures = []
+            for i in range(0, len(test_classes), test_classes_per_run):
+                cs = test_classes[i:i+test_classes_per_run]
+                ret = mx.run([unittest_image] + run_args + [arg for c in cs for arg in [f'--run-only', c]], nonZeroIsFatal=False)
+                if ret != 0:
+                    failures.append('> Test run of the following classes failed: ' + ', '.join(cs))
+            if len(failures) != 0:
+                mx.log('Some test runs failed:\n' + '\n'.join(failures))
+                mx.abort(len(failures))
     finally:
         if not preserve_image:
             mx.rmtree(junit_test_dir)
@@ -655,19 +669,21 @@ def unmask(args):
 
 def _native_unittest(native_image, cmdline_args):
     parser = ArgumentParser(prog='mx native-unittest', description='Run unittests as native image.')
-    all_args = ['--build-args', '--run-args', '--blacklist', '--whitelist', '-p', '--preserve-image', '--force-builder-on-cp']
+    all_args = ['--build-args', '--run-args', '--blacklist', '--whitelist', '-p', '--preserve-image', '--force-builder-on-cp', '--test-classes-per-run']
     cmdline_args = [_mask(arg, all_args) for arg in cmdline_args]
     parser.add_argument(all_args[0], metavar='ARG', nargs='*', default=[])
     parser.add_argument(all_args[1], metavar='ARG', nargs='*', default=[])
     parser.add_argument('--blacklist', help='run all testcases not specified in <file>', metavar='<file>')
     parser.add_argument('--whitelist', help='run testcases specified in <file> only', metavar='<file>')
     parser.add_argument('-p', '--preserve-image', help='do not delete the generated native image', action='store_true')
+    parser.add_argument('--test-classes-per-run', help='run N test classes per image run, instead of all tests at once', nargs=1, type=int)
     parser.add_argument('--force-builder-on-cp', help='force image builder to run on classpath', action='store_true')
     parser.add_argument('unittest_args', metavar='TEST_ARG', nargs='*')
     pargs = parser.parse_args(cmdline_args)
 
     blacklist = unmask([pargs.blacklist])[0] if pargs.blacklist else None
     whitelist = unmask([pargs.whitelist])[0] if pargs.whitelist else None
+    test_classes_per_run = pargs.test_classes_per_run[0] if pargs.test_classes_per_run is not None else None
 
     if whitelist:
         try:
@@ -683,7 +699,7 @@ def _native_unittest(native_image, cmdline_args):
             mx.log('warning: could not read blacklist: ' + blacklist)
 
     unittest_args = unmask(pargs.unittest_args) if unmask(pargs.unittest_args) else ['com.oracle.svm.test', 'com.oracle.svm.configure.test']
-    _native_junit(native_image, unittest_args, unmask(pargs.build_args), unmask(pargs.run_args), blacklist, whitelist, pargs.preserve_image, pargs.force_builder_on_cp)
+    _native_junit(native_image, unittest_args, unmask(pargs.build_args), unmask(pargs.run_args), blacklist, whitelist, pargs.preserve_image, pargs.force_builder_on_cp, test_classes_per_run)
 
 
 def jvm_unittest(args):
