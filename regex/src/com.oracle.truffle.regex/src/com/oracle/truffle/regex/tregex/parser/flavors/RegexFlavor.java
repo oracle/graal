@@ -122,6 +122,6 @@ public abstract class RegexFlavor {
     }
 
     public boolean matchesTransitionsStepByStep() {
-        return emptyChecksMonitorCaptureGroups() || hasConditionalBackReferences();
+        return emptyChecksMonitorCaptureGroups() || hasConditionalBackReferences() || failingEmptyChecksDontBacktrack();
     }
 }

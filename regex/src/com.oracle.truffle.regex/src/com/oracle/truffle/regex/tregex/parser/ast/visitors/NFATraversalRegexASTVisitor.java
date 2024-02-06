@@ -1090,7 +1090,6 @@ public abstract class NFATraversalRegexASTVisitor {
             }
             case exitZeroWidth:
             case escapeZeroWidth: {
-                if (ast.getOptions().getFlavor().matchesTransitionsStepByStep()) {
                     boolean keptAliveByConsumedInput = false;
                     boolean keptAliveByCaptureGroups = false;
                     // Search for the last enterZeroWidth guard of the same group.
@@ -1117,7 +1116,6 @@ public abstract class NFATraversalRegexASTVisitor {
                         }
                         return;
                     }
-                }
                 break;
             }
             case enterZeroWidth: {
