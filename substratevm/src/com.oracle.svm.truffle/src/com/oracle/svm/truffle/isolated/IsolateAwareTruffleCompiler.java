@@ -151,10 +151,18 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
         Isolate isolate = getSharedIsolate();
         if (isolate.isNull()) {
             if (sharedIsolate.compareAndSet(WordFactory.nullPointer(), (Isolate) ISOLATE_INITIALIZING)) {
-                CompilerIsolateThread thread = IsolatedGraalUtils.createCompilationIsolate();
-                Runtime.getRuntime().addShutdownHook(new Thread(this::sharedIsolateShutdown));
-                sharedIsolate.set(Isolates.getIsolate(thread));
-                return thread; // (already attached)
+                try {
+                    /* Adding the shutdown hook may fail if a shutdown is already in progress. */
+                    Runtime.getRuntime().addShutdownHook(new Thread(this::sharedIsolateShutdown));
+                    CompilerIsolateThread thread = IsolatedGraalUtils.createCompilationIsolate();
+                    sharedIsolate.set(Isolates.getIsolate(thread));
+                    return thread; // (already attached)
+                } catch (Throwable e) {
+                    /* Reset the value so that the teardown hook doesn't hang. */
+                    assert sharedIsolate.get().equal(ISOLATE_INITIALIZING);
+                    sharedIsolate.set(WordFactory.nullPointer());
+                    throw e;
+                }
             }
             isolate = getSharedIsolate();
             assert isolate.isNonNull();
@@ -173,9 +181,11 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
 
     private void sharedIsolateShutdown() {
         Isolate isolate = getSharedIsolate();
-        CompilerIsolateThread context = (CompilerIsolateThread) Isolates.attachCurrentThread(isolate);
-        compilerIsolateThreadShutdown(context);
-        Isolates.detachThread(context);
+        if (isolate.isNonNull()) {
+            CompilerIsolateThread context = (CompilerIsolateThread) Isolates.attachCurrentThread(isolate);
+            compilerIsolateThreadShutdown(context);
+            Isolates.detachThread(context);
+        }
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
