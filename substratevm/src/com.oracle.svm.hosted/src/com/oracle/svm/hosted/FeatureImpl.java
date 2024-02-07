@@ -87,6 +87,7 @@ import com.oracle.svm.hosted.option.HostedOptionProvider;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.UnsafePartitionKind;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -578,7 +579,7 @@ public class FeatureImpl {
 
         public long objectFieldOffset(HostedField hField) {
             int result = hField.getLocation();
-            assert result > 0;
+            assert result > 0 : Assertions.errorMessage(hField, hField.getLocation());
             return result;
         }
 

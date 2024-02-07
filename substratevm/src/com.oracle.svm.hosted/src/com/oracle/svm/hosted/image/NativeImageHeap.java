@@ -36,7 +36,6 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -56,6 +55,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
@@ -471,7 +471,7 @@ public final class NativeImageHeap implements ImageHeap {
                 // also not immutable: users of registerAsImmutable() must take precautions
             }
 
-            List<HostedField> ignoredFields;
+            Set<HostedField> ignoredFields;
             Object hybridArray;
             final long size;
 
@@ -481,9 +481,16 @@ public final class NativeImageHeap implements ImageHeap {
                  * can never be duplicated, i.e. written as a separate object. We use the blacklist
                  * to check this.
                  */
-                Object typeIDSlots = readInlinedField(dynamicHubLayout.typeIDSlotsField, constant);
-                assert typeIDSlots != null : "Cannot read value for field " + dynamicHubLayout.typeIDSlotsField.format("%H.%n");
-                blacklist.add(typeIDSlots);
+                if (SubstrateOptions.closedTypeWorld()) {
+                    Object typeIDSlots = readInlinedField(dynamicHubLayout.closedWorldTypeCheckSlotsField, constant);
+                    assert typeIDSlots != null : "Cannot read value for field " + dynamicHubLayout.closedWorldTypeCheckSlotsField.format("%H.%n");
+                    blacklist.add(typeIDSlots);
+                } else {
+                    if (SubstrateUtil.assertionsEnabled()) {
+                        Object typeIDSlots = readInlinedField(dynamicHubLayout.closedWorldTypeCheckSlotsField, constant);
+                        assert typeIDSlots == null : typeIDSlots;
+                    }
+                }
 
                 Object vTable = readInlinedField(dynamicHubLayout.vTableField, constant);
                 hybridArray = vTable;
@@ -491,7 +498,7 @@ public final class NativeImageHeap implements ImageHeap {
                 blacklist.add(vTable);
 
                 size = dynamicHubLayout.getTotalSize(Array.getLength(vTable));
-                ignoredFields = List.of(dynamicHubLayout.typeIDSlotsField, dynamicHubLayout.vTableField);
+                ignoredFields = dynamicHubLayout.getIgnoredFields();
 
             } else if (HybridLayout.isHybrid(clazz)) {
                 HybridLayout hybridLayout = hybridLayouts.get(clazz);
@@ -508,7 +515,7 @@ public final class NativeImageHeap implements ImageHeap {
                 boolean shouldBlacklist = !HybridLayout.canHybridFieldsBeDuplicated(clazz);
                 HostedField hybridArrayField = hybridLayout.getArrayField();
                 hybridArray = readInlinedField(hybridArrayField, constant);
-                ignoredFields = List.of(hybridArrayField);
+                ignoredFields = Set.of(hybridArrayField);
                 if (hybridArray != null && shouldBlacklist) {
                     blacklist.add(hybridArray);
                     written = true;
@@ -517,7 +524,7 @@ public final class NativeImageHeap implements ImageHeap {
                 assert hybridArray != null : "Cannot read value for field " + hybridArrayField.format("%H.%n");
                 size = hybridLayout.getTotalSize(Array.getLength(hybridArray), true);
             } else {
-                ignoredFields = List.of();
+                ignoredFields = Set.of();
                 hybridArray = null;
                 size = LayoutEncoding.getPureInstanceSize(hub, true).rawValue();
             }

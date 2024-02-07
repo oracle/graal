@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -83,7 +84,7 @@ public final class KnownOffsets {
     }
 
     public int getTypeIDSlotsOffset() {
-        assert isFullyInitialized();
+        assert isFullyInitialized() && SubstrateOptions.closedTypeWorld();
         return typeIDSlotsOffset;
     }
 
