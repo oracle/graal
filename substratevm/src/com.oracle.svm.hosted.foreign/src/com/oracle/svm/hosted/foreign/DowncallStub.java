@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Objects;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.code.EntryPointCallStubMethod;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -102,6 +103,19 @@ class DowncallStub extends EntryPointCallStubMethod {
                         createSignature(metaAccess),
                         DowncallStubsHolder.getConstantPool(metaAccess));
         this.nep = nep;
+    }
+
+    @Override
+    public AnnotationValue[] getInjectedAnnotations() {
+        // When allowHeapAccess, a HeapMemorySegmentImpl may be passed to the downcall. In that case, the downcall stub
+        // will have to generate a native pointer to the backing object. Thus we need to ensure that no safepoint
+        // is generated in the stub, so that the GC cannot move the backing object while we still have a native pointer to it.
+        if (nep.isAllowHeapAccess()) {
+            // Returns the equivalent of Uninterruptible.
+            return super.getInjectedAnnotations();
+        } else {
+            return new AnnotationValue[]{};
+        }
     }
 
     /**

@@ -444,6 +444,7 @@ public abstract class AbiUtils {
         for (int i = current; i < storages.length; ++i) {
             var storage = storages[i];
             if (storage == null) {
+                VMError.guarantee(nep.isAllowHeapAccess(), "A storage may only be null when the Linker.Option.critical(true) option is passed.");
                 VMError.guarantee(JavaKind.fromJavaClass(
                         nep.methodType().parameterArray()[i]) == JavaKind.Long &&
                         JavaKind.fromJavaClass(nep.methodType().parameterArray()[i - 1]) == JavaKind.Object,
@@ -629,7 +630,7 @@ class ABIs {
             var needsReturnBuffer = callingSequence.needsReturnBuffer();
 
             // From NativeEntrypoint.make
-            return NativeEntryPointInfo.make(argMoves, returnMoves, boundaryType, needsReturnBuffer, callingSequence.capturedStateMask(), callingSequence.needsTransition());
+            return NativeEntryPointInfo.make(argMoves, returnMoves, boundaryType, needsReturnBuffer, callingSequence.capturedStateMask(), callingSequence.needsTransition(), optionSet.allowsHeapAccess());
         }
 
         @Override

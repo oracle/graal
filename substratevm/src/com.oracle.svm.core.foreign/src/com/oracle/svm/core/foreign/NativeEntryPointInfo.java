@@ -28,6 +28,7 @@ import java.lang.invoke.MethodType;
 import java.util.Arrays;
 import java.util.Objects;
 
+import com.oracle.svm.core.util.VMError;
 import jdk.internal.foreign.abi.ABIDescriptor;
 import jdk.internal.foreign.abi.VMStorage;
 
@@ -53,16 +54,19 @@ public final class NativeEntryPointInfo {
     private final boolean needsReturnBuffer;
     private final boolean capturesState;
     private final boolean needsTransition;
+    private final boolean allowHeapAccess;
 
-    private NativeEntryPointInfo(MethodType methodType, VMStorage[] cc, VMStorage[] returnBuffering, boolean needsReturnBuffer, boolean capturesState, boolean needsTransition) {
+    private NativeEntryPointInfo(MethodType methodType, VMStorage[] cc, VMStorage[] returnBuffering, boolean needsReturnBuffer, boolean capturesState, boolean needsTransition, boolean allowHeapAccess) {
         assert methodType.parameterCount() == cc.length;
         assert needsReturnBuffer == (returnBuffering.length > 1);
+        assert !(needsTransition && allowHeapAccess); // when no transition, allowHeapAccess is unused, so must be set to false
         this.methodType = methodType;
         this.parameterAssignments = cc;
         this.returnBuffering = returnBuffering;
         this.needsReturnBuffer = needsReturnBuffer;
         this.capturesState = capturesState;
         this.needsTransition = needsTransition;
+        this.allowHeapAccess = allowHeapAccess;
     }
 
     public static NativeEntryPointInfo make(
@@ -70,11 +74,23 @@ public final class NativeEntryPointInfo {
                     MethodType methodType,
                     boolean needsReturnBuffer,
                     int capturedStateMask,
-                    boolean needsTransition) {
+                    boolean needsTransition,
+                    boolean allowHeapAccess) {
         if ((returnMoves.length > 1) != needsReturnBuffer) {
             throw new AssertionError("Multiple register return, but needsReturnBuffer was false");
         }
-        return new NativeEntryPointInfo(methodType, argMoves, returnMoves, needsReturnBuffer, capturedStateMask != 0, needsTransition);
+        var hasNull = Arrays.stream(argMoves).anyMatch(Objects::isNull);
+        VMError.guarantee(!hasNull || allowHeapAccess, "null storages may only appear if the Linker.Option.critical(true) option is passed.");
+        if (!hasNull) {
+            // hasNull is only true if this entry point's FunctionDescriptor contains an AddressLayout and allowHeapAccess is true.
+            // (see jdk.internal.foreign.abi.x64.sysv.CallArranger.UnboxBindingCalculator.getBindings).
+            // Additionally, if no AddressLayout is passed, then allowHeapAccess's value doesn't matter (since then no heap access may occur anyways).
+            // Hence, we set allowHeapAccess to false if no AddressLayout is found: indeed, sometimes we need to find whether allowHeapAccess should be true or not,
+            // (see com.oracle.svm.core.foreign.Target_jdk_internal_foreign_abi_NativeEntryPoint.make),
+            // and we rely on the presence of null storages as an indicator of whether to set allowHeapAccess to true.
+            allowHeapAccess = false;
+        }
+        return new NativeEntryPointInfo(methodType, argMoves, returnMoves, needsReturnBuffer, capturedStateMask != 0, needsTransition, allowHeapAccess);
     }
 
     public static Target_jdk_internal_foreign_abi_NativeEntryPoint makeEntryPoint(
@@ -83,8 +99,9 @@ public final class NativeEntryPointInfo {
                     MethodType methodType,
                     boolean needsReturnBuffer,
                     int capturedStateMask,
-                    boolean needsTransition) {
-        var info = make(argMoves, returnMoves, methodType, needsReturnBuffer, capturedStateMask, needsTransition);
+                    boolean needsTransition,
+                    boolean allowHeapAccess) {
+        var info = make(argMoves, returnMoves, methodType, needsReturnBuffer, capturedStateMask, needsTransition, allowHeapAccess);
         long addr = ForeignFunctionsRuntime.singleton().getDowncallStubPointer(info).rawValue();
         return new Target_jdk_internal_foreign_abi_NativeEntryPoint(info.methodType(), addr, capturedStateMask);
     }
@@ -112,6 +129,11 @@ public final class NativeEntryPointInfo {
         return capturesState;
     }
 
+    public boolean isAllowHeapAccess() {
+        assert !(needsTransition && allowHeapAccess);
+        return allowHeapAccess;
+    }
+
     public VMStorage[] parametersAssignment() {
         return parameterAssignments;
     }
@@ -133,12 +155,13 @@ public final class NativeEntryPointInfo {
             return false;
         }
         NativeEntryPointInfo that = (NativeEntryPointInfo) o;
-        return capturesState == that.capturesState && needsTransition == that.needsTransition && needsReturnBuffer == that.needsReturnBuffer && Objects.equals(methodType, that.methodType) &&
-                        Arrays.equals(parameterAssignments, that.parameterAssignments) && Arrays.equals(returnBuffering, that.returnBuffering);
+        return capturesState == that.capturesState && needsTransition == that.needsTransition && needsReturnBuffer == that.needsReturnBuffer && allowHeapAccess == that.allowHeapAccess &&
+                Objects.equals(methodType, that.methodType) &&
+                Arrays.equals(parameterAssignments, that.parameterAssignments) && Arrays.equals(returnBuffering, that.returnBuffering);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(methodType, needsReturnBuffer, capturesState, needsTransition, Arrays.hashCode(parameterAssignments), Arrays.hashCode(returnBuffering));
+        return Objects.hash(methodType, needsReturnBuffer, capturesState, needsTransition, allowHeapAccess, Arrays.hashCode(parameterAssignments), Arrays.hashCode(returnBuffering));
     }
 }
