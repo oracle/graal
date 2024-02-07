@@ -27,9 +27,9 @@
 package com.oracle.svm.core.jfr.throttling;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
-import static java.lang.Math.log;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.headers.LibM;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.utils.JfrRandom;
 import com.oracle.svm.core.thread.JavaSpinLockUtils;
@@ -172,7 +172,7 @@ abstract class JfrAdaptiveSampler {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private double projectPopulationSize(JfrSamplerWindow expired) {
-        avgPopulationSize = exponentiallyWeightedMovingAverage((double) expired.getPopulationSize(), ewmaPopulationSizeAlpha, avgPopulationSize);
+        avgPopulationSize = exponentiallyWeightedMovingAverage(expired.getPopulationSize(), ewmaPopulationSizeAlpha, avgPopulationSize);
         return avgPopulationSize;
     }
 
@@ -191,7 +191,7 @@ abstract class JfrAdaptiveSampler {
         } else if (u == 1.0) {
             u = 0.99;
         }
-        return UninterruptibleUtils.Math.ceilToLong(log(1.0 - u) / log(1.0 - p));
+        return UninterruptibleUtils.Math.ceilToLong(LibM.log(1.0 - u) / LibM.log(1.0 - p));
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
