@@ -24,25 +24,32 @@
  */
 package com.oracle.svm.hosted.meta;
 
+import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
+
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
-import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionProvider {
+public class HostedSnippetReflectionProvider implements SnippetReflectionProvider {
     private ImageHeapScanner heapScanner;
+    private final WordTypes wordTypes;
 
     public HostedSnippetReflectionProvider(ImageHeapScanner heapScanner, WordTypes wordTypes) {
-        super(wordTypes);
         this.heapScanner = heapScanner;
+        this.wordTypes = wordTypes;
     }
 
     public void setHeapScanner(ImageHeapScanner heapScanner) {
@@ -82,5 +89,29 @@ public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionP
         }
         VMError.guarantee(!(constant instanceof SubstrateObjectConstant));
         return heapScanner.getHostedValuesProvider().asObject(type, constant);
+    }
+
+    @Override
+    public <T> T getInjectedNodeIntrinsicParameter(Class<T> type) {
+        if (type.isAssignableFrom(WordTypes.class)) {
+            return type.cast(wordTypes);
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public Class<?> originalClass(ResolvedJavaType type) {
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public Executable originalMethod(ResolvedJavaMethod method) {
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public Field originalField(ResolvedJavaField field) {
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 }
