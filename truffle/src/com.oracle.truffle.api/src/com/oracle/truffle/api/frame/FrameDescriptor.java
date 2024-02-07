@@ -60,6 +60,30 @@ import com.oracle.truffle.api.impl.TVMCI;
  * @since 0.8 or earlier
  */
 public final class FrameDescriptor implements Cloneable {
+    /**
+     * @since 22.2
+     * @deprecated since 24.1
+     */
+    @Deprecated static final int NO_STATIC_MODE = 1;
+    /**
+     * @since 22.2
+     * @deprecated since 24.1
+     */
+    @Deprecated static final int ALL_STATIC_MODE = 2;
+    /**
+     * @since 22.2
+     * @deprecated since 24.1
+     */
+    @Deprecated static final int MIXED_STATIC_MODE = NO_STATIC_MODE | ALL_STATIC_MODE;
+
+    /**
+     * Flag that defines the assignment strategy of initial {@link FrameSlotKind}s to slots in a
+     * frame.
+     *
+     * @since 22.2
+     * @deprecated since 24.1
+     */
+    @Deprecated final int staticMode = MIXED_STATIC_MODE;
 
     private final Object defaultValue;
 
