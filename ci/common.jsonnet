@@ -32,8 +32,6 @@ local common_json = import "../common.json";
     for name in std.objectFields(jdks_data)
   } + {
     # Some convenient JDK aliases which don't require ["name"] for frequently-used JDKs
-    labsjdk17ce: self["labsjdk-ce-17"],
-    labsjdk17ee: self["labsjdk-ee-17"],
 
     labsjdkLatestCE: self["labsjdk-ce-21"],
     labsjdkLatestEE: self["labsjdk-ee-21"],
