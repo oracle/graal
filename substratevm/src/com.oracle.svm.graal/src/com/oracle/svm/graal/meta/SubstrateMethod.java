@@ -202,6 +202,7 @@ public class SubstrateMethod implements SharedRuntimeMethod {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public ImageCodeInfo getImageCodeInfo() {
         return imageCodeInfo;
     }

@@ -256,8 +256,7 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler im
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean isInAOTCompiledCode(CodePointer ip) {
-        CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
-        return CodeInfoAccess.contains(codeInfo, ip);
+        return CodeInfoTable.lookupImageCodeInfo(ip).isNonNull();
     }
 
     /**
@@ -314,8 +313,7 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler im
          * No matter where in the AOT-compiled code the signal has interrupted the execution, we
          * know how to decode it.
          */
-        assert isInAOTCompiledCode(ip);
-        CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
+        CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo(ip);
         SamplerStackWalkVisitor visitor = ImageSingletons.lookup(SamplerStackWalkVisitor.class);
         if (!visitor.visitFrame(sp, ip, codeInfo, null, null)) {
             /* The top frame is also the last one. */

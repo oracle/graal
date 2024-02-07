@@ -28,9 +28,11 @@ import java.lang.module.ModuleDescriptor;
 import java.util.Optional;
 
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
@@ -156,6 +158,7 @@ public class FrameInfoQueryResult {
 
     protected FrameInfoQueryResult caller;
     protected SharedMethod deoptMethod;
+    protected CodeInfo deoptMethodImageCodeInfo;
     protected int deoptMethodOffset;
     protected long encodedBci;
     protected boolean isDeoptEntry;
@@ -185,6 +188,7 @@ public class FrameInfoQueryResult {
         caller = null;
         deoptMethod = null;
         deoptMethodOffset = 0;
+        deoptMethodImageCodeInfo = SubstrateUtil.HOSTED ? null : WordFactory.nullPointer();
         encodedBci = -1;
         isDeoptEntry = false;
         numLocals = 0;
@@ -217,7 +221,7 @@ public class FrameInfoQueryResult {
 
     /**
      * Returns the offset of the deoptimization target method. The offset is relative to the
-     * {@link CodeInfoAccess#getCodeStart code start} of the {@link ImageCodeInfo image}. Together
+     * {@link CodeInfoAccess#getCodeStart code start} of {@link #deoptMethodImageCodeInfo}. Together
      * with the BCI it is used to find the corresponding bytecode frame in the target method. Note
      * that there is no inlining in target methods, so the method + BCI is unique.
      */
@@ -225,11 +229,30 @@ public class FrameInfoQueryResult {
         return deoptMethodOffset;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    boolean isDeoptMethodImageCodeInfoNull() {
+        if (SubstrateUtil.HOSTED) {
+            return deoptMethodImageCodeInfo == null;
+        }
+        return deoptMethodImageCodeInfo.isNull();
+    }
+
+    public CodeInfo getDeoptMethodImageCodeInfo() {
+        if (isDeoptMethodImageCodeInfoNull() && deoptMethod != null) {
+            deoptMethodImageCodeInfo = CodeInfoTable.getImageCodeInfo(deoptMethod);
+            assert !isDeoptMethodImageCodeInfoNull();
+        }
+        return deoptMethodImageCodeInfo;
+    }
+
     /**
      * Returns the entry point address of the deoptimization target method.
      */
     public CodePointer getDeoptMethodAddress() {
-        return CodeInfoAccess.absoluteIP(CodeInfoTable.getImageCodeInfo(), deoptMethodOffset);
+        if (deoptMethodOffset == 0) {
+            return WordFactory.nullPointer();
+        }
+        return CodeInfoAccess.absoluteIP(getDeoptMethodImageCodeInfo(), deoptMethodOffset);
     }
 
     /**

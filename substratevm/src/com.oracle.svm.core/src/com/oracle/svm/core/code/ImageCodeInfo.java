@@ -104,8 +104,8 @@ public class ImageCodeInfo {
     }
 
     /**
-     * Use {@link CodeInfoTable#getImageCodeInfo()} and {@link CodeInfoAccess#getCodeStart} instead.
-     * This method is intended only for the early stages of VM initialization when
+     * Use {@link CodeInfoTable#getFirstImageCodeInfo()} and {@link CodeInfoAccess#getCodeStart}
+     * instead. This method is intended only for the early stages of VM initialization when
      * {@link #prepareCodeInfo()} has not yet run.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -114,7 +114,7 @@ public class ImageCodeInfo {
     }
 
     /**
-     * Use {@link CodeInfoTable#getImageCodeInfo()} and
+     * Use {@link CodeInfoTable#getFirstImageCodeInfo()} and
      * {@link CodeInfoAccess#getStackReferenceMapEncoding} instead. This method is intended only for
      * the early stages of VM initialization when {@link #prepareCodeInfo()} has not yet run.
      */
@@ -380,6 +380,16 @@ public class ImageCodeInfo {
         @Override
         public boolean getIsAOTImageCode() {
             return true;
+        }
+
+        @Override
+        public void setNextImageCodeInfo(CodeInfo next) {
+            throw VMError.shouldNotReachHere("not supported during image generation");
+        }
+
+        @Override
+        public CodeInfo getNextImageCodeInfo() {
+            throw VMError.shouldNotReachHere("not supported during image generation");
         }
 
         @Override

@@ -267,4 +267,10 @@ interface CodeInfoImpl extends CodeInfo {
 
     @RawField
     boolean getIsAOTImageCode();
+
+    @RawField
+    void setNextImageCodeInfo(CodeInfo next);
+
+    @RawField
+    CodeInfo getNextImageCodeInfo();
 }

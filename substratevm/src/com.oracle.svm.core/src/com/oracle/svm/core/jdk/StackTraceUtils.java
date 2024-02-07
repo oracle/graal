@@ -45,7 +45,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
-import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
@@ -448,7 +447,7 @@ final class BacktraceVisitor extends StackFrameVisitor {
      * image heap and therefore cannot be garbage collected.
      */
     public static boolean isAOTCodePointer(CodePointer ip) {
-        return CodeInfoAccess.contains(CodeInfoTable.getImageCodeInfo(), ip);
+        return CodeInfoTable.lookupImageCodeInfo(ip).isNonNull();
     }
 
     /**

@@ -153,7 +153,8 @@ public class FrameInfoEncoder {
         protected void fillSourceFields(ResolvedJavaMethod method, FrameInfoQueryResult resultFrameInfo) {
             final int deoptOffsetInImage = ((SharedMethod) method).getImageCodeDeoptOffset();
             if (deoptOffsetInImage != 0) {
-                CodeInfoQueryResult targetCodeInfo = CodeInfoTable.lookupDeoptimizationEntrypoint(deoptOffsetInImage, resultFrameInfo.encodedBci);
+                CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo((SharedMethod) method);
+                CodeInfoQueryResult targetCodeInfo = CodeInfoTable.lookupDeoptimizationEntrypoint(codeInfo, deoptOffsetInImage, resultFrameInfo.encodedBci);
                 if (targetCodeInfo != null) {
                     final FrameInfoQueryResult targetFrameInfo = targetCodeInfo.getFrameInfo();
                     assert targetFrameInfo != null;
@@ -569,11 +570,11 @@ public class FrameInfoEncoder {
         }
 
         if (needLocalValues) {
-            if (customization.storeDeoptTargetMethod()) {
+            frameInfo.deoptMethodOffset = method.getImageCodeDeoptOffset();
+            if (frameInfo.deoptMethodOffset != 0 && customization.storeDeoptTargetMethod()) {
                 frameInfo.deoptMethod = method;
                 encoders.objectConstants.addObject(constantAccess.forObject(method, false));
             }
-            frameInfo.deoptMethodOffset = method.getImageCodeDeoptOffset();
 
             frameInfo.numLocals = frame.numLocals;
             frameInfo.numStack = frame.numStack;
@@ -938,6 +939,7 @@ public class FrameInfoEncoder {
                 assert deoptMethodIndex >= 0 : cur;
             }
             encodingBuffer.putSV(deoptMethodIndex);
+            // No need to encode cur.deoptMethodImageCodeInfo: decoding can get it from context
 
             encodeValues(cur.valueInfos, encodingBuffer);
 

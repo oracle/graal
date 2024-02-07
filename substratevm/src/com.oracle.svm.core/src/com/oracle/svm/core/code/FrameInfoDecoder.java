@@ -437,19 +437,24 @@ public class FrameInfoDecoder {
             cur.numLocals = readBuffer.getUVInt();
             cur.numStack = readBuffer.getUVInt();
 
-            /*
-             * We either encode a reference to the target method (for runtime compilations) or just
-             * the start offset of the target method (for native image methods, because we do not
-             * want to include unnecessary method metadata in the native image.
-             */
             int deoptMethodIndex = readBuffer.getSVInt();
             if (deoptMethodIndex < 0) {
-                /* Negative number is a reference to the target method. */
+                /*
+                 * Negative number is a reference to the target method (runtime compilations only).
+                 */
                 cur.deoptMethod = (SharedMethod) NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoObjectConstants(info), -1 - deoptMethodIndex);
                 cur.deoptMethodOffset = cur.deoptMethod.getImageCodeDeoptOffset();
-            } else {
-                /* Positive number is a directly encoded method offset. */
+                assert cur.deoptMethodOffset != 0;
+            } else if (deoptMethodIndex > 0) {
+                /*
+                 * Positive number is a directly encoded method offset (AOT compilations only, to
+                 * avoid unnecessary method metadata).
+                 */
+                assert CodeInfoAccess.isAOTImageCode(info);
                 cur.deoptMethodOffset = deoptMethodIndex;
+                cur.deoptMethodImageCodeInfo = info;
+            } else {
+                assert cur.deoptMethod == null && cur.deoptMethodOffset == 0 && cur.isDeoptMethodImageCodeInfoNull();
             }
 
             int curValueInfosLength = readBuffer.getUVInt();

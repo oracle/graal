@@ -71,6 +71,7 @@ public interface SharedMethod extends ResolvedJavaMethod {
      */
     Deoptimizer.StubType getDeoptStubType();
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     ImageCodeInfo getImageCodeInfo();
 
     boolean hasImageCodeOffset();

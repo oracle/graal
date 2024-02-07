@@ -738,8 +738,9 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
             return name;
         }
 
+        /** @see com.oracle.svm.core.code.RuntimeMetadataEncoding */
         private static CodeInfo getCodeInfo() {
-            return CodeInfoTable.getImageCodeInfo();
+            return CodeInfoTable.getFirstImageCodeInfo();
         }
     }
 }

@@ -33,6 +33,7 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
@@ -118,12 +119,12 @@ class PhysicalStackFrameVisitor<T> extends StackFrameVisitor {
 
         int virtualFrameIndex = 0;
         do {
-            int method;
+            CodePointer method;
             if (virtualFrame != null) {
                 assert deoptInfo == null : "must have either deoptimized or non-deoptimized frame information, but not both";
-                method = virtualFrame.getFrameInfo().getDeoptMethodOffset();
+                method = virtualFrame.getFrameInfo().getDeoptMethodAddress();
             } else {
-                method = deoptInfo.getDeoptMethodOffset();
+                method = deoptInfo.getDeoptMethodAddress();
             }
 
             if (matches(method, curMatchingMethods)) {
@@ -161,12 +162,13 @@ class PhysicalStackFrameVisitor<T> extends StackFrameVisitor {
 
     }
 
-    private static boolean matches(int needle, ResolvedJavaMethod[] haystack) {
+    private static boolean matches(CodePointer needle, ResolvedJavaMethod[] haystack) {
         if (haystack == null) {
             return true;
         }
         for (ResolvedJavaMethod method : haystack) {
-            if (((SharedMethod) method).getImageCodeDeoptOffset() == needle) {
+            CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo((SharedMethod) method);
+            if (needle == CodeInfoAccess.absoluteIP(codeInfo, ((SharedMethod) method).getImageCodeDeoptOffset())) {
                 return true;
             }
         }
