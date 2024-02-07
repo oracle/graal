@@ -225,10 +225,6 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     # Deploy the GraalVM Espresso image (GraalVM Base + espresso)
     #
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_espresso_java21_linux_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_espresso_java21_linux_aarch64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_espresso_java21_darwin_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_espresso_java21_darwin_aarch64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_espresso_java21_windows_amd64),
 
     # Trigger the releaser service
     self.notify_releaser_build,
