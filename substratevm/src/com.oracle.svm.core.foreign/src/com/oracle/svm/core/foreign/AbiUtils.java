@@ -50,8 +50,10 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.ReinterpretNode;
+import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.word.Word;
 import jdk.graal.compiler.word.WordCastNode;
+import jdk.graal.compiler.word.WordTypes;
 import jdk.internal.foreign.abi.ABIDescriptor;
 import jdk.internal.foreign.abi.NativeEntryPoint;
 import jdk.internal.foreign.abi.x64.sysv.CallArranger;
@@ -59,6 +61,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
@@ -334,7 +337,7 @@ public abstract class AbiUtils {
 
                 // I originally wanted to use an OffsetAddressNode here (followed by WordCastNode.addressToWord),
                 // but NativeMemorySegmentImpls return null for `unsafeGetBase`, which seems to break the graph somewhere later.
-                var basePointer = WordCastNode.objectToUntrackedPointer(parameter, JavaKind.Long);
+                var basePointer = WordCastNode.objectToUntrackedPointer(parameter, ConfigurationValues.getWordKind());
                 appendToGraph.accept(basePointer);
                 var absolutePointer = AddNode.add(basePointer, offsetArg);
                 appendToGraph.accept(absolutePointer);

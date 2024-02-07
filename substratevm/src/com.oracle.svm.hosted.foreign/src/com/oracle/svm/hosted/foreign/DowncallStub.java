@@ -24,8 +24,12 @@
  */
 package com.oracle.svm.hosted.foreign;
 
+import java.lang.annotation.Annotation;
 import java.util.List;
+import java.util.Objects;
 
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.hosted.code.EntryPointCallStubMethod;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -84,7 +88,7 @@ import jdk.vm.ci.meta.Signature;
  * capture.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-class DowncallStub extends NonBytecodeMethod {
+class DowncallStub extends EntryPointCallStubMethod {
     public static Signature createSignature(MetaAccessProvider metaAccess) {
         return ResolvedSignature.fromKinds(new JavaKind[]{JavaKind.Object}, JavaKind.Object, metaAccess);
     }
@@ -94,7 +98,6 @@ class DowncallStub extends NonBytecodeMethod {
     DowncallStub(NativeEntryPointInfo nep, MetaAccessProvider metaAccess) {
         super(
                         DowncallStubsHolder.stubName(nep),
-                        true,
                         metaAccess.lookupJavaType(DowncallStubsHolder.class),
                         createSignature(metaAccess),
                         DowncallStubsHolder.getConstantPool(metaAccess));
