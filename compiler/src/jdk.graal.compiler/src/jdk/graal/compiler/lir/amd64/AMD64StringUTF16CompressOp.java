@@ -580,4 +580,10 @@ public final class AMD64StringUTF16CompressOp extends AMD64ComplexVectorOp {
 
         masm.bind(labelDone);
     }
+
+    @Override
+    public boolean modifiesStackPointer() {
+        // Only charArrayCompressLegacy modifies rsp.
+        return JavaVersionUtil.JAVA_SPEC < 22;
+    }
 }
