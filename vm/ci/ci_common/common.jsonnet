@@ -455,10 +455,9 @@ local devkits = graal_common.devkits;
         if (edition == 'ce') then
           {
             downloads+: {
-              JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-17'],
-              EXTRA_JAVA_HOMES: graal_common.jdks_data['labsjdk-' + edition + '-21'],
+              JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21'],
             } + if (os == 'linux' || os == 'darwin') && (arch == 'amd64') then {
-              LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-17-llvm'],
+              LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21-llvm'],
             } else {
             },
             environment+: {
