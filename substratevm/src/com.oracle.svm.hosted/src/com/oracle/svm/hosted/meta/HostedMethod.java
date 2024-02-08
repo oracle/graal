@@ -28,7 +28,6 @@ import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.Collections;
@@ -83,6 +82,7 @@ import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.Local;
 import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.ProfilingInfo;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 
@@ -530,8 +530,8 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     }
 
     @Override
-    public Executable getJavaMethod() {
-        return wrapped.getJavaMethod();
+    public ResolvedJavaMethod unwrapTowardsOriginalMethod() {
+        return wrapped;
     }
 
     @Override

@@ -532,7 +532,11 @@ public class InlineBeforeAnalysisPolicyUtils {
         return AnnotationAccess.isAnnotationPresent(method, ForceInline.class) ||
                         AnnotationAccess.isAnnotationPresent(method, COMPILED_LAMBDA_FORM_ANNOTATION) ||
                         INLINE_METHOD_HANDLE_CLASSES.contains(method.getDeclaringClass().getJavaClass()) ||
-                        INLINE_METHOD_HANDLE_METHODS.contains(method.getJavaMethod());
+                        isManuallyListed(method.getJavaMethod());
+    }
+
+    private static boolean isManuallyListed(Executable method) {
+        return method != null && INLINE_METHOD_HANDLE_METHODS.contains(method);
     }
 
     /**

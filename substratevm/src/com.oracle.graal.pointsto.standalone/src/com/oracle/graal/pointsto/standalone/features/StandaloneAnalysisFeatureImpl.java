@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -152,7 +153,9 @@ public class StandaloneAnalysisFeatureImpl {
 
         public Set<Executable> reachableMethodOverrides(Executable baseMethod) {
             return reachableMethodOverrides(getMetaAccess().lookupJavaMethod(baseMethod)).stream()
-                            .map(AnalysisMethod::getJavaMethod).collect(Collectors.toCollection(LinkedHashSet::new));
+                            .map(AnalysisMethod::getJavaMethod)
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toCollection(LinkedHashSet::new));
         }
 
         Set<AnalysisMethod> reachableMethodOverrides(AnalysisMethod baseMethod) {

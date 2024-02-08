@@ -157,7 +157,6 @@ import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
 import com.oracle.svm.core.graal.phases.OptimizeExceptionPathsPhase;
 import com.oracle.svm.core.graal.phases.RemoveUnwindPhase;
 import com.oracle.svm.core.graal.phases.SubstrateSafepointInsertionPhase;
-import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.OpenTypeWorldSnippets;
@@ -1382,7 +1381,6 @@ public class NativeImageGenerator {
 
         plugins.appendInlineInvokePlugin(wordOperationPlugin);
         plugins.appendTypePlugin(wordOperationPlugin);
-        plugins.appendTypePlugin(new TrustedInterfaceTypePlugin());
         plugins.appendNodePlugin(wordOperationPlugin);
 
         plugins.setClassInitializationPlugin(classInitializationPlugin);

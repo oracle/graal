@@ -39,15 +39,14 @@ import java.util.stream.StreamSupport;
 import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.jdk.VarHandleFeature;
 import com.oracle.svm.core.util.VMError;
@@ -351,7 +350,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 if (argType != null) {
                     // TODO For trustInterfaces = false, we cannot be more specific here
                     // (i.e. we cannot use TypeReference.createExactTrusted here)
-                    TypeReference typeref = TypeReference.createWithoutAssumptions(toOriginalWithResolve(argType));
+                    TypeReference typeref = TypeReference.createWithoutAssumptions(OriginalClassProvider.getOriginalType(argType));
                     argStamp = StampTool.isPointerNonNull(argStamp) ? StampFactory.objectNonNull(typeref) : StampFactory.object(typeref);
                 }
                 return new ParameterNode(index, StampPair.createSingle(argStamp));
@@ -534,7 +533,6 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                         parsingProviders.getPlatformConfigurationProvider().getBarrierSet());
         graphBuilderPlugins.appendInlineInvokePlugin(wordOperationPlugin);
         graphBuilderPlugins.appendTypePlugin(wordOperationPlugin);
-        graphBuilderPlugins.appendTypePlugin(new TrustedInterfaceTypePlugin());
         graphBuilderPlugins.appendNodePlugin(wordOperationPlugin);
         graphBuilderPlugins.setClassInitializationPlugin(new NoClassInitializationPlugin());
 
@@ -977,16 +975,6 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             return ((AnalysisMethod) method).wrapped;
         } else {
             return method;
-        }
-    }
-
-    private static ResolvedJavaType toOriginalWithResolve(ResolvedJavaType type) {
-        if (type instanceof HostedType) {
-            return ((HostedType) type).getWrapped().getWrappedWithResolve();
-        } else if (type instanceof AnalysisType) {
-            return ((AnalysisType) type).getWrappedWithResolve();
-        } else {
-            return type;
         }
     }
 }

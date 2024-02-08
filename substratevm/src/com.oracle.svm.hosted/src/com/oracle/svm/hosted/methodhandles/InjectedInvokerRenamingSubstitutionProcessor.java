@@ -59,15 +59,6 @@ public class InjectedInvokerRenamingSubstitutionProcessor extends SubstitutionPr
         return !(type instanceof InjectedInvokerSubstitutionType) && isInjectedInvokerType(type);
     }
 
-    @Override
-    public ResolvedJavaType resolve(ResolvedJavaType type) {
-        if (type instanceof InjectedInvokerSubstitutionType injectedInvokerSubstitutionType) {
-            return injectedInvokerSubstitutionType.getOriginal();
-        } else {
-            return type;
-        }
-    }
-
     private InjectedInvokerSubstitutionType getSubstitution(ResolvedJavaType original) {
         return typeSubstitutions.computeIfAbsent(original, key -> new InjectedInvokerSubstitutionType(key, getUniqueInjectedInvokerName(key.getName())));
     }

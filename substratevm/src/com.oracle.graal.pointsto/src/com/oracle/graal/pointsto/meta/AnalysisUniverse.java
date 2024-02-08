@@ -50,7 +50,7 @@ import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
-import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.Universe;
@@ -277,7 +277,7 @@ public class AnalysisUniverse implements Universe {
         }
 
         try {
-            JavaKind storageKind = originalMetaAccess.lookupJavaType(WordBase.class).isAssignableFrom(substitutions.resolve(type)) ? wordKind : type.getJavaKind();
+            JavaKind storageKind = originalMetaAccess.lookupJavaType(WordBase.class).isAssignableFrom(OriginalClassProvider.getOriginalType(type)) ? wordKind : type.getJavaKind();
             AnalysisType newValue = analysisFactory.createType(this, type, storageKind, objectClass, cloneableClass);
 
             synchronized (this) {
@@ -471,7 +471,7 @@ public class AnalysisUniverse implements Universe {
         assert !(defaultAccessingClass instanceof WrappedJavaType) : defaultAccessingClass;
         WrappedConstantPool result = constantPools.get(constantPool);
         if (result == null) {
-            WrappedConstantPool newValue = new AnalysisConstantPool(this, constantPool, defaultAccessingClass);
+            WrappedConstantPool newValue = new WrappedConstantPool(this, constantPool, defaultAccessingClass);
             WrappedConstantPool oldValue = constantPools.putIfAbsent(constantPool, newValue);
             result = oldValue != null ? oldValue : newValue;
         }
@@ -672,11 +672,6 @@ public class AnalysisUniverse implements Universe {
     @Override
     public SnippetReflectionProvider getSnippetReflection() {
         return bb.getSnippetReflectionProvider();
-    }
-
-    @Override
-    public ResolvedJavaMethod resolveSubstitution(ResolvedJavaMethod method) {
-        return substitutions.resolve(method);
     }
 
     @Override

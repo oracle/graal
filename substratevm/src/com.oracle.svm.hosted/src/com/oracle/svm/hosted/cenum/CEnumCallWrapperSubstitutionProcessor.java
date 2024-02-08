@@ -59,14 +59,6 @@ public class CEnumCallWrapperSubstitutionProcessor extends SubstitutionProcessor
         }
     }
 
-    @Override
-    public ResolvedJavaMethod resolve(ResolvedJavaMethod method) {
-        if (method instanceof CEnumCallWrapperMethod) {
-            return ((CEnumCallWrapperMethod) method).getOriginal();
-        }
-        return method;
-    }
-
     public void setNativeLibraries(NativeLibraries nativeLibs) {
         this.nativeLibraries = nativeLibs;
     }

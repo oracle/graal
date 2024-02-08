@@ -74,9 +74,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
-import com.oracle.svm.hosted.code.IncompatibleClassChangeFallbackMethod;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -166,16 +164,6 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             }
         }
         return null;
-    }
-
-    @Override
-    public ResolvedJavaType resolve(ResolvedJavaType type) {
-        if (type instanceof SubstitutionType) {
-            return ((SubstitutionType) type).getAnnotated();
-        } else if (type instanceof InjectedFieldsType) {
-            return ((InjectedFieldsType) type).getOriginal();
-        }
-        return type;
     }
 
     @Override
@@ -282,24 +270,6 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             }
         }
         return method;
-    }
-
-    @Override
-    public ResolvedJavaMethod resolve(ResolvedJavaMethod method) {
-        ResolvedJavaMethod cur = method;
-        while (true) {
-            if (cur instanceof SubstitutionMethod) {
-                cur = ((SubstitutionMethod) cur).getOriginal();
-            } else if (cur instanceof CustomSubstitutionMethod) {
-                cur = ((CustomSubstitutionMethod) cur).getOriginal();
-            } else if (cur instanceof AnnotatedMethod) {
-                cur = ((AnnotatedMethod) cur).getOriginal();
-            } else if (cur instanceof IncompatibleClassChangeFallbackMethod) {
-                cur = ((IncompatibleClassChangeFallbackMethod) cur).getOriginal();
-            } else {
-                return cur;
-            }
-        }
     }
 
     /**

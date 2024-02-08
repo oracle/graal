@@ -37,9 +37,9 @@ import java.util.function.Predicate;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.Platforms;
-import jdk.graal.compiler.util.json.JSONParserException;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -47,6 +47,7 @@ import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.truffle.tck.PermissionsFeature.AnalysisMethodNode;
 
+import jdk.graal.compiler.util.json.JSONParserException;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -269,7 +270,7 @@ final class WhiteListParser extends ConfigurationParser {
         private final BigBang bb;
 
         SignaturePredicate(AnalysisType owner, List<? extends ResolvedJavaType> params, BigBang bb) {
-            this.owner = Objects.requireNonNull(owner, "Owner must be non null.").getWrappedWithResolve();
+            this.owner = OriginalClassProvider.getOriginalType(Objects.requireNonNull(owner, "Owner must be non null."));
             this.params = Objects.requireNonNull(params, "Params must be non null.");
             this.bb = Objects.requireNonNull(bb, "BigBang must be non null.");
         }
