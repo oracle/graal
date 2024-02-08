@@ -345,6 +345,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         bytecodeNodeGen.add(createGetBytecodeNode());
         bytecodeNodeGen.add(createGetRootNodes());
         bytecodeNodeGen.add(createGetSourceSection());
+        bytecodeNodeGen.add(createReadBciFromFrame());
         bytecodeNodeGen.addAll(createCopyLocals());
 
         // Define the generated Node classes for custom instructions.
@@ -1261,6 +1262,24 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         copyLocalsBuilder.end(2);
 
         return List.of(copyAllLocals, copyLocals);
+    }
+
+    private CodeExecutableElement createReadBciFromFrame() {
+        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNode, "readBciFromFrame");
+
+        CodeTreeBuilder b = ex.createBuilder();
+        if (model.needsBciSlot()) {
+            /*
+             * NB: we cannot use ACCESS here. The unsafe accessor expects the frame to be a
+             * FrameWithoutBoxing, but it can be a ReadOnlyFrame if it comes from a stack trace.
+             */
+            b.startReturn().string("frame.getInt(" + BCI_IDX + ")").end();
+        } else {
+            b.lineComment("The bci is not stored in the frame.");
+            b.startReturn().string("-1").end();
+        }
+
+        return ex;
     }
 
     static Object[] merge(Object[] array0, Object[] array1) {

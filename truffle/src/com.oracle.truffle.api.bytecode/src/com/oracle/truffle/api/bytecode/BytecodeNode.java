@@ -60,9 +60,11 @@ import com.oracle.truffle.api.source.SourceSection;
 /**
  * Represents the bytecode for an interpreter. The bytecode can change over time; this class
  * encapsulates the current state.
- *
- * The current bytecode node can be bound using
- * <code>@Bind("$bytecode") BytecodeNode bytecode</code> from {@link Operation operations}.
+ * <p>
+ * Since an interpreter's bytecode can change over time, a bytecode index (bound using
+ * <code>@Bind("$bci")</code>) is only meaningful when accompanied by a {@link BytecodeNode}. The
+ * current bytecode node can be bound using <code>@Bind("$bytecode") BytecodeNode bytecode</code>
+ * with {@link Operation operations}.
  *
  * @since 24.1
  */
@@ -72,21 +74,29 @@ public abstract class BytecodeNode extends Node {
         BytecodeRootNodes.checkToken(token);
     }
 
-    // needs to translate locations if the bytecodes were rewritten in the meantime
+    /**
+     * Returns the current bytecode location using the current frame and location.
+     *
+     * @param frame the current frame
+     * @param location the current location
+     * @return the bytecode location, or null if a location could not be found
+     * @since 24.1
+     */
     public final BytecodeLocation getBytecodeLocation(Frame frame, Node location) {
-        int internalBci = findBytecodeIndexImpl(frame, location);
-        if (internalBci == -1) {
+        int bci = findBytecodeIndexImpl(frame, location);
+        if (bci == -1) {
             return null;
         }
-        return new BytecodeLocation(this, internalBci);
+        return new BytecodeLocation(this, bci);
     }
 
     /**
-     * Gets the {@code bci} associated with a particular
-     * {@link com.oracle.truffle.api.frame.FrameInstance frameInstance} obtained from a stack walk.
+     * Gets the bytecode location associated with a particular
+     * {@link com.oracle.truffle.api.frame.FrameInstance frameInstance}, obtained from a stack walk.
      *
      * @param frameInstance the frame instance
-     * @return the corresponding bytecode index, or -1 if the index could not be found
+     * @return the bytecode location, or null if a location could not be found
+     * @since 24.1
      */
     public final BytecodeLocation getBytecodeLocation(FrameInstance frameInstance) {
         int internalBci = findBytecodeIndex(frameInstance);
@@ -96,6 +106,14 @@ public abstract class BytecodeNode extends Node {
         return new BytecodeLocation(this, internalBci);
     }
 
+    /**
+     * Gets the bytecode location associated with an internal {@code bci}. This method should only
+     * be used if the internal {@code bci} was obtained while executing this bytecode node.
+     *
+     * @param internalBci the internal bytecode index
+     * @return the bytecode location, or null if the bytecode index is invalid
+     * @since 24.1
+     */
     public final BytecodeLocation getBytecodeLocation(int internalBci) {
         if (internalBci < 0) {
             return null;
@@ -128,6 +146,7 @@ public abstract class BytecodeNode extends Node {
 
         Node prev = null;
         BytecodeNode bytecode = null;
+        // Validate that location is this or a child of this.
         for (Node current = location; current != null; current = current.getParent()) {
             if (current == this) {
                 bytecode = this;
@@ -138,6 +157,7 @@ public abstract class BytecodeNode extends Node {
         if (bytecode == null) {
             return -1;
         }
+        // For cached interpreters, prev will be the operation node.
         int internalIndex = findBytecodeIndex(frame, prev);
         return internalIndex;
     }
@@ -215,7 +235,7 @@ public abstract class BytecodeNode extends Node {
         return b.toString();
     }
 
-    protected abstract SourceSection findSourceLocation(int internalBci);
+    protected abstract SourceSection findSourceLocation(int bci);
 
     /**
      * Gets the {@code bci} associated with a particular operation node.
@@ -259,21 +279,19 @@ public abstract class BytecodeNode extends Node {
     }
 
     /**
-     * Gets the bytecode location for a given FrameInstance. Frame instances are invalid as soon as
-     * the execution of a frame is continued. A bytecode location can be used to materialize an
-     * execution location in a bytecode interpreter, which can be used after the
-     * {@link FrameInstance} is no longer valid.
+     * Gets the bytecode node for a given FrameInstance. Frame instances are invalid as soon as the
+     * execution of a frame is continued. A bytecode node can be used to materialize a
+     * {@link BytecodeLocation}, which can be used after the {@link FrameInstance} is no longer
+     * valid.
      *
      * @param frameInstance the frame instance
-     * @return the corresponding bytecode location or null if no location can be found.
+     * @return the corresponding bytecode node or null if no node can be found.
      * @since 24.1
      */
     public static BytecodeNode get(FrameInstance frameInstance) {
-        Node location = frameInstance.getCallNode();
-        for (Node currentNode = location; currentNode != null; currentNode = currentNode.getParent()) {
-            if (currentNode instanceof BytecodeNode bytecodeNode) {
-                return bytecodeNode;
-            }
+        BytecodeNode location = get(frameInstance.getCallNode());
+        if (location != null) {
+            return location;
         }
         CallTarget target = frameInstance.getCallTarget();
         if (target instanceof RootCallTarget rootCallTarget) {
@@ -281,6 +299,23 @@ public abstract class BytecodeNode extends Node {
             if (rootNode instanceof BytecodeRootNode bytecodeRoot) {
                 // should only ever happen for a top-frame.
                 return bytecodeRoot.getBytecodeNode();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Gets the bytecode location for a given Node, if available.
+     *
+     * @param node the node
+     * @return the corresponding bytecode location or null if no location can be found.
+     * @since 24.1
+     */
+    public static BytecodeNode get(Node node) {
+        Node location = node;
+        for (Node currentNode = location; currentNode != null; currentNode = currentNode.getParent()) {
+            if (currentNode instanceof BytecodeNode bytecodeNode) {
+                return bytecodeNode;
             }
         }
         return null;

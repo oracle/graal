@@ -180,7 +180,7 @@ public final class LocalSetterRange {
     /**
      * Defines the start index of the range.
      *
-     * This field is used internally and should not be used directly.
+     * This field is used by generated code and should not be used directly.
      *
      * @since 24.1
      */
@@ -189,11 +189,20 @@ public final class LocalSetterRange {
     /**
      * Defines the length of the range.
      *
-     * This field is used internally and should not be used directly.
+     * This field is used by generated code and should not be used directly.
      *
      * @since 24.1
      */
     public final int length;
+
+    /**
+     * Returns the length of the range.
+     *
+     * @since 24.1
+     */
+    public int getLength() {
+        return length;
+    }
 
     private LocalSetterRange(int start, int length) {
         this.start = start;

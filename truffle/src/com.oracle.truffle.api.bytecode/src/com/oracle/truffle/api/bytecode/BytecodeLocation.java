@@ -75,8 +75,8 @@ public final class BytecodeLocation {
 
     /**
      * Returns the bytecode index. This index is not stable and should only be used for debugging
-     * purposes. The bytecode index is only valid for a given {@link #getBytecodeNode() bytecode
-     * node}.
+     * purposes. The bytecode index is only meaningful when coupled with a particular
+     * {@link #getBytecodeNode() bytecode node}.
      *
      * @since 24.1
      */
@@ -107,12 +107,16 @@ public final class BytecodeLocation {
     }
 
     /**
-     * TODO
+     * Computes a logical instruction index. Unlike the bytecode index, the instruction index is
+     * stable for a given point in the program. Thus, it can be used to impose a total ordering on
+     * instructions.
      *
      * @since 24.1
      */
-    public int getIndex() {
-        return internalBci;
+    @SuppressWarnings("static-method")
+    public int getInstructionIndex() {
+        // TODO implement
+        throw new UnsupportedOperationException("not implemented");
     }
 
     /**

@@ -152,6 +152,24 @@ public final class ContinuationResult {
     }
 
     /**
+     * Returns the bytecode node that was suspended.
+     *
+     * @since 24.1
+     */
+    public BytecodeNode getBytecodeNode() {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    /**
+     * Returns the bytecode index at the point the continuation suspended.
+     *
+     * @since 24.1
+     */
+    public int getBci() {
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    /**
      * Returns a string representation of a {@link ContinuationResult}.
      *
      * @since 24.1
