@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -107,6 +107,7 @@ public final class NFIInitialization {
         ctx.nativeAPI().setNewClosureRefFunction(NativeAPIImpl.NEW_CLOSURE_REF.getFunctionPointer());
         ctx.nativeAPI().setReleaseClosureRefFunction(NativeAPIImpl.RELEASE_CLOSURE_REF.getFunctionPointer());
         ctx.nativeAPI().setGetClosureObjectFunction(NativeAPIImpl.GET_CLOSURE_OBJECT.getFunctionPointer());
+        ctx.nativeAPI().setExceptionCheckFunction(NativeAPIImpl.EXCEPTION_CHECK.getFunctionPointer());
 
         ctx.threadAPI().setGetTruffleEnvFunction(NativeAPIImpl.GET_TRUFFLE_ENV.getFunctionPointer());
         ctx.threadAPI().setAttachCurrentThreadFunction(NativeAPIImpl.ATTACH_CURRENT_THREAD.getFunctionPointer());

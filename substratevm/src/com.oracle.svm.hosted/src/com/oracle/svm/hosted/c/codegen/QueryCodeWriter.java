@@ -123,16 +123,6 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         writer.writeCStandardHeaders();
         writer.appendln();
 
-        /* Workaround missing bool type in old cl.exe. */
-        if (isWindows) {
-            writer.appendln("#ifndef bool");
-            writer.appendln("#define bool char");
-            writer.appendln("#define false ((bool)0)");
-            writer.appendln("#define true  ((bool)1)");
-            writer.appendln("#endif");
-            writer.appendln("");
-        }
-
         /* Inject CContext specific C header file snippet. */
         if (directives instanceof DirectivesExtension) {
             List<String> headerSnippet = ((DirectivesExtension) directives).getHeaderSnippet();

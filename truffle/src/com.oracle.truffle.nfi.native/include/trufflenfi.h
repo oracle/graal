@@ -41,6 +41,8 @@
 #ifndef __TRUFFLE_NFI_H
 #define __TRUFFLE_NFI_H
 
+#include <stdbool.h>
+
 /**
  * Opaque handle to a {@link com.oracle.truffle.api.interop.TruffleObject}.
  */
@@ -157,6 +159,11 @@ struct __TruffleNativeAPI {
      * closure pointer, instead of allocating a new one.
      */
     TruffleObject (*getClosureObject)(TruffleEnv *env, void *closure);
+
+    /**
+     * Returns whether there is a pending exception from the last upcall.
+     */
+    bool (*exceptionCheck)(TruffleEnv *env);
 };
 
 struct __TruffleEnv {
