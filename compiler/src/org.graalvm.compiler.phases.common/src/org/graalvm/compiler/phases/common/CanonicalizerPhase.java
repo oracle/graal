@@ -510,13 +510,14 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                             node.replaceAtUsages(null);
                             GraphUtil.unlinkAndKillExceptionEdge(withException);
                             GraphUtil.killWithUnusedFloatingInputs(withException);
-                        } else if (canonical instanceof FloatingNode floating) {
+                        } else if (canonical instanceof FloatingNode) {
                             // case 4
                             /*
-                            * In corner cases it is possible for the killing of the exception edge to
-                            * trigger the killing of the replacement node. We therefore wait to kill
-                            * the exception edge until after replacing the WithException node.
-                            */
+                             * In corner cases it is possible for the killing of the exception edge
+                             * to trigger the killing of the replacement node. We therefore wait to
+                             * kill the exception edge until after replacing the WithException node.
+                             */
+                            FloatingNode floating = (FloatingNode) canonical;
                             AbstractBeginNode exceptionEdge = withException.exceptionEdge();
                             withException.setExceptionEdge(null);
                             graph.replaceSplitWithFloating(withException, floating, withException.next());
