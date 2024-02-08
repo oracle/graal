@@ -36,6 +36,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 
 import jdk.graal.compiler.core.common.cfg.BlockMap;
+import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.BinaryOp.And;
@@ -55,6 +56,7 @@ import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.BinaryOpLogicNode;
+import jdk.graal.compiler.nodes.CompressionNode;
 import jdk.graal.compiler.nodes.ConditionAnchorNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.DeoptimizingGuard;
@@ -601,6 +603,24 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
             registerNewStamp(piNode.object(), piNode.piStamp(), piNode.getGuard());
         }
 
+        private void processCompressionNode(CompressionNode compression) {
+            if (!(compression.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp)) {
+                return;
+            }
+
+            AbstractObjectStamp stamp = (AbstractObjectStamp) compression.stamp(NodeView.DEFAULT);
+            ConditionalEliminationUtil.InfoElement infoElement = infoElementProvider.infoElements(compression.getValue());
+            while (infoElement != null) {
+                if (infoElement.getStamp() instanceof AbstractObjectStamp objStamp) {
+                    Stamp improvedStamp = compression.foldStamp(infoElement.getStamp());
+                    if (!stamp.equals(improvedStamp)) {
+                        registerNewStamp(compression, improvedStamp, infoElement.getGuard());
+                    }
+                }
+                infoElement = infoElementProvider.nextElement(infoElement);
+            }
+        }
+
         @Override
         public ConditionalEliminationUtil.Marks enter(HIRBlock block) {
             int infoElementsMark = undoOperations.size();
@@ -671,6 +691,8 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                     processEnd((EndNode) node);
                 } else if (node instanceof ValueAnchorNode) {
                     processValueAnchor((ValueAnchorNode) node);
+                } else if (node instanceof CompressionNode c) {
+                    processCompressionNode(c);
                 }
             }
         }
