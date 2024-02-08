@@ -42,6 +42,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import org.junit.Test;
+import org.objectweb.asm.Type;
 
 public class LambdaStableNameTest {
     private String findStableLambdaName(ResolvedJavaType type) {
@@ -66,20 +67,21 @@ public class LambdaStableNameTest {
         String acName = findStableLambdaName(acType);
         assertEquals("Both stable lambda names are the same as they reference the same method", name, acName);
 
-        assertEquals("The name known in 19.3 version is computed", "Lorg/graalvm/compiler/hotspot/test/LambdaStableNameTest$$Lambda$3b571858be38d19370199ac2c3ec212a511e6f55;", name);
+        String myName = Type.getInternalName(getClass());
+        assertEquals("The name known in 24.0 version is computed", "L" + myName + "$$Lambda.0x3b571858be38d19370199ac2c3ec212a511e6f55;", name);
     }
 
     private static void assertLambdaName(String name) {
         String expectedPrefix = "L" + LambdaStableNameTest.class.getCanonicalName().replace('.', '/') +
-                        "$$Lambda$";
+                        LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING;
         if (!name.startsWith(expectedPrefix)) {
             fail("Expecting " + expectedPrefix + " as prefix in lambda class name: " + name);
         }
         assertTrue("semicolon at the end", name.endsWith(";"));
 
-        int last = name.lastIndexOf('$');
+        int index = name.indexOf(LambdaUtils.ADDRESS_PREFIX);
 
-        String hash = name.substring(last + 1, name.length() - 1);
+        String hash = name.substring(index + LambdaUtils.ADDRESS_PREFIX.length(), name.length() - 1);
 
         BigInteger aValue = new BigInteger(hash, 16);
         assertNotNull("Hash can be parsed as a hex number: " + hash, aValue);
