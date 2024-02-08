@@ -1164,7 +1164,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "spotbugs" : "false",
+      "spotbugsIgnoresGenerated" : True,
       "requires" : [
         "java.logging",
         "java.xml",
@@ -1230,7 +1230,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "spotbugs" : "false",
+      "spotbugsIgnoresGenerated" : True,
       "shadedDependencies" : [
         "truffle:XZ-1.9",
       ],
@@ -1300,7 +1300,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "spotbugs" : "false",
+      "spotbugsIgnoresGenerated" : True,
       "requires" : [
       ],
       "dependencies" : [
@@ -1331,7 +1331,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "spotbugs" : "false",
+      "spotbugsIgnoresGenerated" : True,
       "shadedDependencies" : [
         "truffle:ANTLR4",
       ],
@@ -1358,7 +1358,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "spotbugs" : "false",
+      "spotbugsIgnoresGenerated" : True,
       "shadedDependencies" : [
         "truffle:ASM_9.5",
         "truffle:ASM_TREE_9.5",
@@ -1387,7 +1387,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "spotbugs" : "false",
+      "spotbugsIgnoresGenerated" : True,
       "shadedDependencies" : [
         "truffle:JCODINGS_1.0.58",
       ],
