@@ -676,10 +676,6 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         return [b for b, it in self.daCapoIterations().items()
                 if self.workloadSize() in self.daCapoSizes().get(b, []) and it != -1]
 
-    def daCapoSuiteTitle(self):
-        """Title string used in the output next to the performance result."""
-        raise NotImplementedError()
-
     def successPatterns(self):
         return [
             # Due to the non-determinism of DaCapo version printing, we only match the name.
@@ -839,16 +835,6 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
     def workloadSize(self):
         return "default"
 
-    def daCapoSuiteTitle(self):
-        title = None
-        if self.version() == "9.12-bach":
-            title = "DaCapo 9.12"
-        elif self.version() == "9.12-MR1-bach":
-            title = "DaCapo 9.12-MR1"
-        elif self.version() == "9.12-MR1-git+2baec49":
-            title = "DaCapo 9.12-MR1-git+2baec49"
-        return title
-
     def daCapoClasspathEnvVarName(self):
         return "DACAPO_CP"
 
@@ -946,9 +932,6 @@ class DaCapoD3SBenchmarkSuite(DaCapoBenchmarkSuite): # pylint: disable=too-many-
 
     def name(self):
         return "dacapo-d3s"
-
-    def daCapoSuiteTitle(self):
-        return "DaCapo 9.12-D3S-20180206"
 
     def daCapoClasspathEnvVarName(self):
         return "DACAPO_D3S_CP"
@@ -1145,9 +1128,6 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-
 
     def version(self):
         return "0.1.0"
-
-    def daCapoSuiteTitle(self):
-        return "DaCapo 0.1.0-SNAPSHOT"
 
     def daCapoClasspathEnvVarName(self):
         return "DACAPO_SCALA_CP"
