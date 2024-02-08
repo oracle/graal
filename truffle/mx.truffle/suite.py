@@ -484,6 +484,7 @@ suite = {
       "workingSets" : "API,Truffle,Codegen,Test",
       "testProject" : True,
       "jacoco" : "exclude",
+      "graalCompilerSourceEdition": "ignore",
     },
 
     "com.oracle.truffle.api.dsl" : {

@@ -48,7 +48,12 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 
-// TODO (chumer) implement
+/**
+ * Internal class for tags-based instrumentation, a not-yet-supported feature; do not use.
+ *
+ * @since 24.1
+ */
+// TODO GR-51946 implement Tags support
 public class InstrumentRootNode extends Node implements InstrumentableNode {
 
     private static final InstrumentTreeNode[] EMPTY_NODE_ARRAY = new InstrumentTreeNode[0];

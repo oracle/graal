@@ -745,10 +745,6 @@ public class BytecodeStatistics {
                 decisions.add(new Decision.SuperInstruction(e.getKey().instructions, e.getValue()));
             });
 
-            // TODO implement weighting
-            // currently weighting execution count
-            // divide execution counts by the total number of instructions.
-
             // sort
             decisions.sort(Decision.COMPARATOR);
             List<Decision> acceptedDecisions = new ArrayList<>();
