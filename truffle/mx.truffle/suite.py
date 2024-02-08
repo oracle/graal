@@ -1300,9 +1300,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      # We need to force javac because the generated sources in this project
-      # produce warnings in JDT.
-      "forceJavac": True,
       "spotbugs" : "false",
       "requires" : [
       ],
@@ -1320,11 +1317,10 @@ suite = {
           "META-INF/MANIFEST.MF",
           "META-INF/maven/**",
         ],
-        "patch" : {
-        },
       },
       "description" : "JSON shaded library.",
-      "allowsJavadocWarnings": True,
+      # We need to force javac because the generated sources in this project produce warnings in JDT.
+      "forceJavac": True,
       "javac.lint.overrides" : 'none',
       "jacoco" : "exclude",
       "graalCompilerSourceEdition": "ignore",
@@ -1335,7 +1331,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "forceJavac" : "true",
       "spotbugs" : "false",
       "shadedDependencies" : [
         "truffle:ANTLR4",
@@ -1352,7 +1347,7 @@ suite = {
         ],
       },
       "description" : "ANTLR4 shaded library.",
-      "allowsJavadocWarnings": True,
+      "forceJavac" : "true",
       "javac.lint.overrides" : 'none',
       "jacoco" : "exclude",
       "graalCompilerSourceEdition": "ignore",
@@ -1380,7 +1375,6 @@ suite = {
         ],
       },
       "description" : "ASM library shadowed for Truffle.",
-      "allowsJavadocWarnings": True,
       # We need to force javac because the generated sources in this project produce warnings in JDT.
       "forceJavac" : "true",
       "javac.lint.overrides" : "none",
@@ -1455,7 +1449,6 @@ suite = {
         },
       },
       "description" : "JCodings library shadowed for Truffle.",
-      "allowsJavadocWarnings": True,
       # We need to force javac because the generated sources in this project produce warnings in JDT.
       "forceJavac" : "true",
       "javac.lint.overrides" : "none",
@@ -2306,7 +2299,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "spotbugs" : "false",
       "dependencies" : [
         "org.graalvm.shadowed.com.ibm.icu",
       ],
@@ -2341,7 +2333,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "spotbugs" : "false",
       "dependencies" : [
         "org.graalvm.shadowed.org.tukaani.xz",
       ],
@@ -2369,7 +2360,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "spotbugs" : "false",
       "dependencies" : [
         "org.graalvm.shadowed.org.json",
       ],
@@ -2398,7 +2388,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "spotbugs" : "false",
       "dependencies" : [
         "org.graalvm.shadowed.org.antlr.v4.runtime",
       ],
@@ -2434,7 +2423,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "spotbugs" : "false",
       "dependencies" : [
         "org.graalvm.shadowed.org.jcodings",
       ],
