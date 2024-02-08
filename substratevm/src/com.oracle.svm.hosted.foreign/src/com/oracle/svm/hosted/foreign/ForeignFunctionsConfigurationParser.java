@@ -26,11 +26,14 @@ package com.oracle.svm.hosted.foreign;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
@@ -46,7 +49,8 @@ import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
     private static final String DOWNCALL_OPTION_CAPTURE_CALL_STATE = "captureCallState";
     private static final String DOWNCALL_OPTION_FIRST_VARIADIC_ARG = "firstVariadicArg";
-    private static final String DOWNCALL_OPTION_TRIVIAL = "trivial";
+    private static final String DOWNCALL_OPTION_CRITICAL = "critical";
+    private static final String DOWNCALL_OPTION_ALLOW_HEAP_ACCESS = "allowHeapAccess";
 
     private final RuntimeForeignAccessSupport accessSupport;
 
@@ -91,7 +95,7 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
 
         ArrayList<Linker.Option> res = new ArrayList<>();
         var map = asMap(options, "options must be a map");
-        checkAttributes(map, "options", List.of(), List.of(DOWNCALL_OPTION_FIRST_VARIADIC_ARG, DOWNCALL_OPTION_CAPTURE_CALL_STATE, DOWNCALL_OPTION_TRIVIAL));
+        checkAttributes(map, "options", List.of(), List.of(DOWNCALL_OPTION_FIRST_VARIADIC_ARG, DOWNCALL_OPTION_CAPTURE_CALL_STATE, DOWNCALL_OPTION_CRITICAL));
 
         if (map.containsKey(DOWNCALL_OPTION_FIRST_VARIADIC_ARG)) {
             int firstVariadic = (int) asLong(map.get(DOWNCALL_OPTION_FIRST_VARIADIC_ARG), "");
@@ -106,27 +110,43 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
                 res.add(Linker.Option.captureCallState("errno"));
             }
         }
-        if (map.containsKey(DOWNCALL_OPTION_TRIVIAL)) {
-            if (asBoolean(map.get(DOWNCALL_OPTION_TRIVIAL, ""), DOWNCALL_OPTION_TRIVIAL)) {
-                res.add(OPTION_CRITICAL);
+        if (map.containsKey(DOWNCALL_OPTION_CRITICAL)) {
+            var criticalOpt = map.get(DOWNCALL_OPTION_CRITICAL, "");
+            if (criticalOpt instanceof Boolean b) {
+                if (b) {
+                    res.add(OPTION_CRITICAL.apply(false));
+                }
+            } else if (criticalOpt instanceof EconomicMap<?, ?>) {
+                var criticalMap = (EconomicMap<String, Object>) criticalOpt;
+                checkAttributes(criticalMap, DOWNCALL_OPTION_CRITICAL, List.of(DOWNCALL_OPTION_ALLOW_HEAP_ACCESS), List.of());
+                var allowHeapAccess = asBoolean(criticalMap.get(DOWNCALL_OPTION_ALLOW_HEAP_ACCESS), DOWNCALL_OPTION_ALLOW_HEAP_ACCESS);
+                res.add(OPTION_CRITICAL.apply(allowHeapAccess));
             }
         }
 
         return res;
     }
 
-    private static final Linker.Option OPTION_CRITICAL;
+    private static final Function<Boolean, Linker.Option> OPTION_CRITICAL;
 
     static {
-        try {
-            if (JavaVersionUtil.JAVA_SPEC >= 22) {
-                boolean allowHeapAccess = false;
-                OPTION_CRITICAL = (Linker.Option) ReflectionUtil.lookupMethod(Linker.Option.class, "critical", boolean.class).invoke(null, allowHeapAccess);
-            } else {
-                OPTION_CRITICAL = (Linker.Option) ReflectionUtil.lookupMethod(Linker.Option.class, "isTrivial").invoke(null);
-            }
-        } catch (ReflectiveOperationException ex) {
-            throw VMError.shouldNotReachHere(ex);
+        if (JavaVersionUtil.JAVA_SPEC >= 22) {
+            OPTION_CRITICAL = allowHeapAccess -> {
+                try {
+                    return (Linker.Option) ReflectionUtil.lookupMethod(Linker.Option.class, "critical", boolean.class).invoke(null, allowHeapAccess);
+                } catch (ReflectiveOperationException e) {
+                    throw VMError.shouldNotReachHere(e);
+                }
+            };
+        } else {
+            OPTION_CRITICAL = allowHeapAccess -> {
+                VMError.guarantee(!allowHeapAccess, "Parameter allowHeapAccess is not supported for JDK versions < 22");
+                try {
+                    return (Linker.Option) ReflectionUtil.lookupMethod(Linker.Option.class, "isTrivial").invoke(null);
+                } catch (ReflectiveOperationException e) {
+                    throw VMError.shouldNotReachHere(e);
+                }
+            };
         }
     }
 }
