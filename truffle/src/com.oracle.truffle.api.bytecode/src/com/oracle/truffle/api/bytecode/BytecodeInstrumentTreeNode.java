@@ -45,10 +45,12 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
 
-// TODO (chumer): implement / remove with instrumentation
 /**
+ * Internal class for tags-based instrumentation, a not-yet-supported feature; do not use.
+ *
  * @since 24.1
  */
+// TODO GR-51946 implement Tags support
 public class BytecodeInstrumentTreeNode extends Node implements InstrumentableNode {
 
     private static class Wrapper extends BytecodeInstrumentTreeNode implements WrapperNode {

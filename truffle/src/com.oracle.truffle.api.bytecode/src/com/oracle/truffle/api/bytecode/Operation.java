@@ -81,12 +81,14 @@ import com.oracle.truffle.api.instrumentation.Tag;
 @Target({ElementType.TYPE})
 public @interface Operation {
 
-    // TODO (chumer) implement
     /**
      * The instrumentation tags that should always be associated with the given operation.
+     * <p>
+     * This feature is not yet supported.
      *
      * @since 24.1
      */
+    // TODO GR-51945 implement Tags support
     Class<? extends Tag>[] tags() default {};
 
 }

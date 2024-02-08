@@ -89,6 +89,8 @@ public @interface OperationProxy {
 
     /**
      * Automatically assigns instrumentation tags to operations.
+     * <p>
+     * This feature is not yet supported.
      *
      * @see GenerateBytecode#enableInstrumentation()
      * @see GenerateBytecode#enableRootTagging()
@@ -96,7 +98,7 @@ public @interface OperationProxy {
      *
      * @since 24.1
      */
-    // TODO (chumer) implement
+    // TODO GR-51945 implement Tags support
     Class<? extends Tag>[] tags() default {};
 
     /**
