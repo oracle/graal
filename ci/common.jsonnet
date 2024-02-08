@@ -116,7 +116,7 @@ local common_json = import "../common.json";
     "linux-jdk19": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
     "linux-jdk20": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
     "linux-jdk21": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
-    "linux-jdk-latest": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
+    "linux-jdk-latest": { packages+: { "devkit:gcc13.2.0-OL6.4+1": "==0" }},
     "linux-jdkLatest": self["linux-jdk-latest"],
   },
 
