@@ -866,7 +866,7 @@ class NativeImageVM(GraalVm):
     def rules(self, output, benchmarks, bmSuiteArgs):
         rules = super().rules(output, benchmarks, bmSuiteArgs)
 
-        if self.stages_info.effective_stage == "image":
+        if self.stages_info.fallback_mode or self.stages_info.effective_stage == "image":
             # Only apply image build rules for the image build stages
             rules += self.image_build_rules(output, benchmarks, bmSuiteArgs)
         elif self.stages_info.effective_stage == "run":
