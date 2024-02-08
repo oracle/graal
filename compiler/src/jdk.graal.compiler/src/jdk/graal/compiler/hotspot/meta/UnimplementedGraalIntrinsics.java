@@ -102,8 +102,6 @@ public final class UnimplementedGraalIntrinsics {
                         // handled by an intrinsic for StringUTF16.indexOfUnsafe
                         "java/lang/StringUTF16.indexOf([BI[BII)I",
                         "java/lang/StringUTF16.indexOf([B[B)I",
-                        // handled by an intrinsic for StringUTF16.indexOfCharUnsafe
-                        "java/lang/StringUTF16.indexOfChar([BIII)I",
                         // handled by an intrinsic for StringUTF16.indexOfLatin1Unsafe
                         "java/lang/StringUTF16.indexOfLatin1([BI[BII)I",
                         "java/lang/StringUTF16.indexOfLatin1([B[B)I",
@@ -115,6 +113,12 @@ public final class UnimplementedGraalIntrinsics {
                         "jdk/jfr/internal/JVM.commit(J)J",
                         "jdk/jfr/internal/JVM.counterTime()J",
                         "jdk/jfr/internal/JVM.getEventWriter()Ljdk/jfr/internal/event/EventWriter;");
+
+        if (jdk == 21) {
+            // JDK-8325169
+            // handled by an intrinsic for StringUTF16.indexOfCharUnsafe
+            add(ignore, "java/lang/StringUTF16.indexOfChar([BIII)I");
+        }
 
         add(toBeInvestigated, // @formatter:off
                         // JDK-8309130: x86_64 AVX512 intrinsics for Arrays.sort methods (GR-48679)
