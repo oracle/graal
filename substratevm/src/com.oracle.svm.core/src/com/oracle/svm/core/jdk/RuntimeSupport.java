@@ -134,7 +134,7 @@ public final class RuntimeSupport implements VMRuntimeSupport {
 
     /**
      * Adds a hook which will execute during isolate tear-down. Note it is possible for the
-     * {@link #tearDownHooks} to called without the {@link #initializationHooks} executing first.
+     * {@link #tearDownHooks} to be called without the {@link #initializationHooks} executing first.
      */
     public void addTearDownHook(Hook tearDownHook) {
         addHook(tearDownHooks, tearDownHook);
