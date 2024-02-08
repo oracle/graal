@@ -21,7 +21,7 @@
     timelimit : "30:00",
     targets: [ "gate" ],
     downloads+: {
-      "VISUALIZER_JAVA_HOME": common.jdks_data["oraclejdk21"]
+      "VISUALIZER_JAVA_HOME": common.jdks_data["oraclejdk11"]
     },
     run: [
       ["cd", "./visualizer"],
@@ -35,7 +35,7 @@
   },
 
   builds: [
-    common.linux_amd64 + common.oraclejdk21 + self.Gate + { name: "gate-visualizer-linux-amd64-oraclejdk-21" },
+    common.linux_amd64 + common.oraclejdk11 + self.Gate + { name: "gate-visualizer-linux-amd64-oraclejdk-11" },
     common.linux_amd64 + common.labsjdkLatestCE + self.Integration + { name: "gate-visualizer-integration-linux-amd64-labsjdk-latest" },
   ]
 }

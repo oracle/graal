@@ -10,6 +10,11 @@ local common_json = import "../common.json";
   # ***************
   local variants(name) = [name, name + "Debug", name + "-llvm"],
   local jdks_data = {
+    oraclejdk11: common_json.jdks["oraclejdk11"] + { jdk_version:: 11 },
+  } + {
+    [name]: common_json.jdks[name] + { jdk_version:: 17 }
+    for name in ["oraclejdk17"] + variants("labsjdk-ce-17") + variants("labsjdk-ee-17")
+  } + {
     [name]: common_json.jdks[name] + { jdk_version:: 21 }
     for name in ["oraclejdk21"] + variants("labsjdk-ce-21") + variants("labsjdk-ee-21")
   } + {
