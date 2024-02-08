@@ -195,6 +195,21 @@ public abstract class ImageHeapScanner {
         return constant;
     }
 
+    /** Create an {@link ImageHeapConstant} from a raw hosted object. */
+    public JavaConstant createImageHeapConstant(Object object, ScanReason reason) {
+        /*
+         * First, get the hosted constant representation and pre-process the object if necessary,
+         * e.g., transform RelocatedPointer into RelocatableConstant and WordBase into Integer.
+         */
+        JavaConstant hostedConstant = hostedValuesProvider.forObject(object);
+        /* Then create an {@link ImageHeapConstant} from a hosted constant. */
+        return createImageHeapConstant(hostedConstant, reason);
+    }
+
+    /**
+     * Create an {@link ImageHeapConstant} from a hosted constant, if that constant represents an
+     * object, otherwise return the input content.
+     */
     public JavaConstant createImageHeapConstant(JavaConstant constant, ScanReason reason) {
         if (isNonNullObjectConstant(constant)) {
             return getOrCreateImageHeapConstant(constant, reason);

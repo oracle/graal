@@ -1008,7 +1008,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public boolean isInstance(JavaConstant obj) {
-        return wrapped.isInstance(universe.toHosted(obj));
+        return wrapped.isInstance(obj);
     }
 
     @Override

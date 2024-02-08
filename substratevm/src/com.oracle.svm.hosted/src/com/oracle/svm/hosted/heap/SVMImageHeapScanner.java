@@ -47,7 +47,6 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.VarHandleFeature;
-import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
@@ -58,7 +57,7 @@ import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.core.common.type.TypedConstant;
+import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -107,7 +106,6 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
 
     @Override
     protected ImageHeapConstant getOrCreateImageHeapConstant(JavaConstant javaConstant, ScanReason reason) {
-        VMError.guarantee(javaConstant instanceof TypedConstant, "Not a substrate constant: %s", javaConstant);
         return super.getOrCreateImageHeapConstant(javaConstant, reason);
     }
 
@@ -125,7 +123,7 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     public JavaConstant readStaticFieldValue(AnalysisField field) {
         AnalysisConstantReflectionProvider aConstantReflection = (AnalysisConstantReflectionProvider) this.constantReflection;
         JavaConstant constant = aConstantReflection.readValue(field, null, true);
-        if (constant instanceof DirectSubstrateObjectConstant) {
+        if (constant instanceof HotSpotObjectConstant) {
             /*
              * The "late initialization" doesn't work with heap snapshots because the wrong value
              * will be snapshot for classes proven late, so we only read via the shadow heap if

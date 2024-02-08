@@ -504,20 +504,8 @@ public class AnalysisUniverse implements Universe {
                  */
                 return (JavaConstant) original;
             }
+            /* Intercept the WordBase and RelocatedPointer objects via HostedValuesProvider. */
             return getHostedValuesProvider().forObject(original);
-        } else {
-            return constant;
-        }
-    }
-
-    /**
-     * Convert a hosted SubstrateObjectConstant into a HotSpotObjectConstant.
-     */
-    public JavaConstant toHosted(JavaConstant constant) {
-        if (constant == null) {
-            return null;
-        } else if (constant.getJavaKind().isObject() && !constant.isNull()) {
-            return GraalAccess.getOriginalSnippetReflection().forObject(getHostedValuesProvider().asObject(Object.class, constant));
         } else {
             return constant;
         }

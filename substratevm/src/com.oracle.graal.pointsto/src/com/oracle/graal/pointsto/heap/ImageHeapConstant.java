@@ -28,6 +28,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.Objects;
 
+import com.oracle.svm.common.meta.IdentityHashCodeProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -35,6 +36,7 @@ import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
@@ -163,7 +165,8 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
                  */
                 return 0;
             } else {
-                return ((TypedConstant) constantData.hostedObject).getIdentityHashCode();
+                Object object = GraalAccess.getOriginalProviders().getSnippetReflection().asObject(Object.class, constantData.hostedObject);
+                return IdentityHashCodeProvider.singleton().computeIdentityHashCode(object);
             }
         } else {
             /*
@@ -248,7 +251,9 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
     @Override
     public String toValueString() {
         if (constantData.type.getJavaClass() == String.class && constantData.hostedObject != null) {
-            return constantData.hostedObject.toValueString();
+            String valueString = constantData.hostedObject.toValueString();
+            /* HotSpotObjectConstantImpl.toValueString() puts the string between quotes. */
+            return valueString.substring(1, valueString.length() - 1);
         }
         return constantData.type.getName();
     }

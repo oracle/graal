@@ -30,14 +30,15 @@ import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
-import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -84,8 +85,8 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
     }
 
     private JavaConstant doReadValue(AnalysisField field, JavaConstant receiver) {
-        JavaConstant hostedReceiver = universe.toHosted(receiver);
-        return universe.fromHosted(fieldValueInterceptionSupport.readFieldValue(field, hostedReceiver));
+        VMError.guarantee(!(receiver instanceof SubstrateObjectConstant));
+        return universe.fromHosted(fieldValueInterceptionSupport.readFieldValue(field, receiver));
     }
 
     /**
@@ -97,8 +98,7 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
         if (array.getJavaKind() != JavaKind.Object || array.isNull()) {
             return null;
         }
-        Object a = SubstrateObjectConstant.asObject(array);
-
+        Object a = super.asObject(Object.class, array);
         if (!a.getClass().isArray() || index < 0 || index >= Array.getLength(a)) {
             return null;
         }
@@ -116,7 +116,7 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
         if (array.getJavaKind() != JavaKind.Object || array.isNull()) {
             return null;
         }
-        Object a = SubstrateObjectConstant.asObject(array);
+        Object a = super.asObject(Object.class, array);
         if (!a.getClass().isArray()) {
             return null;
         }
@@ -136,13 +136,14 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
 
     @Override
     public JavaConstant forObject(Object object) {
+        /* The raw object may never be an ImageHeapConstant. */
+        AnalysisError.guarantee(!(object instanceof ImageHeapConstant), "Unexpected ImageHeapConstant %s", object);
         if (object instanceof RelocatedPointer pointer) {
             return new RelocatableConstant(pointer);
         } else if (object instanceof WordBase word) {
             return JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), word.rawValue());
         }
-        HostedSnippetReflectionProvider.validateRawObjectConstant(object);
-        return SubstrateObjectConstant.forObject(object);
+        return super.forObject(object);
     }
 
     @Override
@@ -150,7 +151,7 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
         if (constant instanceof RelocatableConstant relocatable) {
             return type.cast(relocatable.getPointer());
         }
-        return SubstrateObjectConstant.asObject(type, constant);
+        return super.asObject(type, constant);
     }
 
 }

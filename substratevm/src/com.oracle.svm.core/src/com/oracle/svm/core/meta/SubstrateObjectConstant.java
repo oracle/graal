@@ -24,13 +24,11 @@
  */
 package com.oracle.svm.core.meta;
 
-import jdk.graal.compiler.core.common.type.CompressibleConstant;
-import jdk.graal.compiler.core.common.type.TypedConstant;
-
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.common.meta.IdentityHashCodeProvider;
 import com.oracle.svm.util.ClassUtil;
 
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
+import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -157,17 +155,8 @@ public abstract class SubstrateObjectConstant implements JavaConstant, TypedCons
         return getIdentityHashCode();
     }
 
-    public static int computeIdentityHashCode(Object object) {
-        if (SubstrateUtil.HOSTED && object instanceof DynamicHub) {
-            /*
-             * We need to use the identity hash code of the original java.lang.Class object and not
-             * of the DynamicHub, so that hash maps that are filled during image generation and use
-             * Class keys still work at run time.
-             */
-            return System.identityHashCode(((DynamicHub) object).getHostedJavaClass());
-        } else {
-            return System.identityHashCode(object);
-        }
+    protected static int computeIdentityHashCode(Object object) {
+        return IdentityHashCodeProvider.singleton().computeIdentityHashCode(object);
     }
 
     @Override

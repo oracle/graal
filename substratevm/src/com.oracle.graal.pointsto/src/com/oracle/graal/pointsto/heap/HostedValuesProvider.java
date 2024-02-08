@@ -48,19 +48,16 @@ public class HostedValuesProvider {
     }
 
     private JavaConstant doReadValue(AnalysisField field, JavaConstant receiver) {
-        /* Wrap the hosted constant into a substrate constant */
         field.beforeFieldValueAccess();
-        JavaConstant hostedReceiver = universe.toHosted(receiver);
-        JavaConstant hostedValue = GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(field.wrapped, hostedReceiver);
-        return universe.fromHosted(hostedValue);
+        return universe.fromHosted(GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(field.wrapped, receiver));
     }
 
     public Integer readArrayLength(JavaConstant array) {
-        return GraalAccess.getOriginalProviders().getConstantReflection().readArrayLength(universe.toHosted(array));
+        return GraalAccess.getOriginalProviders().getConstantReflection().readArrayLength(array);
     }
 
     public JavaConstant readArrayElement(JavaConstant array, int index) {
-        return GraalAccess.getOriginalProviders().getConstantReflection().readArrayElement(universe.toHosted(array), index);
+        return GraalAccess.getOriginalProviders().getConstantReflection().readArrayElement(array, index);
     }
 
     /**
