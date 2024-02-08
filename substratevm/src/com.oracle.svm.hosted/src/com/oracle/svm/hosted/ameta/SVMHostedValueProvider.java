@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.ameta;
 
 import java.lang.reflect.Array;
+import java.util.Optional;
 
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
@@ -86,7 +87,7 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
 
     private JavaConstant doReadValue(AnalysisField field, JavaConstant receiver) {
         VMError.guarantee(!(receiver instanceof SubstrateObjectConstant));
-        return universe.fromHosted(fieldValueInterceptionSupport.readFieldValue(field, receiver));
+        return interceptHosted(fieldValueInterceptionSupport.readFieldValue(field, receiver));
     }
 
     /**
@@ -138,12 +139,7 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
     public JavaConstant forObject(Object object) {
         /* The raw object may never be an ImageHeapConstant. */
         AnalysisError.guarantee(!(object instanceof ImageHeapConstant), "Unexpected ImageHeapConstant %s", object);
-        if (object instanceof RelocatedPointer pointer) {
-            return new RelocatableConstant(pointer);
-        } else if (object instanceof WordBase word) {
-            return JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), word.rawValue());
-        }
-        return super.forObject(object);
+        return interceptWordType(object).orElse(super.forObject(object));
     }
 
     @Override
@@ -152,6 +148,29 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
             return type.cast(relocatable.getPointer());
         }
         return super.asObject(type, constant);
+    }
+
+    @Override
+    public JavaConstant interceptHosted(JavaConstant constant) {
+        if (constant != null && constant.getJavaKind().isObject() && !constant.isNull()) {
+            Object original = super.asObject(Object.class, constant);
+            if (original instanceof ImageHeapConstant heapConstant) {
+                return heapConstant;
+            }
+            /* Intercept WordBase and RelocatedPointer objects, otherwise return input constant. */
+            return interceptWordType(original).orElse(constant);
+        }
+        return constant;
+    }
+
+    private static Optional<JavaConstant> interceptWordType(Object object) {
+        if (object instanceof RelocatedPointer pointer) {
+            return Optional.of(new RelocatableConstant(pointer));
+        }
+        if (object instanceof WordBase word) {
+            return Optional.of(JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), word.rawValue()));
+        }
+        return Optional.empty();
     }
 
 }

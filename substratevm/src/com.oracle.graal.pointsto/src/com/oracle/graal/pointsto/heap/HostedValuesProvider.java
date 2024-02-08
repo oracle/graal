@@ -49,7 +49,7 @@ public class HostedValuesProvider {
 
     private JavaConstant doReadValue(AnalysisField field, JavaConstant receiver) {
         field.beforeFieldValueAccess();
-        return universe.fromHosted(GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(field.wrapped, receiver));
+        return interceptHosted(GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(field.wrapped, receiver));
     }
 
     public Integer readArrayLength(JavaConstant array) {
@@ -94,4 +94,23 @@ public class HostedValuesProvider {
         return GraalAccess.getOriginalProviders().getSnippetReflection().asObject(type, constant);
     }
 
+    /**
+     * Intercept the HotSpotObjectConstant and if it wraps an {@link ImageHeapConstant} unwrap it
+     * and return the original constant. The ImageHeapObject likely comes from reading a field of a
+     * normal object that is referencing a simulated object. The originalConstantReflection provider
+     * is not aware of simulated constants, and it always wraps them into a HotSpotObjectConstant
+     * when reading fields.
+     * </p>
+     * This method will return null if the input constant is null.
+     */
+    public JavaConstant interceptHosted(JavaConstant constant) {
+        if (constant != null && constant.getJavaKind().isObject() && !constant.isNull()) {
+            Object original = asObject(Object.class, constant);
+            if (original instanceof ImageHeapConstant heapConstant) {
+                return heapConstant;
+            }
+        }
+        /* Return the input constant. */
+        return constant;
+    }
 }
