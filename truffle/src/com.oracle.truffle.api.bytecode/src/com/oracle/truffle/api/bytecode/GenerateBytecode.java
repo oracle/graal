@@ -200,14 +200,14 @@ public @interface GenerateBytecode {
      */
     boolean enableQuickening() default true;
 
-    // TODO: old readBciFromFrame API usage
     /**
      * Whether the generated interpreter should always store the bytecode index (bci) in the frame.
      * <p>
      * When this flag is set, the language can use {@link BytecodeRootNode#readBciFromFrame} to read
      * the bci from the frame. The interpreter does not always store the bci, so it is undefined
      * behaviour to invoke {@link BytecodeRootNode#readBciFromFrame} when this flag is
-     * {@code false}.
+     * {@code false}. Be forewarned that the bci alone is not enough to identify a bytecode
+     * location; it must be accompanied by the {@link BytecodeNode} it executes on.
      * <p>
      * Note that this flag can slow down interpreter performance, so it should only be set if the
      * language needs fast-path access to the bci outside of the current operation (e.g., for
