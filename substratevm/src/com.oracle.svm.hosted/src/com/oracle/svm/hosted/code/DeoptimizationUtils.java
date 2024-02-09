@@ -127,7 +127,7 @@ public class DeoptimizationUtils {
      *
      * Note this should only be called within CompileQueue#parseAheadOfTimeCompiledMethods
      */
-    public static boolean canDeoptForTesting(AnalysisMethod method, boolean deoptimizeAll, Supplier<Boolean> graphInvalidator) {
+    public static boolean canDeoptForTesting(AnalysisMethod method, boolean deoptimizeAll, Supplier<Boolean> graphChecker) {
         if (SubstrateCompilationDirectives.singleton().isRegisteredForDeoptTesting(method)) {
             return true;
         }
@@ -146,7 +146,7 @@ public class DeoptimizationUtils {
             return false;
         }
 
-        if (graphInvalidator.get()) {
+        if (!graphChecker.get()) {
             return false;
         }
 
@@ -291,7 +291,7 @@ public class DeoptimizationUtils {
         /*
          * No deopt targets can have a StackValueNode in the graph.
          */
-        assert !createGraphInvalidator(graph, false).get() : "Invalid nodes in deopt target: " + graph;
+        assert createGraphChecker(graph, AOT_COMPILATION_INVALID_NODES).get() : "Invalid nodes in deopt target: " + graph;
 
         for (Infopoint infopoint : result.getInfopoints()) {
             if (infopoint.debugInfo != null) {
@@ -500,29 +500,28 @@ public class DeoptimizationUtils {
      * We also do not allow class initialization at run time to ensure the partial evaluator does
      * not constant fold uninitialized fields.
      */
-    public static final NodePredicate runtimeCompilationInvalidNodes = n -> NodePredicates.isA(StackValueNode.class).or(NodePredicates.isA(EnsureClassInitializedNode.class)).test(n);
+    public static final NodePredicate RUNTIME_COMPILATION_INVALID_NODES = n -> NodePredicates.isA(StackValueNode.class).or(NodePredicates.isA(EnsureClassInitializedNode.class)).test(n);
 
-    private static final NodePredicate stackOnly = n -> NodePredicates.isA(StackValueNode.class).test(n);
+    public static final NodePredicate AOT_COMPILATION_INVALID_NODES = n -> NodePredicates.isA(StackValueNode.class).test(n);
 
     /**
-     * @return Supplier which returns true if the graph contains invalid nodes.
+     * @return Supplier which returns true if the graph does not violate the checks.
      */
-    public static Supplier<Boolean> createGraphInvalidator(StructuredGraph graph, boolean isRuntimeCompiledMethod) {
+    public static Supplier<Boolean> createGraphChecker(StructuredGraph graph, NodePredicate invalidNodes) {
         return () -> {
             if (!graph.method().getDeclaringClass().isInitialized()) {
                 /*
                  * All types which are used at run time should build-time initialized. This ensures
                  * the partial evaluator does not constant fold uninitialized fields.
                  */
-                return true;
+                return false;
             }
 
-            NodePredicate predicate = isRuntimeCompiledMethod ? runtimeCompilationInvalidNodes : stackOnly;
-            if (graph.getNodes().filter(predicate).isNotEmpty()) {
-                return true;
+            if (graph.getNodes().filter(invalidNodes).isNotEmpty()) {
+                return false;
             }
 
-            return false;
+            return true;
         };
     }
 }

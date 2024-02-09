@@ -697,13 +697,14 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         public boolean validateGraph(PointsToAnalysis bb, StructuredGraph graph) {
             PointsToAnalysisMethod aMethod = (PointsToAnalysisMethod) graph.method();
             MultiMethod.MultiMethodKey multiMethodKey = aMethod.getMultiMethodKey();
-            Supplier<Boolean> graphInvalidator = DeoptimizationUtils.createGraphInvalidator(graph, multiMethodKey == RUNTIME_COMPILED_METHOD);
+            Supplier<Boolean> graphChecker = DeoptimizationUtils.createGraphChecker(graph,
+                            multiMethodKey == RUNTIME_COMPILED_METHOD ? DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES : DeoptimizationUtils.AOT_COMPILATION_INVALID_NODES);
             if (multiMethodKey != ORIGINAL_METHOD) {
-                if (graphInvalidator.get()) {
+                if (!graphChecker.get()) {
                     recordFailed(aMethod);
                     return false;
                 }
-            } else if (DeoptimizationUtils.canDeoptForTesting(aMethod, false, graphInvalidator)) {
+            } else if (DeoptimizationUtils.canDeoptForTesting(aMethod, false, graphChecker)) {
                 DeoptimizationUtils.registerDeoptEntriesForDeoptTesting(bb, graph, aMethod);
                 return true;
             }
@@ -882,7 +883,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                  * Once the accumulative policy is activated, we cannot return to the trivial
                  * policy.
                  */
-                return inliningUtils.createAccumulativeInlineScope(accOuter, method, DeoptimizationUtils.runtimeCompilationInvalidNodes);
+                return inliningUtils.createAccumulativeInlineScope(accOuter, method, DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES);
             }
 
             assert outer == null || outer instanceof RuntimeCompilationAlwaysInlineScope : "unexpected outer scope: " + outer;
@@ -902,7 +903,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                 return new RuntimeCompilationAlwaysInlineScope(inliningDepth);
             } else {
                 // start with a new accumulative inline scope
-                return inliningUtils.createAccumulativeInlineScope(null, method, DeoptimizationUtils.runtimeCompilationInvalidNodes);
+                return inliningUtils.createAccumulativeInlineScope(null, method, DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES);
             }
         }
     }
@@ -1147,7 +1148,7 @@ class RuntimeCompilationAlwaysInlineScope extends InlineBeforeAnalysisPolicy.Abs
         /*
          * Inline as long as an invalid node has not been seen.
          */
-        return !DeoptimizationUtils.runtimeCompilationInvalidNodes.test(node);
+        return !DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES.test(node);
     }
 
     @Override
@@ -1158,6 +1159,6 @@ class RuntimeCompilationAlwaysInlineScope extends InlineBeforeAnalysisPolicy.Abs
 
     @Override
     public String toString() {
-        return "AlwaysInlineScope";
+        return "RuntimeCompilationAlwaysInlineScope";
     }
 }
