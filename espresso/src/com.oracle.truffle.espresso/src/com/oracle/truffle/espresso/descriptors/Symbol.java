@@ -309,6 +309,18 @@ public final class Symbol<T> extends ByteSequence {
 
         // java.nio.ByteBuffer
         public static final Symbol<Name> wrap = StaticSymbols.putName("wrap");
+        public static final Symbol<Name> order = StaticSymbols.putName("order");
+        public static final Symbol<Name> isReadOnly = StaticSymbols.putName("isReadOnly");
+        public static final Symbol<Name> getShort = StaticSymbols.putName("getShort");
+        public static final Symbol<Name> getInt = StaticSymbols.putName("getInt");
+        public static final Symbol<Name> getLong = StaticSymbols.putName("getLong");
+        public static final Symbol<Name> getFloat = StaticSymbols.putName("getFloat");
+        public static final Symbol<Name> getDouble = StaticSymbols.putName("getDouble");
+        public static final Symbol<Name> putShort = StaticSymbols.putName("putShort");
+        public static final Symbol<Name> putInt = StaticSymbols.putName("putInt");
+        public static final Symbol<Name> putLong = StaticSymbols.putName("putLong");
+        public static final Symbol<Name> putFloat = StaticSymbols.putName("putFloat");
+        public static final Symbol<Name> putDouble = StaticSymbols.putName("putDouble");
 
         // java.nio.ByteOrder
         public static final Symbol<Name> LITTLE_ENDIAN = StaticSymbols.putName("LITTLE_ENDIAN");
@@ -316,6 +328,7 @@ public final class Symbol<T> extends ByteSequence {
         // java.nio.Buffer
         public static final Symbol<Name> address = StaticSymbols.putName("address");
         public static final Symbol<Name> capacity = StaticSymbols.putName("capacity");
+        public static final Symbol<Name> limit = StaticSymbols.putName("limit");
         public static final Symbol<Name> wait = StaticSymbols.putName("wait");
 
         // java.io.InputStream
@@ -1018,7 +1031,22 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> Class_String = StaticSymbols.putSignature(Type.java_lang_Class, Type.java_lang_String);
         public static final Symbol<Signature> InputStream_String = StaticSymbols.putSignature(Type.java_io_InputStream, Type.java_lang_String);
         public static final Symbol<Signature> _int_byte_array_int_int = StaticSymbols.putSignature(Type._int, Type._byte_array, Type._int, Type._int);
+        public static final Symbol<Signature> ByteBuffer_int_byte_array_int_int = StaticSymbols.putSignature(Type.java_nio_ByteBuffer, Type._int, Type._byte_array, Type._int, Type._int);
+        public static final Symbol<Signature> ByteBuffer_int_byte = StaticSymbols.putSignature(Type.java_nio_ByteBuffer, Type._int, Type._byte);
+        public static final Symbol<Signature> ByteBuffer_int_short = StaticSymbols.putSignature(Type.java_nio_ByteBuffer, Type._int, Type._short);
+        public static final Symbol<Signature> ByteBuffer_int_int = StaticSymbols.putSignature(Type.java_nio_ByteBuffer, Type._int, Type._int);
+        public static final Symbol<Signature> ByteBuffer_int_long = StaticSymbols.putSignature(Type.java_nio_ByteBuffer, Type._int, Type._long);
+        public static final Symbol<Signature> ByteBuffer_int_float = StaticSymbols.putSignature(Type.java_nio_ByteBuffer, Type._int, Type._float);
+        public static final Symbol<Signature> ByteBuffer_int_double = StaticSymbols.putSignature(Type.java_nio_ByteBuffer, Type._int, Type._double);
+        public static final Symbol<Signature> _byte_int = StaticSymbols.putSignature(Type._byte, Type._int);
+        public static final Symbol<Signature> _short_int = StaticSymbols.putSignature(Type._short, Type._int);
+        public static final Symbol<Signature> _int_int = StaticSymbols.putSignature(Type._int, Type._int);
+        public static final Symbol<Signature> _long_int = StaticSymbols.putSignature(Type._long, Type._int);
+        public static final Symbol<Signature> _float_int = StaticSymbols.putSignature(Type._float, Type._int);
+        public static final Symbol<Signature> _double_int = StaticSymbols.putSignature(Type._double, Type._int);
         public static final Symbol<Signature> ByteBuffer_byte_array = StaticSymbols.putSignature(Type.java_nio_ByteBuffer, Type._byte_array);
+        public static final Symbol<Signature> ByteOrder = StaticSymbols.putSignature(Type.java_nio_ByteOrder);
+        public static final Symbol<Signature> ByteBuffer_ByteOrder = StaticSymbols.putSignature(Type.java_nio_ByteBuffer, Type.java_nio_ByteOrder);
         public static final Symbol<Signature> _long_ClassLoader_String = StaticSymbols.putSignature(Type._long, Type.java_lang_ClassLoader, Type.java_lang_String);
         public static final Symbol<Signature> _void_Exception = StaticSymbols.putSignature(Type._void, Type.java_lang_Exception);
         public static final Symbol<Signature> _void_String_String_String_int = StaticSymbols.putSignature(Type._void, Type.java_lang_String, Type.java_lang_String, Type.java_lang_String, Type._int);

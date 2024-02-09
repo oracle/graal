@@ -32,7 +32,9 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_8;
 
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
@@ -45,6 +47,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.ObjectEqualsNode;
+import jdk.graal.compiler.nodes.calc.ReinterpretNode;
 import jdk.graal.compiler.nodes.memory.AbstractMemoryCheckpoint;
 import jdk.graal.compiler.nodes.memory.OrderedMemoryAccess;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
@@ -146,7 +149,17 @@ public abstract class AbstractUnsafeCompareAndSwapNode extends AbstractMemoryChe
             equalsNode = ObjectEqualsNode.virtualizeComparison(expectedAlias, currentValue, graph(), tool);
         }
         if (equalsNode == null && !(expectedAlias instanceof VirtualObjectNode) && !(currentValue instanceof VirtualObjectNode)) {
-            equalsNode = CompareNode.createCompareNode(EQ, expectedAlias, currentValue, tool.getConstantReflection(), NodeView.DEFAULT);
+            if (expectedAlias.getStackKind().isNumericFloat()) {
+                assert currentValue.getStackKind().isNumericFloat() : Assertions.errorMessage("Must both be float", currentValue, expectedAlias);
+                int bits = ((FloatStamp) expectedAlias.stamp(NodeView.DEFAULT)).getBits();
+                assert bits == 32 || bits == 64 : Assertions.errorMessage("Unknown bit count for float stamp for node", expectedAlias);
+                ValueNode expectedAliasAsInt = ReinterpretNode.create(bits == 32 ? JavaKind.Int : JavaKind.Long, expectedAlias, NodeView.DEFAULT);
+                ValueNode currentValueAsInt = ReinterpretNode.create(bits == 32 ? JavaKind.Int : JavaKind.Long, currentValue, NodeView.DEFAULT);
+                CompareNode.createCompareNode(EQ, expectedAliasAsInt, currentValueAsInt, tool.getConstantReflection(), NodeView.DEFAULT);
+            } else {
+                equalsNode = CompareNode.createCompareNode(EQ, expectedAlias, currentValue, tool.getConstantReflection(), NodeView.DEFAULT);
+            }
+
         }
         if (equalsNode == null) {
             tool.getDebug().log(DETAILED_LEVEL, "%s.virtualize() -> Expected and/or current values are virtual and the comparison can not be folded", this);

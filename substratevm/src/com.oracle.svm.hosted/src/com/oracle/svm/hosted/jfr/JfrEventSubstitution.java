@@ -44,7 +44,6 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.SecuritySupport;
-import jdk.jfr.internal.event.EventWriter;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -68,7 +67,6 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
 
     JfrEventSubstitution(MetaAccessProvider metaAccess) {
         baseEventType = metaAccess.lookupJavaType(jdk.internal.event.Event.class);
-        ResolvedJavaType jdkJfrEventWriter = metaAccess.lookupJavaType(EventWriter.class);
         typeSubstitution = new ConcurrentHashMap<>();
         methodSubstitutions = new ConcurrentHashMap<>();
         fieldSubstitutions = new ConcurrentHashMap<>();

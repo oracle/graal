@@ -24,11 +24,6 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.java.LoadFieldNode;
-
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -36,12 +31,19 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
+import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.fieldfolding.IsStaticFinalFieldInitializedNode;
+
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
 
 public class InlineBeforeAnalysisGraphDecoderImpl extends InlineBeforeAnalysisGraphDecoder {
 
     private final SimulateClassInitializerSupport simulateClassInitializerSupport = SimulateClassInitializerSupport.singleton();
+    private final FieldValueInterceptionSupport fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
 
     public InlineBeforeAnalysisGraphDecoderImpl(BigBang bb, InlineBeforeAnalysisPolicy policy, StructuredGraph graph, HostedProviders providers) {
         super(bb, policy, graph, providers, null);
@@ -92,6 +94,10 @@ public class InlineBeforeAnalysisGraphDecoderImpl extends InlineBeforeAnalysisGr
         ConstantNode canonicalized = simulateClassInitializerSupport.tryCanonicalize(bb, node);
         if (canonicalized != null) {
             return canonicalized;
+        }
+        var intrinsified = fieldValueInterceptionSupport.tryIntrinsifyFieldLoad(providers, node);
+        if (intrinsified != null) {
+            return intrinsified;
         }
         return node;
     }

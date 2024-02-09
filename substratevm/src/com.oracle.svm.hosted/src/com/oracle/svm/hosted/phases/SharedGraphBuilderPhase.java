@@ -43,7 +43,6 @@ import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
-import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -60,25 +59,21 @@ import com.oracle.svm.core.graal.nodes.DeoptEntryBeginNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntrySupport;
 import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
-import com.oracle.svm.core.graal.nodes.LazyConstantNode;
+import com.oracle.svm.core.graal.nodes.FieldOffsetNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
-import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
-import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins.FieldOffsetConstantProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.BootstrapMethodIntrospection;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -86,7 +81,6 @@ import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
-import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.java.BciBlockMapping;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.FrameStateBuilder;
@@ -131,6 +125,7 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.internal.org.objectweb.asm.Opcodes;
+import jdk.vm.ci.meta.ConstantPool.BootstrapMethodInvocation;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
@@ -334,12 +329,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        protected void handleUnresolvedNewObjectArray(JavaType type, ValueNode length) {
+        protected void handleUnresolvedNewObjectArray(JavaType type) {
             handleUnresolvedType(type);
         }
 
         @Override
-        protected void handleUnresolvedNewMultiArray(JavaType type, ValueNode[] dims) {
+        protected void handleUnresolvedNewMultiArray(JavaType type) {
             handleUnresolvedType(type.getElementalType());
         }
 
@@ -394,12 +389,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        protected void handleUnresolvedStoreField(JavaField field, ValueNode value, ValueNode receiver) {
+        protected void handleUnresolvedStoreField(JavaField field) {
             handleUnresolvedField(field);
         }
 
         @Override
-        protected void handleUnresolvedLoadField(JavaField field, ValueNode receiver) {
+        protected void handleUnresolvedLoadField(JavaField field) {
             handleUnresolvedField(field);
         }
 
@@ -901,9 +896,9 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         public class BootstrapMethodHandler {
 
             private Object loadConstantDynamic(int cpi, int opcode) {
-                BootstrapMethodIntrospection bootstrap;
+                BootstrapMethodInvocation bootstrap;
                 try {
-                    bootstrap = ((AnalysisConstantPool) constantPool).lookupBootstrapMethodIntrospection(cpi, -1);
+                    bootstrap = constantPool.lookupBootstrapMethodInvocation(cpi, -1);
                 } catch (Throwable ex) {
                     handleBootstrapException(ex, "constant");
                     return ex;
@@ -912,13 +907,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                     int parameterLength = bootstrap.getMethod().getParameters().length;
                     List<JavaConstant> staticArguments = bootstrap.getStaticArguments();
                     boolean isVarargs = bootstrap.getMethod().isVarArgs();
-                    JavaConstant type = ((ImageHeapInstance) bootstrap.getType()).getHostedObject();
-                    DynamicHub typeClass = (DynamicHub) ((DirectSubstrateObjectConstant) type).getObject();
+                    DynamicHub typeClass = getSnippetReflection().asObject(DynamicHub.class, bootstrap.getType());
                     boolean isPrimitive = typeClass.isPrimitive();
 
                     for (JavaConstant argument : staticArguments) {
                         if (argument instanceof ImageHeapInstance imageHeapInstance) {
-                            Object arg = ((DirectSubstrateObjectConstant) imageHeapInstance.getHostedObject()).getObject();
+                            Object arg = getSnippetReflection().asObject(Object.class, imageHeapInstance);
                             if (arg instanceof UnresolvedJavaType) {
                                 return arg;
                             }
@@ -972,9 +966,8 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
              * return result;
              * </pre>
              */
-            protected Object resolveLinkedObject(int bci, int cpi, int opcode, BootstrapMethodIntrospection bootstrap, int parameterLength, List<JavaConstant> staticArgumentsList,
+            protected Object resolveLinkedObject(int bci, int cpi, int opcode, BootstrapMethodInvocation bootstrap, int parameterLength, List<JavaConstant> staticArgumentsList,
                             boolean isVarargs, boolean isPrimitiveConstant) {
-                AnalysisConstantReflectionProvider analysisConstantReflection = (AnalysisConstantReflectionProvider) getConstantReflection();
                 ResolvedJavaMethod bootstrapMethod = bootstrap.getMethod();
 
                 /* Step 1: Initialize the BootstrapMethodInfo. */
@@ -982,7 +975,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 BootstrapMethodRecord bootstrapMethodRecord = new BootstrapMethodRecord(bci, cpi, ((AnalysisMethod) method).getMultiMethod(MultiMethod.ORIGINAL_METHOD));
                 BootstrapMethodInfo bootstrapMethodInfo = BootstrapMethodConfiguration.singleton().getBootstrapMethodInfoCache().computeIfAbsent(bootstrapMethodRecord,
                                 key -> new BootstrapMethodInfo());
-                ConstantNode bootstrapMethodInfoNode = ConstantNode.forConstant(analysisConstantReflection.forObject(bootstrapMethodInfo), getMetaAccess(), getGraph());
+                ConstantNode bootstrapMethodInfoNode = ConstantNode.forConstant(getSnippetReflection().forObject(bootstrapMethodInfo), getMetaAccess(), getGraph());
 
                 /*
                  * Step 2: Check if the call site or the constant is linked or if it previously
@@ -1020,8 +1013,17 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                         } else if (argConstant instanceof Throwable || argConstant instanceof UnresolvedJavaType) {
                             /* A nested constant dynamic threw. */
                             return argConstant;
+                        } else if (argConstant instanceof JavaConstant javaConstant) {
+                            currentNode = ConstantNode.forConstant(javaConstant, getMetaAccess(), getGraph());
                         } else {
-                            currentNode = ConstantNode.forConstant(analysisConstantReflection.forObject(argConstant), getMetaAccess(), getGraph());
+                            throw VMError.shouldNotReachHere("Unexpected constant value: " + argConstant);
+                        }
+                        if (isVarargs && i + 4 >= parameterLength) {
+                            /* Primitive arguments in the vararg area have to be boxed. */
+                            JavaKind stackKind = currentNode.getStackKind();
+                            if (stackKind.isPrimitive()) {
+                                currentNode = append(BoxNode.create(currentNode, getMetaAccess().lookupJavaType(stackKind.toBoxedJavaClass()), stackKind));
+                            }
                         }
                     } else {
                         /*
@@ -1054,7 +1056,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                  */
 
                 addArgument(isVarargs, arguments, 0, lookupNode);
-                ConstantNode bootstrapName = ConstantNode.forConstant(analysisConstantReflection.forString(bootstrap.getName()), getMetaAccess(), getGraph());
+                ConstantNode bootstrapName = ConstantNode.forConstant(getConstantReflection().forString(bootstrap.getName()), getMetaAccess(), getGraph());
                 addArgument(isVarargs, arguments, 1, bootstrapName);
                 addArgument(isVarargs, arguments, 2, ConstantNode.forConstant(bootstrap.getType(), getMetaAccess(), getGraph()));
 
@@ -1065,7 +1067,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                     System.arraycopy(oldArguments, 0, arguments, 1, oldArguments.length);
                 }
 
-                Class<?> returnClass = OriginalClassProvider.getJavaClass((ResolvedJavaType) bootstrapMethod.getSignature().getReturnType(null));
+                Class<?> returnClass = OriginalClassProvider.getJavaClass(bootstrapMethod.getSignature().getReturnType(null));
 
                 InvokeWithExceptionNode bootstrapObject;
                 ValueNode bootstrapObjectNode;
@@ -1105,17 +1107,11 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                  */
 
                 ConstantNode nullConstant = ConstantNode.forConstant(JavaConstant.NULL_POINTER, getMetaAccess(), getGraph());
-                ValueNode offset = graph.addOrUniqueWithInputs(
-                                LazyConstantNode.create(StampFactory.forKind(JavaKind.Long), new FieldOffsetConstantProvider(bootstrapObjectField), SharedBytecodeParser.this));
+                ValueNode offset = graph.addOrUniqueWithInputs(FieldOffsetNode.create(JavaKind.Long, bootstrapObjectResolvedField));
                 FieldLocationIdentity fieldLocationIdentity = new FieldLocationIdentity(bootstrapObjectResolvedField);
                 FixedWithNextNode linkBootstrapObject = graph.add(
                                 new UnsafeCompareAndSwapNode(bootstrapMethodInfoNode, offset, nullConstant, finalBootstrapObjectNode, JavaKind.Object, fieldLocationIdentity, MemoryOrderMode.RELEASE));
                 ((StateSplit) linkBootstrapObject).setStateAfter(createFrameState(stream.nextBCI(), (StateSplit) linkBootstrapObject));
-
-                NodeSourcePosition nodeSourcePosition = getGraph().currentNodeSourcePosition();
-                Object reason = nodeSourcePosition == null ? "Unknown graph builder location." : nodeSourcePosition;
-                bootstrapObjectResolvedField.registerAsAccessed(reason);
-                bootstrapObjectResolvedField.registerAsUnsafeAccessed(reason);
 
                 EndNode trueEnd = graph.add(new EndNode());
 
@@ -1171,6 +1167,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
             private void addArgument(boolean isVarargs, ValueNode[] arguments, int i, ValueNode currentNode) {
                 if (isVarargs && i >= arguments.length - 1) {
+                    VMError.guarantee(currentNode.getStackKind() == JavaKind.Object, "Must have an Object value to store into an Objet[] array: %s at index %s", currentNode, i);
                     StoreIndexedNode storeIndexedNode = append(new StoreIndexedNode(arguments[arguments.length - 1], ConstantNode.forInt(i + 1 - arguments.length, getGraph()), null, null,
                                     JavaKind.Object, currentNode));
                     storeIndexedNode.setStateAfter(createFrameState(stream.nextBCI(), storeIndexedNode));
@@ -1206,11 +1203,11 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
              * types in the bootstrap method declaration are detected in
              * {@link java.lang.invoke.MethodHandle#invoke(Object...)}.
              */
-            private boolean isBootstrapInvocationInvalid(BootstrapMethodIntrospection bootstrap, int parameterLength, List<JavaConstant> staticArgumentsList, boolean isVarargs, Class<?> typeClass) {
-                ResolvedJavaMethod method = bootstrap.getMethod();
+            private boolean isBootstrapInvocationInvalid(BootstrapMethodInvocation bootstrap, int parameterLength, List<JavaConstant> staticArgumentsList, boolean isVarargs, Class<?> typeClass) {
+                ResolvedJavaMethod bootstrapMethod = bootstrap.getMethod();
                 return (isVarargs && parameterLength > (3 + staticArgumentsList.size())) || (!isVarargs && parameterLength != (3 + staticArgumentsList.size())) ||
-                                !(OriginalClassProvider.getJavaClass((ResolvedJavaType) method.getSignature().getReturnType(null)).isAssignableFrom(typeClass) || method.isConstructor()) ||
-                                !checkBootstrapParameters(method, bootstrap.getStaticArguments(), true);
+                                !(OriginalClassProvider.getJavaClass(bootstrapMethod.getSignature().getReturnType(null)).isAssignableFrom(typeClass) || bootstrapMethod.isConstructor()) ||
+                                !checkBootstrapParameters(bootstrapMethod, bootstrap.getStaticArguments(), true);
             }
 
             protected boolean checkBootstrapParameters(ResolvedJavaMethod bootstrapMethod, List<JavaConstant> staticArguments, boolean condy) {
@@ -1254,7 +1251,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                         }
                     } else {
                         if (!(bootstrapMethod.isVarArgs() && staticArguments.size() == i - 3) && staticArguments.get(i - 3) instanceof ImageHeapConstant imageHeapConstant) {
-                            Class<?> parameterClass = OriginalClassProvider.getJavaClass(imageHeapConstant.getType(getMetaAccess()));
+                            Class<?> parameterClass = OriginalClassProvider.getJavaClass(imageHeapConstant.getType());
                             /*
                              * Having incompatible types here causes a ClassCastException in
                              * MethodHandle.invoke on the bootstrap method invocation.
@@ -1295,8 +1292,8 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
             protected InvokeWithExceptionNode invokeMethodAndAdd(int bci, Class<?> returnClass, InvokeKind invokeKind, ValueNode[] arguments, ResolvedJavaMethod invokedMethod) {
                 CallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, invokedMethod, arguments, returnClass, null));
-                InvokeWithExceptionNode invoke = graph
-                                .add(createInvokeWithException(bci, callTarget, callTarget.returnStamp().getTrustedStamp().getStackKind(), ExceptionEdgeAction.INCLUDE_AND_HANDLE));
+                InvokeWithExceptionNode invoke = graph.add(
+                                createInvokeWithException(bci, callTarget, callTarget.returnStamp().getTrustedStamp().getStackKind(), ExceptionEdgeAction.INCLUDE_AND_HANDLE));
                 invoke.setStateAfter(createFrameState(stream.nextBCI(), invoke));
                 return invoke;
             }

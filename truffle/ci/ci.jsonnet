@@ -139,15 +139,9 @@
       ],
     },
 
-    truffle_common + windows_amd64 + common.oraclejdk21 + devkits["windows-jdk21"] + guard {
-      name: "gate-truffle-nfi-windows-21",
-      # TODO make that a full gate run
-      # currently, some truffle unittests fail on windows
-      run: [
-        ["mx", "build" ],
-        ["mx", "unittest", "--verbose" ],
-      ],
-    },
+    # TODO Run full gate on Windows GR-51441
+    windows_amd64 + gate_lite + common.oraclejdk21 + devkits["windows-jdk21"] + guard,
+    windows_amd64 + gate_lite + common.oraclejdkLatest + devkits["windows-jdkLatest"] + guard,
 
     truffle_common + linux_amd64 + common.oraclejdk21 + common.deps.eclipse + common.deps.jdt + guard + {
       name: "weekly-truffle-coverage-21-linux-amd64",

@@ -811,16 +811,15 @@ public class InliningUtil extends ValueMergeUtil {
          * Not every duplicate node is newly created, so only update the position of the newly
          * created nodes.
          */
-        EconomicSet<Node> newNodes = EconomicSet.create(Equivalence.DEFAULT);
-        newNodes.addAll(invokeGraph.getNewNodes(mark));
         EconomicMap<NodeSourcePosition, NodeSourcePosition> posMap = EconomicMap.create(Equivalence.DEFAULT);
         UnmodifiableMapCursor<Node, Node> cursor = duplicates.getEntries();
         ResolvedJavaMethod inlineeRoot = null;
         while (cursor.advance()) {
             Node value = cursor.getValue();
-            if (!newNodes.contains(value)) {
+            if (!invokeGraph.isNew(mark, value)) {
                 continue;
             }
+
             if (isSubstitution && invokePos == null) {
                 // There's no caller information so the source position for this node will be
                 // invalid, so it should be cleared.
@@ -830,6 +829,10 @@ public class InliningUtil extends ValueMergeUtil {
                 if (oldPos != null) {
                     NodeSourcePosition updatedPos = posMap.get(oldPos);
                     if (updatedPos == null) {
+                        // This verifies that all the incoming source positions agree about their
+                        // root method. It then inserts invokePos as the caller so they will all
+                        // continue to agree about the root method since it will be
+                        // invokePos.getRootMethod.
                         if (inlineeRoot == null) {
                             assert (inlineeRoot = oldPos.getRootMethod()) != null;
                         } else {
@@ -854,7 +857,6 @@ public class InliningUtil extends ValueMergeUtil {
                 }
             }
         }
-        assert invokeGraph.verifySourcePositions(false);
     }
 
     public static void processMonitorId(FrameState stateAfter, MonitorIdNode monitorIdNode) {

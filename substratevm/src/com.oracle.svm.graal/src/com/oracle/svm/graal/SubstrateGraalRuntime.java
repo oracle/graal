@@ -24,17 +24,18 @@
  */
 package com.oracle.svm.graal;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.api.runtime.GraalRuntime;
-import jdk.graal.compiler.core.target.Backend;
-import jdk.graal.compiler.runtime.RuntimeProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.graal.GraalConfiguration;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.stack.SubstrateStackIntrospection;
 import com.oracle.svm.util.ClassUtil;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.api.runtime.GraalRuntime;
+import jdk.graal.compiler.core.target.Backend;
+import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.stack.StackIntrospection;
 
@@ -55,7 +56,8 @@ public class SubstrateGraalRuntime implements GraalRuntime, RuntimeProvider {
         if (clazz == RuntimeProvider.class) {
             return (T) this;
         } else if (clazz == SnippetReflectionProvider.class) {
-            return (T) TruffleRuntimeCompilationSupport.getRuntimeConfig().getSnippetReflection();
+            RuntimeConfiguration runtimeConfiguration = TruffleRuntimeCompilationSupport.getRuntimeConfig();
+            return (T) runtimeConfiguration.getProviders().getSnippetReflection();
         } else if (clazz == StackIntrospection.class) {
             return (T) SubstrateStackIntrospection.SINGLETON;
         }

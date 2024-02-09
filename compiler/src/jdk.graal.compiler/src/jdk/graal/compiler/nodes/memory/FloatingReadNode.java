@@ -125,10 +125,10 @@ public final class FloatingReadNode extends FloatingAccessNode implements LIRLow
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         MemoryKill lla = getLastLocationAccess();
         assert lla != null || getLocationIdentity().isImmutable() : "lastLocationAccess of " + this + " shouldn't be null for mutable location identity " + getLocationIdentity();
-        return super.verify();
+        return super.verifyNode();
     }
 
     @Override

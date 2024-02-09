@@ -39,7 +39,7 @@ The report will detail all registered service classes, the API methods that trig
 ## Provider Registration
 
 The `native-image` builder captures the list of providers and their preference order from the underlying JVM.
-The provider order is specified in the `java.security` file under `<java-home>/lib/security/java.security`.
+The provider order is specified in the `java.security` file under `<java-home>/conf/security/java.security`.
 New security providers cannot be registered at run time; all providers must be statically configured at executable build time.
 
 ## Providers Reordering at Run Time

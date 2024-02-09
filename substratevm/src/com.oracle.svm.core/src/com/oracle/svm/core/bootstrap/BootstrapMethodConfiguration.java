@@ -96,9 +96,15 @@ public class BootstrapMethodConfiguration implements InternalFeature {
         /* Causes deadlock in Permission feature. */
         Method bootstrap = ReflectionUtil.lookupMethod(ObjectMethods.class, "bootstrap", MethodHandles.Lookup.class, String.class, TypeDescriptor.class, Class.class, String.class,
                         MethodHandle[].class);
-        Method typeSwitch = ReflectionUtil.lookupMethod(SwitchBootstraps.class, "typeSwitch", MethodHandles.Lookup.class, String.class, MethodType.class, Object[].class);
 
-        indyBuildTimeAllowList = Set.of(metafactory, altMetafactory, makeConcat, makeConcatWithConstants, bootstrap, typeSwitch);
+        /*
+         * Bootstrap methods used for switch statements. Executing these methods at run time implies
+         * defining hidden classes at run time, which is unsupported.
+         */
+        Method typeSwitch = ReflectionUtil.lookupMethod(SwitchBootstraps.class, "typeSwitch", MethodHandles.Lookup.class, String.class, MethodType.class, Object[].class);
+        Method enumSwitch = ReflectionUtil.lookupMethod(SwitchBootstraps.class, "enumSwitch", MethodHandles.Lookup.class, String.class, MethodType.class, Object[].class);
+
+        indyBuildTimeAllowList = Set.of(metafactory, altMetafactory, makeConcat, makeConcatWithConstants, bootstrap, typeSwitch, enumSwitch);
 
         /* Bootstrap methods used for various dynamic constants. */
         Method nullConstant = ReflectionUtil.lookupMethod(ConstantBootstraps.class, "nullConstant", MethodHandles.Lookup.class, String.class, Class.class);

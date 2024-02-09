@@ -336,7 +336,7 @@ public final class CallTreePrinter {
             String name = method.getDeclaringClass().toJavaName(true);
             if (packageNameOnly) {
                 name = packagePrefix(name);
-                if (name.contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
+                if (LambdaUtils.isLambdaClassName(name)) {
                     /* Also strip synthetic package names added for lambdas. */
                     name = packagePrefix(name);
                 }

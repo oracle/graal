@@ -28,7 +28,6 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -40,6 +39,8 @@ import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.HeapSizeVerifier;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 @AutomaticallyRegisteredImageSingleton({VMRuntimeSupport.class, RuntimeSupport.class})
 public final class RuntimeSupport implements VMRuntimeSupport {
@@ -93,7 +94,7 @@ public final class RuntimeSupport implements VMRuntimeSupport {
     public void initialize() {
         boolean shouldInitialize = initializationState.compareAndSet(InitializationState.Uninitialized, InitializationState.InProgress);
         if (shouldInitialize) {
-            IsolateArgumentParser.singleton().verifyOptionValues();
+            IsolateArgumentParser.verifyOptionValues();
             HeapSizeVerifier.verifyHeapOptions();
 
             executeHooks(startupHooks);

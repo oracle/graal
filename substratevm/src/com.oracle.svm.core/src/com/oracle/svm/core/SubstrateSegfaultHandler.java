@@ -63,7 +63,7 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
-import com.oracle.svm.core.threadlocal.VMThreadLocalMTSupport;
+import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -127,7 +127,7 @@ public abstract class SubstrateSegfaultHandler {
     private static final long MARKER_VALUE = 0x0123456789ABCDEFL;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
     static long offsetOfStaticFieldWithWellKnownValue;
-    private static long staticFieldWithWellKnownValue = MARKER_VALUE;
+    @SuppressWarnings("unused") private static long staticFieldWithWellKnownValue = MARKER_VALUE;
 
     private boolean installed;
 
@@ -169,25 +169,22 @@ public abstract class SubstrateSegfaultHandler {
             return false;
         }
 
-        /* Try to determine the isolate via the thread register. */
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            /*
-             * Set the thread register to null so that we don't execute this code more than once if
-             * we trigger a recursive segfault.
-             */
-            WriteCurrentVMThreadNode.writeCurrentVMThread(WordFactory.nullPointer());
+        /*
+         * Try to determine the isolate via the thread register. Set the thread register to null so
+         * that we don't execute this code more than once if we trigger a recursive segfault.
+         */
+        WriteCurrentVMThreadNode.writeCurrentVMThread(WordFactory.nullPointer());
 
-            IsolateThread isolateThread = (IsolateThread) RegisterDumper.singleton().getThreadPointer(context);
-            if (isolateThread.isNonNull()) {
-                isolate = VMThreads.IsolateTL.get(isolateThread);
-                if (isValid(isolate)) {
-                    if (SubstrateOptions.SpawnIsolates.getValue()) {
-                        CEntryPointSnippets.setHeapBase(isolate);
-                    }
-
-                    WriteCurrentVMThreadNode.writeCurrentVMThread(isolateThread);
-                    return true;
+        IsolateThread isolateThread = (IsolateThread) RegisterDumper.singleton().getThreadPointer(context);
+        if (isolateThread.isNonNull()) {
+            isolate = VMThreads.IsolateTL.get(isolateThread);
+            if (isValid(isolate)) {
+                if (SubstrateOptions.SpawnIsolates.getValue()) {
+                    CEntryPointSnippets.setHeapBase(isolate);
                 }
+
+                WriteCurrentVMThreadNode.writeCurrentVMThread(isolateThread);
+                return true;
             }
         }
 
@@ -244,7 +241,7 @@ public abstract class SubstrateSegfaultHandler {
              * Some error occurred or this is an unattached thread. Only set up a minimal
              * IsolateThread so that we can at least try to dump some information.
              */
-            int isolateThreadSize = VMThreadLocalMTSupport.singleton().vmThreadSize;
+            int isolateThreadSize = VMThreadLocalSupport.singleton().vmThreadSize;
             IsolateThread structForUnattachedThread = UnsafeLateStackValue.get(isolateThreadSize);
             UnmanagedMemoryUtil.fill((Pointer) structForUnattachedThread, WordFactory.unsigned(isolateThreadSize), (byte) 0);
             CEntryPointSnippets.initializeIsolateThreadForCrashHandler(isolate, structForUnattachedThread);
@@ -279,8 +276,8 @@ public abstract class SubstrateSegfaultHandler {
 
             boolean printedDiagnostics = SubstrateDiagnostics.printFatalError(log, sp, ip, context, false);
             if (SubstrateSegfaultHandler.isInstalled() && printedDiagnostics) {
-                log.string("Segfault detected, aborting process. ")
-                                .string("Use '-XX:-InstallSegfaultHandler' to disable the segfault handler at run time and create a core dump instead. ")
+                log.string("Segfault detected, aborting process. ") //
+                                .string("Use '-XX:-InstallSegfaultHandler' to disable the segfault handler at run time and create a core dump instead. ") //
                                 .string("Rebuild with '-R:-InstallSegfaultHandler' to disable the handler permanently at build time.") //
                                 .newline().newline();
             }

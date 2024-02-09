@@ -25,10 +25,10 @@
 package jdk.graal.compiler.core.test;
 
 import static java.lang.reflect.Modifier.isStatic;
-import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
 import static jdk.graal.compiler.nodes.ConstantNode.getConstantNodes;
 import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
 import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
+import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -56,6 +56,13 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.internal.AssumptionViolatedException;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.api.test.Graal;
@@ -137,13 +144,6 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.graal.compiler.test.GraalTest;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.internal.AssumptionViolatedException;
-
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -503,7 +503,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                     boolean checkConstants,
                     boolean addGaphsToDebugContext) {
         DebugContext debug = actual.getDebug();
-        actual.getOptimizationLog().emit(new StableMethodNameFormatter(getProviders(), debug));
+        actual.getOptimizationLog().emit(new StableMethodNameFormatter(getDefaultGraphBuilderPhase(), getProviders(), debug));
 
         String expectedString = getCanonicalGraphString(expected, excludeVirtual, checkConstants);
         String actualString = getCanonicalGraphString(actual, excludeVirtual, checkConstants);
@@ -1263,7 +1263,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             Request<CompilationResult> request = new Request<>(graphToCompile, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), getOptimisticOptimizations(),
                             graphToCompile.getProfilingInfo(), suites, createLIRSuites(options), compilationResult, CompilationResultBuilderFactory.Default, null, true);
             CompilationResult result = GraalCompiler.compile(request);
-            graphToCompile.getOptimizationLog().emit(new StableMethodNameFormatter(getProviders(), graphToCompile.getDebug()));
+            graphToCompile.getOptimizationLog().emit(new StableMethodNameFormatter(getDefaultGraphBuilderPhase(), getProviders(), graphToCompile.getDebug()));
             return result;
         } catch (Throwable e) {
             throw debug.handle(e);
@@ -1580,6 +1580,12 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
+    /**
+     * Gets {@link ConstantNode}s to bind to {@link ParameterNode}s when
+     * {@linkplain #parse(Builder, PhaseSuite) parsing} a graph. That is, parameter at index
+     * {@code i} is replaced with element {@code i} in the returned array unless the element is
+     * {@link #NO_BIND}.
+     */
     protected Object[] getArgumentToBind() {
         return null;
     }
@@ -1608,6 +1614,14 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected PhaseSuite<HighTierContext> getDefaultGraphBuilderSuite() {
         // defensive copying
         return backend.getSuites().getDefaultGraphBuilderSuite().copy();
+    }
+
+    protected GraphBuilderPhase getDefaultGraphBuilderPhase() {
+        return (GraphBuilderPhase) getDefaultGraphBuilderSuite().findPhase(GraphBuilderPhase.class).previous();
+    }
+
+    protected GraphBuilderPhase getDefaultGraphBuilderPhase(GraphBuilderConfiguration config) {
+        return getDefaultGraphBuilderPhase().copyWithConfig(config);
     }
 
     /**

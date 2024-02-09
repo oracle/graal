@@ -576,8 +576,16 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public boolean registerAsReachable(Object reason) {
         assert isValidReason(reason) : "Registering a type as reachable needs to provide a valid reason.";
         if (!AtomicUtils.isSet(this, isReachableUpdater)) {
-            /* Mark this type and all its super types as reachable. */
-            forAllSuperTypes(type -> AtomicUtils.atomicSetAndRun(type, reason, isReachableUpdater, type::onReachable));
+            /* First mark all super types as reachable. */
+            forAllSuperTypes(type -> type.registerAsReachable(reason), false);
+            /*
+             * Only mark this type itself as reachable after marking all supertypes. This ensures
+             * that, e.g., a type is never seen as reachable by another thread before all of its
+             * supertypes are already marked as reachable too. Note that this does *not* guarantee
+             * that the onReachable hook for all supertypes is already finished, because they can
+             * still be running in another thread.
+             */
+            AtomicUtils.atomicSetAndRun(this, reason, isReachableUpdater, this::onReachable);
             return true;
         }
         return false;
@@ -705,18 +713,13 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         if (elementType == null) {
             return;
         }
+        if (processType) {
+            superTypeConsumer.accept(elementType.getArrayClass(arrayDimension));
+        }
         for (AnalysisType interf : elementType.getInterfaces()) {
             forAllSuperTypes(interf, arrayDimension, true, superTypeConsumer);
         }
         forAllSuperTypes(elementType.getSuperclass(), arrayDimension, true, superTypeConsumer);
-        /*
-         * Process the type itself only after visiting all supertypes. This ensures that, e.g., a
-         * type is never seen as reachable by another thread before all of its supertypes are
-         * already marked as reachable too.
-         */
-        if (processType) {
-            superTypeConsumer.accept(elementType.getArrayClass(arrayDimension));
-        }
     }
 
     protected synchronized void addAssignableType(BigBang bb, TypeState typeState) {

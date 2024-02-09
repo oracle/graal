@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.runtime.dispatch.messages;
 
 import java.math.BigInteger;
+import java.nio.ByteOrder;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -1340,7 +1341,28 @@ public abstract class InteropMessage extends EspressoNode {
             return execute(args[0]);
         }
 
-        public abstract int execute(Object receiver) throws UnsupportedMessageException;
+        public abstract long execute(Object receiver) throws UnsupportedMessageException;
+    }
+
+    @GenerateUncached(inherit = true)
+    public abstract static class ReadBuffer extends InteropMessage {
+        @Override
+        public final String name() {
+            return "readBuffer";
+        }
+
+        @Override
+        public final Object execute(Object[] args) throws InteropException {
+            assert args.length == 5;
+            assert args[1] instanceof Byte;
+            assert args[2] instanceof byte[];
+            assert args[3] instanceof Integer;
+            assert args[4] instanceof Integer;
+            execute(args[0], (byte) args[1], (byte[]) args[2], (int) args[3], (int) args[4]);
+            return null;
+        }
+
+        public abstract void execute(Object receiver, long byteOffset, byte[] destination, int destinationOffset, int length) throws UnsupportedMessageException, InvalidBufferOffsetException;
     }
 
     @GenerateUncached(inherit = true)
@@ -1388,12 +1410,13 @@ public abstract class InteropMessage extends EspressoNode {
 
         @Override
         public final Object execute(Object[] args) throws InteropException {
-            assert args.length == 2;
-            assert args[1] instanceof Long;
-            return execute(args[0], (long) args[1]);
+            assert args.length == 3;
+            assert args[1] instanceof ByteOrder;
+            assert args[2] instanceof Long;
+            return execute(args[0], (ByteOrder) args[1], (long) args[2]);
         }
 
-        public abstract short execute(Object receiver, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException;
+        public abstract short execute(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException;
     }
 
     @GenerateUncached(inherit = true)
@@ -1405,14 +1428,15 @@ public abstract class InteropMessage extends EspressoNode {
 
         @Override
         public final Object execute(Object[] args) throws InteropException {
-            assert args.length == 3;
-            assert args[1] instanceof Long;
-            assert args[2] instanceof Short;
-            execute(args[0], (long) args[1], (short) args[2]);
+            assert args.length == 4;
+            assert args[1] instanceof ByteOrder;
+            assert args[2] instanceof Long;
+            assert args[3] instanceof Short;
+            execute(args[0], (ByteOrder) args[1], (long) args[2], (short) args[3]);
             return null;
         }
 
-        public abstract void execute(Object receiver, long byteOffset, short value) throws UnsupportedMessageException, InvalidBufferOffsetException;
+        public abstract void execute(Object receiver, ByteOrder order, long byteOffset, short value) throws UnsupportedMessageException, InvalidBufferOffsetException;
     }
 
     @GenerateUncached(inherit = true)
@@ -1424,12 +1448,13 @@ public abstract class InteropMessage extends EspressoNode {
 
         @Override
         public final Object execute(Object[] args) throws InteropException {
-            assert args.length == 2;
-            assert args[1] instanceof Long;
-            return execute(args[0], (long) args[1]);
+            assert args.length == 3;
+            assert args[1] instanceof ByteOrder;
+            assert args[2] instanceof Long;
+            return execute(args[0], (ByteOrder) args[1], (long) args[2]);
         }
 
-        public abstract int execute(Object receiver, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException;
+        public abstract int execute(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException;
     }
 
     @GenerateUncached(inherit = true)
@@ -1441,14 +1466,15 @@ public abstract class InteropMessage extends EspressoNode {
 
         @Override
         public final Object execute(Object[] args) throws InteropException {
-            assert args.length == 3;
-            assert args[1] instanceof Long;
-            assert args[2] instanceof Integer;
-            execute(args[0], (long) args[1], (int) args[2]);
+            assert args.length == 4;
+            assert args[1] instanceof ByteOrder;
+            assert args[2] instanceof Long;
+            assert args[3] instanceof Integer;
+            execute(args[0], (ByteOrder) args[1], (long) args[2], (int) args[3]);
             return null;
         }
 
-        public abstract void execute(Object receiver, long byteOffset, int value) throws UnsupportedMessageException, InvalidBufferOffsetException;
+        public abstract void execute(Object receiver, ByteOrder order, long byteOffset, int value) throws UnsupportedMessageException, InvalidBufferOffsetException;
     }
 
     @GenerateUncached(inherit = true)
@@ -1460,12 +1486,13 @@ public abstract class InteropMessage extends EspressoNode {
 
         @Override
         public final Object execute(Object[] args) throws InteropException {
-            assert args.length == 2;
-            assert args[1] instanceof Long;
-            return execute(args[0], (long) args[1]);
+            assert args.length == 3;
+            assert args[1] instanceof ByteOrder;
+            assert args[2] instanceof Long;
+            return execute(args[0], (ByteOrder) args[1], (long) args[2]);
         }
 
-        public abstract long execute(Object receiver, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException;
+        public abstract long execute(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException;
     }
 
     @GenerateUncached(inherit = true)
@@ -1477,14 +1504,15 @@ public abstract class InteropMessage extends EspressoNode {
 
         @Override
         public final Object execute(Object[] args) throws InteropException {
-            assert args.length == 3;
-            assert args[1] instanceof Long;
+            assert args.length == 4;
+            assert args[1] instanceof ByteOrder;
             assert args[2] instanceof Long;
-            execute(args[0], (long) args[1], (long) args[2]);
+            assert args[3] instanceof Long;
+            execute(args[0], (ByteOrder) args[1], (long) args[2], (long) args[3]);
             return null;
         }
 
-        public abstract void execute(Object receiver, long byteOffset, long value) throws UnsupportedMessageException, InvalidBufferOffsetException;
+        public abstract void execute(Object receiver, ByteOrder order, long byteOffset, long value) throws UnsupportedMessageException, InvalidBufferOffsetException;
     }
 
     @GenerateUncached(inherit = true)
@@ -1496,12 +1524,13 @@ public abstract class InteropMessage extends EspressoNode {
 
         @Override
         public final Object execute(Object[] args) throws InteropException {
-            assert args.length == 2;
-            assert args[1] instanceof Long;
-            return execute(args[0], (long) args[1]);
+            assert args.length == 3;
+            assert args[1] instanceof ByteOrder;
+            assert args[2] instanceof Long;
+            return execute(args[0], (ByteOrder) args[1], (long) args[2]);
         }
 
-        public abstract float execute(Object receiver, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException;
+        public abstract float execute(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException;
     }
 
     @GenerateUncached(inherit = true)
@@ -1513,14 +1542,15 @@ public abstract class InteropMessage extends EspressoNode {
 
         @Override
         public final Object execute(Object[] args) throws InteropException {
-            assert args.length == 3;
-            assert args[1] instanceof Long;
-            assert args[2] instanceof Float;
-            execute(args[0], (long) args[1], (float) args[2]);
+            assert args.length == 4;
+            assert args[1] instanceof ByteOrder;
+            assert args[2] instanceof Long;
+            assert args[3] instanceof Float;
+            execute(args[0], (ByteOrder) args[1], (long) args[2], (float) args[3]);
             return null;
         }
 
-        public abstract void execute(Object receiver, long byteOffset, float value) throws UnsupportedMessageException, InvalidBufferOffsetException;
+        public abstract void execute(Object receiver, ByteOrder order, long byteOffset, float value) throws UnsupportedMessageException, InvalidBufferOffsetException;
     }
 
     @GenerateUncached(inherit = true)
@@ -1532,12 +1562,13 @@ public abstract class InteropMessage extends EspressoNode {
 
         @Override
         public final Object execute(Object[] args) throws InteropException {
-            assert args.length == 2;
-            assert args[1] instanceof Long;
-            return execute(args[0], (long) args[1]);
+            assert args.length == 3;
+            assert args[1] instanceof ByteOrder;
+            assert args[2] instanceof Long;
+            return execute(args[0], (ByteOrder) args[1], (long) args[2]);
         }
 
-        public abstract double execute(Object receiver, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException;
+        public abstract double execute(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException;
     }
 
     @GenerateUncached(inherit = true)
@@ -1549,14 +1580,15 @@ public abstract class InteropMessage extends EspressoNode {
 
         @Override
         public final Object execute(Object[] args) throws InteropException {
-            assert args.length == 3;
-            assert args[1] instanceof Long;
-            assert args[2] instanceof Double;
-            execute(args[0], (long) args[1], (double) args[2]);
+            assert args.length == 4;
+            assert args[1] instanceof ByteOrder;
+            assert args[2] instanceof Long;
+            assert args[3] instanceof Double;
+            execute(args[0], (ByteOrder) args[1], (long) args[2], (short) args[3]);
             return null;
         }
 
-        public abstract void execute(Object receiver, long byteOffset, double value) throws UnsupportedMessageException, InvalidBufferOffsetException;
+        public abstract void execute(Object receiver, ByteOrder order, long byteOffset, double value) throws UnsupportedMessageException, InvalidBufferOffsetException;
     }
 
     @GenerateUncached(inherit = true)

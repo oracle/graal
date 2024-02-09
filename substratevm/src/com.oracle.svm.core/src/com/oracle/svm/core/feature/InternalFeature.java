@@ -26,18 +26,18 @@ package com.oracle.svm.core.feature;
 
 import java.util.Map;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.tiers.Suites;
-import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.tiers.Suites;
+import jdk.graal.compiler.phases.util.Providers;
 
 public interface InternalFeature extends Feature {
 
@@ -54,11 +54,10 @@ public interface InternalFeature extends Feature {
      * Called to register Graal invocation plugins.
      *
      * @param providers Providers that the lowering can use.
-     * @param snippetReflection Snippet reflection providers.
      * @param plugins Contains the invocation plugins to add to.
      * @param reason The parsing phase that the plugins are registered for
      */
-    default void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
+    default void registerInvocationPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
     }
 
     /**
@@ -91,12 +90,11 @@ public interface InternalFeature extends Feature {
      * runtime compilation.
      *
      * @param providers Providers that the lowering can use.
-     * @param snippetReflection Snippet reflection providers.
      * @param suites The Graal compilation suites to add to.
      * @param hosted True if registering for ahead-of-time compilation, false if registering for
      *            runtime compilation.
      */
-    default void registerGraalPhases(Providers providers, SnippetReflectionProvider snippetReflection, Suites suites, boolean hosted) {
+    default void registerGraalPhases(Providers providers, Suites suites, boolean hosted) {
     }
 
     /**

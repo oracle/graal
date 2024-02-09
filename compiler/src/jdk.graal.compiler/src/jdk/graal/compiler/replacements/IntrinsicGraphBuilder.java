@@ -196,6 +196,11 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     }
 
     @Override
+    public boolean hasParseTerminated() {
+        return lastInstr == null;
+    }
+
+    @Override
     public AbstractBeginNode genExplicitExceptionEdge(BytecodeExceptionNode.BytecodeExceptionKind exceptionKind, ValueNode... exceptionArguments) {
         BytecodeExceptionNode exceptionNode = graph.add(new BytecodeExceptionNode(getMetaAccess(), exceptionKind, exceptionArguments));
         setExceptionState(exceptionNode);

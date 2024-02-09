@@ -188,15 +188,14 @@ public class OptionValues {
     }
 
     /**
-     * Prints a help message to {@code out} describing all options available via {@code loader}. The
+     * Prints a help message to {@code out} describing the options available via {@code loader}. The
      * key/value for each option is separated by {@code :=} if the option has an entry in this
      * object otherwise {@code =} is used as the separator.
      *
-     * @param loader
-     * @param out
-     * @param namePrefix
+     * @param all if true, all options are printed otherwise only {@linkplain #excludeOptionFromHelp
+     *            non-excluded} options are printed.
      */
-    public void printHelp(Iterable<OptionDescriptors> loader, PrintStream out, String namePrefix) {
+    public void printHelp(Iterable<OptionDescriptors> loader, PrintStream out, String namePrefix, boolean all) {
         SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
         for (OptionDescriptors opts : loader) {
             for (OptionDescriptor desc : opts) {
@@ -208,7 +207,7 @@ public class OptionValues {
         for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
             String key = e.getKey();
             OptionDescriptor desc = e.getValue();
-            if (!excludeOptionFromHelp(key, desc)) {
+            if (all || !excludeOptionFromHelp(key, desc)) {
                 printHelp(out, namePrefix, key, desc);
             }
         }

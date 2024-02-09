@@ -32,8 +32,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.phases.common.LazyValue;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
@@ -44,6 +43,7 @@ import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.config.SignatureUtil;
 import com.oracle.svm.configure.config.TypeConfiguration;
 
+import jdk.graal.compiler.phases.common.LazyValue;
 import jdk.vm.ci.meta.MetaUtil;
 
 class ReflectionProcessor extends AbstractProcessor {
@@ -57,7 +57,7 @@ class ReflectionProcessor extends AbstractProcessor {
     @SuppressWarnings("fallthrough")
     public void processEntry(EconomicMap<String, ?> entry, ConfigurationSet configurationSet) {
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
-        ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
+        UnresolvedConfigurationCondition condition = UnresolvedConfigurationCondition.alwaysTrue();
         if (invalidResult) {
             return;
         }
@@ -282,7 +282,7 @@ class ReflectionProcessor extends AbstractProcessor {
         String qualifiedClass = descriptor.substring(0, classend);
         String methodName = descriptor.substring(classend + 1, sigbegin);
         String signature = descriptor.substring(sigbegin);
-        configuration.getOrCreateType(ConfigurationCondition.alwaysTrue(), qualifiedClass).addMethod(methodName, signature, ConfigurationMemberDeclaration.DECLARED);
+        configuration.getOrCreateType(UnresolvedConfigurationCondition.alwaysTrue(), qualifiedClass).addMethod(methodName, signature, ConfigurationMemberDeclaration.DECLARED);
     }
 
     private void addDynamicProxy(List<?> interfaceList, LazyValue<String> callerClass, ProxyConfiguration proxyConfiguration) {
@@ -293,7 +293,7 @@ class ReflectionProcessor extends AbstractProcessor {
                 return;
             }
         }
-        proxyConfiguration.add(ConfigurationCondition.alwaysTrue(), interfaces);
+        proxyConfiguration.add(UnresolvedConfigurationCondition.alwaysTrue(), interfaces);
     }
 
     private void addDynamicProxyUnchecked(List<?> checkedInterfaceList, List<?> uncheckedInterfaceList, LazyValue<String> callerClass, ProxyConfiguration proxyConfiguration) {
@@ -310,6 +310,6 @@ class ReflectionProcessor extends AbstractProcessor {
         List<String> interfaces = new ArrayList<>();
         interfaces.addAll(checkedInterfaces);
         interfaces.addAll(uncheckedInterfaces);
-        proxyConfiguration.add(ConfigurationCondition.alwaysTrue(), interfaces);
+        proxyConfiguration.add(UnresolvedConfigurationCondition.alwaysTrue(), interfaces);
     }
 }

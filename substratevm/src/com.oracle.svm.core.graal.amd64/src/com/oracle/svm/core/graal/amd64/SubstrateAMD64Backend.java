@@ -43,6 +43,7 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.function.BiConsumer;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CPUFeatureAccess;
@@ -192,6 +193,7 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -344,11 +346,11 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         @Temp({REG, OperandFlag.ILLEGAL}) private AllocatableValue cfiTargetRegister;
         private final Computation[] addressComputation;
         private final LIRKindTool lirKindTool;
-        private final SharedConstantReflectionProvider constantReflection;
+        private final ConstantReflectionProvider constantReflection;
 
         public SubstrateAMD64ComputedIndirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps,
                         Value addressBase, Computation[] addressComputation,
-                        LIRFrameState state, Value exceptionTemp, LIRKindTool lirKindTool, SharedConstantReflectionProvider constantReflection) {
+                        LIRFrameState state, Value exceptionTemp, LIRKindTool lirKindTool, ConstantReflectionProvider constantReflection) {
             super(TYPE, callTarget, result, parameters, temps, state);
             this.addressBase = this.addressBaseTemp = addressBase;
             this.exceptionTemp = exceptionTemp;
@@ -456,7 +458,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         }
     }
 
-    public static int addressDisplacement(JavaConstant constant, SharedConstantReflectionProvider constantReflection) {
+    public static int addressDisplacement(JavaConstant constant, ConstantReflectionProvider constantReflection) {
         if (SubstrateUtil.HOSTED) {
             return 0;
         } else {
@@ -464,7 +466,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
              * For JIT compilation at run time, the image heap is known and immutable, so the offset
              * of the constant can be emitted immediately. No patching is required later on.
              */
-            return constantReflection.getImageHeapOffset(constant);
+            return ((SharedConstantReflectionProvider) constantReflection).getImageHeapOffset(constant);
         }
     }
 
@@ -508,10 +510,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         masm.movq(new AMD64Address(anchor, knownOffsets.getJavaFrameAnchorLastIPOffset()), lastJavaIP);
         masm.movq(new AMD64Address(anchor, knownOffsets.getJavaFrameAnchorLastSPOffset()), AMD64.rsp);
 
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            /* Change the VMThread status from Java to Native. */
-            masm.movl(new AMD64Address(ReservedRegisters.singleton().getThreadRegister(), knownOffsets.getVMThreadStatusOffset()), newThreadStatus);
-        }
+        /* Change the VMThread status from Java to Native. */
+        masm.movl(new AMD64Address(ReservedRegisters.singleton().getThreadRegister(), knownOffsets.getVMThreadStatusOffset()), newThreadStatus);
     }
 
     /**
@@ -1017,7 +1017,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
             vzeroupperBeforeCall((SubstrateAMD64LIRGenerator) getLIRGeneratorTool(), parameters, callState, (SharedMethod) targetMethod);
             append(new SubstrateAMD64ComputedIndirectCallOp(targetMethod, result, parameters, temps, addressBase, callTarget.getAddressComputation(), callState,
-                            getExceptionTemp(callTarget), gen.getLIRKindTool(), (SharedConstantReflectionProvider) getConstantReflection()));
+                            getExceptionTemp(callTarget), gen.getLIRKindTool(), getConstantReflection()));
         }
 
         private AllocatableValue setupJavaFrameAnchor(CallTargetNode callTarget) {
@@ -1530,12 +1530,20 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         crb.emitLIR();
     }
 
+    private AMD64Assembler createAssemblerNoOptions() {
+        OptionValues o = new OptionValues(EconomicMap.create());
+        return createAssembler(o);
+    }
+
     @Override
     public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
                     RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset) {
 
         CompilationResult result = new CompilationResult(identifier);
-        AMD64Assembler asm = new AMD64Assembler(getTarget());
+        AMD64Assembler asm = createAssemblerNoOptions();
+        if (SubstrateControlFlowIntegrity.enabled()) {
+            asm.endbranch();
+        }
         if (SubstrateOptions.SpawnIsolates.getValue()) { // method id is offset from heap base
             asm.movq(rax, new AMD64Address(threadArg.getRegister(), threadIsolateOffset));
             /*

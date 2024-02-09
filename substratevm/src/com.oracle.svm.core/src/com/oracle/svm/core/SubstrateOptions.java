@@ -57,7 +57,6 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.VMOperationControl;
-import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
@@ -107,7 +106,7 @@ public class SubstrateOptions {
     @Option(help = "Build statically linked executable (requires static libc and zlib)")//
     public static final HostedOptionKey<Boolean> StaticExecutable = new HostedOptionKey<>(false, key -> {
         if (!Platform.includedIn(Platform.LINUX.class)) {
-            throw new InterruptImageBuilding("Building static executable images is currently only supported on Linux. Remove the '--static' option or build on a Linux machine.");
+            throw UserError.invalidOptionValue(key, key.getValue(), "Building static executable images is currently only supported on Linux. Remove the '--static' option or build on a Linux machine");
         }
     });
 
@@ -291,7 +290,7 @@ public class SubstrateOptions {
             // We allow all positive numbers, and treat that as our current highest supported level.
             return OptimizationLevel.O3;
         } else {
-            throw UserError.abort("Invalid value '%s' provided for option Optimize (expected 'b' or numeric value >= 0)", value);
+            throw UserError.invalidOptionValue(Optimize, value, "Accepted values are 'b' or numeric value >= 0");
         }
     }
 
@@ -374,8 +373,8 @@ public class SubstrateOptions {
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<>(0L);
 
-    @Option(help = "The size of each internal thread stack, in bytes.", type = OptionType.Expert)//
-    public static final HostedOptionKey<Long> InternalThreadStackSize = new HostedOptionKey<>(2L * 1024 * 1024);
+    @Option(help = "Deprecated, has no effect.", deprecated = true) //
+    public static final HostedOptionKey<Long> InternalThreadStackSize = new HostedOptionKey<>(0L);
 
     /**
      * Cached value of {@link ConcealedOptions#MaxJavaStackTraceDepth}. Also used as default value.
@@ -400,8 +399,7 @@ public class SubstrateOptions {
     @Option(help = "Verify naming conventions during image construction.")//
     public static final HostedOptionKey<Boolean> VerifyNamingConventions = new HostedOptionKey<>(false);
 
-    @Option(help = "Enable support for threads and and thread-local variables (disable for single-threaded implementation)", //
-                    deprecated = true, deprecationMessage = "This special mode to build images that cannot start any additional threads has no benefits anymore and will be removed in a future release")//
+    @Option(help = "Deprecated, has no effect.", deprecated = true) //
     public static final HostedOptionKey<Boolean> MultiThreaded = new HostedOptionKey<>(true);
 
     @Option(help = "Use only a writable native image heap (requires ld.gold linker)")//
@@ -489,7 +487,7 @@ public class SubstrateOptions {
                     yield false;
                 }
                 case "never" -> false;
-                default -> throw UserError.abort("Unsupported value '%s' for '--color' option. Only 'always', 'never', and 'auto' are accepted.", value);
+                default -> throw UserError.invalidOptionValue(Color, value, "Only 'always', 'never', and 'auto' are accepted values");
             };
         }
         return false;
@@ -563,7 +561,7 @@ public class SubstrateOptions {
     private static void validateAdditionalHeaderBytes(HostedOptionKey<Integer> optionKey) {
         int value = optionKey.getValue();
         if (value < 0 || value % 4 != 0) {
-            throw UserError.abort("The option '%s' must be 0 or a multiple of 4.", optionKey.getName());
+            throw UserError.invalidOptionValue(optionKey, value, "The value must be 0 or a positive multiple of 4.");
         }
     }
 
@@ -639,8 +637,8 @@ public class SubstrateOptions {
                     isLLVMBackendMissing = ReflectionUtil.lookupClass(true, "com.oracle.svm.core.graal.llvm.LLVMFeature") == null;
                 }
                 if (isLLVMBackendMissing) {
-                    throw UserError.abort(
-                                    "The LLVM backend for GraalVM Native Image is missing and needs to be build from source. " +
+                    throw UserError.invalidOptionValue(CompilerBackend, newValue,
+                                    "The LLVM backend for GraalVM Native Image is missing and needs to be built from source. " +
                                                     "For instructions, please see https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/LLVMBackend.md.");
                 }
 
@@ -772,7 +770,7 @@ public class SubstrateOptions {
         try {
             return Paths.get(Path.getValue()).resolve(DebugInfoSourceCacheRoot.getValue());
         } catch (InvalidPathException ipe) {
-            throw UserError.abort("Invalid path provided for option DebugInfoSourceCacheRoot %s", DebugInfoSourceCacheRoot.getValue());
+            throw UserError.invalidOptionValue(DebugInfoSourceCacheRoot, DebugInfoSourceCacheRoot.getValue(), "The path is invalid");
         }
     }
 
@@ -780,11 +778,12 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> StripDebugInfo = new HostedOptionKey<>(OS.getCurrent() != OS.DARWIN, SubstrateOptions::validateStripDebugInfo);
 
     private static void validateStripDebugInfo(HostedOptionKey<Boolean> optionKey) {
+        Boolean optionValue = optionKey.getValue();
         if (OS.getCurrent() == OS.DARWIN && optionKey.hasBeenSet() && optionKey.getValue()) {
-            throw UserError.abort("Using %s is not supported on macOS", SubstrateOptionsParser.commandArgument(SubstrateOptions.StripDebugInfo, "+"));
+            throw UserError.invalidOptionValue(optionKey, optionValue, "The option is not supported on macOS");
         }
         if (OS.getCurrent() == OS.WINDOWS && optionKey.hasBeenSet() && !optionKey.getValue()) {
-            throw UserError.abort("Using %s is not supported on Windows: debug info is always generated in a separate file", SubstrateOptionsParser.commandArgument(optionKey, "-"));
+            throw UserError.invalidOptionValue(optionKey, optionValue, "The option is not supported on Windows (debug info is always generated in a separate file)");
         }
     }
 
@@ -816,6 +815,9 @@ public class SubstrateOptions {
          */
         return supportCompileInIsolates() && ConcealedOptions.CompileInIsolates.getValue();
     }
+
+    @Option(help = "Options that are passed to each compilation isolate. Individual arguments are separated by spaces. Arguments that contain spaces need to be enclosed by single quotes.") //
+    public static final RuntimeOptionKey<String> CompilationIsolateOptions = new RuntimeOptionKey<>(null);
 
     @Option(help = "Size of the reserved address space of each compilation isolate (0: default for new isolates).") //
     public static final RuntimeOptionKey<Long> CompilationIsolateAddressSpaceSize = new RuntimeOptionKey<>(0L);
@@ -917,6 +919,9 @@ public class SubstrateOptions {
 
     @Option(help = "file:doc-files/FlightRecorderLoggingHelp.txt")//
     public static final RuntimeOptionKey<String> FlightRecorderLogging = new RuntimeOptionKey<>("all=warning", Immutable);
+
+    @Option(help = "file:doc-files/FlightRecorderOptionsHelp.txt")//
+    public static final RuntimeOptionKey<String> FlightRecorderOptions = new RuntimeOptionKey<>("", Immutable);
 
     public static String reportsPath() {
         Path reportsPath = ImageSingletons.lookup(ReportingSupport.class).reportsPath;
@@ -1049,6 +1054,14 @@ public class SubstrateOptions {
 
     @Option(help = "Support for calls via the Java Foreign Function and Memory API", type = Expert) //
     public static final HostedOptionKey<Boolean> ForeignAPISupport = new HostedOptionKey<>(false);
+
+    @Option(help = "Assume new types cannot be added after analysis", type = OptionType.Expert) //
+    public static final HostedOptionKey<Boolean> ClosedTypeWorld = new HostedOptionKey<>(true);
+
+    @Fold
+    public static boolean closedTypeWorld() {
+        return ClosedTypeWorld.getValue();
+    }
 
     public static class TruffleStableOptions {
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -2620,6 +2621,58 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 return interop.isBufferWritable(InteropUtils.unwrapForeign(getLanguage(), receiver));
             } catch (InteropException e) {
                 exceptionProfile.enter();
+                throw throwInteropExceptionAsGuest.execute(e);
+            }
+        }
+    }
+
+    /**
+     * Reads bytes from the receiver object into the specified byte array.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     * <p>
+     * Throws InvalidBufferOffsetException if and only if
+     * <code>byteOffset < 0 || length < 0 || byteOffset + length > </code>{@link InteropLibrary#getBufferSize(Object)}
+     * <p>
+     * Throws UnsupportedMessageException if and only if
+     * {@link InteropLibrary#hasBufferElements(Object)} returns {@code false}
+     * 
+     * @since 24.0
+     */
+    @Substitution
+    @Throws(others = {
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
+    })
+    abstract static class ReadBuffer extends SubstitutionNode {
+        static final int LIMIT = 2;
+
+        abstract void execute(@JavaType(Object.class) StaticObject receiver, long byteOffset, @JavaType(byte[].class) StaticObject destination, int destinationOffset, int length);
+
+        @Specialization
+        void doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        long byteOffset,
+                        @JavaType(byte[].class) StaticObject destination,
+                        int destinationOffset,
+                        int length,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
+                        @Cached InlinedBranchProfile unexpectedExceptionProfile,
+                        @Cached InlinedBranchProfile exceptionProfile) {
+            // check destination array and throw guest exception in case it is too small
+            byte[] dest = destination.unwrap(getLanguage());
+            if (destinationOffset < 0 || destinationOffset + length > dest.length) {
+                unexpectedExceptionProfile.enter(this);
+                throw getMeta().throwExceptionWithMessage(getMeta().java_lang_ArrayIndexOutOfBoundsException, "destination array is not able to hold the bytes");
+            }
+            try {
+                interop.readBuffer(InteropUtils.unwrapForeign(getLanguage(), receiver), byteOffset, destination.unwrap(getLanguage()), destinationOffset, length);
+            } catch (InteropException e) {
+                exceptionProfile.enter(this);
                 throw throwInteropExceptionAsGuest.execute(e);
             }
         }

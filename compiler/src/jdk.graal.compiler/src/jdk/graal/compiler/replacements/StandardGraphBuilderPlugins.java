@@ -211,7 +211,6 @@ import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactOverflowNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactSplitNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BytecodePosition;
@@ -749,10 +748,7 @@ public class StandardGraphBuilderPlugins {
             r.register(new CacheWritebackPlugin(false, "writeback0", Receiver.class, long.class));
             r.register(new CacheWritebackPlugin(true, "writebackPreSync0", Receiver.class));
             r.register(new CacheWritebackPlugin(false, "writebackPostSync0", Receiver.class));
-
-            if (JavaVersionUtil.JAVA_SPEC >= 18) {
-                r.register(new UnsafeFencePlugin(MembarNode.FenceKind.STORE_STORE, "storeStoreFence"));
-            }
+            r.register(new UnsafeFencePlugin(MembarNode.FenceKind.STORE_STORE, "storeStoreFence"));
         }
 
         r.register(new InvocationPlugin("arrayBaseOffset", Receiver.class, Class.class) {
@@ -1128,15 +1124,13 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
-        if (JavaVersionUtil.JAVA_SPEC >= 18) {
-            r.register(new InvocationPlugin("unsignedMultiplyHigh", long.class, long.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                    b.addPush(JavaKind.Long, new UnsignedMulHighNode(x, y));
-                    return true;
-                }
-            });
-        }
+        r.register(new InvocationPlugin("unsignedMultiplyHigh", long.class, long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                b.addPush(JavaKind.Long, new UnsignedMulHighNode(x, y));
+                return true;
+            }
+        });
     }
 
     private static void registerRound(boolean supportsRound, Registration r, String name, RoundingMode mode) {

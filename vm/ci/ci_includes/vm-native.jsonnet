@@ -47,7 +47,7 @@ local vm_common = import '../ci_common/common.jsonnet';
   },
 
   local builds = [
-    vm.vm_java_21 + vm_common.svm_common_linux_amd64 + vm_common.sulong_linux + vm_common.graalpython_linux_amd64 + vm.custom_vm_linux + vm_common.vm_base('linux', 'amd64', 'gate') + {
+    vm.vm_java_Latest + vm_common.svm_common_linux_amd64 + vm_common.sulong_linux + vm_common.graalpython_linux_amd64 + vm.custom_vm_linux + vm_common.vm_base('linux', 'amd64', 'gate') + {
      run+: [
        ['export', 'SVM_SUITE=' + vm.svm_suite],
        ['mx', '--dynamicimports', '$SVM_SUITE,graalpython', '--disable-polyglot', '--disable-libpolyglot', '--force-bash-launchers=lli,native-image', 'gate', '--no-warning-as-error', '--tags', 'build,python'],

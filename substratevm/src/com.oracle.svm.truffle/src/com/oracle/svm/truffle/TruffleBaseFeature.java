@@ -79,7 +79,6 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.BuildArtifacts;
-import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
@@ -140,7 +139,6 @@ import com.oracle.truffle.api.profiles.Profile;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticShape;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -285,18 +283,17 @@ public final class TruffleBaseFeature implements InternalFeature {
      * Register all fields accessed by a InlinedField for an instance field or a static field as
      * unsafe accessed, which is necessary for correctness of the static analysis.
      */
-    private Object processInlinedField(Object obj) {
-        if (obj instanceof InlineSupport.InlinableField && processedInlinedFields.putIfAbsent(obj, true) == null) {
+    private void processInlinedField(@SuppressWarnings("unused") DuringAnalysisAccess access, InlinableField inlinableField) {
+        if (processedInlinedFields.putIfAbsent(inlinableField, true) == null) {
             VMError.guarantee(markAsUnsafeAccessed != null, "New InlinedField found after static analysis");
             try {
-                String name = (String) UNSAFE_FIELD_name.get(obj);
-                Class<?> declaringClass = (Class<?>) UNSAFE_FIELD_declaringClass.get(obj);
+                String name = (String) UNSAFE_FIELD_name.get(inlinableField);
+                Class<?> declaringClass = (Class<?>) UNSAFE_FIELD_declaringClass.get(inlinableField);
                 markAsUnsafeAccessed.accept(declaringClass.getDeclaredField(name));
             } catch (ReflectiveOperationException ex) {
                 throw VMError.shouldNotReachHere(ex);
             }
         }
-        return obj;
     }
 
     @Override
@@ -390,7 +387,7 @@ public final class TruffleBaseFeature implements InternalFeature {
                         To disable this version check the '-Dpolyglotimpl.DisableVersionChecks=true' system property can be used.
                         It is not recommended to disable version checks.
                         """);
-        throw new IllegalStateException(errorMessage.toString());
+        throw UserError.abort(errorMessage.toString());
     }
 
     @SuppressWarnings({"null", "unused"})
@@ -430,8 +427,7 @@ public final class TruffleBaseFeature implements InternalFeature {
     }
 
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection,
-                    Plugins plugins, ParsingReason reason) {
+    public void registerInvocationPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
         StaticObjectSupport.registerInvocationPlugins(plugins, reason);
         TruffleInvocationPlugins.register(providers.getLowerer().getTarget().arch, plugins.getInvocationPlugins(), providers.getReplacements());
 
@@ -460,13 +456,14 @@ public final class TruffleBaseFeature implements InternalFeature {
     }
 
     @Override
-    public void duringSetup(DuringSetupAccess access) {
+    public void duringSetup(DuringSetupAccess a) {
+        DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
         if (!ImageSingletons.contains(TruffleFeature.class) && isSubstrateRuntime(Truffle.getRuntime())) {
             VMError.shouldNotReachHere("TruffleFeature is required for SubstrateTruffleRuntime.");
         }
-        access.registerObjectReplacer(this::processInlinedField);
+        access.registerObjectReachableCallback(InlinableField.class, this::processInlinedField);
 
-        StaticObjectSupport.duringSetup(access);
+        StaticObjectSupport.duringSetup(a);
 
         HomeFinder hf = HomeFinder.getInstance();
         if (SubstrateOptions.TruffleStableOptions.CopyLanguageResources.getValue()) {
@@ -506,19 +503,18 @@ public final class TruffleBaseFeature implements InternalFeature {
             ImageSingletons.add(SubstrateGraalCompilerSetup.class, new SubstrateGraalCompilerSetup());
         }
 
-        DuringSetupAccessImpl config = (DuringSetupAccessImpl) access;
-        metaAccess = config.getMetaAccess();
+        metaAccess = access.getMetaAccess();
 
-        uncachedDispatchField = config.findField(LibraryFactory.class, "uncachedDispatch");
-        layoutInfoMapField = config.findField("com.oracle.truffle.object.DefaultLayout$LayoutInfo", "LAYOUT_INFO_MAP");
-        layoutMapField = config.findField("com.oracle.truffle.object.DefaultLayout", "LAYOUT_MAP");
-        libraryFactoryCacheField = config.findField("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "CACHE");
+        uncachedDispatchField = access.findField(LibraryFactory.class, "uncachedDispatch");
+        layoutInfoMapField = access.findField("com.oracle.truffle.object.DefaultLayout$LayoutInfo", "LAYOUT_INFO_MAP");
+        layoutMapField = access.findField("com.oracle.truffle.object.DefaultLayout", "LAYOUT_MAP");
+        libraryFactoryCacheField = access.findField("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "CACHE");
         if (Options.TruffleCheckPreinitializedFiles.getValue()) {
-            access.registerObjectReplacer(new TruffleFileCheck(((FeatureImpl.DuringSetupAccessImpl) access).getHostVM().getClassInitializationSupport()));
+            access.registerObjectReplacer(new TruffleFileCheck(access.getHostVM().getClassInitializationSupport()));
         }
 
         if (needsAllEncodings) {
-            ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), "org/graalvm/shadowed/org/jcodings/tables/.*bin$");
+            RuntimeResourceSupport.singleton().addResources(ConfigurationCondition.alwaysTrue(), "org/graalvm/shadowed/org/jcodings/tables/.*bin$");
         }
     }
 
@@ -531,7 +527,7 @@ public final class TruffleBaseFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (graalGraphObjectReplacer == null) {
             BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
-            SubstrateWordTypes wordTypes = new SubstrateWordTypes(config.getMetaAccess(), FrameAccess.getWordKind());
+            SubstrateWordTypes wordTypes = new SubstrateWordTypes(config.getMetaAccess(), ConfigurationValues.getWordKind());
             SubstrateProviders substrateProviders = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).getSubstrateProviders(metaAccess, wordTypes);
             graalGraphObjectReplacer = new GraalGraphObjectReplacer(config.getUniverse(), substrateProviders, new SubstrateUniverseFactory());
             graalGraphObjectReplacer.setAnalysisAccess(config);
@@ -659,7 +655,7 @@ public final class TruffleBaseFeature implements InternalFeature {
     }
 
     @Override
-    public void registerGraalPhases(Providers providers, SnippetReflectionProvider snippetReflection, Suites suites, boolean hosted) {
+    public void registerGraalPhases(Providers providers, Suites suites, boolean hosted) {
         /*
          * Please keep this code in sync with the HotSpot configuration in
          * TruffleCommunityCompilerConfiguration.

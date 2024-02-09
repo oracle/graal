@@ -189,7 +189,6 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
                     DebugContext debug,
                     CompilationResult compilationResult,
                     Register uncompressedNullRegister,
-                    EconomicMap<Constant, Data> dataCache,
                     List<LIRInstructionVerifier> lirInstructionVerifiers,
                     LIR lir) {
         super(providers);
@@ -204,7 +203,7 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
         this.options = options;
         this.debug = debug;
         assert frameContext != null;
-        this.dataCache = dataCache;
+        this.dataCache = EconomicMap.create(Equivalence.DEFAULT);
         this.lirInstructionVerifiers = Objects.requireNonNull(lirInstructionVerifiers);
     }
 
@@ -389,10 +388,7 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
         Data data = dataCache.get(constant);
         if (data == null) {
             data = dataBuilder.createDataItem(constant);
-            Data previousData = dataCache.putIfAbsent(constant, data);
-            if (previousData != null) {
-                data = previousData;
-            }
+            dataCache.put(constant, data);
         }
         return data;
     }
@@ -703,6 +699,14 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
      */
     public void setConservativeLabelRanges() {
         this.conservativeLabelOffsets = true;
+    }
+
+    /**
+     * Query, whether this {@link CompilationResultBuilder} uses conservative label ranges. This
+     * allows for larger jump distances at the cost of increased code size.
+     */
+    public boolean usesConservativeLabelRanges() {
+        return this.conservativeLabelOffsets;
     }
 
     public final boolean needsClearUpperVectorRegisters() {

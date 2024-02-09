@@ -25,21 +25,16 @@
 package com.oracle.svm.hosted.phases;
 
 import java.lang.annotation.Annotation;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.util.Map;
+import java.lang.reflect.Executable;
 import java.util.Set;
 
 import org.graalvm.nativeimage.AnnotationAccess;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.jdk.VarHandleFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ReachabilityRegistrationNode;
@@ -62,10 +57,12 @@ import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StartNode;
 import jdk.graal.compiler.nodes.UnwindNode;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.ValueProxy;
 import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
@@ -73,7 +70,23 @@ import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.replacements.nodes.MethodHandleWithExceptionNode;
+import jdk.internal.vm.annotation.ForceInline;
 
+/**
+ * The defaults for node limits are very conservative. Only small methods should be inlined. The
+ * only exception are constants - an arbitrary number of constants is always allowed. Limiting to 1
+ * node (which can be also 1 invoke) means that field accessors can be inlined and forwarding
+ * methods can be inlined. But null checks and class initialization checks are already putting a
+ * method above the limit. On the other hand, the inlining depth is generous because we do do not
+ * need to limit it. Note that more experimentation is necessary to come up with the optimal
+ * configuration.
+ *
+ * Important: the implementation details of this class are publicly observable API. Since
+ * {@link java.lang.reflect.Method} constants can be produced by inlining lookup methods with
+ * constant arguments, reducing inlining can break customer code. This means we can never reduce the
+ * amount of inlining in a future version without breaking compatibility. This also means that we
+ * must be conservative and only inline what is necessary for known use cases.
+ */
 public class InlineBeforeAnalysisPolicyUtils {
     public static class Options {
         @Option(help = "Maximum number of computation nodes for method inlined before static analysis")//
@@ -85,26 +98,100 @@ public class InlineBeforeAnalysisPolicyUtils {
         @Option(help = "Maximum call depth for method inlined before static analysis")//
         public static final HostedOptionKey<Integer> InlineBeforeAnalysisAllowedDepth = new HostedOptionKey<>(20);
 
+        @Option(help = "Maximum number of methods inlined for method inlined before static analysis")//
+        public static final HostedOptionKey<Integer> InlineBeforeAnalysisAllowedInlinings = new HostedOptionKey<>(10_000);
+
         @Option(help = "Maximum number of computation nodes for method handle internals inlined before static analysis")//
-        public static final HostedOptionKey<Integer> InlineBeforeAnalysisMethodHandleAllowedNodes = new HostedOptionKey<>(100);
+        public static final HostedOptionKey<Integer> InlineBeforeAnalysisMethodHandleAllowedNodes = new HostedOptionKey<>(10_000);
 
         @Option(help = "Maximum number of invokes for method handle internals inlined before static analysis")//
-        public static final HostedOptionKey<Integer> InlineBeforeAnalysisMethodHandleAllowedInvokes = new HostedOptionKey<>(20);
+        public static final HostedOptionKey<Integer> InlineBeforeAnalysisMethodHandleAllowedInvokes = new HostedOptionKey<>(1_000);
+
+        @Option(help = "Maximum call depth for method handle internals inlined before static analysis")//
+        public static final HostedOptionKey<Integer> InlineBeforeAnalysisMethodHandleAllowedDepth = new HostedOptionKey<>(1_000);
+
+        @Option(help = "Maximum number of methods inlined for method handle internals before static analysis")//
+        public static final HostedOptionKey<Integer> InlineBeforeAnalysisMethodHandleAllowedInlinings = new HostedOptionKey<>(10_000);
     }
 
+    /* Cached values of options, to avoid repeated option lookup. */
+    public final int optionAllowedNodes = Options.InlineBeforeAnalysisAllowedNodes.getValue();
+    public final int optionAllowedInvokes = Options.InlineBeforeAnalysisAllowedInvokes.getValue();
+    public final int optionAllowedDepth = Options.InlineBeforeAnalysisAllowedDepth.getValue();
+    public final int optionAllowedInlinings = Options.InlineBeforeAnalysisAllowedInlinings.getValue();
+    public final int optionMethodHandleAllowedNodes = Options.InlineBeforeAnalysisMethodHandleAllowedNodes.getValue();
+    public final int optionMethodHandleAllowedInvokes = Options.InlineBeforeAnalysisMethodHandleAllowedInvokes.getValue();
+    public final int optionMethodHandleAllowedDepth = Options.InlineBeforeAnalysisMethodHandleAllowedDepth.getValue();
+    public final int optionMethodHandleAllowedInlinings = Options.InlineBeforeAnalysisMethodHandleAllowedInlinings.getValue();
+
     @SuppressWarnings("unchecked") //
-    private static final Class<? extends Annotation> COMPILED_LAMBDA_FORM_ANNOTATION = //
+    public static final Class<? extends Annotation> COMPILED_LAMBDA_FORM_ANNOTATION = //
                     (Class<? extends Annotation>) ReflectionUtil.lookupClass(false, "java.lang.invoke.LambdaForm$Compiled");
 
-    private static final Class<?> INVOKERS_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.Invokers");
+    public boolean shouldInlineInvoke(GraphBuilderContext b, SVMHost hostVM, AccumulativeInlineScope policyScope, AnalysisMethod method) {
+        boolean result = shouldInlineInvoke0(b, hostVM, policyScope, method);
+        if (result && policyScope != null) {
+            policyScope.accumulativeCounters.totalInlinedMethods++;
+        }
+        return result;
+    }
 
-    private static final Map<Class<?>, Set<String>> IGNORED_METHOD_HANDLE_METHODS = Map.of(
-                    MethodHandle.class, Set.of("bindTo"),
-                    MethodHandles.class, Set.of("dropArguments", "filterReturnValue", "foldArguments", "insertArguments"),
-                    INVOKERS_CLASS, Set.of("spreadInvoker"));
+    private boolean shouldInlineInvoke0(GraphBuilderContext b, SVMHost hostVM, AccumulativeInlineScope policyScope, AnalysisMethod method) {
+        if (!inliningAllowed(hostVM, b, method)) {
+            /*
+             * Inlining this method can lead to incorrect code, so this condition must always be
+             * checked first.
+             */
+            return false;
+        } else if (alwaysInlineInvoke((AnalysisMetaAccess) b.getMetaAccess(), method)) {
+            /* Manual override of the regular inlining depth checks. */
+            return true;
+        }
 
-    private AnalysisType methodHandleType;
-    private AnalysisType varHandleGuardsType;
+        boolean inMethodHandleIntrinsification = policyScope != null && policyScope.accumulativeCounters.inMethodHandleIntrinsification;
+        int allowedInlinings = inMethodHandleIntrinsification ? optionMethodHandleAllowedInlinings : optionAllowedInlinings;
+        if (policyScope != null && policyScope.accumulativeCounters.totalInlinedMethods >= allowedInlinings) {
+            return false;
+        }
+
+        int allowedDepth = inMethodHandleIntrinsification ? optionMethodHandleAllowedDepth : optionAllowedDepth;
+        /*
+         * Note that we do not use the inlining depth from the GraphBuilderContext: If we are in a
+         * regular inlining scope, but nested into a deep method handle intrinsification, then the
+         * total inlining depth is high but our local depth for the scope can still be low enough to
+         * do inlining.
+         */
+        int actualDepth = policyScope == null ? 0 : policyScope.inliningDepth;
+        if (actualDepth >= allowedDepth) {
+            return false;
+        }
+
+        if (!inMethodHandleIntrinsification) {
+            if (b.recursiveInliningDepth(method) > 0) {
+                /*
+                 * There is no need to make recursive inlining configurable via an option for now,
+                 * it is always just disallowed. Except when we are in a method handle
+                 * intrinsification, because method handles are often deeply recursive. The
+                 * "total inlined methods" check above prevents excessive recursive inlining during
+                 * method handle intrinsification.
+                 */
+                return false;
+            }
+            if (policyScope != null && AnnotationAccess.isAnnotationPresent(method, COMPILED_LAMBDA_FORM_ANNOTATION)) {
+                /*
+                 * We are not in a method handle intrinsification i.e., the method handle was not
+                 * the root inlining context. Do not inline compiled lambda forms at all. Since the
+                 * inlining limits are low, this could lead to partially inlined method handle
+                 * chains, which leads to slow code because the non-inlined part is executed in the
+                 * method handle interpreter. It is likely that the method handle is fully inlined
+                 * when processing the callee, where the method handle is then the root inlining
+                 * context.
+                 */
+                return false;
+            }
+        }
+        return true;
+    }
 
     public static boolean inliningAllowed(SVMHost hostVM, GraphBuilderContext b, AnalysisMethod callee) {
         AnalysisMethod caller = (AnalysisMethod) b.getMethod();
@@ -176,39 +263,28 @@ public class InlineBeforeAnalysisPolicyUtils {
         }
 
         @Override
+        public boolean processNonInlinedInvoke(CoreProviders providers, CallTargetNode node) {
+            return true;
+        }
+
+        @Override
         public String toString() {
             return "AlwaysInlineScope";
         }
     }
 
     static final class AccumulativeCounters {
-        static AccumulativeCounters create(AccumulativeCounters outer) {
-            int maxDepth = (outer != null) ? outer.maxInliningDepth : Options.InlineBeforeAnalysisAllowedDepth.getValue();
-            return new AccumulativeCounters(Options.InlineBeforeAnalysisAllowedNodes.getValue(),
-                            Options.InlineBeforeAnalysisAllowedInvokes.getValue(),
-                            maxDepth,
-                            false);
-        }
-
-        static AccumulativeCounters createForMethodHandleIntrinsification(AccumulativeCounters outer) {
-            return new AccumulativeCounters(Options.InlineBeforeAnalysisMethodHandleAllowedNodes.getValue(),
-                            Options.InlineBeforeAnalysisMethodHandleAllowedInvokes.getValue(),
-                            outer.maxInliningDepth,
-                            true);
-        }
-
         int maxNodes;
         int maxInvokes;
-        final int maxInliningDepth;
         final boolean inMethodHandleIntrinsification;
 
-        int numNodes = 0;
-        int numInvokes = 0;
+        int numNodes;
+        int numInvokes;
+        int totalInlinedMethods;
 
-        private AccumulativeCounters(int maxNodes, int maxInvokes, int maxInliningDepth, boolean inMethodHandleIntrinsification) {
+        private AccumulativeCounters(int maxNodes, int maxInvokes, boolean inMethodHandleIntrinsification) {
             this.maxNodes = maxNodes;
             this.maxInvokes = maxInvokes;
-            this.maxInliningDepth = maxInliningDepth;
             this.inMethodHandleIntrinsification = inMethodHandleIntrinsification;
         }
     }
@@ -218,8 +294,7 @@ public class InlineBeforeAnalysisPolicyUtils {
      * has exceeded a specified count, or an illegal node is inlined, then the process will be
      * aborted.
      */
-    public AccumulativeInlineScope createAccumulativeInlineScope(AccumulativeInlineScope outer, AnalysisMetaAccess metaAccess,
-                    AnalysisMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle) {
+    public AccumulativeInlineScope createAccumulativeInlineScope(AccumulativeInlineScope outer, AnalysisMethod method) {
         AccumulativeCounters accumulativeCounters;
         int depth;
         if (outer == null) {
@@ -228,16 +303,17 @@ public class InlineBeforeAnalysisPolicyUtils {
              * point of view.
              */
             depth = 1;
-            accumulativeCounters = AccumulativeCounters.create(null);
 
-        } else if (!outer.accumulativeCounters.inMethodHandleIntrinsification && (intrinsifiedMethodHandle || isMethodHandleIntrinsificationRoot(metaAccess, method, constArgsWithReceiver))) {
-            /*
-             * Method handle intrinsification root: create counters with relaxed limits and permit
-             * more types of nodes, but not recursively, i.e., not if we are already in a method
-             * handle intrinsification context.
-             */
-            depth = outer.inliningDepth + 1;
-            accumulativeCounters = AccumulativeCounters.createForMethodHandleIntrinsification(outer.accumulativeCounters);
+            if (AnnotationAccess.isAnnotationPresent(method, COMPILED_LAMBDA_FORM_ANNOTATION)) {
+                /*
+                 * Method handle intrinsification root: create counters with relaxed limits and
+                 * permit more types of nodes, but not recursively, i.e., not if we are already in a
+                 * method handle intrinsification context.
+                 */
+                accumulativeCounters = new AccumulativeCounters(optionMethodHandleAllowedNodes, optionMethodHandleAllowedInvokes, true);
+            } else {
+                accumulativeCounters = new AccumulativeCounters(optionAllowedNodes, optionAllowedInvokes, false);
+            }
 
         } else if (outer.accumulativeCounters.inMethodHandleIntrinsification && !inlineForMethodHandleIntrinsification(method)) {
             /*
@@ -249,9 +325,12 @@ public class InlineBeforeAnalysisPolicyUtils {
              * This assumes that the regular limits are strict enough to prevent excessive inlining
              * triggered by method handles. We could also use alternative fixed values or the option
              * defaults instead of any set option values.
+             *
+             * We start again with an inlining depth of 1, i.e., we behave as if that method is the
+             * inlining root.
              */
-            depth = outer.inliningDepth + 1;
-            accumulativeCounters = AccumulativeCounters.create(outer.accumulativeCounters);
+            depth = 1;
+            accumulativeCounters = new AccumulativeCounters(optionAllowedNodes, optionAllowedInvokes, false);
 
         } else {
             /* Nested inlining (potentially during method handle intrinsification). */
@@ -259,54 +338,6 @@ public class InlineBeforeAnalysisPolicyUtils {
             accumulativeCounters = outer.accumulativeCounters;
         }
         return new AccumulativeInlineScope(accumulativeCounters, depth);
-    }
-
-    private boolean isMethodHandleIntrinsificationRoot(AnalysisMetaAccess metaAccess, AnalysisMethod method, boolean[] constArgsWithReceiver) {
-        return (isVarHandleMethod(metaAccess, method) || hasConstantMethodHandleParameter(metaAccess, method, constArgsWithReceiver)) && !isIgnoredMethodHandleMethod(method);
-    }
-
-    private boolean hasConstantMethodHandleParameter(AnalysisMetaAccess metaAccess, AnalysisMethod method, boolean[] constArgsWithReceiver) {
-        if (methodHandleType == null) {
-            methodHandleType = metaAccess.lookupJavaType(MethodHandle.class);
-        }
-        for (int i = 0; i < constArgsWithReceiver.length; i++) {
-            if (constArgsWithReceiver[i] && methodHandleType.isAssignableFrom(getParameterType(method, i))) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static AnalysisType getParameterType(AnalysisMethod method, int index) {
-        int i = index;
-        if (!method.isStatic()) {
-            if (i == 0) { // receiver
-                return method.getDeclaringClass();
-            }
-            i--;
-        }
-        return method.getSignature().getParameterType(i);
-    }
-
-    /**
-     * Checks if the method is the intrinsification root for a VarHandle. In the current VarHandle
-     * implementation, all guards are in the automatically generated class VarHandleGuards. All
-     * methods do have a VarHandle argument, and we expect it to be a compile-time constant.
-     * <p>
-     * See the documentation in {@link VarHandleFeature} for more information on the overall
-     * VarHandle support.
-     */
-    private boolean isVarHandleMethod(AnalysisMetaAccess metaAccess, AnalysisMethod method) {
-        if (varHandleGuardsType == null) {
-            varHandleGuardsType = metaAccess.lookupJavaType(ReflectionUtil.lookupClass(false, "java.lang.invoke.VarHandleGuards"));
-        }
-        return method.getDeclaringClass().equals(varHandleGuardsType);
-    }
-
-    private static boolean isIgnoredMethodHandleMethod(AnalysisMethod method) {
-        Class<?> declaringClass = OriginalClassProvider.getJavaClass(method.getDeclaringClass());
-        Set<String> ignoredMethods = IGNORED_METHOD_HANDLE_METHODS.get(declaringClass);
-        return ignoredMethods != null && ignoredMethods.contains(method.getName());
     }
 
     public final class AccumulativeInlineScope extends InlineBeforeAnalysisPolicy.AbstractPolicyScope {
@@ -374,11 +405,6 @@ public class InlineBeforeAnalysisPolicyUtils {
                 return true;
             }
 
-            if (inliningDepth > accumulativeCounters.maxInliningDepth) {
-                // too deep to continue inlining
-                return false;
-            }
-
             if (node instanceof FullInfopointNode || node instanceof ValueProxy || node instanceof ValueAnchorNode || node instanceof FrameState ||
                             node instanceof AbstractBeginNode || node instanceof AbstractEndNode) {
                 /*
@@ -392,6 +418,14 @@ public class InlineBeforeAnalysisPolicyUtils {
 
             if (node instanceof ConstantNode || node instanceof LogicConstantNode) {
                 /* An unlimited number of constants is allowed. We like constants. */
+                return true;
+            }
+
+            if (node instanceof ConditionalNode) {
+                /*
+                 * A ConditionalNode is used to "materialize" a prior logic node when returning a
+                 * condition in a boolean method. We do not want to count it separately.
+                 */
                 return true;
             }
 
@@ -463,24 +497,42 @@ public class InlineBeforeAnalysisPolicyUtils {
         }
 
         @Override
+        public boolean processNonInlinedInvoke(CoreProviders providers, CallTargetNode node) {
+            if (node.targetMethod() != null && AnnotationAccess.isAnnotationPresent(node.targetMethod(), COMPILED_LAMBDA_FORM_ANNOTATION)) {
+                /*
+                 * Prevent partial inlining of method handle code, both with and without
+                 * "intrinsification of method handles". We rather want to keep a top-level call to
+                 * the original method handle.
+                 */
+                return false;
+            }
+            return true;
+        }
+
+        @Override
         public String toString() {
             return "AccumulativeInlineScope: " + numNodes + "/" + numInvokes + " (" + accumulativeCounters.numNodes + "/" + accumulativeCounters.numInvokes + ")";
         }
     }
 
+    private static final Set<Class<?>> INLINE_METHOD_HANDLE_CLASSES = Set.of(
+                    /* Inline trivial helper methods for value conversion. */
+                    sun.invoke.util.ValueConversions.class);
+
+    private static final Set<Executable> INLINE_METHOD_HANDLE_METHODS = Set.of(
+                    /*
+                     * Important methods in the method handle implementation that do not have
+                     * a @ForceInline annotation.
+                     */
+                    ReflectionUtil.lookupMethod(ReflectionUtil.lookupClass(false, "java.lang.invoke.DirectMethodHandle"), "allocateInstance", Object.class),
+                    ReflectionUtil.lookupMethod(ReflectionUtil.lookupClass(false, "java.lang.invoke.DirectMethodHandle$Accessor"), "checkCast", Object.class),
+                    ReflectionUtil.lookupMethod(ReflectionUtil.lookupClass(false, "java.lang.invoke.DirectMethodHandle$StaticAccessor"), "checkCast", Object.class));
+
     private static boolean inlineForMethodHandleIntrinsification(AnalysisMethod method) {
-        String className = method.getDeclaringClass().toJavaName(true);
-        if (className.startsWith("java.lang.invoke") && !className.contains("InvokerBytecodeGenerator")) {
-            /*
-             * Inline all helper methods used by method handles. We do not know exactly which ones
-             * they are, but they are all from the same package.
-             */
-            return true;
-        } else if (className.equals("sun.invoke.util.ValueConversions")) {
-            /* Inline trivial helper methods for value conversion. */
-            return true;
-        }
-        return false;
+        return AnnotationAccess.isAnnotationPresent(method, ForceInline.class) ||
+                        AnnotationAccess.isAnnotationPresent(method, COMPILED_LAMBDA_FORM_ANNOTATION) ||
+                        INLINE_METHOD_HANDLE_CLASSES.contains(method.getDeclaringClass().getJavaClass()) ||
+                        INLINE_METHOD_HANDLE_METHODS.contains(method.getJavaMethod());
     }
 
     /**

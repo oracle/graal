@@ -1,8 +1,8 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion": "6.27.1",
+    "mxversion": "7.5.0",
     "name": "substratevm",
-    "version" : "24.0.0",
+    "version" : "24.1.0",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -305,6 +305,7 @@ suite = {
                     "jdk.internal.reflect",
                     "jdk.internal.vm",
                     "jdk.internal.util",
+                    "jdk.internal.org.objectweb.asm",
                 ],
                 "java.management": [
                     "com.sun.jmx.mbeanserver",
@@ -690,6 +691,8 @@ suite = {
                 ],
             },
             "javaCompliance" : "22+",
+            # GR-51699
+            "forceJavac": True,
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -718,6 +721,8 @@ suite = {
                 ],
             },
             "javaCompliance" : "22+",
+            # GR-51699
+            "forceJavac": True,
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -736,21 +741,21 @@ suite = {
         "com.oracle.svm.native.libchelper": {
             "subDir": "src",
             "native": "static_lib",
-            "os_arch": {
+            "multitarget": {
+                "libc": ["glibc", "musl", "default"],
+            },
+            "os": {
                 "solaris": {
-                    "<others>": {
-                        "ignore": "solaris is not supported",
-                    },
+                    "ignore": "solaris is not supported",
                 },
                 "windows": {
-                    "<others>": {
-                        "cflags": ["-Zi", "-O2", "-D_LITTLE_ENDIAN"],
-                    },
+                    "cflags": ["-Zi", "-O2", "-D_LITTLE_ENDIAN"],
+                },
+                "linux": {
+                    "cflags": ["-g", "-gdwarf-4", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
                 },
                 "<others>": {
-                    "<others>": {
-                        "cflags": ["-g", "-gdwarf-4", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
-                    },
+                    "cflags": ["-g", "-gdwarf-4", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
                 },
             },
             "jacoco" : "exclude",
@@ -800,21 +805,18 @@ suite = {
             "native": "static_lib",
             "deliverable" : "jvm",
             "use_jdk_headers" : True,
-            "os_arch" : {
+            "multitarget": {
+                "libc": ["glibc", "musl", "default"],
+            },
+            "os" : {
                 "darwin": {
-                    "<others>" : {
-                        "cflags": ["-g", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden"],
-                    },
+                    "cflags": ["-g", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden"],
                 },
                 "linux": {
-                    "<others>" : {
-                        "cflags": ["-g", "-gdwarf-4", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0", "-D_GNU_SOURCE"],
-                    },
+                    "cflags": ["-g", "-gdwarf-4", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0", "-D_GNU_SOURCE"],
                 },
                 "<others>": {
-                    "<others>": {
-                        "ignore": "only darwin and linux are supported",
-                    },
+                    "ignore": "only darwin and linux are supported",
                 },
             },
             "dependencies": [
@@ -1458,6 +1460,7 @@ suite = {
                             org.graalvm.nativeimage.foreign,
                             org.graalvm.truffle.runtime.svm,
                             com.oracle.truffle.enterprise.svm""",
+                    "com.oracle.svm.hosted.c.libc to com.oracle.graal.sandbox",
                 ],
                 "opens" : [
                     "com.oracle.svm.core                          to jdk.graal.compiler",
@@ -1752,13 +1755,30 @@ suite = {
                 "darwin-amd64",
                 "windows-amd64",
             ],
-            "layout": {
-                "<os>-<arch>/": [
-                    "dependency:com.oracle.svm.native.libchelper/*",
-                    "dependency:com.oracle.svm.native.darwin/*",
-                    "dependency:com.oracle.svm.native.jvm.posix/*",
-                    "dependency:com.oracle.svm.native.jvm.windows/*",
-                ],
+            "os": {
+                "linux": {
+                    "layout": {
+                        # on linux we want os-arch/libc directory structure
+                        "./": [
+                            "dependency:com.oracle.svm.native.libchelper/*",
+                            "dependency:com.oracle.svm.native.jvm.posix/*",
+                        ],
+                    },
+                },
+                "<others>": {
+                    "layout": {
+                        # on all other os's we don't want libc specific subdirectories
+                        "include/": [
+                            "dependency:com.oracle.svm.native.libchelper/include/*",
+                        ],
+                        "<os>-<arch>/": [
+                            "dependency:com.oracle.svm.native.libchelper/<os>-<arch>/default/*",
+                            "dependency:com.oracle.svm.native.jvm.posix/<os>-<arch>/default/*",
+                            "dependency:com.oracle.svm.native.darwin/*",
+                            "dependency:com.oracle.svm.native.jvm.windows/*",
+                        ],
+                    },
+                },
             },
             "description" : "SubstrateVM image builder native components",
             "noMavenJavadoc": True,

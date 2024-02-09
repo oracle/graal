@@ -163,10 +163,10 @@ public class CompletionExecutor {
         }
         bb.getHostVM().recordActivity();
         Throwable thrown = null;
-        try (DebugContext debug = command.getDebug(bb.getOptions(), bb.getDebugHandlerFactories());
-                        Scope s = debug.scope("Operation");
-                        Activation a = debug.activate()) {
-            command.run(debug);
+        try (DebugContext localDebug = command.getDebug(bb.getOptions(), bb.getDebugHandlerFactories());
+                        Scope s = localDebug.scope("Operation");
+                        Activation a = localDebug.activate()) {
+            command.run(localDebug);
         } catch (Throwable x) {
             thrown = x;
         } finally {
@@ -195,6 +195,7 @@ public class CompletionExecutor {
         state.set(newState);
     }
 
+    @SuppressWarnings("unused")
     public long complete() throws InterruptedException {
         long lastPrint = 0;
         if (timing != null) {

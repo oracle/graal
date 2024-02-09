@@ -79,10 +79,11 @@ import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.phases.RecursivePhase;
 import jdk.graal.compiler.phases.common.util.EconomicSetNodeEventListener;
 import jdk.graal.compiler.phases.graph.ReentrantNodeIterator;
 
-public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProviders> {
+public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProviders> implements RecursivePhase {
 
     private final boolean createMemoryMapNodes;
 

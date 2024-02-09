@@ -34,7 +34,6 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
 import com.oracle.svm.core.meta.SharedMethod;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugHandlersFactory;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -45,15 +44,12 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class RuntimeConfiguration {
 
     private final Providers providers;
-    private final SnippetReflectionProvider snippetReflection;
     private final EnumMap<ConfigKind, SubstrateBackend> backends;
     private final Iterable<DebugHandlersFactory> debugHandlersFactories;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public RuntimeConfiguration(Providers providers, SnippetReflectionProvider snippetReflection, EnumMap<ConfigKind, SubstrateBackend> backends,
-                    Iterable<DebugHandlersFactory> debugHandlersFactories) {
+    public RuntimeConfiguration(Providers providers, EnumMap<ConfigKind, SubstrateBackend> backends, Iterable<DebugHandlersFactory> debugHandlersFactories) {
         this.providers = providers;
-        this.snippetReflection = snippetReflection;
         this.backends = backends;
         this.debugHandlersFactories = debugHandlersFactories;
 
@@ -84,9 +80,5 @@ public final class RuntimeConfiguration {
 
     public SubstrateBackend getBackendForNormalMethod() {
         return backends.get(ConfigKind.NORMAL);
-    }
-
-    public SnippetReflectionProvider getSnippetReflection() {
-        return snippetReflection;
     }
 }

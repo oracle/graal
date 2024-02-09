@@ -47,9 +47,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.test.NodeCostTestFactory.CostTestNodeFactory;
-import com.oracle.truffle.api.dsl.test.NodeCostTestFactory.CostViaMethodOverrideNodeFactory;
-import com.oracle.truffle.api.dsl.test.NodeCostTestFactory.CostWithNodeInfoNodeFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -59,7 +56,7 @@ public class NodeCostTest {
 
     @Test
     public void testNodeCost() {
-        TestRootNode<CostTestNode> node = TestHelper.createRoot(CostTestNodeFactory.getInstance());
+        TestRootNode<CostTestNode> node = TestHelper.createRoot(NodeCostTestFactory.CostTestNodeFactory.getInstance());
         assertEquals(NodeCost.UNINITIALIZED, node.getNode().getCost());
         assertEquals(21, executeWith(node, 21));
         assertEquals(NodeCost.MONOMORPHIC, node.getNode().getCost());
@@ -91,7 +88,7 @@ public class NodeCostTest {
 
     @Test
     public void testNodeCostViaMethodOverride() {
-        TestRootNode<CostViaMethodOverrideNode> node = TestHelper.createRoot(CostViaMethodOverrideNodeFactory.getInstance());
+        TestRootNode<CostViaMethodOverrideNode> node = TestHelper.createRoot(NodeCostTestFactory.CostViaMethodOverrideNodeFactory.getInstance());
         assertEquals(NodeCost.NONE, node.getNode().getCost());
         assertEquals(21, executeWith(node, 21));
         assertEquals(NodeCost.NONE, node.getNode().getCost());
@@ -114,7 +111,7 @@ public class NodeCostTest {
 
     @Test
     public void testNodeCostWithNodeInfo() {
-        TestRootNode<CostWithNodeInfoNode> node = TestHelper.createRoot(CostWithNodeInfoNodeFactory.getInstance());
+        TestRootNode<CostWithNodeInfoNode> node = TestHelper.createRoot(NodeCostTestFactory.CostWithNodeInfoNodeFactory.getInstance());
         assertEquals(NodeCost.NONE, node.getNode().getCost());
         assertEquals(21, executeWith(node, 21));
         assertEquals(NodeCost.NONE, node.getNode().getCost());

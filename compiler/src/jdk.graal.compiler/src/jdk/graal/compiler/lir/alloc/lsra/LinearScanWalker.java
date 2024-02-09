@@ -48,7 +48,6 @@ import jdk.graal.compiler.lir.alloc.lsra.Interval.RegisterBinding;
 import jdk.graal.compiler.lir.alloc.lsra.Interval.RegisterPriority;
 import jdk.graal.compiler.lir.alloc.lsra.Interval.SpillState;
 import jdk.graal.compiler.lir.alloc.lsra.Interval.State;
-
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 

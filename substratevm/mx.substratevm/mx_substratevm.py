@@ -639,7 +639,7 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
         if not preserve_image:
             mx.rmtree(junit_test_dir)
 
-_mask_str = '#'
+_mask_str = '$mask$'
 
 
 def _mask(arg, arg_list):
@@ -1006,6 +1006,7 @@ svm = mx_sdk_vm.GraalVmJreComponent(
         'substratevm:NATIVE_IMAGE_BASE',
     ] + (['substratevm:SVM_FOREIGN'] if mx_sdk_vm.base_jdk().javaCompliance >= '22' else []),
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
+    extra_native_targets=['linux-default-glibc', 'linux-default-musl'] if mx.is_linux() else None,
     stability="earlyadopter",
     jlink=False,
     installable=False,
@@ -1274,6 +1275,34 @@ libgraal_jar_distributions = [
     'sdk:JNIUTILS',
     'substratevm:GRAAL_HOTSPOT_LIBRARY']
 
+def allow_build_path_in_libgraal():
+    """
+    Determines if the ALLOW_ABSOLUTE_PATHS_IN_OUTPUT env var is any other value than ``false``.
+    """
+    return mx.get_env('ALLOW_ABSOLUTE_PATHS_IN_OUTPUT', None) != 'false'
+
+def prevent_build_path_in_libgraal():
+    """
+    If `allow_build_path_in_libgraal() == False`, returns linker
+    options to prevent the build path from showing up in a string in libgraal.
+    """
+    if not allow_build_path_in_libgraal():
+        if mx.is_linux():
+            return ['-H:NativeLinkerOption=-Wl,-soname=libjvmcicompiler.so']
+        if mx.is_darwin():
+            return [
+                '-H:NativeLinkerOption=-Wl,-install_name,@rpath/libjvmcicompiler.dylib',
+
+                # native-image doesn't support generating debug info on Darwin
+                # but the helper C libraries are built with debug info which
+                # can include the build path. Use the -S to strip the debug info
+                # info from the helper C libraries to avoid these paths.
+                '-H:NativeLinkerOption=-Wl,-S'
+            ]
+        if mx.is_windows():
+            return ['-H:NativeLinkerOption=-pdbaltpath:%_PDB%']
+    return []
+
 libgraal_build_args = [
     ## Pass via JVM args opening up of packages needed for image builder early on
     '-J--add-exports=jdk.graal.compiler/jdk.graal.compiler.hotspot=ALL-UNNAMED',
@@ -1329,12 +1358,12 @@ libgraal_build_args = [
     # No need for container support in libgraal as HotSpot already takes care of it
     '-H:-UseContainerSupport',
 ] + ([
-   # Force page size to support libgraal on AArch64 machines with a page size up to 64K.
-   '-H:PageSize=64K'
+    # Force page size to support libgraal on AArch64 machines with a page size up to 64K.
+    '-H:PageSize=64K'
 ] if mx.get_arch() == 'aarch64' else []) + ([
-   # Build libgraal with 'Full RELRO' to prevent GOT overwriting exploits on Linux (GR-46838)
-   '-H:NativeLinkerOption=-Wl,-z,relro,-z,now',
-] if mx.is_linux() else []))
+    # Build libgraal with 'Full RELRO' to prevent GOT overwriting exploits on Linux (GR-46838)
+    '-H:NativeLinkerOption=-Wl,-z,relro,-z,now',
+] if mx.is_linux() else [])) + prevent_build_path_in_libgraal()
 
 libgraal = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,

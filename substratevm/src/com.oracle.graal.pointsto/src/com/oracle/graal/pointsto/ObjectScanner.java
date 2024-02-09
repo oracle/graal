@@ -145,7 +145,7 @@ public class ObjectScanner {
         try {
             scanningObserver.forEmbeddedRoot(root, reason);
             scanConstant(root, reason);
-        } catch (UnsupportedFeatureException ex) {
+        } catch (UnsupportedFeatureException | AnalysisError.TypeNotFoundError ex) {
             bb.getUnsupportedFeatures().addMessage(reason.toString(), reason.getMethod(), ex.getMessage(), null, ex);
         }
     }
@@ -205,14 +205,15 @@ public class ObjectScanner {
                 scanningObserver.forPrimitiveFieldValue(receiver, field, fieldValue, reason);
             }
 
-        } catch (UnsupportedFeatureException ex) {
+        } catch (UnsupportedFeatureException | AnalysisError.TypeNotFoundError ex) {
             unsupportedFeatureDuringFieldScan(bb, field, receiver, ex, reason);
         }
     }
 
-    @SuppressWarnings("unchecked")
     protected JavaConstant readFieldValue(AnalysisField field, JavaConstant receiver) {
-        return ((ConstantReflectionProviderExtension<AnalysisField>) bb.getConstantReflectionProvider()).readHostedFieldValue(bb.getMetaAccess(), field, receiver);
+        /* The object scanner processes hosted values. We must not see shadow heap values here. */
+        AnalysisError.guarantee(!(receiver instanceof ImageHeapConstant));
+        return bb.getUniverse().getHostedValuesProvider().readFieldValueWithReplacement(field, receiver);
     }
 
     /**
@@ -266,10 +267,10 @@ public class ObjectScanner {
                     scanningObserver.forNullArrayElement(array, arrayType, idx, reason);
                 } else {
                     try {
-                        JavaConstant element = bb.getUniverse().getSnippetReflection().forObject(bb.getUniverse().replaceObject(e));
+                        JavaConstant element = bb.getUniverse().getHostedValuesProvider().forObject(bb.getUniverse().replaceObject(e));
                         scanArrayElement(array, arrayType, reason, idx, element);
-                    } catch (UnsupportedFeatureException ex) { /* Object replacement can throw. */
-                        unsupportedFeatureDuringConstantScan(bb, bb.getUniverse().getSnippetReflection().forObject(e), ex, reason);
+                    } catch (UnsupportedFeatureException | AnalysisError.TypeNotFoundError ex) {
+                        unsupportedFeatureDuringConstantScan(bb, bb.getUniverse().getHostedValuesProvider().forObject(e), ex, reason);
                     }
                 }
             }
@@ -313,7 +314,7 @@ public class ObjectScanner {
      * Use the constant hashCode as a key for the unsupported feature to register only one error
      * message if the constant is reachable from multiple places.
      */
-    public static void unsupportedFeatureDuringConstantScan(BigBang bb, JavaConstant constant, UnsupportedFeatureException e, ScanReason reason) {
+    public static void unsupportedFeatureDuringConstantScan(BigBang bb, JavaConstant constant, Throwable e, ScanReason reason) {
         unsupportedFeature(bb, String.valueOf(receiverHashCode(constant)), e.getMessage(), reason);
     }
 
@@ -322,11 +323,11 @@ public class ObjectScanner {
      * only one error message if the value is reachable from multiple places. For example both the
      * heap scanning and the heap verification would scan a field that contains an illegal value.
      */
-    public static void unsupportedFeatureDuringFieldScan(BigBang bb, AnalysisField field, JavaConstant receiver, UnsupportedFeatureException e, ScanReason reason) {
+    public static void unsupportedFeatureDuringFieldScan(BigBang bb, AnalysisField field, JavaConstant receiver, Throwable e, ScanReason reason) {
         unsupportedFeature(bb, (receiver != null ? receiverHashCode(receiver) + "_" : "") + field.format("%H.%n"), e.getMessage(), reason);
     }
 
-    public static void unsupportedFeatureDuringFieldFolding(BigBang bb, AnalysisField field, JavaConstant receiver, UnsupportedFeatureException e, AnalysisMethod parsedMethod, int bci) {
+    public static void unsupportedFeatureDuringFieldFolding(BigBang bb, AnalysisField field, JavaConstant receiver, Throwable e, AnalysisMethod parsedMethod, int bci) {
         ScanReason reason = new FieldConstantFold(field, parsedMethod, bci, receiver, new MethodParsing(parsedMethod));
         unsupportedFeature(bb, (receiver != null ? receiverHashCode(receiver) + "_" : "") + field.format("%H.%n"), e.getMessage(), reason);
     }
@@ -448,7 +449,7 @@ public class ObjectScanner {
                 /* Scan the array elements. */
                 scanArray(entry.constant, entry.reason);
             }
-        } catch (UnsupportedFeatureException ex) {
+        } catch (UnsupportedFeatureException | AnalysisError.TypeNotFoundError ex) {
             unsupportedFeatureDuringConstantScan(bb, entry.constant, ex, entry.reason);
         }
     }
@@ -552,20 +553,37 @@ public class ObjectScanner {
     public static class FieldScan extends ScanReason {
         final AnalysisField field;
 
-        private static ScanReason previous(AnalysisField field) {
-            Object readBy = field.getReadBy();
-            if (readBy instanceof BytecodePosition) {
-                ResolvedJavaMethod readingMethod = ((BytecodePosition) readBy).getMethod();
-                return new MethodParsing((AnalysisMethod) readingMethod);
-            } else if (readBy instanceof AnalysisMethod) {
-                return new MethodParsing((AnalysisMethod) readBy);
+        private static ScanReason previous(AnalysisField field, JavaConstant receiver) {
+            /*
+             * Since there is no previous reason we try to infer one either from the receiver
+             * constant or from the field read-by reason.
+             */
+            Object reason;
+            if (receiver instanceof ImageHeapConstant heapConstant) {
+                AnalysisError.guarantee(heapConstant.isReachable());
+                reason = heapConstant.getReachableReason();
             } else {
-                return new OtherReason("registered as read because: " + readBy);
+                reason = field.getReadBy();
             }
+            if (reason instanceof ScanReason scanReason) {
+                return scanReason;
+            } else if (reason instanceof BytecodePosition position) {
+                ResolvedJavaMethod readingMethod = position.getMethod();
+                return new MethodParsing((AnalysisMethod) readingMethod);
+            } else if (reason instanceof AnalysisMethod method) {
+                return new MethodParsing(method);
+            } else if (reason != null) {
+                return new OtherReason("registered as read because: " + reason);
+            }
+            return null;
         }
 
         public FieldScan(AnalysisField field) {
-            this(field, null, previous(field));
+            this(field, null, previous(field, null));
+        }
+
+        public FieldScan(AnalysisField field, JavaConstant receiver) {
+            this(field, receiver, previous(field, receiver));
         }
 
         public FieldScan(AnalysisField field, JavaConstant receiver, ScanReason previous) {
@@ -718,7 +736,7 @@ public class ObjectScanner {
 
         @Override
         public String toString(BigBang bb) {
-            return "scanning root " + asString(bb, constant) + " embedded in " + System.lineSeparator() + INDENTATION_AFTER_NEWLINE + asStackTraceElement();
+            return "scanning root " + asString(bb, constant) + " embedded in" + System.lineSeparator() + INDENTATION_AFTER_NEWLINE + asStackTraceElement();
         }
 
         @Override

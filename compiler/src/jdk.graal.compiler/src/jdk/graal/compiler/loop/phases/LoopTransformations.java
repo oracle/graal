@@ -34,10 +34,10 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
 import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.core.common.RetryableBailoutException;
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Graph.Mark;
@@ -172,9 +172,12 @@ public abstract class LoopTransformations {
     }
 
     public static void unswitch(LoopEx loop, List<ControlSplitNode> controlSplitNodeSet, boolean isTrivialUnswitch) {
-        ControlSplitNode firstNode = controlSplitNodeSet.iterator().next();
+        final ControlSplitNode firstNode = controlSplitNodeSet.iterator().next();
+        final StructuredGraph graph = firstNode.graph();
+
+        graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "Before unswitching %s", controlSplitNodeSet);
+
         LoopFragmentWhole originalLoop = loop.whole();
-        StructuredGraph graph = firstNode.graph();
 
         if (!isTrivialUnswitch) {
             loop.loopBegin().incrementUnswitches();

@@ -36,8 +36,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.MemoryWalker;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -233,9 +231,7 @@ public final class Space {
          * This method is used from {@link PosixJavaThreads#detachThread(VMThread)}, so it can not
          * guarantee that it is inside a VMOperation, only that there is some mutual exclusion.
          */
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            VMThreads.guaranteeOwnsThreadMutex("Trying to append an aligned heap chunk but no mutual exclusion.", true);
-        }
+        VMThreads.guaranteeOwnsThreadMutex("Trying to append an aligned heap chunk but no mutual exclusion.", true);
         appendAlignedHeapChunkUninterruptibly(aChunk);
         accounting.noteAlignedHeapChunk();
     }
@@ -287,9 +283,7 @@ public final class Space {
          * This method is used from {@link PosixJavaThreads#detachThread(VMThread)}, so it can not
          * guarantee that it is inside a VMOperation, only that there is some mutual exclusion.
          */
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            VMThreads.guaranteeOwnsThreadMutex("Trying to append an unaligned chunk but no mutual exclusion.", true);
-        }
+        VMThreads.guaranteeOwnsThreadMutex("Trying to append an unaligned chunk but no mutual exclusion.", true);
         appendUnalignedHeapChunkUninterruptibly(uChunk);
         accounting.noteUnalignedHeapChunk(uChunk);
     }
@@ -508,21 +502,6 @@ public final class Space {
             appendUnalignedHeapChunk(uChunk);
             uChunk = next;
         }
-    }
-
-    boolean walkHeapChunks(MemoryWalker.Visitor visitor) {
-        boolean continueVisiting = true;
-        AlignedHeapChunk.AlignedHeader aChunk = getFirstAlignedHeapChunk();
-        while (continueVisiting && aChunk.isNonNull()) {
-            continueVisiting = visitor.visitHeapChunk(aChunk, AlignedHeapChunk.getMemoryWalkerAccess());
-            aChunk = HeapChunk.getNext(aChunk);
-        }
-        UnalignedHeapChunk.UnalignedHeader uChunk = getFirstUnalignedHeapChunk();
-        while (continueVisiting && uChunk.isNonNull()) {
-            continueVisiting = visitor.visitHeapChunk(uChunk, UnalignedHeapChunk.getMemoryWalkerAccess());
-            uChunk = HeapChunk.getNext(uChunk);
-        }
-        return continueVisiting;
     }
 
     /**

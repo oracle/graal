@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.windows;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -33,16 +32,11 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CIsolateData;
 import com.oracle.svm.core.c.CIsolateDataFactory;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.heap.UnknownObjectField;
-import com.oracle.svm.core.locks.ClassInstanceReplacer;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMMutex;
@@ -54,75 +48,25 @@ import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.SynchAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
 
-import jdk.graal.compiler.api.replacements.Fold;
-
-/**
- * Support of {@link VMMutex}, {@link VMCondition} and {@link VMSemaphore} in multithreaded
- * environments. Locking is implemented via Windows locking primitives.
- */
-@AutomaticallyRegisteredFeature
-@Platforms(Platform.WINDOWS.class)
-final class WindowsVMLockFeature implements InternalFeature {
-
-    private final ClassInstanceReplacer<VMMutex, WindowsVMMutex> mutexReplacer = new ClassInstanceReplacer<>(VMMutex.class) {
-        @Override
-        protected WindowsVMMutex createReplacement(VMMutex source) {
-            return new WindowsVMMutex(source.getName());
-        }
-    };
-
-    private final ClassInstanceReplacer<VMCondition, WindowsVMCondition> conditionReplacer = new ClassInstanceReplacer<>(VMCondition.class) {
-        @Override
-        protected WindowsVMCondition createReplacement(VMCondition source) {
-            return new WindowsVMCondition((WindowsVMMutex) mutexReplacer.apply(source.getMutex()));
-        }
-    };
-
-    private final ClassInstanceReplacer<VMSemaphore, VMSemaphore> semaphoreReplacer = new ClassInstanceReplacer<>(VMSemaphore.class) {
-        @Override
-        protected VMSemaphore createReplacement(VMSemaphore source) {
-            return new WindowsVMSemaphore(source.getName());
-        }
-    };
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.MultiThreaded.getValue();
-    }
-
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.add(VMLockSupport.class, new WindowsVMLockSupport());
-        access.registerObjectReplacer(mutexReplacer);
-        access.registerObjectReplacer(conditionReplacer);
-        access.registerObjectReplacer(semaphoreReplacer);
-    }
-
-    @Override
-    public void beforeCompilation(BeforeCompilationAccess access) {
-        WindowsVMMutex[] mutexes = mutexReplacer.getReplacements().toArray(new WindowsVMMutex[0]);
-        WindowsVMCondition[] conditions = conditionReplacer.getReplacements().toArray(new WindowsVMCondition[0]);
-
-        WindowsVMLockSupport lockSupport = WindowsVMLockSupport.singleton();
-        lockSupport.mutexes = mutexes;
-        lockSupport.conditions = conditions;
-        lockSupport.semaphores = semaphoreReplacer.getReplacements().toArray(new WindowsVMSemaphore[0]);
-    }
-}
-
+@AutomaticallyRegisteredImageSingleton(VMLockSupport.class)
 public final class WindowsVMLockSupport extends VMLockSupport {
-    /** All mutexes, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(availability = ReadyForCompilation.class) WindowsVMMutex[] mutexes;
 
-    /** All conditions, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(availability = ReadyForCompilation.class) WindowsVMCondition[] conditions;
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected VMMutex replaceVMMutex(VMMutex source) {
+        return new WindowsVMMutex(source.getName());
+    }
 
-    /** All semaphores, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(availability = ReadyForCompilation.class) WindowsVMSemaphore[] semaphores;
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected VMCondition replaceVMCondition(VMCondition source) {
+        return new WindowsVMCondition((WindowsVMMutex) mutexReplacer.apply(source.getMutex()));
+    }
 
-    @Fold
-    public static WindowsVMLockSupport singleton() {
-        return (WindowsVMLockSupport) ImageSingletons.lookup(VMLockSupport.class);
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected VMSemaphore replaceSemaphore(VMSemaphore source) {
+        return new WindowsVMSemaphore(source.getName());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -145,24 +89,6 @@ public final class WindowsVMLockSupport extends VMLockSupport {
         int lastError = WinBase.GetLastError();
         Log.log().string(functionName).string(" failed with error ").hex(lastError).newline();
         ImageSingletons.lookup(LogHandler.class).fatalError();
-    }
-
-    @Override
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public VMMutex[] getMutexes() {
-        return mutexes;
-    }
-
-    @Override
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public VMCondition[] getConditions() {
-        return conditions;
-    }
-
-    @Override
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public VMSemaphore[] getSemaphores() {
-        return semaphores;
     }
 }
 

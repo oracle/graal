@@ -51,7 +51,7 @@ public class EconomyLowTier extends BaseTier<LowTierContext> {
          * specific to the target architecture for this compilation. This should be done by the
          * backend or the target specific suites provider.
          */
-        appendPhase(new PlaceholderPhase<LowTierContext>(AddressLoweringPhase.class));
+        appendPhase(new PlaceholderPhase<>(AddressLoweringPhase.class));
         appendPhase(new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS));
     }
 }

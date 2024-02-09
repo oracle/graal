@@ -31,7 +31,6 @@ import java.util.regex.Pattern;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
-import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
@@ -46,6 +45,8 @@ import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.graal.compiler.debug.GraalError;
 
 public class DynamicProxySupport implements DynamicProxyRegistry {
 
@@ -173,7 +174,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         ProxyCacheKey key = new ProxyCacheKey(interfaces);
         Object clazzOrError = proxyCache.get(key);
         if (clazzOrError == null) {
-            MissingReflectionRegistrationUtils.forProxy(interfaces);
+            throw MissingReflectionRegistrationUtils.errorForProxy(interfaces);
         }
         if (clazzOrError instanceof Throwable) {
             throw new GraalError((Throwable) clazzOrError);

@@ -29,7 +29,17 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import java.util.Objects;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.LocationIdentity;
+
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.meta.SharedField;
+import com.oracle.svm.core.util.VMError;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -42,17 +52,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.phases.util.Providers;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.LocationIdentity;
-
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.meta.SharedField;
-import com.oracle.svm.core.util.VMError;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -169,7 +168,7 @@ public final class StaticFieldsSupport {
 final class StaticFieldsFeature implements InternalFeature {
 
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
+    public void registerInvocationPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
         Registration r = new Registration(plugins.getInvocationPlugins(), StaticFieldsSupport.class);
         r.register(new RequiredInvocationPlugin("getStaticObjectFields") {
             @Override

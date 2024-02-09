@@ -24,12 +24,13 @@
  */
 package com.oracle.svm.core.util;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.log.Log;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 public class CounterSupport {
     private final Counter.Group[] enabledGroups;
@@ -40,8 +41,17 @@ public class CounterSupport {
     }
 
     @Fold
+    public static boolean isEnabled() {
+        return ImageSingletons.contains(CounterSupport.class);
+    }
+
+    @Fold
     public static CounterSupport singleton() {
         return ImageSingletons.lookup(CounterSupport.class);
+    }
+
+    public static void logValues(@SuppressWarnings("unused") boolean firstIsolate) {
+        CounterSupport.singleton().logValues(Log.log());
     }
 
     /**
@@ -56,5 +66,4 @@ public class CounterSupport {
     public boolean hasCounters() {
         return enabledGroups != null && enabledGroups.length > 0;
     }
-
 }

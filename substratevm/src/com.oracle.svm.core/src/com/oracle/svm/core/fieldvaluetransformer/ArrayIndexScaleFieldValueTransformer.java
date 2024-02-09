@@ -33,8 +33,8 @@ import jdk.vm.ci.meta.JavaKind;
 public final class ArrayIndexScaleFieldValueTransformer extends BoxingTransformer implements FieldValueTransformer {
     private final Class<?> targetClass;
 
-    public ArrayIndexScaleFieldValueTransformer(Class<?> targetClass, Class<?> returnType) {
-        super(returnType);
+    public ArrayIndexScaleFieldValueTransformer(Class<?> targetClass, JavaKind returnKind) {
+        super(returnKind);
         this.targetClass = targetClass;
     }
 

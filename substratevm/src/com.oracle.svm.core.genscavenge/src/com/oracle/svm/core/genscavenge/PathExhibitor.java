@@ -27,8 +27,6 @@ package com.oracle.svm.core.genscavenge;
 
 import java.util.ArrayList;
 
-import com.oracle.svm.core.heap.VMOperationInfos;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -36,9 +34,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -46,6 +42,8 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.log.StringBuilderLog;
@@ -55,6 +53,8 @@ import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
+
+import jdk.graal.compiler.word.Word;
 
 /** Determines paths from roots to objects or heap regions. */
 public final class PathExhibitor {
@@ -155,16 +155,14 @@ public final class PathExhibitor {
         JavaStackWalker.walkCurrentThread(currentThreadWalkStackPointer, stackFrameVisitor);
         stackFrameVisitor.reset();
 
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            IsolateThread thread = VMThreads.firstThread();
-            while (!edge.isFilled() && thread.isNonNull()) {
-                if (thread.notEqual(CurrentIsolate.getCurrentThread())) { // walked above
-                    stackFrameVisitor.initialize(target, edge);
-                    JavaStackWalker.walkThread(thread, stackFrameVisitor);
-                    stackFrameVisitor.reset();
-                }
-                thread = VMThreads.nextThread(thread);
+        IsolateThread thread = VMThreads.firstThread();
+        while (!edge.isFilled() && thread.isNonNull()) {
+            if (thread.notEqual(CurrentIsolate.getCurrentThread())) { // walked above
+                stackFrameVisitor.initialize(target, edge);
+                JavaStackWalker.walkThread(thread, stackFrameVisitor);
+                stackFrameVisitor.reset();
             }
+            thread = VMThreads.nextThread(thread);
         }
     }
 

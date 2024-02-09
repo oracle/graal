@@ -4,7 +4,7 @@ suite = {
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "24.0.0",
+  "version" : "24.1.0",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -315,6 +315,9 @@ suite = {
       "requiresConcealed" : {
         "java.base" : [
           "jdk.internal.util",
+        ],
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.meta",
         ],
       },
       "checkstyle": "jdk.graal.compiler",

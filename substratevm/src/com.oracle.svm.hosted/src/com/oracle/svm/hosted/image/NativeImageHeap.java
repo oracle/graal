@@ -36,7 +36,6 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -48,6 +47,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
@@ -55,11 +55,11 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.FillerObject;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -72,7 +72,6 @@ import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.HostedConfiguration;
-import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
@@ -89,7 +88,6 @@ import com.oracle.svm.hosted.meta.UniverseBuilder;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -260,9 +258,9 @@ public final class NativeImageHeap implements ImageHeap {
     Object readInlinedField(HostedField field, JavaConstant receiver) {
         VMError.guarantee(HostedConfiguration.isInlinedField(field), "Expected an inlined field, found %s", field);
         JavaConstant hostedReceiver = ((ImageHeapInstance) receiver).getHostedObject();
-        /* Use the AnalysisConstantReflectionProvider to get direct access to hosted values. */
-        AnalysisConstantReflectionProvider analysisConstantReflection = hConstantReflection.getWrappedConstantReflection();
-        return hUniverse.getSnippetReflection().asObject(Object.class, analysisConstantReflection.readHostedFieldValue(hMetaAccess, field.getWrapped(), hostedReceiver));
+        /* Use the HostedValuesProvider to get direct access to hosted values. */
+        HostedValuesProvider hostedValuesProvider = aUniverse.getHostedValuesProvider();
+        return hUniverse.getSnippetReflection().asObject(Object.class, hostedValuesProvider.readFieldValueWithReplacement(field.getWrapped(), hostedReceiver));
     }
 
     private JavaConstant readConstantField(HostedField field, JavaConstant receiver) {
@@ -455,6 +453,15 @@ public final class NativeImageHeap implements ImageHeap {
         boolean references = false;
         boolean relocatable = false; /* always false when !spawnIsolates() */
 
+        if (!type.isInstantiated()) {
+            StringBuilder msg = new StringBuilder();
+            msg.append("Image heap writing found an object whose type was not marked as instantiated by the static analysis: ");
+            msg.append(type.toJavaName(true)).append("  (").append(type).append(")");
+            msg.append(System.lineSeparator()).append("  reachable through:").append(System.lineSeparator());
+            fillReasonStack(msg, reason);
+            VMError.shouldNotReachHere(msg.toString());
+        }
+
         if (type.isInstanceClass()) {
             final HostedInstanceClass clazz = (HostedInstanceClass) type;
             // If the type has a monitor field, it has a reference field that is written.
@@ -464,7 +471,7 @@ public final class NativeImageHeap implements ImageHeap {
                 // also not immutable: users of registerAsImmutable() must take precautions
             }
 
-            List<HostedField> ignoredFields;
+            Set<HostedField> ignoredFields;
             Object hybridArray;
             final long size;
 
@@ -474,9 +481,16 @@ public final class NativeImageHeap implements ImageHeap {
                  * can never be duplicated, i.e. written as a separate object. We use the blacklist
                  * to check this.
                  */
-                Object typeIDSlots = readInlinedField(dynamicHubLayout.typeIDSlotsField, constant);
-                assert typeIDSlots != null : "Cannot read value for field " + dynamicHubLayout.typeIDSlotsField.format("%H.%n");
-                blacklist.add(typeIDSlots);
+                if (SubstrateOptions.closedTypeWorld()) {
+                    Object typeIDSlots = readInlinedField(dynamicHubLayout.closedWorldTypeCheckSlotsField, constant);
+                    assert typeIDSlots != null : "Cannot read value for field " + dynamicHubLayout.closedWorldTypeCheckSlotsField.format("%H.%n");
+                    blacklist.add(typeIDSlots);
+                } else {
+                    if (SubstrateUtil.assertionsEnabled()) {
+                        Object typeIDSlots = readInlinedField(dynamicHubLayout.closedWorldTypeCheckSlotsField, constant);
+                        assert typeIDSlots == null : typeIDSlots;
+                    }
+                }
 
                 Object vTable = readInlinedField(dynamicHubLayout.vTableField, constant);
                 hybridArray = vTable;
@@ -484,7 +498,7 @@ public final class NativeImageHeap implements ImageHeap {
                 blacklist.add(vTable);
 
                 size = dynamicHubLayout.getTotalSize(Array.getLength(vTable));
-                ignoredFields = List.of(dynamicHubLayout.typeIDSlotsField, dynamicHubLayout.vTableField);
+                ignoredFields = dynamicHubLayout.getIgnoredFields();
 
             } else if (HybridLayout.isHybrid(clazz)) {
                 HybridLayout hybridLayout = hybridLayouts.get(clazz);
@@ -501,7 +515,7 @@ public final class NativeImageHeap implements ImageHeap {
                 boolean shouldBlacklist = !HybridLayout.canHybridFieldsBeDuplicated(clazz);
                 HostedField hybridArrayField = hybridLayout.getArrayField();
                 hybridArray = readInlinedField(hybridArrayField, constant);
-                ignoredFields = List.of(hybridArrayField);
+                ignoredFields = Set.of(hybridArrayField);
                 if (hybridArray != null && shouldBlacklist) {
                     blacklist.add(hybridArray);
                     written = true;
@@ -510,7 +524,7 @@ public final class NativeImageHeap implements ImageHeap {
                 assert hybridArray != null : "Cannot read value for field " + hybridArrayField.format("%H.%n");
                 size = hybridLayout.getTotalSize(Array.getLength(hybridArray), true);
             } else {
-                ignoredFields = List.of();
+                ignoredFields = Set.of();
                 hybridArray = null;
                 size = LayoutEncoding.getPureInstanceSize(hub, true).rawValue();
             }
@@ -626,15 +640,11 @@ public final class NativeImageHeap implements ImageHeap {
      * Determine if a constant will be immutable in the native image heap.
      */
     private boolean isKnownImmutableConstant(JavaConstant constant) {
-        JavaConstant hostedConstant = constant;
-        if (constant instanceof ImageHeapConstant imageHeapConstant) {
-            hostedConstant = imageHeapConstant.getHostedObject();
-            if (hostedConstant == null) {
-                /* A simulated ImageHeapConstant cannot be marked as immutable. */
-                return false;
-            }
+        if (constant instanceof ImageHeapConstant imageHeapConstant && !imageHeapConstant.isBackedByHostedObject()) {
+            /* A simulated ImageHeapConstant cannot be marked as immutable. */
+            return false;
         }
-        Object obj = hUniverse.getSnippetReflection().asObject(Object.class, hostedConstant);
+        Object obj = hUniverse.getSnippetReflection().asObject(Object.class, constant);
         return UniverseBuilder.isKnownImmutableType(obj.getClass()) || knownImmutableObjects.contains(obj);
     }
 
@@ -742,8 +752,6 @@ public final class NativeImageHeap implements ImageHeap {
         final Object reason;
     }
 
-    private final int imageHeapOffsetInAddressSpace = Heap.getHeap().getImageHeapOffsetInAddressSpace();
-
     public final class ObjectInfo implements ImageHeapObject {
         private final JavaConstant constant;
         private final HostedClass clazz;
@@ -816,37 +824,6 @@ public final class NativeImageHeap implements ImageHeap {
         public void setHeapPartition(ImageHeapPartition value) {
             assert this.partition == null;
             this.partition = value;
-        }
-
-        /**
-         * Returns the index into the {@link RelocatableBuffer} to which this object is written.
-         */
-        public int getIndexInBuffer(long index) {
-            long result = getOffset() + index;
-            return NumUtil.safeToInt(result);
-        }
-
-        /**
-         * If heap base addressing is enabled, this returns the heap-base relative address of this
-         * object. Otherwise, this returns the offset of the object within a native image section
-         * (e.g., read-only or writable).
-         */
-        public long getAddress() {
-            /*
-             * At run-time, the image heap may be mapped in a way that there is some extra space at
-             * the beginning of the heap. So, all heap-base-relative addresses must be adjusted by
-             * that offset.
-             */
-            return imageHeapOffsetInAddressSpace + getOffset();
-        }
-
-        /**
-         * Similar to {@link #getAddress()} but this method is typically used to get the address of
-         * a field within an object.
-         */
-        public long getAddress(long delta) {
-            assert delta >= 0 && delta < getSize() : "Index: " + delta + " out of bounds: [0 .. " + getSize() + ").";
-            return getAddress() + delta;
         }
 
         @Override

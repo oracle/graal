@@ -27,8 +27,8 @@ package jdk.graal.compiler.microbenchmarks.graal.util;
 import java.lang.reflect.Method;
 import java.util.List;
 
+import jdk.graal.compiler.core.test.TestGraphBuilderPhase;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -37,7 +37,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class GraalUtil {
@@ -139,7 +138,7 @@ public class GraalUtil {
         }
         StructuredGraph graph = builder.build();
         PhaseSuite<HighTierContext> graphBuilderSuite = new PhaseSuite<>();
-        graphBuilderSuite.appendPhase(new GraphBuilderPhase(GraphBuilderConfiguration.getDefault(new Plugins(new InvocationPlugins()))));
+        graphBuilderSuite.appendPhase(new TestGraphBuilderPhase(GraphBuilderConfiguration.getDefault(new Plugins(new InvocationPlugins()))));
         graphBuilderSuite.apply(graph, new HighTierContext(graal.providers, graphBuilderSuite, OptimisticOptimizations.ALL));
         return graph;
     }

@@ -1270,7 +1270,9 @@ public class SubstrateDiagnostics {
             if (ImageSingletons.contains(JavaMainWrapper.JavaMainSupport.class)) {
                 thunks.add(new DumpCommandLine());
             }
-            thunks.add(new DumpCounters());
+            if (CounterSupport.isEnabled()) {
+                thunks.add(new DumpCounters());
+            }
             if (RuntimeCompilation.isEnabled()) {
                 thunks.add(new DumpCodeCacheHistory());
                 thunks.add(new DumpRuntimeCodeInfoMemory());

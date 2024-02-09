@@ -1557,8 +1557,8 @@ public abstract class ObjectFile {
         Map<LayoutDecision, ArrayList<LayoutDecision>> removedEdgesDependingOn = new HashMap<>();
         Map<LayoutDecision, ArrayList<LayoutDecision>> removedEdgesDependedOnBy = new HashMap<>();
         for (LayoutDecision l : allDecisions) {
-            removedEdgesDependingOn.put(l, new ArrayList<LayoutDecision>());
-            removedEdgesDependedOnBy.put(l, new ArrayList<LayoutDecision>());
+            removedEdgesDependingOn.put(l, new ArrayList<>());
+            removedEdgesDependedOnBy.put(l, new ArrayList<>());
         }
 
         // 2. run Kahn's algorithm

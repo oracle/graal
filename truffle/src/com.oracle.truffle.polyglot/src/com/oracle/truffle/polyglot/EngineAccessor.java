@@ -1374,6 +1374,11 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public boolean isContextBoundLogger(Object loggerCache) {
+            return ((PolyglotLoggers.LoggerCache) loggerCache).isContextBoundLogger();
+        }
+
+        @Override
         public Object getOuterContext(Object polyglotContext) {
             return getOuterContext((PolyglotContextImpl) polyglotContext);
         }

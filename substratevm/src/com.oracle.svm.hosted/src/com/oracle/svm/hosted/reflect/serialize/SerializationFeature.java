@@ -57,7 +57,7 @@ import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.util.GraalAccess;
-import com.oracle.svm.core.configure.ConditionalElement;
+import com.oracle.svm.core.configure.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
@@ -72,7 +72,9 @@ import com.oracle.svm.hosted.ConfigurationTypeResolver;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
+import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
 import com.oracle.svm.hosted.reflect.RecordUtils;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.proxy.DynamicProxyFeature;
@@ -83,12 +85,15 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
+import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
@@ -118,17 +123,20 @@ public class SerializationFeature implements InternalFeature {
     public void duringSetup(DuringSetupAccess a) {
         FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
+        ConfigurationConditionResolver<ConfigurationCondition> conditionResolver = new NativeImageConditionResolver(imageClassLoader, ClassInitializationSupport.singleton());
         ConfigurationTypeResolver typeResolver = new ConfigurationTypeResolver("serialization configuration", imageClassLoader);
         SerializationDenyRegistry serializationDenyRegistry = new SerializationDenyRegistry(typeResolver);
         serializationBuilder = new SerializationBuilder(serializationDenyRegistry, access, typeResolver, ImageSingletons.lookup(ProxyRegistry.class));
         ImageSingletons.add(RuntimeSerializationSupport.class, serializationBuilder);
-        SerializationConfigurationParser denyCollectorParser = new SerializationConfigurationParser(serializationDenyRegistry, ConfigurationFiles.Options.StrictConfiguration.getValue());
+        SerializationConfigurationParser<ConfigurationCondition> denyCollectorParser = new SerializationConfigurationParser<>(conditionResolver, serializationDenyRegistry,
+                        ConfigurationFiles.Options.StrictConfiguration.getValue());
 
         ConfigurationParserUtils.parseAndRegisterConfigurations(denyCollectorParser, imageClassLoader, "serialization",
                         ConfigurationFiles.Options.SerializationDenyConfigurationFiles, ConfigurationFiles.Options.SerializationDenyConfigurationResources,
                         ConfigurationFile.SERIALIZATION_DENY.getFileName());
 
-        SerializationConfigurationParser parser = new SerializationConfigurationParser(serializationBuilder, ConfigurationFiles.Options.StrictConfiguration.getValue());
+        SerializationConfigurationParser<ConfigurationCondition> parser = new SerializationConfigurationParser<>(conditionResolver, serializationBuilder,
+                        ConfigurationFiles.Options.StrictConfiguration.getValue());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "serialization",
                         ConfigurationFiles.Options.SerializationConfigurationFiles, ConfigurationFiles.Options.SerializationConfigurationResources,
                         ConfigurationFile.SERIALIZATION.getFileName());
@@ -193,7 +201,7 @@ public class SerializationFeature implements InternalFeature {
             return null;
         }
 
-        return lambdaClass.getName().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING) ? lambdaClass : null;
+        return LambdaUtils.isLambdaClass(lambdaClass) ? lambdaClass : null;
     }
 
     private static void registerLambdasFromConstantNodesInGraph(StructuredGraph graph, SerializationBuilder serializationBuilder) {
@@ -210,9 +218,36 @@ public class SerializationFeature implements InternalFeature {
         }
     }
 
+    static class LambdaGraphBuilderPhase extends GraphBuilderPhase {
+        LambdaGraphBuilderPhase(GraphBuilderConfiguration config) {
+            super(config);
+        }
+
+        @Override
+        public GraphBuilderPhase copyWithConfig(GraphBuilderConfiguration config) {
+            return new LambdaGraphBuilderPhase(config);
+        }
+
+        static class LambdaBytecodeParser extends BytecodeParser {
+            protected LambdaBytecodeParser(Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
+                super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
+            }
+        }
+
+        @Override
+        protected Instance createInstance(CoreProviders providers, GraphBuilderConfiguration instanceGBConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
+            return new Instance(providers, instanceGBConfig, optimisticOpts, initialIntrinsicContext) {
+                @Override
+                protected BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
+                    return new LambdaBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext);
+                }
+            };
+        }
+    }
+
     @SuppressWarnings("try")
     private static void registerLambdasFromMethod(ResolvedJavaMethod method, SerializationBuilder serializationBuilder, OptionValues options) {
-        GraphBuilderPhase lambdaParserPhase = new GraphBuilderPhase(buildLambdaParserConfig());
+        GraphBuilderPhase lambdaParserPhase = new LambdaGraphBuilderPhase(buildLambdaParserConfig());
         StructuredGraph graph = createMethodGraph(method, lambdaParserPhase, options);
         registerLambdasFromConstantNodesInGraph(graph, serializationBuilder);
     }
@@ -267,7 +302,7 @@ public class SerializationFeature implements InternalFeature {
     }
 }
 
-final class SerializationDenyRegistry implements RuntimeSerializationSupport {
+final class SerializationDenyRegistry implements RuntimeSerializationSupport<ConfigurationCondition> {
 
     private final Map<Class<?>, Boolean> deniedClasses = new HashMap<>();
     private final ConfigurationTypeResolver typeResolver;
@@ -326,7 +361,7 @@ final class SerializationDenyRegistry implements RuntimeSerializationSupport {
     }
 }
 
-final class SerializationBuilder extends ConditionalConfigurationRegistry implements RuntimeSerializationSupport {
+final class SerializationBuilder extends ConditionalConfigurationRegistry implements RuntimeSerializationSupport<ConfigurationCondition> {
 
     private static final Method getConstructorAccessorMethod = ReflectionUtil.lookupMethod(Constructor.class, "getConstructorAccessor");
     private static final Method getExternalizableConstructorMethod = ReflectionUtil.lookupMethod(ObjectStreamClass.class, "getExternalizableConstructor", Class.class);
@@ -430,11 +465,6 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     public void registerLambdaCapturingClass(ConfigurationCondition condition, String lambdaCapturingClassName) {
         abortIfSealed();
 
-        Class<?> conditionClass = typeResolver.resolveConditionType(condition.getTypeName());
-        if (conditionClass == null) {
-            return;
-        }
-
         Class<?> lambdaCapturingClass = typeResolver.resolveType(lambdaCapturingClassName);
         if (lambdaCapturingClass == null || lambdaCapturingClass.isPrimitive() || lambdaCapturingClass.isArray()) {
             return;
@@ -445,28 +475,25 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
             return;
         }
 
-        registerConditionalConfiguration(condition, () -> {
+        registerConditionalConfiguration(condition, (cnd) -> {
             ImageSingletons.lookup(SerializationFeature.class).capturingClasses.add(lambdaCapturingClass);
             RuntimeReflection.register(lambdaCapturingClass);
             RuntimeReflection.register(ReflectionUtil.lookupMethod(lambdaCapturingClass, "$deserializeLambda$", SerializedLambda.class));
+            SerializationSupport.registerLambdaCapturingClass(lambdaCapturingClassName);
         });
     }
 
     @Override
     public void registerProxyClass(ConfigurationCondition condition, List<String> implementedInterfaces) {
-        Class<?> proxyClass = proxyRegistry.createProxyClassForSerialization(new ConditionalElement<>(condition, implementedInterfaces));
-        registerWithTargetConstructorClass(ConfigurationCondition.alwaysTrue(), proxyClass, Object.class);
+        registerConditionalConfiguration(condition, (cnd) -> {
+            Class<?> proxyClass = proxyRegistry.createProxyClassForSerialization(implementedInterfaces);
+            registerWithTargetConstructorClass(ConfigurationCondition.alwaysTrue(), proxyClass, Object.class);
+        });
     }
 
     @Override
     public void registerWithTargetConstructorClass(ConfigurationCondition condition, String targetClassName, String customTargetConstructorClassName) {
         abortIfSealed();
-
-        Class<?> conditionClass = typeResolver.resolveConditionType(condition.getTypeName());
-        if (conditionClass == null) {
-            return;
-        }
-
         Class<?> serializationTargetClass = typeResolver.resolveType(targetClassName);
         /* With invalid streams we have to register the class for lookup */
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(condition, targetClassName);
@@ -488,14 +515,8 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     @Override
     public void registerWithTargetConstructorClass(ConfigurationCondition condition, Class<?> serializationTargetClass, Class<?> customTargetConstructorClass) {
         abortIfSealed();
-
-        Class<?> conditionClass = typeResolver.resolveConditionType(condition.getTypeName());
-        if (conditionClass == null) {
-            return;
-        }
         /*
-         * Register class for reflection as the it is needed when the class-value itself is
-         * serialized.
+         * Register class for reflection as it is needed when the class-value itself is serialized.
          */
         ImageSingletons.lookup(RuntimeReflectionSupport.class).register(condition, serializationTargetClass);
 
@@ -519,7 +540,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
                     return;
                 }
             }
-            registerConditionalConfiguration(condition, () -> {
+            registerConditionalConfiguration(condition, (cnd) -> {
                 Optional.ofNullable(addConstructorAccessor(serializationTargetClass, customTargetConstructorClass))
                                 .map(ReflectionUtil::lookupConstructor)
                                 .ifPresent(RuntimeReflection::register);

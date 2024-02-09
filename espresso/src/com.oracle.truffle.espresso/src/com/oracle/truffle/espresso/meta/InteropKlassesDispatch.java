@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.meta;
 
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.ByteBufferInterop;
 import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -50,8 +51,9 @@ public class InteropKlassesDispatch {
     public static final int MAP_ENTRY_INTEROP_ID = 7;
     public static final int MAP_INTEROP_ID = 8;
     public static final int THROWABLE_INTEROP_ID = 9;
+    public static final int BYTE_BUFFER_INTEROP_ID = 10;
 
-    public static final int DISPATCH_TOTAL = THROWABLE_INTEROP_ID + 1;
+    public static final int DISPATCH_TOTAL = BYTE_BUFFER_INTEROP_ID + 1;
 
     /**
      * Represents all known guest classes with special interop library handling. Each entry in the
@@ -75,6 +77,7 @@ public class InteropKlassesDispatch {
                         new Pair[]{Pair.create(meta.java_util_Map, MapInterop.class)},
                         new Pair[]{Pair.create(meta.java_util_Map_Entry, MapEntryInterop.class)},
                         new Pair[]{Pair.create(meta.java_util_Iterator, IteratorInterop.class)},
+                        new Pair[]{Pair.create(meta.java_nio_ByteBuffer, ByteBufferInterop.class)},
                         new Pair[]{Pair.create(meta.java_lang_InterruptedException, InterruptedExceptionInterop.class), Pair.create(meta.java_lang_Throwable, ThrowableInterop.class)}
         };
     }
@@ -136,6 +139,8 @@ public class InteropKlassesDispatch {
             return MAP_INTEROP_ID;
         } else if (dispatch == ThrowableInterop.class) {
             return THROWABLE_INTEROP_ID;
+        } else if (dispatch == ByteBufferInterop.class) {
+            return BYTE_BUFFER_INTEROP_ID;
         } else {
             throw EspressoError.shouldNotReachHere();
         }

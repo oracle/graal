@@ -69,6 +69,7 @@ import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
@@ -378,7 +379,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         List<ExecutableElement> wrappedMethods = new ArrayList<>();
         List<ExecutableElement> wrappedExecuteMethods = new ArrayList<>();
         List<ExecutableElement> wrappedResumeMethods = isResume ? new ArrayList<>() : Collections.emptyList();
-        List<? extends Element> elementList = context.getEnvironment().getElementUtils().getAllMembers(sourceType);
+        List<? extends Element> elementList = CompilerFactory.getCompiler(sourceType).getAllMembersInDeclarationOrder(context.getEnvironment(), sourceType);
 
         ExecutableElement genericExecuteDelegate = null;
         ExecutableElement genericResumeDelegate = null;

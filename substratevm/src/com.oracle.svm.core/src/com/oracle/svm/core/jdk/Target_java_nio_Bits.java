@@ -69,6 +69,7 @@ final class MaxMemoryAccessor {
         return DirectMemoryAccessors.getDirectMemory();
     }
 
+    @SuppressWarnings("unused")
     static void setMAX_MEMORY(long value) {
         /* Nothing to do. */
     }

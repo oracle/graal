@@ -1390,42 +1390,71 @@ public abstract class Node implements Cloneable, Formattable {
     protected void afterClone(@SuppressWarnings("unused") Node other) {
     }
 
+    @SuppressWarnings("unchecked")
     protected boolean verifyInputs() {
-        for (Position pos : inputPositions()) {
-            Node input = pos.get(this);
-            if (input == null) {
-                assertTrue(pos.isInputOptional(), "non-optional input %s cannot be null in %s (fix nullness or use @OptionalInput)", pos, this);
-            } else {
-                assertFalse(input.isDeleted(), "input was deleted %s", input);
-                assertTrue(input.isAlive(), "input is not alive yet, i.e., it was not yet added to the graph");
-                assertTrue(pos.getInputType() == InputType.Unchecked || input.isAllowedUsageType(pos.getInputType()), "invalid usage type input:%s inputType:%s inputField:%s", input,
-                                pos.getInputType(), pos.getName());
-                Class<?> expectedType = pos.getType();
-                assertTrue(expectedType.isAssignableFrom(input.getClass()), "Invalid input type for %s: expected a %s but was a %s", pos, expectedType, input.getClass());
-            }
-        }
-        /*
-         * Verify properties of input list objects themselves, as opposed to their contents. The
-         * iteration over input positions above visits the contents of input lists but does not
-         * distinguish between null and empty lists.
-         */
         InputEdges inputEdges = nodeClass.getInputEdges();
+
+        // Verify properties of direct inputs
+        for (int i = 0; i < inputEdges.getDirectCount(); i++) {
+            Node input = (Node) inputEdges.get(this, i);
+            verifyInput(inputEdges, i, input);
+        }
+
+        // Verify properties of input list objects
         for (int i = inputEdges.getDirectCount(); i < inputEdges.getCount(); i++) {
             Object inputList = inputEdges.get(this, i);
             if (inputList == null) {
                 assertTrue(inputEdges.isOptional(i), "non-optional input list %s cannot be null in %s (fix nullness or use @OptionalInput)", inputEdges.getName(i), this);
+            } else {
+                NodeList<Node> nodeList = (NodeList<Node>) inputList;
+                for (Node input : nodeList) {
+                    verifyInput(inputEdges, i, input);
+                }
             }
         }
         return true;
     }
 
-    public boolean verify() {
+    private void verifyInput(InputEdges inputEdges, int i, Node input) {
+        if (input == null) {
+            assertTrue(inputEdges.isOptional(i), "non-optional input %s cannot be null in %s (fix nullness or use @OptionalInput)", inputEdges.getName(i), this);
+        } else {
+            assertFalse(input.isDeleted(), "input was deleted %s", input);
+            assertTrue(input.isAlive(), "input is not alive yet, i.e., it was not yet added to the graph");
+            InputType inputType = inputEdges.getInputType(i);
+            assertTrue(inputType == InputType.Unchecked || input.isAllowedUsageType(inputType), "invalid usage type input:%s inputType:%s inputField:%s", input,
+                            inputType, inputEdges.getName(i));
+            Class<?> expectedType = i < inputEdges.getDirectCount() ? inputEdges.getType(i) : Node.class;
+            assertTrue(expectedType.isAssignableFrom(input.getClass()), "Invalid input type for %s: expected a %s but was a %s", inputEdges.getName(i), expectedType, input.getClass());
+        }
+    }
+
+    public final boolean verify() {
+        return verify(true);
+    }
+
+    /**
+     * Basic verification of node properties. This method is final so that a node cannot
+     * accidentally skip calling super(). Node specific verification should be done in
+     * {@link #verifyNode()}.
+     */
+    public final boolean verify(boolean verifyInputs) {
         assertTrue(isAlive(), "cannot verify inactive node %s", this);
-        assertTrue(graph() != null, "null graph");
-        verifyInputs();
+        assertTrue(graph != null, "null graph");
+        if (verifyInputs) {
+            verifyInputs();
+        }
         if (graph.verifyGraphEdges) {
             verifyEdges();
         }
+        verifyNode();
+        return true;
+    }
+
+    /**
+     * Verify node properties which are not covered by {@link #verify()}.
+     */
+    protected boolean verifyNode() {
         return true;
     }
 
@@ -1441,7 +1470,7 @@ public abstract class Node implements Cloneable, Formattable {
 
         for (Node successor : successors()) {
             assertTrue(successor.predecessor() == this, "missing predecessor in %s (actual: %s)", successor, successor.predecessor());
-            assertTrue(successor.graph() == graph(), "mismatching graph in successor %s", successor);
+            assertTrue(successor.graph == graph, "mismatching graph in successor %s", successor);
         }
         for (Node usage : usages()) {
             assertFalse(usage.isDeleted(), "usage %s must never be deleted", usage);

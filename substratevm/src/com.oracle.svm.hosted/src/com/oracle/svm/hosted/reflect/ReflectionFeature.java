@@ -41,6 +41,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
@@ -49,7 +50,6 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
@@ -75,6 +75,7 @@ import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -84,7 +85,6 @@ import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.internal.reflect.CallerSensitive;
@@ -259,9 +259,9 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
         aUniverse = access.getUniverse();
+        var conditionResolver = new NativeImageConditionResolver(access.getImageClassLoader(), ClassInitializationSupport.singleton());
         reflectionData.duringSetup(access.getMetaAccess(), aUniverse);
-
-        ReflectionConfigurationParser<ConditionalElement<Class<?>>> parser = ConfigurationParserUtils.create(reflectionData, access.getImageClassLoader());
+        ReflectionConfigurationParser<ConfigurationCondition, Class<?>> parser = ConfigurationParserUtils.create(conditionResolver, reflectionData, access.getImageClassLoader());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "reflection",
                         ConfigurationFiles.Options.ReflectionConfigurationFiles, ConfigurationFiles.Options.ReflectionConfigurationResources,
                         ConfigurationFile.REFLECTION.getFileName());
@@ -364,9 +364,9 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     }
 
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
+    public void registerInvocationPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
         FallbackFeature fallbackFeature = ImageSingletons.contains(FallbackFeature.class) ? ImageSingletons.lookup(FallbackFeature.class) : null;
-        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions,
+        ReflectionPlugins.registerInvocationPlugins(loader, annotationSubstitutions,
                         plugins.getClassInitializationPlugin(), plugins.getInvocationPlugins(), aUniverse, reason, fallbackFeature);
     }
 }

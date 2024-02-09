@@ -41,10 +41,12 @@ public class HotSpotGraalOptionValuesTest extends HotSpotGraalCompilerTest {
     @Test
     public void testPrintHelp() throws IOException {
         OptionValues options = getInitialOptions();
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            PrintStream out = new PrintStream(baos);
-            options.printHelp(OptionsParser.getOptionsLoader(), out, GRAAL_OPTION_PROPERTY_PREFIX);
-            Assert.assertNotEquals(baos.size(), 0);
+        for (boolean all : new boolean[]{true, false}) {
+            try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+                PrintStream out = new PrintStream(baos);
+                options.printHelp(OptionsParser.getOptionsLoader(), out, GRAAL_OPTION_PROPERTY_PREFIX, all);
+                Assert.assertNotEquals(baos.size(), 0);
+            }
         }
     }
 }

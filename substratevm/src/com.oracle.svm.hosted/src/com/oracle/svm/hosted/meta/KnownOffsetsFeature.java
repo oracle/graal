@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.ImageCodeInfo;
@@ -43,19 +43,16 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.c.info.AccessorInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
-import com.oracle.svm.hosted.thread.VMThreadMTFeature;
+import com.oracle.svm.hosted.thread.VMThreadFeature;
 import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticallyRegisteredFeature
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
 public final class KnownOffsetsFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            return Arrays.asList(VMThreadMTFeature.class);
-        } else {
-            return Collections.emptyList();
-        }
+        return List.of(VMThreadFeature.class);
     }
 
     @Override
@@ -70,17 +67,14 @@ public final class KnownOffsetsFeature implements InternalFeature {
         DynamicHubLayout dynamicHubLayout = DynamicHubLayout.singleton();
         int vtableBaseOffset = dynamicHubLayout.vTableOffset();
         int vtableEntrySize = dynamicHubLayout.vTableSlotSize;
-        int typeIDSlotsOffset = dynamicHubLayout.typeIDSlotsOffset;
+        int typeIDSlotsOffset = SubstrateOptions.closedTypeWorld() ? dynamicHubLayout.getClosedWorldTypeCheckSlotsOffset() : -1;
 
         int componentHubOffset = findFieldOffset(access, DynamicHub.class, "componentType");
 
         int javaFrameAnchorLastSPOffset = findStructOffset(access, JavaFrameAnchor.class, "getLastJavaSP");
         int javaFrameAnchorLastIPOffset = findStructOffset(access, JavaFrameAnchor.class, "getLastJavaIP");
 
-        int vmThreadStatusOffset = -1;
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            vmThreadStatusOffset = ImageSingletons.lookup(VMThreadMTFeature.class).offsetOf(VMThreads.StatusSupport.statusTL);
-        }
+        int vmThreadStatusOffset = ImageSingletons.lookup(VMThreadFeature.class).offsetOf(VMThreads.StatusSupport.statusTL);
 
         int imageCodeInfoCodeStartOffset = findFieldOffset(access, ImageCodeInfo.class, "codeStart");
 

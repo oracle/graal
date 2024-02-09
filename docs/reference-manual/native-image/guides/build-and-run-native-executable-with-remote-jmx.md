@@ -110,7 +110,7 @@ In the next step, you will pass this JSON file to the `native-image` builder.
 Build a native executable with VM monitoring enabled:
 
 ```shell
-$JAVA_HOME/bin/native-image --enable-monitoring=jmxserver,jvmstat  -H:DynamicProxyConfigurationFiles=proxy-config.json SimpleJmx
+$JAVA_HOME/bin/native-image --enable-monitoring=jmxserver,jmxclient,jvmstat -H:DynamicProxyConfigurationFiles=proxy-config.json SimpleJmx
 ```
 
 The `--enable-monitoring=jmxserver` option enables the JMX Server feature which allows accepting incoming connections.

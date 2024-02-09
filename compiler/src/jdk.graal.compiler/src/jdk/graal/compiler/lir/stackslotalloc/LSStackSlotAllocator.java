@@ -38,6 +38,7 @@ import java.util.PriorityQueue;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicSet;
+
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.debug.DebugCloseable;
@@ -49,6 +50,7 @@ import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRInstruction.OperandFlag;
 import jdk.graal.compiler.lir.LIRInstruction.OperandMode;
+import jdk.graal.compiler.lir.LIRInstruction.Use;
 import jdk.graal.compiler.lir.ValueProcedure;
 import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.graal.compiler.lir.framemap.FrameMap;
@@ -61,7 +63,6 @@ import jdk.graal.compiler.lir.phases.AllocationPhase;
 import jdk.graal.compiler.options.NestedBooleanOptionKey;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
-
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
@@ -74,9 +75,8 @@ import jdk.vm.ci.meta.ValueKind;
  * <b>Remark:</b> The analysis works under the assumption that a stack slot is no longer live after
  * its last usage. If an {@link LIRInstruction instruction} transfers the raw address of the stack
  * slot to another location, e.g. a registers, and this location is referenced later on, the
- * {@link LIRInstruction.Use usage} of the stack slot must be marked with the
- * {@link OperandFlag#UNINITIALIZED}. Otherwise the stack slot might be reused and its content
- * destroyed.
+ * {@link Use usage} of the stack slot must be marked with the {@link OperandFlag#UNINITIALIZED}.
+ * Otherwise, the stack slot might be reused and its content destroyed.
  */
 public final class LSStackSlotAllocator extends AllocationPhase {
 

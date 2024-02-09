@@ -53,6 +53,7 @@ import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.hosted.HeapBreakdownProvider;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
@@ -71,6 +72,7 @@ import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
@@ -78,6 +80,7 @@ import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphDecoder;
 import jdk.graal.compiler.nodes.GraphEncoder;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
 import jdk.graal.compiler.nodes.StateSplit;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -96,6 +99,8 @@ import jdk.graal.compiler.phases.common.IterativeConditionalEliminationPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.replacements.nodes.MacroNode;
+import jdk.graal.compiler.replacements.nodes.MacroWithExceptionNode;
 import jdk.graal.compiler.truffle.nodes.ObjectLocationIdentity;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BytecodeFrame;
@@ -131,8 +136,8 @@ public class RuntimeCompiledMethodSupport {
         ImageHeapScanner imageScanner = bb.getUniverse().getHeapScanner();
 
         GraphEncoder graphEncoder = new RuntimeCompiledMethodSupport.RuntimeCompilationGraphEncoder(ConfigurationValues.getTarget().arch, imageScanner);
-        HostedProviders runtimeCompilationProviders = hostedProviders
-                        .copyWith(constantFieldProviderWrapper.apply(new RuntimeCompilationFieldProvider(hostedProviders.getMetaAccess(), hUniverse)))
+        HostedProviders runtimeCompilationProviders = hostedProviders //
+                        .copyWith(constantFieldProviderWrapper.apply(new RuntimeCompilationFieldProvider(hostedProviders.getMetaAccess(), hUniverse))) //
                         .copyWith(new RuntimeCompilationReflectionProvider(bb, hUniverse.hostVM().getClassInitializationSupport()));
 
         SubstrateCompilationDirectives.singleton().resetDeoptEntries();
@@ -197,11 +202,11 @@ public class RuntimeCompiledMethodSupport {
 
         @Override
         public void run(DebugContext debug) {
-            compileRuntimeCompiledMethod(debug, method);
+            compileRuntimeCompiledMethod(debug);
         }
 
         @SuppressWarnings("try")
-        private void compileRuntimeCompiledMethod(DebugContext debug, HostedMethod method) {
+        private void compileRuntimeCompiledMethod(DebugContext debug) {
             assert method.getMultiMethodKey() == RUNTIME_COMPILED_METHOD;
 
             AnalysisMethod aMethod = method.getWrapped();
@@ -324,8 +329,9 @@ public class RuntimeCompiledMethodSupport {
 
     static class RuntimeCompilationReflectionProvider extends AnalysisConstantReflectionProvider {
 
+        @SuppressWarnings("unused")
         RuntimeCompilationReflectionProvider(BigBang bb, ClassInitializationSupport classInitializationSupport) {
-            super(bb.getUniverse(), bb.getMetaAccess(), classInitializationSupport);
+            super(bb.getUniverse(), bb.getMetaAccess());
         }
 
         @Override
@@ -334,7 +340,7 @@ public class RuntimeCompiledMethodSupport {
              * We cannot fold simulated values during initial before-analysis graph creation;
              * however, this runs after analysis has completed.
              */
-            return readValue(metaAccess, (AnalysisField) field, receiver, true);
+            return readValue((AnalysisField) field, receiver, true);
         }
     }
 
@@ -349,6 +355,7 @@ public class RuntimeCompiledMethodSupport {
      * {@link GraphEncoder#objectsArray} are captured in GraalSupport#graphObjects and
      * SubstrateReplacements#snippetObjects which are then scanned.
      */
+    @SuppressWarnings("javadoc")
     public static class RuntimeCompilationGraphEncoder extends GraphEncoder {
 
         private final ImageHeapScanner heapScanner;
@@ -366,12 +373,12 @@ public class RuntimeCompiledMethodSupport {
 
         @Override
         protected void addObject(Object object) {
-            super.addObject(unwrap(object));
+            super.addObject(forRuntimeCompilation(object));
         }
 
         @Override
         protected void writeObjectId(Object object) {
-            super.writeObjectId(unwrap(object));
+            super.writeObjectId(forRuntimeCompilation(object));
         }
 
         @Override
@@ -379,12 +386,11 @@ public class RuntimeCompiledMethodSupport {
             return new RuntimeCompilationGraphDecoder(architecture, decodedGraph, heapScanner);
         }
 
-        private Object unwrap(Object object) {
-            if (object instanceof ImageHeapConstant ihc) {
-                VMError.guarantee(ihc.getHostedObject() != null);
-                return ihc.getHostedObject();
+        private Object forRuntimeCompilation(Object object) {
+            if (object instanceof ImageHeapConstant heapConstant) {
+                return SubstrateGraalUtils.forRuntimeCompilation(heapConstant);
             } else if (object instanceof ObjectLocationIdentity oli && oli.getObject() instanceof ImageHeapConstant heapConstant) {
-                return locationIdentityCache.computeIfAbsent(heapConstant, (hc) -> ObjectLocationIdentity.create(hc.getHostedObject()));
+                return locationIdentityCache.computeIfAbsent(heapConstant, (hc) -> ObjectLocationIdentity.create(SubstrateGraalUtils.forRuntimeCompilation(hc)));
             }
             return object;
         }
@@ -464,6 +470,24 @@ public class RuntimeCompiledMethodSupport {
              * so this cannot be enabled at the moment.
              */
             return false;
+        }
+    }
+
+    /**
+     * Converts {@link MacroWithExceptionNode}s into explicit {@link InvokeWithExceptionNode}s. This
+     * is necessary to ensure a MacroNode within runtime compilation converted back to an invoke
+     * will always have a proper deoptimization target.
+     */
+    public static class ConvertMacroNodes extends Phase {
+        @Override
+        protected void run(StructuredGraph graph) {
+            for (Node n : graph.getNodes().snapshot()) {
+                VMError.guarantee(!(n instanceof MacroNode), "DeoptTarget Methods do not support Macro Nodes: method %s, node %s", graph.method(), n);
+
+                if (n instanceof MacroWithExceptionNode macro) {
+                    macro.replaceWithInvoke();
+                }
+            }
         }
     }
 

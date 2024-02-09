@@ -161,21 +161,21 @@ jobs:
       MX_RUNS_STYLE: ${{ contains(matrix.env.GATE_TAGS, 'style') || matrix.env.GATE_TAGS == '' }}
     steps:
     - name: Checkout oracle/graal
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         ref: ${{ github.ref }} # Lock ref to current branch to avoid fetching others
         fetch-depth: "${{ env.MX_RUNS_STYLE && '0' || '1' }}" # The style gate needs the full commit history for checking copyright years
     - name: Determine mx version
       run: echo "MX_VERSION=$(jq -r '.mx_version' common.json)" >> ${GITHUB_ENV}
     - name: Checkout graalvm/mx
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         repository: graalvm/mx.git
         ref: ${{ env.MX_VERSION }}
         fetch-depth: 1
         path: ${{ env.MX_PATH }}
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.8'
     - name: Update mx cache

@@ -73,11 +73,9 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.internal.ValueBased;
 import jdk.vm.ci.meta.JavaKind;
@@ -172,17 +170,42 @@ public class HostedConfiguration {
 
     private static DynamicHubLayout createDynamicHubLayout(HostedMetaAccess hMetaAccess) {
         var dynamicHubType = hMetaAccess.lookupJavaType(Class.class);
-        var typeIDSlotsField = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "typeCheckSlots"));
-        var vtableField = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "vtable"));
 
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
-        int typeIDSlotsOffset = layout.getArrayLengthOffset() + layout.sizeInBytes(JavaKind.Int);
-        int typeIDSlotsSize = layout.sizeInBytes(typeIDSlotsField.getType().getComponentType().getStorageKind());
-
+        var vtableField = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "vtable"));
         JavaKind vTableSlotStorageKind = vtableField.getType().getComponentType().getStorageKind();
         int vTableSlotSize = layout.sizeInBytes(vTableSlotStorageKind);
 
-        return new DynamicHubLayout(layout, dynamicHubType, typeIDSlotsField, typeIDSlotsOffset, typeIDSlotsSize, vtableField, vTableSlotStorageKind, vTableSlotSize);
+        var closedWorldTypeCheckSlotsField = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "closedWorldTypeCheckSlots"));
+        int closedWorldTypeCheckSlotsOffset;
+        int closedWorldTypeCheckSlotSize;
+
+        Set<HostedField> ignoredFields;
+        if (SubstrateOptions.closedTypeWorld()) {
+            closedWorldTypeCheckSlotsOffset = layout.getArrayLengthOffset() + layout.sizeInBytes(JavaKind.Int);
+            closedWorldTypeCheckSlotSize = layout.sizeInBytes(closedWorldTypeCheckSlotsField.getType().getComponentType().getStorageKind());
+
+            ignoredFields = Set.of(
+                            closedWorldTypeCheckSlotsField,
+                            vtableField,
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "typeIDDepth")),
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "numClassTypes")),
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "numInterfaceTypes")),
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "openWorldTypeIDSlots")));
+        } else {
+            closedWorldTypeCheckSlotsOffset = -1;
+            closedWorldTypeCheckSlotSize = -1;
+
+            ignoredFields = Set.of(
+                            closedWorldTypeCheckSlotsField,
+                            vtableField,
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "typeCheckStart")),
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "typeCheckRange")),
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "typeCheckSlot")));
+
+        }
+        return new DynamicHubLayout(layout, dynamicHubType, closedWorldTypeCheckSlotsField, closedWorldTypeCheckSlotsOffset, closedWorldTypeCheckSlotSize, vtableField, vTableSlotStorageKind,
+                        vTableSlotSize, ignoredFields);
     }
 
     public static boolean isArrayLikeLayout(HostedType clazz) {
@@ -201,18 +224,12 @@ public class HostedConfiguration {
         return new SVMHost(options, loader, classInitializationSupport, annotationSubstitutions);
     }
 
-    public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse, RuntimeConfiguration runtimeConfiguration, boolean deoptimizeAll,
-                    SnippetReflectionProvider aSnippetReflection) {
-
-        return new CompileQueue(debug, featureHandler, hostedUniverse, runtimeConfiguration, deoptimizeAll, aSnippetReflection);
+    public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse, RuntimeConfiguration runtimeConfiguration, boolean deoptimizeAll) {
+        return new CompileQueue(debug, featureHandler, hostedUniverse, runtimeConfiguration, deoptimizeAll);
     }
 
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
         return new SVMMethodTypeFlowBuilder(bb, method, flowsGraph, graphKind);
-    }
-
-    public void registerUsedElements(PointsToAnalysis bb, StructuredGraph graph) {
-        SVMMethodTypeFlowBuilder.registerUsedElements(bb, graph);
     }
 
     public MetaAccessExtensionProvider createAnalysisMetaAccessExtensionProvider() {
@@ -233,10 +250,9 @@ public class HostedConfiguration {
 
             /* Because of @Alias fields, the field lookup might not be declared in our class. */
             if (hField.getDeclaringClass().equals(clazz)) {
-                if (dynamicHubLayout.isInlinedField(hField)) {
+                if (dynamicHubLayout.isIgnoredField(hField)) {
                     /*
-                     * The typeid slots and the vtable of the dynamic hub are not materialized, so
-                     * they need no field offset.
+                     * Ignored fields do not need a field offset.
                      */
                     allFields.add(hField);
                 } else if (HybridLayout.isHybridField(hField)) {
@@ -269,9 +285,15 @@ public class HostedConfiguration {
 
     private static Set<AnalysisType> getForceMonitorSlotTypes(BigBang bb) {
         Set<AnalysisType> forceMonitorTypes = new HashSet<>();
-        for (Class<?> forceMonitorType : MultiThreadedMonitorSupport.FORCE_MONITOR_SLOT_TYPES) {
-            Optional<AnalysisType> aType = bb.getMetaAccess().optionalLookupJavaType(forceMonitorType);
-            aType.ifPresent(forceMonitorTypes::add);
+        for (var entry : MultiThreadedMonitorSupport.FORCE_MONITOR_SLOT_TYPES.entrySet()) {
+            Optional<AnalysisType> optionalType = bb.getMetaAccess().optionalLookupJavaType(entry.getKey());
+            if (optionalType.isPresent()) {
+                AnalysisType aType = optionalType.get();
+                forceMonitorTypes.add(aType);
+                if (entry.getValue()) {
+                    forceMonitorTypes.addAll(aType.getAllSubtypes());
+                }
+            }
         }
         return forceMonitorTypes;
     }

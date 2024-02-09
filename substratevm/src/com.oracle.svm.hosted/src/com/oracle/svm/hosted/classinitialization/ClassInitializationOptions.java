@@ -29,6 +29,7 @@ import static com.oracle.svm.hosted.classinitialization.InitKind.RERUN;
 import static com.oracle.svm.hosted.classinitialization.InitKind.RUN_TIME;
 import static com.oracle.svm.hosted.classinitialization.InitKind.SEPARATOR;
 
+import java.util.Locale;
 import java.util.function.Function;
 
 import com.oracle.svm.core.option.APIOption;
@@ -64,19 +65,19 @@ public final class ClassInitializationOptions {
 
     private static class InitializationValueDelay extends InitializationValueTransformer {
         InitializationValueDelay() {
-            super(RUN_TIME.name().toLowerCase());
+            super(RUN_TIME.name().toLowerCase(Locale.ENGLISH));
         }
     }
 
     private static class InitializationValueRerun extends InitializationValueTransformer {
         InitializationValueRerun() {
-            super(RERUN.name().toLowerCase());
+            super(RERUN.name().toLowerCase(Locale.ENGLISH));
         }
     }
 
     private static class InitializationValueEager extends InitializationValueTransformer {
         InitializationValueEager() {
-            super(BUILD_TIME.name().toLowerCase());
+            super(BUILD_TIME.name().toLowerCase(Locale.ENGLISH));
         }
     }
 

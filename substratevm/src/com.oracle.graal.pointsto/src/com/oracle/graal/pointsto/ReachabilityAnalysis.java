@@ -33,7 +33,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.common.meta.MultiMethod;
-import com.oracle.svm.util.UnsafePartitionKind;
 
 /**
  * Interface to be used to query and change the state of the static analysis in Native Image.
@@ -100,18 +99,6 @@ public interface ReachabilityAnalysis {
      */
     AnalysisMethod forcedAddRootMethod(Executable method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots);
 
-    default void registerAsFrozenUnsafeAccessed(AnalysisField field) {
-        field.setUnsafeFrozenTypeState(true);
-    }
-
-    default boolean registerAsUnsafeAccessed(AnalysisField field, UnsafePartitionKind partitionKind, Object reason) {
-        if (field.registerAsUnsafeAccessed(partitionKind, reason)) {
-            forceUnsafeUpdate(field);
-            return true;
-        }
-        return false;
-    }
-
     default boolean registerTypeAsReachable(AnalysisType type, Object reason) {
         return type.registerAsReachable(reason);
     }
@@ -145,15 +132,6 @@ public interface ReachabilityAnalysis {
      * Clears all intermediary data to reduce the footprint.
      */
     void cleanupAfterAnalysis();
-
-    /**
-     * Force update of the unsafe loads and unsafe store type flows when a field is registered as
-     * unsafe accessed 'on the fly', i.e., during the analysis.
-     *
-     * @param field the newly unsafe registered field. We use its declaring type to filter the
-     *            unsafe access flows that need to be updated.
-     */
-    void forceUnsafeUpdate(AnalysisField field);
 
     /**
      * Performs any necessary additional steps required by the analysis to handle JNI accessed

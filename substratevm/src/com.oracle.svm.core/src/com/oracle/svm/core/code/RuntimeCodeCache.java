@@ -38,7 +38,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
@@ -298,13 +297,11 @@ public class RuntimeCodeCache {
 
             Pointer sp = readCallerStackPointer();
             JavaStackWalker.walkCurrentThread(sp, this);
-            if (SubstrateOptions.MultiThreaded.getValue()) {
-                for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-                    if (vmThread == CurrentIsolate.getCurrentThread()) {
-                        continue;
-                    }
-                    JavaStackWalker.walkThread(vmThread, this);
+            for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
+                if (vmThread == CurrentIsolate.getCurrentThread()) {
+                    continue;
                 }
+                JavaStackWalker.walkThread(vmThread, this);
             }
             return true;
         }

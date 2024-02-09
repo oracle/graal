@@ -128,6 +128,23 @@ def _check_compiler_log(compiler_log_file, expectations, extra_check=None, extra
         for extra_log_file in extra_log_files:
             remove(extra_log_file)
 
+def _test_libgraal_check_build_path(libgraal_location):
+    """
+    If ``mx_substratevm.allow_build_path_in_libgraal()`` is False, tests that libgraal does not contain
+    strings whose prefix is the absolute path of the SDK suite.
+    """
+    import mx_compiler
+    import mx_substratevm
+    import subprocess
+    if not mx_substratevm.allow_build_path_in_libgraal():
+        sdk_suite_dir = mx.suite('sdk').dir
+        tool_path = join(sdk_suite_dir, 'src/org.graalvm.nativeimage.test/src/org/graalvm/nativeimage/test/FindPathsInBinary.java'.replace('/', os.sep))
+        cmd = [mx_compiler.jdk.java, tool_path, libgraal_location, sdk_suite_dir]
+        mx.logv(' '.join(cmd))
+        matches = subprocess.check_output(cmd, universal_newlines=True).strip()
+        if len(matches) != 0:
+            mx.abort(f"Found strings in {libgraal_location} with illegal prefix \"{sdk_suite_dir}\":\n{matches}\n\nRe-run: {' '.join(cmd)}")
+
 def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
     """
     Tests basic libgraal execution by running CountUppercase, ensuring it has a 0 exit code
@@ -466,17 +483,6 @@ def _test_libgraal_ctw(extra_vm_arguments):
         ], extra_vm_arguments)
 
 def _test_libgraal_truffle(extra_vm_arguments):
-    def _unittest_config_participant(config):
-        vmArgs, mainClass, mainClassArgs = config
-        def is_truffle_fallback(arg):
-            fallback_args = [
-                "-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime",
-                "-Dgraalvm.ForcePolyglotInvalid=true"
-            ]
-            return arg in fallback_args
-        newVmArgs = [arg for arg in vmArgs if not is_truffle_fallback(arg)]
-        return (newVmArgs, mainClass, mainClassArgs)
-    mx_unittest.add_config_participant(_unittest_config_participant)
     excluded_tests = environ.get("TEST_LIBGRAAL_EXCLUDE")
     if excluded_tests:
         with NamedTemporaryFile(prefix='blacklist.', mode='w', delete=False) as fp:
@@ -490,6 +496,7 @@ def _test_libgraal_truffle(extra_vm_arguments):
         "-Dpolyglot.engine.CompileImmediately=true",
         "-Dpolyglot.engine.BackgroundCompilation=false",
         "-Dpolyglot.engine.CompilationFailureAction=Throw",
+        "-Djdk.graal.CompilationFailureAction=ExitVM",
         "-Dgraalvm.locatorDisabled=true",
         "truffle", "LibGraalCompilerTest"])
 
@@ -524,6 +531,8 @@ def gate_body(args, tasks):
                 if args.extra_vm_argument:
                     extra_vm_arguments += args.extra_vm_argument
 
+                with Task('LibGraal Compiler:CheckBuildPaths', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
+                    if t: _test_libgraal_check_build_path(libgraal_location)
                 with Task('LibGraal Compiler:Basic', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
                     if t: _test_libgraal_basic(extra_vm_arguments, libgraal_location)
                 with Task('LibGraal Compiler:FatalErrorHandling', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
@@ -720,12 +729,14 @@ def gate_svm_truffle_tck_smoke_test(tasks):
                     mx.abort("Expected failure, log:\n" + result)
                 if not 'UnsafeCallNode.doUnsafeAccess' in result:
                     mx.abort("Missing UnsafeCallNode.doUnsafeAccess call in the log, log:\n" + result)
-                if not 'UnsafeCallNode.doUnsafeAccessBehindBoundary' in result:
-                    mx.abort("Missing UnsafeCallNode.doUnsafeAccessBehindBoundary call in the log, log:\n" + result)
-                if not 'PrivilegedCallNode.doPrivilegedCall' in result:
-                    mx.abort("Missing PrivilegedCallNode.doPrivilegedCall call in the log, log:\n" + result)
-                if not 'PrivilegedCallNode.doPrivilegedCallBehindBoundary' in result:
-                    mx.abort("Missing PrivilegedCallNode.doPrivilegedCallBehindBoundary call in the log, log:\n" + result)
+                if not 'UnsafeCallNode.doBehindBoundaryUnsafeAccess' in result:
+                    mx.abort("Missing UnsafeCallNode.doBehindBoundaryUnsafeAccess call in the log, log:\n" + result)
+                if not 'PrivilegedCallNode.execute' in result:
+                    mx.abort("Missing PrivilegedCallNode.execute call in the log, log:\n" + result)
+                if not 'PrivilegedCallNode.doBehindBoundaryPrivilegedCall' in result:
+                    mx.abort("Missing PrivilegedCallNode.doBehindBoundaryPrivilegedCall call in the log, log:\n" + result)
+                if not 'PrivilegedCallNode.doInterrupt' in result:
+                    mx.abort("Missing PrivilegedCallNode.doInterrupt call in the log, log:\n" + result)
 
 
 def gate_svm_truffle_tck_js(tasks):

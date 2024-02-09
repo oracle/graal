@@ -29,6 +29,7 @@ import java.util.function.Supplier;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.nodes.InlinedInvokeArgumentsNode;
@@ -114,11 +115,20 @@ public class SubstrateStrengthenGraphs extends StrengthenGraphs {
 
     @Override
     protected void setInvokeProfiles(Invoke invoke, JavaTypeProfile typeProfile, JavaMethodProfile methodProfile) {
-        ((SubstrateMethodCallTargetNode) invoke.callTarget()).setProfiles(typeProfile, methodProfile);
+        if (needsProfiles(invoke)) {
+            ((SubstrateMethodCallTargetNode) invoke.callTarget()).setProfiles(typeProfile, methodProfile);
+        }
     }
 
     protected void setInvokeProfiles(Invoke invoke, JavaTypeProfile typeProfile, JavaMethodProfile methodProfile, JavaTypeProfile staticTypeProfile) {
-        ((SubstrateMethodCallTargetNode) invoke.callTarget()).setProfiles(typeProfile, methodProfile, staticTypeProfile);
+        if (needsProfiles(invoke)) {
+            ((SubstrateMethodCallTargetNode) invoke.callTarget()).setProfiles(typeProfile, methodProfile, staticTypeProfile);
+        }
+    }
+
+    private static boolean needsProfiles(Invoke invoke) {
+        /* We do not need any profiles in methods for JIT compilation at image run time. */
+        return ((MultiMethod) invoke.asNode().graph().method()).getMultiMethodKey() != SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
     }
 
     @Override

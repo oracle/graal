@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.thread;
 
-import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 import static com.oracle.svm.core.thread.ThreadingSupportImpl.Options.SupportRecurringCallback;
 
@@ -270,7 +269,6 @@ public class ThreadingSupportImpl implements ThreadingSupport {
             if (!SupportRecurringCallback.getValue()) {
                 VMError.shouldNotReachHere("Recurring callbacks must be enabled during image build with option " + enableSupportOption);
             }
-            VMError.guarantee(MultiThreaded.getValue(), "Recurring callbacks are only supported in multi-threaded mode.");
 
             long intervalNanos = unit.toNanos(interval);
             if (intervalNanos < 1) {
@@ -297,7 +295,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
 
     @Uninterruptible(reason = "Prevent VM operations that modify the recurring callbacks.")
     public static void setRecurringCallback(IsolateThread thread, RecurringCallbackTimer timer) {
-        assert SupportRecurringCallback.getValue() && MultiThreaded.getValue();
+        assert SupportRecurringCallback.getValue();
         assert timer.targetIntervalNanos > 0;
         assert thread == CurrentIsolate.getCurrentThread() || VMOperation.isInProgressAtSafepoint();
 
@@ -433,7 +431,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
 
     @Fold
     public static boolean isRecurringCallbackSupported() {
-        return SupportRecurringCallback.getValue() && MultiThreaded.getValue();
+        return SupportRecurringCallback.getValue();
     }
 
     @SuppressWarnings("unchecked")

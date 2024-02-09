@@ -25,16 +25,16 @@
 package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionType;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
+
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionType;
 
 /** Common options that can be specified for both the serial and the epsilon GC. */
 public final class SerialAndEpsilonGCOptions {
@@ -77,8 +77,7 @@ public final class SerialAndEpsilonGCOptions {
 
     public static void serialOrEpsilonGCOnly(OptionKey<?> optionKey) {
         if (!SubstrateOptions.UseSerialGC.getValue() && !SubstrateOptions.UseEpsilonGC.getValue()) {
-            throw new InterruptImageBuilding(
-                            "The option '" + optionKey.getName() + "' can only be used together with the serial ('--gc=serial') or the epsilon garbage collector ('--gc=epsilon').");
+            throw UserError.abort("The option '" + optionKey.getName() + "' can only be used together with the serial ('--gc=serial') or the epsilon garbage collector ('--gc=epsilon').");
         }
     }
 }

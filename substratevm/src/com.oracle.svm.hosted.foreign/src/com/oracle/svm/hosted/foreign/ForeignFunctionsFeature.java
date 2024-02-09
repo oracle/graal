@@ -102,7 +102,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
         @Override
         public void registerForDowncall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options) {
             checkNotSealed();
-            registerConditionalConfiguration(condition, () -> registeredDowncalls.add(Pair.create(desc, options)));
+            registerConditionalConfiguration(condition, (cnd) -> registeredDowncalls.add(Pair.create(desc, options)));
         }
     }
 

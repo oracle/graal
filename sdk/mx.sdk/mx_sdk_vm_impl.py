@@ -1224,10 +1224,7 @@ class SvmSupport(object):
     def is_pgo_supported(self):
         return self.is_ee_supported()
 
-    search_tool = 'strings'
-    has_search_tool = shutil.which(search_tool) is not None
-
-    def native_image(self, build_args, output_file, out=None, err=None, find_bad_strings=False):
+    def native_image(self, build_args, output_file, out=None, err=None):
         assert self._svm_supported
         stage1 = get_stage1_graalvm_distribution()
         native_image_project_name = GraalVmLauncher.launcher_project_name(mx_sdk.LauncherConfig(mx.exe_suffix('native-image'), [], "", []), stage1=True)
@@ -1239,20 +1236,6 @@ class SvmSupport(object):
         ])
 
         mx.run(native_image_command, nonZeroIsFatal=True, out=out, err=err)
-
-        if find_bad_strings and not mx.is_windows():
-            if not self.__class__.has_search_tool:
-                mx.abort(f"Searching for strings requires '{self.__class__.search_tool}' executable.")
-            try:
-                strings_in_image = subprocess.check_output([self.__class__.search_tool, output_file], stderr=None).decode().strip().split('\n')
-                bad_strings = (output_directory, dirname(native_image_bin))
-                for entry in strings_in_image:
-                    for bad_string in bad_strings:
-                        if bad_string in entry:
-                            mx.abort(f"Found forbidden string '{bad_string}' in native image {output_file}.")
-
-            except subprocess.CalledProcessError:
-                mx.abort(f"Using '{self.__class__.search_tool}' to search for strings in native image {output_file} failed.")
 
     def is_debug_supported(self):
         return self._debug_supported
@@ -2402,7 +2385,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
         mx.ensure_dir_exists(dirname(output_file))
 
         # Disable build server (different Java properties on each build prevent server reuse)
-        self.svm_support.native_image(build_args, output_file, find_bad_strings=True)
+        self.svm_support.native_image(build_args, output_file)
 
         with open(self._get_command_file(), 'w') as f:
             f.writelines((l + os.linesep for l in build_args))
@@ -3600,6 +3583,13 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 main_dists[label].append(debuginfo_dist.name)
 
     _final_graalvm_distribution = get_final_graalvm_distribution()
+
+    from mx_native import TargetSelection
+    for c in _final_graalvm_distribution.components:
+        if c.extra_native_targets:
+            for t in c.extra_native_targets:
+                mx.logv(f"Selecting extra target '{t}' from GraalVM component '{c.short_name}'.")
+                TargetSelection.add_extra(t)
 
     # Add the macros if SubstrateVM is in stage1, as images could be created later with an installable Native Image
     with_svm = has_component('svm', stage1=True)

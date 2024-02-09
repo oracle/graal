@@ -50,22 +50,22 @@ public class ConditionalConfigurationPredicate implements TypeConfiguration.Pred
 
     @Override
     public boolean testIncludedType(ConditionalElement<String> conditionalElement, ConfigurationType type) {
-        return !filter.includes(conditionalElement.getCondition().getTypeName()) || !filter.includes(type.getQualifiedJavaName());
+        return !filter.includes(conditionalElement.condition().getTypeName()) || !filter.includes(type.getQualifiedJavaName());
     }
 
     @Override
     public boolean testProxyInterfaceList(ConditionalElement<List<String>> conditionalElement) {
-        return !filter.includes(conditionalElement.getCondition().getTypeName());
+        return !filter.includes(conditionalElement.condition().getTypeName());
     }
 
     @Override
     public boolean testIncludedResource(ConditionalElement<String> condition, Pattern pattern) {
-        return !filter.includes(condition.getCondition().getTypeName());
+        return !filter.includes(condition.condition().getTypeName());
     }
 
     @Override
     public boolean testIncludedBundle(ConditionalElement<String> condition, ResourceConfiguration.BundleConfiguration bundleConfiguration) {
-        return !filter.includes(condition.getCondition().getTypeName());
+        return !filter.includes(condition.condition().getTypeName());
     }
 
     @Override

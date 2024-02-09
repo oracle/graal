@@ -37,9 +37,9 @@ public abstract class FixedNode extends ValueNode implements FixedNodeInterface 
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         assertTrue(this.successors().isNotEmpty() || this.predecessor() != null, "FixedNode should not float: %s", this);
-        return super.verify();
+        return super.verifyNode();
     }
 
     /* This method is final to ensure that it can be de-virtualized and inlined. */

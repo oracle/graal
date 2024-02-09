@@ -28,7 +28,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -43,6 +42,7 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.VMError;
@@ -69,13 +69,10 @@ public class IsolateArgumentParser {
     private static final long G = K * M;
     private static final long T = K * G;
 
+    private static boolean isCompilationIsolate;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public IsolateArgumentParser() {
-    }
-
-    @Fold
-    public static IsolateArgumentParser singleton() {
-        return ImageSingletons.lookup(IsolateArgumentParser.class);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -141,7 +138,7 @@ public class IsolateArgumentParser {
     @Uninterruptible(reason = "Still being initialized.")
     public static void parse(CEntryPointCreateIsolateParameters parameters, CLongPointer parsedArgs) {
         initialize(parsedArgs);
-        if (!LibC.isSupported()) {
+        if (!LibC.isSupported() || !shouldParseArguments(parameters)) {
             // Without LibC support, argument parsing is disabled. So, we just use the build-time
             // values of the runtime options.
             return;
@@ -175,14 +172,35 @@ public class IsolateArgumentParser {
         }
     }
 
+    /**
+     * Note that this logic must be in sync with
+     * {@link com.oracle.svm.core.option.RuntimeOptionParser#parseAndConsumeAllOptions}.
+     */
     @Uninterruptible(reason = "Thread state not yet set up.")
-    public void persistOptions(CLongPointer parsedArgs) {
+    public static boolean shouldParseArguments(CEntryPointCreateIsolateParameters parameters) {
+        if (SubstrateOptions.ParseRuntimeOptions.getValue()) {
+            return true;
+        } else if (RuntimeCompilation.isEnabled() && SubstrateOptions.supportCompileInIsolates()) {
+            return isCompilationIsolate(parameters);
+        }
+        return false;
+    }
+
+    @Uninterruptible(reason = "Thread state not yet set up.")
+    private static boolean isCompilationIsolate(CEntryPointCreateIsolateParameters parameters) {
+        return parameters.version() >= 5 && parameters.getIsCompilationIsolate();
+    }
+
+    @Uninterruptible(reason = "Thread state not yet set up.")
+    public static void persistOptions(CEntryPointCreateIsolateParameters parameters, CLongPointer parsedArgs) {
+        isCompilationIsolate = isCompilationIsolate(parameters);
+
         for (int i = 0; i < OPTION_COUNT; i++) {
             PARSED_OPTION_VALUES[i] = parsedArgs.read(i);
         }
     }
 
-    public void verifyOptionValues() {
+    public static void verifyOptionValues() {
         for (int i = 0; i < OPTION_COUNT; i++) {
             RuntimeOptionKey<?> option = OPTIONS[i];
             if (shouldValidate(option)) {
@@ -197,6 +215,11 @@ public class IsolateArgumentParser {
             return option != SubstrateGCOptions.MinHeapSize && option != SubstrateGCOptions.MaxHeapSize && option != SubstrateGCOptions.MaxNewSize;
         }
         return true;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isCompilationIsolate() {
+        return isCompilationIsolate;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -230,12 +253,10 @@ public class IsolateArgumentParser {
     }
 
     private static void validate(RuntimeOptionKey<?> option, Object oldValue) {
-        if (option.hasBeenSet()) {
-            Object newValue = option.getValue();
-            if (newValue == null || !newValue.equals(oldValue)) {
-                throw new IllegalArgumentException(
-                                "The option '" + option.getName() + "' can't be changed after isolate creation. Old value: " + oldValue + ", new value: " + newValue);
-            }
+        Object newValue = option.getValue();
+        if (newValue == null || !newValue.equals(oldValue)) {
+            throw new IllegalArgumentException(
+                            "The option '" + option.getName() + "' can't be changed after isolate creation. Old value: " + oldValue + ", new value: " + newValue);
         }
     }
 
@@ -344,6 +365,8 @@ public class IsolateArgumentParser {
         }
 
         CCharPointerPointer tailPtr = (CCharPointerPointer) StackValue.get(CCharPointer.class);
+
+        LibC.setErrno(0);
         UnsignedWord n = LibC.strtoull(s, tailPtr, 10);
         if (LibC.errno() != 0) {
             return false;
@@ -360,27 +383,14 @@ public class IsolateArgumentParser {
 
         long modifier;
         switch (tail.read()) {
-            case 'T':
-            case 't':
-                modifier = T;
-                break;
-            case 'G':
-            case 'g':
-                modifier = G;
-                break;
-            case 'M':
-            case 'm':
-                modifier = M;
-                break;
-            case 'K':
-            case 'k':
-                modifier = K;
-                break;
-            case '\0':
-                modifier = 1;
-                break;
-            default:
+            case 'T', 't' -> modifier = T;
+            case 'G', 'g' -> modifier = G;
+            case 'M', 'm' -> modifier = M;
+            case 'K', 'k' -> modifier = K;
+            case '\0' -> modifier = 1;
+            default -> {
                 return false;
+            }
         }
 
         UnsignedWord value = n.multiply(WordFactory.unsigned(modifier));

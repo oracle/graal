@@ -192,7 +192,6 @@ llvm_components = ['bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm
 ce_unchained_components = ['bnative-image-configure', 'cmp', 'lg', 'ni', 'nic', 'nil', 'nr_lib_jvmcicompiler', 'sdkc', 'sdkni', 'svm', 'svmsl', 'svmt', 'tflc', 'tflsm']
 ce_components_minimal = ['bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'insightheap', 'lg', 'libpoly', 'lsp', 'nfi-libffi', 'nfi', 'poly', 'polynative', 'pro', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'spolyglot', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json']
 ce_components = ce_components_minimal + ['nr_lib_jvmcicompiler', 'bnative-image-configure', 'ni', 'nic', 'nil', 'svm', 'svmt', 'svmnfi', 'svmsl']
-ce_ruby_components = ['antlr4', 'cmp', 'cov', 'dap', 'gvm', 'icu4j', 'ins', 'insight', 'insightheap', 'lg', 'llp', 'llrc', 'llrlf', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'pro', 'rby', 'rbyl', 'rgx', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json']
 ce_python_components = ['antlr4', 'sllvmvm', 'bpolybench', 'bpolyglot', 'cmp', 'cov', 'dap', 'dis', 'gu', 'gvm', 'icu4j', 'xz', 'ins', 'insight', 'insightheap', 'lg', 'libpoly', 'llp', 'llrc', 'llrl', 'llrlf', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'pbm', 'pmh', 'poly', 'polynative', 'pro', 'pyn', 'pynl', 'rgx', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'spolyglot', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json']
 ce_fastr_components = ce_components + llvm_components + ['antlr4', 'xz', 'sllvmvm', 'llp', 'bnative-image', 'snative-image-agent', 'R', 'bRMain', 'bnative-image-configure', 'llrc', 'snative-image-diagnostics-agent', 'llrn', 'llrl', 'llrlf']
 ce_no_native_components = ['bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'insightheap', 'lsp', 'nfi-libffi', 'nfi', 'polynative', 'pro', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'spolyglot', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json', 'libpoly', 'poly']
@@ -204,7 +203,6 @@ mx_sdk_vm.register_vm_config('community', ce_unchained_components, _suite, env_f
 mx_sdk_vm.register_vm_config('community', ce_unchained_components, _suite, env_file='ce-darwin-aarch64')
 mx_sdk_vm.register_vm_config('community', ce_unchained_components, _suite, env_file='ce')
 # Other GraalVMs
-mx_sdk_vm.register_vm_config('ruby-community', ce_ruby_components, _suite, env_file='ce-ruby')
 mx_sdk_vm.register_vm_config('espresso-community', ['antlr4', 'ejc', 'ejvm', 'ellvm', 'gvm', 'java', 'llp', 'llrc', 'llrlf', 'llrn', 'nfi', 'nfi-libffi', 'nr_lib_javavm', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, env_file='ce-llvm-espresso')
 mx_sdk_vm.register_vm_config('espresso-community', ['ejc', 'ejvm', 'gvm', 'java', 'nfi', 'nfi-libffi', 'nr_lib_javavm', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, env_file='ce-espresso')
 mx_sdk_vm.register_vm_config('ce', ce_components + ['icu4j', 'js', 'jsl', 'jss', 'rgx', 'bnative-image', 'snative-image-agent', 'snative-image-diagnostics-agent'], _suite, dist_name='ce-js', env_file='ce-js')

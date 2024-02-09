@@ -32,15 +32,12 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.options.OptionDescriptors;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.Deoptimizer;
@@ -77,6 +74,8 @@ import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedRuntimeOptions.ExceptionAction;
 import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.Option;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.meta.JavaConstant;
@@ -102,7 +101,7 @@ class SubstrateTruffleOptions {
          * background compile queue. The latter is useful when background compilation is not needed,
          * but recurring callbacks (which depend on the safepoint mechanism) are required.
          */
-        return SubstrateOptions.MultiThreaded.getValue() && SubstrateTruffleOptions.TruffleMultiThreaded.getValue();
+        return SubstrateTruffleOptions.TruffleMultiThreaded.getValue();
     }
 }
 

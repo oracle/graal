@@ -32,6 +32,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -368,11 +369,18 @@ public class GraphUtil {
     }
 
     public static void killWithUnusedFloatingInputs(Node node, boolean mayKillGuard) {
+        killWithUnusedFloatingInputs(node, mayKillGuard, null);
+    }
+
+    public static void killWithUnusedFloatingInputs(Node node, boolean mayKillGuard, Consumer<Node> beforeDelete) {
         LinkedStack<Node> stack = null;
         Node cur = node;
         do {
             CompilationAlarm.checkProgress(node.graph());
             assert checkKill(cur, mayKillGuard);
+            if (beforeDelete != null) {
+                beforeDelete.accept(cur);
+            }
             cur.markDeleted();
             outer: for (Node in : cur.inputs()) {
                 if (in.isAlive()) {

@@ -353,7 +353,7 @@ public final class TRegexCompilationRequest {
 
     private TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, boolean forward, boolean searching, boolean genericCG, boolean allowSimpleCG, boolean trackLastGroup) {
         return createDFAExecutor(nfaArg, new TRegexDFAExecutorProperties(forward, searching, genericCG, allowSimpleCG,
-                        source.getOptions().isRegressionTestMode(), trackLastGroup, nfaArg.getAst().getRoot().getMinPath()), null);
+                        trackLastGroup, nfaArg.getAst().getRoot().getMinPath()), null);
     }
 
     public TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, TRegexDFAExecutorProperties props, String debugDumpName) {

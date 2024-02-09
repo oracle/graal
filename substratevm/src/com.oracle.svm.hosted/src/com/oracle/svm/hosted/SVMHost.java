@@ -86,6 +86,7 @@ import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.core.heap.UnknownClass;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.HubType;
+import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.hub.ReferenceType;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
@@ -135,6 +136,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.graal.compiler.nodes.java.AccessFieldNode;
 import jdk.graal.compiler.nodes.java.AccessMonitorNode;
 import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.common.BoxNodeIdentityPhase;
@@ -203,7 +205,7 @@ public class SVMHost extends HostVM {
         } else {
             parsingSupport = null;
         }
-        fieldValueInterceptionSupport = new FieldValueInterceptionSupport(annotationSubstitutions);
+        fieldValueInterceptionSupport = new FieldValueInterceptionSupport(annotationSubstitutions, classInitializationSupport);
         ImageSingletons.add(FieldValueInterceptionSupport.class, fieldValueInterceptionSupport);
     }
 
@@ -338,7 +340,7 @@ public class SVMHost extends HostVM {
         return updatedConfig;
     }
 
-    private boolean retainLocalVariables() {
+    private static boolean retainLocalVariables() {
         /*
          * Disabling liveness analysis preserves the values of local variables beyond the
          * bytecode-liveness. This greatly helps debugging. Note that when local variable numbers
@@ -414,6 +416,8 @@ public class SVMHost extends HostVM {
         boolean isLambdaFormHidden = type.isAnnotationPresent(LambdaFormHiddenMethod.class);
         boolean isLinked = type.isLinked();
 
+        nestHost = PredefinedClassesSupport.maybeAdjustLambdaNestHost(className, javaClass, classLoader, nestHost);
+
         return new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type), superHub, componentHub, sourceFileName, modifiers, hubClassLoader,
                         isHidden, isRecord, nestHost, assertionStatus, type.hasDefaultMethods(), type.declaresDefaultMethods(), isSealed, isVMInternal, isLambdaFormHidden, isLinked, simpleBinaryName,
                         getDeclaringClass(javaClass), getSignature(javaClass));
@@ -421,7 +425,7 @@ public class SVMHost extends HostVM {
 
     private static final Method getSignature = ReflectionUtil.lookupMethod(Class.class, "getGenericSignature0");
 
-    private String getSignature(Class<?> javaClass) {
+    private static String getSignature(Class<?> javaClass) {
         try {
             return (String) getSignature.invoke(javaClass);
         } catch (IllegalAccessException | InvocationTargetException e) {
@@ -547,6 +551,10 @@ public class SVMHost extends HostVM {
         if (graph != null) {
             if (deoptsForbidden(method)) {
                 graph.getGraphState().configureExplicitExceptionsNoDeoptIfNecessary();
+            }
+
+            if (parsingSupport != null) {
+                parsingSupport.afterParsingHook(method, graph);
             }
 
             if (!SubstrateCompilationDirectives.isRuntimeCompiledMethod(method)) {
@@ -827,6 +835,10 @@ public class SVMHost extends HostVM {
         }
         /* Fields with those names are not allowed in the image */
         if (NativeImageGenerator.checkName(field.getType().getName() + "." + field.getName()) != null) {
+            return false;
+        }
+        /* Options should not be in the image */
+        if (OptionKey.class.isAssignableFrom(field.getType())) {
             return false;
         }
         /* Fields from this package should not be in the image */

@@ -57,7 +57,7 @@
       JVM_CONFIG: jvm_config + jvm_config_suffix
     } else {},
     logs+: [
-        "*/gcutils_heapdump_*.hprof",
+        "*/gcutils_heapdump_*.hprof.gz",
     ],
     targets: ["gate"],
     python_version: "3"

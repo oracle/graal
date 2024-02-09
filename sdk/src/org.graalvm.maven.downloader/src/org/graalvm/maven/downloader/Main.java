@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.NoSuchAlgorithmException;
+import java.util.Locale;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -61,7 +62,7 @@ public class Main {
     static {
         String logLevel = System.getenv(LOGGING_PROP);
         if (logLevel != null) {
-            Level level = Level.parse(logLevel.toUpperCase());
+            Level level = Level.parse(logLevel.toUpperCase(Locale.ENGLISH));
             LOGGER.setLevel(level);
             Handler[] handlers = Logger.getLogger("").getHandlers();
             for (Handler h : handlers) {

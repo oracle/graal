@@ -29,6 +29,7 @@ import java.lang.ref.ReferenceQueue;
 import java.util.List;
 import java.util.function.Consumer;
 
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -36,6 +37,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
@@ -121,12 +123,6 @@ public abstract class Heap {
 
     /**
      * Get the ObjectHeader implementation that this Heap uses.
-     *
-     * TODO: This is used during native image generation to put appropriate headers on Objects in
-     * the native image heap. Is there any reason to expose the whole ObjectHeader interface, since
-     * only setBootImageOnLong(0L) is used then, to get the native image object header bits?
-     *
-     * TODO: Would an "Unsigned getBootImageObjectHeaderBits()" method be sufficient?
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract ObjectHeader getObjectHeader();
@@ -148,6 +144,12 @@ public abstract class Heap {
      */
     @Fold
     public abstract int getPreferredAddressSpaceAlignment();
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public Pointer getImageHeapStart() {
+        Pointer heapBase = (Pointer) Isolates.getHeapBase(CurrentIsolate.getIsolate());
+        return heapBase.add(Heap.getHeap().getImageHeapOffsetInAddressSpace());
+    }
 
     /**
      * Returns an offset relative to the heap base, at which the image heap should be mapped into
@@ -230,6 +232,9 @@ public abstract class Heap {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract long getThreadAllocatedMemory(IsolateThread thread);
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public abstract UnsignedWord getUsedMemoryAfterLastGC();
 
     /** Consider all references in the given object as needing remembered set entries. */
     @Uninterruptible(reason = "Ensure that no GC can occur between modification of the object and this call.", callerMustBe = true)

@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Optional;
 
+import jdk.graal.compiler.phases.common.util.LoopUtility;
 import jdk.graal.compiler.phases.util.GraphOrder;
 import org.graalvm.collections.EconomicMap;
 import jdk.graal.compiler.core.common.GraalOptions;
@@ -612,24 +613,9 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                     }
                 }
 
-                HIRBlock useBlock = cfg.blockFor(n);
-                Loop<HIRBlock> defLoop = defBlock.getLoop();
-                Loop<HIRBlock> useLoop = useBlock.getLoop();
-
-                if (defLoop != null) {
-                    // the def is inside a loop, either a parent or a disjunct loop
-                    if (useLoop != null) {
-                        // we are only safe without proxies if we are included in the def loop,
-                        // i.e., the def loop is a parent loop
-                        if (!useLoop.isAncestorOrSelf(defLoop)) {
-                            earlyGVNAbort.increment(graph.getDebug());
-                            return;
-                        }
-                    } else {
-                        // the use is not in a loop but the def is, needs proxies, fail
-                        earlyGVNAbort.increment(graph.getDebug());
-                        return;
-                    }
+                if (!LoopUtility.canUseWithoutProxy(cfg, edgeDataEqual, n)) {
+                    earlyGVNAbort.increment(graph.getDebug());
+                    return;
                 }
 
                 graph.getDebug().log(DebugContext.VERY_DETAILED_LEVEL, "Early GVN: replacing %s with %s", n, edgeDataEqual);

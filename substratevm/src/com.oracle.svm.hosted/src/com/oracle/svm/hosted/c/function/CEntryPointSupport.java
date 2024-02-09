@@ -29,12 +29,12 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 
-import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
@@ -45,12 +45,10 @@ import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode.UtilityAction;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.ReadReservedRegister;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.StateSplitProxyNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -65,7 +63,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @AutomaticallyRegisteredFeature
 public class CEntryPointSupport implements InternalFeature {
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
+    public void registerInvocationPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
         registerEntryPointActionsPlugins(plugins.getInvocationPlugins());
         registerCurrentIsolatePlugins(plugins.getInvocationPlugins());
     }
@@ -171,15 +169,7 @@ public class CEntryPointSupport implements InternalFeature {
         r.register(new RequiredInvocationPlugin("getCurrentThread") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                if (SubstrateOptions.MultiThreaded.getValue()) {
-                    b.addPush(JavaKind.Object, ReadReservedRegister.createReadIsolateThreadNode(b.getGraph()));
-                } else if (SubstrateOptions.SpawnIsolates.getValue()) {
-                    ValueNode heapBase = b.add(ReadReservedRegister.createReadHeapBaseNode(b.getGraph()));
-                    ConstantNode addend = b.add(ConstantNode.forIntegerKind(FrameAccess.getWordKind(), CEntryPointSetup.SINGLE_ISOLATE_TO_SINGLE_THREAD_ADDEND));
-                    b.addPush(JavaKind.Object, new AddNode(heapBase, addend));
-                } else {
-                    b.addPush(JavaKind.Object, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), CEntryPointSetup.SINGLE_THREAD_SENTINEL.rawValue()));
-                }
+                b.addPush(JavaKind.Object, ReadReservedRegister.createReadIsolateThreadNode(b.getGraph()));
                 return true;
             }
         });
@@ -189,7 +179,7 @@ public class CEntryPointSupport implements InternalFeature {
                 if (SubstrateOptions.SpawnIsolates.getValue()) {
                     b.addPush(JavaKind.Object, ReadReservedRegister.createReadHeapBaseNode(b.getGraph()));
                 } else {
-                    b.addPush(JavaKind.Object, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), CEntryPointSetup.SINGLE_ISOLATE_SENTINEL.rawValue()));
+                    b.addPush(JavaKind.Object, ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), CEntryPointSetup.SINGLE_ISOLATE_SENTINEL.rawValue()));
                 }
                 return true;
             }

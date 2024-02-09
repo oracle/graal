@@ -36,13 +36,17 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.RuntimeAssertionsSupport;
+import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability.ValueAvailability;
 import com.oracle.svm.core.heap.UnknownObjectField;
@@ -57,8 +61,13 @@ import com.oracle.svm.hosted.substitute.ComputedValueField;
 import com.oracle.svm.hosted.substitute.FieldValueTransformation;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
@@ -85,13 +94,15 @@ public final class FieldValueInterceptionSupport {
 
     private final AnnotationSubstitutionProcessor annotationSubstitutions;
     private final Map<ResolvedJavaField, Object> fieldValueInterceptors = new ConcurrentHashMap<>();
+    private final ClassInitializationSupport classInitializationSupport;
 
     public static FieldValueInterceptionSupport singleton() {
         return ImageSingletons.lookup(FieldValueInterceptionSupport.class);
     }
 
-    public FieldValueInterceptionSupport(AnnotationSubstitutionProcessor annotationSubstitutions) {
+    public FieldValueInterceptionSupport(AnnotationSubstitutionProcessor annotationSubstitutions, ClassInitializationSupport classInitializationSupport) {
         this.annotationSubstitutions = annotationSubstitutions;
+        this.classInitializationSupport = classInitializationSupport;
     }
 
     /**
@@ -242,19 +253,107 @@ public final class FieldValueInterceptionSupport {
         return false;
     }
 
-    JavaConstant readFieldValue(ClassInitializationSupport classInitializationSupport, AnalysisField field, JavaConstant receiver) {
-        assert isValueAvailable(field) : field;
+    /**
+     * Returns the Graal IR node that intrinsifies the provided field load, or null if no
+     * intrinsification is possible.
+     */
+    public ValueNode tryIntrinsifyFieldLoad(CoreProviders providers, LoadFieldNode node) {
+        var field = (AnalysisField) node.field();
 
+        FieldValueTransformer transformer = null;
         var interceptor = lookupFieldValueInterceptor(field);
         if (interceptor instanceof FieldValueTransformation transformation) {
-            return transformation.readValue(classInitializationSupport, field.wrapped, receiver);
+            transformer = transformation.getFieldValueTransformer();
+        } else if (field.wrapped instanceof ComputedValueField computedValueField) {
+            transformer = computedValueField.getFieldValueTransformer();
+        }
+        if (!(transformer instanceof FieldValueTransformerWithAvailability transformerWithAvailability)) {
+            return null;
+        }
+
+        JavaConstant receiver;
+        if (field.isStatic()) {
+            receiver = null;
+        } else {
+            receiver = node.object().asJavaConstant();
+            /*
+             * The receiver constant might not be an instance of the field's declaring class,
+             * because during optimizations the load can actually be dead code that will be removed
+             * later. We do not want to burden the field value transformers with such details, so we
+             * check here.
+             */
+            if (!(receiver instanceof ImageHeapConstant imageHeapConstant) || !field.getDeclaringClass().isAssignableFrom(imageHeapConstant.getType())) {
+                return null;
+            }
+        }
+
+        return transformerWithAvailability.intrinsify(providers, receiver);
+    }
+
+    JavaConstant readFieldValue(AnalysisField field, JavaConstant receiver) {
+        assert isValueAvailable(field) : field;
+        JavaConstant value;
+        var interceptor = lookupFieldValueInterceptor(field);
+        if (interceptor instanceof FieldValueTransformation transformation) {
+            value = transformation.readValue(classInitializationSupport, field.wrapped, receiver);
         } else {
             /*
              * If the wrapped field is ComputedValueField, the ReadableJavaField handling does the
              * necessary field value transformations.
              */
-            return ReadableJavaField.readFieldValue(classInitializationSupport, field.wrapped, receiver);
+            value = ReadableJavaField.readFieldValue(classInitializationSupport, field.wrapped, receiver);
         }
+        return interceptValue(field, value);
+    }
+
+    private static JavaConstant interceptValue(AnalysisField field, JavaConstant value) {
+        JavaConstant result = value;
+        if (result != null) {
+            result = filterInjectedAccessor(field, result);
+            result = interceptAssertionStatus(field, result);
+            result = interceptWordField(field, result);
+        }
+        return result;
+    }
+
+    /**
+     * Fields whose accesses are intercepted by injected accessors are not actually present in the
+     * image. Ideally they should never be read, but there are corner cases where this happens. We
+     * intercept the value and return 0 / null.
+     */
+    private static JavaConstant filterInjectedAccessor(AnalysisField field, JavaConstant value) {
+        if (field.getAnnotation(InjectAccessors.class) != null) {
+            assert !field.isAccessed();
+            return JavaConstant.defaultForKind(value.getJavaKind());
+        }
+        return value;
+    }
+
+    /**
+     * Intercept assertion status: the value of the field during image generation does not matter at
+     * all (because it is the hosted assertion status), we instead return the appropriate runtime
+     * assertion status. Field loads are also intrinsified early in
+     * {@link com.oracle.svm.hosted.phases.EarlyConstantFoldLoadFieldPlugin}, but we could still see
+     * such a field here if user code, e.g., accesses it via reflection.
+     */
+    private static JavaConstant interceptAssertionStatus(AnalysisField field, JavaConstant value) {
+        if (field.isStatic() && field.isSynthetic() && field.getName().startsWith("$assertionsDisabled")) {
+            Class<?> clazz = field.getDeclaringClass().getJavaClass();
+            boolean assertionsEnabled = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(clazz);
+            return JavaConstant.forBoolean(!assertionsEnabled);
+        }
+        return value;
+    }
+
+    /**
+     * Intercept {@link Word} fields. {@link Word} values are boxed objects in the hosted world, but
+     * primitive values in the runtime world, so the default value of {@link Word} fields is 0.
+     */
+    private static JavaConstant interceptWordField(AnalysisField field, JavaConstant value) {
+        if (value.getJavaKind() == JavaKind.Object && value.isNull() && field.getType().isWordType()) {
+            return JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), 0);
+        }
+        return value;
     }
 
     private static FieldValueComputer createFieldValueComputer(AnalysisField field) {

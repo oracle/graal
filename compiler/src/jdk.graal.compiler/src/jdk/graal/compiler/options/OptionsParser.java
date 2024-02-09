@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Formatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.ServiceLoader;
 
 import org.graalvm.collections.EconomicMap;
@@ -211,7 +212,7 @@ public class OptionsParser {
     }
 
     private static long parseLong(String v) {
-        String valueString = v.toLowerCase();
+        String valueString = v.toLowerCase(Locale.ENGLISH);
         long scale = 1;
         if (valueString.endsWith("k")) {
             scale = 1024L;

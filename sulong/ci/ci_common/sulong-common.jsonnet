@@ -182,60 +182,6 @@ local sulong_deps = common.deps.sulong;
     },
   },
 
-
-  llvm38:: $.sulong_gateTest_default_tools {
-    packages+: {
-      llvm: "==3.8",
-    },
-    environment+: {
-      NO_FEMBED_BITCODE: "true",
-      CLANG_CC: "clang-3.8",
-      CLANG_CXX: "clang-3.8 --driver-mode=g++",
-      CLANG_LLVM_OBJCOPY: "objcopy",
-      CLANG_LLVM_CONFIG: "llvm-config",
-      CLANG_NO_OPTNONE: "1",
-      CFLAGS: "-Wno-error",
-    },
-  },
-
-  llvm4:: $.sulong_gateTest_default_tools {
-    bitcode_config +:: ["v40"],
-    packages+: {
-      llvm: "==4.0.1",
-    },
-    environment+: {
-      CLANG_CC: "clang-4.0",
-      CLANG_CXX: "clang-4.0 --driver-mode=g++",
-      CLANG_LLVM_OBJCOPY: "objcopy",
-      CLANG_NO_OPTNONE: "1",
-      CFLAGS: "-Wno-error",
-    },
-  },
-
-  llvm6:: $.sulong_gateTest_default_tools {
-    bitcode_config +:: ["v60"],
-    packages+: {
-      llvm: "==6.0.1",
-    },
-    environment+: {
-      CLANG_CC: "clang-6.0",
-      CLANG_CXX: "clang-6.0 --driver-mode=g++",
-      CFLAGS: "-Wno-error",
-    },
-  },
-
-  llvm8: $.sulong_gateTest_default_tools {
-    bitcode_config +:: ["v80"],
-    packages+: {
-      llvm: "==8.0.0",
-    },
-    environment+: {
-      CLANG_CC: "clang-8",
-      CLANG_CXX: "clang-8 --driver-mode=g++",
-      CFLAGS: "-Wno-error",
-    },
-  },
-
   llvmBundled:: {},
 
   requireGCC:: {

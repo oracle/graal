@@ -45,6 +45,7 @@ public final class RuntimeCompilationCandidate {
         return targetMethod;
     }
 
+    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;

@@ -37,6 +37,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
@@ -210,7 +211,7 @@ public class ProgressReporter {
         }
         l().printHeadlineSeparator();
         recordJsonMetric(GeneralInfo.IMAGE_NAME, imageName);
-        String imageKindName = imageKind.name().toLowerCase().replace('_', ' ');
+        String imageKindName = imageKind.name().toLowerCase(Locale.ENGLISH).replace('_', ' ');
         l().blueBold().link("GraalVM Native Image", "https://www.graalvm.org/native-image/").reset()
                         .a(": Generating '").bold().a(imageName).reset().a("' (").doclink(imageKindName, "#glossary-imagekind").a(")...").println();
         l().printHeadlineSeparator();
@@ -681,18 +682,19 @@ public class ProgressReporter {
         l().yellowBold().a("Recommendations:").reset().println();
         for (UserRecommendation r : topApplicableRecommendations) {
             String alignment = Utils.stringFilledWith(Math.max(1, 5 - r.id().length()), " ");
-            l().a(" ").doclink(r.id(), "#recommendation-" + r.id().toLowerCase()).a(":").a(alignment).a(r.description()).println();
+            l().a(" ").doclink(r.id(), "#recommendation-" + r.id().toLowerCase(Locale.ENGLISH)).a(":").a(alignment).a(r.description()).println();
         }
     }
 
     public void printEpilog(Optional<String> optionalImageName, Optional<NativeImageGenerator> optionalGenerator, ImageClassLoader classLoader, boolean wasSuccessfulBuild,
-                    Optional<Throwable> optionalError, OptionValues parsedHostedOptions) {
+                    Optional<Throwable> optionalUnhandledThrowable, OptionValues parsedHostedOptions) {
         executor.shutdown();
 
-        if (optionalError.isPresent()) {
+        if (optionalUnhandledThrowable.isPresent()) {
             Path errorReportPath = NativeImageOptions.getErrorFilePath(parsedHostedOptions);
             Optional<FeatureHandler> featureHandler = optionalGenerator.map(nativeImageGenerator -> nativeImageGenerator.featureHandler);
-            ReportUtils.report("GraalVM Native Image Error Report", errorReportPath, p -> VMErrorReporter.generateErrorReport(p, buildOutputLog, classLoader, featureHandler, optionalError.get()),
+            ReportUtils.report("GraalVM Native Image Error Report", errorReportPath,
+                            p -> VMErrorReporter.generateErrorReport(p, buildOutputLog, classLoader, featureHandler, optionalUnhandledThrowable.get()),
                             false);
             if (ImageSingletonsSupport.isInstalled()) {
                 BuildArtifacts.singleton().add(ArtifactType.BUILD_INFO, errorReportPath);
@@ -700,7 +702,7 @@ public class ProgressReporter {
         }
 
         if (optionalImageName.isEmpty() || optionalGenerator.isEmpty()) {
-            printErrorMessage(optionalError, parsedHostedOptions);
+            printErrorMessage(optionalUnhandledThrowable, parsedHostedOptions);
             return;
         }
         String imageName = optionalImageName.get();
@@ -723,26 +725,26 @@ public class ProgressReporter {
         } else {
             timeStats = String.format("%dm %ds", (int) totalSeconds / 60, (int) totalSeconds % 60);
         }
-        l().a(optionalError.isEmpty() ? "Finished" : "Failed").a(" generating '").bold().a(imageName).reset().a("' ")
-                        .a(optionalError.isEmpty() ? "in" : "after").a(" ").a(timeStats).a(".").println();
+        l().a(wasSuccessfulBuild ? "Finished" : "Failed").a(" generating '").bold().a(imageName).reset().a("' ")
+                        .a(wasSuccessfulBuild ? "in" : "after").a(" ").a(timeStats).a(".").println();
 
-        printErrorMessage(optionalError, parsedHostedOptions);
+        printErrorMessage(optionalUnhandledThrowable, parsedHostedOptions);
     }
 
-    private void printErrorMessage(Optional<Throwable> optionalError, OptionValues parsedHostedOptions) {
-        if (optionalError.isEmpty()) {
+    private void printErrorMessage(Optional<Throwable> optionalUnhandledThrowable, OptionValues parsedHostedOptions) {
+        if (optionalUnhandledThrowable.isEmpty()) {
             return;
         }
-        Throwable error = optionalError.get();
+        Throwable unhandledThrowable = optionalUnhandledThrowable.get();
         l().println();
         l().redBold().a("The build process encountered an unexpected error:").reset().println();
         if (NativeImageOptions.ReportExceptionStackTraces.getValue(parsedHostedOptions)) {
             l().dim().println();
-            error.printStackTrace(builderIO.getOut());
+            unhandledThrowable.printStackTrace(builderIO.getOut());
             l().reset().println();
         } else {
             l().println();
-            l().dim().a("> %s", error).reset().println();
+            l().dim().a("> %s", unhandledThrowable).reset().println();
             l().println();
             l().a("Please inspect the generated error report at:").println();
             l().link(NativeImageOptions.getErrorFilePath(parsedHostedOptions)).println();
@@ -782,7 +784,7 @@ public class ProgressReporter {
         Map<Path, List<String>> pathToTypes = new TreeMap<>();
         artifacts.forEach((artifactType, paths) -> {
             for (Path path : paths) {
-                pathToTypes.computeIfAbsent(path, p -> new ArrayList<>()).add(artifactType.name().toLowerCase());
+                pathToTypes.computeIfAbsent(path, p -> new ArrayList<>()).add(artifactType.name().toLowerCase(Locale.ENGLISH));
             }
         });
         pathToTypes.forEach((path, typeNames) -> l().a(" ").link(path).dim().a(" (").a(String.join(", ", typeNames)).a(")").reset().println());
@@ -1183,7 +1185,7 @@ public class ProgressReporter {
 
         private void appendStageStart() {
             a(outputPrefix).blue().a(String.format("[%s/%s] ", 1 + activeBuildStage.ordinal(), BuildStage.NUM_STAGES)).reset()
-                            .blueBold().doclink(activeBuildStage.message, "#stage-" + activeBuildStage.name().toLowerCase()).a("...").reset();
+                            .blueBold().doclink(activeBuildStage.message, "#stage-" + activeBuildStage.name().toLowerCase(Locale.ENGLISH)).a("...").reset();
         }
 
         final String progressBarStartPadding() {

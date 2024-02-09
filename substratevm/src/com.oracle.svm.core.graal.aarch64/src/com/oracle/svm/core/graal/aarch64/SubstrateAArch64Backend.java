@@ -170,6 +170,7 @@ import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -279,11 +280,11 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
         private final ComputedIndirectCallTargetNode.Computation[] addressComputation;
         private final LIRKindTool lirKindTool;
-        private final SharedConstantReflectionProvider constantReflection;
+        private final ConstantReflectionProvider constantReflection;
 
         public SubstrateAArch64ComputedIndirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps,
                         Value addressBase, ComputedIndirectCallTargetNode.Computation[] addressComputation,
-                        LIRFrameState state, Value exceptionTemp, LIRKindTool lirKindTool, SharedConstantReflectionProvider constantReflection) {
+                        LIRFrameState state, Value exceptionTemp, LIRKindTool lirKindTool, ConstantReflectionProvider constantReflection) {
             super(TYPE, callTarget, result, parameters, temps, state);
             this.addressBase = this.addressBaseTemp = addressBase;
             this.exceptionTemp = exceptionTemp;
@@ -356,8 +357,8 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                             masm.add(64, addressScratch, ReservedRegisters.singleton().getHeapBaseRegister(), addressScratch, ShiftType.LSL, compressionShift);
                             memoryAddress = masm.makeAddress(addressBitSize, addressScratch, field.getOffset(), immediateScratch);
                         } else {
-                            memoryAddress = masm.makeAddress(addressBitSize, ReservedRegisters.singleton().getHeapBaseRegister(), field.getOffset() + constantReflection.getImageHeapOffset(object),
-                                            immediateScratch);
+                            memoryAddress = masm.makeAddress(addressBitSize, ReservedRegisters.singleton().getHeapBaseRegister(), field.getOffset() +
+                                            ((SharedConstantReflectionProvider) constantReflection).getImageHeapOffset(object), immediateScratch);
                         }
 
                     } else {
@@ -424,19 +425,17 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                             AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, anchor, knownOffsets.getJavaFrameAnchorLastSPOffset()));
         }
 
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            /*
-             * Change VMThread status from Java to Native. Note a "store release" is needed for this
-             * update to ensure VMThread status is only updated once all prior stores are also
-             * observable.
-             */
-            try (ScratchRegister scratch1 = masm.getScratchRegister(); ScratchRegister scratch2 = masm.getScratchRegister()) {
-                Register statusValueRegister = scratch1.getRegister();
-                Register statusAddressRegister = scratch2.getRegister();
-                masm.mov(statusValueRegister, newThreadStatus);
-                masm.loadAlignedAddress(32, statusAddressRegister, ReservedRegisters.singleton().getThreadRegister(), knownOffsets.getVMThreadStatusOffset());
-                masm.stlr(32, statusValueRegister, statusAddressRegister);
-            }
+        /*
+         * Change VMThread status from Java to Native. Note a "store release" is needed for this
+         * update to ensure VMThread status is only updated once all prior stores are also
+         * observable.
+         */
+        try (ScratchRegister scratch1 = masm.getScratchRegister(); ScratchRegister scratch2 = masm.getScratchRegister()) {
+            Register statusValueRegister = scratch1.getRegister();
+            Register statusAddressRegister = scratch2.getRegister();
+            masm.mov(statusValueRegister, newThreadStatus);
+            masm.loadAlignedAddress(32, statusAddressRegister, ReservedRegisters.singleton().getThreadRegister(), knownOffsets.getVMThreadStatusOffset());
+            masm.stlr(32, statusValueRegister, statusAddressRegister);
         }
     }
 
@@ -778,8 +777,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             gen.emitMove(addressBase, operand(callTarget.getAddressBase()));
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
             append(new SubstrateAArch64ComputedIndirectCallOp(targetMethod, result, parameters, temps, addressBase, callTarget.getAddressComputation(),
-                            callState,
-                            getExceptionTemp(callTarget), gen.getLIRKindTool(), (SharedConstantReflectionProvider) getConstantReflection()));
+                            callState, getExceptionTemp(callTarget), gen.getLIRKindTool(), getConstantReflection()));
         }
 
         private AllocatableValue setupJavaFrameAnchor(CallTargetNode callTarget) {
@@ -1325,6 +1323,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         try {
             crb.buildLabelOffsets();
             crb.emitLIR();
+            finalizeCode(crb);
         } catch (BranchTargetOutOfBoundsException e) {
             // A branch estimation was wrong, now retry with conservative label ranges, this
             // should always work
@@ -1332,7 +1331,13 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             crb.setConservativeLabelRanges();
             crb.resetForEmittingCode();
             crb.emitLIR();
+            finalizeCode(crb);
         }
+    }
+
+    @SuppressWarnings("unused")
+    protected void finalizeCode(CompilationResultBuilder crb) {
+
     }
 
     @SuppressWarnings("unused")

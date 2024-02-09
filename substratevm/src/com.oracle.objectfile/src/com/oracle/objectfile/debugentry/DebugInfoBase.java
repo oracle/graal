@@ -36,7 +36,6 @@ import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
-import jdk.graal.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.debugentry.range.PrimaryRange;
 import com.oracle.objectfile.debugentry.range.Range;
@@ -49,6 +48,7 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocationInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
 import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
 
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -351,10 +351,10 @@ public abstract class DebugInfoBase {
                 String provenance = debugDataInfo.getProvenance();
                 String typeName = debugDataInfo.getTypeName();
                 String partitionName = debugDataInfo.getPartition();
-                /* Address is heap-register relative pointer. */
-                long address = debugDataInfo.getAddress();
+                /* Offset is relative to heap-base register. */
+                long offset = debugDataInfo.getOffset();
                 long size = debugDataInfo.getSize();
-                debugContext.log(DebugContext.INFO_LEVEL, "Data: address 0x%x size 0x%x type %s partition %s provenance %s ", address, size, typeName, partitionName, provenance);
+                debugContext.log(DebugContext.INFO_LEVEL, "Data: offset 0x%x size 0x%x type %s partition %s provenance %s ", offset, size, typeName, partitionName, provenance);
             }
         }));
         // populate a file and dir list and associated index for each class entry

@@ -38,11 +38,13 @@ import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 
 /**
  * This class is necessary because simulation of class initializer is based on
@@ -92,6 +94,11 @@ public final class SimulateClassInitializerPolicy extends InlineBeforeAnalysisPo
         }
 
         @Override
+        public boolean processNonInlinedInvoke(CoreProviders providers, CallTargetNode node) {
+            return true;
+        }
+
+        @Override
         public String toString() {
             return "allocatedBytes: " + allocatedBytes + " (" + accumulativeCounters.allocatedBytes + ")";
         }
@@ -108,7 +115,7 @@ public final class SimulateClassInitializerPolicy extends InlineBeforeAnalysisPo
     }
 
     @Override
-    protected boolean shouldInlineInvoke(GraphBuilderContext b, AnalysisMethod method, ValueNode[] args) {
+    protected boolean shouldInlineInvoke(GraphBuilderContext b, AbstractPolicyScope policyScope, AnalysisMethod method, ValueNode[] args) {
         if (b.getDepth() > support.maxInlineDepth) {
             /* Safeguard against excessive inlining, for example endless recursion. */
             return false;
@@ -154,8 +161,7 @@ public final class SimulateClassInitializerPolicy extends InlineBeforeAnalysisPo
     }
 
     @Override
-    protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope o, AnalysisMetaAccess metaAccess,
-                    AnalysisMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle) {
+    protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope o, AnalysisMethod method) {
         var outer = (SimulateClassInitializerInlineScope) o;
         return new SimulateClassInitializerInlineScope(outer.accumulativeCounters, outer.inliningDepth + 1);
     }

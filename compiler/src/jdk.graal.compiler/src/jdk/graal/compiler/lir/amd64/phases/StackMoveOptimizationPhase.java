@@ -35,25 +35,25 @@ import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.RedundantMoveElimination;
 import jdk.graal.compiler.lir.amd64.AMD64Move;
+import jdk.graal.compiler.lir.amd64.AMD64Move.AMD64MultiStackMove;
+import jdk.graal.compiler.lir.amd64.AMD64Move.AMD64StackMove;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.LIRPhase;
 import jdk.graal.compiler.lir.phases.PostAllocationOptimizationPhase;
 import jdk.graal.compiler.options.NestedBooleanOptionKey;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
-
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 /**
- * Replaces sequential {@link AMD64Move.AMD64StackMove}s of the same type with a single
- * {@link AMD64Move.AMD64MultiStackMove} to avoid storing/restoring the scratch register multiple
- * times.
+ * Replaces sequential {@link AMD64StackMove}s of the same type with a single
+ * {@link AMD64MultiStackMove} to avoid storing/restoring the scratch register multiple times.
  *
  * Note: this phase must be inserted <b>after</b> {@link RedundantMoveElimination} phase because
- * {@link AMD64Move.AMD64MultiStackMove} are not probably detected.
+ * {@link AMD64MultiStackMove} are not probably detected.
  */
 public class StackMoveOptimizationPhase extends PostAllocationOptimizationPhase {
     public static class Options {

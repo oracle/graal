@@ -611,13 +611,11 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         Register stackPointer = gen.getRegisterConfig().getFrameRegister();
         builder.buildStore(builder.buildReadRegister(builder.register(stackPointer.name)), builder.buildBitcast(lastSPAddr, builder.pointerType(builder.wordType())));
 
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            LLVMValueRef threadLocalArea = gen.buildInlineGetRegister(ReservedRegisters.singleton().getThreadRegister().name);
-            LLVMValueRef statusIndex = builder.constantInt(KnownOffsets.singleton().getVMThreadStatusOffset());
-            LLVMValueRef statusAddress = builder.buildGEP(builder.buildIntToPtr(threadLocalArea, builder.rawPointerType()), statusIndex);
-            LLVMValueRef newThreadStatus = builder.constantInt(SubstrateBackend.getNewThreadStatus(callTarget));
-            builder.buildVolatileStore(newThreadStatus, builder.buildBitcast(statusAddress, builder.pointerType(builder.intType())), Integer.BYTES);
-        }
+        LLVMValueRef threadLocalArea = gen.buildInlineGetRegister(ReservedRegisters.singleton().getThreadRegister().name);
+        LLVMValueRef statusIndex = builder.constantInt(KnownOffsets.singleton().getVMThreadStatusOffset());
+        LLVMValueRef statusAddress = builder.buildGEP(builder.buildIntToPtr(threadLocalArea, builder.rawPointerType()), statusIndex);
+        LLVMValueRef newThreadStatus = builder.constantInt(SubstrateBackend.getNewThreadStatus(callTarget));
+        builder.buildVolatileStore(newThreadStatus, builder.buildBitcast(statusAddress, builder.pointerType(builder.intType())), Integer.BYTES);
 
         LLVMValueRef wrapper = gen.createJNIWrapper(callee, nativeABI, args.length, KnownOffsets.singleton().getJavaFrameAnchorLastIPOffset());
 

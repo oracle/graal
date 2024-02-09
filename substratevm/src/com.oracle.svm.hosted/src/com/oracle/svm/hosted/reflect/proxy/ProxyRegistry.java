@@ -25,38 +25,36 @@
 package com.oracle.svm.hosted.reflect.proxy;
 
 import java.util.List;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
-import com.oracle.svm.core.configure.ConditionalElement;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
-import com.oracle.svm.hosted.ConfigurationTypeResolver;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.util.LogUtils;
 
-public class ProxyRegistry extends ConditionalConfigurationRegistry implements Consumer<ConditionalElement<List<String>>> {
-    private final ConfigurationTypeResolver typeResolver;
+public class ProxyRegistry extends ConditionalConfigurationRegistry implements BiConsumer<ConfigurationCondition, List<String>> {
     private final DynamicProxyRegistry dynamicProxySupport;
     private final ImageClassLoader imageClassLoader;
 
-    public ProxyRegistry(ConfigurationTypeResolver typeResolver, DynamicProxyRegistry dynamicProxySupport, ImageClassLoader imageClassLoader) {
-        this.typeResolver = typeResolver;
+    public ProxyRegistry(DynamicProxyRegistry dynamicProxySupport, ImageClassLoader imageClassLoader) {
         this.dynamicProxySupport = dynamicProxySupport;
         this.imageClassLoader = imageClassLoader;
     }
 
     @Override
-    public void accept(ConditionalElement<List<String>> proxies) {
+    public void accept(ConfigurationCondition condition, List<String> proxies) {
         Class<?>[] interfaces = checkIfInterfacesAreValid(proxies);
         if (interfaces != null) {
-            registerConditionalConfiguration(proxies.getCondition(), () -> {
+            registerConditionalConfiguration(condition, (cnd) -> {
                 /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
                 dynamicProxySupport.addProxyClass(interfaces);
             });
         }
     }
 
-    public Class<?> createProxyClassForSerialization(ConditionalElement<List<String>> proxies) {
+    public Class<?> createProxyClassForSerialization(List<String> proxies) {
         Class<?>[] interfaces = checkIfInterfacesAreValid(proxies);
         if (interfaces != null) {
             return dynamicProxySupport.createProxyClassForSerialization(interfaces);
@@ -65,16 +63,12 @@ public class ProxyRegistry extends ConditionalConfigurationRegistry implements C
         return null;
     }
 
-    private Class<?>[] checkIfInterfacesAreValid(ConditionalElement<List<String>> proxies) {
-        if (typeResolver.resolveConditionType(proxies.getCondition().getTypeName()) == null) {
-            return null;
-        }
-        List<String> interfaceNames = proxies.getElement();
-        Class<?>[] interfaces = new Class<?>[interfaceNames.size()];
-        for (int i = 0; i < interfaceNames.size(); i++) {
-            String className = interfaceNames.get(i);
-            Class<?> clazz = imageClassLoader.findClass(className).get();
-            if (!checkClass(interfaceNames, className, clazz)) {
+    private Class<?>[] checkIfInterfacesAreValid(List<String> proxyInterfaceNames) {
+        Class<?>[] interfaces = new Class<?>[proxyInterfaceNames.size()];
+        for (int i = 0; i < proxyInterfaceNames.size(); i++) {
+            String interfaceName = proxyInterfaceNames.get(i);
+            Class<?> clazz = imageClassLoader.findClass(interfaceName).get();
+            if (!checkClass(proxyInterfaceNames, interfaceName, clazz)) {
                 return null;
             }
             interfaces[i] = clazz;

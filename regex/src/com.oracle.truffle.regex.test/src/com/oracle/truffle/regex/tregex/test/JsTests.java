@@ -268,4 +268,24 @@ public class JsTests extends RegexTestBase {
     public void gr50807() {
         test("(?<=%b{1,4}?)foo", "", "%bbbbfoo", 0, true, 5, 8);
     }
+
+    @Test
+    public void gr51523() {
+        test("(?:^|\\.?)([A-Z])", "g", "desktopBrowser", 0, true, 7, 8, 7, 8);
+        test("(?:^|\\.?)([A-Z])", "g", "locationChanged", 0, true, 8, 9, 8, 9);
+        test("(?:^|\\.?)([A-Z]|(?<=[a-z])\\d(?=\\d+))", "g", "helloWorld", 0, true, 5, 6, 5, 6);
+    }
+
+    @Test
+    public void mergedLookAheadLiteral() {
+        test("(?:(?=(abc)))a", "", "abc", 0, true, 0, 1, 0, 3);
+    }
+
+    @Test
+    public void innerLiteralSurrogates() {
+        test("\\udf06", "", "\uD834\uDF06", 0, true, 1, 2);
+        test("x?\\udf06", "", "\uD834\uDF06", 0, true, 1, 2);
+        test("\\udf06", "u", "\uD834\uDF06", 0, false);
+        test("x?\\udf06", "u", "\uD834\uDF06", 0, false);
+    }
 }

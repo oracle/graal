@@ -45,7 +45,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.ParsingReason;
@@ -69,7 +68,6 @@ import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Builder;
 import jdk.graal.compiler.graph.Node;
@@ -253,7 +251,7 @@ public class AutomaticUnsafeTransformationSupport {
         plugins.setClassInitializationPlugin(classInitializationPlugin);
 
         FallbackFeature fallbackFeature = ImageSingletons.contains(FallbackFeature.class) ? ImageSingletons.lookup(FallbackFeature.class) : null;
-        ReflectionPlugins.registerInvocationPlugins(loader, GraalAccess.getOriginalSnippetReflection(), annotationSubstitutions, classInitializationPlugin, plugins.getInvocationPlugins(), null,
+        ReflectionPlugins.registerInvocationPlugins(loader, annotationSubstitutions, classInitializationPlugin, plugins.getInvocationPlugins(), null,
                         ParsingReason.AutomaticUnsafeTransformation, fallbackFeature);
 
         /*
@@ -276,13 +274,13 @@ public class AutomaticUnsafeTransformationSupport {
      * we need to convert it to a {@link FieldValueTransformer}, because that is the only mechanism
      * we can install late while the analysis is already running.
      */
-    private void addTransformation(BigBang bb, ResolvedJavaField original, ComputedValueField transformation) {
-        Class<?> returnType = original.getType().getJavaKind().toJavaClass();
+    private static void addTransformation(BigBang bb, ResolvedJavaField original, ComputedValueField transformation) {
+        JavaKind returnKind = original.getType().getJavaKind();
 
         FieldValueTransformer transformer = switch (transformation.getRecomputeValueKind()) {
-            case ArrayBaseOffset -> new ArrayBaseOffsetFieldValueTransformer(transformation.getTargetClass(), returnType);
-            case ArrayIndexScale -> new ArrayIndexScaleFieldValueTransformer(transformation.getTargetClass(), returnType);
-            case ArrayIndexShift -> new ArrayIndexShiftFieldValueTransformer(transformation.getTargetClass(), returnType);
+            case ArrayBaseOffset -> new ArrayBaseOffsetFieldValueTransformer(transformation.getTargetClass(), returnKind);
+            case ArrayIndexScale -> new ArrayIndexScaleFieldValueTransformer(transformation.getTargetClass(), returnKind);
+            case ArrayIndexShift -> new ArrayIndexShiftFieldValueTransformer(transformation.getTargetClass(), returnKind);
             case FieldOffset -> createFieldOffsetFieldValueTransformer(bb, original, transformation.getTargetField());
             case StaticFieldBase -> new StaticFieldBaseFieldValueTransformer(transformation.getTargetField());
             default -> throw VMError.shouldNotReachHere("Unexpected kind: " + transformation);
@@ -292,8 +290,8 @@ public class AutomaticUnsafeTransformationSupport {
     }
 
     private static FieldOffsetFieldValueTransformer createFieldOffsetFieldValueTransformer(BigBang bb, ResolvedJavaField original, Field targetField) {
-        bb.postTask(debugContext -> bb.registerAsUnsafeAccessed(bb.getMetaAccess().lookupJavaField(targetField), DefaultUnsafePartition.get(), original));
-        return new FieldOffsetFieldValueTransformer(targetField, original.getType().getJavaKind().toJavaClass());
+        bb.postTask(debugContext -> bb.getMetaAccess().lookupJavaField(targetField).registerAsUnsafeAccessed(original));
+        return new FieldOffsetFieldValueTransformer(targetField, original.getType().getJavaKind());
     }
 
     @SuppressWarnings("try")
@@ -516,15 +514,13 @@ public class AutomaticUnsafeTransformationSupport {
      * <code> static final long arrayBaseOffsets = Unsafe.getUnsafe().arrayBaseOffset(byte[].class); </code>
      */
     private void processUnsafeArrayBaseOffsetInvoke(BigBang bb, ResolvedJavaType type, Invoke unsafeArrayBaseOffsetInvoke) {
-        SnippetReflectionProvider snippetReflectionProvider = GraalAccess.getOriginalSnippetReflection();
-
         List<Supplier<String>> unsuccessfulReasons = new ArrayList<>();
 
         Class<?> arrayClass = null;
 
         ValueNode arrayClassArgument = unsafeArrayBaseOffsetInvoke.callTarget().arguments().get(1);
         if (arrayClassArgument.isJavaConstant()) {
-            arrayClass = snippetReflectionProvider.asObject(Class.class, arrayClassArgument.asJavaConstant());
+            arrayClass = GraalAccess.getOriginalSnippetReflection().asObject(Class.class, arrayClassArgument.asJavaConstant());
         } else {
             unsuccessfulReasons.add(() -> "The argument of the call to Unsafe.arrayBaseOffset() is not a constant.");
         }
@@ -557,15 +553,13 @@ public class AutomaticUnsafeTransformationSupport {
      * <code> static final long byteArrayIndexScale = Unsafe.getUnsafe().arrayIndexScale(byte[].class); </code>
      */
     private void processUnsafeArrayIndexScaleInvoke(BigBang bb, ResolvedJavaType type, Invoke unsafeArrayIndexScale, StructuredGraph clinitGraph) {
-        SnippetReflectionProvider snippetReflectionProvider = GraalAccess.getOriginalSnippetReflection();
-
         List<Supplier<String>> unsuccessfulReasons = new ArrayList<>();
 
         Class<?> arrayClass = null;
 
         ValueNode arrayClassArgument = unsafeArrayIndexScale.callTarget().arguments().get(1);
         if (arrayClassArgument.isJavaConstant()) {
-            arrayClass = snippetReflectionProvider.asObject(Class.class, arrayClassArgument.asJavaConstant());
+            arrayClass = GraalAccess.getOriginalSnippetReflection().asObject(Class.class, arrayClassArgument.asJavaConstant());
         } else {
             unsuccessfulReasons.add(() -> "The argument of the call to Unsafe.arrayIndexScale() is not a constant.");
         }
@@ -1087,10 +1081,7 @@ public class AutomaticUnsafeTransformationSupport {
         assert clinit.hasBytecodes();
 
         HighTierContext context = new HighTierContext(GraalAccess.getOriginalProviders(), null, OptimisticOptimizations.NONE);
-        StructuredGraph graph = new StructuredGraph.Builder(options, debug)
-                        .method(clinit)
-                        .recordInlinedMethods(false)
-                        .build();
+        StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(clinit).recordInlinedMethods(false).build();
         graph.getGraphState().configureExplicitExceptionsNoDeopt();
 
         GraphBuilderPhase.Instance builderPhase = new ClassInitializerGraphBuilderPhase(context, GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true),

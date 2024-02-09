@@ -201,7 +201,12 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
     }
 
     @Override
+    @Deprecated
     public AnalysisType getType(MetaAccessProvider provider) {
+        return constantData.type;
+    }
+
+    public AnalysisType getType() {
         return constantData.type;
     }
 
@@ -242,6 +247,9 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
 
     @Override
     public String toValueString() {
+        if (constantData.type.getJavaClass() == String.class && constantData.hostedObject != null) {
+            return constantData.hostedObject.toValueString();
+        }
         return constantData.type.getName();
     }
 
@@ -271,6 +279,7 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
 
     @Override
     public String toString() {
-        return "ImageHeapConstant<" + constantData.type.toJavaName() + ", reachable: " + isReachable() + ", reader installed: " + isReaderInstalled() + ", compressed: " + compressed + ">";
+        return "ImageHeapConstant<" + constantData.type.toJavaName() + ", reachable: " + isReachable() + ", reader installed: " + isReaderInstalled() +
+                        ", compressed: " + compressed + ", backed: " + isBackedByHostedObject() + ">";
     }
 }

@@ -151,7 +151,6 @@ import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.runtime.TruffleCallBoundary;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.phases.HighTier;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FrameState;
@@ -222,7 +221,6 @@ public class TruffleFeature implements InternalFeature {
 
     private final Set<ResolvedJavaMethod> blocklistMethods;
     private final Set<ResolvedJavaMethod> tempTargetAllowlistMethods;
-    private final Set<ResolvedJavaMethod> implementationOnlyBlocklist;
     private final Set<ResolvedJavaMethod> warnMethods;
     private final Set<Pair<ResolvedJavaMethod, String>> neverPartOfCompilationViolations;
     Set<AnalysisMethod> runtimeCompiledMethods;
@@ -230,7 +228,6 @@ public class TruffleFeature implements InternalFeature {
     public TruffleFeature() {
         blocklistMethods = new HashSet<>();
         tempTargetAllowlistMethods = new HashSet<>();
-        implementationOnlyBlocklist = new HashSet<>();
         warnMethods = new HashSet<>();
         neverPartOfCompilationViolations = ConcurrentHashMap.newKeySet();
     }
@@ -355,7 +352,6 @@ public class TruffleFeature implements InternalFeature {
                         "Truffle thread local foreign poll, registered in " + TruffleFeature.class);
 
         RuntimeCompilationFeature runtimeCompilationFeature = RuntimeCompilationFeature.singleton();
-        SnippetReflectionProvider snippetReflection = runtimeCompilationFeature.getHostedProviders().getSnippetReflection();
         SubstrateTruffleCompiler truffleCompiler = truffleRuntime.preinitializeTruffleCompiler();
         truffleRuntime.initializeKnownMethods(config.getMetaAccess());
         truffleRuntime.initializeHostedKnownMethods(config.getUniverse().getOriginalMetaAccess());
@@ -383,7 +379,7 @@ public class TruffleFeature implements InternalFeature {
                         peProviders.getLowerer(),
                         peProviders.getReplacements(),
                         peProviders.getStampProvider(),
-                        snippetReflection,
+                        runtimeCompilationFeature.getHostedProviders().getSnippetReflection(),
                         runtimeCompilationFeature.getHostedProviders().getWordTypes(),
                         runtimeCompilationFeature.getHostedProviders().getPlatformConfigurationProvider(),
                         runtimeCompilationFeature.getHostedProviders().getMetaAccessExtensionProvider(),
@@ -551,16 +547,6 @@ public class TruffleFeature implements InternalFeature {
         return blocklistMethods.contains(method);
     }
 
-    boolean isTargetBlocklisted(ResolvedJavaMethod target, ResolvedJavaMethod implementation) {
-        boolean blocklisted = !((AnalysisMethod) target).allowRuntimeCompilation() || blocklistMethods.contains(target);
-
-        if (blocklisted && !implementation.equals(target) && implementationOnlyBlocklist.contains(target)) {
-            blocklisted = isBlocklisted(implementation);
-        }
-
-        return blocklisted;
-    }
-
     @SuppressWarnings("deprecation")
     private boolean deoptimizeOnException(ResolvedJavaMethod method) {
         if (method == null) {
@@ -580,9 +566,7 @@ public class TruffleFeature implements InternalFeature {
         blocklistMethod(metaAccess, String.class, "indexOf", int.class, int.class);
         blocklistMethod(metaAccess, String.class, "indexOf", String.class);
         blocklistMethod(metaAccess, String.class, "indexOf", String.class, int.class);
-        blocklistMethod(metaAccess, Throwable.class, "fillInStackTrace");
-        // Implementations which don't call Throwable.fillInStackTrace are allowed
-        implementationOnlyBlocklist(metaAccess, Throwable.class, "fillInStackTrace");
+        blocklistMethod(metaAccess, Throwable.class, "fillInStackTrace", int.class);
         blocklistMethod(metaAccess, Throwable.class, "initCause", Throwable.class);
         blocklistMethod(metaAccess, Throwable.class, "addSuppressed", Throwable.class);
         blocklistMethod(metaAccess, System.class, "getProperty", String.class);
@@ -745,24 +729,6 @@ public class TruffleFeature implements InternalFeature {
         }
     }
 
-    /**
-     * Methods on this list are allowed to be runtime compiled as long as the method being runtime
-     * compiled (i.e., the implementation method & not the target) is not on blocklist.
-     */
-    private void implementationOnlyBlocklist(MetaAccessProvider metaAccess, Class<?> clazz, String name, Class<?>... parameterTypes) {
-        try {
-            Executable method;
-            if ("<init>".equals(name)) {
-                method = clazz.getDeclaredConstructor(parameterTypes);
-            } else {
-                method = clazz.getDeclaredMethod(name, parameterTypes);
-            }
-            implementationOnlyBlocklist.add(metaAccess.lookupJavaMethod(method));
-        } catch (NoSuchMethodException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
-
     private void warnAllMethods(MetaAccessProvider metaAccess, Class<?> clazz) {
         for (Executable m : clazz.getDeclaredMethods()) {
             /*
@@ -782,7 +748,7 @@ public class TruffleFeature implements InternalFeature {
     }
 
     private record BlocklistViolationInfo(RuntimeCompilationCandidate candidate, String[] callTrace) {
-    };
+    }
 
     private void checkBlockList(CallTreeInfo treeInfo) {
         RuntimeCompilationFeature runtimeCompilation = RuntimeCompilationFeature.singleton();
@@ -799,7 +765,7 @@ public class TruffleFeature implements InternalFeature {
 
                 // Determine blocklist violations
                 if (!runtimeCompilationForbidden(candidate.getImplementationMethod())) {
-                    if (isBlocklisted(candidate.getImplementationMethod()) || isTargetBlocklisted(candidate.getTargetMethod(), candidate.getImplementationMethod())) {
+                    if (isBlocklisted(candidate.getImplementationMethod())) {
                         boolean tempAllow = !candidate.getTargetMethod().equals(candidate.getImplementationMethod()) &&
                                         tempTargetAllowlistMethods.contains(candidate.getTargetMethod()) &&
                                         !isBlocklisted(candidate.getImplementationMethod());
@@ -996,7 +962,7 @@ public class TruffleFeature implements InternalFeature {
     }
 
     @Override
-    public void registerGraalPhases(Providers providers, SnippetReflectionProvider snippetReflection, Suites suites, boolean hosted) {
+    public void registerGraalPhases(Providers providers, Suites suites, boolean hosted) {
         /*
          * Please keep this code in sync with the HotSpot configuration in
          * TruffleCommunityCompilerConfiguration.

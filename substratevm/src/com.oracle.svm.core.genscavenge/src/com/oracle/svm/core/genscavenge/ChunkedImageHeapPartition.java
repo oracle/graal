@@ -49,6 +49,8 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
     private final String name;
     private final boolean writable;
     private final boolean hugeObjects;
+    private final int startAlignment;
+    private final int endAlignment;
     private final int minimumObjectSize;
     private final List<ImageHeapObject> objects = new ArrayList<>();
 
@@ -58,13 +60,12 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
     long startOffset = -1;
     long endOffset = -1;
 
-    private int startAlignment = -1;
-    private int endAlignment = -1;
-
-    ChunkedImageHeapPartition(String name, boolean writable, boolean hugeObjects) {
+    ChunkedImageHeapPartition(String name, boolean writable, boolean hugeObjects, int startAlignment, int endAlignment) {
         this.name = name;
         this.writable = writable;
         this.hugeObjects = hugeObjects;
+        this.startAlignment = startAlignment;
+        this.endAlignment = endAlignment;
 
         /* Cache to prevent frequent lookups of the object layout from ImageSingletons. */
         this.minimumObjectSize = ConfigurationValues.getObjectLayout().getMinImageHeapObjectSize();
@@ -119,18 +120,18 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
         }
     }
 
-    private ImageHeapObject dequeueBestFit(NavigableMap<Long, Queue<ImageHeapObject>> objects, long nbytes) {
+    private ImageHeapObject dequeueBestFit(NavigableMap<Long, Queue<ImageHeapObject>> sortedObjects, long nbytes) {
         if (nbytes < minimumObjectSize) {
             return null;
         }
-        Map.Entry<Long, Queue<ImageHeapObject>> entry = objects.floorEntry(nbytes);
+        Map.Entry<Long, Queue<ImageHeapObject>> entry = sortedObjects.floorEntry(nbytes);
         if (entry == null) {
             return null;
         }
         Queue<ImageHeapObject> queue = entry.getValue();
         ImageHeapObject info = queue.remove();
         if (queue.isEmpty()) {
-            objects.remove(entry.getKey());
+            sortedObjects.remove(entry.getKey());
         }
         return info;
     }
@@ -196,23 +197,11 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
     }
 
     final int getStartAlignment() {
-        assert startAlignment >= 0 : "Start alignment not yet assigned";
         return startAlignment;
     }
 
-    void setStartAlignment(int alignment) {
-        assert this.startAlignment == -1 : "Start alignment already assigned: " + this.startAlignment;
-        this.startAlignment = alignment;
-    }
-
     final int getEndAlignment() {
-        assert endAlignment >= 0 : "End alignment not yet assigned";
         return endAlignment;
-    }
-
-    void setEndAlignment(int endAlignment) {
-        assert this.endAlignment == -1 : "End alignment already assigned: " + this.endAlignment;
-        this.endAlignment = endAlignment;
     }
 
     @Override
@@ -231,6 +220,7 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
         return getEndOffset() - getStartOffset();
     }
 
+    @Override
     public String toString() {
         return name;
     }

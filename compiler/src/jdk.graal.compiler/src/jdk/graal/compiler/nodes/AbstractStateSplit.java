@@ -65,9 +65,9 @@ public abstract class AbstractStateSplit extends FixedWithNextNode implements St
     }
 
     @Override
-    public boolean verify() {
+    public boolean verifyNode() {
         assert !hasSideEffect() || !this.graph().getGraphState().getFrameStateVerification().implies(GraphState.FrameStateVerificationFeature.STATE_SPLITS) ||
                         this.stateAfter != null : "State split with side-effect must have a state until FSA " + this;
-        return super.verify();
+        return super.verifyNode();
     }
 }

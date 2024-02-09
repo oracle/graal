@@ -92,7 +92,7 @@ import com.oracle.svm.core.thread.NativeVMOperationData;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.threadlocal.VMThreadLocalMTSupport;
+import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -809,24 +809,22 @@ public final class GCImpl implements GC {
             JavaStackWalker.initWalk(walk, sp, ip);
             walkStack(walk);
 
-            if (SubstrateOptions.MultiThreaded.getValue()) {
-                /*
-                 * Scan the stacks of all the threads. Other threads will be blocked at a safepoint
-                 * (or in native code) so they will each have a JavaFrameAnchor in their VMThread.
-                 */
-                for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-                    if (vmThread == CurrentIsolate.getCurrentThread()) {
-                        /*
-                         * The current thread is already scanned by code above, so we do not have to
-                         * do anything for it here. It might have a JavaFrameAnchor from earlier
-                         * Java-to-C transitions, but certainly not at the top of the stack since it
-                         * is running this code, so just this scan would be incomplete.
-                         */
-                        continue;
-                    }
-                    if (JavaStackWalker.initWalk(walk, vmThread)) {
-                        walkStack(walk);
-                    }
+            /*
+             * Scan the stacks of all the threads. Other threads will be blocked at a safepoint (or
+             * in native code) so they will each have a JavaFrameAnchor in their VMThread.
+             */
+            for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
+                if (vmThread == CurrentIsolate.getCurrentThread()) {
+                    /*
+                     * The current thread is already scanned by code above, so we do not have to do
+                     * anything for it here. It might have a JavaFrameAnchor from earlier Java-to-C
+                     * transitions, but certainly not at the top of the stack since it is running
+                     * this code, so just this scan would be incomplete.
+                     */
+                    continue;
+                }
+                if (JavaStackWalker.initWalk(walk, vmThread)) {
+                    walkStack(walk);
                 }
             }
         } finally {
@@ -891,15 +889,13 @@ public final class GCImpl implements GC {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void walkThreadLocals() {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            Timer walkThreadLocalsTimer = timers.walkThreadLocals.open();
-            try {
-                for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
-                    VMThreadLocalMTSupport.singleton().walk(isolateThread, greyToBlackObjRefVisitor);
-                }
-            } finally {
-                walkThreadLocalsTimer.close();
+        Timer walkThreadLocalsTimer = timers.walkThreadLocals.open();
+        try {
+            for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
+                VMThreadLocalSupport.singleton().walk(isolateThread, greyToBlackObjRefVisitor);
             }
+        } finally {
+            walkThreadLocalsTimer.close();
         }
     }
 
@@ -912,13 +908,14 @@ public final class GCImpl implements GC {
 
         Timer blackenImageHeapRootsTimer = timers.blackenImageHeapRoots.open();
         try {
-            ImageHeapInfo info = HeapImpl.getImageHeapInfo();
-            blackenDirtyImageHeapChunkRoots(info.getFirstWritableAlignedChunk(), info.getFirstWritableUnalignedChunk());
+            for (ImageHeapInfo info = HeapImpl.getFirstImageHeapInfo(); info != null; info = info.next) {
+                blackenDirtyImageHeapChunkRoots(info.getFirstWritableAlignedChunk(), info.getFirstWritableUnalignedChunk(), info.getLastWritableUnalignedChunk());
+            }
 
             if (AuxiliaryImageHeap.isPresent()) {
                 ImageHeapInfo auxInfo = AuxiliaryImageHeap.singleton().getImageHeapInfo();
                 if (auxInfo != null) {
-                    blackenDirtyImageHeapChunkRoots(auxInfo.getFirstWritableAlignedChunk(), auxInfo.getFirstWritableUnalignedChunk());
+                    blackenDirtyImageHeapChunkRoots(auxInfo.getFirstWritableAlignedChunk(), auxInfo.getFirstWritableUnalignedChunk(), auxInfo.getLastWritableUnalignedChunk());
                 }
             }
         } finally {
@@ -927,7 +924,7 @@ public final class GCImpl implements GC {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private void blackenDirtyImageHeapChunkRoots(AlignedHeader firstAligned, UnalignedHeader firstUnaligned) {
+    private void blackenDirtyImageHeapChunkRoots(AlignedHeader firstAligned, UnalignedHeader firstUnaligned, UnalignedHeader lastUnaligned) {
         /*
          * We clean and remark cards of the image heap only during complete collections when we also
          * collect the old generation and can easily remark references into it. It also only makes a
@@ -944,6 +941,9 @@ public final class GCImpl implements GC {
         UnalignedHeader unaligned = firstUnaligned;
         while (unaligned.isNonNull()) {
             RememberedSet.get().walkDirtyObjects(unaligned, greyToBlackObjectVisitor, clean);
+            if (unaligned.equal(lastUnaligned)) {
+                break;
+            }
             unaligned = HeapChunk.getNext(unaligned);
         }
     }
@@ -959,7 +959,10 @@ public final class GCImpl implements GC {
 
         Timer blackenImageHeapRootsTimer = timers.blackenImageHeapRoots.open();
         try {
-            blackenImageHeapRoots(HeapImpl.getImageHeapInfo());
+            for (ImageHeapInfo info = HeapImpl.getFirstImageHeapInfo(); info != null; info = info.next) {
+                blackenImageHeapRoots(info);
+            }
+
             if (AuxiliaryImageHeap.isPresent()) {
                 ImageHeapInfo auxImageHeapInfo = AuxiliaryImageHeap.singleton().getImageHeapInfo();
                 if (auxImageHeapInfo != null) {
@@ -973,7 +976,7 @@ public final class GCImpl implements GC {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void blackenImageHeapRoots(ImageHeapInfo imageHeapInfo) {
-        ImageHeapWalker.walkPartitionInline(imageHeapInfo.firstWritableReferenceObject, imageHeapInfo.lastWritableReferenceObject, greyToBlackObjectVisitor, true);
+        ImageHeapWalker.walkPartitionInline(imageHeapInfo.firstWritableRegularObject, imageHeapInfo.lastWritableRegularObject, greyToBlackObjectVisitor, true);
         ImageHeapWalker.walkPartitionInline(imageHeapInfo.firstWritableHugeObject, imageHeapInfo.lastWritableHugeObject, greyToBlackObjectVisitor, false);
     }
 

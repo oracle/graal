@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -37,6 +36,8 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 public final class ReferenceHandlerThread implements Runnable {
     private final Thread thread;
@@ -94,7 +95,7 @@ public final class ReferenceHandlerThread implements Runnable {
 
     @Fold
     static boolean isSupported() {
-        return SubstrateOptions.MultiThreaded.getValue() && SubstrateOptions.AllowVMInternalThreads.getValue();
+        return SubstrateOptions.AllowVMInternalThreads.getValue();
     }
 }
 

@@ -45,7 +45,6 @@ public class PointsToCustomTypeFieldHandler extends CustomTypeFieldHandler {
         NativeImagePointsToAnalysis analysis = (NativeImagePointsToAnalysis) bb;
 
         assert aField.getJavaKind().isObject();
-        aField.registerAsWritten("@UnknownObjectField annotated field");
 
         /* Link the field with all declared types. */
         for (AnalysisType type : customTypes) {

@@ -33,8 +33,8 @@ import jdk.vm.ci.meta.JavaKind;
 public final class ArrayBaseOffsetFieldValueTransformer extends BoxingTransformer implements FieldValueTransformer {
     private final Class<?> targetClass;
 
-    public ArrayBaseOffsetFieldValueTransformer(Class<?> targetClass, Class<?> returnType) {
-        super(returnType);
+    public ArrayBaseOffsetFieldValueTransformer(Class<?> targetClass, JavaKind returnKind) {
+        super(returnKind);
         this.targetClass = targetClass;
     }
 

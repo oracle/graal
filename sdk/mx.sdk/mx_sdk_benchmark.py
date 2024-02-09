@@ -221,7 +221,10 @@ class NativeImageBenchmarkMixin(object):
         The returned options are added to the agentlib:native-image-agent option list.
         The config-output-dir is configured by the benchmark runner and cannot be overridden.
         """
-        return []
+
+        # All Renaissance Spark benchmarks require lambda class predefinition, so we need this additional option that
+        # is used for the class predefinition feature. See GR-37506
+        return ['experimental-class-define-support'] if (benchmark in ['chi-square', 'gauss-mix', 'movie-lens', 'page-rank']) else []
 
     def extra_profile_run_arg(self, benchmark, args, image_run_args, should_strip_run_args):
         """Returns all arguments passed to the profiling run.

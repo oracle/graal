@@ -815,7 +815,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
             mangleClassPointer(loaderName, makeArrayName(baseName, dims));
         }
 
-        private String makeArrayName(String baseName, int dims) {
+        private static String makeArrayName(String baseName, int dims) {
             StringBuilder sb1 = new StringBuilder();
             sb1.append(baseName);
             for (int i = 0; i < dims; i++) {

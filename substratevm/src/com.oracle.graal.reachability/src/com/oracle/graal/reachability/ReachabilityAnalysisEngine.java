@@ -354,10 +354,6 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     }
 
     @Override
-    public void forceUnsafeUpdate(AnalysisField field) {
-    }
-
-    @Override
     public void registerAsJNIAccessed(AnalysisField field, boolean writable) {
     }
 

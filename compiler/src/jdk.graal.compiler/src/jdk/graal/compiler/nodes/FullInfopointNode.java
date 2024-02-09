@@ -30,13 +30,12 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.nodes.spi.NodeWithState;
 import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
-import jdk.graal.compiler.nodeinfo.NodeInfo;
-
 import jdk.vm.ci.code.site.InfopointReason;
 
 /**
@@ -82,10 +81,4 @@ public final class FullInfopointNode extends FixedWithNextNode implements LIRLow
     public FrameState getState() {
         return state;
     }
-
-    @Override
-    public boolean verify() {
-        return state != null && super.verify();
-    }
-
 }

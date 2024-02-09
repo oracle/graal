@@ -71,6 +71,7 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.phases.RecursivePhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.graal.compiler.phases.common.LazyValue;
@@ -89,7 +90,7 @@ import jdk.vm.ci.meta.TriState;
  * branch starting at an other kind of {@link ControlSplitNode}, it will only bring the
  * {@link DeoptimizeNode} as close to the {@link ControlSplitNode} as possible.
  */
-public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<CoreProviders> {
+public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<CoreProviders> implements RecursivePhase {
 
     public ConvertDeoptimizeToGuardPhase(CanonicalizerPhase canonicalizer) {
         super(canonicalizer);

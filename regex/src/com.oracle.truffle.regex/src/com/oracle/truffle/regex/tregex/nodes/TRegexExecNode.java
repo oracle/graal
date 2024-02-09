@@ -141,11 +141,16 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         final RegexResult result;
         result = runnerNode.run(frame, input, fromIndex, inputLength);
         assert !sticky || source.getOptions().isBooleanMatch() || result == RegexResult.getNoMatchInstance() || RegexResult.RegexResultGetStartNode.getUncached().execute(result, 0) == fromIndex;
-        assert !regressionTestMode || backtrackerProducesSameResult(frame, input, fromIndex, result);
-        assert !regressionTestMode || nfaProducesSameResult(frame, input, fromIndex, result);
-        assert !regressionTestMode || noSimpleCGLazyDFAProducesSameResult(frame, input, fromIndex, result);
-        assert !regressionTestMode || source.getOptions().isBooleanMatch() || eagerAndLazyDFAProduceSameResult(frame, input, fromIndex, result);
         assert validResult(input, fromIndex, result);
+        if (regressionTestMode) {
+            if (!(backtrackerProducesSameResult(frame, input, fromIndex, result) &&
+                            nfaProducesSameResult(frame, input, fromIndex, result) &&
+                            noSimpleCGLazyDFAProducesSameResult(frame, input, fromIndex, result) &&
+                            (source.getOptions().isBooleanMatch() || eagerAndLazyDFAProduceSameResult(frame, input, fromIndex, result)))) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new AssertionError("Inconsistent results between different matching modes");
+            }
+        }
 
         if (CompilerDirectives.inInterpreter() && !backtrackingMode) {
             RegexProfile profile = getRegexProfile();

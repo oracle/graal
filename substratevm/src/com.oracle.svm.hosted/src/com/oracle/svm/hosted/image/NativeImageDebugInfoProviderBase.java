@@ -118,8 +118,8 @@ public abstract class NativeImageDebugInfoProviderBase {
         this.referenceSize = getObjectLayout().getReferenceSize();
         this.referenceAlignment = getObjectLayout().getAlignment();
         /* Offsets need to be adjusted relative to the heap base plus partition-specific offset. */
-        primitiveStartOffset = (int) primitiveFields.getAddress();
-        referenceStartOffset = (int) objectFields.getAddress();
+        primitiveStartOffset = (int) primitiveFields.getOffset();
+        referenceStartOffset = (int) objectFields.getOffset();
         javaKindToHostedType = initJavaKindToHostedTypes(metaAccess);
     }
 
@@ -408,7 +408,7 @@ public abstract class NativeImageDebugInfoProviderBase {
         assert constant.getJavaKind() == JavaKind.Object && !constant.isNull() : "invalid constant for object offset lookup";
         NativeImageHeap.ObjectInfo objectInfo = heap.getConstantInfo(constant);
         if (objectInfo != null) {
-            return objectInfo.getAddress();
+            return objectInfo.getOffset();
         }
         return -1;
     }
@@ -449,7 +449,12 @@ public abstract class NativeImageDebugInfoProviderBase {
         HostedType declaringClass = method.getDeclaringClass();
         HostedType receiverType = method.isStatic() ? null : declaringClass;
         var signature = method.getSignature();
-        SubstrateCallingConventionType type = callingConventionKind.toType(false);
+        final SubstrateCallingConventionType type;
+        if (callingConventionKind.isCustom()) {
+            type = method.getCustomCallingConventionType();
+        } else {
+            type = callingConventionKind.toType(false);
+        }
         Backend backend = runtimeConfiguration.lookupBackend(method);
         RegisterConfig registerConfig = backend.getCodeCache().getRegisterConfig();
         assert registerConfig instanceof SubstrateRegisterConfig;

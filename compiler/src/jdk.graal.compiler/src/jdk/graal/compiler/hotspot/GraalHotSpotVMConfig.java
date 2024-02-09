@@ -270,6 +270,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final int threadIsInVTMSTransitionOffset = getFieldOffset("JavaThread::_is_in_VTMS_transition", Integer.class, "bool");
     public final int threadIsInTmpVTMSTransitionOffset = getFieldOffset("JavaThread::_is_in_tmp_VTMS_transition", Integer.class, "bool");
+    public final int threadIsDisableSuspendOffset = getFieldOffset("JavaThread::_is_disable_suspend", Integer.class, "bool", -1, JDK >= 22);
 
     public final int javaLangThreadJFREpochOffset = getFieldValue("java_lang_Thread::_jfr_epoch_offset", Integer.class, "int");
     public final int javaLangThreadTIDOffset = getFieldValue("java_lang_Thread::_tid_offset", Integer.class, "int");

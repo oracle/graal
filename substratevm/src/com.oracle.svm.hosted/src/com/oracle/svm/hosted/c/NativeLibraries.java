@@ -40,6 +40,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -294,7 +295,7 @@ public final class NativeLibraries {
         Path baseSearchPath = Paths.get(System.getProperty("java.home")).resolve("lib").toRealPath();
         Path staticLibPath = baseSearchPath.resolve("static");
         Platform platform = ImageSingletons.lookup(Platform.class);
-        Path platformDependentPath = staticLibPath.resolve((platform.getOS() + "-" + platform.getArchitecture()).toLowerCase());
+        Path platformDependentPath = staticLibPath.resolve((platform.getOS() + "-" + platform.getArchitecture()).toLowerCase(Locale.ENGLISH));
         if (HostedLibCBase.isPlatformEquivalent(Platform.LINUX.class)) {
             platformDependentPath = platformDependentPath.resolve(HostedLibCBase.singleton().getName());
             if (HostedLibCBase.singleton().requiresLibCSpecificStaticJDKLibraries()) {

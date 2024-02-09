@@ -56,6 +56,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.logging.Level;
 
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 
 import com.oracle.truffle.api.CallTarget;
@@ -1010,12 +1011,13 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     private class PolyglotUncaughtExceptionHandler implements Thread.UncaughtExceptionHandler {
 
+        @SuppressWarnings({"unused", "try"})
         @Override
         public void uncaughtException(Thread t, Throwable e) {
             if (!(e instanceof ThreadDeath)) {
                 Env currentEnv = env;
                 if (currentEnv != null) {
-                    try {
+                    try (AbstractPolyglotImpl.ThreadScope scope = PolyglotLanguageContext.this.getImpl().getRootImpl().createThreadScope()) {
                         e.printStackTrace(new PrintStream(currentEnv.err()));
                     } catch (Throwable exc) {
                         // Still show the original error if printing on Env.err() fails for some

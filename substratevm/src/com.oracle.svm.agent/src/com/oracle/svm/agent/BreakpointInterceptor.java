@@ -61,6 +61,9 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
+import com.oracle.svm.core.jni.headers.JNIMode;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -77,6 +80,7 @@ import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.agent.stackaccess.EagerlyLoadedJavaStackAccess;
 import com.oracle.svm.agent.stackaccess.InterceptedState;
 import com.oracle.svm.agent.tracing.core.Tracer;
 import com.oracle.svm.configure.trace.AccessAdvisor;
@@ -101,8 +105,6 @@ import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventMode;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiFrameInfo;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiInterface;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiLocationFormat;
-
-import jdk.graal.compiler.core.common.NumUtil;
 
 /**
  * Intercepts events of interest via breakpoints in Java code.
@@ -961,11 +963,75 @@ final class BreakpointInterceptor {
     }
 
     /**
-     * We have to find a class that captures a lambda function so it can be registered by the agent.
-     * We have to get a SerializedLambda instance first. After that we get a lambda capturing class
-     * from that instance using JNIHandleSet#getFieldId to get field id and JNIObjectHandle#invoke
-     * on to get that field value. We get a name of the capturing class and tell the agent to
-     * register it.
+     * This method should be intercepted when we are predefining a lambda class. This is the only
+     * spot in the lambda-class creation pipeline where we can get lambda-class bytecode so the
+     * class can be predefined. We do not want to predefine all lambda classes, but only the ones
+     * that are actually created at runtime, so we have a method that checks wheter the lambda
+     * should be predefined or not.
+     */
+    private static boolean onMethodHandleClassFileInit(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
+        String className = Support.fromJniString(jni, getObjectArgument(thread, 1));
+
+        if (LambdaUtils.isLambdaClassName(className)) {
+            if (shouldIgnoreLambdaClassForPredefinition(jni)) {
+                return true;
+            }
+
+            JNIObjectHandle bytesArray = getObjectArgument(thread, 3);
+            int length = jniFunctions().getGetArrayLength().invoke(jni, bytesArray);
+            byte[] data = new byte[length];
+
+            CCharPointer bytesArrayCharPointer = jni.getFunctions().getGetByteArrayElements().invoke(jni, bytesArray, WordFactory.nullPointer());
+            if (bytesArrayCharPointer.isNonNull()) {
+                try {
+                    CTypeConversion.asByteBuffer(bytesArrayCharPointer, length).get(data);
+                } finally {
+                    jni.getFunctions().getReleaseByteArrayElements().invoke(jni, bytesArray, bytesArrayCharPointer, JNIMode.JNI_ABORT());
+                }
+
+                className += LambdaUtils.digest(data);
+                tracer.traceCall("classloading", "onMethodHandleClassFileInit", null, null, null, null, state.getFullStackTraceOrNull(), className, data);
+            }
+        }
+        return true;
+    }
+
+    /**
+     * This method is used to check whether a lambda class should be predefined or not. Only lambdas
+     * that are created at runtime should be predefined, and we should ignore the others. This
+     * method checks if the specific sequence of methods exists in the stacktrace and base on that
+     * decides if the lambda class should be ignored.
+     */
+    private static boolean shouldIgnoreLambdaClassForPredefinition(JNIEnvironment env) {
+        JNIMethodId[] stackTraceMethodIds = EagerlyLoadedJavaStackAccess.stackAccessSupplier().get().getFullStackTraceOrNull();
+        JNIMethodId javaLangInvokeCallSiteMakeSite = agent.handles().getJavaLangInvokeCallSiteMakeSite(env);
+        JNIMethodId javaLangInvokeMethodHandleNativesLinkCallSiteImpl = agent.handles().getJavaLangInvokeMethodHandleNativesLinkCallSiteImpl(env);
+        JNIMethodId javaLangInvokeMethodHandleNativesLinkCallSite = agent.handles().getJavaLangInvokeMethodHandleNativesLinkCallSite(env);
+
+        /*
+         * Sequence {@code java.lang.invoke.CallSite.makeSite}, {@code
+         * java.lang.invoke.MethodHandleNatives.linkCallSiteImpl}, {@code
+         * java.lang.invoke.MethodHandleNatives.linkCallSite} in the stacktrace indicates that
+         * lambda class won't be created at runtime on the Native Image, so it should not be
+         * registered for predefiniton.
+         */
+        for (int i = 0; i < stackTraceMethodIds.length - 2; i++) {
+            if (stackTraceMethodIds[i] == javaLangInvokeCallSiteMakeSite &&
+                            stackTraceMethodIds[i + 1] == javaLangInvokeMethodHandleNativesLinkCallSiteImpl &&
+                            stackTraceMethodIds[i + 2] == javaLangInvokeMethodHandleNativesLinkCallSite) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * We have to find a class that captures a lambda function, so it can be registered by the
+     * agent. We have to get a SerializedLambda instance first. After that we get a lambda capturing
+     * class from that instance using JNIHandleSet#getFieldId to get field id and
+     * JNIObjectHandle#invoke on to get that field value. We get a name of the capturing class and
+     * tell the agent to register it.
      */
     private static boolean serializedLambdaReadResolve(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
         JNIObjectHandle serializedLambdaInstance = getReceiver(thread);
@@ -1282,6 +1348,12 @@ final class BreakpointInterceptor {
             breakpointSpecifications = new BreakpointSpecification[BREAKPOINT_SPECIFICATIONS.length + REFLECTION_ACCESS_BREAKPOINT_SPECIFICATIONS.length];
             System.arraycopy(BREAKPOINT_SPECIFICATIONS, 0, breakpointSpecifications, 0, BREAKPOINT_SPECIFICATIONS.length);
             System.arraycopy(REFLECTION_ACCESS_BREAKPOINT_SPECIFICATIONS, 0, breakpointSpecifications, BREAKPOINT_SPECIFICATIONS.length, REFLECTION_ACCESS_BREAKPOINT_SPECIFICATIONS.length);
+        }
+        if (experimentalClassDefineSupport) {
+            BreakpointSpecification[] existingBreakpointSpecifications = breakpointSpecifications;
+            breakpointSpecifications = Arrays.copyOf(existingBreakpointSpecifications, existingBreakpointSpecifications.length + CLASS_PREDEFINITION_BREAKPOINT_SPECIFICATIONS.length);
+            System.arraycopy(CLASS_PREDEFINITION_BREAKPOINT_SPECIFICATIONS, 0, breakpointSpecifications, existingBreakpointSpecifications.length,
+                            CLASS_PREDEFINITION_BREAKPOINT_SPECIFICATIONS.length);
         }
         for (BreakpointSpecification br : breakpointSpecifications) {
             JNIObjectHandle clazz = nullHandle();
@@ -1650,6 +1722,10 @@ final class BreakpointInterceptor {
                     brk("java/lang/reflect/Method", "invoke", "(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;", BreakpointInterceptor::invokeMethod),
                     brk("sun/reflect/misc/MethodUtil", "invoke", "(Ljava/lang/reflect/Method;Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;", BreakpointInterceptor::invokeMethod),
                     brk("java/lang/reflect/Constructor", "newInstance", "([Ljava/lang/Object;)Ljava/lang/Object;", BreakpointInterceptor::invokeConstructor),
+    };
+
+    private static final BreakpointSpecification[] CLASS_PREDEFINITION_BREAKPOINT_SPECIFICATIONS = {
+                    brk("java/lang/invoke/MethodHandles$Lookup$ClassFile", "<init>", "(Ljava/lang/String;I[B)V", BreakpointInterceptor::onMethodHandleClassFileInit),
     };
 
     private static BreakpointSpecification brk(String className, String methodName, String signature, BreakpointHandler handler) {

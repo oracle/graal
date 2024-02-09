@@ -39,8 +39,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import jdk.graal.compiler.options.Option;
-
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -52,7 +50,10 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.NativeImageGenerator;
+
+import jdk.graal.compiler.options.Option;
 
 /**
  * This feature prints all reflective elements that are in the native image heap. Its goal is to
@@ -98,17 +99,10 @@ public class FoldedReflectionFeature implements InternalFeature {
     }
 
     @Override
-    public void duringSetup(DuringSetupAccess access) {
-        access.registerObjectReplacer(this::replacer);
-    }
-
-    private Object replacer(Object o) {
-        if (o instanceof Executable) {
-            executables.add(((Executable) o));
-        } else if (o instanceof Field) {
-            fields.add(((Field) o));
-        }
-        return o;
+    public void duringSetup(DuringSetupAccess a) {
+        DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
+        access.registerObjectReachableCallback(Executable.class, (analysisAccess, executable) -> executables.add(executable));
+        access.registerObjectReachableCallback(Field.class, (analysisAccess, field) -> fields.add(field));
     }
 
     @Override

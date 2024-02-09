@@ -182,7 +182,9 @@ public abstract class NativeImageCodeCache {
     }
 
     protected List<Pair<HostedMethod, CompilationResult>> computeCompilationOrder(Map<HostedMethod, CompilationResult> compilationMap) {
-        return compilationMap.entrySet().stream().map(e -> Pair.create(e.getKey(), e.getValue())).sorted(Comparator.comparing(o -> o.getLeft().wrapped.format("%H.%n(%P):%R")))
+        return compilationMap.entrySet().stream() //
+                        .map(e -> Pair.create(e.getKey(), e.getValue())) //
+                        .sorted(Comparator.comparing(o -> o.getLeft().wrapped.format("%H.%n(%P):%R"))) //
                         .collect(Collectors.toList());
     }
 
@@ -401,8 +403,8 @@ public abstract class NativeImageCodeCache {
             if (includedMethods.add(analysisMethod)) {
                 HostedType declaringType = hUniverse.lookup(analysisMethod.getDeclaringClass());
                 String name = analysisMethod.getName();
-                HostedType[] parameterTypes = analysisMethod.getSignature().toParameterList(null).stream()
-                                .map(aType -> hUniverse.lookup(aType))
+                HostedType[] parameterTypes = analysisMethod.getSignature().toParameterList(null).stream() //
+                                .map(aType -> hUniverse.lookup(aType)) //
                                 .toArray(HostedType[]::new);
                 int modifiers = analysisMethod.getModifiers();
                 HostedType returnType = hUniverse.lookup(analysisMethod.getSignature().getReturnType());
