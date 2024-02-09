@@ -190,9 +190,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * by an instance of this class. If 0, then instances of this class are locked using a side
      * table.
      */
-    private short monitorOffset;
+    private char monitorOffset;
 
-    private short optionalIdentityHashOffset;
+    private char optionalIdentityHashOffset;
 
     /**
      * Bit-set for various boolean flags, to reduce size of instances. It is important that this
@@ -433,13 +433,17 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             ObjectLayout ol = ConfigurationValues.getObjectLayout();
             assert ol.hasFixedIdentityHashField() ? (optionalIdentityHashOffset == ol.getFixedIdentityHashOffset()) : (optionalIdentityHashOffset > 0);
         } else {
-            assert optionalIdentityHashOffset == -1;
+            assert optionalIdentityHashOffset == 0;
         }
+        VMError.guarantee(monitorOffset == (char) monitorOffset, "Class %s has an invalid monitor field offset. Most likely, its objects are larger than supported.", name);
+        VMError.guarantee(optionalIdentityHashOffset == (char) optionalIdentityHashOffset,
+                        "Class %s has an invalid identity hash code field offset. Most likely, its objects are larger than supported.", name);
 
         this.layoutEncoding = layoutEncoding;
         this.typeID = typeID;
-        this.monitorOffset = NumUtil.safeToShort(monitorOffset);
-        this.optionalIdentityHashOffset = NumUtil.safeToShort(optionalIdentityHashOffset);
+        this.monitorOffset = (char) monitorOffset;
+        this.optionalIdentityHashOffset = (char) optionalIdentityHashOffset;
+
         this.typeCheckStart = typeCheckStart;
         this.typeCheckRange = typeCheckRange;
         this.typeCheckSlot = typeCheckSlot;
