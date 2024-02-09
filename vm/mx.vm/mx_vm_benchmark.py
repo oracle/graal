@@ -869,9 +869,6 @@ class NativeImageVM(GraalVm):
         if self.stages_info.fallback_mode or self.stages_info.effective_stage == "image":
             # Only apply image build rules for the image build stages
             rules += self.image_build_rules(output, benchmarks, bmSuiteArgs)
-        elif self.stages_info.effective_stage == "run":
-            # TODO Remove again. Only here so that we produce two binary-size datapoints (one in image and one in run stage) and match existing behavior
-            rules += self.image_build_general_rules(output, benchmarks, bmSuiteArgs)
 
         return rules
 
@@ -1023,10 +1020,6 @@ class NativeImageVM(GraalVm):
         image_path = os.path.join(self.config.output_dir, self.config.final_image_name)
         with self.stages.set_command([image_path] + self.config.extra_jvm_args + self.config.image_run_args) as s:
             s.execute_command(vm=self)
-
-            # TODO Remove again. Only here so that we produce two binary-size datapoints (one in image and one in run stage) and match existing behavior
-            if s.exit_code == 0:
-                self._print_binary_size(out)
 
     def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
         # This is also called with -version to gather information about the Java VM. Since this is not technically a
