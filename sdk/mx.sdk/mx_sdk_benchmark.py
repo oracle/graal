@@ -47,7 +47,7 @@ import signal
 import threading
 import json
 import argparse
-from typing import List, Optional, MutableSequence, Set
+from typing import List, Optional, Set
 
 import mx
 import mx_benchmark

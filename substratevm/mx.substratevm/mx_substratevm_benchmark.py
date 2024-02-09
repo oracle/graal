@@ -26,7 +26,6 @@
 from __future__ import print_function
 
 import os
-import re
 import tempfile
 import zipfile
 from glob import glob
