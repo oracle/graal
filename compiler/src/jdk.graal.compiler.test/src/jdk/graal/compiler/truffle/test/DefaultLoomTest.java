@@ -35,6 +35,8 @@ import org.junit.Test;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 
+import static com.oracle.truffle.api.test.SubprocessTestUtils.markForRemoval;
+
 /**
  * See {@link OptimizedLoomTest} for other runtimes.
  */
@@ -58,6 +60,6 @@ public class DefaultLoomTest {
             } catch (InterruptedException e) {
                 Assert.fail(e.getMessage());
             }
-        }, "--enable-preview", "-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime", "~~-Dpolyglot.engine.DynamicCompilationThresholds");
+        }, "--enable-preview", "-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime", markForRemoval("-Dpolyglot.engine.DynamicCompilationThresholds"));
     }
 }
