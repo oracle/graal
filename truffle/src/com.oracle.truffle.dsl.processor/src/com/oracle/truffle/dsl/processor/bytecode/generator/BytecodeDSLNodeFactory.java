@@ -6191,7 +6191,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     // @formatter:off
                     b.startElseIf().startGroup().string("throwable instanceof ").type(controlFlowException).string(" cfe").end(2).startBlock();
                         b.startTryBlock();
-                            b.startAssign("Object result").startCall("$root", model.interceptControlFlowException).string("cfe").string("frame").string("bci").end(2);
+                            b.startAssign("Object result").startCall("$root", model.interceptControlFlowException).string("cfe").string("frame").string("this").string("bci").end(2);
                             emitBeforeReturnProfiling(b);
                             // There may not be room above the sp. Just use the first stack slot.
                             b.statement(setFrameObject("$root.numLocals", "result"));
@@ -6206,7 +6206,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                 b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                                 b.startThrow().string("sneakyThrow(");
                                 if (model.interceptInternalException != null) {
-                                    b.startCall("$root", model.interceptInternalException).string("e").string("bci").end();
+                                    b.startCall("$root", model.interceptInternalException).string("e").string("this").string("bci").end();
                                 } else {
                                     b.string("e");
                                 }
@@ -6228,7 +6228,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                 // If there was no handler, we need to ensure throwable is not a ControlFlowException
                                 b.startIf().string("!(throwable instanceof ").type(controlFlowException).string(")").end().startBlock();
                             }
-                            b.startAssign("throwable").startCall("$root", model.interceptInternalException).string("throwable").string("bci").end(2);
+                            b.startAssign("throwable").startCall("$root", model.interceptInternalException).string("throwable").string("this").string("bci").end(2);
                             if (model.interceptControlFlowException == null) {
                                 // If there was no handler, we need to ensure throwable is not a ControlFlowException
                                 b.end();
@@ -6243,7 +6243,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             if (model.interceptTruffleException != null) {
-                b.startAssign("ex").startCall("$root", model.interceptTruffleException).string("ex").string(localFrame()).string("bci").end(2);
+                b.startAssign("ex").startCall("$root", model.interceptTruffleException).string("ex").string(localFrame()).string("this").string("bci").end(2);
             }
 
             b.statement("int[] localHandlers = this.handlers");

@@ -66,11 +66,11 @@ import com.oracle.truffle.api.source.SourceSection;
 public final class BytecodeLocation {
 
     private final BytecodeNode bytecodes;
-    private final int internalBci;
+    private final int bci;
 
     BytecodeLocation(BytecodeNode bytecodes, int bci) {
         this.bytecodes = bytecodes;
-        this.internalBci = bci;
+        this.bci = bci;
     }
 
     /**
@@ -81,7 +81,7 @@ public final class BytecodeLocation {
      * @since 24.1
      */
     public int getBytecodeIndex() {
-        return internalBci;
+        return bci;
     }
 
     /**
@@ -89,7 +89,7 @@ public final class BytecodeLocation {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(bytecodes, internalBci);
+        return Objects.hash(bytecodes, bci);
     }
 
     /**
@@ -100,7 +100,7 @@ public final class BytecodeLocation {
         if (this == obj) {
             return true;
         } else if (obj instanceof BytecodeLocation other) {
-            return bytecodes == other.bytecodes && internalBci == other.internalBci;
+            return bytecodes == other.bytecodes && bci == other.bci;
         } else {
             return false;
         }
@@ -136,7 +136,7 @@ public final class BytecodeLocation {
      * @since 24.1
      */
     public SourceSection getSourceLocation() {
-        return bytecodes.findSourceLocation(internalBci);
+        return bytecodes.findSourceLocation(bci);
     }
 
     /**
@@ -145,7 +145,7 @@ public final class BytecodeLocation {
      * @since 24.1
      */
     public Instruction getInstruction() {
-        return bytecodes.findInstruction(internalBci);
+        return bytecodes.findInstruction(bci);
     }
 
     /**
@@ -159,7 +159,7 @@ public final class BytecodeLocation {
             return null;
         }
         for (ExceptionHandler handler : handlers) {
-            if (internalBci >= handler.getStartIndex() && internalBci < handler.getEndIndex()) {
+            if (bci >= handler.getStartIndex() && bci < handler.getEndIndex()) {
                 // TODO: this implementation is incomplete
                 // multiple handlers? inner most?
                 return List.of(handler);
@@ -179,7 +179,7 @@ public final class BytecodeLocation {
             return null;
         }
         for (SourceInformation info : sourceInfos) {
-            if (internalBci >= info.getStartBci() && internalBci < info.getEndBci()) {
+            if (bci >= info.getStartBci() && bci < info.getEndBci()) {
                 // return multiple source infos?
                 return info;
             }
@@ -232,27 +232,27 @@ public final class BytecodeLocation {
         if (foundBytecodeNode == null) {
             return null;
         }
-        int internalBci = foundBytecodeNode.findBytecodeIndex(frameInstance);
-        if (internalBci == -1) {
+        int bci = foundBytecodeNode.findBytecodeIndex(frameInstance);
+        if (bci == -1) {
             return null;
         }
-        return new BytecodeLocation(foundBytecodeNode, internalBci);
+        return new BytecodeLocation(foundBytecodeNode, bci);
     }
 
     /**
      * Creates a {@link BytecodeLocation} associated with the given node and bci.
      *
      * @param location a node in the interpreter (can be bound using {@code @Bind("$bytecode")})
-     * @param internalBci a bytecode index (can be bound using {@code @Bind("$bci")})
+     * @param bci a bytecode index (can be bound using {@code @Bind("$bci")})
      * @return the {@link BytecodeLocation} or {@code null} if {@code location} is not adopted by a
      *         {@link BytecodeNode}.
      * @since 24.1
      */
-    public static BytecodeLocation get(Node location, int internalBci) {
+    public static BytecodeLocation get(Node location, int bci) {
         Objects.requireNonNull(location);
         for (Node current = location; current != null; current = current.getParent()) {
             if (current instanceof BytecodeNode bytecodeNode) {
-                return bytecodeNode.getBytecodeLocation(internalBci);
+                return bytecodeNode.getBytecodeLocation(bci);
             }
         }
         return null;
