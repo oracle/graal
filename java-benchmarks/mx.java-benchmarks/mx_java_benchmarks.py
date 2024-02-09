@@ -1316,6 +1316,10 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Te
 
         vmArgs = self.vmArgs(bmSuiteArgs)
         runArgs = self.runArgs(bmSuiteArgs)
+        if "mpegaudio" in benchmarks:
+            # GR-51015: run the benchmark on one thread
+            # as a workaround for mpegaudio concurrency issues.
+            runArgs += ["-bt", "1"]
 
         # The startup benchmarks are executed by spawning a new JVM. However, this new VM doesn't
         # inherit the flags passed to the main process.
