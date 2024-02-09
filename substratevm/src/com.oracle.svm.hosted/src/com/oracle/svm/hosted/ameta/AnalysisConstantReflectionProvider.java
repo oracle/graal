@@ -92,7 +92,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
 
     @Override
     public JavaConstant unboxPrimitive(JavaConstant source) {
-        if (!source.getJavaKind().isObject()) {
+        if (!source.getJavaKind().isObject() || source.isNull()) {
             return null;
         }
         ImageHeapConstant imageHeapConstant = (ImageHeapConstant) source;
