@@ -77,7 +77,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
@@ -1072,8 +1071,7 @@ public final class TruffleString extends AbstractTruffleString {
             for (Encoding e : encodingValues) {
                 if (e != US_ASCII) {
                     assert EMPTY_STRINGS[e.id] == null;
-                    final boolean preinitialize = JCodings.ENABLED && TruffleOptions.AOT;
-                    if (e.isSupported() || preinitialize) {
+                    if (e.isSupported() || JCodings.ENABLED) {
                         EMPTY_STRINGS[e.id] = createEmpty(e);
                     }
                 }
@@ -1098,12 +1096,7 @@ public final class TruffleString extends AbstractTruffleString {
             TruffleString emptyString = EMPTY_STRINGS[id];
             if (emptyString == null) {
                 assert !isSupported() : this;
-                if (JCodings.ENABLED) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    EMPTY_STRINGS[this.id] = emptyString = createEmpty(this);
-                } else {
-                    throw InternalErrors.unknownEncoding(this.name());
-                }
+                throw InternalErrors.unknownEncoding(this.name());
             }
             return emptyString;
         }

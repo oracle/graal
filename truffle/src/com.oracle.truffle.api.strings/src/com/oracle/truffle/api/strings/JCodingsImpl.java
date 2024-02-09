@@ -65,9 +65,7 @@ import org.graalvm.shadowed.org.jcodings.util.CaseInsensitiveBytesHash;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
@@ -77,41 +75,14 @@ final class JCodingsImpl implements JCodings {
 
     private static final int MAX_JCODINGS_INDEX_VALUE = 0x7f;
 
-    private sealed interface JCodingsEncoding extends Encoding {
-
-        org.graalvm.shadowed.org.jcodings.Encoding getEncoding();
-    }
-
-    private static final class EncodingWrapper implements JCodingsEncoding {
+    private static final class EncodingWrapper implements Encoding {
         private final org.graalvm.shadowed.org.jcodings.Encoding encoding;
 
         private EncodingWrapper(String jcodingsName) {
             this.encoding = Lazy.load(jcodingsName);
         }
 
-        @Override
-        public org.graalvm.shadowed.org.jcodings.Encoding getEncoding() {
-            return encoding;
-        }
-    }
-
-    private static final class LazyEncodingWrapper implements JCodingsEncoding {
-        private final String jcodingsName;
-        @CompilationFinal private org.graalvm.shadowed.org.jcodings.Encoding encoding;
-
-        private LazyEncodingWrapper(String jcodingsName) {
-            this.jcodingsName = jcodingsName;
-            assert jcodingsName.equals(Lazy.load(jcodingsName).toString()) : jcodingsName + " != " + Lazy.load(jcodingsName).toString();
-            // fail early if jcodings is not on the module path
-            org.graalvm.shadowed.org.jcodings.Encoding.class.getModule();
-        }
-
-        @Override
-        public org.graalvm.shadowed.org.jcodings.Encoding getEncoding() {
-            if (encoding == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                encoding = Lazy.load(jcodingsName);
-            }
+        org.graalvm.shadowed.org.jcodings.Encoding getEncoding() {
             return encoding;
         }
     }
@@ -139,17 +110,15 @@ final class JCodingsImpl implements JCodings {
             if (entry == null) {
                 throw new IllegalArgumentException("JCodings Encoding '%s' not found".formatted(jcodingsName));
             }
-            return entry.getEncoding();
+            var encoding = entry.getEncoding();
+            assert jcodingsName.equals(encoding.toString()) : jcodingsName + " != " + encoding;
+            return encoding;
         }
     }
 
     @Override
     public Encoding get(String encodingName) {
-        if (TruffleOptions.AOT) {
-            return new EncodingWrapper(encodingName);
-        } else {
-            return new LazyEncodingWrapper(encodingName);
-        }
+        return new EncodingWrapper(encodingName);
     }
 
     @Override
@@ -421,7 +390,7 @@ final class JCodingsImpl implements JCodings {
     }
 
     private static org.graalvm.shadowed.org.jcodings.Encoding unwrap(Encoding wrapped) {
-        return ((JCodingsEncoding) wrapped).getEncoding();
+        return ((EncodingWrapper) wrapped).getEncoding();
     }
 
     private static byte[] asBytesMaterializeNative(Node location, AbstractTruffleString a, Object arrayA, InlinedConditionProfile nativeProfile) {
