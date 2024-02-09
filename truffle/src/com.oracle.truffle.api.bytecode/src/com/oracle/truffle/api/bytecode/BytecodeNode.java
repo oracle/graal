@@ -99,26 +99,26 @@ public abstract class BytecodeNode extends Node {
      * @since 24.1
      */
     public final BytecodeLocation getBytecodeLocation(FrameInstance frameInstance) {
-        int internalBci = findBytecodeIndex(frameInstance);
-        if (internalBci == -1) {
+        int bci = findBytecodeIndex(frameInstance);
+        if (bci == -1) {
             return null;
         }
-        return new BytecodeLocation(this, internalBci);
+        return new BytecodeLocation(this, bci);
     }
 
     /**
-     * Gets the bytecode location associated with an internal {@code bci}. This method should only
-     * be used if the internal {@code bci} was obtained while executing this bytecode node.
+     * Gets the bytecode location associated with a {@code bci}. This method should only be used if
+     * the {@code bci} was obtained while executing this bytecode node.
      *
-     * @param internalBci the internal bytecode index
+     * @param bci the bytecode index
      * @return the bytecode location, or null if the bytecode index is invalid
      * @since 24.1
      */
-    public final BytecodeLocation getBytecodeLocation(int internalBci) {
-        if (internalBci < 0) {
+    public final BytecodeLocation getBytecodeLocation(int bci) {
+        if (bci < 0) {
             return null;
         }
-        return findLocation(internalBci);
+        return findLocation(bci);
     }
 
     /**
@@ -133,11 +133,11 @@ public abstract class BytecodeNode extends Node {
      *         available
      */
     public final SourceSection getSourceLocation(Frame frame, Node location) {
-        int internalIndex = findBytecodeIndexImpl(frame, location);
-        if (internalIndex == -1) {
+        int bci = findBytecodeIndexImpl(frame, location);
+        if (bci == -1) {
             return null;
         }
-        return findSourceLocation(internalIndex);
+        return findSourceLocation(bci);
     }
 
     private int findBytecodeIndexImpl(Frame frame, Node location) {
@@ -158,16 +158,15 @@ public abstract class BytecodeNode extends Node {
             return -1;
         }
         // For cached interpreters, prev will be the operation node.
-        int internalIndex = findBytecodeIndex(frame, prev);
-        return internalIndex;
+        return findBytecodeIndex(frame, prev);
     }
 
     public final SourceSection getSourceLocation(FrameInstance frameInstance) {
-        int internalIndex = findBytecodeIndex(frameInstance);
-        if (internalIndex == -1) {
+        int bci = findBytecodeIndex(frameInstance);
+        if (bci == -1) {
             return null;
         }
-        return findSourceLocation(internalIndex);
+        return findSourceLocation(bci);
     }
 
     public abstract BytecodeIntrospection getIntrospectionData();

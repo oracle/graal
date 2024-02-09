@@ -116,12 +116,13 @@ public interface BytecodeRootNode {
      *
      * @param ex the control flow exception
      * @param frame the frame at the point the exception was thrown
+     * @param bytecodeNode the bytecode node executing when the exception was thrown
      * @param bci the bytecode index of the instruction that caused the exception
      * @return the Truffle exception to be handled by guest code
      * @since 24.1
      */
     @SuppressWarnings("unused")
-    default Object interceptControlFlowException(ControlFlowException ex, VirtualFrame frame, int bci) throws Throwable {
+    default Object interceptControlFlowException(ControlFlowException ex, VirtualFrame frame, BytecodeNode bytecodeNode, int bci) throws Throwable {
         throw ex;
     }
 
@@ -144,12 +145,13 @@ public interface BytecodeRootNode {
      * an internal error cannot be converted to a guest exception, it can simply be returned.
      *
      * @param t the internal exception
+     * @param bytecodeNode the bytecode node executing when the exception was thrown
      * @param bci the bytecode index of the instruction that caused the exception
      * @return an equivalent guest-language exception or an exception to be rethrown
      * @since 24.1
      */
     @SuppressWarnings("unused")
-    default Throwable interceptInternalException(Throwable t, int bci) {
+    default Throwable interceptInternalException(Throwable t, BytecodeNode bytecodeNode, int bci) {
         return t;
     }
 
@@ -160,12 +162,13 @@ public interface BytecodeRootNode {
      *
      * @param ex the Truffle exception
      * @param frame the frame at the point the exception was thrown
+     * @param bytecodeNode the bytecode node executing when the exception was thrown
      * @param bci the bytecode index of the instruction that caused the exception
      * @return the Truffle exception to be handled by guest code
      * @since 24.1
      */
     @SuppressWarnings("unused")
-    default AbstractTruffleException interceptTruffleException(AbstractTruffleException ex, VirtualFrame frame, int bci) {
+    default AbstractTruffleException interceptTruffleException(AbstractTruffleException ex, VirtualFrame frame, BytecodeNode bytecodeNode, int bci) {
         return ex;
     }
 

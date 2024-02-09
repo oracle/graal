@@ -136,7 +136,7 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     }
 
     @Override
-    public Object interceptControlFlowException(ControlFlowException ex, VirtualFrame frame, int bci) throws Throwable {
+    public Object interceptControlFlowException(ControlFlowException ex, VirtualFrame frame, BytecodeNode bytecodeNode, int bci) throws Throwable {
         if (ex instanceof EarlyReturnException ret) {
             return ret.result;
         }

@@ -42,6 +42,7 @@ package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Assert;
@@ -49,6 +50,8 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeLocation;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
@@ -152,7 +155,9 @@ public class HookTest {
             root.getCallTarget().call(42);
             Assert.fail("call should have thrown an exception");
         } catch (MyException ex) {
-            assertNotEquals(-1, ex.bci);
+            BytecodeLocation location = ex.getBytecodeLocation();
+            assertNotNull(location);
+            assertTrue(location.getInstruction().getName().contains("Throw"));
         }
     }
 
@@ -173,13 +178,15 @@ public class HookTest {
             root.getCallTarget().call(42);
             Assert.fail("call should have thrown an exception");
         } catch (MyException ex) {
-            assertNotEquals(-1, ex.bci);
+            BytecodeLocation location = ex.getBytecodeLocation();
+            assertNotNull(location);
+            assertTrue(location.getInstruction().getName().contains("ThrowStackOverflow"));
         }
     }
 
     @Test
     public void testInterceptTruffleExceptionPropagated() {
-        // The bci should be overridden when it propagates to the root from child.
+        // The location should be overridden when it propagates to the root from child.
         BytecodeNodeWithHooks child = parseNode(b -> {
             b.beginRoot(null);
             b.beginReturn();
@@ -194,11 +201,6 @@ public class HookTest {
         BytecodeNodeWithHooks root = parseNode(b -> {
             b.beginRoot(null);
             b.beginBlock();
-            // insert dummy instructions so the throwing bci is different from the child's.
-            b.emitLoadArgument(0);
-            b.emitLoadArgument(0);
-            b.emitLoadArgument(0);
-            b.emitLoadArgument(0);
             b.beginReturn();
             b.beginInvoke();
             b.emitLoadConstant(child);
@@ -209,25 +211,27 @@ public class HookTest {
         });
         root.setRefs(new Object[2]);
 
-        int childThrowBci = -1;
+        BytecodeLocation childThrowLocation = null;
         try {
             child.getCallTarget().call(42);
             Assert.fail("call should have thrown an exception");
         } catch (MyException ex) {
-            childThrowBci = ex.bci;
-            assertNotEquals(-1, childThrowBci);
+            childThrowLocation = ex.getBytecodeLocation();
+            assertNotNull(childThrowLocation);
+            assertTrue(childThrowLocation.getInstruction().getName().contains("Throw"));
         }
 
-        int rootThrowBci = -1;
+        BytecodeLocation rootThrowLocation = null;
         try {
             root.getCallTarget().call(42);
             Assert.fail("call should have thrown an exception");
         } catch (MyException ex) {
-            rootThrowBci = ex.bci;
-            assertNotEquals(-1, rootThrowBci);
+            rootThrowLocation = ex.getBytecodeLocation();
+            assertNotNull(rootThrowLocation);
+            assertTrue(rootThrowLocation.getInstruction().getName().contains("Invoke"));
         }
 
-        assertNotEquals(childThrowBci, rootThrowBci);
+        assertNotEquals(childThrowLocation, rootThrowLocation);
     }
 
     @Test
@@ -294,7 +298,9 @@ public class HookTest {
             Assert.fail("call should have thrown an exception");
         } catch (MyException ex) {
             assertEquals("internal error", ex.result);
-            assertNotEquals(-1, ex.bci);
+            BytecodeLocation location = ex.getBytecodeLocation();
+            assertNotNull(location);
+            assertTrue(location.getInstruction().getName().contains("ThrowControlFlowInternalError"));
         }
     }
 
@@ -320,7 +326,9 @@ public class HookTest {
             Assert.fail("call should have thrown an exception");
         } catch (MyException ex) {
             assertEquals(42, ex.result);
-            assertNotEquals(-1, ex.bci);
+            BytecodeLocation location = ex.getBytecodeLocation();
+            assertNotNull(location);
+            assertTrue(location.getInstruction().getName().contains("ThrowControlFlowTruffleException"));
         }
     }
 
@@ -432,7 +440,7 @@ abstract class BytecodeNodeWithHooks extends RootNode implements BytecodeRootNod
     }
 
     @Override
-    public Object interceptControlFlowException(ControlFlowException ex, VirtualFrame frame, int bci) throws Throwable {
+    public Object interceptControlFlowException(ControlFlowException ex, VirtualFrame frame, BytecodeNode bytecodeNode, int bci) throws Throwable {
         if (ex instanceof EarlyReturnException er) {
             // Return a result
             return er.result;
@@ -449,13 +457,15 @@ abstract class BytecodeNodeWithHooks extends RootNode implements BytecodeRootNod
     }
 
     @Override
-    public Throwable interceptInternalException(Throwable t, int bci) {
+    public Throwable interceptInternalException(Throwable t, BytecodeNode bytecodeNode, int bci) {
         return new MyException(t.getMessage());
     }
 
     @Override
-    public AbstractTruffleException interceptTruffleException(AbstractTruffleException ex, VirtualFrame frame, int bci) {
+    public AbstractTruffleException interceptTruffleException(AbstractTruffleException ex, VirtualFrame frame, BytecodeNode bytecodeNode, int bci) {
         if (ex instanceof MyException myEx) {
+            // These can be used to construct a BytecodeLocation if necessary.
+            myEx.bytecodeNode = bytecodeNode;
             myEx.bci = bci;
         }
         return ex;
@@ -465,11 +475,19 @@ abstract class BytecodeNodeWithHooks extends RootNode implements BytecodeRootNod
     public static final class MyException extends AbstractTruffleException {
         private static final long serialVersionUID = 1L;
         public final Object result;
+        public BytecodeNode bytecodeNode = null;
         public int bci = -1;
 
         MyException(Object result) {
             super();
             this.result = result;
+        }
+
+        public BytecodeLocation getBytecodeLocation() {
+            if (bytecodeNode == null) {
+                return null;
+            }
+            return bytecodeNode.getBytecodeLocation(bci);
         }
     }
 
@@ -601,7 +619,7 @@ abstract class BytecodeNodeInterceptsCF extends RootNode implements BytecodeRoot
     }
 
     @Override
-    public Object interceptControlFlowException(ControlFlowException ex, VirtualFrame frame, int bci) throws Throwable {
+    public Object interceptControlFlowException(ControlFlowException ex, VirtualFrame frame, BytecodeNode bytecodeNode, int bci) throws Throwable {
         return 42;
     }
 
@@ -632,7 +650,7 @@ abstract class BytecodeNodeInterceptsInternal extends RootNode implements Byteco
     }
 
     @Override
-    public Throwable interceptInternalException(Throwable t, int bci) {
+    public Throwable interceptInternalException(Throwable t, BytecodeNode bytecodeNode, int bci) {
         return new RuntimeException(t);
     }
 
