@@ -26,8 +26,6 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-from __future__ import print_function
-
 import os
 import re
 import tempfile
@@ -38,6 +36,7 @@ import pipes
 from argparse import ArgumentParser
 import fnmatch
 import collections
+from io import StringIO
 
 import mx
 import mx_compiler
@@ -56,10 +55,6 @@ from mx_unittest import _run_tests, _VMLauncher
 import sys
 
 
-if sys.version_info[0] < 3:
-    from StringIO import StringIO
-else:
-    from io import StringIO
 
 suite = mx.suite('substratevm')
 svmSuites = [suite]
@@ -1016,7 +1011,10 @@ driver_build_args = [
     '--features=com.oracle.svm.driver.APIOptionFeature',
     '--initialize-at-build-time=com.oracle.svm.driver',
     '--link-at-build-time=com.oracle.svm.driver,com.oracle.svm.driver.metainf',
-] + svm_experimental_options([
+]
+
+driver_exe_build_args = driver_build_args + svm_experimental_options([
+    '-H:+AllowJRTFileSystem',
     '-H:IncludeResources=com/oracle/svm/driver/launcher/.*',
     '-H:-ParseRuntimeOptions',
     f'-R:MaxHeapSize={256 * 1024 * 1024}',
@@ -1058,7 +1056,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             destination="bin/<exe:native-image>",
             jar_distributions=["substratevm:SVM_DRIVER"],
             main_class=_native_image_launcher_main_class(),
-            build_args=driver_build_args,
+            build_args=driver_exe_build_args,
             extra_jvm_args=_native_image_launcher_extra_jvm_args(),
             home_finder=False,
         ),
