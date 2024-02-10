@@ -67,8 +67,8 @@ local common_json = import "../common.json";
   assert
     local _labsjdk = common_json.jdks["labsjdk-ee-latest"];
     local _oraclejdk = common_json.jdks["oraclejdk-latest"];
-    local _ov = "ee-%s+%s" % [_oraclejdk.version, _oraclejdk.build_id];
-    local _lv = _labsjdk.version;
+    local _ov = _oraclejdk.build_id;
+    local _lv = std.strReplace(_labsjdk.version, "ee-", "jdk-");
     # Skip the check if we are not using a labsjdk. This can happen on JDK integration branches.
     local no_labsjdk = _labsjdk.name != "labsjdk";
     assert no_labsjdk || std.startsWith(_lv, _ov) : "update oraclejdk-latest to match labsjdk-ee-latest: %s+%s vs %s" % [_oraclejdk.version, _oraclejdk.build_id, _labsjdk.version];
