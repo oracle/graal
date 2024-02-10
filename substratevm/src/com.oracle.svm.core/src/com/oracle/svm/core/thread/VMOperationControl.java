@@ -576,7 +576,7 @@ public final class VMOperationControl {
                     drain(javaSafepointOperations);
                 } finally {
                     if (startedSafepoint) {
-                        master.thaw(safepointReason, lockedForSafepoint);
+                        master.thaw(lockedForSafepoint);
                     }
                 }
             }
