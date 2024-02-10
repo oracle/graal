@@ -189,12 +189,17 @@ public abstract class PlatformThreads {
         mainGroupThreadsArray[0] = mainThread;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static long getThreadAllocatedBytes() {
+        return Heap.getHeap().getThreadAllocatedMemory(CurrentIsolate.getCurrentThread());
+    }
+
     @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.")
     public static long getThreadAllocatedBytes(long javaThreadId) {
         // Accessing the value for the current thread is fast.
         Thread curThread = PlatformThreads.currentThread.get();
         if (curThread != null && JavaThreads.getThreadId(curThread) == javaThreadId) {
-            return Heap.getHeap().getThreadAllocatedMemory(CurrentIsolate.getCurrentThread());
+            return getThreadAllocatedBytes();
         }
 
         // If the value of another thread is accessed, then we need to do a slow lookup.
