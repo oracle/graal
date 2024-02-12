@@ -216,6 +216,9 @@ final class Target_java_lang_Throwable {
     @Alias @RecomputeFieldValue(kind = Reset)//
     Object backtrace;
 
+    @Alias//
+    Throwable cause;
+
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = ThrowableStackTraceFieldValueTransformer.class)//
     StackTraceElement[] stackTrace;
 
