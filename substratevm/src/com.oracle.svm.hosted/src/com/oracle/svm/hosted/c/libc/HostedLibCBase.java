@@ -66,7 +66,7 @@ public interface HostedLibCBase extends LibCBase {
         // Checkstyle: allow Class.getSimpleName
         String simpleName = platformClass.getSimpleName();
         // Checkstyle: disallow Class.getSimpleName
-        return simpleName.toLowerCase(Locale.ENGLISH).equals(platform.getOS()) || Platform.includedIn(platformClass);
+        return simpleName.toLowerCase(Locale.ROOT).equals(platform.getOS()) || Platform.includedIn(platformClass);
     }
 
     /**

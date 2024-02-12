@@ -50,7 +50,7 @@ public enum OS {
      * Returns a string that can be used in a package name.
      */
     public String asPackageName() {
-        return name().toLowerCase(Locale.ENGLISH);
+        return name().toLowerCase(Locale.ROOT);
     }
 
     public boolean isCurrent() {

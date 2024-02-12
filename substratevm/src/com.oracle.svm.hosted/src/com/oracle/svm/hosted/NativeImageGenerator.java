@@ -419,7 +419,7 @@ public class NativeImageGenerator {
 
         String os = System.getProperty("svm.targetPlatformOS");
         if (os == null) {
-            os = OS.getCurrent().className.toLowerCase(Locale.ENGLISH);
+            os = OS.getCurrent().className.toLowerCase(Locale.ROOT);
         }
 
         String arch = System.getProperty("svm.targetPlatformArch");
@@ -1717,7 +1717,7 @@ public class NativeImageGenerator {
     }
 
     public static String checkName(String name) {
-        String lname = name.toLowerCase(Locale.ENGLISH);
+        String lname = name.toLowerCase(Locale.ROOT);
         String message = null;
         if (lname.contains("hosted")) {
             message = "Hosted element used at run time: " + name;

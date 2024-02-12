@@ -119,7 +119,7 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         initializeProperty("java.vendor", vm.vendor);
         initializeProperty("java.vendor.url", vm.vendorUrl);
         initializeProperty("java.vendor.version", vm.vendorVersion);
-        assert vm.info.equals(vm.info.toLowerCase(Locale.ENGLISH)) : "java.vm.info should not contain uppercase characters";
+        assert vm.info.equals(vm.info.toLowerCase(Locale.ROOT)) : "java.vm.info should not contain uppercase characters";
         initializeProperty("java.vm.info", vm.info);
         initializeProperty("java.vm.name", "Substrate VM");
         initializeProperty("java.vm.vendor", vm.vendor);

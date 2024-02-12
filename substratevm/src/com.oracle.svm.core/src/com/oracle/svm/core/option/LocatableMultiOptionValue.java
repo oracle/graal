@@ -116,7 +116,7 @@ public abstract class LocatableMultiOptionValue<T> implements MultiOptionValue<T
 
     @Override
     public String toString() {
-        return "<" + ClassUtil.getUnqualifiedName(valueType).toLowerCase(Locale.ENGLISH) + ">*";
+        return "<" + ClassUtil.getUnqualifiedName(valueType).toLowerCase(Locale.ROOT) + ">*";
     }
 
     public static final class Strings extends LocatableMultiOptionValue<String> {

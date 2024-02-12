@@ -211,7 +211,7 @@ public final class FullFuzzedTierPlan<C> extends MinimalFuzzedTierPlan<C> {
     @Override
     public String toString() {
         return String.format("%s%n%s%nProbability of inserting a phase: 1/%s (-Dtest.graal.skip.phase.insertion.odds.%s=%s)%n",
-                        super.toString(), ignoredPhasesToString(), phaseSkipOdds, String.join(".", getTierName().toLowerCase(Locale.ENGLISH).split(" ")), phaseSkipOdds);
+                        super.toString(), ignoredPhasesToString(), phaseSkipOdds, String.join(".", getTierName().toLowerCase(Locale.ROOT).split(" ")), phaseSkipOdds);
     }
 
     @Override

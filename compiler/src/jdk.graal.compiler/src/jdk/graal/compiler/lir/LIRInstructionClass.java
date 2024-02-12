@@ -323,7 +323,7 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
         StringBuilder result = new StringBuilder();
 
         appendValues(result, obj, "", " = ", "(", ")", new String[]{""}, defs);
-        result.append(String.valueOf(getOpcode(obj)).toUpperCase(Locale.ENGLISH));
+        result.append(String.valueOf(getOpcode(obj)).toUpperCase(Locale.ROOT));
         appendValues(result, obj, " ", "", "(", ")", new String[]{"", "~"}, uses, alives);
         appendValues(result, obj, " ", "", "{", "}", new String[]{""}, temps);
 

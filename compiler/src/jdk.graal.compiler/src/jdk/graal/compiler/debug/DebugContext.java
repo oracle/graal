@@ -1896,7 +1896,7 @@ public final class DebugContext implements AutoCloseable {
 
         String res = sb.toString();
         if ((flags & UPPERCASE) == UPPERCASE) {
-            res = res.toUpperCase(Locale.ENGLISH);
+            res = res.toUpperCase(Locale.ROOT);
         }
         return res;
     }
