@@ -1122,17 +1122,18 @@ public final class VM extends NativeEnv {
         ObjectKlass klass = (ObjectKlass) k;
         RuntimeConstantPool pool = klass.getConstantPool();
         InnerClassesAttribute inner = klass.getInnerClasses();
+        if (inner == null) {
+            return StaticObject.NULL;
+        }
         for (InnerClassesAttribute.Entry entry : inner.entries()) {
             int innerClassIndex = entry.innerClassIndex;
             if (innerClassIndex != 0) {
-                if (pool.classAt(innerClassIndex).getName(pool) == klass.getName()) {
-                    if (pool.resolvedKlassAt(klass, innerClassIndex) == k) {
-                        if (entry.innerNameIndex != 0) {
-                            Symbol<Name> innerName = pool.symbolAt(entry.innerNameIndex);
-                            return getMeta().toGuestString(innerName);
-                        } else {
-                            break;
-                        }
+                if (pool.classAt(innerClassIndex).getName(pool) == klass.getName() && pool.resolvedKlassAt(klass, innerClassIndex) == k) {
+                    if (entry.innerNameIndex == 0) {
+                        break;
+                    } else {
+                        Symbol<Name> innerName = pool.symbolAt(entry.innerNameIndex);
+                        return getMeta().toGuestString(innerName);
                     }
                 }
             }
