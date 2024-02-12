@@ -1258,7 +1258,7 @@ public final class VM extends NativeEnv {
             int innerClassIndex = entry.innerClassIndex;
             if (innerClassIndex != 0) {
                 if (pool.classAt(innerClassIndex).getName(pool) == klass.getName()) {
-                    if (pool.resolvedKlassAt(k, innerClassIndex) == k) {
+                    if (pool.resolvedKlassAt(klass, innerClassIndex) == k) {
                         if (entry.innerNameIndex != 0) {
                             Symbol<Name> innerName = pool.symbolAt(entry.innerNameIndex);
                             return getMeta().toGuestString(innerName);

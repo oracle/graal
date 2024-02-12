@@ -798,7 +798,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return new Method(declaringKlass.getKlassVersion(), getLinkedMethod(), polymorphicRawSignature, getRuntimeConstantPool());
     }
 
-    public MethodHandleIntrinsicNode spawnIntrinsicNode(EspressoLanguage language, Meta meta, Klass accessingKlass, Symbol<Name> mname, Symbol<Signature> signature) {
+    public MethodHandleIntrinsicNode spawnIntrinsicNode(EspressoLanguage language, Meta meta, ObjectKlass accessingKlass, Symbol<Name> mname, Symbol<Signature> signature) {
         assert isPolySignatureIntrinsic();
         return MethodHandleIntrinsics.createIntrinsicNode(language, meta, this, accessingKlass, mname, signature);
     }

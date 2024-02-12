@@ -35,6 +35,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Validation;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -117,7 +118,7 @@ public interface ClassConstant extends PoolConstant {
          */
         @SuppressWarnings("try")
         @Override
-        public Resolved resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+        public Resolved resolve(RuntimeConstantPool pool, int thisIndex, ObjectKlass accessingKlass) {
             try (EspressoLanguage.DisableSingleStepping ignored = accessingKlass.getLanguage().disableStepping()) {
                 CLASS_RESOLVE_COUNT.inc();
                 assert accessingKlass != null;
@@ -196,7 +197,7 @@ public interface ClassConstant extends PoolConstant {
         }
 
         @Override
-        public Resolved resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+        public Resolved resolve(RuntimeConstantPool pool, int thisIndex, ObjectKlass accessingKlass) {
             CLASS_RESOLVE_COUNT.inc();
             assert accessingKlass != null;
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -257,7 +258,7 @@ public interface ClassConstant extends PoolConstant {
         }
 
         @Override
-        public Resolved resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+        public Resolved resolve(RuntimeConstantPool pool, int thisIndex, ObjectKlass accessingKlass) {
             return new Resolved(resolved);
         }
 

@@ -2172,7 +2172,7 @@ public final class Meta extends ContextAccessImpl {
      * Resolves the symbol using {@link #resolveSymbolOrFail(Symbol, StaticObject, StaticObject)},
      * and applies access checking, possibly throwing {@link IllegalAccessError}.
      */
-    public Klass resolveSymbolAndAccessCheck(Symbol<Type> type, Klass accessingKlass) {
+    public Klass resolveSymbolAndAccessCheck(Symbol<Type> type, ObjectKlass accessingKlass) {
         assert accessingKlass != null;
         Klass klass = resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader(), java_lang_NoClassDefFoundError, accessingKlass.protectionDomain());
         if (!Klass.checkAccess(klass.getElementalType(), accessingKlass, false)) {

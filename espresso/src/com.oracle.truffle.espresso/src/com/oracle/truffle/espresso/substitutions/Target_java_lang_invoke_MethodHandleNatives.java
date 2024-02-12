@@ -477,7 +477,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 }
             }
 
-            Klass callerKlass = StaticObject.isNull(caller) ? null : caller.getMirrorKlass(meta);
+            ObjectKlass callerKlass = StaticObject.isNull(caller) ? null : (ObjectKlass) caller.getMirrorKlass(meta);
 
             boolean doAccessChecks = callerKlass != null;
             boolean doConstraintsChecks = (callerKlass != null && ((lookupMode & LM_UNCONDITIONAL) == 0));
@@ -578,7 +578,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     // region MemberName planting
 
-    private static void plantInvokeBasic(StaticObject memberName, Klass resolutionKlass, Symbol<Name> name, Symbol<Signature> sig, Klass callerKlass, boolean accessCheck, Meta meta) {
+    private static void plantInvokeBasic(StaticObject memberName, Klass resolutionKlass, Symbol<Name> name, Symbol<Signature> sig, ObjectKlass callerKlass, boolean accessCheck, Meta meta) {
         assert (name == Name.invokeBasic);
         Method target = resolutionKlass.lookupMethod(name, sig);
         if (accessCheck) {
@@ -591,7 +591,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     private static void plantMethodMemberName(StaticObject memberName,
                     Klass resolutionKlass, Symbol<Name> name, Symbol<Signature> sig,
                     int refKind,
-                    Klass callerKlass,
+                    ObjectKlass callerKlass,
                     boolean accessCheck, boolean constraintsChecks,
                     Meta meta) {
         // TODO this needs to be the correct lookup (static, interface, virtual etc.)

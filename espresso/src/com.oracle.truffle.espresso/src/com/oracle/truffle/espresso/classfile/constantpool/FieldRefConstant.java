@@ -36,6 +36,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.DebugCounter;
@@ -122,7 +123,7 @@ public interface FieldRefConstant extends MemberRefConstant {
         }
 
         @Override
-        public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+        public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, ObjectKlass accessingKlass) {
             FIELDREF_RESOLVE_COUNT.inc();
             Klass holderKlass = getResolvedHolderKlass(accessingKlass, pool);
             Symbol<Name> name = getName(pool);

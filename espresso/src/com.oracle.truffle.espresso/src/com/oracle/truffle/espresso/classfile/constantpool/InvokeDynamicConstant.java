@@ -35,7 +35,6 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -59,7 +58,7 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
         return false;
     }
 
-    CallSiteLink link(RuntimeConstantPool pool, Klass accessingKlass, int thisIndex);
+    CallSiteLink link(RuntimeConstantPool pool, ObjectKlass accessingKlass, int thisIndex);
 
     final class Indexes extends BootstrapMethodConstant.Indexes implements InvokeDynamicConstant, Resolvable {
         Indexes(int bootstrapMethodAttrIndex, int nameAndTypeIndex) {
@@ -83,9 +82,9 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
         }
 
         @Override
-        public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+        public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, ObjectKlass accessingKlass) {
             CompilerAsserts.neverPartOfCompilation();
-            BootstrapMethodsAttribute bms = (BootstrapMethodsAttribute) ((ObjectKlass) accessingKlass).getAttribute(BootstrapMethodsAttribute.NAME);
+            BootstrapMethodsAttribute bms = (BootstrapMethodsAttribute) accessingKlass.getAttribute(BootstrapMethodsAttribute.NAME);
             BootstrapMethodsAttribute.Entry bsEntry = bms.at(getBootstrapMethodAttrIndex());
 
             Meta meta = accessingKlass.getMeta();
@@ -100,7 +99,7 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
         }
 
         @Override
-        public CallSiteLink link(RuntimeConstantPool pool, Klass accessingKlass, int thisIndex) {
+        public CallSiteLink link(RuntimeConstantPool pool, ObjectKlass accessingKlass, int thisIndex) {
             throw EspressoError.shouldNotReachHere("Not resolved yet");
         }
     }
@@ -147,10 +146,10 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
          *     4: invokedynamic #1 // Immediately fails without calling MHN.linkCallSite
          * </pre>
          * 
-         * @see RuntimeConstantPool#linkInvokeDynamic(Klass, int)
+         * @see RuntimeConstantPool#linkInvokeDynamic(ObjectKlass, int)
          */
         @Override
-        public CallSiteLink link(RuntimeConstantPool pool, Klass accessingKlass, int thisIndex) {
+        public CallSiteLink link(RuntimeConstantPool pool, ObjectKlass accessingKlass, int thisIndex) {
             // Per-callsite linking
             CompilerAsserts.neverPartOfCompilation();
             Meta meta = accessingKlass.getMeta();
@@ -271,7 +270,7 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
         }
 
         @Override
-        public CallSiteLink link(RuntimeConstantPool pool, Klass accessingKlass, int thisIndex) {
+        public CallSiteLink link(RuntimeConstantPool pool, ObjectKlass accessingKlass, int thisIndex) {
             throw failure;
         }
 
