@@ -631,65 +631,62 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                             if (eventsEnabled) {
                                 EngineAccessor.INSTRUMENT.notifyLanguageContextCreate(context.engine, context.creatorTruffleContext, language.info);
                             }
-                            try {
-                                Env localEnv = LANGUAGE.createEnv(this, languageInstance.spi, contextConfig.out,
-                                                contextConfig.err,
-                                                contextConfig.in,
-                                                creatorConfig,
-                                                contextConfig.getLanguageOptionValues(language).copy(),
-                                                contextConfig.getApplicationArguments(language));
-                                Lazy localLazy = new Lazy(languageInstance, contextConfig);
+                            Env localEnv = LANGUAGE.createEnv(this, languageInstance.spi, contextConfig.out,
+                                            contextConfig.err,
+                                            contextConfig.in,
+                                            creatorConfig,
+                                            contextConfig.getLanguageOptionValues(language).copy(),
+                                            contextConfig.getApplicationArguments(language));
+                            Lazy localLazy = new Lazy(languageInstance, contextConfig);
 
-                                if (layer.isSingleContext()) {
-                                    languageInstance.singleLanguageContext.update(this);
-                                } else {
-                                    languageInstance.singleLanguageContext.invalidate();
-                                }
-
-                                try {
-                                    checkThreadAccess(localEnv);
-                                } catch (PolyglotThreadAccessException ex) {
-                                    threadAccessException = ex;
-                                    continue LOOP;
-                                }
-
-                                // no more errors after this line
-                                creatingThread = Thread.currentThread();
-                                env = localEnv;
-                                lazy = localLazy;
-                                assert EngineAccessor.LANGUAGE.getLanguage(env) != null;
-
-                                try {
-                                    List<Object> languageServicesCollector = new ArrayList<>();
-                                    Object contextImpl = LANGUAGE.createEnvContext(localEnv, languageServicesCollector);
-                                    language.initializeContextClass(contextImpl);
-                                    String errorMessage = verifyServices(language.info, languageServicesCollector, language.cache.getServices());
-                                    if (errorMessage != null) {
-                                        throw PolyglotEngineException.illegalState(errorMessage);
-                                    }
-                                    PolyglotFastThreadLocals.notifyLanguageCreated(this);
-                                    this.languageServices = languageServicesCollector;
-                                    if (language.isHost()) {
-                                        context.initializeHostContext(this, context.config);
-                                    }
-                                    wasCreated = true;
-                                    if (eventsEnabled) {
-                                        EngineAccessor.INSTRUMENT.notifyLanguageContextCreated(context.engine, context.creatorTruffleContext, language.info);
-                                    }
-                                    context.invokeContextLocalsFactory(context.contextLocals, languageInstance.contextLocalLocations);
-                                    context.invokeContextThreadLocalFactory(languageInstance.contextThreadLocalLocations);
-
-                                    languageInstance = null; // commit language use
-                                } catch (Throwable e) {
-                                    env = null;
-                                    lazy = null;
-                                    throw e;
-                                } finally {
-                                    creatingThread = null;
-                                }
-                                created = true;
-                            } finally {
+                            if (layer.isSingleContext()) {
+                                languageInstance.singleLanguageContext.update(this);
+                            } else {
+                                languageInstance.singleLanguageContext.invalidate();
                             }
+
+                            try {
+                                checkThreadAccess(localEnv);
+                            } catch (PolyglotThreadAccessException ex) {
+                                threadAccessException = ex;
+                                continue LOOP;
+                            }
+
+                            // no more errors after this line
+                            creatingThread = Thread.currentThread();
+                            env = localEnv;
+                            lazy = localLazy;
+                            assert EngineAccessor.LANGUAGE.getLanguage(env) != null;
+
+                            try {
+                                List<Object> languageServicesCollector = new ArrayList<>();
+                                Object contextImpl = LANGUAGE.createEnvContext(localEnv, languageServicesCollector);
+                                language.initializeContextClass(contextImpl);
+                                String errorMessage = verifyServices(language.info, languageServicesCollector, language.cache.getServices());
+                                if (errorMessage != null) {
+                                    throw PolyglotEngineException.illegalState(errorMessage);
+                                }
+                                PolyglotFastThreadLocals.notifyLanguageCreated(this);
+                                this.languageServices = languageServicesCollector;
+                                if (language.isHost()) {
+                                    context.initializeHostContext(this, context.config);
+                                }
+                                wasCreated = true;
+                                if (eventsEnabled) {
+                                    EngineAccessor.INSTRUMENT.notifyLanguageContextCreated(context.engine, context.creatorTruffleContext, language.info);
+                                }
+                                context.invokeContextLocalsFactory(context.contextLocals, languageInstance.contextLocalLocations);
+                                context.invokeContextThreadLocalFactory(languageInstance.contextThreadLocalLocations);
+
+                                languageInstance = null; // commit language use
+                            } catch (Throwable e) {
+                                env = null;
+                                lazy = null;
+                                throw e;
+                            } finally {
+                                creatingThread = null;
+                            }
+                            created = true;
                         }
                     }
                     break LOOP;
