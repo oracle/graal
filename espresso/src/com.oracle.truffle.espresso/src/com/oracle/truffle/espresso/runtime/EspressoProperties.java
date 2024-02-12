@@ -352,7 +352,7 @@ abstract class PlatformBuilder extends EspressoProperties.Builder {
 
     @Override
     List<Path> defaultClasspath() {
-        return Collections.singletonList(Paths.get("."));
+        return Collections.emptyList();
     }
 
     @Override
