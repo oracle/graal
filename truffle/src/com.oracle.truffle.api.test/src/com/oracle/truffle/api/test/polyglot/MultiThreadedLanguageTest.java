@@ -141,6 +141,47 @@ public class MultiThreadedLanguageTest {
         context.close();
     }
 
+    @Test
+    public void testNoThreadAllowedWithSecurityException() {
+        Context context = Context.newBuilder(MultiThreadedLanguage.ID).onDeniedThreadAccess((t) -> {
+            throw new SecurityException(t.getMessage());
+        }).build();
+
+        MultiThreadedLanguage.isThreadAccessAllowed = (req) -> {
+            return false;
+        };
+
+        try {
+            context.initialize(MultiThreadedLanguage.ID);
+            fail();
+        } catch (PolyglotException e) {
+            assertTrue(e.getMessage().contains("SecurityException"));
+            assertTrue(e.isInternalError());
+        }
+
+        try {
+            eval(context, (env) -> null);
+            fail();
+        } catch (PolyglotException e) {
+            assertTrue(e.getMessage().contains("SecurityException"));
+            assertTrue(e.isInternalError());
+        }
+
+        try {
+            eval(context, (env) -> null);
+            fail();
+        } catch (PolyglotException e) {
+            assertTrue(e.getMessage().contains("SecurityException"));
+            assertTrue(e.isInternalError());
+        }
+
+        // allow again so we can close
+        MultiThreadedLanguage.isThreadAccessAllowed = (req) -> {
+            return true;
+        };
+        context.close();
+    }
+
     private static void assertMultiThreadedError(Value value, Consumer<Value> valueConsumer) {
         try {
             valueConsumer.accept(value);
