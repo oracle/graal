@@ -107,6 +107,7 @@ public final class BytecodeConfig {
         private long encoding;
 
         Builder(BytecodeConfigEncoder encoder) {
+            Objects.requireNonNull(encoder);
             this.encoder = encoder;
         }
 

@@ -57,14 +57,22 @@ public abstract class DebugBytecodeRootNode extends RootNode implements Bytecode
         super(language, frameDescriptor);
     }
 
+    final AtomicInteger invalidateCount = new AtomicInteger();
     final AtomicInteger quickeningCount = new AtomicInteger();
     final AtomicInteger specializeCount = new AtomicInteger();
+
+    @Override
+    public void onInvalidate(Instruction before, Instruction after) {
+        if (traceQuickening) {
+            System.out.printf("Invalidate %s: %n     %s%n  -> %s%n", before.getName(), before, after);
+        }
+        invalidateCount.incrementAndGet();
+    }
 
     @Override
     public void onQuicken(Instruction before, Instruction after) {
         if (traceQuickening) {
             System.out.printf("Quicken %s: %n     %s%n  -> %s%n", before.getName(), before, after);
-            System.out.println(this.dump());
         }
         quickeningCount.incrementAndGet();
     }
@@ -73,7 +81,6 @@ public abstract class DebugBytecodeRootNode extends RootNode implements Bytecode
         if (traceQuickening) {
             System.out.printf("Quicken operand index %s for %s: %n     %s%n  -> %s%n", operandIndex, base.getName(),
                             operandBefore, operandAfter);
-            System.out.println(this.dump());
         }
         quickeningCount.incrementAndGet();
     }
