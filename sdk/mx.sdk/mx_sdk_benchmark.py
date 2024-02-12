@@ -343,6 +343,9 @@ class NativeImageBenchmarkMixin(object):
     happily read that file and produce performance data in every stage (even the ``image`` stages).
     Such rules need to be modified to only trigger in the desired stages. Either by parsing the file location out of the
     benchmark output or by writing some Native Image specific logic (with :meth:`is_native_mode`)
+    An example for such a workaround are :class:`mx_benchmark.JMHBenchmarkSuiteBase` and its subclasses (see
+    ``get_jmh_result_file``, its usages and its Native Image specific implementation in
+    :class:`mx_java_benchmark.JMHNativeImageBenchmarkMixin`)
 
     If the benchmark suite itself dispatches into the VM multiple times (in addition to the mixin doing it once per
     stage), care must be taken in which order this happens.
