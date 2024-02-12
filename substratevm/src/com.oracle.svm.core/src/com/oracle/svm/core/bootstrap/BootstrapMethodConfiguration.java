@@ -139,21 +139,21 @@ public class BootstrapMethodConfiguration implements InternalFeature {
      * Check if the provided method is allowed to be executed at build time.
      */
     public boolean isIndyAllowedAtBuildTime(Executable method) {
-        return indyBuildTimeAllowList.contains(method);
+        return method != null && indyBuildTimeAllowList.contains(method);
     }
 
     /**
      * Check if the provided method is allowed to be executed at build time.
      */
     public boolean isCondyAllowedAtBuildTime(Executable method) {
-        return condyBuildTimeAllowList.contains(method);
+        return method != null && condyBuildTimeAllowList.contains(method);
     }
 
     /**
      * Check if the provided method is defined in the JDK.
      */
     public boolean isCondyTrusted(Executable method) {
-        return trustedCondy.contains(method);
+        return method != null && trustedCondy.contains(method);
     }
 
     public ConcurrentMap<BootstrapMethodRecord, BootstrapMethodInfo> getBootstrapMethodInfoCache() {

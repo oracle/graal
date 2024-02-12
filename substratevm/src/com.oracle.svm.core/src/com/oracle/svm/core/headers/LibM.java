@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.infrastructure;
+package com.oracle.svm.core.headers;
 
-import jdk.vm.ci.meta.ConstantPool;
-import jdk.vm.ci.meta.JavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-public class AnalysisConstantPool extends WrappedConstantPool {
+import org.graalvm.nativeimage.ImageSingletons;
 
-    public AnalysisConstantPool(Universe universe, ConstantPool wrapped, ResolvedJavaType defaultAccessingClass) {
-        super(universe, wrapped, defaultAccessingClass);
+import com.oracle.svm.core.Uninterruptible;
+
+import jdk.graal.compiler.api.replacements.Fold;
+
+public class LibM {
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static double log(double value) {
+        return libm().log(value);
     }
 
-    @Override
-    public JavaField lookupField(int cpi, ResolvedJavaMethod method, int opcode) {
-        ResolvedJavaMethod substMethod = universe.resolveSubstitution(((WrappedJavaMethod) method).getWrapped());
-        JavaField field = wrapped.lookupField(cpi, substMethod, opcode);
-        return universe.lookupAllowUnresolved(field);
+    @Fold
+    static LibMSupport libm() {
+        return ImageSingletons.lookup(LibMSupport.class);
     }
 }

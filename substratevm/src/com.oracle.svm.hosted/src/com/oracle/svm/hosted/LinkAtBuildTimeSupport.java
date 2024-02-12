@@ -28,7 +28,6 @@ package com.oracle.svm.hosted;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
@@ -39,6 +38,7 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionClassFilter;
 import com.oracle.svm.core.option.OptionOrigin;
 
+import jdk.graal.compiler.options.Option;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class LinkAtBuildTimeSupport {
@@ -74,15 +74,7 @@ public final class LinkAtBuildTimeSupport {
     }
 
     public boolean linkAtBuildTime(ResolvedJavaType type) {
-        Class<?> clazz = ((OriginalClassProvider) type).getJavaClass();
-        if (clazz == null) {
-            /*
-             * Some kind of synthetic class coming from a substitution. We assume all such classes
-             * are linked at build time.
-             */
-            return true;
-        }
-        return linkAtBuildTime(clazz);
+        return linkAtBuildTime(OriginalClassProvider.getJavaClass(type));
     }
 
     public boolean linkAtBuildTime(Class<?> clazz) {
@@ -106,11 +98,7 @@ public final class LinkAtBuildTimeSupport {
     }
 
     public String errorMessageFor(ResolvedJavaType type) {
-        Class<?> clazz = ((OriginalClassProvider) type).getJavaClass();
-        if (clazz == null) {
-            return "This error is reported at image build time because class " + type.toJavaName(true) + " is registered for linking at image build time.";
-        }
-        return errorMessageFor(clazz);
+        return errorMessageFor(OriginalClassProvider.getJavaClass(type));
     }
 
     public String errorMessageFor(Class<?> clazz) {

@@ -82,14 +82,6 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
         return !(type instanceof MethodHandleInvokerSubstitutionType) && type.isFinalFlagSet() && type.getName().contains(CLASS_NAME_SUBSTRING);
     }
 
-    @Override
-    public ResolvedJavaType resolve(ResolvedJavaType type) {
-        if (type instanceof MethodHandleInvokerSubstitutionType) {
-            return ((MethodHandleInvokerSubstitutionType) type).getOriginal();
-        }
-        return type;
-    }
-
     private ResolvedJavaType getSubstitution(ResolvedJavaType type) {
         return typeSubstitutions.computeIfAbsent(type, original -> {
             Object lambdaForm;

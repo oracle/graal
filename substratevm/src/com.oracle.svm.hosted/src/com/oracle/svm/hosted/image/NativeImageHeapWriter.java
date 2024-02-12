@@ -44,6 +44,7 @@ import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.StaticFieldsSupport;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
@@ -348,13 +349,18 @@ public final class NativeImageHeapWriter {
             Stream<HostedField> instanceFields = Arrays.stream(clazz.getInstanceFields(true)).filter(HostedField::isRead);
 
             if (dynamicHubLayout.isDynamicHub(clazz)) {
-                /* Write typeID slots. */
-                short[] typeIDSlots = (short[]) heap.readInlinedField(dynamicHubLayout.typeIDSlotsField, con);
-                int typeIDSlotsLength = typeIDSlots.length;
-                for (int i = 0; i < typeIDSlotsLength; i++) {
-                    int index = getIndexInBuffer(info, dynamicHubLayout.getTypeIDSlotsOffset(i));
-                    short value = typeIDSlots[i];
-                    bufferBytes.putShort(index, value);
+                /*
+                 * Write typeID slots for closed world. In the open world configuration information
+                 * is stored in a separate array since it has a variable length.
+                 */
+                if (SubstrateOptions.closedTypeWorld()) {
+                    short[] typeIDSlots = (short[]) heap.readInlinedField(dynamicHubLayout.closedWorldTypeCheckSlotsField, con);
+                    int typeIDSlotsLength = typeIDSlots.length;
+                    for (int i = 0; i < typeIDSlotsLength; i++) {
+                        int index = getIndexInBuffer(info, dynamicHubLayout.getClosedWorldTypeCheckSlotsOffset(i));
+                        short value = typeIDSlots[i];
+                        bufferBytes.putShort(index, value);
+                    }
                 }
 
                 /* Write vtable slots and length. */
@@ -369,7 +375,7 @@ public final class NativeImageHeapWriter {
                 }
 
                 idHashOffset = dynamicHubLayout.getIdentityHashOffset(vtableLength);
-                instanceFields = instanceFields.filter(field -> !dynamicHubLayout.isInlinedField(field));
+                instanceFields = instanceFields.filter(field -> !dynamicHubLayout.isIgnoredField(field));
 
             } else if (heap.getHybridLayout(clazz) != null) {
                 HybridLayout hybridLayout = heap.getHybridLayout(clazz);

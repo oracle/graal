@@ -119,18 +119,31 @@ public final class SubprocessTestUtils {
     }
 
     /**
+     * Marks the provided VM option for removal by adding a {@link #TO_REMOVE_PREFIX} prefix.
+     *
+     * @param option The VM option to be marked for removal.
+     */
+    public static String markForRemoval(String option) {
+        return TO_REMOVE_PREFIX + option;
+    }
+
+    /**
      * Executes action in a sub-process with filtered compilation failure options.
      *
      * @param testClass the test enclosing class.
      * @param action the test to execute.
-     * @param additionalVmOptions additional vm option added to java arguments. Prepend
-     *            {@link #TO_REMOVE_PREFIX} to remove item from existing vm options.
+     * @param prependedVmOptions VM options to prepend to {@link #getVMCommandLine}. Any element in
+     *            this list that is {@link #markForRemoval(String) marked for removal} will be
+     *            omitted from the command line instead. For example,
+     *            {@code markForRemoval("-Dfoo=bar")} will ensure {@code "-Dfoo=bar"} is not present
+     *            on the command line (unless {@code "-Dfoo=bar"} {@code prependedVmOptions}).
      * @return {@link Subprocess} if it's called by a test that is not executing in a sub-process.
      *         Returns {@code null} for a caller run in a sub-process.
      * @see SubprocessTestUtils
+     * @see #markForRemoval(String)
      */
-    public static Subprocess executeInSubprocess(Class<?> testClass, Runnable action, String... additionalVmOptions) throws IOException, InterruptedException {
-        return executeInSubprocess(testClass, action, true, additionalVmOptions);
+    public static Subprocess executeInSubprocess(Class<?> testClass, Runnable action, String... prependedVmOptions) throws IOException, InterruptedException {
+        return executeInSubprocess(testClass, action, true, prependedVmOptions);
     }
 
     /**
@@ -140,15 +153,19 @@ public final class SubprocessTestUtils {
      * @param action the test to execute.
      * @param failOnNonZeroExitCode if {@code true}, the test fails if the sub-process ends with a
      *            non-zero return value.
-     * @param additionalVmOptions additional vm option added to java arguments. Prepend
-     *            {@link #TO_REMOVE_PREFIX} to remove item from existing vm options.
+     * @param prependedVmOptions VM options to prepend to {@link #getVMCommandLine}. Any element in
+     *            this list that is {@link #markForRemoval(String) marked for removal} will be
+     *            omitted from the command line instead. For example,
+     *            {@code markForRemoval("-Dfoo=bar")} will ensure {@code "-Dfoo=bar"} is not present
+     *            on the command line (unless {@code "-Dfoo=bar"} {@code prependedVmOptions}).
      * @return {@link Subprocess} if it's called by a test that is not executing in a sub-process.
      *         Returns {@code null} for a caller run in a sub-process.
      * @see SubprocessTestUtils
+     * @see #markForRemoval(String)
      */
-    public static Subprocess executeInSubprocess(Class<?> testClass, Runnable action, boolean failOnNonZeroExitCode, String... additionalVmOptions) throws IOException, InterruptedException {
+    public static Subprocess executeInSubprocess(Class<?> testClass, Runnable action, boolean failOnNonZeroExitCode, String... prependedVmOptions) throws IOException, InterruptedException {
         AtomicReference<Subprocess> process = new AtomicReference<>();
-        newBuilder(testClass, action).failOnNonZeroExit(failOnNonZeroExitCode).prefixVmOption(additionalVmOptions).onExit((p) -> process.set(p)).run();
+        newBuilder(testClass, action).failOnNonZeroExit(failOnNonZeroExitCode).prefixVmOption(prependedVmOptions).onExit((p) -> process.set(p)).run();
         return process.get();
     }
 
@@ -353,11 +370,25 @@ public final class SubprocessTestUtils {
             this.runnable = run;
         }
 
+        /**
+         * Prepends VM options to {@link #getVMCommandLine}. Any element in this list that is
+         * {@link #markForRemoval(String) marked for removal} will be omitted from the command line
+         * instead. For example, {@code markForRemoval("-Dfoo=bar")} will ensure {@code "-Dfoo=bar"}
+         * is not present on the command line, unless {@code "-Dfoo=bar"} was specifically passed to
+         * {@link #prefixVmOption(String...)} or {@link #postfixVmOption(String...)}.
+         */
         public Builder prefixVmOption(String... options) {
             prefixVmArgs.addAll(List.of(options));
             return this;
         }
 
+        /**
+         * Appends VM options to {@link #getVMCommandLine}. Any element in this list that is
+         * {@link #markForRemoval(String) marked for removal} will be omitted from the command line
+         * instead. For example, {@code markForRemoval("-Dfoo=bar")} will ensure {@code "-Dfoo=bar"}
+         * is not present on the command line, unless {@code "-Dfoo=bar"} was specifically passed to
+         * {@link #prefixVmOption(String...)} or {@link #postfixVmOption(String...)}.
+         */
         public Builder postfixVmOption(String... options) {
             postfixVmArgs.addAll(List.of(options));
             return this;

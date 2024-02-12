@@ -30,8 +30,6 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.BitSet;
 
-import jdk.graal.compiler.options.OptionValues;
-
 import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -76,6 +74,7 @@ import com.oracle.graal.pointsto.util.ListUtils.UnsafeArrayList;
 import com.oracle.graal.pointsto.util.ListUtils.UnsafeArrayListClosable;
 import com.oracle.svm.common.meta.MultiMethod;
 
+import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -464,7 +463,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
             }
 
             /* Due to the test above the union set cannot be equal to any of the two arrays. */
-            assert !bb.extendedAsserts() || !Arrays.equals(resultObjects, s1.objects) && !Arrays.equals(resultObjects, s2.objects) : resultObjects;
+            assert !Arrays.equals(resultObjects, s1.objects) && !Arrays.equals(resultObjects, s2.objects) : resultObjects;
 
             /* Create the resulting exact type state. */
             SingleTypeState result = new ContextSensitiveSingleTypeState(bb, resultCanBeNull, s1.exactType(), resultObjects);
@@ -529,7 +528,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
              * Due to the test above and to the fact that TypeStateUtils.union checks if one array
              * contains the other the union set cannot be equal to s1's objects slice.
              */
-            assert !bb.extendedAsserts() || !Arrays.equals(unionObjects, s1ObjectsSlice) : unionObjects;
+            assert !Arrays.equals(unionObjects, s1ObjectsSlice) : unionObjects;
 
             /*
              * Replace the s1 objects slice of the same type as s2 with the union objects and create
@@ -853,9 +852,21 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
      */
 
     @Override
+    public TypeState doIntersection(PointsToAnalysis bb, SingleTypeState s1, SingleTypeState s2) {
+        assert TypeStateUtils.isContextInsensitiveTypeState(bb, s2) : "Current implementation limitation.";
+        return super.doIntersection(bb, s1, s2);
+    }
+
+    @Override
+    public TypeState doIntersection(PointsToAnalysis bb, SingleTypeState s1, MultiTypeState s2) {
+        assert TypeStateUtils.isContextInsensitiveTypeState(bb, s2) : "Current implementation limitation.";
+        return super.doIntersection(bb, s1, s2);
+    }
+
+    @Override
     public TypeState doIntersection(PointsToAnalysis bb, MultiTypeState s1, SingleTypeState s2) {
         /* See comment above for the limitation explanation. */
-        assert !bb.extendedAsserts() || TypeStateUtils.isContextInsensitiveTypeState(bb, s2) : "Current implementation limitation.";
+        assert TypeStateUtils.isContextInsensitiveTypeState(bb, s2) : "Current implementation limitation.";
 
         boolean resultCanBeNull = s1.canBeNull() && s2.canBeNull();
         if (s1.containsType(s2.exactType())) {
@@ -874,7 +885,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         ContextSensitiveMultiTypeState s1 = (ContextSensitiveMultiTypeState) state1;
         ContextSensitiveMultiTypeState s2 = (ContextSensitiveMultiTypeState) state2;
 
-        assert !bb.extendedAsserts() || TypeStateUtils.isContextInsensitiveTypeState(bb, s2) : "Current implementation limitation.";
+        assert TypeStateUtils.isContextInsensitiveTypeState(bb, s2) : "Current implementation limitation.";
 
         boolean resultCanBeNull = s1.canBeNull() && s2.canBeNull();
 
@@ -1033,8 +1044,19 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
      */
 
     @Override
-    public TypeState doSubtraction(PointsToAnalysis bb, MultiTypeState state1, SingleTypeState state2) {
+    public TypeState doSubtraction(PointsToAnalysis bb, SingleTypeState s1, SingleTypeState s2) {
+        assert TypeStateUtils.isContextInsensitiveTypeState(bb, s2) : "Current implementation limitation.";
+        return super.doSubtraction(bb, s1, s2);
+    }
 
+    @Override
+    public TypeState doSubtraction(PointsToAnalysis bb, SingleTypeState s1, MultiTypeState s2) {
+        assert TypeStateUtils.isContextInsensitiveTypeState(bb, s2) : "Current implementation limitation.";
+        return super.doSubtraction(bb, s1, s2);
+    }
+
+    @Override
+    public TypeState doSubtraction(PointsToAnalysis bb, MultiTypeState state1, SingleTypeState state2) {
         ContextSensitiveMultiTypeState s1 = (ContextSensitiveMultiTypeState) state1;
         ContextSensitiveSingleTypeState s2 = (ContextSensitiveSingleTypeState) state2;
 
@@ -1043,7 +1065,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
             /* s2 is contained in s1, so remove all objects of the same type from s1. */
 
             /* See comment above for the limitation explanation. */
-            assert !bb.extendedAsserts() || TypeStateUtils.isContextInsensitiveTypeState(bb, s2) : "Current implementation limitation.";
+            assert TypeStateUtils.isContextInsensitiveTypeState(bb, s2) : "Current implementation limitation.";
 
             /* Find the range of objects of s2.exactType() in s1. */
             ContextSensitiveMultiTypeState.Range typeRange = s1.findTypeRange(s2.exactType());

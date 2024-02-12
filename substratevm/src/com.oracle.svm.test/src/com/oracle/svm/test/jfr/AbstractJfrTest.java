@@ -99,7 +99,7 @@ public abstract class AbstractJfrTest {
         }
     }
 
-    private static List<RecordedEvent> getEvents(Path path, String[] testedEvents, boolean validateTestedEventsOnly) throws IOException {
+    protected static List<RecordedEvent> getEvents(Path path, String[] testedEvents, boolean validateTestedEventsOnly) throws IOException {
         /* Only return events that are in the list of tested events. */
         ArrayList<RecordedEvent> result = new ArrayList<>();
         for (RecordedEvent event : RecordingFile.readAllEvents(path)) {

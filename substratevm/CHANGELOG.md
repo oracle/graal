@@ -7,6 +7,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-49996) Ensure explicitly set image name (e.g., via `-o imagename`) is not accidentally overwritten by `-jar jarfile` option.
 * (GR-48683) Together with Red Hat, we added partial support for the JFR event `OldObjectSample`.
 * (GR-51851) Together with Red Hat, we added initial support for native memory tracking (`--enable-monitoring=nmt`).
+* (GR-47109) Together with Red Hat, we added support for JFR event throttling and the event `ObjectAllocationSample`.
 
 ## GraalVM for JDK 22 (Internal Version 24.0.0)
 * (GR-48304) Red Hat added support for the JFR event ThreadAllocationStatistics.

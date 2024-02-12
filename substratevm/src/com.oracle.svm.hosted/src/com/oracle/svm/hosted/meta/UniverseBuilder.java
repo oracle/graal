@@ -182,7 +182,11 @@ public class UniverseBuilder {
             HostedType serializableType = hUniverse.types.get(aMetaAccess.lookupJavaType(Serializable.class));
             typeCheckBuilder = new TypeCheckBuilder(allTypes, objectType, cloneableType, serializableType);
             typeCheckBuilder.buildTypeInformation(hUniverse);
-            typeCheckBuilder.calculateIDs();
+            if (SubstrateOptions.closedTypeWorld()) {
+                typeCheckBuilder.calculateClosedWorldTypeMetadata();
+            } else {
+                typeCheckBuilder.calculateOpenWorldTypeMetadata();
+            }
 
             collectDeclaredMethods();
             collectMonitorFieldInfo(aUniverse.getBigbang());
@@ -475,10 +479,19 @@ public class UniverseBuilder {
             assert fieldBytes >= intSize;
             reserve(usedBytes, minimumFirstFieldOffset, fieldBytes);
 
-            /* Each type check id slot is 2 bytes. */
-            int slotsSize = typeCheckBuilder.getNumTypeCheckSlots() * 2;
-            reserve(usedBytes, dynamicHubLayout.typeIDSlotsOffset, slotsSize);
-            firstInstanceFieldOffset = dynamicHubLayout.typeIDSlotsOffset + slotsSize;
+            if (SubstrateOptions.closedTypeWorld()) {
+                /* Each type check id slot is 2 bytes. */
+                int slotsSize = typeCheckBuilder.getNumTypeCheckSlots() * 2;
+                int typeIDSlotsBaseOffset = dynamicHubLayout.getClosedWorldTypeCheckSlotsOffset();
+                reserve(usedBytes, typeIDSlotsBaseOffset, slotsSize);
+                firstInstanceFieldOffset = typeIDSlotsBaseOffset + slotsSize;
+            } else {
+                /*
+                 * In the open world we do not inline the type checks into the dynamic hub since the
+                 * typeIDSlots array will be of variable length.
+                 */
+                firstInstanceFieldOffset = afterVtableLengthOffset;
+            }
 
         } else if (mustReserveArrayFields(clazz)) {
             int intSize = layout.sizeInBytes(JavaKind.Int);
@@ -665,6 +678,42 @@ public class UniverseBuilder {
         return alignedOffset - offset;
     }
 
+    /**
+     * Determines whether a static field does not need to be written to the native-image heap.
+     */
+    private static boolean skipStaticField(HostedField field) {
+        if (field.wrapped.isWritten() || MaterializedConstantFields.singleton().contains(field.wrapped)) {
+            return false;
+        }
+
+        if (!field.wrapped.isAccessed()) {
+            // if the field is never accessed then it does not need to be materialized
+            return true;
+        }
+
+        /*
+         * The field can be treated as a constant. Check if constant is available.
+         */
+
+        var interceptor = field.getWrapped().getFieldValueInterceptor();
+        if (interceptor == null) {
+            return true;
+        }
+
+        boolean available = field.isValueAvailable();
+        if (!available) {
+            /*
+             * Since the value is not yet available we must register it as a
+             * MaterializedConstantField. Note the field may be constant folded at a later point
+             * when the value becomes available. However, at this phase of the image building
+             * process this is not determinable.
+             */
+            MaterializedConstantFields.singleton().register(field.wrapped);
+        }
+
+        return available;
+    }
+
     private void layoutStaticFields() {
         ArrayList<HostedField> fields = new ArrayList<>();
         for (HostedField field : hUniverse.fields.values()) {
@@ -685,8 +734,8 @@ public class UniverseBuilder {
         List<HostedField>[] fieldsOfTypes = (List<HostedField>[]) new ArrayList<?>[hUniverse.getTypes().size()];
 
         for (HostedField field : fields) {
-            if (!field.wrapped.isWritten() && !MaterializedConstantFields.singleton().contains(field.wrapped)) {
-                // Constant, does not require memory.
+            if (skipStaticField(field)) {
+                // does not require memory.
             } else if (field.getStorageKind() == JavaKind.Object) {
                 field.setLocation(NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Object, nextObjectField)));
                 nextObjectField += 1;
@@ -1118,9 +1167,16 @@ public class UniverseBuilder {
 
             DynamicHub hub = type.getHub();
             SerializationRegistry s = ImageSingletons.lookup(SerializationRegistry.class);
-            hub.setData(layoutHelper, type.getTypeID(), monitorOffset, identityHashOffset, type.getTypeCheckStart(), type.getTypeCheckRange(),
-                            type.getTypeCheckSlot(), type.getTypeCheckSlots(), vtable, referenceMapIndex, type.isInstantiated(), canInstantiateAsInstance, isProxyClass,
+            hub.setSharedData(layoutHelper, monitorOffset, identityHashOffset,
+                            referenceMapIndex, type.isInstantiated(), canInstantiateAsInstance, isProxyClass,
                             s.isRegisteredForSerialization(type.getJavaClass()));
+            if (SubstrateOptions.closedTypeWorld()) {
+                hub.setClosedWorldData(vtable, type.getTypeID(), type.getTypeCheckStart(), type.getTypeCheckRange(),
+                                type.getTypeCheckSlot(), type.getClosedWorldTypeCheckSlots());
+            } else {
+                hub.setOpenWorldData(vtable, type.getTypeID(),
+                                type.getTypeIDDepth(), type.getNumClassTypes(), type.getNumInterfaceTypes(), type.getOpenWorldTypeIDSlots());
+            }
         }
     }
 

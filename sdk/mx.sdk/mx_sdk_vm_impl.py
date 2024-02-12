@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -2873,8 +2873,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                         'path': None,
                     })
                     # additional JDK libraries need to be in the launcher's directory
-                    destination = path_prefix + '/bin/' if mx.is_windows() else dirname(launcher_dest) + '/'
-                    layout.setdefault(destination, []).append({
+                    layout.setdefault(dirname(launcher_dest) + '/', []).append({
                         'source_type': 'dependency',
                         'dependency': dependency,
                         'exclude': [],
@@ -2922,8 +2921,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                         })
                         if not _skip_libraries(library_config):
                             # additional JDK libraries need to be in the library's directory
-                            destination = path_prefix + '/bin/' if mx.is_windows() else dirname(library_dest) + '/'
-                            layout.setdefault(destination, []).append({
+                            layout.setdefault(dirname(library_dest) + '/', []).append({
                                 'source_type': 'dependency',
                                 'dependency': dependency,
                                 'exclude': [],

@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -66,7 +67,7 @@ public final class KnownOffsetsFeature implements InternalFeature {
         DynamicHubLayout dynamicHubLayout = DynamicHubLayout.singleton();
         int vtableBaseOffset = dynamicHubLayout.vTableOffset();
         int vtableEntrySize = dynamicHubLayout.vTableSlotSize;
-        int typeIDSlotsOffset = dynamicHubLayout.typeIDSlotsOffset;
+        int typeIDSlotsOffset = SubstrateOptions.closedTypeWorld() ? dynamicHubLayout.getClosedWorldTypeCheckSlotsOffset() : -1;
 
         int componentHubOffset = findFieldOffset(access, DynamicHub.class, "componentType");
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,35 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.meta;
+package com.oracle.svm.core.headers;
 
-import jdk.graal.compiler.code.CompilationResult;
-import jdk.graal.compiler.code.DisassemblerProvider;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.serviceprovider.ServiceProvider;
+import com.oracle.svm.core.Uninterruptible;
 
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
-
-/**
- * HotSpot implementation of {@link DisassemblerProvider}.
- */
-@ServiceProvider(DisassemblerProvider.class)
-public class HotSpotDisassemblerProvider implements DisassemblerProvider {
-
-    @Override
-    public String disassembleCompiledCode(OptionValues options, CodeCacheProvider codeCache, CompilationResult compResult) {
-        return null;
-    }
-
-    @Override
-    public String disassembleInstalledCode(CodeCacheProvider codeCache, CompilationResult compResult, InstalledCode code) {
-        return ((HotSpotCodeCacheProvider) codeCache).disassemble(code);
-    }
-
-    @Override
-    public String getName() {
-        return "hsdis";
-    }
+public interface LibMSupport {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    double log(double value);
 }

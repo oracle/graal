@@ -126,7 +126,7 @@ public class JfrManager {
 
         if (oldObjectQueueSize != null) {
             if (oldObjectQueueSize >= 0) {
-                SubstrateJVM.getJfrOldObjectProfiler().configure(oldObjectQueueSize);
+                SubstrateJVM.getOldObjectProfiler().configure(oldObjectQueueSize);
             } else {
                 throw argumentParsingFailed(FlightRecorderOptionsArgument.OldObjectQueueSize.getCmdLineKey() + " must be greater or equal 0.");
             }
@@ -167,7 +167,7 @@ public class JfrManager {
 
     private static void parseFlightRecorderLogging() {
         String option = SubstrateOptions.FlightRecorderLogging.getValue();
-        SubstrateJVM.getJfrLogging().parseConfiguration(option);
+        SubstrateJVM.getLogging().parseConfiguration(option);
     }
 
     private static void periodicEventSetup() throws SecurityException {
