@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,44 +41,248 @@
 package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+
+import org.graalvm.polyglot.Context;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.ContextThreadLocal;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeParser;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.Instrumentation;
+import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.bytecode.test.AbstractQuickeningTest;
+import com.oracle.truffle.api.bytecode.test.DebugBytecodeRootNode;
+import com.oracle.truffle.api.bytecode.test.basic_interpreter.InstrumentationTest.InstrumentationTestRootNode.PointInstrumentation1;
+import com.oracle.truffle.api.bytecode.test.basic_interpreter.InstrumentationTest.InstrumentationTestRootNode.PointInstrumentation2;
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.instrumentation.ProvidedTags;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 
-@RunWith(Parameterized.class)
-public class InstrumentationTest extends AbstractBasicInterpreterTest {
+/**
+ * Showcases how to implement the python set trace func feature.
+ */
+public class InstrumentationTest extends AbstractQuickeningTest {
+
+    private static InstrumentationTestRootNode parse(BytecodeParser<InstrumentationTestRootNodeGen.Builder> parser) {
+        BytecodeRootNodes<InstrumentationTestRootNode> nodes = InstrumentationTestRootNodeGen.create(BytecodeConfig.WITH_SOURCE, parser);
+        return nodes.getNodes().get(nodes.getNodes().size() - 1);
+    }
+
+    Context context;
+
+    @Before
+    public void setup() {
+        context = Context.create(BytecodeInstrumentationTestLanguage.ID);
+        context.initialize(BytecodeInstrumentationTestLanguage.ID);
+        context.enter();
+    }
+
+    @After
+    public void tearDown() {
+        context.close();
+    }
 
     @Test
-    public void testInstrumentation() {
-        // goto lbl;
-        // return 0;
-        // lbl:
-        // return 1;
+    public void testPointInstrumentation1() {
+        InstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(BytecodeInstrumentationTestLanguage.REF.get(null));
 
-        RootCallTarget root = parse("branchForward", b -> {
-            b.beginRoot(LANGUAGE);
+            b.emitPointInstrumentation1();
+
+            b.beginRunAsserts();
+            b.emitLoadConstant((Consumer<ThreadLocalData>) (d) -> {
+                assertTrue(d.events.isEmpty());
+            });
+            b.endRunAsserts();
+
+            b.beginEnableInstrumentation();
+            b.emitLoadConstant(PointInstrumentation1.class);
+            b.endEnableInstrumentation();
+
+            b.emitPointInstrumentation1();
+
+            b.beginRunAsserts();
+            b.emitLoadConstant((Consumer<ThreadLocalData>) (d) -> {
+                assertEquals(1, d.events.size());
+                assertEquals(PointInstrumentation1.class, d.events.get(0));
+            });
+            b.endRunAsserts();
 
             b.beginReturn();
-            b.beginTag(ExpressionTag.class);
-            b.beginAddOperation();
-            b.beginTag(ExpressionTag.class);
-            b.emitLoadConstant(1L);
-            b.endTag();
-            b.beginTag(ExpressionTag.class);
-            b.emitLoadConstant(2L);
-            b.endTag();
-            b.endAddOperation();
-            b.endTag();
+            b.emitLoadConstant(42);
             b.endReturn();
 
             b.endRoot();
         });
+        assertEquals(42, node.getCallTarget().call());
+    }
 
-        assertEquals(3L, root.call());
+    @Test
+    public void testPointInstrumentation2() {
+        InstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(BytecodeInstrumentationTestLanguage.REF.get(null));
+
+            b.emitPointInstrumentation1();
+            b.emitPointInstrumentation2();
+
+            b.beginRunAsserts();
+            b.emitLoadConstant((Consumer<ThreadLocalData>) (d) -> {
+                assertTrue(d.events.isEmpty());
+            });
+            b.endRunAsserts();
+
+            b.beginEnableInstrumentation();
+            b.emitLoadConstant(PointInstrumentation1.class);
+            b.endEnableInstrumentation();
+
+            b.emitPointInstrumentation1();
+            b.emitPointInstrumentation2();
+
+            b.beginRunAsserts();
+            b.emitLoadConstant((Consumer<ThreadLocalData>) (d) -> {
+                assertEquals(1, d.events.size());
+                assertEquals(PointInstrumentation1.class, d.events.get(0));
+            });
+            b.endRunAsserts();
+
+            b.beginEnableInstrumentation();
+            b.emitLoadConstant(PointInstrumentation2.class);
+            b.endEnableInstrumentation();
+
+            b.emitPointInstrumentation1();
+            b.emitPointInstrumentation2();
+            b.emitPointInstrumentation1();
+            b.emitPointInstrumentation2();
+
+            b.beginRunAsserts();
+            b.emitLoadConstant((Consumer<ThreadLocalData>) (d) -> {
+                assertEquals(5, d.events.size());
+                assertEquals(PointInstrumentation1.class, d.events.get(0));
+                assertEquals(PointInstrumentation1.class, d.events.get(1));
+                assertEquals(PointInstrumentation2.class, d.events.get(2));
+                assertEquals(PointInstrumentation1.class, d.events.get(3));
+                assertEquals(PointInstrumentation2.class, d.events.get(4));
+            });
+            b.endRunAsserts();
+
+            b.beginReturn();
+            b.emitLoadConstant(42);
+            b.endReturn();
+
+            b.endRoot();
+        });
+        assertEquals(42, node.getCallTarget().call());
+    }
+
+    @GenerateBytecode(languageClass = BytecodeInstrumentationTestLanguage.class, //
+                    enableYield = true, enableSerialization = true, //
+                    enableQuickening = true, //
+                    enableUncachedInterpreter = true, enableInstrumentation = true, //
+                    boxingEliminationTypes = {long.class, int.class, boolean.class})
+    public abstract static class InstrumentationTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
+
+        protected InstrumentationTestRootNode(TruffleLanguage<?> language,
+                        FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @Operation
+        static final class EnableInstrumentation {
+
+            @Specialization
+            @TruffleBoundary
+            public static void doDefault(Class<?> instrumentationClass,
+                            @Bind("$root") InstrumentationTestRootNode root) {
+                root.getRootNodes().update(InstrumentationTestRootNodeGen.newConfigBuilder().addInstrumentations(instrumentationClass).build());
+            }
+
+        }
+
+        @Operation
+        static final class RunAsserts {
+
+            @SuppressWarnings("unchecked")
+            @Specialization
+            @TruffleBoundary
+            public static void doDefault(Consumer<?> consumer,
+                            @Bind("$root") InstrumentationTestRootNode root) {
+                ((Consumer<ThreadLocalData>) consumer).accept(root.getLanguage(BytecodeInstrumentationTestLanguage.class).threadLocal.get());
+            }
+
+        }
+
+        @Instrumentation
+        static final class PointInstrumentation1 {
+
+            @Specialization
+            public static void doDefault(@Bind("$root") InstrumentationTestRootNode root) {
+                root.getLanguage(BytecodeInstrumentationTestLanguage.class).threadLocal.get().add(PointInstrumentation1.class, null);
+            }
+
+        }
+
+        @Instrumentation
+        static final class PointInstrumentation2 {
+
+            @Specialization
+            public static void doDefault(@Bind("$root") InstrumentationTestRootNode root) {
+                root.getLanguage(BytecodeInstrumentationTestLanguage.class).threadLocal.get().add(PointInstrumentation2.class, null);
+            }
+
+        }
+
+        @Instrumentation
+        static final class InstrumentationOperandReturn {
+
+            @Specialization
+            public static Object doDefault(Object operand, @Bind("$root") InstrumentationTestRootNode root) {
+                root.getLanguage(BytecodeInstrumentationTestLanguage.class).threadLocal.get().add(InstrumentationOperandReturn.class, operand);
+                return operand;
+            }
+        }
+
+    }
+
+    static class ThreadLocalData {
+
+        final List<Class<?>> events = new ArrayList<>();
+        final List<Object> operands = new ArrayList<>();
+
+        @TruffleBoundary
+        void add(Class<?> c, Object operand) {
+            events.add(c);
+            operands.add(operand);
+        }
+
+    }
+
+    @TruffleLanguage.Registration(id = BytecodeInstrumentationTestLanguage.ID)
+    @ProvidedTags(StandardTags.ExpressionTag.class)
+    public static class BytecodeInstrumentationTestLanguage extends TruffleLanguage<Object> {
+        public static final String ID = "bytecode_BytecodeInstrumentationTestLanguage";
+
+        final ContextThreadLocal<ThreadLocalData> threadLocal = this.locals.createContextThreadLocal((c, t) -> new ThreadLocalData());
+
+        @Override
+        protected Object createContext(Env env) {
+            return new Object();
+        }
+
+        static final LanguageReference<BytecodeInstrumentationTestLanguage> REF = LanguageReference.create(BytecodeInstrumentationTestLanguage.class);
     }
 
 }

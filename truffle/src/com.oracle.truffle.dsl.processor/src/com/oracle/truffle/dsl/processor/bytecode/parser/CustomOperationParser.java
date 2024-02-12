@@ -211,7 +211,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                                 getSimpleName(types.Instrumentation),
                                 getSimpleName(types.Variadic)));
             }
-            operation.isTransparent = true;
         }
 
         if (customOperation.hasErrors()) {
