@@ -1319,6 +1319,7 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Te
         if "mpegaudio" in benchmarks:
             # GR-51015: run the benchmark on one thread
             # as a workaround for mpegaudio concurrency issues.
+            mx.log("Setting benchmark threads to 1 due to race conditions in mpegaudio benchmark")
             runArgs += ["-bt", "1"]
 
         # The startup benchmarks are executed by spawning a new JVM. However, this new VM doesn't
