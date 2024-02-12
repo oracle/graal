@@ -1079,7 +1079,7 @@ class NativeImageVM(GraalVm):
         elif stage_to_run == "run":
             self.run_stage_run(out)
         else:
-            assert False, f"Unknown stage {stage_to_run}"
+            raise ValueError(f"Unknown stage {stage_to_run}")
 
 
 class AnalysisReportJsonFileRule(mx_benchmark.JsonBaseRule):

@@ -455,8 +455,10 @@ class NativeImageBenchmarkMixin(object):
             host_vm_suffix = "-agent"
         elif stage in ["instrument-image", "instrument-run"]:
             host_vm_suffix = "-instrument"
-        else:
+        elif stage in ["image", "run"]:
             host_vm_suffix = ""
+        else:
+            raise ValueError(f"Unknown stage {stage}")
 
         for dp in dps:
             dp["host-vm-config"] += host_vm_suffix
