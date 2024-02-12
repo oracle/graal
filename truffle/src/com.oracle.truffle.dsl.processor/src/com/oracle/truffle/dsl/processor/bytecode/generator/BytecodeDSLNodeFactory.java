@@ -79,6 +79,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -5173,6 +5174,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             type.add(createParseInstruction());
             type.add(createGetSourceSection());
             type.add(createFindSourceLocation());
+            type.add(createFindInstructionIndex());
             type.add(createFindInstruction());
 
             if (model.isBytecodeUpdatable()) {
@@ -5227,14 +5229,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
         }
 
-        private CodeExecutableElement createToStableBytecodeIndex() {
-            CodeExecutableElement translate = new CodeExecutableElement(Set.of(PRIVATE, FINAL), type(int.class), "toStableBytecodeIndex");
-            translate.addParameter(new CodeVariableElement(arrayOf(type(short.class)), "bc"));
-            translate.addParameter(new CodeVariableElement(type(int.class), "searchBci"));
-            CodeTreeBuilder b = translate.createBuilder();
-
+        // toStableBytecodeIndex and findInstructionIndex use the same traversal logic. This helper
+        // emits the code for both functions. Assumes searchBci and bc exist.
+        private void emitStableBytecodeSearch(CodeTreeBuilder b, String resultVariable, Function<TranslationInstructionGroup, Integer> increment) {
             b.declaration(type(int.class), "bci", "0");
-            b.declaration(type(int.class), "stableBci", "0");
+            b.declaration(type(int.class), resultVariable, "0");
 
             b.startWhile().string("bci != searchBci && bci < bc.length").end().startBlock();
             b.startSwitch().string(readBc("bci")).end().startBlock();
@@ -5255,7 +5254,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("bci += " + group.instructionLength);
                 } else {
                     b.statement("bci += " + group.instructionLength);
-                    b.statement("stableBci += " + group.instructionLength);
+                    b.statement(resultVariable + " += " + increment.apply(group));
                 }
                 b.statement("break");
                 b.end();
@@ -5273,14 +5272,19 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.tree(GeneratorUtils.createShouldNotReachHere("Could not translate bytecode index."));
             b.end();
 
-            b.statement("return stableBci");
+            b.startReturn().string(resultVariable).end();
+        }
 
+        private CodeExecutableElement createToStableBytecodeIndex() {
+            CodeExecutableElement translate = new CodeExecutableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "toStableBytecodeIndex");
+            translate.addParameter(new CodeVariableElement(arrayOf(type(short.class)), "bc"));
+            translate.addParameter(new CodeVariableElement(type(int.class), "searchBci"));
+            emitStableBytecodeSearch(translate.createBuilder(), "stableBci", g -> g.instructionLength);
             return translate;
         }
 
         private CodeExecutableElement createFromStableBytecodeIndex() {
-
-            CodeExecutableElement translate = new CodeExecutableElement(Set.of(PRIVATE, FINAL), type(int.class), "fromStableBytecodeIndex");
+            CodeExecutableElement translate = new CodeExecutableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "fromStableBytecodeIndex");
             translate.addParameter(new CodeVariableElement(arrayOf(type(short.class)), "bc"));
             translate.addParameter(new CodeVariableElement(type(int.class), "stableSearchBci"));
             CodeTreeBuilder b = translate.createBuilder();
@@ -5492,6 +5496,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return withTruffleBoundary(ex);
         }
 
+        private CodeExecutableElement createFindInstructionIndex() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findInstructionIndex");
+            ex.renameArguments("searchBci");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.declaration(arrayOf(type(short.class)), "bc", "this.bytecodes");
+            emitStableBytecodeSearch(b, "instructionIndex", g -> 1);
+            return ex;
+        }
+
         private CodeExecutableElement createFindInstruction() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findInstruction");
             ex.renameArguments("bci");
@@ -5669,12 +5682,34 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             if (useFrameForBytecodeIndex()) {
-                b.startReturn();
-                b.startCall("frameInstance", "getFrame");
-                b.staticReference(types.FrameInstance_FrameAccess, "READ_ONLY");
-                b.end();
-                b.string(".getInt(" + BCI_IDX + ")");
-                b.end();
+                CodeTree getFrame = CodeTreeBuilder.createBuilder() //
+                                .startCall("frameInstance", "getFrame") //
+                                .staticReference(types.FrameInstance_FrameAccess, "READ_ONLY") //
+                                .end().build();
+                if (model.enableYield) {
+                    /**
+                     * If the frame is from a continuation, the bci will be in the locals frame,
+                     * which is stored in slot COROUTINE_FRAME_IDX.
+                     */
+                    b.declaration(types.Frame, "frame", getFrame);
+                    b.startDeclaration(types.Frame, "coroutineFrame");
+                    b.cast(types.Frame).startCall("frame.getObject").string(COROUTINE_FRAME_IDX).end();
+                    b.end();
+
+                    b.startIf().string("coroutineFrame != null").end().startBlock();
+                    b.startAssign("frame").string("coroutineFrame").end();
+                    b.end();
+
+                    b.startReturn();
+                    b.startCall("frame", "getInt");
+                    b.string(BCI_IDX);
+                    b.end(2);
+                } else {
+                    b.startReturn();
+                    b.startCall(getFrame, "getInt");
+                    b.string(BCI_IDX);
+                    b.end(2);
+                }
             } else {
                 b.startReturn().string("-1").end();
             }

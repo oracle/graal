@@ -67,6 +67,7 @@ import com.oracle.truffle.api.bytecode.test.DebugBytecodeRootNode;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -196,7 +197,7 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     static final class ThrowOperation {
         @Specialization
         public static Object perform(long value,
-                        // TODO: passing the actual bci breaks compiler tests because of how we
+                        // TODO passing the actual bci breaks compiler tests because of how we
                         // instantiate a location node from the bci
                         @SuppressWarnings("unused") @Bind("$location") BytecodeLocation bci,
                         @Bind("$root") Node node) {
@@ -275,7 +276,7 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         }
 
         @Specialization(replaces = {"doRootNode"})
-        public static Object doRootNodeUncached(BasicInterpreter root, @Variadic Object[] args, @Cached IndirectCallNode callNode) {
+        public static Object doRootNodeUncached(BasicInterpreter root, @Variadic Object[] args, @Shared @Cached IndirectCallNode callNode) {
             return callNode.call(root.getCallTarget(), args);
         }
 
@@ -286,7 +287,7 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         }
 
         @Specialization(replaces = {"doClosure"})
-        public static Object doClosureUncached(TestClosure root, @Variadic Object[] args, @Cached IndirectCallNode callNode) {
+        public static Object doClosureUncached(TestClosure root, @Variadic Object[] args, @Shared @Cached IndirectCallNode callNode) {
             assert args.length == 0 : "not implemented";
             return callNode.call(root.getCallTarget(), root.getFrame());
         }
@@ -297,7 +298,7 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         }
 
         @Specialization(replaces = {"doCallTarget"})
-        public static Object doCallTargetUncached(CallTarget callTarget, @Variadic Object[] args, @Cached IndirectCallNode callNode) {
+        public static Object doCallTargetUncached(CallTarget callTarget, @Variadic Object[] args, @Shared @Cached IndirectCallNode callNode) {
             return callNode.call(callTarget, args);
         }
 
@@ -384,6 +385,16 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
                 return null;
             });
             return bytecodeIndices;
+        }
+    }
+
+    @Operation
+    public static final class AppendInstructionIndex {
+        @SuppressWarnings("unchecked")
+        @Specialization
+        @TruffleBoundary
+        public static void doAppend(List<?> indices, @Bind("$location") BytecodeLocation location) {
+            ((List<Integer>) indices).add(location.findInstructionIndex());
         }
     }
 

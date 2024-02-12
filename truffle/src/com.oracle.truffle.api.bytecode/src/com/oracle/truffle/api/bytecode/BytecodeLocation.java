@@ -85,6 +85,27 @@ public final class BytecodeLocation {
     }
 
     /**
+     * Returns the {@link BytecodeNode} associated with this location. The
+     * {@link #getBytecodeIndex() bytecode index} is only valid for the returned node.
+     *
+     * @since 24.1
+     */
+    public BytecodeNode getBytecodeNode() {
+        return bytecodes;
+    }
+
+    /**
+     * Computes a logical instruction index. Unlike the bytecode index, the instruction index is
+     * stable for a given point in the program across different bytecode configurations. Thus, the
+     * instruction index is the recommended way to expose a logical "location" to the user.
+     *
+     * @since 24.1
+     */
+    public int findInstructionIndex() {
+        return bytecodes.findInstructionIndex(bci);
+    }
+
+    /**
      * @since 24.1
      */
     @Override
@@ -107,19 +128,6 @@ public final class BytecodeLocation {
     }
 
     /**
-     * Computes a logical instruction index. Unlike the bytecode index, the instruction index is
-     * stable for a given point in the program. Thus, it can be used to impose a total ordering on
-     * instructions.
-     *
-     * @since 24.1
-     */
-    @SuppressWarnings("static-method")
-    public int getInstructionIndex() {
-        // TODO implement
-        throw new UnsupportedOperationException("not implemented");
-    }
-
-    /**
      * Dumps the bytecode, highlighting this location in the result.
      *
      * @return dump string
@@ -135,7 +143,7 @@ public final class BytecodeLocation {
      *
      * @since 24.1
      */
-    public SourceSection getSourceLocation() {
+    public SourceSection findSourceLocation() {
         return bytecodes.findSourceLocation(bci);
     }
 
@@ -144,7 +152,7 @@ public final class BytecodeLocation {
      *
      * @since 24.1
      */
-    public Instruction getInstruction() {
+    public Instruction findInstruction() {
         return bytecodes.findInstruction(bci);
     }
 
@@ -153,14 +161,14 @@ public final class BytecodeLocation {
      *
      * @since 24.1
      */
-    public List<ExceptionHandler> getExceptionHandlers() {
+    public List<ExceptionHandler> findExceptionHandlers() {
         var handlers = bytecodes.getIntrospectionData().getExceptionHandlers();
         if (handlers == null) {
             return null;
         }
         for (ExceptionHandler handler : handlers) {
             if (bci >= handler.getStartIndex() && bci < handler.getEndIndex()) {
-                // TODO: this implementation is incomplete
+                // TODO this implementation is incomplete
                 // multiple handlers? inner most?
                 return List.of(handler);
             }
@@ -173,7 +181,7 @@ public final class BytecodeLocation {
      *
      * @since 24.1
      */
-    public SourceInformation getSourceInformation() {
+    public SourceInformation findSourceInformation() {
         var sourceInfos = bytecodes.getIntrospectionData().getSourceInformation();
         if (sourceInfos == null) {
             return null;
@@ -186,16 +194,6 @@ public final class BytecodeLocation {
         }
         return null;
 
-    }
-
-    /**
-     * Returns the {@link BytecodeNode} associated with this location. The
-     * {@link #getBytecodeIndex() bytecode index} is only valid for the returned node.
-     *
-     * @since 24.1
-     */
-    public BytecodeNode getBytecodeNode() {
-        return bytecodes;
     }
 
     /**

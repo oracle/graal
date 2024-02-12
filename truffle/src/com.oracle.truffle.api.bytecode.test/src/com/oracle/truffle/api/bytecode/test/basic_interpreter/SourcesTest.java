@@ -92,14 +92,14 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         BytecodeLocation location1 = instructions.get(0).getLocation();
         BytecodeLocation location2 = instructions.get(1).getLocation();
 
-        assertEquals(location1.getSourceLocation().getSource(), source);
-        assertEquals(location1.getSourceLocation().getCharIndex(), 7);
-        assertEquals(location1.getSourceLocation().getCharLength(), 1);
+        assertEquals(location1.findSourceLocation().getSource(), source);
+        assertEquals(location1.findSourceLocation().getCharIndex(), 7);
+        assertEquals(location1.findSourceLocation().getCharLength(), 1);
 
         // return
-        assertEquals(location2.getSourceLocation().getSource(), source);
-        assertEquals(location2.getSourceLocation().getCharIndex(), 0);
-        assertEquals(location2.getSourceLocation().getCharLength(), 8);
+        assertEquals(location2.findSourceLocation().getSource(), source);
+        assertEquals(location2.findSourceLocation().getCharIndex(), 0);
+        assertEquals(location2.findSourceLocation().getCharLength(), 8);
     }
 
     @Test
@@ -117,8 +117,8 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         BytecodeLocation location1 = instructions.get(0).getLocation();
         BytecodeLocation location2 = instructions.get(1).getLocation();
 
-        assertNull(location1.getSourceLocation());
-        assertNull(location2.getSourceLocation());
+        assertNull(location1.findSourceLocation());
+        assertNull(location2.findSourceLocation());
     }
 
     @Test
@@ -227,7 +227,7 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         List<Instruction> instructions = root.getBytecodeNode().getIntrospectionData().getInstructions();
         for (int i = 0; i < expected.length; i++) {
             BytecodeLocation location = instructions.get(i).getLocation();
-            SourceSection sourceSection = location.getSourceLocation();
+            SourceSection sourceSection = location.findSourceLocation();
             if (expected[i] == null) {
                 assertEquals("Mismatch at bci " + location, null, sourceSection);
             } else {
@@ -382,8 +382,8 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         assertEquals(node.getSourceSection().getCharLength(), 8);
 
         List<Instruction> instructions = node.getBytecodeNode().getIntrospectionData().getInstructions();
-        SourceSection sourceSection0 = instructions.get(0).getLocation().getSourceLocation();
-        SourceSection sourceSection1 = instructions.get(1).getLocation().getSourceLocation();
+        SourceSection sourceSection0 = instructions.get(0).getLocation().findSourceLocation();
+        SourceSection sourceSection1 = instructions.get(1).getLocation().findSourceLocation();
 
         // load constant
         assertEquals(sourceSection0.getSource(), source);

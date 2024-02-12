@@ -157,7 +157,7 @@ public class HookTest {
         } catch (MyException ex) {
             BytecodeLocation location = ex.getBytecodeLocation();
             assertNotNull(location);
-            assertTrue(location.getInstruction().getName().contains("Throw"));
+            assertTrue(location.findInstruction().getName().contains("Throw"));
         }
     }
 
@@ -180,7 +180,7 @@ public class HookTest {
         } catch (MyException ex) {
             BytecodeLocation location = ex.getBytecodeLocation();
             assertNotNull(location);
-            assertTrue(location.getInstruction().getName().contains("ThrowStackOverflow"));
+            assertTrue(location.findInstruction().getName().contains("ThrowStackOverflow"));
         }
     }
 
@@ -218,7 +218,7 @@ public class HookTest {
         } catch (MyException ex) {
             childThrowLocation = ex.getBytecodeLocation();
             assertNotNull(childThrowLocation);
-            assertTrue(childThrowLocation.getInstruction().getName().contains("Throw"));
+            assertTrue(childThrowLocation.findInstruction().getName().contains("Throw"));
         }
 
         BytecodeLocation rootThrowLocation = null;
@@ -228,7 +228,7 @@ public class HookTest {
         } catch (MyException ex) {
             rootThrowLocation = ex.getBytecodeLocation();
             assertNotNull(rootThrowLocation);
-            assertTrue(rootThrowLocation.getInstruction().getName().contains("Invoke"));
+            assertTrue(rootThrowLocation.findInstruction().getName().contains("Invoke"));
         }
 
         assertNotEquals(childThrowLocation, rootThrowLocation);
@@ -300,7 +300,7 @@ public class HookTest {
             assertEquals("internal error", ex.result);
             BytecodeLocation location = ex.getBytecodeLocation();
             assertNotNull(location);
-            assertTrue(location.getInstruction().getName().contains("ThrowControlFlowInternalError"));
+            assertTrue(location.findInstruction().getName().contains("ThrowControlFlowInternalError"));
         }
     }
 
@@ -328,7 +328,7 @@ public class HookTest {
             assertEquals(42, ex.result);
             BytecodeLocation location = ex.getBytecodeLocation();
             assertNotNull(location);
-            assertTrue(location.getInstruction().getName().contains("ThrowControlFlowTruffleException"));
+            assertTrue(location.findInstruction().getName().contains("ThrowControlFlowTruffleException"));
         }
     }
 
