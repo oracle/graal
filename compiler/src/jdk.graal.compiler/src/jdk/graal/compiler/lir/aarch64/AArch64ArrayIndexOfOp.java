@@ -686,7 +686,15 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
          * @formatter:on
         */
         masm.mov(result, -1);   // Return for empty strings
-        masm.cbz(32, arrayLength, done);
+        masm.subs(32, searchLength, arrayLength, fromIndex);
+        if (findTwoConsecutive) {
+            /*
+             * Because one is trying to find two consecutive elements, the search length is in
+             * effect one less
+             */
+            masm.subs(32, searchLength, searchLength, 1);
+        }
+        masm.branchConditionally(ConditionFlag.LE, done);
 
         /* Load address of first array element */
         masm.add(64, baseAddress, asRegister(arrayPtrValue), asRegister(arrayOffsetValue));
@@ -695,15 +703,6 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
          * Search element-by-element for small arrays (with search space size of less than 32 bytes,
          * i.e., 4 UTF-16 or 8 Latin1 elements) else search chunk-by-chunk.
          */
-        masm.sub(32, searchLength, arrayLength, fromIndex);
-        if (findTwoConsecutive) {
-            /*
-             * Because one is trying to find two consecutive elements, the search length is in
-             * effect one less
-             */
-            masm.sub(32, searchLength, searchLength, 1);
-        }
-
         Label searchByChunk = new Label();
         int chunkByteSize = getSIMDLoopChunkSize();
         masm.compare(32, searchLength, chunkByteSize / stride.value);
