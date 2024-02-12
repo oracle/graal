@@ -87,30 +87,15 @@ public class HostedValuesProvider {
     }
 
     public JavaConstant forObject(Object object) {
-        return GraalAccess.getOriginalProviders().getSnippetReflection().forObject(object);
+        return GraalAccess.getOriginalSnippetReflection().forObject(object);
     }
 
     public <T> T asObject(Class<T> type, JavaConstant constant) {
-        return GraalAccess.getOriginalProviders().getSnippetReflection().asObject(type, constant);
+        return GraalAccess.getOriginalSnippetReflection().asObject(type, constant);
     }
 
-    /**
-     * Intercept the HotSpotObjectConstant and if it wraps an {@link ImageHeapConstant} unwrap it
-     * and return the original constant. The ImageHeapObject likely comes from reading a field of a
-     * normal object that is referencing a simulated object. The originalConstantReflection provider
-     * is not aware of simulated constants, and it always wraps them into a HotSpotObjectConstant
-     * when reading fields.
-     * </p>
-     * This method will return null if the input constant is null.
-     */
+    /** Hook to allow subclasses to intercept hosted constants. */
     public JavaConstant interceptHosted(JavaConstant constant) {
-        if (constant != null && constant.getJavaKind().isObject() && !constant.isNull()) {
-            Object original = asObject(Object.class, constant);
-            if (original instanceof ImageHeapConstant heapConstant) {
-                return heapConstant;
-            }
-        }
-        /* Return the input constant. */
         return constant;
     }
 }
