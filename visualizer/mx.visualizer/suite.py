@@ -71,9 +71,9 @@ suite = {
       "license" : "Apache-2.0"
     },
 
-    "NETBEANS_14" : {
-      "digest" : "sha512:004b943a2542bd98784a3821411da3f0b048b9b101cc4699a96b1bf7789c654f4ad6c73a75d51a9cb0f436c421ce32baa0ad440efe461bd3e6a8e5e8e927f5c6",
-      "urls" : ["https://archive.apache.org/dist/netbeans/netbeans/14/netbeans-14-bin.zip"],
+    "NETBEANS_20" : {
+      "digest" : "sha512:59eb2b0e7887f0d962d180c4004a81cf752f12a2b9456c59417daf90a312877f697500580c53566a220bde2a49df2b95ba1e4dedb4cf59b49bdacdc47c98745f",
+      "urls" : ["https://archive.apache.org/dist/netbeans/netbeans/20/netbeans-20-bin.zip"],
     },
   },
 

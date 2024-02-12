@@ -160,7 +160,7 @@ class NetBeansBuildTask(mx.BuildTask):
 
 def run_ant(args, resolve=True, **kwargs):
     # download the bundle using mx
-    platform_lib = mx.library('NETBEANS_14').get_path(resolve=resolve)
+    platform_lib = mx.library('NETBEANS_20').get_path(resolve=resolve)
 
     # override the download URL to ensure it's taken from mx
     return mx.run(['ant', '-Dide.dist.url=file:' + platform_lib] + args, **kwargs)
@@ -216,7 +216,7 @@ def test(args):
         Single arguments is used as test java class in IGV
     """
     run_ant(['patch-test', '-silent'], nonZeroIsFatal=True, cwd=igvDir)
-    add = ['-Dtest.run.args=-ea', '-Djava.awt.headless=true']
+    add = ['-Dtest.run.args=-ea --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.desktop/sun.awt=ALL-UNNAMED', '-Djava.awt.headless=true']
     if len(args) == 1:
         add += ['-Dtest.includes=**/*' + args[0] + '.class']
     elif len(args) != 0:
