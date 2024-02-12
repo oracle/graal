@@ -40,6 +40,7 @@ import com.oracle.svm.core.jdk.management.ManagementAgentModule;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.LogUtils;
@@ -76,6 +77,13 @@ public final class VMInspectionOptions {
                     "For example: '--" + ENABLE_MONITORING_OPTION + "=" + MONITORING_HEAPDUMP_NAME + "," + MONITORING_JFR_NAME + "'.", type = OptionType.User) //
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableMonitoringFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter(),
                     VMInspectionOptions::validateEnableMonitoringFeatures);
+
+    @Option(help = "Dumps all runtime compiled methods on SIGUSR2.", type = OptionType.User) //
+    public static final HostedOptionKey<Boolean> DumpRuntimeCompilationOnSignal = new HostedOptionKey<>(false);
+
+    // TEMP (chaeubl): change default to true.
+    @Option(help = "Print native memory tracking statistics on shutdown.", type = OptionType.User) //
+    public static final RuntimeOptionKey<Boolean> PrintNMTStatistics = new RuntimeOptionKey<>(false);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void validateEnableMonitoringFeatures(@SuppressWarnings("unused") OptionKey<?> optionKey) {
@@ -172,9 +180,6 @@ public final class VMInspectionOptions {
         return Platform.includedIn(InternalPlatform.NATIVE_ONLY.class);
         // return hasAllOrKeywordMonitoringSupport(MONITORING_NMT_NAME);
     }
-
-    @Option(help = "Dumps all runtime compiled methods on SIGUSR2.", type = OptionType.User) //
-    public static final HostedOptionKey<Boolean> DumpRuntimeCompilationOnSignal = new HostedOptionKey<>(false);
 
     static class DeprecatedOptions {
         @Option(help = "Enables features that allow the VM to be inspected during run time.", type = OptionType.User, //

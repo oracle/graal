@@ -35,8 +35,6 @@ import com.oracle.svm.core.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
-import jdk.graal.compiler.api.replacements.Fold;
-
 /** Platform-independent LibC support. */
 public class LibC {
     public static final int EXIT_CODE_ABORT = 99;

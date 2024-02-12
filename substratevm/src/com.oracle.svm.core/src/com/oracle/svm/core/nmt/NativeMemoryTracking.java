@@ -37,8 +37,8 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -147,8 +147,7 @@ public class NativeMemoryTracking {
     }
 
     public void printStatistics() {
-        // TEMP (chaeubl): disable for now
-        if (!SubstrateOptions.DiagnosticDetails.getValue().isEmpty()) {
+        if (VMInspectionOptions.PrintNMTStatistics.getValue()) {
             System.out.println();
             System.out.println("Native memory tracking");
             System.out.println("  Total used memory: " + mallocMemorySnapshot.getTotalInfo().getUsed() + " bytes");

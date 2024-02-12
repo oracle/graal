@@ -39,7 +39,6 @@ import com.oracle.svm.core.nmt.NmtCategory;
 
 public class NativeMemoryTrackingTests {
     private static final int ALLOCATION_SIZE = 1024 * 16;
-    private static final int RESERVE_SIZE = ALLOCATION_SIZE;
     private static final int REALLOC_SIZE = ALLOCATION_SIZE / 2;
 
     @Test
