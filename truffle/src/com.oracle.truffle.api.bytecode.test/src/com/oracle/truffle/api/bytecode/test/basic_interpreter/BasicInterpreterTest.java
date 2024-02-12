@@ -511,7 +511,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     @Ignore
     public void testLocalsNonlocalRead() {
-        // todo: this test fails when boxing elimination is enabled
+        // todo this test fails when boxing elimination is enabled
         // locals accessed non-locally must have boxing elimination disabled
         // since non-local reads do not do boxing elimination
 
@@ -1172,7 +1172,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        // todo: these tests do not pass, since quickening is not implemented yet properly
+        // todo these tests do not pass, since quickening is not implemented yet properly
 
         assertInstructionEquals(node.getIntrospectionData().getInstructions().get(2), 2, "c.AddOperation");
 
@@ -1201,7 +1201,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        // todo: these tests do not pass, since quickening is not implemented yet properly
+        // todo these tests do not pass, since quickening is not implemented yet properly
 
         assertInstructionEquals(node.getIntrospectionData().getInstructions().get(1), 1, "si.load.argument.c.LessThanOperation");
     }

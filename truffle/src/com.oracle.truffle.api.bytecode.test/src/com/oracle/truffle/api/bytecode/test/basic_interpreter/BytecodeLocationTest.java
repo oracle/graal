@@ -46,12 +46,15 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
@@ -60,21 +63,9 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 @RunWith(Parameterized.class)
-public class FindBciTest extends AbstractBasicInterpreterTest {
-    public void assumeTestIsApplicable() {
-        /*
-         * TODO: BytecodeRootNode#findBci does not check for ContinuationRootNodes in the uncached
-         * case. Since these nodes do not have a parent interface, we cannot distinguish them in the
-         * static method. We can wait until GR-49484 lands to fix this, since we'll need to generate
-         * a findBytecodeIndex method on the generated node anyway (and it can reference a specific
-         * ContinuationRootNode).
-         */
-        assumeTrue(interpreterClass != BasicInterpreterWithUncached.class && interpreterClass != BasicInterpreterProduction.class);
-    }
-
+public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
     @Test
     public void testStacktrace() {
-        assumeTestIsApplicable();
         /**
          * @formatter:off
          * def baz(arg0) {
@@ -208,7 +199,7 @@ public class FindBciTest extends AbstractBasicInterpreterTest {
             // baz
             BytecodeLocation bazLocation = bytecodeLocations.get(1);
             assertNotNull(bazLocation);
-            SourceSection bazSourceSection = bazLocation.getSourceLocation();
+            SourceSection bazSourceSection = bazLocation.findSourceLocation();
             assertEquals(bazSource, bazSourceSection.getSource());
             if (fooArgument) {
                 assertEquals("<trace1>", bazSourceSection.getCharacters());
@@ -219,14 +210,14 @@ public class FindBciTest extends AbstractBasicInterpreterTest {
             // bar
             BytecodeLocation barLocation = bytecodeLocations.get(2);
             assertNotNull(barLocation);
-            SourceSection barSourceSection = barLocation.getSourceLocation();
+            SourceSection barSourceSection = barLocation.findSourceLocation();
             assertEquals(barSource, barSourceSection.getSource());
             assertEquals("baz(arg0)", barSourceSection.getCharacters());
 
             // foo
             BytecodeLocation fooLocation = bytecodeLocations.get(3);
             assertNotNull(fooLocation);
-            SourceSection fooSourceSection = fooLocation.getSourceLocation();
+            SourceSection fooSourceSection = fooLocation.findSourceLocation();
             assertEquals(fooSource, fooSourceSection.getSource());
             assertEquals("bar(arg0)", fooSourceSection.getCharacters());
         }
@@ -234,7 +225,6 @@ public class FindBciTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testStacktraceWithContinuation() {
-        assumeTestIsApplicable();
         /**
          * @formatter:off
          * def baz(arg0) {
@@ -375,7 +365,7 @@ public class FindBciTest extends AbstractBasicInterpreterTest {
             BytecodeLocation bazLocation = locations.get(1);
             assertNotNull(bazLocation);
             assertNotEquals(-1, bazLocation);
-            SourceSection bazSourceSection = bazLocation.getSourceLocation();
+            SourceSection bazSourceSection = bazLocation.findSourceLocation();
             assertEquals(bazSource, bazSourceSection.getSource());
             if (continuationArgument) {
                 assertEquals("<trace1>", bazSourceSection.getCharacters());
@@ -386,16 +376,57 @@ public class FindBciTest extends AbstractBasicInterpreterTest {
             // bar
             BytecodeLocation barLocation = locations.get(2);
             assertNotNull(barLocation);
-            SourceSection barSourceSection = barLocation.getSourceLocation();
+            SourceSection barSourceSection = barLocation.findSourceLocation();
             assertEquals(barSource, barSourceSection.getSource());
             assertEquals("baz(x)", barSourceSection.getCharacters());
 
             // foo
             BytecodeLocation fooLocation = locations.get(3);
             assertNotNull(fooLocation);
-            SourceSection fooSourceSection = fooLocation.getSourceLocation();
+            SourceSection fooSourceSection = fooLocation.findSourceLocation();
             assertEquals(fooSource, fooSourceSection.getSource());
             assertEquals("continue(c, arg0)", fooSourceSection.getCharacters());
         }
+    }
+
+    @Test
+    public void testInstructionIndex() {
+        /**
+         * @formatter:off
+         * def collectInstructionIndices(arg0) {
+         *   arg0.append(<current_instruction_index>);
+         *   arg0.append(<current_instruction_index>);
+         *   ...
+         *   arg0.append(<current_instruction_index>);
+         * }
+         * @formatter:on
+         */
+        RootCallTarget root = parse("collectInstructionIndices", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginBlock();
+            for (int i = 0; i < 10; i++) {
+                b.beginAppendInstructionIndex();
+                b.emitLoadArgument(0);
+                b.endAppendInstructionIndex();
+            }
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endBlock();
+
+            b.endRoot();
+        });
+
+        List<Integer> indices = new ArrayList<>();
+        assertEquals(42L, root.call(indices));
+        assertTrue(indices.size() != 0);
+        int prev = indices.get(0);
+        for (int i = 1; i < indices.size(); i++) {
+            int curr = indices.get(i);
+            assertTrue("Instruction indices are not sorted: " + indices, prev < curr);
+            prev = curr;
+        }
+
     }
 }

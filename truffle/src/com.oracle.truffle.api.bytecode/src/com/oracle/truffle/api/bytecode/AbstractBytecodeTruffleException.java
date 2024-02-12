@@ -58,7 +58,7 @@ public abstract class AbstractBytecodeTruffleException extends AbstractTruffleEx
     private static final long serialVersionUID = -534184847100559365L;
     private static final int INVALID_BCI = -1;
 
-    // TODO: use BytecodeLocation
+    // TODO use BytecodeLocation
     private final int bci;
 
     /**
@@ -133,6 +133,6 @@ public abstract class AbstractBytecodeTruffleException extends AbstractTruffleEx
         if (bci == INVALID_BCI) {
             return super.getEncapsulatingSourceSection();
         }
-        return BytecodeLocation.get(getLocation(), bci).getSourceLocation();
+        return BytecodeLocation.get(getLocation(), bci).findSourceLocation();
     }
 }

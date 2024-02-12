@@ -76,6 +76,7 @@ import com.oracle.truffle.api.bytecode.Variadic;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -677,7 +678,7 @@ abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode 
         }
 
         @Specialization(replaces = {"doCached"})
-        public static Object doUncached(BytecodeNodeWithLocalIntrospection root, @Variadic Object[] args, @Cached IndirectCallNode callNode) {
+        public static Object doUncached(BytecodeNodeWithLocalIntrospection root, @Variadic Object[] args, @Shared @Cached IndirectCallNode callNode) {
             return callNode.call(root.getCallTarget(), args);
         }
 
@@ -687,7 +688,7 @@ abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode 
         }
 
         @Specialization(replaces = {"doCallTarget"})
-        public static Object doCallTargetUncached(CallTarget callTarget, @Variadic Object[] args, @Cached IndirectCallNode callNode) {
+        public static Object doCallTargetUncached(CallTarget callTarget, @Variadic Object[] args, @Shared @Cached IndirectCallNode callNode) {
             return callNode.call(callTarget, args);
         }
 
