@@ -1303,13 +1303,13 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     }
 
     @HostCompilerDirectives.InliningCutoff
-    private RuntimeException initializationFailed(EspressoException e) {
+    protected final RuntimeException initializationFailed(EspressoException e) {
         StaticObject cause = e.getGuestException();
         Meta meta = getMeta();
-        if (!InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
-            throw throwExceptionInInitializerError(meta, cause);
-        } else {
+        if (InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
             throw e;
+        } else {
+            throw throwExceptionInInitializerError(meta, cause);
         }
     }
 

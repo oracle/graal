@@ -438,13 +438,7 @@ public final class ObjectKlass extends Klass {
                 }
             } catch (EspressoException e) {
                 setErroneousInitialization();
-                StaticObject cause = e.getGuestException();
-                Meta meta = getMeta();
-                if (!InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
-                    throw meta.throwExceptionWithCause(meta.java_lang_ExceptionInInitializerError, cause);
-                } else {
-                    throw e;
-                }
+                throw initializationFailed(e);
             } catch (AbstractTruffleException e) {
                 setErroneousInitialization();
                 throw e;
