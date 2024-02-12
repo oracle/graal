@@ -287,8 +287,7 @@ import org.graalvm.polyglot.proxy.Proxy;
  * instance may be used from multiple threads at the same time depends on if all initialized
  * languages support it. If initialized languages support multi-threading, then the context instance
  * may be used from multiple threads at the same time. If a context is used from multiple threads
- * and the language does not fit, then an
- * {@link IllegalStateException} is thrown by the accessing
+ * and the language does not fit, then an {@link IllegalStateException} is thrown by the accessing
  * method (unless {@link Builder#onDeniedThreadAccess} is specified).
  * <p>
  * Meta-data from the context's underlying {@link #getEngine() engine} can be retrieved safely by
@@ -1183,15 +1182,15 @@ public final class Context implements AutoCloseable {
             return this;
         }
 
-        /** Installs handler to control what happens on multiple thread access.
-         * When multiple threads are accessing a context which isn't ready for
-         * multithreaded access an exception is yielded by default. By installing
-         * this {@code handler} one can control what shall happen. Either to
-         * throw the provided exception or resolve the multithreaded situation
-         * and return to retry the thread access again.
+        /**
+         * Installs handler to control what happens on multiple thread access. When multiple threads
+         * are accessing a context which isn't ready for multithreaded access an exception is
+         * yielded by default. By installing this {@code handler} one can control what shall happen.
+         * Either to throw the provided exception or resolve the multithreaded situation and return
+         * to retry the thread access again.
          *
-         * @param handler callback that either throws the provided {@code RuntimeException} or returns
-         *   to signal request for retry
+         * @param handler callback that either throws the provided {@code RuntimeException} or
+         *            returns to signal request for retry
          * @return this builder
          * @since 23.2
          */
