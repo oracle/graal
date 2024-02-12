@@ -21,7 +21,6 @@
 # questions.
 #
 
-import re
 import argparse
 
 import mx
