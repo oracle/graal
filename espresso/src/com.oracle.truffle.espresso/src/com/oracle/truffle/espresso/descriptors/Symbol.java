@@ -221,6 +221,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> getResourceAsStream = StaticSymbols.putName("getResourceAsStream");
         public static final Symbol<Name> parent = StaticSymbols.putName("parent");
         public static final Symbol<Name> unnamedModule = StaticSymbols.putName("unnamedModule");
+        public static final Symbol<Name> nameAndId = StaticSymbols.putName("nameAndId");
         public static final Symbol<Name> HIDDEN_CLASS_LOADER_REGISTRY = StaticSymbols.putName("0HIDDEN_CLASS_LOADER_REGISTRY");
 
         // j.l.Module

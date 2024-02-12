@@ -328,9 +328,11 @@ public final class Meta extends ContextAccessImpl {
         if (getJavaVersion().java9OrLater()) {
             java_lang_ClassLoader_unnamedModule = java_lang_ClassLoader.requireDeclaredField(Name.unnamedModule, Type.java_lang_Module);
             java_lang_ClassLoader_name = java_lang_ClassLoader.requireDeclaredField(Name.name, Type.java_lang_String);
+            java_lang_ClassLoader_nameAndId = java_lang_ClassLoader.requireDeclaredField(Name.nameAndId, Type.java_lang_String);
         } else {
             java_lang_ClassLoader_unnamedModule = null;
             java_lang_ClassLoader_name = null;
+            java_lang_ClassLoader_nameAndId = null;
         }
 
         if (getJavaVersion().java19OrLater()) {
@@ -1167,6 +1169,7 @@ public final class Meta extends ContextAccessImpl {
     public final Field java_lang_ClassLoader_parent;
     public final Field java_lang_ClassLoader_unnamedModule;
     public final Field java_lang_ClassLoader_name;
+    public final Field java_lang_ClassLoader_nameAndId;
     public final ObjectKlass java_lang_ClassLoader$NativeLibrary;
     public final Method java_lang_ClassLoader_checkPackageAccess;
     public final Method java_lang_ClassLoader$NativeLibrary_getFromClass;
