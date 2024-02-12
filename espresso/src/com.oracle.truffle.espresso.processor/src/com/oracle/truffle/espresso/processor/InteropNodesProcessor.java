@@ -60,6 +60,8 @@ public class InteropNodesProcessor extends BaseProcessor {
     private static final String GENERATE_INTEROP_NODES = "com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes";
     private static final String EXPORT_MESSAGE = "com.oracle.truffle.api.library.ExportMessage";
 
+    private static final String EXPORT_REPEAT_MESSAGE = "com.oracle.truffle.api.library.ExportMessage.Repeat";
+
     private static final String COLLECT = "com.oracle.truffle.espresso.substitutions.Collect";
     private static final String SPECIALIZATION = "com.oracle.truffle.api.dsl.Specialization";
     private static final String CACHED = "com.oracle.truffle.api.dsl.Cached";
@@ -83,6 +85,8 @@ public class InteropNodesProcessor extends BaseProcessor {
     private TypeElement generateInteropNodes;
     // @ExportMessage
     private TypeElement exportMessage;
+
+    private TypeElement exportRepeatMessage;
     // @Shareable
     private TypeElement shareable;
     // @Cached
@@ -102,6 +106,7 @@ public class InteropNodesProcessor extends BaseProcessor {
     private void collectAndCheckRequiredAnnotations() {
         generateInteropNodes = getTypeElement(GENERATE_INTEROP_NODES);
         exportMessage = getTypeElement(EXPORT_MESSAGE);
+        exportRepeatMessage = getTypeElement(EXPORT_REPEAT_MESSAGE);
         shareable = getTypeElement(SHAREABLE);
         cached = getTypeElement(CACHED);
         cachedLibrary = getTypeElement(CACHED_LIBRARY);
@@ -153,17 +158,18 @@ public class InteropNodesProcessor extends BaseProcessor {
         boolean shareableCls = isShareable(cls, false);
         List<Message> nodes = new ArrayList<>();
         for (Element methodElement : cls.getEnclosedElements()) {
-            List<AnnotationMirror> exportedMethods = getAnnotations(methodElement, exportMessage.asType());
-            // Look for exported messages. Note that a single method can export multiple message.
-            // Create one node per export.
+            List<AnnotationMirror> exportedMethods = getAnnotations(methodElement, exportMessage.asType(), exportRepeatMessage.asType());
+            // Look for exported messages. Create one node per export.
             for (AnnotationMirror exportAnnotation : exportedMethods) {
-                String targetMessageName = getAnnotationValue(exportAnnotation, "name", String.class);
-                if (targetMessageName == null || targetMessageName.length() == 0) {
-                    targetMessageName = methodElement.getSimpleName().toString();
+                String exportedMessageName = getAnnotationValue(exportAnnotation, "name", String.class);
+                if (exportedMessageName == null || exportedMessageName.isEmpty()) {
+                    exportedMessageName = methodElement.getSimpleName().toString();
                 }
-                String clsName = ProcessorUtils.capitalize(methodElement.getSimpleName().toString()) + "Node";
+                String capitalizedMessageName = ProcessorUtils.capitalize(exportedMessageName);
+                String clsName = capitalizedMessageName + "Node";
                 boolean isShareable = isShareable(methodElement, shareableCls);
-                nodes.add(new Message(processInteropNode(cls, (ExecutableElement) methodElement, targetMessageName, clsName, imports), targetMessageName, clsName, isShareable));
+                nodes.add(new Message(processInteropNode(cls, (ExecutableElement) methodElement, exportedMessageName, clsName, imports),
+                                capitalizedMessageName, clsName, isShareable));
             }
         }
 
@@ -197,7 +203,7 @@ public class InteropNodesProcessor extends BaseProcessor {
 
         // For all messages, add a line in registerMessages, and create the corresponding class
         for (Message m : nodes) {
-            registerMessages.addBodyLine(INTEROP_MESSAGE_FACTORIES, ".register(cls, ", INTEROP_MESSAGE_MESSAGE, ".", ProcessorUtils.capitalize(m.targetMessage), ", ", FACTORY_FIELD_NAME, ",",
+            registerMessages.addBodyLine(INTEROP_MESSAGE_FACTORIES, ".register(cls, ", INTEROP_MESSAGE_MESSAGE, ".", m.targetMessage, ", ", FACTORY_FIELD_NAME, ",",
                             m.isShareable, ");");
             nodesClass.withInnerClass(m.cls);
         }
@@ -256,7 +262,7 @@ public class InteropNodesProcessor extends BaseProcessor {
         createMethod.addBodyLine("switch (message) {");
         String clsName = sourceDispatch.getSimpleName().toString() + ADDED_CLASS_SUFFIX;
         for (Message m : nodes) {
-            String targetMessageEnum = ProcessorUtils.capitalize(m.targetMessage);
+            String targetMessageEnum = m.targetMessage;
             String targetMessageImpl = clsName + "Factory." + m.clsName + "Gen";
             createMethod.addIndentedBodyLine(1, "case ", targetMessageEnum, ": return ", targetMessageImpl, ".create();");
         }
@@ -278,19 +284,20 @@ public class InteropNodesProcessor extends BaseProcessor {
         return classBuilder;
     }
 
-    private ClassBuilder processInteropNode(TypeElement processingClass, ExecutableElement element, String targetMessageName, String clsName, Imports imports) {
-        /*- abstract static class [MessageName]Node extends InteropMessage.[messageName] */
+    private ClassBuilder processInteropNode(TypeElement processingClass, ExecutableElement element, String exportedMessageName, String clsName, Imports imports) {
+        String targetMethodName = element.getSimpleName().toString();
+        /*- abstract static class [exportedMessageName]Node extends InteropMessage.[exportedMessageName] */
         ClassBuilder result = new ClassBuilder(clsName) //
                         .withQualifiers(new ModifierBuilder().asStatic().asAbstract()) //
-                        .withSuperClass(INTEROP_MESSAGE + "." + ProcessorUtils.capitalize(targetMessageName));
+                        .withSuperClass(INTEROP_MESSAGE + "." + ProcessorUtils.capitalize(exportedMessageName));
 
         /*- 
             @Specialization
-            static [returnType] [messageName]([signature]) throws [thrownExceptions] {
-                [return] [processingClass].[messageName]([args]);
+            static [returnType] [exportedMessageName]([signature]) throws [thrownExceptions] {
+                [return] [processingClass].[targetMethodName]([args]);
             }
          */
-        MethodBuilder m = new MethodBuilder(targetMessageName) //
+        MethodBuilder m = new MethodBuilder(exportedMessageName) //
                         .withAnnotation(new AnnotationBuilder(SPECIALIZATION).withLineBreak()) //
                         .withModifiers(new ModifierBuilder().asStatic()) //
                         .withReturnType(element.getReturnType().toString());
@@ -342,7 +349,7 @@ public class InteropNodesProcessor extends BaseProcessor {
         }
         m.withSignature(declaredSig);
         String returnOrEmpty = element.getReturnType().toString().equals("void") ? "" : "return ";
-        m.addBodyLine(returnOrEmpty, processingClass.getQualifiedName(), ".", targetMessageName, invokeSig.toString(), ";");
+        m.addBodyLine(returnOrEmpty, processingClass.getQualifiedName(), ".", targetMethodName, invokeSig.toString(), ";");
 
         result.withMethod(m);
 
