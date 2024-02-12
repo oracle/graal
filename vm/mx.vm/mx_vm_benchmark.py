@@ -39,6 +39,7 @@ from typing import Iterable, Optional
 
 import mx
 import mx_benchmark
+import mx_sdk_benchmark
 import mx_util
 import mx_sdk_vm
 import mx_sdk_vm_impl
@@ -309,9 +310,9 @@ class NativeImageStages:
                 with open(self.config.split_run, 'a') as stdout:
                     stdout.write(self.get_timestamp() + self.config.bm_suite.name() + ':' + self.config.benchmark_name + ' ' + self.stages_info.requested_stage + ': PASS\n')
             if self.stages_info.requested_stage == self.stages_info.last_stage:
-                self.bench_out(self.get_timestamp() + 'Successfully finished the last specified stage:' + ' ' + self.stages_info.requested_stage + ' for ' + self.final_image_name)
+                self.bench_out(f"{self.get_timestamp()}{mx_sdk_benchmark.STAGE_LAST_SUCCESSFUL_PREFIX} {self.stages_info.requested_stage} for {self.final_image_name}")
             else:
-                self.bench_out(self.get_timestamp() + 'Successfully finished stage:' + ' ' + self.stages_info.requested_stage)
+                self.bench_out(f"{self.get_timestamp()}{mx_sdk_benchmark.STAGE_SUCCESSFUL_PREFIX} {self.stages_info.requested_stage}")
 
             self.separator_line()
         else:
@@ -1063,7 +1064,7 @@ class NativeImageVM(GraalVm):
 
     def run_single_stage(self, out):
         if self.stages_info.skip_current_stage:
-            self.stages.bench_out(f"Skipping stage: {self.stages_info.requested_stage}")
+            self.stages.bench_out(f"{mx_sdk_benchmark.STAGE_SKIPPED_PREFIX} {self.stages_info.requested_stage}")
             return
 
         stage_to_run = self.stages_info.effective_stage

@@ -59,13 +59,17 @@ import urllib.request
 import mx_sdk_vm_impl
 from mx_benchmark import DataPoints, DataPoint, BenchmarkSuite
 
+STAGE_LAST_SUCCESSFUL_PREFIX: str = "Successfully finished the last specified stage:"
+STAGE_SUCCESSFUL_PREFIX: str = "Successfully finished stage:"
+STAGE_SKIPPED_PREFIX: str = "Skipping stage:"
+
 SUCCESSFUL_STAGE_PATTERNS = [re.compile(p, re.MULTILINE) for p in [
     # Produced when the last stage as requested by the user (see: NativeImageBenchmarkMixin.stages) finished
-    r"Successfully finished the last specified stage:.*$",
+    rf"{STAGE_LAST_SUCCESSFUL_PREFIX}.*$",
     # Produced when any other stage finishes
-    r"Successfully finished stage:.*$",
+    rf"{STAGE_SUCCESSFUL_PREFIX}.*$",
     # Produced when a stage is skipped for some reason (e.g. the specific configuration does not require it)
-    r"Skipping stage:.*$",
+    rf"{STAGE_SKIPPED_PREFIX}.*$",
 ]]
 """
 List of regex patterns to use in successPatterns() to match the successful completion of a Native Image benchmark stage.
