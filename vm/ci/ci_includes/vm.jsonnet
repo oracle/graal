@@ -34,7 +34,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     short_name:: 'ce',
     setup+: [
       ['set-export', 'VM_ENV', 'ce'],
-      ['set-export', 'RELEASE_CATALOG', 'https://www.graalvm.org/component-catalog/v2/graal-updater-component-catalog-java${BASE_JDK_SHORT_VERSION}.properties|{ee=GraalVM Enterprise Edition}rest://gds.oracle.com/api/20220101/'],
+      ['set-export', 'RELEASE_CATALOG', '{ee=GraalVM Enterprise Edition}rest://gds.oracle.com/api/20220101/'],
       ['set-export', 'RELEASE_PRODUCT_ID', 'D53FAE8052773FFAE0530F15000AA6C6'],
       ['set-export', 'SNAPSHOT_CATALOG', ['mx', 'urlrewrite', 'http://www.graalvm.org/catalog/ce/java${BASE_JDK_SHORT_VERSION}']],
       ['cd', 'vm'],
