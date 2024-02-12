@@ -150,7 +150,9 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
          * This entrypoint is only invoked by the TruffleProcessor to validate Proxyable nodes. We
          * directly invoke {@link parseCustomOperation} for code gen use cases.
          */
-        assert annotationType == context.getTypes().OperationProxy_Proxyable;
+        if (annotationType != context.getTypes().OperationProxy_Proxyable) {
+            throw new AssertionError();
+        }
 
         TypeElement typeElement = (TypeElement) element;
         if (annotationMirrors.size() != 1) {
@@ -171,15 +173,19 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
     public CustomOperationModel parseCustomRegularOperation(TypeElement typeElement, AnnotationMirror mirror) {
         String name = getCustomOperationName(typeElement, mirror);
-        CustomOperationModel customOperation = parent.customRegularOperation(OperationKind.CUSTOM_SIMPLE, name, typeElement, mirror);
+        boolean isInstrumentation = ElementUtils.typeEquals(mirror.getAnnotationType(), types.Instrumentation);
+        OperationKind kind = isInstrumentation ? OperationKind.CUSTOM_INSTRUMENTATION : OperationKind.CUSTOM;
+        CustomOperationModel customOperation = parent.customRegularOperation(kind, name, typeElement, mirror);
         if (customOperation == null) {
             return null;
         }
 
         validateCustomOperation(customOperation, typeElement, mirror, name);
+
         if (customOperation.hasErrors()) {
             return customOperation;
         }
+        OperationModel operation = customOperation.operation;
 
         CodeTypeElement generatedNode = createNodeForCustomInstruction(typeElement);
         List<ExecutableElement> specializations = findSpecializations(generatedNode);
@@ -191,11 +197,48 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         Signature signature = createPolymorphicSignature(specializations, customOperation);
 
+        if (operation.kind == OperationKind.CUSTOM_INSTRUMENTATION) {
+            if (signature.valueCount > 1) {
+                customOperation.addError(String.format("An @%s annotated operation cannot have more than one operand. " +
+                                "Instrumentations must have transparent stack effects and a single operation cannot push more than one value. " + //
+                                "Remove the additional operands to resolve this.",
+                                getSimpleName(types.Instrumentation)));
+            }
+            if (signature.isVariadic) {
+                customOperation.addError(String.format("An @%s annotated operation cannot use @%s." +
+                                "Instrumentations must have transparent stack effects and a single operation cannot push more than one value. " + //
+                                "Remove the variadic annotation to resolve this.",
+                                getSimpleName(types.Instrumentation),
+                                getSimpleName(types.Variadic)));
+            }
+            operation.isTransparent = true;
+        }
+
         if (customOperation.hasErrors()) {
             return customOperation;
         }
-        assert signature != null : "Signature could not be computed, but no error was reported";
-        populateCustomOperationFields(customOperation.operation, signature);
+
+        if (signature == null) {
+            throw new AssertionError("Signature could not be computed, but no error was reported");
+        }
+
+        operation.numChildren = signature.valueCount;
+        operation.isVariadic = signature.isVariadic || isShortCircuit();
+        operation.isVoid = signature.isVoid;
+
+        operation.operationArguments = new OperationArgument[signature.localSetterCount + signature.localSetterRangeCount];
+        for (int i = 0; i < signature.localSetterCount; i++) {
+            operation.operationArguments[i] = new OperationArgument(types.BytecodeLocal, "local" + i, "the local that will be set by the LocalSetter at index " + i);
+        }
+
+        for (int i = 0; i < signature.localSetterRangeCount; i++) {
+            // todo: we might want to migrate this to a special type that validates order
+            // e.g. BytecodeLocalRange
+            operation.operationArguments[signature.localSetterCount + i] = new OperationArgument(new CodeTypeMirror.ArrayCodeTypeMirror(types.BytecodeLocal), "localRange" + i,
+                            "the local range that will be set by the LocalSetterRange at index " + i);
+        }
+        operation.childrenMustBeValues = new boolean[signature.valueCount];
+        Arrays.fill(operation.childrenMustBeValues, true);
 
         customOperation.operation.setInstruction(createCustomInstruction(customOperation, typeElement, generatedNode, signature, name));
 
@@ -384,8 +427,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             nodeType.setSuperClass(types.Node);
         }
 
-        nodeType.setEnclosingElement(null);
-
         return nodeType;
     }
 
@@ -411,30 +452,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         if (parent.enableTracing || parent.enableSpecializationIntrospection) {
             generatedNode.addAnnotationMirror(new CodeAnnotationMirror(types.Introspectable));
         }
-    }
-
-    /**
-     * Uses the custom operation's {@link signature} to set the underlying {@link operation}'s
-     * fields.
-     */
-    private void populateCustomOperationFields(OperationModel operation, Signature signature) {
-        operation.numChildren = signature.valueCount;
-        operation.isVariadic = signature.isVariadic || isShortCircuit();
-        operation.isVoid = signature.isVoid;
-
-        operation.operationArguments = new OperationArgument[signature.localSetterCount + signature.localSetterRangeCount];
-        for (int i = 0; i < signature.localSetterCount; i++) {
-            operation.operationArguments[i] = new OperationArgument(types.BytecodeLocal, "local" + i, "the local that will be set by the LocalSetter at index " + i);
-        }
-
-        for (int i = 0; i < signature.localSetterRangeCount; i++) {
-            // todo: we might want to migrate this to a special type that validates order
-            // e.g. BytecodeLocalRange
-            operation.operationArguments[signature.localSetterCount + i] = new OperationArgument(new CodeTypeMirror.ArrayCodeTypeMirror(types.BytecodeLocal), "localRange" + i,
-                            "the local range that will be set by the LocalSetterRange at index " + i);
-        }
-        operation.childrenMustBeValues = new boolean[signature.valueCount];
-        Arrays.fill(operation.childrenMustBeValues, true);
     }
 
     private boolean isShortCircuit() {

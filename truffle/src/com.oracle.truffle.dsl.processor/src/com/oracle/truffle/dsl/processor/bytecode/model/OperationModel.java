@@ -73,8 +73,9 @@ public class OperationModel implements PrettyPrintable {
         STORE_LOCAL,
         STORE_LOCAL_MATERIALIZED,
 
-        CUSTOM_SIMPLE,
-        CUSTOM_SHORT_CIRCUIT
+        CUSTOM,
+        CUSTOM_SHORT_CIRCUIT,
+        CUSTOM_INSTRUMENTATION,
     }
 
     public record OperationArgument(TypeMirror type, String name, String doc) {
@@ -112,6 +113,8 @@ public class OperationModel implements PrettyPrintable {
     public OperationArgument[] operationArguments = EMPTY_ARGUMENTS;
     public boolean operationArgumentVarArgs = false;
 
+    public int instrumentationIndex;
+
     public OperationModel(BytecodeDSLModel parent, int id, OperationKind kind, String name) {
         this.parent = parent;
         this.id = id;
@@ -121,6 +124,10 @@ public class OperationModel implements PrettyPrintable {
 
     public boolean hasChildren() {
         return isVariadic || numChildren > 0;
+    }
+
+    public void setInstrumentationIndex(int instrumentationIndex) {
+        this.instrumentationIndex = instrumentationIndex;
     }
 
     public OperationModel setTransparent(boolean isTransparent) {
@@ -196,7 +203,7 @@ public class OperationModel implements PrettyPrintable {
     }
 
     public boolean isCustom() {
-        return kind == OperationKind.CUSTOM_SIMPLE || kind == OperationKind.CUSTOM_SHORT_CIRCUIT;
+        return kind == OperationKind.CUSTOM || kind == OperationKind.CUSTOM_SHORT_CIRCUIT || kind == OperationKind.CUSTOM_INSTRUMENTATION;
     }
 
     public String getConstantName() {

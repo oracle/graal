@@ -60,6 +60,7 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Signature;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument;
@@ -98,6 +99,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     private final List<CustomOperationModel> customShortCircuitOperations = new ArrayList<>();
     private final HashMap<OperationModel, CustomOperationModel> operationsToCustomOperations = new HashMap<>();
     private LinkedHashMap<String, InstructionModel> instructions = new LinkedHashMap<>();
+    private InstructionModel[] invalidateInstructions;
 
     public DeclaredType languageClass;
     public boolean enableUncachedInterpreter;
@@ -141,7 +143,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel[] popVariadicInstruction;
     public InstructionModel mergeVariadicInstruction;
     public InstructionModel storeNullInstruction;
-    public final List<OperationModel> instrumentations = new ArrayList<>();
+
+    public final List<CustomOperationModel> instrumentations = new ArrayList<>();
 
     public String getName() {
         return templateType.getSimpleName() + suffix;
@@ -261,7 +264,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                         .setOperationArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to store to")) //
                         .setInstruction(instruction(InstructionKind.STORE_LOCAL_MATERIALIZED, "store.local.mat",
                                         signature(void.class, Object.class, Object.class)) //
-                                        .addImmediate(ImmediateKind.INTEGER, "index"));
+                                                        .addImmediate(ImmediateKind.INTEGER, "index"));
         operation(OperationKind.RETURN, "Return") //
                         .setNumChildren(1) //
                         .setChildrenMustBeValues(true) //
@@ -295,6 +298,34 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         }
         mergeVariadicInstruction = instruction(InstructionKind.MERGE_VARIADIC, "merge.variadic", signature(Object.class, Object.class));
         storeNullInstruction = instruction(InstructionKind.STORE_NULL, "store.variadic_end", signature(Object.class));
+
+    }
+
+    public boolean isBytecodeUpdatable() {
+        return getInstrumentations().isEmpty() || !getProvidedTags().isEmpty();
+    }
+
+    public InstructionModel getInvalidateInstruction(int length) {
+        if (invalidateInstructions == null) {
+            return null;
+        }
+        return invalidateInstructions[length - 1];
+    }
+
+    private void addInvalidateInstructions() {
+        int maxLength = 0;
+        for (var entry : instructions.entrySet()) {
+            InstructionModel instruction = entry.getValue();
+            maxLength = Math.max(maxLength, instruction.getInstructionLength());
+        }
+        invalidateInstructions = new InstructionModel[maxLength];
+        for (int i = 0; i < maxLength; i++) {
+            InstructionModel model = instruction(InstructionKind.INVALIDATE, "invalidate" + i, signature(void.class));
+            for (int j = 0; j < i; j++) {
+                model.getImmediates().add(new InstructionImmediate(j, ImmediateKind.INTEGER, "invalidated" + j));
+            }
+            invalidateInstructions[i] = model;
+        }
     }
 
     private static TypeMirror array(TypeMirror el) {
@@ -311,7 +342,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return op;
     }
 
-    public List<OperationModel> getInstrumentations() {
+    public List<CustomOperationModel> getInstrumentations() {
         return instrumentations;
     }
 
@@ -320,14 +351,18 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         if (op == null) {
             return null;
         }
-        CustomOperationModel customOp = new CustomOperationModel(context, this, typeElement, mirror, op);
+        CustomOperationModel operation = new CustomOperationModel(context, this, typeElement, mirror, op);
         if (customRegularOperations.containsKey(typeElement)) {
             throw new AssertionError(String.format("Type element %s was used to instantiate more than one operation. This is a bug.", typeElement));
         }
-        customRegularOperations.put(typeElement, customOp);
-        operationsToCustomOperations.put(op, customOp);
+        customRegularOperations.put(typeElement, operation);
+        operationsToCustomOperations.put(op, operation);
 
-        return customOp;
+        if (kind == OperationKind.CUSTOM_INSTRUMENTATION) {
+            operation.operation.setInstrumentationIndex(instrumentations.size());
+            instrumentations.add(operation);
+        }
+        return operation;
     }
 
     public CustomOperationModel customShortCircuitOperation(OperationKind kind, String name, AnnotationMirror mirror) {
@@ -395,8 +430,12 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     }
 
     public void finalizeInstructions() {
-        LinkedHashMap<String, InstructionModel> newInstructions = new LinkedHashMap<>();
 
+        if (isBytecodeUpdatable()) {
+            addInvalidateInstructions();
+        }
+
+        LinkedHashMap<String, InstructionModel> newInstructions = new LinkedHashMap<>();
         for (var entry : instructions.entrySet()) {
             String name = entry.getKey();
             InstructionModel instruction = entry.getValue();

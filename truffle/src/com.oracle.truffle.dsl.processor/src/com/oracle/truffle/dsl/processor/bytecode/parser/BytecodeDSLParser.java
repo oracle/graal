@@ -409,11 +409,19 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         // custom operations
         boolean customOperationDeclared = false;
         for (TypeElement te : ElementFilter.typesIn(typeElement.getEnclosedElements())) {
-            AnnotationMirror mir = ElementUtils.findAnnotationMirror(te, types.Operation);
-            if (mir == null) {
+            AnnotationMirror operation = ElementUtils.findAnnotationMirror(te, types.Operation);
+            AnnotationMirror instrumentation = ElementUtils.findAnnotationMirror(te, types.Instrumentation);
+            if (operation == null && instrumentation == null) {
                 continue;
             }
 
+            if (operation != null && instrumentation != null) {
+                model.addError(te, "@%s and @%s cannot be used at the same time. Remove one of the annotations to resolve this.",
+                                getSimpleName(types.Operation), getSimpleName(types.Instrumentation));
+                continue;
+            }
+
+            AnnotationMirror mir = operation != null ? operation : instrumentation;
             customOperationDeclared = true;
             CustomOperationParser.forCodeGeneration(model, types.Operation).parseCustomOperation(te, mir);
         }
@@ -520,9 +528,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 InstructionModel instr = model.instruction(InstructionKind.SUPERINSTRUCTION, resultingInstructionName,
                                 lastInstruction.signature);
                 instr.subInstructions = subInstructions;
-
             }
-
         }
 
         /*
@@ -532,7 +538,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
          */
         if (model.usesBoxingElimination()) {
             for (OperationModel operation : model.getOperations()) {
-                if (operation.kind != OperationKind.CUSTOM_SIMPLE) {
+                if (operation.kind != OperationKind.CUSTOM && operation.kind != OperationKind.CUSTOM_INSTRUMENTATION) {
                     continue;
                 }
 
@@ -776,6 +782,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 }
 
             }
+
         }
 
         // Validate fields for serialization.

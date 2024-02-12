@@ -78,6 +78,8 @@ public final class InstructionModel implements PrettyPrintable {
         THROW,
         MERGE_CONDITIONAL,
 
+        INVALIDATE,
+
         CUSTOM,
         CUSTOM_SHORT_CIRCUIT,
         SUPERINSTRUCTION,

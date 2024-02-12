@@ -50,6 +50,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -429,6 +430,13 @@ public abstract class RootNode extends ExecutableNode {
     /** @since 0.8 or earlier */
     public final FrameDescriptor getFrameDescriptor() {
         return frameDescriptor;
+    }
+
+    protected final boolean notifyReplace(Node oldnode, Node newNode, CharSequence reason) {
+        if (callTarget instanceof ReplaceObserver observer) {
+            return observer.nodeReplaced(oldnode, newNode, reason);
+        }
+        return false;
     }
 
     /**
