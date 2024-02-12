@@ -175,7 +175,7 @@ public final class ClassfileParser {
 
     boolean verifiable;
 
-    private ConstantPool pool;
+    private ImmutableConstantPool pool;
 
     private ClassfileParser(ClassLoadingEnv env, ClassfileStream stream, boolean verifiable, Symbol<Type> requestedClassType, ClassRegistry.ClassDefinitionInfo info) {
         this.requestedClassType = requestedClassType;

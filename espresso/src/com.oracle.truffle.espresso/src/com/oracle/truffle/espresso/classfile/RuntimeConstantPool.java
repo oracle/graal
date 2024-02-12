@@ -43,21 +43,17 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 public final class RuntimeConstantPool extends ConstantPool {
 
     private final EspressoContext context;
-    private final ConstantPool pool;
+    private final ImmutableConstantPool pool;
     private final StaticObject classLoader;
 
     @CompilationFinal(dimensions = 1) //
     private final Resolvable.ResolvedConstant[] constants;
 
-    public RuntimeConstantPool(EspressoContext context, ConstantPool pool, StaticObject classLoader) {
+    public RuntimeConstantPool(EspressoContext context, ImmutableConstantPool pool, StaticObject classLoader) {
         this.context = context;
         this.pool = pool;
-        constants = copyResolvedConstant(pool); // utf8, int, floats..., others->null
+        this.constants = new Resolvable.ResolvedConstant[pool.length()];
         this.classLoader = classLoader;
-    }
-
-    private static Resolvable.ResolvedConstant[] copyResolvedConstant(ConstantPool pool) {
-        return new Resolvable.ResolvedConstant[pool.length()];
     }
 
     @Override
