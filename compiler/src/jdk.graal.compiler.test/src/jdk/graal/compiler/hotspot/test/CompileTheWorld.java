@@ -282,7 +282,11 @@ public final class CompileTheWorld extends StandaloneBulkCompile {
      * {@link #SUN_BOOT_CLASS_PATH} the boot classes are used.
      */
     public void compile() throws Throwable {
-        compileAll(prepare(), compilerOptions);
+        compile(prepare());
+    }
+
+    public void compile(List<Compilation> compilations) throws Throwable {
+        compileAll(compilations, compilerOptions);
     }
 
     public void println() {
