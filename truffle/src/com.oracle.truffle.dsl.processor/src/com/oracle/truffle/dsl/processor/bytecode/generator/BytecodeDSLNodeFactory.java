@@ -135,8 +135,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     public static final String BCI_IDX = "BCI_IDX";
     public static final String COROUTINE_FRAME_IDX = "COROUTINE_FRAME_IDX";
 
+    // Bytecode version encoding: [tags][instrumentations][source bit]
     public static final int MAX_TAGS = 32;
-    public static final int MAX_INSTRUMENTATIONS = 32;
+    public static final int TAG_OFFSET = 32;
+    public static final int MAX_INSTRUMENTATIONS = 31;
+    public static final int INSTRUMENTATION_OFFSET = 1;
 
     private final ProcessorContext context = ProcessorContext.getInstance();
     private final TruffleTypes types = context.getTypes();
@@ -1403,7 +1406,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         if (model.getProvidedTags().isEmpty()) {
             createFailInvalidTag(b, "c");
         } else {
-            b.startReturn().string("((long) CLASS_TO_TAG_MASK.get(c)) << 32").end().build();
+            b.startReturn().string("((long) CLASS_TO_TAG_MASK.get(c)) << " + TAG_OFFSET).end().build();
         }
 
         type.add(encodeTag);
@@ -1436,19 +1439,19 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.end();
 
         long mask = 1L;
-        if (model.getInstrumentations().size() > 31) {
+        if (model.getInstrumentations().size() > MAX_INSTRUMENTATIONS) {
             throw new AssertionError("Unsupported instrumentation size.");
         }
-        if (model.getProvidedTags().size() > 32) {
+        if (model.getProvidedTags().size() > MAX_TAGS) {
             throw new AssertionError("Unsupported instrumentation size.");
         }
 
         for (int i = 0; i < model.getInstrumentations().size(); i++) {
-            mask |= 1 << (1 + i);
+            mask |= 1 << (INSTRUMENTATION_OFFSET + i);
         }
 
         for (int i = 0; i < model.getProvidedTags().size(); i++) {
-            mask |= 1 << (32 + i);
+            mask |= 1 << (TAG_OFFSET + i);
         }
 
         b.startReturn().string("(encoding & 0x" + Long.toHexString(mask) + ")").end();
@@ -3324,6 +3327,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.tree(createOperationConstant(rootOperation));
             b.end(2);
 
+            emitCastOperationData(b, "RootData", "operationSp");
+
+            b.startIf().string("operationData.mayFallThrough").end().startBlock();
+            buildEmitInstruction(b, model.trapInstruction);
+            b.end();
+
             for (VariableElement e : ElementFilter.fieldsIn(abstractBytecodeNode.getEnclosedElements())) {
                 b.defaultDeclaration(e.asType(), e.getSimpleName().toString() + "_");
             }
@@ -3340,13 +3349,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startAssign("handlers_").startStaticCall(type(Arrays.class), "copyOf").string("exHandlers").string("exHandlerCount").end().end();
             b.startAssign("sources_").string("sources").end();
             b.startAssign("numNodes_").string("numNodes").end();
-
-            emitCastOperationData(b, "RootData", "operationSp");
-            b.declaration(types.TruffleLanguage, "language", "operationData.language");
-
-            b.startIf().string("operationData.mayFallThrough").end().startBlock();
-            buildEmitInstruction(b, model.trapInstruction);
-            b.end();
 
             b.end();
 
@@ -3373,14 +3375,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.end().startElseBlock(); // } {
 
-            emitCastOperationData(b, "RootData", "operationSp");
-            b.declaration(types.TruffleLanguage, "language", "operationData.language");
-
             // Allocate stack space in the frame descriptor.
             b.startStatement().startCall("frameDescriptorBuilder.addSlots");
             b.string("maxStackHeight");
             b.staticReference(types.FrameSlotKind, "Illegal");
             b.end(2);
+
+            b.declaration(types.TruffleLanguage, "language", "operationData.language");
 
             b.startAssign("result").startNew(bytecodeNodeGen.asType());
             b.string("language");
@@ -4804,8 +4805,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("this.nodes = nodes");
             b.statement("this.reparseReason = null");
             b.statement("long encoding = BytecodeConfigEncoderImpl.decode(config)");
-            b.statement("this.tags = (int)((encoding >> 32) & 0xFFFF_FFFF)");
-            b.statement("this.instrumentations = (int)((encoding >> 1) & 0x7FFF_FFFF)");
+            b.statement("this.tags = (int)((encoding >> " + TAG_OFFSET + ") & 0xFFFF_FFFF)");
+            b.statement("this.instrumentations = (int)((encoding >> " + INSTRUMENTATION_OFFSET + ") & 0x7FFF_FFFF)");
             b.statement("this.parseSources = (encoding & 0x1) != 0");
             b.statement("this.parseBytecodes = true");
             b.statement("this.sources = parseSources ? new ArrayList<>(4) : null");
@@ -4973,12 +4974,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
 
             b.declaration(type(boolean.class), "oldSources", "(oldEncoding & 0b1) != 0");
-            b.declaration(type(int.class), "oldInstrumentations", "(int)((oldEncoding >> 1) & 0x7FFF_FFFF)");
-            b.declaration(type(int.class), "oldTags", "(int)((oldEncoding >> 32) & 0xFFFF_FFFF)");
+            b.declaration(type(int.class), "oldInstrumentations", "(int)((oldEncoding >> " + INSTRUMENTATION_OFFSET + ") & 0x7FFF_FFFF)");
+            b.declaration(type(int.class), "oldTags", "(int)((oldEncoding >> " + TAG_OFFSET + ") & 0xFFFF_FFFF)");
 
             b.declaration(type(boolean.class), "newSources", "(newEncoding & 0b1) != 0");
-            b.declaration(type(int.class), "newInstrumentations", "(int)((newEncoding >> 1) & 0x7FFF_FFFF)");
-            b.declaration(type(int.class), "newTags", "(int)((newEncoding >> 32) & 0xFFFF_FFFF)");
+            b.declaration(type(int.class), "newInstrumentations", "(int)((newEncoding >> " + INSTRUMENTATION_OFFSET + ") & 0x7FFF_FFFF)");
+            b.declaration(type(int.class), "newTags", "(int)((newEncoding >> " + TAG_OFFSET + ") & 0xFFFF_FFFF)");
 
             b.statement("boolean needsBytecodeReparse = newInstrumentations != oldInstrumentations || newTags != oldTags");
             b.statement("boolean needsSourceReparse = newSources != oldSources || (needsBytecodeReparse && newSources)");
