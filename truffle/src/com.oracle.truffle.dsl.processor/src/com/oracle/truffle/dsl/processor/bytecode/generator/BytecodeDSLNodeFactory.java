@@ -1467,7 +1467,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.declaration("long", "encoding", "0L");
             boolean elseIf = false;
             for (CustomOperationModel customOperation : model.getInstrumentations()) {
-                b.startIf(elseIf);
+                elseIf = b.startIf(elseIf);
                 b.string("c == ").typeLiteral(customOperation.operation.instruction.nodeType.asType());
                 b.end().startBlock();
                 b.statement("encoding |= 0x" + Integer.toHexString(1 << customOperation.operation.instrumentationIndex));
@@ -6567,7 +6567,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         break;
                     case INVALIDATE:
                         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                        b.startReturn().string("((sp - 1) << 16) | bci").end();
+                        b.startReturn().string("(sp << 16) | bci").end();
                         break;
                     case CUSTOM:
                         results.add(buildCustomInstructionExecute(b, instr));
