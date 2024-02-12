@@ -933,88 +933,23 @@ public final class VM extends NativeEnv {
 
     @VmImpl(isJni = true)
     public @JavaType(java.lang.reflect.Field[].class) StaticObject JVM_GetClassDeclaredFields(@JavaType(Class.class) StaticObject self, boolean publicOnly) {
-
         // TODO(peterssen): From Hostpot: 4496456 We need to filter out
         // java.lang.Throwable.backtrace.
         Meta meta = getMeta();
-        ArrayList<Field> collectedMethods = new ArrayList<>();
+        ArrayList<Field> collectedFields = new ArrayList<>();
         Klass klass = self.getMirrorKlass(getMeta());
         klass.ensureLinked();
         for (Field f : klass.getDeclaredFields()) {
             if (!publicOnly || f.isPublic()) {
-                collectedMethods.add(f);
+                collectedFields.add(f);
             }
         }
-        final Field[] fields = collectedMethods.toArray(Field.EMPTY_ARRAY);
+        final Field[] fields = collectedFields.toArray(Field.EMPTY_ARRAY);
 
-        EspressoContext context = meta.getContext();
-
-        // TODO(peterssen): Cache guest j.l.reflect.Field constructor.
-        // Calling the constructor is just for validation, manually setting the fields would be
-        // faster.
-        Method fieldInit;
-        if (meta.getJavaVersion().java15OrLater()) {
-            fieldInit = meta.java_lang_reflect_Field.lookupDeclaredMethod(Name._init_, context.getSignatures().makeRaw(Type._void,
-                            /* declaringClass */ Type.java_lang_Class,
-                            /* name */ Type.java_lang_String,
-                            /* type */ Type.java_lang_Class,
-                            /* modifiers */ Type._int,
-                            /* trustedFinal */ Type._boolean,
-                            /* slot */ Type._int,
-                            /* signature */ Type.java_lang_String,
-                            /* annotations */ Type._byte_array));
-        } else {
-            fieldInit = meta.java_lang_reflect_Field.lookupDeclaredMethod(Name._init_, context.getSignatures().makeRaw(Type._void,
-                            /* declaringClass */ Type.java_lang_Class,
-                            /* name */ Type.java_lang_String,
-                            /* type */ Type.java_lang_Class,
-                            /* modifiers */ Type._int,
-                            /* slot */ Type._int,
-                            /* signature */ Type.java_lang_String,
-                            /* annotations */ Type._byte_array));
-        }
         StaticObject fieldsArray = meta.java_lang_reflect_Field.allocateReferenceArray(fields.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
-                final Field f = fields[i];
-                StaticObject instance = meta.java_lang_reflect_Field.allocateInstance(getContext());
-
-                Attribute rawRuntimeVisibleAnnotations = f.getAttribute(Name.RuntimeVisibleAnnotations);
-                StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
-                                ? StaticObject.wrap(rawRuntimeVisibleAnnotations.getData(), meta)
-                                : StaticObject.NULL;
-
-                Attribute rawRuntimeVisibleTypeAnnotations = f.getAttribute(Name.RuntimeVisibleTypeAnnotations);
-                StaticObject runtimeVisibleTypeAnnotations = rawRuntimeVisibleTypeAnnotations != null
-                                ? StaticObject.wrap(rawRuntimeVisibleTypeAnnotations.getData(), meta)
-                                : StaticObject.NULL;
-                if (meta.getJavaVersion().java15OrLater()) {
-                    fieldInit.invokeDirect(
-                                    /* this */ instance,
-                                    /* declaringKlass */ f.getDeclaringKlass().mirror(),
-                                    /* name */ context.getStrings().intern(f.getName()),
-                                    /* type */ f.resolveTypeKlass().mirror(),
-                                    /* modifiers */ f.getModifiers(),
-                                    /* trustedFinal */ f.isTrustedFinal(),
-                                    /* slot */ f.getSlot(),
-                                    /* signature */ meta.toGuestString(f.getGenericSignature()),
-                                    // FIXME(peterssen): Fill annotations bytes.
-                                    /* annotations */ runtimeVisibleAnnotations);
-                } else {
-                    fieldInit.invokeDirect(
-                                    /* this */ instance,
-                                    /* declaringKlass */ f.getDeclaringKlass().mirror(),
-                                    /* name */ context.getStrings().intern(f.getName()),
-                                    /* type */ f.resolveTypeKlass().mirror(),
-                                    /* modifiers */ f.getModifiers(),
-                                    /* slot */ f.getSlot(),
-                                    /* signature */ meta.toGuestString(f.getGenericSignature()),
-                                    // FIXME(peterssen): Fill annotations bytes.
-                                    /* annotations */ runtimeVisibleAnnotations);
-                }
-                meta.HIDDEN_FIELD_KEY.setHiddenObject(instance, f);
-                meta.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
-                return instance;
+                return fields[i].makeMirror(meta);
             }
         });
 
@@ -1035,84 +970,10 @@ public final class VM extends NativeEnv {
         }
         final Method[] constructors = collectedMethods.toArray(Method.EMPTY_ARRAY);
 
-        EspressoContext context = meta.getContext();
-
-        // TODO(peterssen): Cache guest j.l.reflect.Constructor constructor.
-        // Calling the constructor is just for validation, manually setting the fields would be
-        // faster.
-        Method constructorInit = meta.java_lang_reflect_Constructor.lookupDeclaredMethod(Name._init_, context.getSignatures().makeRaw(Type._void,
-                        /* declaringClass */ Type.java_lang_Class,
-                        /* parameterTypes */ Type.java_lang_Class_array,
-                        /* checkedExceptions */ Type.java_lang_Class_array,
-                        /* modifiers */ Type._int,
-                        /* slot */ Type._int,
-                        /* signature */ Type.java_lang_String,
-                        /* annotations */ Type._byte_array,
-                        /* parameterAnnotations */ Type._byte_array));
-
         StaticObject arr = meta.java_lang_reflect_Constructor.allocateReferenceArray(constructors.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
-                final Method m = constructors[i];
-
-                Attribute rawRuntimeVisibleAnnotations = m.getAttribute(Name.RuntimeVisibleAnnotations);
-                StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
-                                ? StaticObject.wrap(rawRuntimeVisibleAnnotations.getData(), meta)
-                                : StaticObject.NULL;
-
-                Attribute rawRuntimeVisibleParameterAnnotations = m.getAttribute(Name.RuntimeVisibleParameterAnnotations);
-                StaticObject runtimeVisibleParameterAnnotations = rawRuntimeVisibleParameterAnnotations != null
-                                ? StaticObject.wrap(rawRuntimeVisibleParameterAnnotations.getData(), meta)
-                                : StaticObject.NULL;
-
-                Attribute rawRuntimeVisibleTypeAnnotations = m.getAttribute(Name.RuntimeVisibleTypeAnnotations);
-                StaticObject runtimeVisibleTypeAnnotations = rawRuntimeVisibleTypeAnnotations != null
-                                ? StaticObject.wrap(rawRuntimeVisibleTypeAnnotations.getData(), meta)
-                                : StaticObject.NULL;
-
-                final Klass[] rawParameterKlasses = m.resolveParameterKlasses();
-                StaticObject parameterTypes = meta.java_lang_Class.allocateReferenceArray(
-                                m.getParameterCount(),
-                                new IntFunction<StaticObject>() {
-                                    @Override
-                                    public StaticObject apply(int j) {
-                                        return rawParameterKlasses[j].mirror();
-                                    }
-                                });
-
-                final Klass[] rawCheckedExceptions = m.getCheckedExceptions();
-                StaticObject checkedExceptions = meta.java_lang_Class.allocateReferenceArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
-                    @Override
-                    public StaticObject apply(int j) {
-                        return rawCheckedExceptions[j].mirror();
-                    }
-                });
-
-                SignatureAttribute signatureAttribute = (SignatureAttribute) m.getAttribute(Name.Signature);
-                StaticObject genericSignature = StaticObject.NULL;
-                if (signatureAttribute != null) {
-                    String sig = m.getConstantPool().symbolAt(signatureAttribute.getSignatureIndex(), "signature").toString();
-                    genericSignature = meta.toGuestString(sig);
-                }
-
-                StaticObject instance = meta.java_lang_reflect_Constructor.allocateInstance(getContext());
-                constructorInit.invokeDirect(
-                                /* this */ instance,
-                                /* declaringKlass */ m.getDeclaringKlass().mirror(),
-                                /* parameterTypes */ parameterTypes,
-                                /* checkedExceptions */ checkedExceptions,
-                                /* modifiers */ m.getMethodModifiers(),
-                                /* slot */ i, // TODO(peterssen): Fill method slot.
-                                /* signature */ genericSignature,
-
-                                // FIXME(peterssen): Fill annotations bytes.
-                                /* annotations */ runtimeVisibleAnnotations,
-                                /* parameterAnnotations */ runtimeVisibleParameterAnnotations);
-
-                meta.HIDDEN_CONSTRUCTOR_KEY.setHiddenObject(instance, m);
-                meta.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
-
-                return instance;
+                return constructors[i].makeConstructorMirror(meta);
             }
         });
 
@@ -1138,7 +999,7 @@ public final class VM extends NativeEnv {
         return meta.java_lang_reflect_Method.allocateReferenceArray(methods.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
-                return methods[i].makeMirror(meta);
+                return methods[i].makeMethodMirror(meta);
             }
         });
 

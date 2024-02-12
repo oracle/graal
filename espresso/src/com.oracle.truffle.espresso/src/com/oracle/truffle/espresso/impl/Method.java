@@ -1004,7 +1004,92 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return removedByRedefinition;
     }
 
+    @TruffleBoundary
     public StaticObject makeMirror(Meta meta) {
+        if (isConstructor()) {
+            return makeConstructorMirror(meta);
+        } else {
+            return makeMethodMirror(meta);
+        }
+    }
+
+    @TruffleBoundary
+    public StaticObject makeConstructorMirror(Meta meta) {
+        assert isConstructor();
+        // TODO(peterssen): Cache guest j.l.reflect.Constructor constructor.
+        // Calling the constructor is just for validation, manually setting the fields would be
+        // faster.
+        Method constructorInit = meta.java_lang_reflect_Constructor.lookupDeclaredMethod(Name._init_, meta.getSignatures().makeRaw(Type._void,
+                        /* declaringClass */ Type.java_lang_Class,
+                        /* parameterTypes */ Type.java_lang_Class_array,
+                        /* checkedExceptions */ Type.java_lang_Class_array,
+                        /* modifiers */ Type._int,
+                        /* slot */ Type._int,
+                        /* signature */ Type.java_lang_String,
+                        /* annotations */ Type._byte_array,
+                        /* parameterAnnotations */ Type._byte_array));
+
+        Attribute rawRuntimeVisibleAnnotations = getAttribute(Name.RuntimeVisibleAnnotations);
+        StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
+                        ? StaticObject.wrap(rawRuntimeVisibleAnnotations.getData(), meta)
+                        : StaticObject.NULL;
+
+        Attribute rawRuntimeVisibleParameterAnnotations = getAttribute(Name.RuntimeVisibleParameterAnnotations);
+        StaticObject runtimeVisibleParameterAnnotations = rawRuntimeVisibleParameterAnnotations != null
+                        ? StaticObject.wrap(rawRuntimeVisibleParameterAnnotations.getData(), meta)
+                        : StaticObject.NULL;
+
+        Attribute rawRuntimeVisibleTypeAnnotations = getAttribute(Name.RuntimeVisibleTypeAnnotations);
+        StaticObject runtimeVisibleTypeAnnotations = rawRuntimeVisibleTypeAnnotations != null
+                        ? StaticObject.wrap(rawRuntimeVisibleTypeAnnotations.getData(), meta)
+                        : StaticObject.NULL;
+
+        final Klass[] rawParameterKlasses = resolveParameterKlasses();
+        StaticObject parameterTypes = meta.java_lang_Class.allocateReferenceArray(
+                        getParameterCount(),
+                        new IntFunction<StaticObject>() {
+                            @Override
+                            public StaticObject apply(int j) {
+                                return rawParameterKlasses[j].mirror();
+                            }
+                        });
+
+        final Klass[] rawCheckedExceptions = getCheckedExceptions();
+        StaticObject checkedExceptions = meta.java_lang_Class.allocateReferenceArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
+            @Override
+            public StaticObject apply(int j) {
+                return rawCheckedExceptions[j].mirror();
+            }
+        });
+
+        SignatureAttribute signatureAttribute = (SignatureAttribute) getAttribute(Name.Signature);
+        StaticObject genericSignature = StaticObject.NULL;
+        if (signatureAttribute != null) {
+            String sig = getConstantPool().symbolAt(signatureAttribute.getSignatureIndex(), "signature").toString();
+            genericSignature = meta.toGuestString(sig);
+        }
+
+        StaticObject instance = meta.java_lang_reflect_Constructor.allocateInstance(getContext());
+        constructorInit.invokeDirect(
+                        /* this */ instance,
+                        /* declaringKlass */ getDeclaringKlass().mirror(),
+                        /* parameterTypes */ parameterTypes,
+                        /* checkedExceptions */ checkedExceptions,
+                        /* modifiers */ getMethodModifiers(),
+                        /* slot */ 0, // TODO(peterssen): Fill method slot.
+                        /* signature */ genericSignature,
+                        /* annotations */ runtimeVisibleAnnotations,
+                        /* parameterAnnotations */ runtimeVisibleParameterAnnotations);
+
+        meta.HIDDEN_CONSTRUCTOR_KEY.setHiddenObject(instance, this);
+        meta.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
+
+        return instance;
+    }
+
+    @TruffleBoundary
+    public StaticObject makeMethodMirror(Meta meta) {
+        assert !isConstructor();
         Attribute rawRuntimeVisibleAnnotations = getAttribute(Name.RuntimeVisibleAnnotations);
         StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
                         ? StaticObject.wrap(rawRuntimeVisibleAnnotations.getData(), meta)
