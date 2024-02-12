@@ -634,30 +634,41 @@ public class RealLog extends Log {
             return this;
         }
 
-        /*
-         * We do not want to call getMessage(), since it can be overridden by subclasses of
-         * Throwable. So we access the raw detailMessage directly from the field in Throwable. That
-         * is better than printing nothing.
-         */
-        String detailMessage = JDKUtils.getRawMessage(t);
-        StackTraceElement[] stackTrace = JDKUtils.getRawStackTrace(t);
+        Throwable cur = t;
+        int maxCauses = 25;
+        for (int i = 0; i < maxCauses && cur != null; i++) {
+            if (i > 0) {
+                newline().string("Caused by: ");
+            }
 
-        string(t.getClass().getName()).string(": ").string(detailMessage);
-        if (stackTrace != null) {
-            int i;
-            for (i = 0; i < stackTrace.length && i < maxFrames; i++) {
-                StackTraceElement element = stackTrace[i];
-                if (element != null) {
-                    newline();
-                    string("    at ").string(element.getClassName()).string(".").string(element.getMethodName());
-                    string("(").string(element.getFileName()).string(":").signed(element.getLineNumber()).string(")");
+            /*
+             * We do not want to call getMessage(), since it can be overridden by subclasses of
+             * Throwable. So we access the raw detailMessage directly from the field in Throwable.
+             * That is better than printing nothing.
+             */
+            String detailMessage = JDKUtils.getRawMessage(cur);
+            StackTraceElement[] stackTrace = JDKUtils.getRawStackTrace(cur);
+
+            string(cur.getClass().getName()).string(": ").string(detailMessage);
+            if (stackTrace != null) {
+                int j;
+                for (j = 0; j < stackTrace.length && j < maxFrames; j++) {
+                    StackTraceElement element = stackTrace[j];
+                    if (element != null) {
+                        newline();
+                        string("    at ").string(element.getClassName()).string(".").string(element.getMethodName());
+                        string("(").string(element.getFileName()).string(":").signed(element.getLineNumber()).string(")");
+                    }
+                }
+                int remaining = stackTrace.length - j;
+                if (remaining > 0) {
+                    newline().string("    ... ").unsigned(remaining).string(" more");
                 }
             }
-            int remaining = stackTrace.length - i;
-            if (remaining > 0) {
-                newline().string("    ... ").unsigned(remaining).string(" more");
-            }
+
+            cur = JDKUtils.getRawCause(cur);
         }
+
         return this;
     }
 }

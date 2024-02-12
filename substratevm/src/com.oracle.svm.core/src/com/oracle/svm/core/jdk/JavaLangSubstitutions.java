@@ -295,6 +295,9 @@ final class Target_java_lang_Throwable {
     @Alias @RecomputeFieldValue(kind = Reset)//
     private Object backtrace;
 
+    @Alias//
+    Throwable cause;
+
     @Alias @RecomputeFieldValue(kind = Reset)//
     StackTraceElement[] stackTrace;
 
