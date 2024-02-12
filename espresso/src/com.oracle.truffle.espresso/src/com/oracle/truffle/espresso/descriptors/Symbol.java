@@ -90,10 +90,6 @@ public final class Symbol<T> extends ByteSequence {
         return subSequence(from, to - from);
     }
 
-    static void copyBytes(Symbol<?> src, int srcPos, byte[] dest, int destPos, int length) {
-        System.arraycopy(src.value, srcPos, dest, destPos, length);
-    }
-
     @Override
     public byte byteAt(int index) {
         return value[index];
