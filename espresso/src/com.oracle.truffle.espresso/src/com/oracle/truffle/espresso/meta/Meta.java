@@ -2003,6 +2003,11 @@ public final class Meta extends ContextAccessImpl {
         throw throwException(java_lang_NullPointerException);
     }
 
+    @TruffleBoundary
+    public EspressoException throwIllegalArgumentExceptionBoundary() {
+        throw throwException(java_lang_IllegalArgumentException);
+    }
+
     // endregion Guest exception handling (throw)
 
     ObjectKlass knownKlass(Symbol<Type> type) {
