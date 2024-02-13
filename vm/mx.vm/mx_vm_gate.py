@@ -779,6 +779,11 @@ def gate_truffle_unchained(tasks):
             if not truffle_suite:
                 mx.abort("Cannot resolve truffle suite.")
             mx_truffle.sl_native_optimized_gate_tests()
+    with Task('Truffle Unchained NFI Native', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
+        if t:
+            if not truffle_suite:
+                mx.abort("Cannot resolve truffle suite.")
+            mx_truffle.nfi_svm_module_path_unit_tests_gate()
 
 def gate_maven_downloader(tasks):
     with Task('Maven Downloader prepare maven repo', tasks, tags=[VmGateTasks.maven_downloader]) as t:

@@ -54,6 +54,7 @@ import mx_gate
 import mx_native
 import mx_sdk
 import mx_sdk_vm
+import mx_subst
 import mx_unittest
 import mx_jardistribution
 import mx_pomdistribution
@@ -350,21 +351,20 @@ def slnative(args):
     target_dir = tempfile.mkdtemp()
     jdk = mx.get_jdk(tag='graalvm')
     image = _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, force_cp=False, hosted_assertions=False)
-    if not image:
-        mx.abort("No native-image installed in GraalVM {}. Switch to an environment that has an installed native-image command.".format(mx_sdk_vm.graalvm_home(fatalIfMissing=True)))
     mx.log("Image build completed. Running {}".format(" ".join([image] + sl_args)))
     result = mx.run([image] + sl_args)
     return result
 
-
-def _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, use_enterprise=True, force_cp=False, hosted_assertions=True):
+def _native_image(jdk):
     native_image_path = jdk.exe_path('native-image')
     if not exists(native_image_path):
         native_image_path = os.path.join(jdk.home, 'bin', mx.cmd_suffix('native-image'))
-        if not exists(native_image_path):
-            mx.warn("No native-image installed in GraalVM {}. Switch to an environment that has an installed native-image command.".format(jdk.home))
-            return None
+    if not exists(native_image_path):
+        mx.abort("No native-image installed in GraalVM {}. Switch to an environment that has an installed native-image command.".format(jdk.home))
+    return native_image_path
 
+def _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, use_enterprise=True, force_cp=False, hosted_assertions=True):
+    native_image_path = _native_image(jdk)
     target_path = os.path.join(target_dir, mx.exe_suffix('sl'))
     dist_names = resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)
 
@@ -424,6 +424,70 @@ def truffle_jvm_class_path_unit_tests_gate():
             "com.oracle.truffle.tck.tests",
         ]
     unittest(list(['--suite', 'truffle', '-Dpolyglotimpl.DisableClassPathIsolation=false', '--use-graalvm', '--enable-timing', '--force-classpath', '--verbose', '--max-class-failures=25'] + test_classes))
+
+
+def nfi_svm_module_path_unit_tests_gate():
+    with mx.TempDir() as tmp:
+        jdk = mx.get_jdk(tag='graalvm')
+        nfi_testlib_arg = mx_subst.path_substitutions.substitute('-Dnative.test.path=<path:truffle:TRUFFLE_TEST_NATIVE>')
+
+        # Collect test ids for native image build
+        uid_tracking_args = [
+                            '-Djunit.platform.listeners.uid.tracking.enabled=true',
+                            f'-Djunit.platform.listeners.uid.tracking.output.dir={os.path.join(tmp, "test-ids")}'
+        ]
+        open_args = [
+            '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl=ALL-UNNAMED'
+        ]
+        vm_args = uid_tracking_args + mx.get_runtime_jvm_args(names=['mx:JUNIT-PLATFORM-NATIVE', 'TRUFFLE_NFI_TEST']) + open_args
+        junit_main_with_args = [
+                            # The UniqueIdTrackingListener functions as an ExecutionListener, meaning that the discover command
+                            # alone is insufficient for generating test IDs. To generate test IDs, we must use the execute command.
+                            # However, we do not wish to execute the tests themselves; We want to only invoke the execution listeners.
+                            # To accomplish this, we execute the test with dry run enabled.
+                            '-Djunit.platform.execution.dryRun.enabled=true',
+                            'org.junit.platform.console.ConsoleLauncher',
+                            'execute',
+                            '--disable-ansi-colors',
+                            '--disable-banner',
+                            '--details=none',
+                            f'--scan-class-path={mx_subst.path_substitutions.substitute("<path:truffle:TRUFFLE_NFI_TEST>")}'
+        ]
+        mx.run_java(vm_args + [nfi_testlib_arg] + junit_main_with_args, jdk=jdk)
+
+        # Build native image for unittests
+        def _allow_runtime_reflection(for_types):
+            config_file = os.path.join(tmp, "reflection_config.json")
+            with open(config_file, "w") as f:
+                print('[', file=f)
+                for i, for_type in enumerate(for_types):
+                    print('{', file=f)
+                    print(f'"name": "{for_type}",', file=f)
+                    print('"allDeclaredMethods": true', file=f)
+                    if i < len(for_types) - 1:
+                        print('},', file=f)
+                    else:
+                        print('}', file=f)
+                print(']', file=f)
+            return config_file
+
+        native_image = _native_image(jdk)
+        tests_executable = os.path.join(tmp, mx.exe_suffix('tests'))
+        reflection_configuration_file = _allow_runtime_reflection([
+                    'org.hamcrest.core.Every',
+                    'org.junit.internal.matchers.StacktracePrintingMatcher',
+                    'org.junit.internal.matchers.ThrowableCauseMatcher'
+        ])
+        native_image_args = [
+                    '--no-fallback',
+                    '-H:+UnlockExperimentalVMOptions', f'-H:ReflectionConfigurationFiles={reflection_configuration_file}', '-H:-UnlockExperimentalVMOptions',
+                    '-o', tests_executable,
+                    '--features=org.graalvm.junit.platform.JUnitPlatformFeature',
+                    'org.graalvm.junit.platform.NativeImageJUnitLauncher']
+        mx.run([native_image] + vm_args + native_image_args)
+
+        # Execute native unittests
+        mx.run([tests_executable, nfi_testlib_arg])
 
 
 # Run in VM suite with:
