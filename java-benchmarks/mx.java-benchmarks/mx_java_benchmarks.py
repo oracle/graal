@@ -510,7 +510,7 @@ mx_benchmark.add_bm_suite(BaseMicronautMuShopBenchmark())
 
 class BaseShopCartBenchmarkSuite(BaseMicronautBenchmarkSuite):
     def version(self):
-        return "0.3.9"
+        return "0.3.10"
 
     def applicationDist(self):
         return mx.library("SHOPCART_" + self.version(), True).get_path(True)
