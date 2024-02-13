@@ -476,7 +476,7 @@ public class SubstrateOptions {
     @Option(help = "Color build output ('always', 'never', or 'auto')", type = OptionType.User)//
     public static final HostedOptionKey<String> Color = new HostedOptionKey<>("auto");
 
-    public static final boolean hasColorsEnabled(OptionValues values) {
+    public static boolean hasColorsEnabled(OptionValues values) {
         if (Color.hasBeenSet(values)) {
             String value = Color.getValue(values);
             return switch (value) {
@@ -873,6 +873,10 @@ public class SubstrateOptions {
                 maxJavaStackTraceDepth = newValue;
             }
         };
+
+        /** Use {@link SubstrateOptions#getPageSize()} instead. */
+        @Option(help = "The largest page size of machines that can run the image. The default of 0 automatically selects a typically suitable value.")//
+        protected static final HostedOptionKey<Integer> PageSize = new HostedOptionKey<>(0);
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
@@ -939,14 +943,15 @@ public class SubstrateOptions {
         }
     }
 
-    @Option(help = "Define PageSize of a machine that runs the image. The default = 0 (== same as host machine page size)")//
-    protected static final HostedOptionKey<Integer> PageSize = new HostedOptionKey<>(0);
-
     @Fold
     public static int getPageSize() {
-        int value = PageSize.getValue();
+        int value = ConcealedOptions.PageSize.getValue();
         if (value == 0) {
-            return Unsafe.getUnsafe().pageSize();
+            /*
+             * Assume at least a 64k page size if none was specified. This maximizes compatibility
+             * because images can be executed as long as run-time page size <= build-time page size.
+             */
+            return Math.max(64 * 1024, Unsafe.getUnsafe().pageSize());
         }
         assert value > 0 : value;
         return value;
