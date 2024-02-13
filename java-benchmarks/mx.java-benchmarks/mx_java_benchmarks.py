@@ -676,21 +676,19 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         return [b for b, it in self.daCapoIterations().items()
                 if self.workloadSize() in self.daCapoSizes().get(b, []) and it != -1]
 
-    def daCapoSuiteTitle(self):
-        """Title string used in the output next to the performance result."""
-        raise NotImplementedError()
-
     def successPatterns(self):
         return [
+            # Due to the non-determinism of DaCapo version printing, we only match the name.
             re.compile(
-                r"^===== " + re.escape(self.daCapoSuiteTitle()) + " ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====", # pylint: disable=line-too-long
+                r"^===== DaCapo (?P<version>\S+) ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====", # pylint: disable=line-too-long
                 re.MULTILINE)
         ]
 
     def failurePatterns(self):
         return [
+            # Due to the non-determinism of DaCapo version printing, we only match the name.
             re.compile(
-                r"^===== " + re.escape(self.daCapoSuiteTitle()) + " ([a-zA-Z0-9_]+) FAILED (warmup|) =====", # pylint: disable=line-too-long
+                r"^===== DaCapo (?P<version>\S+) ([a-zA-Z0-9_]+) FAILED (warmup|) =====", # pylint: disable=line-too-long
                 re.MULTILINE),
             re.compile(
                 r"^\[\[\[Graal compilation failure\]\]\]", # pylint: disable=line-too-long
@@ -706,8 +704,9 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
             return []
         totalIterations = int(runArgs[runArgs.index("-n") + 1])
         return [
+            # Due to the non-determinism of DaCapo version printing, we only match the name.
             mx_benchmark.StdOutRule(
-                r"===== " + re.escape(self.daCapoSuiteTitle()) + " (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+                r"===== DaCapo (?P<version>\S+) (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
                 {
                     "benchmark": ("<benchmark>", str),
                     "bench-suite": self.benchSuiteName(),
@@ -724,7 +723,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
                 }
             ),
             mx_benchmark.StdOutRule(
-                r"===== " + re.escape(self.daCapoSuiteTitle()) + " (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+                r"===== DaCapo (?P<version>\S+) (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
                 {
                     "benchmark": ("<benchmark>", str),
                     "bench-suite": self.benchSuiteName(),
@@ -741,7 +740,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
                 }
             ),
             mx_benchmark.StdOutRule(
-                r"===== " + re.escape(self.daCapoSuiteTitle()) + " (?P<benchmark>[a-zA-Z0-9_]+) completed warmup [0-9]+ in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+                r"===== DaCapo (?P<version>\S+) (?P<benchmark>[a-zA-Z0-9_]+) completed warmup [0-9]+ in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
                 {
                     "benchmark": ("<benchmark>", str),
                     "bench-suite": self.benchSuiteName(),
@@ -835,16 +834,6 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
 
     def workloadSize(self):
         return "default"
-
-    def daCapoSuiteTitle(self):
-        title = None
-        if self.version() == "9.12-bach":
-            title = "DaCapo 9.12"
-        elif self.version() == "9.12-MR1-bach":
-            title = "DaCapo 9.12-MR1"
-        elif self.version() == "9.12-MR1-git+2baec49":
-            title = "DaCapo 9.12-MR1-git+2baec49"
-        return title
 
     def daCapoClasspathEnvVarName(self):
         return "DACAPO_CP"
@@ -943,9 +932,6 @@ class DaCapoD3SBenchmarkSuite(DaCapoBenchmarkSuite): # pylint: disable=too-many-
 
     def name(self):
         return "dacapo-d3s"
-
-    def daCapoSuiteTitle(self):
-        return "DaCapo 9.12-D3S-20180206"
 
     def daCapoClasspathEnvVarName(self):
         return "DACAPO_D3S_CP"
@@ -1142,9 +1128,6 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-
 
     def version(self):
         return "0.1.0"
-
-    def daCapoSuiteTitle(self):
-        return "DaCapo 0.1.0-SNAPSHOT"
 
     def daCapoClasspathEnvVarName(self):
         return "DACAPO_SCALA_CP"
