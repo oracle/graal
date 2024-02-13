@@ -238,6 +238,11 @@ public class OptionProcessor extends AbstractProcessor {
         }
 
         String optionTypeName = getAnnotationValue(annotation, "type", VariableElement.class).getSimpleName().toString();
+        if (!optionTypeName.equals("Debug")) {
+            if (help.length() == 0) {
+                processingEnv.getMessager().printMessage(Kind.ERROR, "Non debug options must always have a option help text " + optionName);
+            }
+        }
         boolean deprecated = getAnnotationValue(annotation, "deprecated", Boolean.class);
         String deprecationMessage = getAnnotationValue(annotation, "deprecationMessage", String.class);
         info.options.add(new OptionInfo(optionName, optionTypeName, help, extraHelp, optionType, declaringClass, field.getSimpleName().toString(), stability, deprecated, deprecationMessage));

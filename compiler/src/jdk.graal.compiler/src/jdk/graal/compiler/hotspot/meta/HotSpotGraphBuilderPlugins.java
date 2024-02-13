@@ -183,7 +183,7 @@ import jdk.vm.ci.services.Services;
 public class HotSpotGraphBuilderPlugins {
 
     public static class Options {
-        @Option(help = "Force an explicit compiler node for Reference.reachabilityFence, instead of relying on FrameState liveness", type = OptionType.Expert) //
+        @Option(help = "Force an explicit compiler node for Reference.reachabilityFence, instead of relying on FrameState liveness", type = OptionType.Debug) //
         public static final OptionKey<Boolean> ForceExplicitReachabilityFence = new OptionKey<>(false);
     }
 

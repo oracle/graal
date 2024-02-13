@@ -50,20 +50,20 @@ import jdk.graal.compiler.phases.contract.NodeCostUtil;
 public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
     public static class Options {
         //@formatter:off
-        @Option(help = "", type = OptionType.Expert)
+        @Option(help = "", type = OptionType.Debug)
         public static final OptionKey<Integer> FullUnrollMaxApplication = new OptionKey<>(60);
 
-        @Option(help = "The threshold in terms of NodeSize for a graph to be considered small for the purpose of full unrolling. "
-                        + "Applied in conjunction with the FullUnrollCodeSizeBudgetFactorForSmallGraphs and "
-                        + "FullUnrollCodeSizeBudgetFactorForLargeGraphs options.", type = OptionType.Expert)
+        @Option(help = "The threshold in terms of NodeSize for a graph to be considered small for the purpose of full unrolling. " +
+                       "Applied in conjunction with the FullUnrollCodeSizeBudgetFactorForSmallGraphs and " +
+                       "FullUnrollCodeSizeBudgetFactorForLargeGraphs options.", type = OptionType.Debug)
         public static final OptionKey<Integer> FullUnrollSmallGraphThreshold = new OptionKey<>(1000);
 
-        @Option(help = "Maximum factor by which full unrolling can increase code size for small graphs. "
-                        + "The FullUnrollSmallGraphThreshold option determines which graphs are small", type = OptionType.Expert)
+        @Option(help = "Maximum factor by which full unrolling can increase code size for small graphs. " +
+                       "The FullUnrollSmallGraphThreshold option determines which graphs are small", type = OptionType.Debug)
         public static final OptionKey<Double> FullUnrollCodeSizeBudgetFactorForSmallGraphs = new OptionKey<>(10D);
 
-        @Option(help = "Maximum factor by which full unrolling can increase code size for large graphs. "
-                        + "The FullUnrollSmallGraphThreshold option determines which graphs are small", type = OptionType.Expert)
+        @Option(help = "Maximum factor by which full unrolling can increase code size for large graphs. " +
+                       "The FullUnrollSmallGraphThreshold option determines which graphs are small", type = OptionType.Debug)
         public static final OptionKey<Double> FullUnrollCodeSizeBudgetFactorForLargeGraphs = new OptionKey<>(2D);
         //@formatter:on
     }

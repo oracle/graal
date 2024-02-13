@@ -1,11 +1,11 @@
 Specifies the action to take when compilation fails.
 
 The accepted values are:
-    Silent  - Print nothing to the console.
-     Print  - Print a stack trace to the console.
-  Diagnose* - Retry the compilation with extra diagnostics.
+    Silent  - Prints nothing to the console.
+     Print  - Prints the stack trace to the console.
+  Diagnose* - Retries the compilation with extra diagnostics.
     ExitVM  - Same as Diagnose except that the VM process exits after retrying.
     
-* If "Diagnose" is set compilation will be retried with extra diagnostics enabled including dumping (see file:doc-files/DumpHelp.txt). 
-  In such a scenario DiagnoseDumpLevel can be used to specify the dump level (DebugContext dump levels) accordingly.
+* If the value is "Diagnose", compilation is retried with extra diagnostics enabled including dumping (see file:doc-files/DumpHelp.txt). 
+  In such a scenario, the DiagnoseDumpLevel option specifies the dump level (DebugContext dump levels) accordingly.
       
