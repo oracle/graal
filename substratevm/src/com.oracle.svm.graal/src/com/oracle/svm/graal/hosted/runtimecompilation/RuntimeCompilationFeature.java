@@ -388,7 +388,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                         runtimeProviders.getForeignCalls(), runtimeProviders.getLowerer(), runtimeProviders.getReplacements(), runtimeProviders.getStampProvider(),
                         runtimeConfig.getProviders().getSnippetReflection(), runtimeProviders.getWordTypes(), runtimeProviders.getPlatformConfigurationProvider(),
                         new GraphPrepareMetaAccessExtensionProvider(),
-                        runtimeProviders.getLoopsDataProvider());
+                        runtimeProviders.getLoopsDataProvider(), runtimeProviders.getIdentityHashCodeProvider());
 
         FeatureHandler featureHandler = config.getFeatureHandler();
         final boolean supportsStubBasedPlugins = !SubstrateOptions.useLLVMBackend();

@@ -28,6 +28,7 @@ import static jdk.vm.ci.common.InitTimer.timer;
 import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.debug.Assertions;
@@ -56,6 +57,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugi
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.graal.compiler.nodes.loop.LoopsDataProviderImpl;
 import jdk.graal.compiler.nodes.memory.FixedAccessNode;
+import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
 import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.options.OptionValues;
@@ -188,9 +190,12 @@ public abstract class HotSpotBackendFactory {
             try (InitTimer rt = timer("create Bytecode provider")) {
                 bytecodeProvider = createBytecodeProvider(metaAccess, snippetReflection);
             }
-
+            IdentityHashCodeProvider identityHashCodeProvider;
+            try (InitTimer rt = timer("create IdentityHashCode provider")) {
+                identityHashCodeProvider = createIdentityHashCodeProvider(snippetReflection);
+            }
             providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, null, registers,
-                            snippetReflection, wordTypes, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider, loopsDataProvider, config);
+                            snippetReflection, wordTypes, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider, loopsDataProvider, config, identityHashCodeProvider);
             HotSpotReplacementsImpl replacements;
             try (InitTimer rt = timer("create Replacements provider")) {
                 replacements = createReplacements(target, providers, bytecodeProvider);
@@ -215,6 +220,10 @@ public abstract class HotSpotBackendFactory {
         try (InitTimer rt = timer("instantiate backend")) {
             return createBackend(config, graalRuntime, providers);
         }
+    }
+
+    protected IdentityHashCodeProvider createIdentityHashCodeProvider(SnippetReflectionProvider snippetReflection) {
+        return new IdentityHashCodeProvider(snippetReflection);
     }
 
     protected abstract HotSpotBackend createBackend(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider graalRuntime, HotSpotProviders providers);

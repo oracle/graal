@@ -22,16 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
+package com.oracle.svm.hosted.code;
 
-import com.oracle.svm.common.meta.IdentityHashCodeProvider;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.util.VMError;
 
-public class SVMIdentityHashCodeProvider extends IdentityHashCodeProvider {
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
+import jdk.vm.ci.meta.JavaConstant;
+
+public class HostedIdentityHashCodeProvider extends IdentityHashCodeProvider {
+
+    public HostedIdentityHashCodeProvider(SnippetReflectionProvider snippetReflection) {
+        super(snippetReflection);
+    }
 
     @Override
-    public int computeIdentityHashCode(Object object) {
-        if (SubstrateUtil.HOSTED && object instanceof DynamicHub) {
+    public int identityHashCode(JavaConstant constant) {
+        VMError.guarantee(SubstrateUtil.HOSTED);
+        Object object = snippetReflection.asObject(Object.class, constant);
+        if (object instanceof DynamicHub) {
             /*
              * We need to use the identity hash code of the original java.lang.Class object and not
              * of the DynamicHub, so that hash maps that are filled during image generation and use
@@ -39,6 +50,6 @@ public class SVMIdentityHashCodeProvider extends IdentityHashCodeProvider {
              */
             return System.identityHashCode(((DynamicHub) object).getHostedJavaClass());
         }
-        return super.computeIdentityHashCode(object);
+        return super.identityHashCode(constant);
     }
 }

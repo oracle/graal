@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.meta;
 
-import com.oracle.svm.common.meta.IdentityHashCodeProvider;
 import com.oracle.svm.util.ClassUtil;
 
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
@@ -37,14 +36,22 @@ import jdk.vm.ci.meta.VMConstant;
 
 public abstract class SubstrateObjectConstant implements JavaConstant, TypedConstant, CompressibleConstant, VMConstant {
     public static JavaConstant forObject(Object object) {
-        return forObject(object, false);
+        return forObject(object, false, 0);
+    }
+
+    public static JavaConstant forObject(Object object, int identityHashCode) {
+        return forObject(object, false, identityHashCode);
     }
 
     public static JavaConstant forObject(Object object, boolean compressed) {
+        return forObject(object, compressed, 0);
+    }
+
+    public static JavaConstant forObject(Object object, boolean compressed, int identityHashCode) {
         if (object == null) {
             return compressed ? CompressedNullConstant.COMPRESSED_NULL : JavaConstant.NULL_POINTER;
         }
-        return new DirectSubstrateObjectConstant(object, compressed);
+        return new DirectSubstrateObjectConstant(object, compressed, identityHashCode);
     }
 
     public static JavaConstant forBoxedValue(JavaKind kind, Object value) {
@@ -156,7 +163,7 @@ public abstract class SubstrateObjectConstant implements JavaConstant, TypedCons
     }
 
     protected static int computeIdentityHashCode(Object object) {
-        return IdentityHashCodeProvider.singleton().computeIdentityHashCode(object);
+        return System.identityHashCode(object);
     }
 
     @Override

@@ -54,6 +54,7 @@ import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -74,8 +75,9 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
 
     @SuppressWarnings("this-escape")
     public SVMImageHeapScanner(BigBang bb, ImageHeap imageHeap, ImageClassLoader loader, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflection,
-                    ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver, HostedValuesProvider hostedValuesProvider) {
-        super(bb, imageHeap, metaAccess, snippetReflection, aConstantReflection, aScanningObserver, hostedValuesProvider);
+                    ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver, HostedValuesProvider hostedValuesProvider,
+                    IdentityHashCodeProvider identityHashCodeProvider) {
+        super(bb, imageHeap, metaAccess, snippetReflection, aConstantReflection, aScanningObserver, hostedValuesProvider, identityHashCodeProvider);
         this.loader = loader;
         economicMapImpl = getClass("org.graalvm.collections.EconomicMapImpl");
         economicMapImplEntriesField = ReflectionUtil.lookupField(economicMapImpl, "entries");

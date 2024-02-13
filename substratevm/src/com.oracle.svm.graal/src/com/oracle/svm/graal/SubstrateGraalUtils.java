@@ -207,13 +207,13 @@ public class SubstrateGraalUtils {
     /**
      * Prepares a hosted {@link ImageHeapConstant} for runtime compilation: it unwraps the
      * {@link HotSpotObjectConstant} and wraps the hosted object into a
-     * {@link SubstrateObjectConstant}.
+     * {@link SubstrateObjectConstant}. We reuse the identity hash code of the heap constant.
      */
     public static JavaConstant hostedToRuntime(ImageHeapConstant heapConstant) {
         JavaConstant hostedConstant = heapConstant.getHostedObject();
         VMError.guarantee(hostedConstant instanceof HotSpotObjectConstant, "Expected to find HotSpotObjectConstant, found %s", hostedConstant);
         Object hostedObject = GraalAccess.getOriginalSnippetReflection().asObject(Object.class, hostedConstant);
-        return SubstrateObjectConstant.forObject(hostedObject);
+        return SubstrateObjectConstant.forObject(hostedObject, heapConstant.getIdentityHashCode());
     }
 
     /**

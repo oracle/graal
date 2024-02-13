@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.common.meta;
+package jdk.graal.compiler.nodes.spi;
 
-import org.graalvm.nativeimage.ImageSingletons;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
 
 public class IdentityHashCodeProvider {
 
-    static IdentityHashCodeProvider provider = null;
+    protected final SnippetReflectionProvider snippetReflection;
 
-    public static IdentityHashCodeProvider singleton() {
-        if (provider == null) {
-            if (ImageSingletons.contains(IdentityHashCodeProvider.class)) {
-                provider = ImageSingletons.lookup(IdentityHashCodeProvider.class);
-            } else {
-                provider = new IdentityHashCodeProvider();
-            }
-        }
-        return provider;
+    public IdentityHashCodeProvider(SnippetReflectionProvider snippetReflection) {
+        this.snippetReflection = snippetReflection;
     }
 
-    public int computeIdentityHashCode(Object object) {
-        return System.identityHashCode(object);
+    public int identityHashCode(JavaConstant constant) {
+        return System.identityHashCode(snippetReflection.asObject(Object.class, constant));
     }
 }
