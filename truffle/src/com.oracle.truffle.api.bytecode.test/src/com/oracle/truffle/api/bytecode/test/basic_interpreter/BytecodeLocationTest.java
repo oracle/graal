@@ -44,7 +44,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assume.assumeTrue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,11 +52,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -401,7 +399,7 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
          * }
          * @formatter:on
          */
-        RootCallTarget root = parse("collectInstructionIndices", b -> {
+        BasicInterpreter rootNode = parseNode("collectInstructionIndices", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginBlock();
@@ -419,7 +417,9 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
         });
 
         List<Integer> indices = new ArrayList<>();
-        assertEquals(42L, root.call(indices));
+        assertEquals(42L, rootNode.getCallTarget().call(indices));
+
+        // Check that the instruction indices are sorted.
         assertTrue(indices.size() != 0);
         int prev = indices.get(0);
         for (int i = 1; i < indices.size(); i++) {
@@ -428,5 +428,12 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
             prev = curr;
         }
 
+        // Check that mapping between instruction index and bci produces the same result.
+        BytecodeNode bytecodeNode = rootNode.getBytecodeNode();
+        for (int expectedIndex : indices) {
+            int bci = bytecodeNode.findBciFromInstructionIndex(expectedIndex);
+            int actualIndex = bytecodeNode.findInstructionIndex(bci);
+            assertEquals(expectedIndex, actualIndex);
+        }
     }
 }

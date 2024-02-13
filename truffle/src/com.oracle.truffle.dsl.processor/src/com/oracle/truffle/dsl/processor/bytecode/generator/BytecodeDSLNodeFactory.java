@@ -5175,6 +5175,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             type.add(createGetSourceSection());
             type.add(createFindSourceLocation());
             type.add(createFindInstructionIndex());
+            type.add(createFindBciFromInstructionIndex());
             type.add(createFindInstruction());
 
             if (model.isBytecodeUpdatable()) {
@@ -5229,13 +5230,33 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
         }
 
-        // toStableBytecodeIndex and findInstructionIndex use the same traversal logic. This helper
-        // emits the code for both functions. Assumes searchBci and bc exist.
-        private void emitStableBytecodeSearch(CodeTreeBuilder b, String resultVariable, Function<TranslationInstructionGroup, Integer> increment) {
+        /**
+         * This function emits the code to map an internal bci to/from a stable value (e.g., a
+         * stable bci or instruction index).
+         * <p>
+         * Assumes the bytecode is stored in a variable {@code bc}.
+         *
+         * @param b the builder
+         * @param targetVariable the name of the variable storing the "target" value to map from.
+         * @param stableVariable the name of the variable storing the "stable" value.
+         * @param stableIncrement produces a numeric value to increment the stable variable by.
+         * @param toStableValue whether to return the stable value or the internal bci.
+         */
+        private void emitStableBytecodeSearch(CodeTreeBuilder b, String targetVariable, String stableVariable, Function<TranslationInstructionGroup, Integer> stableIncrement, boolean toStableValue) {
             b.declaration(type(int.class), "bci", "0");
-            b.declaration(type(int.class), resultVariable, "0");
+            b.declaration(type(int.class), stableVariable, "0");
 
-            b.startWhile().string("bci != searchBci && bci < bc.length").end().startBlock();
+            String resultVariable;
+            String searchVariable;
+            if (toStableValue) {
+                resultVariable = stableVariable;
+                searchVariable = "bci";
+            } else {
+                resultVariable = "bci";
+                searchVariable = stableVariable;
+            }
+
+            b.startWhile().string(searchVariable, " != ", targetVariable, " && bci < bc.length").end().startBlock();
             b.startSwitch().string(readBc("bci")).end().startBlock();
 
             for (var groupEntry : model.getInstructions().stream()//
@@ -5254,7 +5275,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("bci += " + group.instructionLength);
                 } else {
                     b.statement("bci += " + group.instructionLength);
-                    b.statement(resultVariable + " += " + increment.apply(group));
+                    b.statement(stableVariable + " += " + stableIncrement.apply(group));
                 }
                 b.statement("break");
                 b.end();
@@ -5279,7 +5300,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement translate = new CodeExecutableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "toStableBytecodeIndex");
             translate.addParameter(new CodeVariableElement(arrayOf(type(short.class)), "bc"));
             translate.addParameter(new CodeVariableElement(type(int.class), "searchBci"));
-            emitStableBytecodeSearch(translate.createBuilder(), "stableBci", g -> g.instructionLength);
+            emitStableBytecodeSearch(translate.createBuilder(), "searchBci", "stableBci", g -> g.instructionLength, true);
             return translate;
         }
 
@@ -5287,50 +5308,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement translate = new CodeExecutableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "fromStableBytecodeIndex");
             translate.addParameter(new CodeVariableElement(arrayOf(type(short.class)), "bc"));
             translate.addParameter(new CodeVariableElement(type(int.class), "stableSearchBci"));
-            CodeTreeBuilder b = translate.createBuilder();
-
-            b.declaration(type(int.class), "bci", "0");
-            b.declaration(type(int.class), "stableBci", "0");
-
-            b.startWhile().string("stableBci != stableSearchBci && bci < bc.length").end().startBlock();
-            b.startSwitch().string(readBc("bci")).end().startBlock();
-
-            for (var groupEntry : model.getInstructions().stream()//
-                            .filter((i -> !i.isQuickening())) //
-                            .collect(Collectors.groupingBy(TranslationInstructionGroup::new)).entrySet() //
-                            .stream().sorted(Comparator.comparing(e -> e.getKey())) //
-                            .toList()) {
-                TranslationInstructionGroup group = groupEntry.getKey();
-                List<InstructionModel> instructions = groupEntry.getValue();
-
-                for (InstructionModel instruction : instructions) {
-                    b.startCase().tree(createInstructionConstant(instruction)).end();
-                }
-                b.startCaseBlock();
-                if (group.instrumentation) {
-                    b.statement("bci += " + group.instructionLength);
-                } else {
-                    b.statement("bci += " + group.instructionLength);
-                    b.statement("stableBci += " + group.instructionLength);
-                }
-                b.statement("break");
-                b.end();
-            }
-
-            b.caseDefault().startCaseBlock();
-            b.tree(GeneratorUtils.createShouldNotReachHere("Invalid bytecode."));
-            b.end();
-
-            b.end(); // switch
-
-            b.end(); // while
-
-            b.startIf().string("bci >= bc.length").end().startBlock();
-            b.tree(GeneratorUtils.createShouldNotReachHere("Could not translate bytecode index."));
-            b.end();
-
-            b.statement("return bci");
-
+            emitStableBytecodeSearch(translate.createBuilder(), "stableSearchBci", "stableBci", g -> g.instructionLength, false);
             return translate;
         }
 
@@ -5501,7 +5479,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.renameArguments("searchBci");
             CodeTreeBuilder b = ex.createBuilder();
             b.declaration(arrayOf(type(short.class)), "bc", "this.bytecodes");
-            emitStableBytecodeSearch(b, "instructionIndex", g -> 1);
+            emitStableBytecodeSearch(b, "searchBci", "instructionIndex", g -> 1, true);
+            return ex;
+        }
+
+        private CodeExecutableElement createFindBciFromInstructionIndex() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findBciFromInstructionIndex");
+            ex.renameArguments("searchIndex");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.declaration(arrayOf(type(short.class)), "bc", "this.bytecodes");
+            emitStableBytecodeSearch(b, "searchIndex", "instructionIndex", g -> 1, false);
             return ex;
         }
 
