@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Alibaba Group Holding Limited. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,26 +31,45 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.standalone.StandaloneHost;
 
-import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotObjectConstant;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.MemoryAccessProvider;
+import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class StandaloneConstantReflectionProvider extends HotSpotConstantReflectionProvider {
+public class StandaloneConstantReflectionProvider implements ConstantReflectionProvider {
     private final AnalysisUniverse universe;
+    private final ConstantReflectionProvider original;
+    private final SnippetReflectionProvider snippetReflection;
 
-    public StandaloneConstantReflectionProvider(AnalysisUniverse universe, HotSpotJVMCIRuntime runtime) {
-        super(runtime);
+    public StandaloneConstantReflectionProvider(AnalysisUniverse universe, ConstantReflectionProvider original, SnippetReflectionProvider snippetReflection) {
         this.universe = universe;
+        this.original = original;
+        this.snippetReflection = snippetReflection;
+    }
+
+    @Override
+    public Boolean constantEquals(Constant x, Constant y) {
+        return original.constantEquals(x, y);
+    }
+
+    @Override
+    public Integer readArrayLength(JavaConstant array) {
+        return original.readArrayLength(array);
+    }
+
+    @Override
+    public JavaConstant readArrayElement(JavaConstant array, int index) {
+        return universe.getHostedValuesProvider().interceptHosted(original.readArrayElement(array, index));
     }
 
     @Override
     public final JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
         ResolvedJavaField wrappedField = ((AnalysisField) field).getWrapped();
-        JavaConstant ret = universe.getHostedValuesProvider().interceptHosted(super.readFieldValue(wrappedField, receiver));
+        JavaConstant ret = universe.getHostedValuesProvider().interceptHosted(original.readFieldValue(wrappedField, receiver));
         if (ret == null) {
             ret = wrappedField.getConstantValue();
             if (ret == null) {
@@ -60,18 +79,33 @@ public class StandaloneConstantReflectionProvider extends HotSpotConstantReflect
         return ret;
     }
 
+    @Override
+    public JavaConstant boxPrimitive(JavaConstant source) {
+        return universe.getHostedValuesProvider().interceptHosted(original.boxPrimitive(source));
+    }
+
+    @Override
+    public JavaConstant unboxPrimitive(JavaConstant source) {
+        return universe.getHostedValuesProvider().interceptHosted(original.unboxPrimitive(source));
+    }
+
+    @Override
+    public JavaConstant forString(String value) {
+        return universe.getHostedValuesProvider().interceptHosted(original.forString(value));
+    }
+
     /**
      * The correctness of this method is verified by
      * com.oracle.graal.pointsto.test.ClassEqualityTest.
      */
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
-        return super.asJavaClass(markReachable(type));
+        return original.asJavaClass(markReachable(type));
     }
 
     @Override
     public final Constant asObjectHub(ResolvedJavaType type) {
-        return super.asObjectHub(markReachable(type));
+        return original.asObjectHub(markReachable(type));
     }
 
     private static ResolvedJavaType markReachable(ResolvedJavaType type) {
@@ -86,14 +120,27 @@ public class StandaloneConstantReflectionProvider extends HotSpotConstantReflect
 
     @Override
     public ResolvedJavaType asJavaType(Constant constant) {
-        if (constant instanceof HotSpotObjectConstant) {
-            HotSpotObjectConstant hotSpotObjectConstant = (HotSpotObjectConstant) constant;
-            Object obj = hotSpotObjectConstant.asObject(hotSpotObjectConstant.getType());
-            if (obj instanceof Class) {
-                return getHostVM().lookupType((Class<?>) obj);
+        if (constant instanceof JavaConstant) {
+            Class<?> clazz = snippetReflection.asObject(Class.class, (JavaConstant) constant);
+            if (clazz != null) {
+                return getHostVM().lookupType(clazz);
             }
         }
+        ResolvedJavaType originalJavaType = original.asJavaType(constant);
+        if (originalJavaType != null) {
+            return universe.lookup(originalJavaType);
+        }
         return null;
+    }
+
+    @Override
+    public MethodHandleAccessProvider getMethodHandleAccess() {
+        return original.getMethodHandleAccess();
+    }
+
+    @Override
+    public MemoryAccessProvider getMemoryAccessProvider() {
+        return original.getMemoryAccessProvider();
     }
 
     private StandaloneHost getHostVM() {
