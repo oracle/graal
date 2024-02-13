@@ -51,15 +51,8 @@ common + common.frequencies + {
 } + common.jdks + {
   # Aliases to edition specific labsjdks
   labsjdk17::            self["labsjdk-" + repo_config.graalvm_edition + "-17"],
-  labsjdk19::            self["labsjdk-" + repo_config.graalvm_edition + "-19"],
   labsjdk17Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-17Debug"],
-  labsjdk19Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-19Debug"],
   labsjdk17LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-17-llvm"],
-  labsjdk19LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-19-llvm"],
-
-  labsjdk20::            self["labsjdk-" + repo_config.graalvm_edition + "-20"],
-  labsjdk20Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-20Debug"],
-  labsjdk20LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-20-llvm"],
 
   labsjdk21::            self["labsjdk-" + repo_config.graalvm_edition + "-21"],
   labsjdk21Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-21Debug"],
