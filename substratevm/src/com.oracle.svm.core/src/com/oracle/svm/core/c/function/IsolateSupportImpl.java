@@ -90,7 +90,7 @@ public final class IsolateSupportImpl implements IsolateSupport {
                 // Internally, we use C-style arguments, i.e., the first argument is reserved for
                 // the name of the binary. We use null when isolates are created manually.
                 argc = isolateArgCount + 1;
-                argv = NativeMemory.malloc(SizeOf.unsigned(CCharPointerPointer.class).multiply(argc), NmtCategory.Other);
+                argv = NativeMemory.malloc(SizeOf.unsigned(CCharPointerPointer.class).multiply(argc), NmtCategory.Internal);
                 argv.write(0, WordFactory.nullPointer());
 
                 pointerHolders = new CTypeConversion.CCharPointerHolder[isolateArgCount];

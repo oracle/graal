@@ -33,7 +33,6 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.WINDOWS;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.heap.dump.HeapDumping;
 import com.oracle.svm.core.jdk.management.ManagementAgentModule;
@@ -81,8 +80,7 @@ public final class VMInspectionOptions {
     @Option(help = "Dumps all runtime compiled methods on SIGUSR2.", type = OptionType.User) //
     public static final HostedOptionKey<Boolean> DumpRuntimeCompilationOnSignal = new HostedOptionKey<>(false);
 
-    // TEMP (chaeubl): change default to true.
-    @Option(help = "Print native memory tracking statistics on shutdown.", type = OptionType.User) //
+    @Option(help = "Print native memory tracking statistics on shutdown if native memory tracking is enabled.", type = OptionType.User) //
     public static final RuntimeOptionKey<Boolean> PrintNMTStatistics = new RuntimeOptionKey<>(false);
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -176,9 +174,7 @@ public final class VMInspectionOptions {
 
     @Fold
     public static boolean hasNativeMemoryTrackingSupport() {
-        // TEMP (chaeubl): for testing in the CI.
-        return Platform.includedIn(InternalPlatform.NATIVE_ONLY.class);
-        // return hasAllOrKeywordMonitoringSupport(MONITORING_NMT_NAME);
+        return hasAllOrKeywordMonitoringSupport(MONITORING_NMT_NAME);
     }
 
     static class DeprecatedOptions {

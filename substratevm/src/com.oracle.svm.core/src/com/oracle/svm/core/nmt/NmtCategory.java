@@ -52,8 +52,8 @@ public enum NmtCategory {
     /** Memory allocated via Unsafe. */
     Unsafe("Unsafe"),
 
-    /** Some other VM internal reason - avoid if possible, better to add a new category. */
-    Other("Other");
+    /** Some other, VM internal reason - avoid if possible, better to add a new category. */
+    Internal("Internal");
 
     private final String name;
 

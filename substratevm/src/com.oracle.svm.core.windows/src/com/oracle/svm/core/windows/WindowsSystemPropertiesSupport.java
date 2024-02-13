@@ -246,7 +246,7 @@ public class WindowsSystemPropertiesSupport extends SystemPropertiesSupport {
                 break;
             }
 
-            VoidPointer versionInfo = NullableNativeMemory.malloc(WordFactory.unsigned(versionSize), NmtCategory.Other);
+            VoidPointer versionInfo = NullableNativeMemory.malloc(WordFactory.unsigned(versionSize), NmtCategory.Internal);
             if (versionInfo.isNull()) {
                 break;
             }

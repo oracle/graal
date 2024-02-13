@@ -71,24 +71,25 @@ public class NativeMemoryTracking {
     @Fold
     public static UnsignedWord sizeOfNmtHeader() {
         /*
-         * Align the allocation payload to 16 bytes (assuming that the platform-specific malloc
-         * implementation returns a pointer that is aligned to >= 16 bytes).
+         * Align the header to 16 bytes to preserve platform-specific malloc alignments up to 16
+         * bytes (i.e., the allocation payload is aligned to 16 bytes if the platform-specific
+         * malloc implementation returns a pointer that is aligned to at least 16 bytes).
          */
         return UnsignedUtils.roundUp(SizeOf.unsigned(NmtMallocHeader.class), ALIGNMENT);
     }
 
+    /**
+     * Initializes the NMT header and returns a pointer to the allocation payload (i.e., the inner
+     * pointer).
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public Pointer track(PointerBase outerPtr, UnsignedWord size, NmtCategory category) {
-        /* Initialize the header. */
+    @SuppressWarnings("static-method")
+    public Pointer initializeHeader(PointerBase outerPtr, UnsignedWord size, NmtCategory category) {
         NmtMallocHeader mallocHeader = (NmtMallocHeader) outerPtr;
         mallocHeader.setAllocationSize(size);
         mallocHeader.setCategory(category.ordinal());
         assert setMagic(mallocHeader);
-
-        /* Track the memory. */
-        Pointer innerPtr = ((Pointer) outerPtr).add(sizeOfNmtHeader());
-        track(innerPtr);
-        return innerPtr;
+        return getInnerPointer(mallocHeader);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -136,6 +137,11 @@ public class NativeMemoryTracking {
         NmtMallocHeader result = (NmtMallocHeader) ((Pointer) innerPtr).subtract(sizeOfNmtHeader());
         assert result.getMagic() == MAGIC : "bad NMT malloc header";
         return result;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static Pointer getInnerPointer(NmtMallocHeader mallocHeader) {
+        return ((Pointer) mallocHeader).add(sizeOfNmtHeader());
     }
 
     public long getUsedMemory(NmtCategory category) {

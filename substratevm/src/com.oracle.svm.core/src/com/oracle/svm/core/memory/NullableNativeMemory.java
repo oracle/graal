@@ -53,9 +53,9 @@ public class NullableNativeMemory {
      * This method returns a null pointer when allocation fails.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static <T extends PointerBase> T malloc(UnsignedWord size, NmtCategory flag) {
+    public static <T extends PointerBase> T malloc(UnsignedWord size, NmtCategory category) {
         T outerPointer = UntrackedNullableNativeMemory.malloc(getAllocationSize(size));
-        return track(outerPointer, size, flag);
+        return track(outerPointer, size, category);
     }
 
     /**
@@ -64,9 +64,9 @@ public class NullableNativeMemory {
      * This method returns a null pointer when allocation fails.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static <T extends PointerBase> T malloc(int size, NmtCategory flag) {
+    public static <T extends PointerBase> T malloc(int size, NmtCategory category) {
         assert size >= 0;
-        return malloc(WordFactory.unsigned(size), flag);
+        return malloc(WordFactory.unsigned(size), category);
     }
 
     /**
@@ -75,9 +75,9 @@ public class NullableNativeMemory {
      * This method returns a null pointer when allocation fails.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static <T extends PointerBase> T calloc(UnsignedWord size, NmtCategory flag) {
+    public static <T extends PointerBase> T calloc(UnsignedWord size, NmtCategory category) {
         T outerPointer = UntrackedNullableNativeMemory.calloc(getAllocationSize(size));
-        return track(outerPointer, size, flag);
+        return track(outerPointer, size, category);
     }
 
     /**
@@ -86,9 +86,9 @@ public class NullableNativeMemory {
      * This method returns a null pointer when allocation fails.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static <T extends PointerBase> T calloc(int size, NmtCategory flag) {
+    public static <T extends PointerBase> T calloc(int size, NmtCategory category) {
         assert size >= 0;
-        return calloc(WordFactory.unsigned(size), flag);
+        return calloc(WordFactory.unsigned(size), category);
     }
 
     /**
@@ -100,9 +100,9 @@ public class NullableNativeMemory {
      */
     @SuppressWarnings("unchecked")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static <T extends PointerBase> T realloc(T ptr, UnsignedWord size, NmtCategory flag) {
+    public static <T extends PointerBase> T realloc(T ptr, UnsignedWord size, NmtCategory category) {
         if (ptr.isNull()) {
-            return malloc(size, flag);
+            return malloc(size, category);
         } else if (!VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
             return UntrackedNullableNativeMemory.realloc(ptr, getAllocationSize(size));
         }
@@ -123,7 +123,7 @@ public class NullableNativeMemory {
 
         /* Only untrack the old block if the allocation was successful. */
         NativeMemoryTracking.singleton().untrack(oldSize, oldCategory);
-        return track(newOuterPointer, size, flag);
+        return track(newOuterPointer, size, category);
     }
 
     /**
@@ -134,9 +134,9 @@ public class NullableNativeMemory {
      * deallocated and remains unchanged.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static <T extends PointerBase> T realloc(T ptr, int size, NmtCategory flag) {
+    public static <T extends PointerBase> T realloc(T ptr, int size, NmtCategory category) {
         assert size >= 0;
-        return realloc(ptr, WordFactory.unsigned(size), flag);
+        return realloc(ptr, WordFactory.unsigned(size), category);
     }
 
     /**
@@ -167,9 +167,11 @@ public class NullableNativeMemory {
 
     @SuppressWarnings("unchecked")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static <T extends PointerBase> T track(T outerPtr, UnsignedWord size, NmtCategory flag) {
+    private static <T extends PointerBase> T track(T outerPtr, UnsignedWord size, NmtCategory category) {
         if (VMInspectionOptions.hasNativeMemoryTrackingSupport() && outerPtr.isNonNull()) {
-            return (T) NativeMemoryTracking.singleton().track(outerPtr, size, flag);
+            T innerPtr = (T) NativeMemoryTracking.singleton().initializeHeader(outerPtr, size, category);
+            NativeMemoryTracking.singleton().track(innerPtr);
+            return innerPtr;
         }
         return outerPtr;
     }
