@@ -224,11 +224,15 @@ public class JDTCompiler extends AbstractCompiler {
                     int i1 = declarationOrder.indexOf(o1Binding);
                     int i2 = declarationOrder.indexOf(o2Binding);
 
-                    if (i1 == -1 || i2 == -1) {
+                    if (i1 == -1 && i2 == -1) {
                         return 0;
+                    } else if (i1 == -1) {
+                        return 1;
+                    } else if (i2 == -1) {
+                        return -1;
+                    } else {
+                        return i1 - i2;
                     }
-
-                    return i1 - i2;
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
