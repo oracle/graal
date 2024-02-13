@@ -74,7 +74,7 @@ import sun.misc.Unsafe;
  * This class does not handle gathering of methods to be compiled, which are instead provided as an
  * argument to {@link #compileAll}.
  */
-public class StandaloneBulkCompile {
+public class LibGraalCompilationDriver {
 
     static {
         // To be able to use Unsafe
@@ -121,12 +121,12 @@ public class StandaloneBulkCompile {
      *            {@code Runtime.getRuntime().availableProcessors()} is used instead.
      * @param statsInterval Interval between compilation progress reports, in seconds.
      */
-    public StandaloneBulkCompile(HotSpotJVMCIRuntime jvmciRuntime,
-                    HotSpotGraalCompiler compiler,
-                    boolean invalidateInstalledCode,
-                    boolean multiThreaded,
-                    int threadCount,
-                    int statsInterval) {
+    public LibGraalCompilationDriver(HotSpotJVMCIRuntime jvmciRuntime,
+                                     HotSpotGraalCompiler compiler,
+                                     boolean invalidateInstalledCode,
+                                     boolean multiThreaded,
+                                     int threadCount,
+                                     int statsInterval) {
         this.jvmciRuntime = jvmciRuntime;
         this.compiler = compiler;
         this.invalidateInstalledCode = invalidateInstalledCode;
@@ -166,7 +166,7 @@ public class StandaloneBulkCompile {
     public static class LibGraalParams implements AutoCloseable {
 
         static {
-            LibGraal.registerNativeMethods(StandaloneBulkCompile.class);
+            LibGraal.registerNativeMethods(LibGraalCompilationDriver.class);
         }
 
         /**

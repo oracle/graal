@@ -113,7 +113,7 @@ import jdk.vm.ci.runtime.JVMCI;
 /**
  * This class implements compile-the-world functionality with JVMCI.
  */
-public final class CompileTheWorld extends StandaloneBulkCompile {
+public final class CompileTheWorld extends LibGraalCompilationDriver {
 
     static {
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.ci");
@@ -576,7 +576,7 @@ public final class CompileTheWorld extends StandaloneBulkCompile {
         }
     }
 
-    public static class Compilation extends StandaloneBulkCompile.Compilation {
+    public static class Compilation extends LibGraalCompilationDriver.Compilation {
         /**
          * Position of the class declaring {@link #getMethod} in the CTW class path traversal.
          */
@@ -949,7 +949,7 @@ public final class CompileTheWorld extends StandaloneBulkCompile {
                 // config debug override.
                 HotSpotResolvedJavaMethod dummyMethod = (HotSpotResolvedJavaMethod) JVMCI.getRuntime().getHostJVMCIBackend().getMetaAccess().lookupJavaMethod(
                                 CompileTheWorld.class.getDeclaredMethod("dummy"));
-                compileWithJarGraal(new StandaloneBulkCompile.Compilation(dummyMethod), compilerOptions, null, false);
+                compileWithJarGraal(new LibGraalCompilationDriver.Compilation(dummyMethod), compilerOptions, null, false);
             } catch (NoSuchMethodException | SecurityException e1) {
                 printStackTrace(e1);
             }

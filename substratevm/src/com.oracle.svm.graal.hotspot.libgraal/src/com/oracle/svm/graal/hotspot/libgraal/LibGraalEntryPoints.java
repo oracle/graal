@@ -346,7 +346,7 @@ public final class LibGraalEntryPoints {
      * @return a handle to a {@link InstalledCode} in HotSpot's heap or 0 if compilation failed
      */
     @SuppressWarnings({"unused", "try"})
-    @CEntryPoint(name = "Java_jdk_graal_compiler_hotspot_test_StandaloneBulkCompile_compileMethodInLibgraal", include = LibGraalFeature.IsEnabled.class)
+    @CEntryPoint(name = "Java_jdk_graal_compiler_hotspot_test_LibGraalCompilationDriver_compileMethodInLibgraal", include = LibGraalFeature.IsEnabled.class)
     private static long compileMethod(JNIEnv jniEnv,
                     PointerBase jclass,
                     @CEntryPoint.IsolateThreadContext long isolateThread,
