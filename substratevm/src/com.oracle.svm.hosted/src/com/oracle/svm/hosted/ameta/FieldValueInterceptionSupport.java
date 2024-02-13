@@ -41,7 +41,6 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.BaseLayerField;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
@@ -66,7 +65,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.word.Word;
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -115,7 +113,7 @@ public final class FieldValueInterceptionSupport {
     }
 
     public void registerFieldValueTransformer(ResolvedJavaField oField, FieldValueTransformer transformer) {
-        assert oField instanceof HotSpotResolvedJavaField : oField;
+        assert oField != null && !(oField instanceof OriginalFieldProvider) : oField;
         if (annotationSubstitutions.isDeleted(oField)) {
             throw UserError.abort("Cannot register a field value transformer for field %s: %s", oField.format("%H.%n"),
                             "The field is marked as deleted, i.e., the field is not available on this platform");
@@ -155,8 +153,6 @@ public final class FieldValueInterceptionSupport {
         field.beforeFieldValueAccess();
 
         ResolvedJavaField oField = OriginalFieldProvider.getOriginalField(field);
-        assert oField == null || oField instanceof HotSpotResolvedJavaField || oField instanceof BaseLayerField : oField;
-
         FieldValueComputer computer = createFieldValueComputer(field);
         Object result;
         if (computer != null) {
