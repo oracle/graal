@@ -40,6 +40,16 @@ public final class JDKUtils {
     }
 
     /**
+     * Returns the raw cause stored in {@link Throwable} and returned by default from
+     * {@link Throwable#getCause}. This method ignores possible overrides of
+     * {@link Throwable#getCause} and is therefore guaranteed to be allocation free.
+     */
+    public static Throwable getRawCause(Throwable ex) {
+        Throwable cause = SubstrateUtil.cast(ex, Target_java_lang_Throwable.class).cause;
+        return cause == ex ? null : cause;
+    }
+
+    /**
      * Gets the materialized {@link StackTraceElement} array stored in a {@link Throwable} object.
      * Must only be called if {@link #isStackTraceValid} returns (or would return) {@code true}.
      */
