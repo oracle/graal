@@ -504,6 +504,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> setValue = StaticSymbols.putName("setValue");
         public static final Symbol<Name> entrySet = StaticSymbols.putName("entrySet");
         public static final Symbol<Name> hasNext = StaticSymbols.putName("hasNext");
+        public static final Symbol<Name> toArray = StaticSymbols.putName("toArray");
 
         // Hidden field names. Starts with a 0 in order for the names to be illegal identifiers.
 
@@ -577,6 +578,7 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Name> platformClassLoader = StaticSymbols.putName("platformClassLoader");
         public static final Symbol<Name> bootModules = StaticSymbols.putName("bootModules");
+        public static final Symbol<Name> platformModules = StaticSymbols.putName("platformModules");
         public static final Symbol<Name> descriptor = StaticSymbols.putName("descriptor");
         public static final Symbol<Name> ofSystem = StaticSymbols.putName("ofSystem");
         public static final Symbol<Name> defineModule = StaticSymbols.putName("defineModule");
@@ -1087,7 +1089,7 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Signature> java_util_Iterator = StaticSymbols.putSignature(Type.java_util_Iterator);
         public static final Symbol<Signature> java_util_Set = StaticSymbols.putSignature(Type.java_util_Set);
-        public static final Symbol<Signature> java_util_Set_Object_array = StaticSymbols.putSignature(Type.java_util_Set, Type.java_lang_Object_array);
+        public static final Symbol<Signature> Set_Object_array = StaticSymbols.putSignature(Type.java_util_Set, Type.java_lang_Object_array);
 
         public static final Symbol<Signature> java_lang_reflect_Method_init_signature = StaticSymbols.putSignature(Type._void,
                         /* declaringClass */ Type.java_lang_Class,

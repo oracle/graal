@@ -53,6 +53,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -145,6 +146,7 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.Inject;
+import com.oracle.truffle.espresso.substitutions.JImageExtensions;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_System;
@@ -3442,6 +3444,19 @@ public final class VM extends NativeEnv {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Class loader is an invalid delegating class loader");
         }
 
+        getLogger().finer(() -> "defineModule(module.loader=" + (StaticObject.isNull(loader) ? "bootstrap" : loader.getKlass().getExternalName()) + ", " + moduleName + ", " +
+                        Arrays.toString(packages) + ")");
+
+        Set<String> extraPackages = null;
+        JImageExtensions jImageExtensions = getLanguage().getJImageExtensions();
+        if (jImageExtensions != null) {
+            extraPackages = jImageExtensions.getExtensions().get(moduleName);
+            if (extraPackages != null) {
+                Set<String> finalExtraPackages = extraPackages;
+                getLogger().finer(() -> "extraPackages= " + finalExtraPackages);
+            }
+        }
+
         // Prepare variables
         ClassRegistry registry = getRegistries().getClassRegistry(loader);
         assert registry != null;
@@ -3468,6 +3483,13 @@ public final class VM extends NativeEnv {
                                     cat("Package ", str, " is already defined."));
                 }
                 pkgSymbols.add(symbol);
+            }
+            if (extraPackages != null) {
+                for (String str : extraPackages) {
+                    Symbol<Name> symbol = getNames().getOrCreate(str);
+                    assert packageTable.lookup(symbol) == null;
+                    pkgSymbols.add(symbol);
+                }
             }
             Symbol<Name> moduleSymbol = getNames().getOrCreate(moduleName);
             // Try define module

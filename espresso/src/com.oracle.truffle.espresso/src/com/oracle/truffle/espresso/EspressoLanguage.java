@@ -79,6 +79,7 @@ import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject.StaticObjectFactory;
+import com.oracle.truffle.espresso.substitutions.JImageExtensions;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe.CompactGuestFieldOffsetStrategy;
 import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe.GraalGuestFieldOffsetStrategy;
@@ -150,6 +151,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     // endregion Preinit and sharing
 
     @CompilationFinal private volatile boolean fullyInitialized;
+
+    @CompilationFinal private JImageExtensions jImageExtensions;
 
     @CompilationFinal private GuestFieldOffsetStrategy guestFieldOffsetStrategy;
 
@@ -631,6 +634,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         public void close() {
             getThreadLocalState().enableSingleStepping();
         }
+    }
+
+    public JImageExtensions getJImageExtensions() {
+        return jImageExtensions;
     }
 
     public GuestFieldOffsetStrategy getGuestFieldOffsetStrategy() {

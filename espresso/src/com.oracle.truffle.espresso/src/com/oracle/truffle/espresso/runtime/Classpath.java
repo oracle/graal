@@ -38,6 +38,7 @@ import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.substitutions.JImageExtensions;
 
 public final class Classpath {
     public static final String JAVA_BASE = "java.base";
@@ -58,7 +59,7 @@ public final class Classpath {
             if (context.getJavaVersion().modulesEnabled()) {
                 JImageHelper helper = context.createJImageHelper(name);
                 if (helper != null) {
-                    return new Modules(pathFile, helper);
+                    return new Modules(pathFile, helper, context.getLanguage().getJImageExtensions());
                 }
             }
             try {
@@ -220,10 +221,12 @@ public final class Classpath {
     static final class Modules extends Entry {
         private final File file;
         private final JImageHelper helper;
+        private final JImageExtensions extensions;
 
-        Modules(File file, JImageHelper helper) {
+        Modules(File file, JImageHelper helper, JImageExtensions extensions) {
             this.file = file;
             this.helper = helper;
+            this.extensions = extensions;
         }
 
         @Override
@@ -233,7 +236,13 @@ public final class Classpath {
 
         @Override
         ClasspathFile readFile(ByteSequence archiveName) {
-            byte[] classBytes = helper.getClassBytes(archiveName);
+            byte[] classBytes = null;
+            if (this.extensions != null) {
+                classBytes = extensions.getClassBytes(archiveName);
+            }
+            if (classBytes == null) {
+                classBytes = helper.getClassBytes(archiveName);
+            }
             if (classBytes == null) {
                 return null;
             }

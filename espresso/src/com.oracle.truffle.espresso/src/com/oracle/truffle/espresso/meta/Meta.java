@@ -33,7 +33,10 @@ import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.highe
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.lower;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -53,11 +56,13 @@ import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.substitutions.JImageExtensions;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
@@ -694,12 +699,18 @@ public final class Meta extends ContextAccessImpl {
             java_lang_Module = knownKlass(Type.java_lang_Module);
             java_lang_Module_name = java_lang_Module.requireDeclaredField(Name.name, Type.java_lang_String);
             java_lang_Module_loader = java_lang_Module.requireDeclaredField(Name.loader, Type.java_lang_ClassLoader);
+            java_lang_Module_descriptor = java_lang_Module.requireDeclaredField(Name.descriptor, Type.java_lang_module_ModuleDescriptor);
             HIDDEN_MODULE_ENTRY = java_lang_Module.requireHiddenField(Name.HIDDEN_MODULE_ENTRY);
+            java_lang_module_ModuleDescriptor = knownKlass(Type.java_lang_module_ModuleDescriptor);
+            java_lang_module_ModuleDescriptor_packages = java_lang_module_ModuleDescriptor.requireDeclaredField(Name.packages, Type.java_util_Set);
         } else {
             java_lang_Module = null;
             java_lang_Module_name = null;
             java_lang_Module_loader = null;
+            java_lang_Module_descriptor = null;
             HIDDEN_MODULE_ENTRY = null;
+            java_lang_module_ModuleDescriptor = null;
+            java_lang_module_ModuleDescriptor_packages = null;
         }
 
         java_lang_Record = diff() //
@@ -895,6 +906,11 @@ public final class Meta extends ContextAccessImpl {
         java_util_Set = knownKlass(Type.java_util_Set);
         java_util_Set_add = java_util_Set.requireDeclaredMethod(Name.add, Signature._boolean_Object);
         assert java_util_Set.isInterface();
+        if (getJavaVersion().java9OrLater()) {
+            java_util_Set_of = java_util_Set.requireDeclaredMethod(Name.of, Signature.Set_Object_array);
+        } else {
+            java_util_Set_of = null;
+        }
 
         java_lang_Iterable = knownKlass(Type.java_lang_Iterable);
         java_lang_Iterable_iterator = java_lang_Iterable.requireDeclaredMethod(Name.iterator, Signature.java_util_Iterator);
@@ -907,6 +923,8 @@ public final class Meta extends ContextAccessImpl {
         assert java_util_Iterator.isInterface();
 
         java_util_Collection = knownKlass(Type.java_util_Collection);
+        java_util_Collection_size = java_util_Collection.requireDeclaredMethod(Name.size, Signature._int);
+        java_util_Collection_toArray = java_util_Collection.requireDeclaredMethod(Name.toArray, Signature.Object_array_Object_array);
 
         java_util_Optional = knownKlass(Type.java_util_Optional);
         java_util_Optional_EMPTY = java_util_Optional.requireDeclaredField(Name.EMPTY, Type.java_util_Optional);
@@ -942,6 +960,7 @@ public final class Meta extends ContextAccessImpl {
         if (getJavaVersion().java9OrLater()) {
             jdk_internal_module_ModuleLoaderMap = knownKlass(Type.jdk_internal_module_ModuleLoaderMap);
             jdk_internal_module_ModuleLoaderMap_bootModules = jdk_internal_module_ModuleLoaderMap.requireDeclaredMethod(Name.bootModules, Signature.java_util_Set);
+            jdk_internal_module_ModuleLoaderMap_platformModules = jdk_internal_module_ModuleLoaderMap.requireDeclaredMethod(Name.platformModules, Signature.java_util_Set);
             jdk_internal_module_SystemModuleFinders = knownKlass(Type.jdk_internal_module_SystemModuleFinders);
             jdk_internal_module_SystemModuleFinders_of = jdk_internal_module_SystemModuleFinders.requireDeclaredMethod(Name.of, Signature.ModuleFinder_SystemModules);
             jdk_internal_module_SystemModuleFinders_ofSystem = jdk_internal_module_SystemModuleFinders.requireDeclaredMethod(Name.ofSystem, Signature.ModuleFinder);
@@ -954,6 +973,7 @@ public final class Meta extends ContextAccessImpl {
         } else {
             jdk_internal_module_ModuleLoaderMap = null;
             jdk_internal_module_ModuleLoaderMap_bootModules = null;
+            jdk_internal_module_ModuleLoaderMap_platformModules = null;
             jdk_internal_module_SystemModuleFinders = null;
             jdk_internal_module_SystemModuleFinders_of = null;
             jdk_internal_module_SystemModuleFinders_ofSystem = null;
@@ -1077,6 +1097,43 @@ public final class Meta extends ContextAccessImpl {
         // Load Espresso's Polyglot API.
         boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
         this.polyglot = polyglotSupport ? new PolyglotSupport() : null;
+
+        JImageExtensions jImageExtensions = getLanguage().getJImageExtensions();
+        if (jImageExtensions != null && getJavaVersion().java9OrLater()) {
+            for (Map.Entry<String, Set<String>> entry : jImageExtensions.getExtensions().entrySet()) {
+                Symbol<Name> name = getNames().lookup(entry.getKey());
+                if (name == null) {
+                    continue;
+                }
+                ModuleTable.ModuleEntry moduleEntry = getRegistries().findUniqueModule(name);
+                if (moduleEntry != null) {
+                    extendModulePackages(moduleEntry, entry.getValue());
+                }
+            }
+        }
+    }
+
+    private void extendModulePackages(ModuleTable.ModuleEntry moduleEntry, Set<String> extraPackages) {
+        StaticObject moduleDescriptor = java_lang_Module_descriptor.getObject(moduleEntry.module());
+        StaticObject origPackages = java_lang_module_ModuleDescriptor_packages.getObject(moduleDescriptor);
+        StaticObject newPackages = extendedStringSet(origPackages, extraPackages);
+        java_lang_module_ModuleDescriptor_packages.setObject(moduleDescriptor, newPackages);
+    }
+
+    public @JavaType(Set.class) StaticObject extendedStringSet(@JavaType(Set.class) StaticObject original, Collection<String> extraStrings) {
+        Method getSizeImpl = ((ObjectKlass) original.getKlass()).itableLookup(java_util_Set, java_util_Collection_size.getITableIndex());
+        int origSize = (int) getSizeImpl.invokeDirect(original);
+        StaticObject stringArray = java_lang_String.allocateReferenceArray(origSize + extraStrings.size());
+        Method toArrayImpl = ((ObjectKlass) original.getKlass()).itableLookup(java_util_Set, java_util_Collection_toArray.getITableIndex());
+        StaticObject toArrayResult = (StaticObject) toArrayImpl.invokeDirect(original, stringArray);
+        assert toArrayResult == stringArray;
+        StaticObject[] unwrappedStringArray = stringArray.unwrap(getLanguage());
+        int idx = origSize;
+        for (String extraPackage : extraStrings) {
+            assert StaticObject.isNull(unwrappedStringArray[idx]);
+            unwrappedStringArray[idx++] = toGuestString(extraPackage);
+        }
+        return (StaticObject) java_util_Set_of.invokeDirect(null, stringArray);
     }
 
     private DiffVersionLoadHelper diff() {
@@ -1203,7 +1260,10 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass java_lang_Module;
     public final Field java_lang_Module_name;
     public final Field java_lang_Module_loader;
+    public final Field java_lang_Module_descriptor;
     public final Field HIDDEN_MODULE_ENTRY;
+    public final ObjectKlass java_lang_module_ModuleDescriptor;
+    public final Field java_lang_module_ModuleDescriptor_packages;
 
     public final ObjectKlass java_lang_Record;
     public final ObjectKlass java_lang_reflect_RecordComponent;
@@ -1544,6 +1604,7 @@ public final class Meta extends ContextAccessImpl {
     // Module system
     public final ObjectKlass jdk_internal_module_ModuleLoaderMap;
     public final Method jdk_internal_module_ModuleLoaderMap_bootModules;
+    public final Method jdk_internal_module_ModuleLoaderMap_platformModules;
     public final ObjectKlass jdk_internal_module_ModuleLoaderMap_Modules;
     public final Method jdk_internal_module_ModuleLoaderMap_Modules_clinit;
     public final ObjectKlass jdk_internal_module_SystemModuleFinders;
@@ -1620,6 +1681,7 @@ public final class Meta extends ContextAccessImpl {
 
     public final ObjectKlass java_util_Set;
     public final Method java_util_Set_add;
+    public final Method java_util_Set_of;
 
     public final ObjectKlass java_lang_Iterable;
     public final Method java_lang_Iterable_iterator;
@@ -1630,6 +1692,8 @@ public final class Meta extends ContextAccessImpl {
     public final Method java_util_Iterator_remove;
 
     public final ObjectKlass java_util_Collection;
+    public final Method java_util_Collection_size;
+    public final Method java_util_Collection_toArray;
 
     public final ObjectKlass java_util_Optional;
     public final Field java_util_Optional_value;
