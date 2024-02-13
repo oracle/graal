@@ -3543,7 +3543,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     else:
                         with_non_rebuildable_configs = True
             for library_config in _get_library_configs(component):
-                library_project = None
                 if with_svm:
                     library_project = GraalVmLibrary(component, GraalVmNativeImage.project_name(library_config), [], library_config)
                     register_project(library_project)
@@ -3561,30 +3560,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                         register_project(launcher_project)
                         polyglot_config_project = PolyglotConfig(component, library_config)
                         register_project(polyglot_config_project)
-                    if with_svm and library_config.isolate_library_layout_distribution and not library_project.is_skipped() and has_component('tfle', stage1=True):
-                        # Create a layout distribution with the resulting language library that can be consumed into the
-                        # isolate resources jar distribution,
-                        resource_base_folder = f'META-INF/resources/engine/{library_config.language}-isolate/<os>/<arch>/libvm'
-                        attrs = {
-                            'description': f'Contains {library_config.language} language library resources',
-                            'hashEntry': f'{resource_base_folder}/sha256',
-                            'fileListEntry': f'{resource_base_folder}/files',
-                            'maven': False,
-                        }
-                        register_distribution(mx.LayoutDirDistribution(
-                            suite=_suite,
-                            name=library_config.isolate_library_layout_distribution['name'],
-                            deps=[],
-                            layout={
-                                f'{resource_base_folder}/': f'dependency:{library_project.name}',
-                                f'{resource_base_folder}/resources': f'dependency:{library_project.name}/resources',
-                            },
-                            path=None,
-                            platformDependent=True,
-                            theLicense=None,
-                            platforms=library_config.isolate_library_layout_distribution['platforms'],
-                            **attrs
-                        ))
             if isinstance(component, mx_sdk.GraalVmLanguage) and component.support_distributions:
                 ni_resources_components = dir_name_to_ni_resources_components.get(component.dir_name)
                 if not ni_resources_components:
