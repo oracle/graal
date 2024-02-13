@@ -1080,7 +1080,7 @@ abstract class AbstractBridgeGenerator {
         }
 
         private static String cacheEntryName(CharSequence name) {
-            return name.toString().replace('.', '_').toUpperCase(Locale.ENGLISH) + "_BINARY_NAME";
+            return name.toString().replace('.', '_').toUpperCase(Locale.ROOT) + "_BINARY_NAME";
         }
     }
 }

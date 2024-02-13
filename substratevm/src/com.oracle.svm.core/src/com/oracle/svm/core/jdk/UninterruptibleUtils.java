@@ -438,6 +438,18 @@ public class UninterruptibleUtils {
         public static long abs(long a) {
             return (a < 0) ? -a : a;
         }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static long floorToLong(double value) {
+            assert value == value : "must not be NaN";
+            return (long) value;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static long ceilToLong(double a) {
+            long floor = floorToLong(a);
+            return a > floor ? floor + 1 : floor;
+        }
     }
 
     public static class Byte {

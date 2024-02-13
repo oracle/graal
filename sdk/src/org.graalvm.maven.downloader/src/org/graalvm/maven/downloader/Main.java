@@ -62,7 +62,7 @@ public class Main {
     static {
         String logLevel = System.getenv(LOGGING_PROP);
         if (logLevel != null) {
-            Level level = Level.parse(logLevel.toUpperCase(Locale.ENGLISH));
+            Level level = Level.parse(logLevel.toUpperCase(Locale.ROOT));
             LOGGER.setLevel(level);
             Handler[] handlers = Logger.getLogger("").getHandlers();
             for (Handler h : handlers) {

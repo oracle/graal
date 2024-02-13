@@ -87,7 +87,7 @@ public enum ELFMachine/* implements Integral */ {
     abstract int flags();
 
     public static ELFMachine from(String s) {
-        switch (s.toLowerCase(Locale.ENGLISH)) {
+        switch (s.toLowerCase(Locale.ROOT)) {
             case "amd64":
             case "x86_64":
                 return X86_64;

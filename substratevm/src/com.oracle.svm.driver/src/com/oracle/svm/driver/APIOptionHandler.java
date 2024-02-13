@@ -295,7 +295,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 
     private static String startLowerCase(String str) {
-        return str.substring(0, 1).toLowerCase(Locale.ENGLISH) + str.substring(1);
+        return str.substring(0, 1).toLowerCase(Locale.ROOT) + str.substring(1);
     }
 
     @Override

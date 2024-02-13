@@ -181,7 +181,7 @@ public class TestOldObjectProfiler extends AbstractJfrTest {
     private static JfrOldObjectProfiler newProfiler(int queueSize) {
         JfrOldObjectProfiler profiler = new JfrOldObjectProfiler();
         profiler.configure(queueSize);
-        profiler.initialize();
+        profiler.reset();
         return profiler;
     }
 

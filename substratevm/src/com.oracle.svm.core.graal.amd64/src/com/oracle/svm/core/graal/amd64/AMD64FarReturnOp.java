@@ -28,12 +28,12 @@ import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
+import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateOptions;
 
 import jdk.graal.compiler.asm.Label;
-import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.debug.Assertions;
@@ -62,57 +62,74 @@ public final class AMD64FarReturnOp extends AMD64BlockEndOp {
         this.sp = sp;
         this.ip = ip;
         this.fromMethodWithCalleeSavedRegisters = fromMethodWithCalleeSavedRegisters;
-        this.cfiTargetRegister = fromMethodWithCalleeSavedRegisters && SubstrateControlFlowIntegrity.useSoftwareCFI() ? SubstrateControlFlowIntegrity.singleton().getCFITargetRegister().asValue()
+        this.cfiTargetRegister = (SubstrateOptions.PreserveFramePointer.getValue() || fromMethodWithCalleeSavedRegisters) && SubstrateControlFlowIntegrity.useSoftwareCFI()
+                        ? SubstrateControlFlowIntegrity.singleton().getCFITargetRegister().asValue()
                         : Value.ILLEGAL;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        if (SubstrateOptions.PreserveFramePointer.getValue()) {
-            /*
-             * We need to properly restore RBP to the value that matches the frame of the new stack
-             * pointer. Two options: 1) When RSP is not changing, we are jumping within the same
-             * frame - no adjustment of RBP necessary. 2) We jump to a frame earlier in the stack -
-             * the corresponding RBP value was spilled to the stack by the callee.
-             */
-            Label done = new Label();
-            masm.cmpqAndJcc(AMD64.rsp, asRegister(sp), ConditionFlag.Equal, done, true);
-            /*
-             * The callee pushes two word-sized values: first the return address, then the saved
-             * RBP. The stack grows downwards, so the offset is negative relative to the new stack
-             * pointer.
-             */
-            masm.movq(AMD64.rbp, new AMD64Address(asRegister(sp), -(FrameAccess.returnAddressSize() + FrameAccess.singleton().savedBasePointerSize())));
-            masm.bind(done);
+        if (!SubstrateOptions.PreserveFramePointer.getValue() && !fromMethodWithCalleeSavedRegisters) {
+            /* No need to restore anything in the frame of the new stack pointer. */
+            masm.movq(AMD64.rsp, asRegister(sp));
+            masm.jmp(asRegister(ip));
+            return;
         }
 
-        masm.movq(AMD64.rsp, asRegister(sp));
+        /*
+         * We need to properly restore RBP and/or callee saved registers to values that match the
+         * frame of the new stack pointer. Two options:
+         */
+        Label notSameFrame = new Label();
+        masm.cmpqAndJcc(AMD64.rsp, asRegister(sp), ConditionFlag.NotEqual, notSameFrame, true);
+        /*
+         * 1) When RSP is not changing, we are jumping within the same frame - no adjustment needed.
+         */
+        masm.jmp(asRegister(ip));
+        /*
+         * 2) We jump to a frame earlier in the stack - the corresponding RBP and callee saved
+         * register values were saved on the stack by the callee.
+         */
+        masm.bind(notSameFrame);
 
+        /*
+         * Set the stack pointer to be immediately below the stored values within the callee frame
+         * of the new stack pointer.
+         */
+        int calleeFrameSize = FrameAccess.returnAddressSize();
+        if (SubstrateOptions.PreserveFramePointer.getValue()) {
+            calleeFrameSize += FrameAccess.wordSize();
+        }
         if (fromMethodWithCalleeSavedRegisters) {
-            if (SubstrateControlFlowIntegrity.useSoftwareCFI()) {
-                assert LIRValueUtil.differentRegisters(result, cfiTargetRegister) : Assertions.errorMessage(result, cfiTargetRegister);
-                /*
-                 * The new instruction pointer (ip) must be moved to the targetRegister. Note the
-                 * target register is never callee saved.
-                 */
-                var targetRegister = asRegister(cfiTargetRegister);
-                masm.movq(targetRegister, asRegister(ip));
-                AMD64CalleeSavedRegisters.singleton().emitRestore(masm, 0, asRegister(result), crb);
-                masm.jmp(targetRegister);
-            } else {
-                /*
-                 * Restoring the callee saved registers is going to overwrite the register that
-                 * holds the new instruction pointer (ip). We therefore spill the new ip to the
-                 * stack, and do the indirect jump with an address operand to avoid a temporary
-                 * register.
-                 */
-                AMD64Address ipAddress = new AMD64Address(AMD64.rsp, -FrameAccess.returnAddressSize());
-                masm.movq(ipAddress, asRegister(ip));
-                AMD64CalleeSavedRegisters.singleton().emitRestore(masm, 0, asRegister(result), crb);
-                masm.jmp(ipAddress);
-            }
+            calleeFrameSize += CalleeSavedRegisters.singleton().getSaveAreaSize();
+        }
+        masm.leaq(AMD64.rsp, masm.makeAddress(asRegister(sp), -calleeFrameSize));
+
+        /*
+         * Restoring the callee saved registers is going to overwrite the register that holds the
+         * new instruction pointer, so first replace the return address in the callee frame with the
+         * new instruction pointer, making it the new return address.
+         */
+        masm.movq(masm.makeAddress(AMD64.rsp, calleeFrameSize - FrameAccess.returnAddressSize()), asRegister(ip));
+
+        /* Then restore callee saved registers and RBP adjusting the stack pointer along the way. */
+        if (fromMethodWithCalleeSavedRegisters) {
+            AMD64CalleeSavedRegisters.singleton().emitRestore(masm, calleeFrameSize, asRegister(result), crb);
+            masm.incrementq(AMD64.rsp, CalleeSavedRegisters.singleton().getSaveAreaSize());
+        }
+        if (SubstrateOptions.PreserveFramePointer.getValue()) {
+            masm.pop(AMD64.rbp);
+        }
+
+        /* And finally return to the new instruction pointer set in place of the return address. */
+        if (SubstrateControlFlowIntegrity.useSoftwareCFI()) {
+            assert LIRValueUtil.differentRegisters(result, cfiTargetRegister) : Assertions.errorMessage(result, cfiTargetRegister);
+            /* The new instruction pointer must be moved to the targetRegister. */
+            var targetRegister = asRegister(cfiTargetRegister);
+            masm.pop(targetRegister);
+            masm.jmp(targetRegister);
         } else {
-            masm.jmp(asRegister(ip));
+            masm.ret(0);
         }
     }
 }
