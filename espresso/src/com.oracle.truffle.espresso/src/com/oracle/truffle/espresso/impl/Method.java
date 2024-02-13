@@ -29,6 +29,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTFIELD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTSTATIC;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_DONT_INLINE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FORCE_INLINE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_HIDDEN;
@@ -571,6 +572,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return (getModifiers() & ACC_FORCE_INLINE) != 0 && StaticObject.isNull(getDeclaringKlass().getDefiningClassLoader());
     }
 
+    public boolean isDontInline() {
+        // Respect in truffle compilations when that's possible (GR-57507)
+        return (getModifiers() & ACC_DONT_INLINE) != 0;
+    }
+
     public boolean isHidden() {
         return (getModifiers() & ACC_HIDDEN) != 0;
     }
@@ -743,7 +749,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public boolean isInlinableGetter() {
-        if (!getSubstitutions().hasSubstitutionFor(this)) {
+        if (!getSubstitutions().hasSubstitutionFor(this) && !isDontInline()) {
             if (getParameterCount() == 0 && !isAbstract() && !isNative() && !isSynchronized()) {
                 return hasGetterBytecodes();
             }
@@ -766,7 +772,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public boolean isInlinableSetter() {
-        if (!getSubstitutions().hasSubstitutionFor(this)) {
+        if (!getSubstitutions().hasSubstitutionFor(this) && !isDontInline()) {
             if (getParameterCount() == 1 && !isAbstract() && !isNative() && !isSynchronized()) {
                 return hasSetterBytecodes();
             }

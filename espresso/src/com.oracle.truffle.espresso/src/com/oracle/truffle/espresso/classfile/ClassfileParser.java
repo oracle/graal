@@ -26,6 +26,7 @@ import static com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode.STR
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ANNOTATION;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_DONT_INLINE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ENUM;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
@@ -837,6 +838,9 @@ public final class ClassfileParser {
                         } else if (Type.java_lang_invoke_ForceInline.equals(annotType) ||
                                         Type.jdk_internal_vm_annotation_ForceInline.equals(annotType)) {
                             methodFlags |= ACC_FORCE_INLINE;
+                        } else if (Type.java_lang_invoke_DontInline.equals(annotType) ||
+                                        Type.jdk_internal_vm_annotation_DontInline.equals(annotType)) {
+                            methodFlags |= ACC_DONT_INLINE;
                         } else if (Type.jdk_internal_misc_ScopedMemoryAccess$Scoped.equals(annotType)) {
                             methodFlags |= ACC_SCOPED;
                         }
