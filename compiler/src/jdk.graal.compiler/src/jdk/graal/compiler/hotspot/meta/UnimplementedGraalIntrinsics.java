@@ -104,8 +104,6 @@ public final class UnimplementedGraalIntrinsics {
                         // handled by an intrinsic for StringUTF16.indexOfUnsafe
                         "java/lang/StringUTF16.indexOf([BI[BII)I",
                         "java/lang/StringUTF16.indexOf([B[B)I",
-                        // handled by an intrinsic for StringUTF16.indexOfCharUnsafe
-                        "java/lang/StringUTF16.indexOfChar([BIII)I",
                         // handled by an intrinsic for StringUTF16.indexOfLatin1Unsafe
                         "java/lang/StringUTF16.indexOfLatin1([BI[BII)I",
                         "java/lang/StringUTF16.indexOfLatin1([B[B)I",
@@ -124,6 +122,12 @@ public final class UnimplementedGraalIntrinsics {
                 add(ignore,
                                 "sun/security/provider/SHA2.implCompress0([BI)V");
             }
+        }
+
+        if (jdk == 21) {
+            // JDK-8325169
+            // handled by an intrinsic for StringUTF16.indexOfCharUnsafe
+            add(ignore, "java/lang/StringUTF16.indexOfChar([BIII)I");
         }
 
         add(toBeInvestigated, // @formatter:off
