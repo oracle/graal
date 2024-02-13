@@ -193,7 +193,7 @@ ce_unchained_components = ['bnative-image-configure', 'cmp', 'lg', 'ni', 'nic', 
 ce_components_minimal = ['bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'insightheap', 'lg', 'libpoly', 'lsp', 'nfi-libffi', 'nfi', 'poly', 'polynative', 'pro', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'spolyglot', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json']
 ce_components = ce_components_minimal + ['nr_lib_jvmcicompiler', 'bnative-image-configure', 'ni', 'nic', 'nil', 'svm', 'svmt', 'svmnfi', 'svmsl']
 ce_python_components = ['antlr4', 'sllvmvm', 'bpolybench', 'bpolyglot', 'cmp', 'cov', 'dap', 'dis', 'gu', 'gvm', 'icu4j', 'xz', 'ins', 'insight', 'insightheap', 'lg', 'libpoly', 'llp', 'llrc', 'llrl', 'llrlf', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'pbm', 'pmh', 'poly', 'polynative', 'pro', 'pyn', 'pynl', 'rgx', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'spolyglot', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json']
-ce_fastr_components = ce_components + llvm_components + ['antlr4', 'xz', 'sllvmvm', 'llp', 'bnative-image', 'snative-image-agent', 'R', 'bRMain', 'bnative-image-configure', 'llrc', 'snative-image-diagnostics-agent', 'llrn', 'llrl', 'llrlf']
+ce_fastr_components = ce_components + llvm_components + ['antlr4', 'xz', 'sllvmvm', 'llp', 'bnative-image', 'snative-image-agent', 'R', 'sRvm', 'bnative-image-configure', 'llrc', 'snative-image-diagnostics-agent', 'llrn', 'llrl', 'llrlf']
 ce_no_native_components = ['bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'insightheap', 'lsp', 'nfi-libffi', 'nfi', 'polynative', 'pro', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'spolyglot', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json', 'libpoly', 'poly']
 
 # Main GraalVMs
