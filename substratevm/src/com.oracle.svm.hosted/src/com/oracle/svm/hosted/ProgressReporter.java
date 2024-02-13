@@ -528,12 +528,12 @@ public class ProgressReporter {
             l().a(typesFieldsMethodFormat, numJNIClasses, numJNIFields, numJNIMethods)
                             .doclink("registered for JNI access", "#glossary-jni-access-registrations").println();
         }
-        String stubsFormat = "%,8d downcalls and %,5d upcalls";
+        String stubsFormat = "%,9d downcalls and %,d upcalls ";
         recordJsonMetric(AnalysisResults.FOREIGN_DOWNCALLS, (numForeignDowncalls >= 0 ? numForeignDowncalls : UNAVAILABLE_METRIC));
         recordJsonMetric(AnalysisResults.FOREIGN_UPCALLS, (numForeignUpcalls >= 0 ? numForeignUpcalls : UNAVAILABLE_METRIC));
         if (numForeignDowncalls >= 0 || numForeignUpcalls >= 0) {
             l().a(stubsFormat, numForeignDowncalls, numForeignUpcalls)
-                            .doclink(" registered for foreign calls", "#glossary-foreign-downcall-registrations").println();
+                            .doclink("registered for foreign access", "#glossary-foreign-downcall-and-upcall-registrations").println();
         }
         int numLibraries = libraries.size();
         if (numLibraries > 0) {

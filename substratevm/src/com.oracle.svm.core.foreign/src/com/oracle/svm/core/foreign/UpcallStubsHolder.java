@@ -36,7 +36,7 @@ import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
-/** Downcall stubs will be synthesized in this class. */
+/** Upcall stubs will be synthesized in this class. */
 @InternalVMMethod
 public final class UpcallStubsHolder {
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -45,12 +45,12 @@ public final class UpcallStubsHolder {
     }
 
     /**
-     * Generate the name used by the stub associated to the provided {@link NativeEntryPointInfo}.
+     * Generate the name used by the stub associated to the provided {@link JavaEntryPointInfo}.
      *
      * Naming scheme:
      *
      * <pre>
-     *  downcall_(<c argument>*)<c return type>_<digest of paramsMemoryAssignment>[_<returnMemoryAssignment>]>
+     *  upcall<High|Low>_(<c argument>*)<c return type>_<digest of paramsMemoryAssignment>[_<returnMemoryAssignment>]>
      * </pre>
      */
     @Platforms(Platform.HOSTED_ONLY.class)

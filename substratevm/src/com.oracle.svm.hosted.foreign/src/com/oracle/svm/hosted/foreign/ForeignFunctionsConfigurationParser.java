@@ -26,12 +26,10 @@ package com.oracle.svm.hosted.foreign;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
-import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
@@ -40,10 +38,8 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
 import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import jdk.graal.compiler.util.json.JSONParserException;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
@@ -114,39 +110,22 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
             var criticalOpt = map.get(DOWNCALL_OPTION_CRITICAL, "");
             if (criticalOpt instanceof Boolean b) {
                 if (b) {
-                    res.add(OPTION_CRITICAL.apply(false));
+                    res.add(Linker.Option.critical(false));
                 }
             } else if (criticalOpt instanceof EconomicMap<?, ?>) {
+                @SuppressWarnings("unchecked")
                 var criticalMap = (EconomicMap<String, Object>) criticalOpt;
-                checkAttributes(criticalMap, DOWNCALL_OPTION_CRITICAL, List.of(DOWNCALL_OPTION_ALLOW_HEAP_ACCESS), List.of());
-                var allowHeapAccess = asBoolean(criticalMap.get(DOWNCALL_OPTION_ALLOW_HEAP_ACCESS), DOWNCALL_OPTION_ALLOW_HEAP_ACCESS);
-                res.add(OPTION_CRITICAL.apply(allowHeapAccess));
+                checkAttributes(criticalMap, DOWNCALL_OPTION_CRITICAL, List.of(), List.of(DOWNCALL_OPTION_ALLOW_HEAP_ACCESS));
+                var allowHeapAccess = false;
+                if (criticalMap.containsKey(DOWNCALL_OPTION_ALLOW_HEAP_ACCESS)) {
+                    allowHeapAccess = asBoolean(criticalMap.get(DOWNCALL_OPTION_ALLOW_HEAP_ACCESS), DOWNCALL_OPTION_ALLOW_HEAP_ACCESS);
+                }
+                res.add(Linker.Option.critical(allowHeapAccess));
+            } else {
+                throw new JSONParserException(DOWNCALL_OPTION_ALLOW_HEAP_ACCESS + " should be a boolean or a map");
             }
         }
 
         return res;
-    }
-
-    private static final Function<Boolean, Linker.Option> OPTION_CRITICAL;
-
-    static {
-        if (JavaVersionUtil.JAVA_SPEC >= 22) {
-            OPTION_CRITICAL = allowHeapAccess -> {
-                try {
-                    return (Linker.Option) ReflectionUtil.lookupMethod(Linker.Option.class, "critical", boolean.class).invoke(null, allowHeapAccess);
-                } catch (ReflectiveOperationException e) {
-                    throw VMError.shouldNotReachHere(e);
-                }
-            };
-        } else {
-            OPTION_CRITICAL = allowHeapAccess -> {
-                VMError.guarantee(!allowHeapAccess, "Parameter allowHeapAccess is not supported for JDK versions < 22");
-                try {
-                    return (Linker.Option) ReflectionUtil.lookupMethod(Linker.Option.class, "isTrivial").invoke(null);
-                } catch (ReflectiveOperationException e) {
-                    throw VMError.shouldNotReachHere(e);
-                }
-            };
-        }
     }
 }

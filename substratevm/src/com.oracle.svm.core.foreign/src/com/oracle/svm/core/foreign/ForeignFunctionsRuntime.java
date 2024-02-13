@@ -25,13 +25,15 @@
 package com.oracle.svm.core.foreign;
 
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
+
 import java.lang.invoke.MethodHandle;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import jdk.graal.compiler.api.replacements.Fold;
+import com.oracle.svm.core.util.UserError;
+import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -57,6 +59,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.internal.foreign.abi.CapturableState;
 
 public class ForeignFunctionsRuntime {
@@ -94,10 +97,10 @@ public class ForeignFunctionsRuntime {
         }
     }
 
-    /* TODO: Fix inevitable concurrency issues */
     private final Map<PointerHolder, TrampolineSet> trampolineMap = new ConcurrentHashMap<>();
     private TrampolineSet currentTrampolineSet;
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public ForeignFunctionsRuntime(AbiUtils.TrampolineTemplate trampolineTemplate) {
         this.trampolineTemplate = trampolineTemplate;
     }
@@ -109,19 +112,18 @@ public class ForeignFunctionsRuntime {
 
         private static int maxTrampolineCount() {
             long result = allocationSize().rawValue() / AbiUtils.singleton().trampolineSize();
-            assert result < Integer.MAX_VALUE;
-            return (int) result;
+            return NumUtil.safeToInt(result);
         }
 
         public static Pointer getAllocationBase(Pointer ptr) {
-            long offset = ptr.rawValue() % allocationSize().rawValue();
-            assert offset <= allocationSize().rawValue();
-            assert offset <= Integer.MAX_VALUE;
-            assert offset % AbiUtils.singleton().trampolineSize() == 0;
-            return ptr.subtract((int) offset);
+            var offset = ptr.unsignedRemainder(allocationSize());
+            assert offset.belowOrEqual(allocationSize());
+            assert offset.belowOrEqual(Integer.MAX_VALUE);
+            assert offset.unsignedRemainder(AbiUtils.singleton().trampolineSize()).equal(0);
+            return ptr.subtract(offset);
         }
 
-        private final static int FREED = -1;
+        private static final int FREED = -1;
 
         private final Set<PinnedObject> pins;
         /*
@@ -141,7 +143,7 @@ public class ForeignFunctionsRuntime {
             return pinned;
         }
 
-        public TrampolineSet() {
+        TrampolineSet() {
             assert allocationSize().rawValue() % AbiUtils.singleton().trampolineSize() == 0;
             this.pins = new HashSet<>();
             this.assigned = 0;
@@ -181,23 +183,22 @@ public class ForeignFunctionsRuntime {
             VirtualMemoryProvider memoryProvider = VirtualMemoryProvider.get();
             UnsignedWord pageSize = allocationSize();
             /* We request a specific alignment to guarantee correctness of getAllocationBase */
-            Pointer page = memoryProvider.reserve(pageSize, pageSize, true);
-            page = memoryProvider.commit(page, pageSize, VirtualMemoryProvider.Access.WRITE | VirtualMemoryProvider.Access.FUTURE_EXECUTE);
+            Pointer page = memoryProvider.commit(WordFactory.nullPointer(), pageSize, VirtualMemoryProvider.Access.WRITE | VirtualMemoryProvider.Access.FUTURE_EXECUTE);
+            if (page.isNull()) {
+                throw OutOfMemoryUtil.reportOutOfMemoryError(new OutOfMemoryError("Could not allocate memory for trampolines."));
+            }
+            VMError.guarantee(page.unsignedRemainder(pageSize).equal(0), "Trampoline allocation must be aligned to allocationSize().");
+
             Pointer it = page;
             Pointer end = page.add(pageSize);
-
-            if (page.isNull()) {
-                OutOfMemoryError outOfMemoryError = new OutOfMemoryError("Could not allocate memory for trampolines.");
-                throw OutOfMemoryUtil.reportOutOfMemoryError(outOfMemoryError);
-            }
-
             for (int i = 0; i < this.trampolineCount; ++i) {
                 VMError.guarantee(getAllocationBase(it).equal(page));
                 it = trampolineTemplate.write(it, CurrentIsolate.getIsolate(), mhsArray.addressOfArrayElement(i), stubsArray.addressOfArrayElement(i));
+                VMError.guarantee(it.belowOrEqual(end), "Not enough memory was allocated to hold trampolines");
             }
-            assert it.belowOrEqual(end);
 
-            memoryProvider.protect(page, pageSize, VirtualMemoryProvider.Access.EXECUTE);
+            VMError.guarantee(memoryProvider.protect(page, pageSize, VirtualMemoryProvider.Access.EXECUTE) == 0,
+                            "Error when making the trampoline allocation executable");
 
             return page;
         }

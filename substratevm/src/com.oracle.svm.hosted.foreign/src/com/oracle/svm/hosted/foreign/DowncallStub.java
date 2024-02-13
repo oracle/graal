@@ -24,13 +24,12 @@
  */
 package com.oracle.svm.hosted.foreign;
 
-import java.lang.annotation.Annotation;
 import java.util.List;
-import java.util.Objects;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.hosted.annotation.AnnotationValue;
-import com.oracle.svm.hosted.code.EntryPointCallStubMethod;
+import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
+import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -49,7 +48,6 @@ import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -89,7 +87,7 @@ import jdk.vm.ci.meta.Signature;
  * capture.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-class DowncallStub extends EntryPointCallStubMethod {
+class DowncallStub extends NonBytecodeMethod {
     public static Signature createSignature(MetaAccessProvider metaAccess) {
         return ResolvedSignature.fromKinds(new JavaKind[]{JavaKind.Object}, JavaKind.Object, metaAccess);
     }
@@ -99,20 +97,31 @@ class DowncallStub extends EntryPointCallStubMethod {
     DowncallStub(NativeEntryPointInfo nep, MetaAccessProvider metaAccess) {
         super(
                         DowncallStubsHolder.stubName(nep),
+                        true,
                         metaAccess.lookupJavaType(DowncallStubsHolder.class),
                         createSignature(metaAccess),
                         DowncallStubsHolder.getConstantPool(metaAccess));
         this.nep = nep;
     }
 
+    @Uninterruptible(reason = "See `DowncallStub.getInjectedAnnotations`.", calleeMustBe = false)
+    @SuppressWarnings("unused")
+    private static void uninterruptibleAnnotationHolder() {
+    }
+
+    private static final AnnotationValue[] INJECTED_ANNOTATIONS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(
+                    Uninterruptible.Utils.getAnnotation(ReflectionUtil.lookupMethod(DowncallStub.class, "uninterruptibleAnnotationHolder")));
+
     @Override
     public AnnotationValue[] getInjectedAnnotations() {
-        // When allowHeapAccess, a HeapMemorySegmentImpl may be passed to the downcall. In that case, the downcall stub
-        // will have to generate a native pointer to the backing object. Thus we need to ensure that no safepoint
-        // is generated in the stub, so that the GC cannot move the backing object while we still have a native pointer to it.
-        if (nep.isAllowHeapAccess()) {
-            // Returns the equivalent of Uninterruptible.
-            return super.getInjectedAnnotations();
+        /*
+         * When allowHeapAccess, a HeapMemorySegmentImpl may be passed to the downcall. In that
+         * case, the downcall stub will have to generate a native pointer to the backing object.
+         * Thus we need to ensure that no safepoint is generated in the stub, so that the GC cannot
+         * move the backing object while we still have a native pointer to it.
+         */
+        if (nep.allowHeapAccess()) {
+            return INJECTED_ANNOTATIONS;
         } else {
             return new AnnotationValue[]{};
         }

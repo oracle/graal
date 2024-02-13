@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.foreign;
 
 import java.lang.invoke.MethodType;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -71,26 +72,28 @@ class ForeignGraphKit extends HostedGraphKit {
 
     List<ValueNode> unboxArguments(List<ValueNode> args, MethodType methodType) {
         assert args.size() == methodType.parameterCount() : args.size() + " " + methodType.parameterCount();
-        for (int i = 0; i < args.size(); ++i) {
-            ValueNode argument = args.get(i);
+        var newArgs = new ArrayList<>(args);
+        for (int i = 0; i < newArgs.size(); ++i) {
+            ValueNode argument = newArgs.get(i);
             JavaKind targetKind = JavaKind.fromJavaClass(methodType.parameterType(i));
             if (targetKind.isPrimitive()) {
-                args.set(i, createUnboxing(argument, targetKind));
+                newArgs.set(i, createUnboxing(argument, targetKind));
             }
         }
-        return args;
+        return newArgs;
     }
 
     public List<ValueNode> boxArguments(List<ValueNode> args, MethodType methodType) {
         assert args.size() == methodType.parameterCount() : args.size() + " " + methodType.parameterCount();
-        for (int i = 0; i < args.size(); ++i) {
-            ValueNode argument = args.get(i);
+        var newArgs = new ArrayList<>(args);
+        for (int i = 0; i < newArgs.size(); ++i) {
+            ValueNode argument = newArgs.get(i);
             JavaKind kind = JavaKind.fromJavaClass(methodType.parameterType(i));
             ResolvedJavaType boxed = getMetaAccess().lookupJavaType(kind.toBoxedJavaClass());
             argument = createBoxing(argument, kind, boxed);
-            args.set(i, argument);
+            newArgs.set(i, argument);
         }
-        return args;
+        return newArgs;
     }
 
     public ValueNode boxAndReturn(ValueNode returnValue, MethodType methodType) {
@@ -117,24 +120,15 @@ class ForeignGraphKit extends HostedGraphKit {
     }
 
     public ValueNode bindRegister(Register register, JavaKind kind) {
-        /*
-         * It seems like, intuitively, incoming should be set to true, but this doesn't work as the
-         * block already has incoming edges (the function arguments?). Seems to be working anyway.
-         */
         return append(new ReadRegisterNode(register, kind, false, false));
     }
 
     public Map<Register, ValueNode> saveRegisters(Iterable<Register> registers) {
         return StreamSupport.stream(registers.spliterator(), false)
-                        .map(register -> Pair.create(register, bindRegister(register, getWordTypes().getWordKind())))
-                        .collect(Collectors.toMap(Pair::getLeft, Pair::getRight));
+                        .collect(Collectors.toMap(reg -> reg, register -> bindRegister(register, getWordTypes().getWordKind())));
     }
 
     public void restoreRegisters(Map<Register, ValueNode> save) {
-        for (var pair : save.entrySet()) {
-            Register register = pair.getKey();
-            ValueNode value = pair.getValue();
-            append(new WriteRegisterNode(register, value));
-        }
+        save.forEach((register, value) -> append(new WriteRegisterNode(register, value)));
     }
 }

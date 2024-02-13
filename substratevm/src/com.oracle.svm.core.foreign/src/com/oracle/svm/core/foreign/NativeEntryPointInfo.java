@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.Objects;
 
 import com.oracle.svm.core.util.VMError;
+
 import jdk.internal.foreign.abi.ABIDescriptor;
 import jdk.internal.foreign.abi.VMStorage;
 
@@ -56,10 +57,12 @@ public final class NativeEntryPointInfo {
     private final boolean needsTransition;
     private final boolean allowHeapAccess;
 
-    private NativeEntryPointInfo(MethodType methodType, VMStorage[] cc, VMStorage[] returnBuffering, boolean needsReturnBuffer, boolean capturesState, boolean needsTransition, boolean allowHeapAccess) {
+    private NativeEntryPointInfo(MethodType methodType, VMStorage[] cc, VMStorage[] returnBuffering, boolean needsReturnBuffer, boolean capturesState, boolean needsTransition,
+                    boolean allowHeapAccess) {
         assert methodType.parameterCount() == cc.length;
         assert needsReturnBuffer == (returnBuffering.length > 1);
-        assert !(needsTransition && allowHeapAccess); // when no transition, allowHeapAccess is unused, so must be set to false
+        // when no transition, allowHeapAccess is unused, so it must be set to false
+        assert !(needsTransition && allowHeapAccess);
         this.methodType = methodType;
         this.parameterAssignments = cc;
         this.returnBuffering = returnBuffering;
@@ -80,14 +83,20 @@ public final class NativeEntryPointInfo {
             throw new AssertionError("Multiple register return, but needsReturnBuffer was false");
         }
         var hasNull = Arrays.stream(argMoves).anyMatch(Objects::isNull);
-        VMError.guarantee(!hasNull || allowHeapAccess, "null storages may only appear if the Linker.Option.critical(true) option is passed.");
+        VMError.guarantee(!hasNull || allowHeapAccess, "null VMStorages should only appear with Linker.Option.critical(true).");
         if (!hasNull) {
-            // hasNull is only true if this entry point's FunctionDescriptor contains an AddressLayout and allowHeapAccess is true.
-            // (see jdk.internal.foreign.abi.x64.sysv.CallArranger.UnboxBindingCalculator.getBindings).
-            // Additionally, if no AddressLayout is passed, then allowHeapAccess's value doesn't matter (since then no heap access may occur anyways).
-            // Hence, we set allowHeapAccess to false if no AddressLayout is found: indeed, sometimes we need to find whether allowHeapAccess should be true or not,
-            // (see com.oracle.svm.core.foreign.Target_jdk_internal_foreign_abi_NativeEntryPoint.make),
-            // and we rely on the presence of null storages as an indicator of whether to set allowHeapAccess to true.
+            /*
+             * hasNull is only true if this entry point's FunctionDescriptor contains an
+             * AddressLayout and allowHeapAccess is true. (see
+             * jdk.internal.foreign.abi.x64.sysv.CallArranger.UnboxBindingCalculator.getBindings).
+             * Additionally, if no AddressLayout is passed, then allowHeapAccess's value doesn't
+             * matter (since then no heap access may occur anyways). Hence, we set allowHeapAccess
+             * to false if no AddressLayout is found: indeed, sometimes we need to find whether
+             * allowHeapAccess should be true or not, (see
+             * com.oracle.svm.core.foreign.Target_jdk_internal_foreign_abi_NativeEntryPoint.make),
+             * and we rely on the presence of null VMStorages as an indicator of whether to set
+             * allowHeapAccess to true.
+             */
             allowHeapAccess = false;
         }
         return new NativeEntryPointInfo(methodType, argMoves, returnMoves, needsReturnBuffer, capturedStateMask != 0, needsTransition, allowHeapAccess);
@@ -129,7 +138,7 @@ public final class NativeEntryPointInfo {
         return capturesState;
     }
 
-    public boolean isAllowHeapAccess() {
+    public boolean allowHeapAccess() {
         assert !(needsTransition && allowHeapAccess);
         return allowHeapAccess;
     }
@@ -156,8 +165,8 @@ public final class NativeEntryPointInfo {
         }
         NativeEntryPointInfo that = (NativeEntryPointInfo) o;
         return capturesState == that.capturesState && needsTransition == that.needsTransition && needsReturnBuffer == that.needsReturnBuffer && allowHeapAccess == that.allowHeapAccess &&
-                Objects.equals(methodType, that.methodType) &&
-                Arrays.equals(parameterAssignments, that.parameterAssignments) && Arrays.equals(returnBuffering, that.returnBuffering);
+                        Objects.equals(methodType, that.methodType) &&
+                        Arrays.equals(parameterAssignments, that.parameterAssignments) && Arrays.equals(returnBuffering, that.returnBuffering);
     }
 
     @Override

@@ -1,4 +1,31 @@
+/*
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package com.oracle.svm.hosted.foreign;
+
+import static com.oracle.graal.pointsto.infrastructure.ResolvedSignature.fromMethodType;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.VERY_FAST_PATH_PROBABILITY;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
@@ -6,32 +33,11 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import jdk.graal.compiler.core.common.memory.BarrierType;
-import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
-import jdk.graal.compiler.core.common.type.StampFactory;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.java.FrameStateBuilder;
-import jdk.graal.compiler.nodes.CallTargetNode;
-import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.DeadEndNode;
-import jdk.graal.compiler.nodes.FrameState;
-import jdk.graal.compiler.nodes.Invoke;
-import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
-import jdk.graal.compiler.nodes.NodeView;
-import jdk.graal.compiler.nodes.ProfileData;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
-import jdk.graal.compiler.nodes.memory.ReadNode;
-import jdk.graal.compiler.nodes.memory.address.AddressNode;
-import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
-import jdk.graal.compiler.replacements.nodes.CStringConstant;
-import jdk.graal.compiler.replacements.nodes.WriteRegisterNode;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.LocationIdentity;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.ReservedRegisters;
@@ -60,14 +66,31 @@ import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.core.common.memory.BarrierType;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.java.FrameStateBuilder;
+import jdk.graal.compiler.nodes.CallTargetNode;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.DeadEndNode;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ProfileData;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
+import jdk.graal.compiler.nodes.memory.ReadNode;
+import jdk.graal.compiler.nodes.memory.address.AddressNode;
+import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
+import jdk.graal.compiler.replacements.nodes.CStringConstant;
+import jdk.graal.compiler.replacements.nodes.WriteRegisterNode;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import static com.oracle.graal.pointsto.infrastructure.ResolvedSignature.fromMethodType;
-import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.VERY_FAST_PATH_PROBABILITY;
 
 public abstract class UpcallStub extends NonBytecodeMethod {
     protected final JavaEntryPointInfo jep;
@@ -83,7 +106,7 @@ public abstract class UpcallStub extends NonBytecodeMethod {
     }
 
     public static UpcallStub create(JavaEntryPointInfo jep, AnalysisUniverse universe, MetaAccessProvider metaAccess) {
-        return LowUpcallStub.make(jep, universe, metaAccess);
+        return LowLevelUpcallStub.make(jep, universe, metaAccess);
     }
 }
 
@@ -111,18 +134,18 @@ public abstract class UpcallStub extends NonBytecodeMethod {
  * {@link ReservedRegisters#getThreadRegister}</li>
  * </ul>
  */
-class LowUpcallStub extends UpcallStub implements CustomCallingConventionMethod {
-    private final ResolvedJavaMethod javaSide;
+final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConventionMethod {
+    private final ResolvedJavaMethod highLevelStub;
     private final RegisterArray savedRegisters;
     private final AssignedLocation[] parametersAssignment;
 
-    static LowUpcallStub make(JavaEntryPointInfo jep, AnalysisUniverse universe, MetaAccessProvider metaAccess) {
-        return new LowUpcallStub(jep, AbiUtils.singleton().adapt(jep), universe, metaAccess);
+    static LowLevelUpcallStub make(JavaEntryPointInfo jep, AnalysisUniverse universe, MetaAccessProvider metaAccess) {
+        return new LowLevelUpcallStub(jep, AbiUtils.singleton().adapt(jep), universe, metaAccess);
     }
 
-    private LowUpcallStub(JavaEntryPointInfo jep, AbiUtils.Adapter.Result.TypeAdaptation adapted, AnalysisUniverse universe, MetaAccessProvider metaAccess) {
+    private LowLevelUpcallStub(JavaEntryPointInfo jep, AbiUtils.Adapter.Result.TypeAdaptation adapted, AnalysisUniverse universe, MetaAccessProvider metaAccess) {
         super(jep, adapted.callType(), metaAccess, false);
-        this.javaSide = universe.lookup(new HighUpcallStub(jep, adapted, metaAccess));
+        this.highLevelStub = universe.lookup(new HighLevelUpcallStub(jep, adapted, metaAccess));
         this.savedRegisters = ImageSingletons.lookup(SubstrateRegisterConfigFactory.class)
                         .newRegisterFactory(SubstrateRegisterConfig.ConfigKind.NATIVE_TO_JAVA, null, ConfigurationValues.getTarget(), SubstrateOptions.PreserveFramePointer.getValue())
                         .getCalleeSaveRegisters();
@@ -161,8 +184,9 @@ class LowUpcallStub extends UpcallStub implements CustomCallingConventionMethod 
         assert !savedRegisters.asList().contains(registers.methodHandle());
         assert !savedRegisters.asList().contains(registers.isolate());
         var save = kit.saveRegisters(savedRegisters);
-        //ValueNode enterResult = kit.append(CEntryPointEnterNode.enterByIsolate(isolate));
-        // ensureJavaThread = true to ensure that later calls to com.oracle.svm.core.thread.PlatformThreads.currentThread return the current thread and not null.
+        // ensureJavaThread = true to ensure that later calls to
+        // com.oracle.svm.core.thread.PlatformThreads.currentThread return the current thread and
+        // not null.
         ValueNode enterResult = kit.append(CEntryPointEnterNode.attachThread(isolate, false, true));
 
         kit.startIf(IntegerEqualsNode.create(enterResult, ConstantNode.forInt(CEntryPointErrors.NO_ERROR, kit.getGraph()), NodeView.DEFAULT),
@@ -188,11 +212,11 @@ class LowUpcallStub extends UpcallStub implements CustomCallingConventionMethod 
         }
 
         /*
-         * Transfers to the java-side stub; note that exceptions should be handled int the Java stub
+         * Transfers to the java-side stub; note that exceptions should be handled in the Java stub
          * (if they are handled...)
          */
         arguments.add(0, mh);
-        InvokeWithExceptionNode returnValue = kit.createJavaCallWithException(CallTargetNode.InvokeKind.Static, javaSide, arguments.toArray(ValueNode.EMPTY_ARRAY));
+        InvokeWithExceptionNode returnValue = kit.createJavaCallWithException(CallTargetNode.InvokeKind.Static, highLevelStub, arguments.toArray(ValueNode.EMPTY_ARRAY));
         kit.exceptionPart();
         kit.append(new DeadEndNode());
         kit.endInvokeWithException();
@@ -227,12 +251,12 @@ class LowUpcallStub extends UpcallStub implements CustomCallingConventionMethod 
         return kit.finalizeGraph();
     }
 
-    @Uninterruptible(reason = "Manually access registers and IsolateThread might not be correctly setup", calleeMustBe = false)
+    @Uninterruptible(reason = "Directly accesses registers and IsolateThread might not be correctly set up", calleeMustBe = false)
     @ExplicitCallingConvention(SubstrateCallingConventionKind.Custom)
     private static void annotationsHolder() {
     }
 
-    private static final Method ANNOTATIONS_HOLDER = ReflectionUtil.lookupMethod(LowUpcallStub.class, "annotationsHolder");
+    private static final Method ANNOTATIONS_HOLDER = ReflectionUtil.lookupMethod(LowLevelUpcallStub.class, "annotationsHolder");
 
     private static final AnnotationValue[] INJECTED_ANNOTATIONS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(
                     AnnotationAccess.getAnnotation(ANNOTATIONS_HOLDER, ExplicitCallingConvention.class),
@@ -256,7 +280,7 @@ class LowUpcallStub extends UpcallStub implements CustomCallingConventionMethod 
 /**
  * In charge of high-level stuff, mainly invoking the method handle
  */
-class HighUpcallStub extends UpcallStub {
+class HighLevelUpcallStub extends UpcallStub {
     private static final Method INVOKE = ReflectionUtil.lookupMethod(
                     MethodHandle.class,
                     "invokeWithArguments",
@@ -271,7 +295,7 @@ class HighUpcallStub extends UpcallStub {
         return lowType.insertParameterTypes(0, MethodHandle.class);
     }
 
-    HighUpcallStub(JavaEntryPointInfo jep, AbiUtils.Adapter.Result.TypeAdaptation adapted, MetaAccessProvider metaAccess) {
+    HighLevelUpcallStub(JavaEntryPointInfo jep, AbiUtils.Adapter.Result.TypeAdaptation adapted, MetaAccessProvider metaAccess) {
         super(jep, computeType(jep, adapted.callType()), metaAccess, true);
     }
 
@@ -290,7 +314,6 @@ class HighUpcallStub extends UpcallStub {
 
         frame.clearLocals();
         InvokeWithExceptionNode returnValue = kit.createJavaCallWithException(CallTargetNode.InvokeKind.Virtual, metaAccess.lookupJavaMethod(INVOKE), mh, arguments);
-        returnValue.setInlineControl(Invoke.InlineControl.Never); // For debug
         kit.exceptionPart();
         /*
          * Per documentation, it is the user's responsibility to not throw exceptions from upcalls

@@ -87,13 +87,12 @@ public final class SubstrateCallingConventionType implements CallingConvention.T
     /**
      * In the case of an outgoing call with multiple returned values, or if the return is more than
      * one quadword long, there is no way to represent them in Java and the returns need special
-     * treatment. This is done using an extra prefix argument which is interpreted as a pointer to
+     * treatment. This is done using an extra prefix argument which is interpreted as a pointer to a
      * buffer where the values will be stored.
      *
-     * This is currently only allowed in custom conventions. Some ABI allow return value which span
-     * multiple registers. This value thus has to be moved to the heap before returning to Java. A
-     * suitable
-     *
+     * This is currently only allowed in custom conventions. Some ABIs allow return values which
+     * span multiple registers. This value thus has to be moved to the heap before returning to
+     * Java.
      */
     public boolean usesReturnBuffer() {
         return outgoing && returnSaving != null && returnSaving.length >= 2;

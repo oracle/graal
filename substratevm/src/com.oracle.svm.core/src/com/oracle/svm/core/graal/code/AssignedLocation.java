@@ -81,12 +81,8 @@ public final class AssignedLocation {
     public static AssignedLocation forRegister(Register register, JavaKind kind) {
         Objects.requireNonNull(register, "Register cannot be null");
         Objects.requireNonNull(kind, "Kind cannot be null");
-        switch (kind) {
-            case Long, Double -> {
-            }
-            default -> {
-                throw new IllegalArgumentException("Register kind cannot be " + kind);
-            }
+        if (kind != JavaKind.Long && kind != JavaKind.Double) {
+            throw new IllegalArgumentException("Register kind cannot be " + kind);
         }
         return new AssignedLocation(register, kind, NONE);
     }

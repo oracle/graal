@@ -24,7 +24,8 @@ Shared arenas are currently not supported.
 The FFM API enables Java code to call _down_ to native functions, and conversely allows native code to call _up_ to invoke Java code via method handles.
 These two kinds of calls are referred to as "downcalls" and "upcalls" respectively, and are collectively referred to as "foreign calls".
 
-> Note: Currently, only downcalls are supported, and only on the x64 architecture.
+> Note: Currently, foreign calls are supported on the x64 architecture.
+> Specifically, downcalls are supported on x64 Linux, Windows and MacOS, while upcalls are supported only on x64 Linux.
 
 ### Looking Up Native Functions
 
@@ -52,10 +53,6 @@ class ForeignRegistrationFeature implements Feature {
 ```
 To activate the custom feature, pass the `--features=com.example.ForeignRegistrationFeature` option (the fully-qualified name of the feature class) to `native-image`.
 It is recommended to do so [with a _native-image.properties_ file](BuildConfiguration.md#embed-a-configuration-file).
-
-### Upcalls
-
-Upcalls are not yet supported.
 
 ### Related Documentation
 

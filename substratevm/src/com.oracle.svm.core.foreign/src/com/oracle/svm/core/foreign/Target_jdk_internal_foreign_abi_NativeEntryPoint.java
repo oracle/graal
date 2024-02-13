@@ -59,10 +59,15 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
                     boolean needsReturnBuffer,
                     int capturedStateMask,
                     boolean needsTransition) {
-        // A storage may be null only when the Linker.Option.critical(allowHeapAccess=true) option is passed. (see jdk.internal.foreign.abi.x64.sysv.CallArranger.UnboxBindingCalculator.getBindings).
-        // It is an implementation detail but this method is called by JDK code which I cannot change to pass the value of allowHeapAccess as well.
-        // If the FunctionDescriptor does not contain any AddressLayout, then allowHeapAccess will always be false.
-        // We ensure this is the case by construction in the NativeEntryPointInfo.make function.
+        /*
+         * A VMStorage may be null only when the Linker.Option.critical(allowHeapAccess=true) option
+         * is passed. (see
+         * jdk.internal.foreign.abi.x64.sysv.CallArranger.UnboxBindingCalculator.getBindings). It is
+         * an implementation detail but this method is called by JDK code which cannot be changed to
+         * pass the value of allowHeapAccess as well. If the FunctionDescriptor does not contain any
+         * AddressLayout, then allowHeapAccess will always be false. We ensure this is the case by
+         * construction in the NativeEntryPointInfo.make function.
+         */
         boolean allowHeapAccess = Arrays.stream(argMoves).anyMatch(Objects::isNull);
         return NativeEntryPointInfo.makeEntryPoint(abi, argMoves, returnMoves, methodType, needsReturnBuffer, capturedStateMask, needsTransition, allowHeapAccess);
     }

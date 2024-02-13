@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import jdk.graal.compiler.replacements.nodes.CStringConstant;
 import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
@@ -546,10 +547,8 @@ public class MethodTypeFlowBuilder {
                 if (input instanceof ConstantNode && !typeFlows.contains((ConstantNode) input)) {
                     ConstantNode node = (ConstantNode) input;
                     Constant constant = node.getValue();
-                    if (node.asJavaConstant() == null && constant instanceof VMConstant) {
+                    if (node.asJavaConstant() == null && (constant instanceof VMConstant || constant instanceof CStringConstant)) {
                         // do nothing
-                    } else if (node.asJavaConstant() == null && node.stamp(NodeView.DEFAULT).isPointerStamp()) {
-                        // do nothing ?
                     } else if (node.asJavaConstant().isNull()) {
                         TypeFlowBuilder<ConstantTypeFlow> sourceBuilder = TypeFlowBuilder.create(bb, node, ConstantTypeFlow.class, () -> {
                             ConstantTypeFlow constantSource = new ConstantTypeFlow(AbstractAnalysisEngine.sourcePosition(node), null, TypeState.forNull());

@@ -359,8 +359,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
         } else {
             final int baseStackOffset = currentStackOffset;
             Set<Register> usedRegisters = new HashSet<>();
-            VMError.guarantee(parameterTypes.length == type.fixedParameterAssignment.length,
-                            "Parameters/assignments size mismatch.\n" + Arrays.toString(parameterTypes) + "\n" + Arrays.toString(type.fixedParameterAssignment));
+            VMError.guarantee(parameterTypes.length == type.fixedParameterAssignment.length, "Parameters/assignments size mismatch.");
 
             for (int i = firstActualArgument; i < locations.length; i++) {
                 JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) parameterTypes[i], metaAccess, target);

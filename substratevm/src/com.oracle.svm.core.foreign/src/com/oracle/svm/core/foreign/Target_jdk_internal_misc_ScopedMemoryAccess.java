@@ -70,13 +70,13 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @Substitute
     @TargetElement(onlyWith = JDK22OrLater.class)
     void closeScope0(MemorySessionImpl session, Target_jdk_internal_misc_ScopedMemoryAccess_ScopedAccessError error) {
-        throw unsupportedFeature("Arena.ofShared is not yet supported.");
+        throw unsupportedFeature("GR-52276: Arena.ofShared not supported");
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK21OrEarlier.class)
     boolean closeScope0(MemorySessionImpl session) {
-        throw unsupportedFeature("Arena.ofShared is not yet supported.");
+        throw unsupportedFeature("GR-52276: Arena.ofShared not supported");
     }
 }
 

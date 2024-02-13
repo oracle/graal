@@ -42,26 +42,10 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.asm.amd64.AMD64Address;
-import jdk.graal.compiler.asm.amd64.AMD64Assembler;
-import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.calc.AddNode;
-import jdk.graal.compiler.nodes.calc.ReinterpretNode;
-import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
-import jdk.graal.compiler.word.Word;
-import jdk.graal.compiler.word.WordCastNode;
-import jdk.graal.compiler.word.WordTypes;
-import jdk.internal.foreign.abi.ABIDescriptor;
-import jdk.internal.foreign.abi.NativeEntryPoint;
-import jdk.internal.foreign.abi.x64.sysv.CallArranger;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
@@ -71,12 +55,25 @@ import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.headers.WindowsAPIs;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.asm.amd64.AMD64Address;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler;
+import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.AddNode;
+import jdk.graal.compiler.nodes.calc.ReinterpretNode;
+import jdk.graal.compiler.word.Word;
+import jdk.graal.compiler.word.WordCastNode;
 import jdk.internal.foreign.CABI;
+import jdk.internal.foreign.abi.ABIDescriptor;
 import jdk.internal.foreign.abi.Binding;
 import jdk.internal.foreign.abi.CallingSequence;
 import jdk.internal.foreign.abi.LinkerOptions;
+import jdk.internal.foreign.abi.NativeEntryPoint;
 import jdk.internal.foreign.abi.VMStorage;
 import jdk.internal.foreign.abi.x64.X86_64Architecture;
+import jdk.internal.foreign.abi.x64.sysv.CallArranger;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaKind;
@@ -123,9 +120,9 @@ public abstract class AbiUtils {
             }
         }
 
-        public static Result.FullNativeAdaptation adapt(AbiUtils self, List<Adaptation> adaptations, List<ValueNode> originalArguments, NativeEntryPointInfo nep) {
+        public static Result.FullNativeAdaptation adaptToNative(AbiUtils self, List<Adaptation> adaptations, List<ValueNode> originalArguments, NativeEntryPointInfo nep) {
             originalArguments = Collections.unmodifiableList(originalArguments);
-            
+
             AssignedLocation[] originalAssignment = self.toMemoryAssignment(nep.parametersAssignment(), false);
             VMError.guarantee(allEqual(adaptations.size(), originalArguments.size(), nep.methodType().parameterCount(), originalAssignment.length));
 
@@ -162,7 +159,7 @@ public abstract class AbiUtils {
                             MethodType.methodType(nep.methodType().returnType(), argumentTypes), nodesToAppendToGraph);
         }
 
-        public static Result.TypeAdaptation adapt(AbiUtils self, List<Adaptation> adaptations, JavaEntryPointInfo jep) {
+        public static Result.TypeAdaptation adaptFromNative(AbiUtils self, List<Adaptation> adaptations, JavaEntryPointInfo jep) {
             AssignedLocation[] originalAssignment = self.toMemoryAssignment(jep.parametersAssignment(), false);
 
             List<AssignedLocation> assignment = new ArrayList<>();
@@ -202,7 +199,8 @@ public abstract class AbiUtils {
 
             public abstract List<AssignedLocation> apply(AssignedLocation parameter);
 
-            public abstract List<ValueNode> apply(ValueNode parameter, Map<Extracted, ValueNode> extractedArguments, List<ValueNode> originalArguments, int originalArgumentIndex, Consumer<Node> appendToGraph);
+            public abstract List<ValueNode> apply(ValueNode parameter, Map<Extracted, ValueNode> extractedArguments, List<ValueNode> originalArguments, int originalArgumentIndex,
+                            Consumer<Node> appendToGraph);
         }
 
         private static final Adaptation NOOP = new Adaptation() {
@@ -217,7 +215,8 @@ public abstract class AbiUtils {
             }
 
             @Override
-            public List<ValueNode> apply(ValueNode parameter, Map<Extracted, ValueNode> extractedArguments, List<ValueNode> originalArguments, int originalArgumentIndex, Consumer<Node> appendToGraph) {
+            public List<ValueNode> apply(ValueNode parameter, Map<Extracted, ValueNode> extractedArguments, List<ValueNode> originalArguments, int originalArgumentIndex,
+                            Consumer<Node> appendToGraph) {
                 return List.of(parameter);
             }
         };
@@ -263,7 +262,8 @@ public abstract class AbiUtils {
             }
 
             @Override
-            public List<ValueNode> apply(ValueNode parameter, Map<Extracted, ValueNode> extractedArguments, List<ValueNode> originalArguments, int originalArgumentIndex, Consumer<Node> appendToGraph) {
+            public List<ValueNode> apply(ValueNode parameter, Map<Extracted, ValueNode> extractedArguments, List<ValueNode> originalArguments, int originalArgumentIndex,
+                            Consumer<Node> appendToGraph) {
                 return List.of(parameter);
             }
         }
@@ -286,34 +286,38 @@ public abstract class AbiUtils {
             }
 
             @Override
-            public List<ValueNode> apply(ValueNode parameter, Map<Extracted, ValueNode> extractedArguments, List<ValueNode> originalArguments, int originalArgumentIndex, Consumer<Node> appendToGraph) {
+            public List<ValueNode> apply(ValueNode parameter, Map<Extracted, ValueNode> extractedArguments, List<ValueNode> originalArguments, int originalArgumentIndex,
+                            Consumer<Node> appendToGraph) {
                 var reinterpreted = ReinterpretNode.reinterpret(to, parameter);
                 appendToGraph.accept(reinterpreted);
                 return List.of(reinterpreted);
             }
         }
 
-        /** This adaptation is used when a downcall uses Linker.Option.critical(true).
+        /**
+         * This adaptation is used when a downcall uses Linker.Option.critical(true). <br>
+         * When an argument whose layout is an AddressLayout is passed in a downcall, it must be
+         * passed as a MemorySegment from the java side. From these, the downcall stub extracts a
+         * raw pointer to the data and calls the downcall with it. <br>
+         * Usually, only {@link jdk.internal.foreign.NativeMemorySegmentImpl} can be passed
+         * (segments allocated using an Arena), and these have a method `unsafeGetOffset` which
+         * straightforwardly returns the raw pointer. <br>
+         * However, when `allowHeapAccess` is true (the argument to Linker.Option.critical), one may
+         * pass a {@link HeapMemorySegmentImpl} as well. For reasons detailed in its documentation,
+         * heap segments are represented as an Object + offset pair, where the raw pointer should be
+         * derived from their sum. <br>
+         * Hence, when `allowHeapAccess` is true,
+         * {@link CallArranger.UnboxBindingCalculator#getBindings(Class, MemoryLayout)} passes two
+         * arguments for every AddressLayout, the result of `unsafeGetBase` (of type Object) and
+         * `unsafeGetOffset` (of type Long). <br>
+         * Then, in the JVM, somewhere in the native implementation of
+         * {@link NativeEntryPoint#makeDowncallStub(MethodType, ABIDescriptor, VMStorage[], VMStorage[], boolean, int, boolean)},
+         * some code is generated which adds together the two values. Hence, when generating the
+         * stub graph in SVM, we must make sure that the downcall performs the sum as well. <br>
          * <br>
-         * When an arguments whose layout is an AddressLayout is passed in a downcall, it must be passed as a MemorySegment from the java side.
-         * From these, the downcall stub extracts a raw pointer to the data and calls the downcall with it.
-         * <br>
-         * Usually, only {@link jdk.internal.foreign.NativeMemorySegmentImpl} can be passed (segments allocated using an Arena),
-         * and these have a method `unsafeGetOffset` which straightforwardly returns the raw pointer.
-         * <br>
-         * However, when `allowHeapAccess` is true (the argument to Linker.Option.critical), one may pass a {@link HeapMemorySegmentImpl} as well.
-         * For reasons detailed in its documentation, heap segments are represented as an Object + offset pair,
-         * where the raw pointer should be derived from their sum.
-         * <br>
-         * Hence, when `allowHeapAccess` is true, {@link CallArranger.UnboxBindingCalculator#getBindings(Class, MemoryLayout)} passes two arguments for every AddressLayout,
-         * the result of `unsafeGetBase` (of type Object) and `unsafeGetOffset` (of type Long).
-         * <br>
-         * Then, in the JVM, somewhere in the native implementation of {@link NativeEntryPoint#makeDowncallStub(MethodType, ABIDescriptor, VMStorage[], VMStorage[], boolean, int, boolean)},
-         * some code is generated which adds together the two values.
-         * Hence, when generating the stub graph in SVM, we must make sure that the downcall performs the sum as well.
-         * <br><br>
-         * As an added note, it seems that the only moment where a VMStorage (such as in nep.parameterAssignments()) is null is when
-         * Linker.Option.critical(true) is passed, see {@link CallArranger.UnboxBindingCalculator#getBindings(Class, MemoryLayout)}.
+         * As an added note, it seems that the only moment where a VMStorage (such as in
+         * nep.parameterAssignments()) is null is when Linker.Option.critical(true) is passed, see
+         * {@link CallArranger.UnboxBindingCalculator#getBindings(Class, MemoryLayout)}.
          */
         private static final class ComputeAddressFromSegmentPair extends Adaptation {
             private static final ComputeAddressFromSegmentPair SINGLETON = new ComputeAddressFromSegmentPair();
@@ -332,11 +336,14 @@ public abstract class AbiUtils {
             }
 
             @Override
-            public List<ValueNode> apply(ValueNode parameter, Map<Extracted, ValueNode> extractedArguments, List<ValueNode> originalArguments, int originalArgumentIndex, Consumer<Node> appendToGraph) {
+            public List<ValueNode> apply(ValueNode parameter, Map<Extracted, ValueNode> extractedArguments, List<ValueNode> originalArguments, int originalArgumentIndex,
+                            Consumer<Node> appendToGraph) {
                 var offsetArg = originalArguments.get(originalArgumentIndex + 1);
 
-                // I originally wanted to use an OffsetAddressNode here (followed by WordCastNode.addressToWord),
-                // but NativeMemorySegmentImpls return null for `unsafeGetBase`, which seems to break the graph somewhere later.
+                // I originally wanted to use an OffsetAddressNode here
+                // (followed by WordCastNode.addressToWord),
+                // but NativeMemorySegmentImpls return null for `unsafeGetBase`,
+                // which seems to break the graph somewhere later.
                 var basePointer = WordCastNode.objectToUntrackedPointer(parameter, ConfigurationValues.getWordKind());
                 appendToGraph.accept(basePointer);
                 var absolutePointer = AddNode.add(basePointer, offsetArg);
@@ -370,7 +377,8 @@ public abstract class AbiUtils {
             }
 
             @Override
-            public List<ValueNode> apply(ValueNode parameter, Map<Extracted, ValueNode> extractedArguments, List<ValueNode> originalArguments, int originalArgumentIndex, Consumer<Node> appendToGraph) {
+            public List<ValueNode> apply(ValueNode parameter, Map<Extracted, ValueNode> extractedArguments, List<ValueNode> originalArguments, int originalArgumentIndex,
+                            Consumer<Node> appendToGraph) {
                 if (as != null) {
                     if (extractedArguments.containsKey(as)) {
                         throw new IllegalStateException("%s was already extracted (%s).".formatted(as, extractedArguments.get(as)));
@@ -415,12 +423,12 @@ public abstract class AbiUtils {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public final Adapter.Result.FullNativeAdaptation adapt(List<ValueNode> arguments, NativeEntryPointInfo nep) {
-        return Adapter.adapt(this, generateAdaptations(nep), arguments, nep);
+        return Adapter.adaptToNative(this, generateAdaptations(nep), arguments, nep);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public final Adapter.Result.TypeAdaptation adapt(JavaEntryPointInfo jep) {
-        return Adapter.adapt(this, generateAdaptations(jep), jep);
+        return Adapter.adaptFromNative(this, generateAdaptations(jep), jep);
     }
 
     /**
@@ -444,17 +452,17 @@ public abstract class AbiUtils {
         for (int i = current; i < storages.length; ++i) {
             var storage = storages[i];
             if (storage == null) {
-                VMError.guarantee(nep.isAllowHeapAccess(), "A storage may only be null when the Linker.Option.critical(true) option is passed.");
+                VMError.guarantee(nep.allowHeapAccess(), "A storage may only be null when the Linker.Option.critical(true) option is passed.");
                 VMError.guarantee(JavaKind.fromJavaClass(
-                        nep.methodType().parameterArray()[i]) == JavaKind.Long &&
-                        JavaKind.fromJavaClass(nep.methodType().parameterArray()[i - 1]) == JavaKind.Object,
-                        """
-                                Storage is null, but the other parameters are inconsistent.
-                                Storage may be null only if its kind is Long and previous kind is Object.
-                                See jdk/internal/foreign/abi/x64/sysv/CallArranger.java:286""");
+                                nep.methodType().parameterArray()[i]) == JavaKind.Long &&
+                                JavaKind.fromJavaClass(nep.methodType().parameterArray()[i - 1]) == JavaKind.Object,
+                                """
+                                                Storage is null, but the other parameters are inconsistent.
+                                                Storage may be null only if its kind is Long and previous kind is Object.
+                                                See jdk/internal/foreign/abi/x64/sysv/CallArranger.java:286""");
                 VMError.guarantee(
-                        adaptations.get(i) == null && adaptations.get(i - 1) == null,
-                        "This parameter already has an adaptation when it should not.");
+                                adaptations.get(i) == null && adaptations.get(i - 1) == null,
+                                "This parameter already has an adaptation when it should not.");
 
                 adaptations.set(i, Adapter.drop());
                 adaptations.set(i - 1, Adapter.computeAddressFromSegmentPair());
@@ -618,7 +626,8 @@ class ABIs {
             MethodType type = desc.toMethodType();
 
             // OS specific!
-            // From AbstractLinker.arrangeDowncall implemented in SysVx64Linker.arrangeDowncall or Windowsx64Linker.arrangeDowncall:
+            // From AbstractLinker.arrangeDowncall implemented in SysVx64Linker.arrangeDowncall
+            // or Windowsx64Linker.arrangeDowncall:
             // From CallArranger.arrangeDowncall
             var callingSequence = makeCallingSequence(type, desc, false, optionSet);
 
@@ -630,7 +639,8 @@ class ABIs {
             var needsReturnBuffer = callingSequence.needsReturnBuffer();
 
             // From NativeEntrypoint.make
-            return NativeEntryPointInfo.make(argMoves, returnMoves, boundaryType, needsReturnBuffer, callingSequence.capturedStateMask(), callingSequence.needsTransition(), optionSet.allowsHeapAccess());
+            return NativeEntryPointInfo.make(argMoves, returnMoves, boundaryType, needsReturnBuffer, callingSequence.capturedStateMask(), callingSequence.needsTransition(),
+                            optionSet.allowsHeapAccess());
         }
 
         @Override
@@ -657,7 +667,9 @@ class ABIs {
         @Override
         public AssignedLocation[] toMemoryAssignment(VMStorage[] argMoves, boolean forReturn) {
             for (VMStorage move : argMoves) {
-                if (move == null) continue;
+                if (move == null) {
+                    continue;
+                }
                 switch (move.type()) {
                     case X86_64Architecture.StorageType.X87 ->
                         throw unsupportedFeature("Unsupported register kind: X87");
@@ -798,7 +810,8 @@ class ABIs {
             if (assignments.length > 0) {
                 final int last = assignments.length - 1;
                 var lastAssignment = assignments[last];
-                // assignments may be null when Linker.Option.critical(true) is used. See docs from ComputeAddressFromSegmentPair.
+                // assignments may be null when Linker.Option.critical(true) is used.
+                // See docs from ComputeAddressFromSegmentPair.
                 if (lastAssignment != null && lastAssignment.equals(X86_64Architecture.Regs.rax)) {
                     /*
                      * This branch is only taken when the function is variadic, that is when rax is

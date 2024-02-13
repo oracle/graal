@@ -88,10 +88,10 @@ public class ForeignFunctionsFeature implements InternalFeature {
     private final RuntimeForeignAccessSupportImpl accessSupport = new RuntimeForeignAccessSupportImpl();
 
     private final Set<Pair<FunctionDescriptor, Linker.Option[]>> registeredDowncalls = ConcurrentHashMap.newKeySet();
-    private int downcallCount = 0;
+    private int downcallCount = -1;
 
     private final Set<Pair<FunctionDescriptor, Linker.Option[]>> registeredUpcalls = ConcurrentHashMap.newKeySet();
-    private int upcallCount = 0;
+    private int upcallCount = -1;
 
     @Fold
     public static ForeignFunctionsFeature singleton() {
@@ -112,7 +112,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
         @Override
         public void registerForUpcall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options) {
             checkNotSealed();
-            registerConditionalConfiguration(condition, () -> registeredUpcalls.add(Pair.create(desc, options)));
+            registerConditionalConfiguration(condition, (ignored) -> registeredUpcalls.add(Pair.create(desc, options)));
         }
     }
 
@@ -241,11 +241,13 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
     public int getCreatedDowncallStubsCount() {
         assert sealed;
-        return this.downcallCount;
+        assert downcallCount >= 0;
+        return downcallCount;
     }
 
     public int getCreatedUpcallStubsCount() {
         assert sealed;
-        return this.upcallCount;
+        assert upcallCount >= 0;
+        return upcallCount;
     }
 }

@@ -26,12 +26,9 @@ package com.oracle.svm.junit;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
-import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -53,6 +50,7 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
 
+import jdk.graal.compiler.options.Option;
 import junit.runner.Version;
 
 public class SVMJUnitRunner {
@@ -67,8 +65,7 @@ public class SVMJUnitRunner {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     SVMJUnitRunner(FeatureAccess access) {
-        MxJUnitRequest.Builder builder = new MxJUnitRequest.Builder() {
-
+        var builder = new MxJUnitRequest.Builder() {
             @Override
             protected Class<?> resolveClass(String name) throws ClassNotFoundException {
                 Class<?> ret = access.findClassByName(name);
@@ -89,7 +86,6 @@ public class SVMJUnitRunner {
         }
 
         request = builder.build();
-
         missingClassesStr = getMissingClasses();
         if (missingClassesStr != null) {
             LogUtils.warning("The test configuration file specified via %s contains missing classes. Test execution will fail at run time. Missing classes in configuration file: %s.",
@@ -161,12 +157,12 @@ public class SVMJUnitRunner {
                 case "--eager-stacktrace":
                     config.eagerStackTrace = true;
                     break;
-                case "--run-only":
+                case "--run-explicit":
                     if (i < args.length) {
                         String classToRunOnly = args[i++];
                         testsToRun.add(classToRunOnly);
                     } else {
-                        system.out().println("Missing argument to --run-only");
+                        system.out().println("Missing argument to --run-explicit");
                     }
                     break;
                 default:
@@ -175,20 +171,21 @@ public class SVMJUnitRunner {
             }
         }
 
-        var filter = testsToRun.isEmpty() ? Filter.ALL : new Filter() {
+        var filter = Filter.ALL;
+        if (!testsToRun.isEmpty()) {
+            filter = new Filter() {
+                @Override
+                public boolean shouldRun(Description description) {
+                    // Always let non-test descriptions work, i.e. Parameterized tests.
+                    return testsToRun.contains(description.getClassName()) || !description.isTest();
+                }
 
-            @Override
-            public boolean shouldRun(Description description) {
-                var className = description.getClassName();
-                if (className == null) return false;
-                return testsToRun.contains(className);
-            }
-
-            @Override
-            public String describe() {
-                return "Run tests specified by the command line.";
-            }
-        };
+                @Override
+                public String describe() {
+                    return "Run only tests specified with the flag --run-explicit.";
+                }
+            };
+        }
 
         Result result = MxJUnitWrapper.runRequest(junitCore, system, config, request, filter);
 
