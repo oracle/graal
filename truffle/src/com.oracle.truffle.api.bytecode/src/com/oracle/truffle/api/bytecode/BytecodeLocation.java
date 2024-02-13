@@ -106,6 +106,18 @@ public final class BytecodeLocation {
     }
 
     /**
+     * Computes a {@link BytecodeLocation} using the given instruction index.
+     * <p>
+     * This method can be used to map the result of {@link #findInstructionIndex()} back to a
+     * location.
+     *
+     * @since 24.1
+     */
+    public static BytecodeLocation fromInstructionIndex(int instructionIndex, BytecodeNode bytecodeNode) {
+        return new BytecodeLocation(bytecodeNode, bytecodeNode.findBciFromInstructionIndex(instructionIndex));
+    }
+
+    /**
      * @since 24.1
      */
     @Override

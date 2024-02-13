@@ -280,6 +280,13 @@ public abstract class BytecodeNode extends Node {
     public abstract int findInstructionIndex(int bci);
 
     /**
+     * Finds the bytecode location associated with the given instruction index.
+     *
+     * @since 24.1
+     */
+    public abstract int findBciFromInstructionIndex(int instructionIndex);
+
+    /**
      * Finds the instruction associated with the given bytecode index.
      *
      * @since 24.1
