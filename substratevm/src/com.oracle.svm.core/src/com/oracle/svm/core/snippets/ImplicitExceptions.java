@@ -30,6 +30,7 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 import java.lang.reflect.GenericSignatureFormatError;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.FactoryMethodMarker;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.InternalVMMethod;
@@ -170,8 +171,10 @@ public class ImplicitExceptions {
         implicitExceptionsAreFatal.set(implicitExceptionsAreFatal.get() - 1);
     }
 
-    private static void vmErrorIfImplicitExceptionsAreFatal() {
-        if ((implicitExceptionsAreFatal.get() > 0 || ExceptionUnwind.exceptionsAreFatal()) && !SubstrateDiagnostics.isFatalErrorHandlingThread()) {
+    private static void vmErrorIfImplicitExceptionsAreFatal(boolean cachedException) {
+        if (cachedException && SubstrateOptions.ImplicitExceptionWithoutStacktraceIsFatal.getValue()) {
+            throw VMError.shouldNotReachHere("AssertionError without stack trace.");
+        } else if ((implicitExceptionsAreFatal.get() > 0 || ExceptionUnwind.exceptionsAreFatal()) && !SubstrateDiagnostics.isFatalErrorHandlingThread()) {
             throw VMError.shouldNotReachHere("Implicit exception thrown in code where such exceptions are fatal errors");
         }
     }
@@ -179,21 +182,21 @@ public class ImplicitExceptions {
     /** Foreign call: {@link #CREATE_NULL_POINTER_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static NullPointerException createNullPointerException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         return new NullPointerException();
     }
 
     /** Foreign call: {@link #CREATE_OUT_OF_BOUNDS_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static ArrayIndexOutOfBoundsException createIntrinsicOutOfBoundsException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         return new ArrayIndexOutOfBoundsException();
     }
 
     /** Foreign call: {@link #CREATE_OUT_OF_BOUNDS_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static ArrayIndexOutOfBoundsException createOutOfBoundsException(int index, int length) {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         return new ArrayIndexOutOfBoundsException("Index " + index + " out of bounds for length " + length);
     }
 
@@ -201,7 +204,7 @@ public class ImplicitExceptions {
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static ClassCastException createClassCastException(Object object, Object expectedClass) {
         assert object != null : "null can be cast to any type, so it cannot show up as a source of a ClassCastException";
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         String expectedClassName;
         if (expectedClass instanceof Class) {
             expectedClassName = ((Class<?>) expectedClass).getTypeName();
@@ -215,35 +218,35 @@ public class ImplicitExceptions {
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static ArrayStoreException createArrayStoreException(Object value) {
         assert value != null : "null can be stored into any array, so it cannot show up as a source of an ArrayStoreException";
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         return new ArrayStoreException(value.getClass().getTypeName());
     }
 
     /** Foreign call: {@link #CREATE_INCOMPATIBLE_CLASS_CHANGE_ERROR}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static IncompatibleClassChangeError createIncompatibleClassChangeError() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         return new IncompatibleClassChangeError();
     }
 
     /** Foreign call: {@link #CREATE_ILLEGAL_ARGUMENT_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static IllegalArgumentException createIllegalArgumentException(String message) {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         return new IllegalArgumentException(message);
     }
 
     /** Foreign call: {@link #CREATE_NEGATIVE_ARRAY_SIZE_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static NegativeArraySizeException createNegativeArraySizeException(int length) {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         return new NegativeArraySizeException(String.valueOf(length));
     }
 
     /** Foreign call: {@link #CREATE_DIVISION_BY_ZERO_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static ArithmeticException createDivisionByZeroException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         return new ArithmeticException("/ by zero");
     }
 
@@ -252,14 +255,14 @@ public class ImplicitExceptions {
     /** Foreign call: {@link #CREATE_INTEGER_OVERFLOW_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static ArithmeticException createIntegerOverflowException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         return new ArithmeticException("integer overflow");
     }
 
     /** Foreign call: {@link #CREATE_LONG_OVERFLOW_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static ArithmeticException createLongOverflowException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         return new ArithmeticException("long overflow");
     }
 
@@ -268,42 +271,42 @@ public class ImplicitExceptions {
     /** Foreign call: {@link #CREATE_ASSERTION_ERROR_NULLARY}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static AssertionError createAssertionErrorNullary() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         return new AssertionError();
     }
 
     /** Foreign call: {@link #CREATE_ASSERTION_ERROR_OBJECT}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static AssertionError createAssertionErrorObject(Object detailMessage) {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         return new AssertionError(detailMessage);
     }
 
     /** Foreign call: {@link #THROW_NEW_NULL_POINTER_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewNullPointerException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         throw new NullPointerException();
     }
 
     /** Foreign call: {@link #THROW_NEW_INTRINSIC_OUT_OF_BOUNDS_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewIntrinsicOutOfBoundsException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         throw new ArrayIndexOutOfBoundsException();
     }
 
     /** Foreign call: {@link #THROW_NEW_OUT_OF_BOUNDS_EXCEPTION_WITH_ARGS}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewOutOfBoundsExceptionWithArgs(int index, int length) {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         throw new ArrayIndexOutOfBoundsException("Index " + index + " out of bounds for length " + length);
     }
 
     /** Foreign call: {@link #THROW_NEW_CLASS_CAST_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewClassCastException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         throw new ClassCastException();
     }
 
@@ -311,7 +314,7 @@ public class ImplicitExceptions {
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewClassCastExceptionWithArgs(Object object, Object expectedClass) {
         assert object != null : "null can be cast to any type, so it cannot show up as a source of a ClassCastException";
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         String expectedClassName;
         if (expectedClass instanceof Class) {
             expectedClassName = ((Class<?>) expectedClass).getTypeName();
@@ -324,7 +327,7 @@ public class ImplicitExceptions {
     /** Foreign call: {@link #THROW_NEW_ARRAY_STORE_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewArrayStoreException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         throw new ArrayStoreException();
     }
 
@@ -332,42 +335,42 @@ public class ImplicitExceptions {
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewArrayStoreExceptionWithArgs(Object value) {
         assert value != null : "null can be stored into any array, so it cannot show up as a source of an ArrayStoreException";
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         throw new ArrayStoreException(value.getClass().getTypeName());
     }
 
     /** Foreign call: {@link #THROW_NEW_INCOMPATIBLE_CLASS_CHANGE_ERROR}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewIncompatibleClassChangeError() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         throw new IncompatibleClassChangeError();
     }
 
     /** Foreign call: {@link #THROW_NEW_ILLEGAL_ARGUMENT_EXCEPTION_WITH_ARGS}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewIllegalArgumentExceptionWithArgs(String message) {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         throw new IllegalArgumentException(message);
     }
 
     /** Foreign call: {@link #THROW_NEW_NEGATIVE_ARRAY_SIZE_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewNegativeArraySizeException(int length) {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         throw new NegativeArraySizeException(String.valueOf(length));
     }
 
     /** Foreign call: {@link #THROW_NEW_ARITHMETIC_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewArithmeticException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         throw new ArithmeticException();
     }
 
     /** Foreign call: {@link #THROW_NEW_DIVISION_BY_ZERO_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewDivisionByZeroException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         throw new ArithmeticException("/ by zero");
     }
 
@@ -376,14 +379,14 @@ public class ImplicitExceptions {
     /** Foreign call: {@link #THROW_NEW_INTEGER_OVERFLOW_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewIntegerOverflowException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         throw new ArithmeticException("integer overflow");
     }
 
     /** Foreign call: {@link #THROW_NEW_LONG_OVERFLOW_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewLongOverflowException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         throw new ArithmeticException("long overflow");
     }
 
@@ -392,14 +395,14 @@ public class ImplicitExceptions {
     /** Foreign call: {@link #THROW_NEW_ASSERTION_ERROR_NULLARY}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewAssertionErrorNullary() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         throw new AssertionError();
     }
 
     /** Foreign call: {@link #THROW_NEW_ASSERTION_ERROR_OBJECT}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewAssertionErrorObject(Object detailMessage) {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(false);
         throw new AssertionError(detailMessage);
     }
 
@@ -407,7 +410,7 @@ public class ImplicitExceptions {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static NullPointerException getCachedNullPointerException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(true);
         return CACHED_NULL_POINTER_EXCEPTION;
     }
 
@@ -415,7 +418,7 @@ public class ImplicitExceptions {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static ArrayIndexOutOfBoundsException getCachedOutOfBoundsException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(true);
         return CACHED_OUT_OF_BOUNDS_EXCEPTION;
     }
 
@@ -423,7 +426,7 @@ public class ImplicitExceptions {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static ClassCastException getCachedClassCastException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(true);
         return CACHED_CLASS_CAST_EXCEPTION;
     }
 
@@ -431,7 +434,7 @@ public class ImplicitExceptions {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static ArrayStoreException getCachedArrayStoreException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(true);
         return CACHED_ARRAY_STORE_EXCEPTION;
     }
 
@@ -439,7 +442,7 @@ public class ImplicitExceptions {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static IncompatibleClassChangeError getCachedIncompatibleClassChangeError() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(true);
         return CACHED_INCOMPATIBLE_CLASS_CHANGE_ERROR;
     }
 
@@ -447,7 +450,7 @@ public class ImplicitExceptions {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static IllegalArgumentException getCachedIllegalArgumentException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(true);
         return CACHED_ILLEGAL_ARGUMENT_EXCEPTION;
     }
 
@@ -455,7 +458,7 @@ public class ImplicitExceptions {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static NegativeArraySizeException getCachedNegativeArraySizeException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(true);
         return CACHED_NEGATIVE_ARRAY_SIZE_EXCEPTION;
     }
 
@@ -463,7 +466,7 @@ public class ImplicitExceptions {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static ArithmeticException getCachedArithmeticException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(true);
         return CACHED_ARITHMETIC_EXCEPTION;
     }
 
@@ -471,7 +474,7 @@ public class ImplicitExceptions {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static AssertionError getCachedAssertionError() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(true);
         return CACHED_ASSERTION_ERROR;
     }
 
@@ -479,7 +482,7 @@ public class ImplicitExceptions {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwCachedNullPointerException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(true);
         throw CACHED_NULL_POINTER_EXCEPTION;
     }
 
@@ -487,7 +490,7 @@ public class ImplicitExceptions {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwCachedOutOfBoundsException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(true);
         throw CACHED_OUT_OF_BOUNDS_EXCEPTION;
     }
 
@@ -495,7 +498,7 @@ public class ImplicitExceptions {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwCachedClassCastException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(true);
         throw CACHED_CLASS_CAST_EXCEPTION;
     }
 
@@ -503,7 +506,7 @@ public class ImplicitExceptions {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwCachedArrayStoreException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(true);
         throw CACHED_ARRAY_STORE_EXCEPTION;
     }
 
@@ -511,7 +514,7 @@ public class ImplicitExceptions {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwCachedIncompatibleClassChangeError() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(true);
         throw CACHED_INCOMPATIBLE_CLASS_CHANGE_ERROR;
     }
 
@@ -519,7 +522,7 @@ public class ImplicitExceptions {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwCachedIllegalArgumentException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(true);
         throw CACHED_ILLEGAL_ARGUMENT_EXCEPTION;
     }
 
@@ -527,7 +530,7 @@ public class ImplicitExceptions {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwCachedNegativeArraySizeException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(true);
         throw CACHED_NEGATIVE_ARRAY_SIZE_EXCEPTION;
     }
 
@@ -535,7 +538,7 @@ public class ImplicitExceptions {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwCachedArithmeticException() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(true);
         throw CACHED_ARITHMETIC_EXCEPTION;
     }
 
@@ -543,7 +546,7 @@ public class ImplicitExceptions {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implicit exception in code that must not allocate.")
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwCachedAssertionError() {
-        vmErrorIfImplicitExceptionsAreFatal();
+        vmErrorIfImplicitExceptionsAreFatal(true);
         throw CACHED_ASSERTION_ERROR;
     }
 
