@@ -43,6 +43,7 @@ package com.oracle.truffle.api.bytecode.test;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.debug.BytecodeDebugListener;
 import com.oracle.truffle.api.bytecode.introspection.Instruction;
@@ -52,6 +53,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 public abstract class DebugBytecodeRootNode extends RootNode implements BytecodeRootNode, BytecodeDebugListener {
 
     static boolean traceQuickening = false;
+    static boolean traceInstrumentation = false;
 
     protected DebugBytecodeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
@@ -61,8 +63,22 @@ public abstract class DebugBytecodeRootNode extends RootNode implements Bytecode
     final AtomicInteger quickeningCount = new AtomicInteger();
     final AtomicInteger specializeCount = new AtomicInteger();
 
+    public void onBytecodeInvalidation(BytecodeNode node) {
+        if (traceInstrumentation) {
+            System.out.printf("Invalidate bytecodes: %n", node.toString());
+        }
+    }
+
+    public void onBytecodeStackTransition(Instruction source, Instruction target) {
+        if (traceInstrumentation) {
+            System.out.printf("On stack transition: %s%n", source.getLocation().getBytecodeNode().getRootNode());
+            System.out.printf("  Invalidated at: %s%n", source.getLocation().getBytecodeNode().dump(source.getLocation()));
+            System.out.printf("  Continue at:    %s%n", target.getLocation().getBytecodeNode().dump(target.getLocation()));
+        }
+    }
+
     @Override
-    public void onInvalidate(Instruction before, Instruction after) {
+    public void onInvalidateInstruction(Instruction before, Instruction after) {
         if (traceQuickening) {
             System.out.printf("Invalidate %s: %n     %s%n  -> %s%n", before.getName(), before, after);
         }

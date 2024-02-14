@@ -56,6 +56,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
@@ -64,8 +66,11 @@ import com.oracle.truffle.api.bytecode.Instrumentation;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.test.AbstractQuickeningTest;
 import com.oracle.truffle.api.bytecode.test.DebugBytecodeRootNode;
+import com.oracle.truffle.api.bytecode.test.basic_interpreter.InstrumentationTest.InstrumentationTestRootNode.InstrumentationDecrement;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.InstrumentationTest.InstrumentationTestRootNode.PointInstrumentation1;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.InstrumentationTest.InstrumentationTestRootNode.PointInstrumentation2;
+import com.oracle.truffle.api.bytecode.test.basic_interpreter.InstrumentationTest.InstrumentationTestRootNode.PointInstrumentationRecursive1;
+import com.oracle.truffle.api.bytecode.test.basic_interpreter.InstrumentationTest.InstrumentationTestRootNode.PointInstrumentationRecursive2;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -165,17 +170,13 @@ public class InstrumentationTest extends AbstractQuickeningTest {
 
             b.emitPointInstrumentation1();
             b.emitPointInstrumentation2();
-            b.emitPointInstrumentation1();
-            b.emitPointInstrumentation2();
 
             b.beginRunAsserts();
             b.emitLoadConstant((Consumer<ThreadLocalData>) (d) -> {
-                assertEquals(5, d.events.size());
+                assertEquals(3, d.events.size());
                 assertEquals(PointInstrumentation1.class, d.events.get(0));
                 assertEquals(PointInstrumentation1.class, d.events.get(1));
                 assertEquals(PointInstrumentation2.class, d.events.get(2));
-                assertEquals(PointInstrumentation1.class, d.events.get(3));
-                assertEquals(PointInstrumentation2.class, d.events.get(4));
             });
             b.endRunAsserts();
 
@@ -188,11 +189,131 @@ public class InstrumentationTest extends AbstractQuickeningTest {
         assertEquals(42, node.getCallTarget().call());
     }
 
+    /*
+     * Tests behavior when instruments are attached added in instruments.
+     */
+    @Test
+    public void testPointInstrumentationRecursive() {
+        InstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(BytecodeInstrumentationTestLanguage.REF.get(null));
+
+            b.emitPointInstrumentation1();
+            b.beginEnableInstrumentation();
+            b.emitLoadConstant(PointInstrumentationRecursive1.class);
+            b.endEnableInstrumentation();
+            b.emitPointInstrumentationRecursive1();
+            b.emitPointInstrumentation1();
+
+            b.beginRunAsserts();
+            b.emitLoadConstant((Consumer<ThreadLocalData>) (d) -> {
+                assertEquals(2, d.events.size());
+                assertEquals(PointInstrumentationRecursive1.class, d.events.get(0));
+                assertEquals(PointInstrumentation1.class, d.events.get(1));
+            });
+            b.endRunAsserts();
+
+            b.beginEnableInstrumentation();
+            b.emitLoadConstant(PointInstrumentationRecursive2.class);
+            b.endEnableInstrumentation();
+
+            b.emitPointInstrumentationRecursive2();
+
+            // this bytecode should be skipped
+            b.emitPointInstrumentation2();
+
+            // the second invocation triggers PointInstrumentation2
+            b.emitPointInstrumentationRecursive2();
+
+            // after transition we should continue here
+            // we must remember which instrumentation instruction triggered the transition
+            b.emitPointInstrumentation2();
+
+            b.emitPointInstrumentationRecursive1();
+            b.emitPointInstrumentation1();
+
+            b.beginRunAsserts();
+            b.emitLoadConstant((Consumer<ThreadLocalData>) (d) -> {
+                assertEquals(7, d.events.size());
+                assertEquals(PointInstrumentationRecursive1.class, d.events.get(0));
+                assertEquals(PointInstrumentation1.class, d.events.get(1));
+                assertEquals(PointInstrumentationRecursive2.class, d.events.get(2));
+                assertEquals(PointInstrumentationRecursive2.class, d.events.get(3));
+                assertEquals(PointInstrumentation2.class, d.events.get(4));
+                assertEquals(PointInstrumentationRecursive1.class, d.events.get(5));
+                assertEquals(PointInstrumentation1.class, d.events.get(6));
+            });
+            b.endRunAsserts();
+
+            b.beginReturn();
+            b.emitLoadConstant(42);
+            b.endReturn();
+
+            b.endRoot();
+        });
+        assertEquals(42, node.getCallTarget().call());
+    }
+
+    /*
+     * Verifies that boxing elimination does not crash when instrumentation is changed while
+     * executing quickened instructions.
+     */
+    @Test
+    public void testBoxingElimination() {
+        InstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(BytecodeInstrumentationTestLanguage.REF.get(null));
+
+            BytecodeLocal l = b.createLocal();
+            b.beginStoreLocal(l);
+            b.emitLoadConstant(6);
+            b.endStoreLocal();
+
+            b.beginWhile();
+            b.beginIsNot();
+            b.emitLoadLocal(l);
+            b.emitLoadConstant(0);
+            b.endIsNot();
+
+            b.beginBlock();
+
+            b.beginStoreLocal(l);
+            b.beginBlock();
+
+            b.beginInstrumentationDecrement();
+            b.beginDecrementEnableInstrumentationIf4();
+            b.emitLoadLocal(l);
+            b.endDecrementEnableInstrumentationIf4();
+            b.endInstrumentationDecrement();
+
+            b.endBlock();
+
+            b.endStoreLocal();
+
+            b.endBlock();
+            b.endWhile();
+
+            b.beginRunAsserts();
+            b.emitLoadConstant((Consumer<ThreadLocalData>) (d) -> {
+                assertEquals(2, d.events.size());
+                assertEquals(InstrumentationDecrement.class, d.events.get(0));
+                assertEquals(InstrumentationDecrement.class, d.events.get(1));
+            });
+            b.endRunAsserts();
+
+            b.beginReturn();
+            b.emitLoadLocal(l);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        node.getBytecodeNode().setUncachedThreshold(0);
+        assertEquals(0, node.getCallTarget().call());
+    }
+
     @GenerateBytecode(languageClass = BytecodeInstrumentationTestLanguage.class, //
-                    enableYield = true, enableSerialization = true, //
                     enableQuickening = true, //
-                    enableUncachedInterpreter = true, enableInstrumentation = true, //
-                    boxingEliminationTypes = {long.class, int.class, boolean.class})
+                    enableUncachedInterpreter = true,  //
+                    enableInstrumentation = true, //
+                    boxingEliminationTypes = {int.class})
     public abstract static class InstrumentationTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected InstrumentationTestRootNode(TruffleLanguage<?> language,
@@ -206,8 +327,11 @@ public class InstrumentationTest extends AbstractQuickeningTest {
             @Specialization
             @TruffleBoundary
             public static void doDefault(Class<?> instrumentationClass,
-                            @Bind("$root") InstrumentationTestRootNode root) {
-                root.getRootNodes().update(InstrumentationTestRootNodeGen.newConfigBuilder().addInstrumentations(instrumentationClass).build());
+                            @Bind("$location") BytecodeLocation location) {
+
+                System.out.println(location.dump());
+                location.getBytecodeNode().getBytecodeRootNode().getRootNodes().update(InstrumentationTestRootNodeGen.newConfigBuilder().addInstrumentations(instrumentationClass).build());
+
             }
 
         }
@@ -246,6 +370,33 @@ public class InstrumentationTest extends AbstractQuickeningTest {
         }
 
         @Instrumentation
+        static final class PointInstrumentationRecursive1 {
+
+            @Specialization
+            public static void doDefault(@Bind("$root") InstrumentationTestRootNode root) {
+                root.getLanguage(BytecodeInstrumentationTestLanguage.class).threadLocal.get().add(PointInstrumentationRecursive1.class, null);
+                root.getRootNodes().update(InstrumentationTestRootNodeGen.newConfigBuilder().addInstrumentations(PointInstrumentation1.class).build());
+            }
+
+        }
+
+        @Instrumentation
+        static final class PointInstrumentationRecursive2 {
+
+            @Specialization
+            public static void doDefault(@Bind("$root") InstrumentationTestRootNode root) {
+                ThreadLocalData tl = root.getLanguage(BytecodeInstrumentationTestLanguage.class).threadLocal.get();
+                tl.add(PointInstrumentationRecursive2.class, null);
+
+                if (tl.pointInstrumentationRecursive2Counter <= 0) {
+                    root.getRootNodes().update(InstrumentationTestRootNodeGen.newConfigBuilder().addInstrumentations(PointInstrumentation2.class).build());
+                }
+                tl.pointInstrumentationRecursive2Counter--;
+            }
+
+        }
+
+        @Instrumentation
         static final class InstrumentationOperandReturn {
 
             @Specialization
@@ -255,12 +406,54 @@ public class InstrumentationTest extends AbstractQuickeningTest {
             }
         }
 
+        @Operation
+        static final class DecrementEnableInstrumentationIf4 {
+
+            @Specialization
+            public static int doInt(int operand, @Bind("$root") InstrumentationTestRootNode root) {
+                if (operand == 4) {
+                    root.getRootNodes().update(InstrumentationTestRootNodeGen.newConfigBuilder().addInstrumentations(InstrumentationDecrement.class).build());
+                }
+                return operand - 1;
+            }
+        }
+
+        @Operation
+        static final class IsNot {
+
+            @Specialization
+            public static boolean doInt(int operand, int value) {
+                return operand != value;
+            }
+        }
+
+        @Operation
+        static final class Is {
+
+            @Specialization
+            public static boolean doInt(int operand, int value) {
+                return operand == value;
+            }
+        }
+
+        @Instrumentation
+        static final class InstrumentationDecrement {
+
+            @Specialization
+            public static int doInt(int operand, @Bind("$root") InstrumentationTestRootNode root) {
+                root.getLanguage(BytecodeInstrumentationTestLanguage.class).threadLocal.get().add(InstrumentationDecrement.class, operand);
+                return operand - 1;
+            }
+        }
+
     }
 
     static class ThreadLocalData {
 
         final List<Class<?>> events = new ArrayList<>();
         final List<Object> operands = new ArrayList<>();
+
+        private int pointInstrumentationRecursive2Counter = 1;
 
         @TruffleBoundary
         void add(Class<?> c, Object operand) {

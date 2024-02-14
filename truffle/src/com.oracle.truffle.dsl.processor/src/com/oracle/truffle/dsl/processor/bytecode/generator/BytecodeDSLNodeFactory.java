@@ -73,6 +73,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -1559,7 +1560,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     }
 
-    void emitInvalidate(CodeTreeBuilder b, String node, String bc, String bci, CodeTree oldInstruction, CodeTree newInstruction) {
+    void emitInvalidateInstruction(CodeTreeBuilder b, String node, String bc, String bci, CodeTree oldInstruction, CodeTree newInstruction) {
         if (model.specializationDebugListener && oldInstruction == null) {
             b.startBlock();
             b.startDeclaration(types.Instruction, "oldInstruction");
@@ -1574,7 +1575,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         if (model.specializationDebugListener) {
             b.startStatement();
-            b.startCall(node, "getRoot().onInvalidate");
+            b.startCall(node, "getRoot().onInvalidateInstruction");
             if (oldInstruction == null) {
                 b.string("oldInstruction");
             } else {
@@ -3133,6 +3134,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "end" + operation.name);
             addEndOperationDoc(operation, ex);
             CodeTreeBuilder b = ex.createBuilder();
+
+            if (operation.kind == OperationKind.CUSTOM_INSTRUMENTATION) {
+                int mask = 1 << operation.instrumentationIndex;
+                b.startIf().string("(instrumentations & ").string("0x", Integer.toHexString(mask)).string(") == 0").end().startBlock();
+                b.returnStatement();
+                b.end();
+            }
 
             if (model.enableSerialization) {
                 b.startIf().string("serialization != null").end().startBlock();
@@ -5182,6 +5190,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 type.add(createTransitionState());
                 type.add(createToStableBytecodeIndex());
                 type.add(createFromStableBytecodeIndex());
+                type.add(createTransitionInstrumentationIndex());
             }
 
             return type;
@@ -5206,28 +5215,129 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.declaration(type(int.class), "stableBci", "toStableBytecodeIndex(oldBc, oldBci)");
             b.declaration(type(int.class), "newBci", "fromStableBytecodeIndex(newBc, stableBci)");
 
+            b.declaration(type(int.class), "oldBciBase", "fromStableBytecodeIndex(oldBc, stableBci)");
+            b.startIf().string("oldBci != oldBciBase").end().startBlock();
+            b.lineComment("Transition within an in instrumentation bytecode.");
+            b.lineComment("Needs to compute exact location where to continue.");
+            b.startAssign("newBci");
+            b.string("transitionInstrumentationIndex(oldBc, oldBciBase, oldBci, newBc, newBci)");
+            b.end(); // assign
+            b.end(); // if block
+
+            if (model.specializationDebugListener) {
+                b.startStatement();
+                b.startCall("getRoot().onBytecodeStackTransition");
+                emitParseInstruction(b, "this", "oldBci", CodeTreeBuilder.singleString("oldBc[oldBci]"));
+                emitParseInstruction(b, "newBytecode", "newBci", CodeTreeBuilder.singleString("newBc[newBci]"));
+                b.end().end();
+            }
+
             b.startReturn().string("(state & 0xFFFF_0000) | (newBci & 0x0000_FFFF)").end();
 
             return invalidate;
         }
 
-        private record TranslationInstructionGroup(int instructionLength, boolean instrumentation) implements Comparable<TranslationInstructionGroup> {
-            TranslationInstructionGroup(InstructionModel instr) {
-                this(instr.getInstructionLength(), instr.operation != null && instr.operation.kind == OperationKind.CUSTOM_INSTRUMENTATION);
-            }
+        private CodeExecutableElement createTransitionInstrumentationIndex() {
+            CodeExecutableElement invalidate = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(int.class), "transitionInstrumentationIndex");
+            invalidate.addParameter(new CodeVariableElement(arrayOf(type(short.class)), "oldBc"));
+            invalidate.addParameter(new CodeVariableElement(type(int.class), "oldBciBase"));
+            invalidate.addParameter(new CodeVariableElement(type(int.class), "oldBciTarget"));
+            invalidate.addParameter(new CodeVariableElement(arrayOf(type(short.class)), "newBc"));
+            invalidate.addParameter(new CodeVariableElement(type(int.class), "newBciBase"));
+            CodeTreeBuilder b = invalidate.createBuilder();
+            b.declaration(type(int.class), "oldBci", "oldBciBase");
+            b.declaration(type(int.class), "newBci", "newBciBase");
+            b.declaration(type(short.class), "searchOp", "-1");
 
-            // needs a deterministic ordering after grouping
-            public int compareTo(TranslationInstructionGroup o) {
-                int compare = Boolean.compare(this.instrumentation, o.instrumentation);
-                if (compare != 0) {
-                    return compare;
+            b.startWhile().string("oldBci < oldBciTarget").end().startBlock();
+            b.declaration(type(short.class), "op", "ACCESS.shortArrayRead(oldBc, oldBci)");
+            b.statement("searchOp = op");
+            b.startSwitch().string("op").end().startBlock();
+            for (var groupEntry : groupInstructionsByInstrumentationAndLength()) {
+                TranslationInstructionGroup group = groupEntry.getKey();
+                if (!group.instrumentation) {
+                    // seeing an instrumentation here is a failure
+                    continue;
                 }
-                compare = Integer.compare(this.instructionLength, o.instructionLength);
-                if (compare != 0) {
-                    return compare;
+                List<InstructionModel> instructions = groupEntry.getValue();
+                for (InstructionModel instruction : instructions) {
+                    b.startCase().tree(createInstructionConstant(instruction)).end();
                 }
-                return 0;
+                b.startCaseBlock();
+                b.statement("oldBci += " + group.instructionLength);
+                b.statement("break");
+                b.end();
             }
+            b.caseDefault().startCaseBlock();
+            b.tree(GeneratorUtils.createShouldNotReachHere("Unexpected bytecode."));
+            b.end(); // default block
+            b.end(); // switch block
+            b.end(); // while block
+
+            b.startAssert().string("searchOp != -1").end();
+
+            b.startAssign("oldBci").string("oldBciBase").end();
+            b.declaration(type(int.class), "opCounter", "0");
+
+            b.startWhile().string("oldBci < oldBciTarget").end().startBlock();
+            b.declaration(type(short.class), "op", "ACCESS.shortArrayRead(oldBc, oldBci)");
+            b.startIf().string("searchOp == op").end().startBlock();
+            b.statement("opCounter++");
+            b.end();
+            b.startSwitch().string("op").end().startBlock();
+            for (var groupEntry : groupInstructionsByInstrumentationAndLength()) {
+                TranslationInstructionGroup group = groupEntry.getKey();
+                if (!group.instrumentation) {
+                    // seeing an instrumentation here is a failure
+                    continue;
+                }
+                List<InstructionModel> instructions = groupEntry.getValue();
+                for (InstructionModel instruction : instructions) {
+                    b.startCase().tree(createInstructionConstant(instruction)).end();
+                }
+                b.startCaseBlock();
+                b.statement("oldBci += " + group.instructionLength);
+                b.statement("break");
+                b.end();
+            }
+            b.caseDefault().startCaseBlock();
+            b.tree(GeneratorUtils.createShouldNotReachHere("Unexpected bytecode."));
+            b.end(); // default block
+            b.end(); // switch block
+            b.end(); // while block
+
+            b.startAssert().string("opCounter > 0").end();
+
+            b.startWhile().string("opCounter > 0").end().startBlock();
+            b.declaration(type(short.class), "op", "ACCESS.shortArrayRead(newBc, newBci)");
+            b.startIf().string("searchOp == op").end().startBlock();
+            b.statement("opCounter--");
+            b.end();
+            b.startSwitch().string("op").end().startBlock();
+            for (var groupEntry : groupInstructionsByInstrumentationAndLength()) {
+                TranslationInstructionGroup group = groupEntry.getKey();
+                if (!group.instrumentation) {
+                    // seeing an instrumentation here is a failure
+                    continue;
+                }
+                List<InstructionModel> instructions = groupEntry.getValue();
+                for (InstructionModel instruction : instructions) {
+                    b.startCase().tree(createInstructionConstant(instruction)).end();
+                }
+                b.startCaseBlock();
+                b.statement("newBci += " + group.instructionLength);
+                b.statement("break");
+                b.end();
+            }
+            b.caseDefault().startCaseBlock();
+            b.tree(GeneratorUtils.createShouldNotReachHere("Unexpected bytecode."));
+            b.end(); // default block
+            b.end(); // switch block
+            b.end(); // while block
+
+            b.startReturn().string("newBci").end();
+
+            return invalidate;
         }
 
         /**
@@ -5259,11 +5369,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startWhile().string(searchVariable, " != ", targetVariable, " && bci < bc.length").end().startBlock();
             b.startSwitch().string(readBc("bci")).end().startBlock();
 
-            for (var groupEntry : model.getInstructions().stream()//
-                            .filter((i -> !i.isQuickening())) //
-                            .collect(Collectors.groupingBy(TranslationInstructionGroup::new)).entrySet() //
-                            .stream().sorted(Comparator.comparing(e -> e.getKey())) //
-                            .toList()) {
+            for (var groupEntry : groupInstructionsByInstrumentationAndLength()) {
                 TranslationInstructionGroup group = groupEntry.getKey();
                 List<InstructionModel> instructions = groupEntry.getValue();
 
@@ -5297,7 +5403,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createToStableBytecodeIndex() {
-            CodeExecutableElement translate = new CodeExecutableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "toStableBytecodeIndex");
+            CodeExecutableElement translate = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(int.class), "toStableBytecodeIndex");
             translate.addParameter(new CodeVariableElement(arrayOf(type(short.class)), "bc"));
             translate.addParameter(new CodeVariableElement(type(int.class), "searchBci"));
             emitStableBytecodeSearch(translate.createBuilder(), "searchBci", "stableBci", g -> g.instructionLength, true);
@@ -5305,11 +5411,37 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createFromStableBytecodeIndex() {
-            CodeExecutableElement translate = new CodeExecutableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "fromStableBytecodeIndex");
+            CodeExecutableElement translate = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(int.class), "fromStableBytecodeIndex");
             translate.addParameter(new CodeVariableElement(arrayOf(type(short.class)), "bc"));
             translate.addParameter(new CodeVariableElement(type(int.class), "stableSearchBci"));
             emitStableBytecodeSearch(translate.createBuilder(), "stableSearchBci", "stableBci", g -> g.instructionLength, false);
             return translate;
+        }
+
+        private record TranslationInstructionGroup(int instructionLength, boolean instrumentation) implements Comparable<TranslationInstructionGroup> {
+            TranslationInstructionGroup(InstructionModel instr) {
+                this(instr.getInstructionLength(), instr.operation != null && instr.operation.kind == OperationKind.CUSTOM_INSTRUMENTATION);
+            }
+
+            // needs a deterministic ordering after grouping
+            public int compareTo(TranslationInstructionGroup o) {
+                int compare = Boolean.compare(this.instrumentation, o.instrumentation);
+                if (compare != 0) {
+                    return compare;
+                }
+                compare = Integer.compare(this.instructionLength, o.instructionLength);
+                if (compare != 0) {
+                    return compare;
+                }
+                return 0;
+            }
+        }
+
+        private List<Entry<TranslationInstructionGroup, List<InstructionModel>>> groupInstructionsByInstrumentationAndLength() {
+            return model.getInstructions().stream()//
+                            .collect(Collectors.groupingBy(TranslationInstructionGroup::new)).entrySet() //
+                            .stream().sorted(Comparator.comparing(e -> e.getKey())) //
+                            .toList();
         }
 
         private CodeExecutableElement createInvalidate() {
@@ -5341,7 +5473,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
                 b.startCaseBlock();
                 InstructionModel invalidateInstruction = model.getInvalidateInstruction(length);
-                emitInvalidate(b, "this", "bc", "bci", CodeTreeBuilder.singleString("op"), createInstructionConstant(invalidateInstruction));
+                emitInvalidateInstruction(b, "this", "bc", "bci", CodeTreeBuilder.singleString("op"), createInstructionConstant(invalidateInstruction));
                 b.statement("bci += " + length);
                 b.statement("break");
                 b.end();
@@ -5417,7 +5549,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.BytecodeIntrospection, "getIntrospectionData");
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.declaration(arrayOf(type(short.class)), "bc", "this.bytecodes");
+            b.declaration(arrayOf(type(short.class)), "oldBc", "this.oldBytecodes");
+            b.declaration(arrayOf(type(short.class)), "bc", "oldBc != null ? oldBc : this.bytecodes");
             b.declaration(generic(type(List.class), type(Object[].class)), "instructions", "new ArrayList<>()");
 
             b.declaration(type(int[].class), "bci", "new int[1]");
@@ -5510,7 +5643,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(type(int.class), "operand"));
             ex.addParameter(new CodeVariableElement(type(int[].class), "nextBci"));
             CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(arrayOf(type(short.class)), "bc", "this.bytecodes");
+            b.declaration(arrayOf(type(short.class)), "oldBc", "this.oldBytecodes");
+            b.declaration(arrayOf(type(short.class)), "bc", "oldBc != null ? oldBc : this.bytecodes");
             b.declaration(arrayOf(types.Node), "cachedNodes", "getCachedNodes()");
             b.declaration(arrayOf(type(int.class)), "branchProfiles", "getBranchProfiles()");
             b.declaration(types.BytecodeLocation, "location", "findLocation(bci)");
