@@ -152,6 +152,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         Set<String> suffixes = new HashSet<>();
         TypeMirror languageClass = null;
         boolean enableYield = false;
+        boolean enableTagInstrumentation = false;
 
         List<BytecodeDSLModel> result = new ArrayList<>();
 
@@ -184,6 +185,15 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 enableYield = variantEnableYield;
             } else if (variantEnableYield != enableYield) {
                 model.addError(generateBytecodeMirror, variantEnableYieldValue, "Incompatible variant: all variants must have the same value for enableYield.");
+            }
+
+            AnnotationValue variantEnableTagInstrumentationValue = ElementUtils.getAnnotationValue(generateBytecodeMirror, "enableTagInstrumentation");
+            boolean variantEnableTagInstrumentation = ElementUtils.resolveAnnotationValue(Boolean.class,
+                            variantEnableTagInstrumentationValue);
+            if (first) {
+                enableTagInstrumentation = variantEnableTagInstrumentation;
+            } else if (variantEnableTagInstrumentation != enableTagInstrumentation) {
+                model.addError(generateBytecodeMirror, variantEnableTagInstrumentationValue, "Incompatible variant: all variants must have the same value for enableTagInstrumentation.");
             }
 
             first = false;

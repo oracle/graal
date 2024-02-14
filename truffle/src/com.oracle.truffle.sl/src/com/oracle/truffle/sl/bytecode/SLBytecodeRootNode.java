@@ -96,7 +96,8 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
                 languageClass = SLLanguage.class, //
                 decisionsFile = "decisions.json", //
                 boxingEliminationTypes = {long.class, boolean.class}, //
-                enableSerialization = true)
+                enableSerialization = true, //
+                enableTagInstrumentation = true)
 @TypeSystemReference(SLTypes.class)
 @OperationProxy(SLAddNode.class)
 @OperationProxy(SLDivNode.class)
