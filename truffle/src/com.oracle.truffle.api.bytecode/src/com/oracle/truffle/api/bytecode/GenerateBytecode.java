@@ -47,6 +47,9 @@ import java.lang.annotation.Target;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.introspection.Argument;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.ProvidedTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 
 /**
@@ -144,24 +147,49 @@ public @interface GenerateBytecode {
     boolean enableSerialization() default false;
 
     /**
-     * Whether the generated interpreter should support instrumentation.
+     * Whether the generated interpreter should support Truffle tag instrumentation. When
+     * instrumentation is enabled, the generated builder will define <code>startTag(...)</code> and
+     * <code>endTag()</code> methods that can be used to annotate the bytecode with
+     * {@link com.oracle.truffle.api.instrumentation.Tag tags}. Truffle tag instrumentation also
+     * allows you to specify implicit tagging using {@link Operation#tags()}. If tag instrumentation
+     * is enabled all tagged operations will automatically handle and insert {@link ProbeNode
+     * probes} from the Truffle instrumentation framework.
      * <p>
-     * When instrumentation is enabled, the generated builder will define <code>startTag(...)</code>
-     * and <code>endTag()</code> methods that can be used to annotate the bytecode with
-     * {@link com.oracle.truffle.api.instrumentation.Tag tags}.
+     * Only tags are allowed to be used that are also {@link ProvidedTags provided} by the specified
+     * {@link #languageClass() Truffle language}.
      *
-     * @see #enableRootTagging()
+     * @see #enableRootBodyTagging() to enable implicit root tagging (default enabled)
+     * @see #enableRootTagging() to enable implicit root body tagging (default enabled)
      * @since 24.1
      */
-    boolean enableInstrumentation() default false;
+    boolean enableTagInstrumentation() default false;
 
     /**
-     * Enables automatic root tagging if {@link #enableInstrumentation() instrumentation} is
-     * enabled. Automatic root tagging automatically annotates each root node with {@link RootTag}.
+     * Enables automatic root tagging if {@link #enableTagInstrumentation() instrumentation} is
+     * enabled. Automatic root tagging automatically tags each root with {@link RootTag} and
+     * {@link RootBodyTag} if the language {@link ProvidedTags provides} it.
+     * <p>
+     * Root tagging requires the probe to be notified before the
+     * {@link BytecodeRootNode#executeProlog(VirtualFrame) prolog} is executed. Implementing this
+     * behavior manually is not trivial and not recommended. It is recommended to use automatic root
+     * tagging. For inlining performed by the parser it may be useful to emit custom {@link RootTag
+     * root} tag using the builder methods for inlined methods. This ensures that tools can still
+     * work correctly for inlined calls.
      *
      * @since 24.1
+     * @see #enableRootBodyTagging()
      */
     boolean enableRootTagging() default true;
+
+    /**
+     * Enables automatic root tagging if {@link #enableTagInstrumentation() instrumentation} is
+     * enabled. Automatic root tagging automatically tags each root with {@link RootBodyTag} if the
+     * language {@link ProvidedTags provides} it.
+     *
+     * @since 24.1
+     * @see #enableRootTagging()
+     */
+    boolean enableRootBodyTagging() default true;
 
     /**
      * Whether to use unsafe array accesses.

@@ -110,6 +110,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public boolean storeBciInFrame;
     public boolean specializationDebugListener;
     public boolean enableSpecializationIntrospection;
+    public boolean enableTagInstrumentation;
 
     public ExecutableElement fdConstructor;
     public ExecutableElement fdBuilderConstructor;
@@ -285,11 +286,14 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                         .setTransparent(true) //
                         .setOperationArguments(new OperationArgument(context.getType(int.class), "index", "the starting character index of the source section"),
                                         new OperationArgument(context.getType(int.class), "length", "the length (in characters) of the source section"));
-        operation(OperationKind.INSTRUMENT_TAG, "Tag") //
-                        .setNumChildren(1) //
-                        .setTransparent(true) //
-                        .setOperationArgumentVarArgs(true) //
-                        .setOperationArguments(new OperationArgument(array(context.getDeclaredType(Class.class)), "newTags", "the tags to associate with the enclosed operations"));
+
+        if (enableTagInstrumentation) {
+            operation(OperationKind.INSTRUMENT_TAG, "Tag") //
+                            .setNumChildren(1) //
+                            .setTransparent(true) //
+                            .setOperationArgumentVarArgs(true) //
+                            .setOperationArguments(new OperationArgument(array(context.getDeclaredType(Class.class)), "newTags", "the tags to associate with the enclosed operations"));
+        }
 
         popVariadicInstruction = new InstructionModel[9];
         for (int i = 0; i <= 8; i++) {

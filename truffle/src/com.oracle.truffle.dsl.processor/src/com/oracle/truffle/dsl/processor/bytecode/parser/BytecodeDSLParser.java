@@ -198,12 +198,13 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.languageClass = (DeclaredType) ElementUtils.getAnnotationValue(generateBytecodeMirror, "languageClass").getValue();
         model.enableUncachedInterpreter = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableUncachedInterpreter");
         model.enableSerialization = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableSerialization");
+        model.enableSpecializationIntrospection = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableSerialization");
         model.allowUnsafe = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "allowUnsafe");
         model.enableYield = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableYield");
         model.storeBciInFrame = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "storeBciInFrame");
         model.enableQuickening = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableQuickening");
         model.specializationDebugListener = types.BytecodeDebugListener == null ? false : ElementUtils.isAssignable(typeElement.asType(), types.BytecodeDebugListener);
-        model.enableSpecializationIntrospection = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableSpecializationIntrospection");
+        model.enableTagInstrumentation = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableTagInstrumentation");
 
         model.addDefault();
 
@@ -261,6 +262,18 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                             getSimpleName(types.FrameDescriptor),
                             getSimpleName(types.FrameDescriptor_Builder));
             return;
+        }
+
+        if (model.enableTagInstrumentation && model.getProvidedTags().isEmpty()) {
+            AnnotationValue value = ElementUtils.getAnnotationValue(generateBytecodeMirror, "enableTagInstrumentation");
+            model.addError(generateBytecodeMirror, value,
+                            String.format("Tag instrumentation cannot be enabled if the specified language class '%s' does not export any tags using @%s. " +
+                                            "Specify at least one provided tag or disable tag instrumentation for this root node.",
+                                            getQualifiedName(model.languageClass),
+                                            getSimpleName(types.ProvidedTags)));
+
+            ElementUtils.getAnnotationValue(generateBytecodeMirror, "enableTagInstrumentation");
+
         }
 
         Map<String, List<ExecutableElement>> constructorsByFDType = viableConstructors.stream().collect(Collectors.groupingBy(ctor -> {

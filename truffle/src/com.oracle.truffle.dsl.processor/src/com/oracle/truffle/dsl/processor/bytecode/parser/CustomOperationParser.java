@@ -200,16 +200,20 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         if (operation.kind == OperationKind.CUSTOM_INSTRUMENTATION) {
             if (signature.valueCount > 1) {
                 customOperation.addError(String.format("An @%s annotated operation cannot have more than one operand. " +
-                                "Instrumentations must have transparent stack effects and a single operation cannot push more than one value. " + //
+                                "Instrumentations must have transparent stack effects. " + //
                                 "Remove the additional operands to resolve this.",
                                 getSimpleName(types.Instrumentation)));
-            }
-            if (signature.isVariadic) {
-                customOperation.addError(String.format("An @%s annotated operation cannot use @%s." +
-                                "Instrumentations must have transparent stack effects and a single operation cannot push more than one value. " + //
+            } else if (signature.isVariadic) {
+                customOperation.addError(String.format("An @%s annotated operation cannot use @%s for one of its operands. " +
+                                "Instrumentations must have transparent stack effects. " + //
                                 "Remove the variadic annotation to resolve this.",
                                 getSimpleName(types.Instrumentation),
                                 getSimpleName(types.Variadic)));
+            } else if (!signature.isVoid && signature.valueCount != 1) {
+                customOperation.addError(String.format("An @%s annotated operation cannot have a return value with also specifying a single operand. " +
+                                "Instrumentations must have transparent stack effects. " + //
+                                "Use void as return type or specify a single operand value to resolve this.",
+                                getSimpleName(types.Instrumentation)));
             }
         }
 

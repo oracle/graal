@@ -1342,7 +1342,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                     enableYield = true, enableSerialization = true, //
                     enableQuickening = true, //
-                    enableInstrumentation = true, boxingEliminationTypes = {long.class, int.class, boolean.class})
+                    enableTagInstrumentation = true, boxingEliminationTypes = {long.class, int.class, boolean.class})
     @ShortCircuitOperation(name = "And", operator = Operator.AND_RETURN_CONVERTED, booleanConverter = ToBoolean.class)
     @ShortCircuitOperation(name = "Or", operator = Operator.OR_RETURN_CONVERTED, booleanConverter = ToBoolean.class)
     @ShortCircuitOperation(name = "AndReturn", operator = Operator.AND_RETURN_VALUE, booleanConverter = ToBoolean.class)
