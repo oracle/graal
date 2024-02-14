@@ -378,6 +378,14 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
         }
     }
 
+    public boolean isNameAlwaysStable(String methodHandleName) {
+        int lastIndex = methodHandleName.lastIndexOf('_');
+        if (lastIndex < 0) {
+            return true;
+        }
+        return !uniqueTypeNames.contains(methodHandleName.substring(lastIndex) + "_1;");
+    }
+
     boolean checkAllTypeNames() {
         if (!SubstrateUtil.assertionsEnabled()) {
             throw new AssertionError("Expensive check: should only run with assertions enabled.");

@@ -28,32 +28,38 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import jdk.graal.compiler.java.LambdaUtils;
-
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+
+import jdk.graal.compiler.java.LambdaUtils;
 
 /**
  * @see LambdaProxyRenamingSubstitutionProcessor
  */
 @AutomaticallyRegisteredFeature
-final class StableLambdaProxyNameFeature implements InternalFeature {
+public final class StableLambdaProxyNameFeature implements InternalFeature {
+
+    private LambdaProxyRenamingSubstitutionProcessor lSubst;
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
-        LambdaProxyRenamingSubstitutionProcessor lSubst = new LambdaProxyRenamingSubstitutionProcessor(access.getBigBang());
+        lSubst = new LambdaProxyRenamingSubstitutionProcessor(access.getBigBang());
         access.registerSubstitutionProcessor(lSubst);
     }
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         assert checkLambdaNames(((AfterAnalysisAccessImpl) access).getUniverse().getTypes());
+    }
+
+    public LambdaProxyRenamingSubstitutionProcessor getLambdaSubstitutionProcessor() {
+        return lSubst;
     }
 
     private static boolean checkLambdaNames(List<AnalysisType> types) {

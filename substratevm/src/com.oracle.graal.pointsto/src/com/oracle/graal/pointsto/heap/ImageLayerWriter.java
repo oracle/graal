@@ -102,6 +102,7 @@ public class ImageLayerWriter {
 
         EconomicMap<String, Object> typesMap = EconomicMap.create();
         for (AnalysisType type : analysisUniverse.getTypes().stream().filter(AnalysisType::isReachable).toList()) {
+            checkTypeStability(type);
             Class<?> clazz = type.getJavaClass();
             String typeIdentifier = imageLayerSnapshotUtil.getTypeIdentifier(type, clazz.getModule().getName());
             persistType(typesMap, type, typeIdentifier);
@@ -162,6 +163,15 @@ public class ImageLayerWriter {
         }
         typeMap.put(INTERFACES_TAG, Arrays.stream(type.getInterfaces()).map(AnalysisType::getId).toList());
         typesMap.put(typeIdentifier, typeMap);
+    }
+
+    /**
+     * Some types can have an unstable name between two different image builds. To avoid producing
+     * wrong results, a warning should be printed if such types exist in the resulting image.
+     */
+    @SuppressWarnings("unused")
+    public void checkTypeStability(AnalysisType type) {
+        /* Do not need to check anything here */
     }
 
     public void persistMethod(EconomicMap<String, Object> methodsMap, AnalysisMethod method, Class<?> clazz) {

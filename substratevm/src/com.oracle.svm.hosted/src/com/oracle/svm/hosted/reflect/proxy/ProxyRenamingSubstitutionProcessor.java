@@ -139,4 +139,8 @@ public class ProxyRenamingSubstitutionProcessor extends SubstitutionProcessor {
             return name;
         }
     }
+
+    public static boolean isNameAlwaysStable(String proxyName) {
+        return proxyName.lastIndexOf('_') < 0;
+    }
 }

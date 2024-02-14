@@ -108,4 +108,7 @@ public class LambdaProxyRenamingSubstitutionProcessor extends SubstitutionProces
         }
     }
 
+    public boolean isNameAlwaysStable(String lambdaTargetName) {
+        return !uniqueLambdaProxyNames.contains(lambdaTargetName.substring(0, lambdaTargetName.length() - 1) + "1;");
+    }
 }

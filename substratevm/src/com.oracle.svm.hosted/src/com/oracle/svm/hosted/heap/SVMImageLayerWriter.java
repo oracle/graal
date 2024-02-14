@@ -28,18 +28,72 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.METHOD_POINT
 
 import java.util.List;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.graal.pointsto.heap.ImageHeap;
 import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.lambda.LambdaSubstitutionType;
+import com.oracle.svm.hosted.lambda.StableLambdaProxyNameFeature;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
+import com.oracle.svm.hosted.methodhandles.MethodHandleFeature;
+import com.oracle.svm.hosted.methodhandles.MethodHandleInvokerSubstitutionType;
+import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
+import com.oracle.svm.hosted.reflect.proxy.ProxySubstitutionType;
+import com.oracle.svm.util.LogUtils;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SVMImageLayerWriter extends ImageLayerWriter {
     public SVMImageLayerWriter(ImageHeap imageHeap) {
         super(imageHeap, new SVMImageLayerSnapshotUtil());
+    }
+
+    @Override
+    public void checkTypeStability(AnalysisType type) {
+        /*
+         * Lambda functions containing the same method invocations will return the same hash. They
+         * will still have a different name, but in a multi threading context, the names can be
+         * switched.
+         */
+        if (type.getWrapped() instanceof LambdaSubstitutionType lambdaSubstitutionType) {
+            StableLambdaProxyNameFeature stableLambdaProxyNameFeature = ImageSingletons.lookup(StableLambdaProxyNameFeature.class);
+            if (!stableLambdaProxyNameFeature.getLambdaSubstitutionProcessor().isNameAlwaysStable(lambdaSubstitutionType.getName())) {
+                String message = "The lambda method " + lambdaSubstitutionType.getName() + " might not have a stable name in the extension image.";
+                handleNameConflict(message);
+            }
+        }
+        /*
+         * Method handle with the same inner method handles will return the same hash. They will
+         * still have a different name, but in a multi threading context, the names can be switched.
+         */
+        if (type.getWrapped() instanceof MethodHandleInvokerSubstitutionType methodHandleSubstitutionType) {
+            MethodHandleFeature methodHandleFeature = ImageSingletons.lookup(MethodHandleFeature.class);
+            if (!methodHandleFeature.getMethodHandleSubstitutionProcessor().isNameAlwaysStable(methodHandleSubstitutionType.getName())) {
+                String message = "The method handle " + methodHandleSubstitutionType.getName() + " might not have a stable name in the extension image.";
+                handleNameConflict(message);
+            }
+        }
+
+        if (type.getWrapped() instanceof ProxySubstitutionType proxySubstitutionType) {
+            if (!ProxyRenamingSubstitutionProcessor.isNameAlwaysStable(proxySubstitutionType.getName())) {
+                String message = "The Proxy type " + proxySubstitutionType.getName() + " might not have a stable name in the extension image.";
+                handleNameConflict(message);
+            }
+        }
+    }
+
+    private static void handleNameConflict(String message) {
+        if (SubstrateOptions.AbortOnNameConflict.getValue()) {
+            throw VMError.shouldNotReachHere(message);
+        } else {
+            LogUtils.warning(message);
+        }
     }
 
     @Override
