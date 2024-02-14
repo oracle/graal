@@ -25,11 +25,13 @@
 package com.oracle.svm.hosted.classinitialization;
 
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -91,6 +93,11 @@ public final class SimulateClassInitializerPolicy extends InlineBeforeAnalysisPo
         }
 
         @Override
+        public boolean processNonInlinedInvoke(CoreProviders providers, CallTargetNode node) {
+            return true;
+        }
+
+        @Override
         public String toString() {
             return "allocatedBytes: " + allocatedBytes + " (" + accumulativeCounters.allocatedBytes + ")";
         }
@@ -107,7 +114,7 @@ public final class SimulateClassInitializerPolicy extends InlineBeforeAnalysisPo
     }
 
     @Override
-    protected boolean shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+    protected boolean shouldInlineInvoke(GraphBuilderContext b, AbstractPolicyScope policyScope, ResolvedJavaMethod method, ValueNode[] args) {
         if (b.getDepth() > support.maxInlineDepth) {
             /* Safeguard against excessive inlining, for example endless recursion. */
             return false;
@@ -153,8 +160,7 @@ public final class SimulateClassInitializerPolicy extends InlineBeforeAnalysisPo
     }
 
     @Override
-    protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope o, AnalysisMetaAccess metaAccess,
-                    ResolvedJavaMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle) {
+    protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope o, ResolvedJavaMethod method) {
         var outer = (SimulateClassInitializerInlineScope) o;
         return new SimulateClassInitializerInlineScope(outer.accumulativeCounters, outer.inliningDepth + 1);
     }
