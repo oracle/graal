@@ -64,6 +64,7 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instrumentation;
 import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.bytecode.Variadic;
 import com.oracle.truffle.api.bytecode.test.AbstractQuickeningTest;
 import com.oracle.truffle.api.bytecode.test.DebugBytecodeRootNode;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.InstrumentationTest.InstrumentationTestRootNode.InstrumentationDecrement;
@@ -71,15 +72,13 @@ import com.oracle.truffle.api.bytecode.test.basic_interpreter.InstrumentationTes
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.InstrumentationTest.InstrumentationTestRootNode.PointInstrumentation2;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.InstrumentationTest.InstrumentationTestRootNode.PointInstrumentationRecursive1;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.InstrumentationTest.InstrumentationTestRootNode.PointInstrumentationRecursive2;
+import com.oracle.truffle.api.bytecode.test.error_tests.ExpectError;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 
-/**
- * Showcases how to implement the python set trace func feature.
- */
 public class InstrumentationTest extends AbstractQuickeningTest {
 
     private static InstrumentationTestRootNode parse(BytecodeParser<InstrumentationTestRootNodeGen.Builder> parser) {
@@ -279,6 +278,8 @@ public class InstrumentationTest extends AbstractQuickeningTest {
             b.beginBlock();
 
             b.beginInstrumentationDecrement();
+            // enabling the instrumentation with values on the stack is not super straight forward
+            // the easiest way is to enable it as a side effect of a stackful operation.
             b.beginDecrementEnableInstrumentationIf4();
             b.emitLoadLocal(l);
             b.endDecrementEnableInstrumentationIf4();
@@ -312,7 +313,7 @@ public class InstrumentationTest extends AbstractQuickeningTest {
     @GenerateBytecode(languageClass = BytecodeInstrumentationTestLanguage.class, //
                     enableQuickening = true, //
                     enableUncachedInterpreter = true,  //
-                    enableInstrumentation = true, //
+                    enableTagInstrumentation = true, //
                     boxingEliminationTypes = {int.class})
     public abstract static class InstrumentationTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
@@ -329,7 +330,6 @@ public class InstrumentationTest extends AbstractQuickeningTest {
             public static void doDefault(Class<?> instrumentationClass,
                             @Bind("$location") BytecodeLocation location) {
 
-                System.out.println(location.dump());
                 location.getBytecodeNode().getBytecodeRootNode().getRootNodes().update(InstrumentationTestRootNodeGen.newConfigBuilder().addInstrumentations(instrumentationClass).build());
 
             }
@@ -476,6 +476,78 @@ public class InstrumentationTest extends AbstractQuickeningTest {
         }
 
         static final LanguageReference<BytecodeInstrumentationTestLanguage> REF = LanguageReference.create(BytecodeInstrumentationTestLanguage.class);
+    }
+
+    @GenerateBytecode(languageClass = BytecodeInstrumentationTestLanguage.class, enableTagInstrumentation = true)
+    public abstract static class InstrumentationErrorRootNode1 extends DebugBytecodeRootNode implements BytecodeRootNode {
+
+        protected InstrumentationErrorRootNode1(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @Operation
+        static final class Identity {
+
+            @Specialization
+            public static Object doDefault(Object operand) {
+                return operand;
+            }
+        }
+
+        // assert no error
+        @Instrumentation
+        static final class ValidInstrumentation1 {
+
+            @Specialization
+            public static void doInt() {
+            }
+        }
+
+        // assert no error
+        @Instrumentation
+        static final class ValidInstrumentation2 {
+
+            @Specialization
+            public static Object doInt(Object arg) {
+                return arg;
+            }
+        }
+
+        @ExpectError("An @Instrumentation annotated operation cannot have more than one operand. " +
+                        "Instrumentations must have transparent stack effects. " + //
+                        "Remove the additional operands to resolve this.")
+        @Instrumentation
+        static final class InvalidInstrumentation1 {
+
+            @Specialization
+            public static boolean doInt(int operand, int value) {
+                return operand == value;
+            }
+        }
+
+        @ExpectError("An @Instrumentation annotated operation cannot have a return value with also specifying a single operand. " + //
+                        "Instrumentations must have transparent stack effects. " + //
+                        "Use void as return type or specify a single operand value to resolve this.")
+        @Instrumentation
+        static final class InvalidInstrumentation2 {
+
+            @Specialization
+            public static int doInt() {
+                return 42;
+            }
+        }
+
+        @ExpectError("An @Instrumentation annotated operation cannot use @Variadic for one of its operands. " + //
+                        "Instrumentations must have transparent stack effects. Remove the variadic annotation to resolve this.")
+        @Instrumentation
+        static final class InvalidInstrumentation3 {
+
+            @Specialization
+            public static int doInt(@SuppressWarnings("unused") @Variadic Object... args) {
+                return 42;
+            }
+        }
+
     }
 
 }

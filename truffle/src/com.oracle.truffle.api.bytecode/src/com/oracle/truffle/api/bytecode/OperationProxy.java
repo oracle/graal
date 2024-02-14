@@ -92,8 +92,7 @@ public @interface OperationProxy {
      * <p>
      * This feature is not yet supported.
      *
-     * @see GenerateBytecode#enableInstrumentation()
-     * @see GenerateBytecode#enableRootTagging()
+     * @see GenerateBytecode#enableTagInstrumentation()
      * @see OperationProxy#tags()
      *
      * @since 24.1

@@ -132,7 +132,7 @@ public class SetTraceFuncTest extends AbstractQuickeningTest {
     @GenerateBytecode(languageClass = TraceFunLanguage.class, //
                     enableYield = true, enableSerialization = true, //
                     enableQuickening = true, //
-                    enableUncachedInterpreter = true, enableInstrumentation = true, //
+                    enableUncachedInterpreter = true, enableTagInstrumentation = true, //
                     boxingEliminationTypes = {long.class, int.class, boolean.class})
     public abstract static class SetTraceFuncRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
