@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.test.basic_interpreter;
+package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -65,13 +65,11 @@ import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instrumentation;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.Variadic;
-import com.oracle.truffle.api.bytecode.test.AbstractQuickeningTest;
-import com.oracle.truffle.api.bytecode.test.DebugBytecodeRootNode;
-import com.oracle.truffle.api.bytecode.test.basic_interpreter.InstrumentationTest.InstrumentationTestRootNode.InstrumentationDecrement;
-import com.oracle.truffle.api.bytecode.test.basic_interpreter.InstrumentationTest.InstrumentationTestRootNode.PointInstrumentation1;
-import com.oracle.truffle.api.bytecode.test.basic_interpreter.InstrumentationTest.InstrumentationTestRootNode.PointInstrumentation2;
-import com.oracle.truffle.api.bytecode.test.basic_interpreter.InstrumentationTest.InstrumentationTestRootNode.PointInstrumentationRecursive1;
-import com.oracle.truffle.api.bytecode.test.basic_interpreter.InstrumentationTest.InstrumentationTestRootNode.PointInstrumentationRecursive2;
+import com.oracle.truffle.api.bytecode.test.InstrumentationTest.InstrumentationTestRootNode.InstrumentationDecrement;
+import com.oracle.truffle.api.bytecode.test.InstrumentationTest.InstrumentationTestRootNode.PointInstrumentation1;
+import com.oracle.truffle.api.bytecode.test.InstrumentationTest.InstrumentationTestRootNode.PointInstrumentation2;
+import com.oracle.truffle.api.bytecode.test.InstrumentationTest.InstrumentationTestRootNode.PointInstrumentationRecursive1;
+import com.oracle.truffle.api.bytecode.test.InstrumentationTest.InstrumentationTestRootNode.PointInstrumentationRecursive2;
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectError;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
