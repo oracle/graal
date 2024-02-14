@@ -1102,6 +1102,35 @@ public final class Symbol<T> extends ByteSequence {
                         /* parameterAnnotations */ Type._byte_array,
                         /* annotationDefault */ Type._byte_array);
 
+        public static final Symbol<Signature> java_lang_reflect_Constructor_init_signature = StaticSymbols.putSignature(Type._void,
+                        /* declaringClass */ Type.java_lang_Class,
+                        /* parameterTypes */ Type.java_lang_Class_array,
+                        /* checkedExceptions */ Type.java_lang_Class_array,
+                        /* modifiers */ Type._int,
+                        /* slot */ Type._int,
+                        /* signature */ Type.java_lang_String,
+                        /* annotations */ Type._byte_array,
+                        /* parameterAnnotations */ Type._byte_array);
+
+        public static final Symbol<Signature> java_lang_reflect_Field_init_signature = StaticSymbols.putSignature(Type._void,
+                        /* declaringClass */ Type.java_lang_Class,
+                        /* name */ Type.java_lang_String,
+                        /* type */ Type.java_lang_Class,
+                        /* modifiers */ Type._int,
+                        /* slot */ Type._int,
+                        /* signature */ Type.java_lang_String,
+                        /* annotations */ Type._byte_array);
+
+        public static final Symbol<Signature> java_lang_reflect_Field_init_signature_15 = StaticSymbols.putSignature(Type._void,
+                        /* declaringClass */ Type.java_lang_Class,
+                        /* name */ Type.java_lang_String,
+                        /* type */ Type.java_lang_Class,
+                        /* modifiers */ Type._int,
+                        /* trustedFinal */ Type._boolean,
+                        /* slot */ Type._int,
+                        /* signature */ Type.java_lang_String,
+                        /* annotations */ Type._byte_array);
+
         public static final Symbol<Signature> MethodType_Class_Class = StaticSymbols.putSignature(Type.java_lang_invoke_MethodType, Type.java_lang_Class, Type.java_lang_Class_array);
         public static final Symbol<Signature> MethodType_String_ClassLoader = StaticSymbols.putSignature(Type.java_lang_invoke_MethodType, Type.java_lang_String, Type.java_lang_ClassLoader);
 

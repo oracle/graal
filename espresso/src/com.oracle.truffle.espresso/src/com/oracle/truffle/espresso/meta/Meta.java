@@ -363,6 +363,8 @@ public final class Meta extends ContextAccessImpl {
         // Guest reflection.
         java_lang_reflect_Executable = knownKlass(Type.java_lang_reflect_Executable);
         java_lang_reflect_Constructor = knownKlass(Type.java_lang_reflect_Constructor);
+        java_lang_reflect_Constructor_init = java_lang_reflect_Constructor.requireDeclaredMethod(Name._init_, Signature.java_lang_reflect_Constructor_init_signature);
+
         HIDDEN_CONSTRUCTOR_KEY = java_lang_reflect_Constructor.requireHiddenField(Name.HIDDEN_CONSTRUCTOR_KEY);
         HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = java_lang_reflect_Constructor.requireHiddenField(Name.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
         java_lang_reflect_Constructor_clazz = java_lang_reflect_Constructor.requireDeclaredField(Name.clazz, Type.java_lang_Class);
@@ -387,6 +389,11 @@ public final class Meta extends ContextAccessImpl {
         java_lang_reflect_Field_class = java_lang_reflect_Field.requireDeclaredField(Name.clazz, Type.java_lang_Class);
         java_lang_reflect_Field_name = java_lang_reflect_Field.requireDeclaredField(Name.name, Type.java_lang_String);
         java_lang_reflect_Field_type = java_lang_reflect_Field.requireDeclaredField(Name.type, Type.java_lang_Class);
+
+        java_lang_reflect_Field_init = diff() //
+                        .method(lower(14), Name._init_, Signature.java_lang_reflect_Field_init_signature) //
+                        .method(higher(15), Name._init_, Signature.java_lang_reflect_Field_init_signature_15) //
+                        .method(java_lang_reflect_Field);
 
         java_lang_Shutdown = knownKlass(Type.java_lang_Shutdown);
         java_lang_Shutdown_shutdown = java_lang_Shutdown.requireDeclaredMethod(Name.shutdown, Signature._void);
@@ -1218,6 +1225,7 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass java_lang_reflect_Executable;
 
     public final ObjectKlass java_lang_reflect_Constructor;
+    public final Method java_lang_reflect_Constructor_init;
     public final Field HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS;
     public final Field HIDDEN_CONSTRUCTOR_KEY;
     public final Field java_lang_reflect_Constructor_clazz;
@@ -1242,6 +1250,7 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass java_lang_reflect_Parameter;
 
     public final ObjectKlass java_lang_reflect_Field;
+    public final Method java_lang_reflect_Field_init;
     public final Field HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS;
     public final Field HIDDEN_FIELD_KEY;
     public final Field java_lang_reflect_Field_root;

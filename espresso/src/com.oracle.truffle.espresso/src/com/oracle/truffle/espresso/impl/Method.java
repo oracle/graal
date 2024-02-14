@@ -1016,19 +1016,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     @TruffleBoundary
     public StaticObject makeConstructorMirror(Meta meta) {
         assert isConstructor();
-        // TODO(peterssen): Cache guest j.l.reflect.Constructor constructor.
-        // Calling the constructor is just for validation, manually setting the fields would be
-        // faster.
-        Method constructorInit = meta.java_lang_reflect_Constructor.lookupDeclaredMethod(Name._init_, meta.getSignatures().makeRaw(Type._void,
-                        /* declaringClass */ Type.java_lang_Class,
-                        /* parameterTypes */ Type.java_lang_Class_array,
-                        /* checkedExceptions */ Type.java_lang_Class_array,
-                        /* modifiers */ Type._int,
-                        /* slot */ Type._int,
-                        /* signature */ Type.java_lang_String,
-                        /* annotations */ Type._byte_array,
-                        /* parameterAnnotations */ Type._byte_array));
-
         Attribute rawRuntimeVisibleAnnotations = getAttribute(Name.RuntimeVisibleAnnotations);
         StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
                         ? StaticObject.wrap(rawRuntimeVisibleAnnotations.getData(), meta)
@@ -1062,22 +1049,21 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             }
         });
 
-        SignatureAttribute signatureAttribute = (SignatureAttribute) getAttribute(Name.Signature);
-        StaticObject genericSignature = StaticObject.NULL;
-        if (signatureAttribute != null) {
-            String sig = getConstantPool().symbolAt(signatureAttribute.getSignatureIndex(), "signature").toString();
-            genericSignature = meta.toGuestString(sig);
+        StaticObject guestGenericSignature = StaticObject.NULL;
+        String genericSignatureString = getGenericSignatureAsString();
+        if (genericSignatureString != null && !genericSignatureString.isEmpty()) {
+            guestGenericSignature = meta.toGuestString(genericSignatureString);
         }
 
         StaticObject instance = meta.java_lang_reflect_Constructor.allocateInstance(getContext());
-        constructorInit.invokeDirect(
+        meta.java_lang_reflect_Constructor_init.invokeDirect(
                         /* this */ instance,
                         /* declaringKlass */ getDeclaringKlass().mirror(),
                         /* parameterTypes */ parameterTypes,
                         /* checkedExceptions */ checkedExceptions,
                         /* modifiers */ getMethodModifiers(),
-                        /* slot */ 0, // TODO(peterssen): Fill method slot.
-                        /* signature */ genericSignature,
+                        /* slot */ 0, // unused
+                        /* signature */ guestGenericSignature,
                         /* annotations */ runtimeVisibleAnnotations,
                         /* parameterAnnotations */ runtimeVisibleParameterAnnotations);
 

@@ -945,30 +945,6 @@ public class Field extends Member<Type> implements FieldRef {
 
     @TruffleBoundary
     public StaticObject makeMirror(Meta meta) {
-        // TODO(peterssen): Cache guest j.l.reflect.Field constructor.
-        // Calling the constructor is just for validation, manually setting the fields would be
-        // faster.
-        Method fieldInit;
-        if (meta.getJavaVersion().java15OrLater()) {
-            fieldInit = meta.java_lang_reflect_Field.lookupDeclaredMethod(Name._init_, meta.getSignatures().makeRaw(Type._void,
-                            /* declaringClass */ Type.java_lang_Class,
-                            /* name */ Type.java_lang_String,
-                            /* type */ Type.java_lang_Class,
-                            /* modifiers */ Type._int,
-                            /* trustedFinal */ Type._boolean,
-                            /* slot */ Type._int,
-                            /* signature */ Type.java_lang_String,
-                            /* annotations */ Type._byte_array));
-        } else {
-            fieldInit = meta.java_lang_reflect_Field.lookupDeclaredMethod(Name._init_, meta.getSignatures().makeRaw(Type._void,
-                            /* declaringClass */ Type.java_lang_Class,
-                            /* name */ Type.java_lang_String,
-                            /* type */ Type.java_lang_Class,
-                            /* modifiers */ Type._int,
-                            /* slot */ Type._int,
-                            /* signature */ Type.java_lang_String,
-                            /* annotations */ Type._byte_array));
-        }
         StaticObject instance = meta.java_lang_reflect_Field.allocateInstance(meta.getContext());
 
         Attribute rawRuntimeVisibleAnnotations = getAttribute(Name.RuntimeVisibleAnnotations);
@@ -981,7 +957,7 @@ public class Field extends Member<Type> implements FieldRef {
                         ? StaticObject.wrap(rawRuntimeVisibleTypeAnnotations.getData(), meta)
                         : StaticObject.NULL;
         if (meta.getJavaVersion().java15OrLater()) {
-            fieldInit.invokeDirect(
+            meta.java_lang_reflect_Field_init.invokeDirect(
                             /* this */ instance,
                             /* declaringKlass */ getDeclaringKlass().mirror(),
                             /* name */ meta.getStrings().intern(getName()),
@@ -990,10 +966,9 @@ public class Field extends Member<Type> implements FieldRef {
                             /* trustedFinal */ isTrustedFinal(),
                             /* slot */ getSlot(),
                             /* signature */ meta.toGuestString(getGenericSignature()),
-                            // FIXME(peterssen): Fill annotations bytes.
                             /* annotations */ runtimeVisibleAnnotations);
         } else {
-            fieldInit.invokeDirect(
+            meta.java_lang_reflect_Field_init.invokeDirect(
                             /* this */ instance,
                             /* declaringKlass */ getDeclaringKlass().mirror(),
                             /* name */ meta.getStrings().intern(getName()),
@@ -1001,7 +976,6 @@ public class Field extends Member<Type> implements FieldRef {
                             /* modifiers */ getModifiers(),
                             /* slot */ getSlot(),
                             /* signature */ meta.toGuestString(getGenericSignature()),
-                            // FIXME(peterssen): Fill annotations bytes.
                             /* annotations */ runtimeVisibleAnnotations);
         }
         meta.HIDDEN_FIELD_KEY.setHiddenObject(instance, this);
