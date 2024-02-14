@@ -29,24 +29,40 @@ import static com.oracle.svm.hosted.methodhandles.MethodHandleInvokerRenamingSub
 import static com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor.isProxyType;
 import static jdk.graal.compiler.java.LambdaUtils.isLambdaType;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.reflect.serialize.SerializationRegistry;
+import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 
 public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
+    private static final String GENERATED_SERIALIZATION = "jdk.internal.reflect.GeneratedSerializationConstructorAccessor";
+
     @Override
     public String getTypeIdentifier(AnalysisType type, String moduleName) {
+        if (type.toJavaName(true).contains(GENERATED_SERIALIZATION)) {
+            getGeneratedSerializationName(type);
+        }
         if (isProxyType(type)) {
             return type.toJavaName(true);
         }
         return super.getTypeIdentifier(type, moduleName);
     }
 
+    private static String generatedSerializationClassName(SerializationSupport.SerializationLookupKey serializationLookupKey) {
+        return GENERATED_SERIALIZATION + ":" + serializationLookupKey.getDeclaringClass() + "," + serializationLookupKey.getTargetConstructorClass();
+    }
+
     @Override
     public String getMethodIdentifier(AnalysisMethod method, String moduleName) {
         AnalysisType declaringClass = method.getDeclaringClass();
+        if (declaringClass.toJavaName(true).contains(GENERATED_SERIALIZATION)) {
+            return getGeneratedSerializationName(declaringClass) + ":" + method.getName();
+        }
         if (!(method.wrapped instanceof HotSpotResolvedJavaMethod)) {
             return addModuleName(method.getQualifiedName(), moduleName);
         }
@@ -58,5 +74,17 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
             return method.getQualifiedName();
         }
         return super.getMethodIdentifier(method, moduleName);
+    }
+
+    /*
+     * The GeneratedSerializationConstructorAccessor names created in SerializationSupport are not
+     * stable in a multi threading context. To ensure the correct one is matched in the extension
+     * image, the constructor accessors table from SerializationSupport is accessed.
+     */
+    private static String getGeneratedSerializationName(AnalysisType type) {
+        Class<?> constructorAccessor = type.getJavaClass();
+        SerializationSupport serializationRegistry = (SerializationSupport) ImageSingletons.lookup(SerializationRegistry.class);
+        SerializationSupport.SerializationLookupKey serializationLookupKey = serializationRegistry.getKeyFromConstructorAccessorClass(constructorAccessor);
+        return generatedSerializationClassName(serializationLookupKey);
     }
 }
