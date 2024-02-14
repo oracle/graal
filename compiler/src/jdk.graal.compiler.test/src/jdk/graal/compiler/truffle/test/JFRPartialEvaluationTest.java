@@ -56,7 +56,16 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
     }
 
     private void performTestException() {
-        RootTestNode root = new RootTestNode(new FrameDescriptor(), "NewException", new NewTruffleExceptionNode());
+        RootTestNode root = new RootTestNode(new FrameDescriptor(), "NewException", new AbstractTestNode() {
+            @Override
+            public int execute(VirtualFrame frame) {
+                try {
+                    throw new TruffleExceptionImpl(42);
+                } catch (TruffleExceptionImpl e) {
+                    return e.value;
+                }
+            }
+        });
         if (Runtime.version().feature() < 22) {
             Class<?> throwableTracer = findThrowableTracerClass();
             ResolvedJavaMethod traceThrowable = getResolvedJavaMethod(throwableTracer, "traceThrowable");
@@ -69,6 +78,15 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
         } else {
             // On JDK-22+ JFR exception tracing is unconditionally disabled by PartialEvaluator
             assertPartialEvalEquals(JFRPartialEvaluationTest::constant42, root);
+        }
+    }
+
+    @SuppressWarnings("serial")
+    private static final class TruffleExceptionImpl extends AbstractTruffleException {
+        final int value;
+
+        TruffleExceptionImpl(int value) {
+            this.value = value;
         }
     }
 
@@ -86,7 +104,16 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
     }
 
     private void performTestError() {
-        RootTestNode root = new RootTestNode(new FrameDescriptor(), "NewError", new NewErrorNode());
+        RootTestNode root = new RootTestNode(new FrameDescriptor(), "NewError", new AbstractTestNode() {
+            @Override
+            public int execute(VirtualFrame frame) {
+                try {
+                    throw new ErrorImpl(42);
+                } catch (ErrorImpl e) {
+                    return e.value;
+                }
+            }
+        });
         if (Runtime.version().feature() < 22) {
             Class<?> throwableTracer = findThrowableTracerClass();
             ResolvedJavaMethod traceThrowable = getResolvedJavaMethod(throwableTracer, "traceThrowable");
@@ -104,6 +131,22 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
         }
     }
 
+    @SuppressWarnings("serial")
+    private static final class ErrorImpl extends Error {
+
+        final int value;
+
+        ErrorImpl(int value) {
+            this.value = value;
+        }
+
+        @Override
+        @SuppressWarnings("sync-override")
+        public Throwable fillInStackTrace() {
+            return this;
+        }
+    }
+
     @Test
     public void testJFREvent() throws IOException, InterruptedException {
         runInSubprocessWithJFREnabled(this::performTestJFREvent);
@@ -112,7 +155,16 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
     private void performTestJFREvent() {
         ResolvedJavaMethod shouldCommit = getResolvedJavaMethod(TestEvent.class, "shouldCommit");
         ResolvedJavaMethod commit = getResolvedJavaMethod(TestEvent.class, "commit");
-        RootTestNode root = new RootTestNode(new FrameDescriptor(), "JFREvent", new JFREventNode());
+        RootTestNode root = new RootTestNode(new FrameDescriptor(), "JFREvent", new AbstractTestNode() {
+            @Override
+            public int execute(VirtualFrame frame) {
+                TestEvent event = new TestEvent();
+                if (event.shouldCommit()) {
+                    event.commit();
+                }
+                return 1;
+            }
+        });
         OptimizedCallTarget callTarget = (OptimizedCallTarget) root.getCallTarget();
         StructuredGraph graph = partialEval(callTarget, new Object[0]);
         // Calls to JFR event methods must not be inlined.
@@ -120,6 +172,10 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
         assertNotNull("The call to TestEvent#commit was not inlined or is missing.", findInvoke(graph, commit));
         // Also make sure that the node count hasn't exploded.
         assertTrue("The number of graal nodes for an exception instantiation exceeded 100.", graph.getNodeCount() < 100);
+    }
+
+    @Name("test.JFRPartialEvaluationTestEvent")
+    private static class TestEvent extends Event {
     }
 
     private static MethodCallTargetNode findInvoke(StructuredGraph graph, ResolvedJavaMethod expectedMethod) {
@@ -155,70 +211,5 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
                 Files.deleteIfExists(jfrFile);
             }
         }
-    }
-
-    private static final class NewTruffleExceptionNode extends AbstractTestNode {
-
-        @Override
-        public int execute(VirtualFrame frame) {
-            try {
-                throw new TruffleExceptionImpl(42);
-            } catch (TruffleExceptionImpl e) {
-                return e.value;
-            }
-        }
-
-        @SuppressWarnings("serial")
-        private static final class TruffleExceptionImpl extends AbstractTruffleException {
-            final int value;
-
-            TruffleExceptionImpl(int value) {
-                this.value = value;
-            }
-        }
-    }
-
-    private static final class NewErrorNode extends AbstractTestNode {
-
-        @Override
-        public int execute(VirtualFrame frame) {
-            try {
-                throw new ErrorImpl(42);
-            } catch (ErrorImpl e) {
-                return e.value;
-            }
-        }
-
-        @SuppressWarnings("serial")
-        private static final class ErrorImpl extends Error {
-
-            final int value;
-
-            ErrorImpl(int value) {
-                this.value = value;
-            }
-
-            @Override
-            @SuppressWarnings("sync-override")
-            public Throwable fillInStackTrace() {
-                return this;
-            }
-        }
-    }
-
-    private static final class JFREventNode extends AbstractTestNode {
-
-        @Override
-        public int execute(VirtualFrame frame) {
-            TestEvent event = new TestEvent();
-            if (event.shouldCommit()) {
-                event.commit();
-            }
-            return 1;
-        }
-    }
-
-    @Name("test.JFRPartialEvaluationTestEvent")
-    private static class TestEvent extends Event {
     }
 }
