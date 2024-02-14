@@ -237,6 +237,7 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
                     OptionValues compilerOptions) {
         super(jvmciRuntime, compiler,
                         Options.InvalidateInstalledCode.getValue(harnessOptions),
+                        false,
                         Options.MultiThreaded.getValue(harnessOptions),
                         Options.Threads.getValue(harnessOptions),
                         Options.StatsInterval.getValue(harnessOptions));

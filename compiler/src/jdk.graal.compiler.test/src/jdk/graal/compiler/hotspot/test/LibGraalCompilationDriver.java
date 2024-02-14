@@ -53,6 +53,7 @@ import jdk.graal.compiler.hotspot.CompilationTask;
 import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import jdk.graal.compiler.hotspot.ProfileReplaySupport;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
@@ -98,6 +99,11 @@ public class LibGraalCompilationDriver {
     private final boolean invalidateInstalledCode;
 
     /**
+     * @see GraphBuilderConfiguration#eagerResolving()
+     */
+    private final boolean eagerResolving;
+
+    /**
      * Whether to use multiple threads for compilation.
      */
     private final boolean multiThreaded;
@@ -116,20 +122,19 @@ public class LibGraalCompilationDriver {
     /**
      * @param invalidateInstalledCode If true, will invalidate all generated code after compilation
      *            to prevent filling up the code in the cache.
+     * @param eagerResolving If true, all types will be eagerly resolved during compilation.
      * @param multiThreaded Whether to use multiple threads for compilation.
      * @param threadCount Number of threads to use for multithreaded compilation. If 0, the value of
      *            {@code Runtime.getRuntime().availableProcessors()} is used instead.
      * @param statsInterval Interval between compilation progress reports, in seconds.
      */
-    public LibGraalCompilationDriver(HotSpotJVMCIRuntime jvmciRuntime,
-                                     HotSpotGraalCompiler compiler,
-                                     boolean invalidateInstalledCode,
-                                     boolean multiThreaded,
-                                     int threadCount,
-                                     int statsInterval) {
+    public LibGraalCompilationDriver(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalCompiler compiler,
+                    boolean invalidateInstalledCode, boolean eagerResolving,
+                    boolean multiThreaded, int threadCount, int statsInterval) {
         this.jvmciRuntime = jvmciRuntime;
         this.compiler = compiler;
         this.invalidateInstalledCode = invalidateInstalledCode;
+        this.eagerResolving = eagerResolving;
         this.multiThreaded = multiThreaded;
         this.numThreads = threadCount;
         this.statsInterval = statsInterval;
@@ -523,7 +528,7 @@ public class LibGraalCompilationDriver {
                             useProfilingInfo,
                             installAsDefault,
                             shouldPrintMetrics(LibGraalScope.current().getIsolate()),
-                            false,
+                            eagerResolving,
                             options.getAddress(),
                             options.length(),
                             options.getHash(),
@@ -550,7 +555,7 @@ public class LibGraalCompilationDriver {
      */
     protected CompilationTask createCompilationTask(HotSpotJVMCIRuntime runtime, HotSpotGraalCompiler graalCompiler,
                     HotSpotCompilationRequest request, boolean useProfilingInfo, boolean installAsDefault) {
-        return new CompilationTask(runtime, graalCompiler, request, useProfilingInfo, installAsDefault);
+        return new CompilationTask(runtime, graalCompiler, request, useProfilingInfo, false, eagerResolving, installAsDefault);
     }
 
     /**
