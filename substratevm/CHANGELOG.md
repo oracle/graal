@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes to GraalVM Native Image.
 
+## GraalVM for JDK 21.0.3 (Internal Version 23.1.3)
+* (GR-51002, GR-51319) Improve intrinsification of method handles. This especially improves the performance of `equals` and `hashCode` methods for records, which use method handles that are now intrinsified.
+
 ## GraalVM for JDK 21 (Internal Version 23.1.0)
 * (GR-48354) Remove native-image-agent legacy `build`-option
 * (GR-35746) Lower the default aligned chunk size from 1 MB to 512 KB for the serial and epsilon GCs, reducing memory usage and image size in many cases.
