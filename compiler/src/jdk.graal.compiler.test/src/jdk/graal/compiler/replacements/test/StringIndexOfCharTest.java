@@ -27,10 +27,11 @@ package jdk.graal.compiler.replacements.test;
 import java.util.ArrayList;
 import java.util.Collection;
 
-import jdk.graal.compiler.core.test.GraalCompilerTest;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+
+import jdk.graal.compiler.core.test.GraalCompilerTest;
 
 @RunWith(Parameterized.class)
 public class StringIndexOfCharTest extends GraalCompilerTest {
@@ -57,22 +58,24 @@ public class StringIndexOfCharTest extends GraalCompilerTest {
         for (String source : targets) {
             for (int targetChar : targetChars) {
                 for (int offset : targetOffsets) {
-                    tests.add(new Object[]{source, targetChar, offset});
+                    tests.add(new Object[]{source, targetChar, offset, source.length()});
                 }
             }
         }
-
+        tests.add(new Object[]{"abcd", 'c', 1, 1});
         return tests;
     }
 
     protected final String sourceString;
     protected final int constantChar;
     protected final int fromIndex;
+    protected final int toIndex;
 
-    public StringIndexOfCharTest(String sourceString, int constantChar, int fromIndex) {
+    public StringIndexOfCharTest(String sourceString, int constantChar, int fromIndex, int toIndex) {
         this.sourceString = sourceString;
         this.constantChar = constantChar;
         this.fromIndex = fromIndex;
+        this.toIndex = toIndex;
     }
 
     public int testStringIndexOf(String a, int b) {
@@ -83,6 +86,10 @@ public class StringIndexOfCharTest extends GraalCompilerTest {
         return a.indexOf(b, offset);
     }
 
+    public int stringIndexOfRegion(String string, int ch, int fromIndexArg, int toIndexArg) {
+        return string.indexOf(ch, fromIndexArg, toIndexArg);
+    }
+
     @Test
     public void testStringIndexOfConstant() {
         test("testStringIndexOf", this.sourceString, this.constantChar);
@@ -91,5 +98,10 @@ public class StringIndexOfCharTest extends GraalCompilerTest {
     @Test
     public void testStringIndexOfConstantOffset() {
         test("testStringIndexOfOffset", this.sourceString, this.constantChar, this.fromIndex);
+    }
+
+    @Test
+    public void testStringIndexOfRegion() {
+        test("stringIndexOfRegion", this.sourceString, this.constantChar, this.fromIndex, this.toIndex);
     }
 }

@@ -65,19 +65,19 @@ public final class ClassInitializationOptions {
 
     private static class InitializationValueDelay extends InitializationValueTransformer {
         InitializationValueDelay() {
-            super(RUN_TIME.name().toLowerCase(Locale.ENGLISH));
+            super(RUN_TIME.name().toLowerCase(Locale.ROOT));
         }
     }
 
     private static class InitializationValueRerun extends InitializationValueTransformer {
         InitializationValueRerun() {
-            super(RERUN.name().toLowerCase(Locale.ENGLISH));
+            super(RERUN.name().toLowerCase(Locale.ROOT));
         }
     }
 
     private static class InitializationValueEager extends InitializationValueTransformer {
         InitializationValueEager() {
-            super(BUILD_TIME.name().toLowerCase(Locale.ENGLISH));
+            super(BUILD_TIME.name().toLowerCase(Locale.ROOT));
         }
     }
 

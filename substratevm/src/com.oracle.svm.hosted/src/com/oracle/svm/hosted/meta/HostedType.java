@@ -526,7 +526,11 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     @Override
+    public ResolvedJavaType unwrapTowardsOriginalType() {
+        return wrapped;
+    }
+
     public Class<?> getJavaClass() {
-        return wrapped.getJavaClass();
+        return OriginalClassProvider.getJavaClass(this);
     }
 }

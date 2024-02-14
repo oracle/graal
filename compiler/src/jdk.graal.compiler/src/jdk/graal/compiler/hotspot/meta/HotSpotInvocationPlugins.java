@@ -77,7 +77,7 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
         this.graalRuntime = graalRuntime;
         this.config = config;
         if (Options.WarnMissingIntrinsic.getValue(options)) {
-            this.unimplementedIntrinsics = new UnimplementedGraalIntrinsics();
+            this.unimplementedIntrinsics = new UnimplementedGraalIntrinsics(graalRuntime.getTarget().arch);
         } else {
             this.unimplementedIntrinsics = null;
         }

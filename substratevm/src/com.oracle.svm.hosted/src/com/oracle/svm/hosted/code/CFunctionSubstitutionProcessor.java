@@ -72,12 +72,4 @@ public class CFunctionSubstitutionProcessor extends SubstitutionProcessor {
 
         throw VMError.shouldNotReachHere("Method is not annotated with " + CFunction.class.getSimpleName());
     }
-
-    @Override
-    public ResolvedJavaMethod resolve(ResolvedJavaMethod method) {
-        if (method instanceof CFunctionCallStubMethod) {
-            return ((CFunctionCallStubMethod) method).getOriginal();
-        }
-        return method;
-    }
 }

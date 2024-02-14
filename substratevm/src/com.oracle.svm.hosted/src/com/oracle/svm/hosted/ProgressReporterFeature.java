@@ -138,7 +138,7 @@ public class ProgressReporterFeature implements InternalFeature {
 
     public record UserRecommendation(String id, String description, Supplier<Boolean> isApplicable) {
         public UserRecommendation {
-            assert id.toUpperCase(Locale.ENGLISH).equals(id) && id.length() < 5 : "id must be uppercase and have fewer than 5 chars";
+            assert id.toUpperCase(Locale.ROOT).equals(id) && id.length() < 5 : "id must be uppercase and have fewer than 5 chars";
             int maxLength = 74;
             assert description.length() < maxLength : "description must have fewer than " + maxLength + " chars to fit in terminal. Length: " + description.length();
         }

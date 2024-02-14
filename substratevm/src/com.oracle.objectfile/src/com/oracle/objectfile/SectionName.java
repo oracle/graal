@@ -126,7 +126,7 @@ public abstract class SectionName {
         // default implementation
         switch (f) {
             case MACH_O:
-                return getFormatDependentName(f).toUpperCase(Locale.ENGLISH);
+                return getFormatDependentName(f).toUpperCase(Locale.ROOT);
             default:
             case ELF:
                 return null;

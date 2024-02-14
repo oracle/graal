@@ -43,6 +43,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -124,6 +125,7 @@ public final class PosixPlatformThreads extends PlatformThreads {
     }
 
     /** Starts a thread to the point so that it is executing. */
+    @NeverInline("Workaround for GR-51925 - prevent that reads float from this method into the caller.")
     private boolean doStartThread0(Thread thread, pthread_attr_t attributes) {
         ThreadStartData startData = prepareStart(thread, SizeOf.get(ThreadStartData.class));
         try {

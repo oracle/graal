@@ -154,7 +154,7 @@ public class HexCodeFileDisassemblerProvider implements DisassemblerProvider {
                     arch = "amd64";
                 }
                 int wordWidth = arch.endsWith("64") ? 64 : Integer.parseInt(Services.getSavedProperty("sun.arch.data.model", "64"));
-                String hcf = new HexCodeFile(code, 0L, arch.toLowerCase(Locale.ENGLISH), wordWidth).toEmbeddedString();
+                String hcf = new HexCodeFile(code, 0L, arch.toLowerCase(Locale.ROOT), wordWidth).toEmbeddedString();
                 try {
                     toolMethod.invokeExact(hcf);
                 } catch (Throwable e) {

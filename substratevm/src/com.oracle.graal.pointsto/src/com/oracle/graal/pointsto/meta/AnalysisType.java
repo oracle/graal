@@ -54,6 +54,7 @@ import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.flow.context.object.ConstantContextSensitiveObject;
 import com.oracle.graal.pointsto.heap.TypeData;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -114,7 +115,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     protected final AnalysisUniverse universe;
     private final ResolvedJavaType wrapped;
-    private ResolvedJavaType wrappedWithResolve;
     private final String qualifiedName;
     private final String unqualifiedName;
 
@@ -898,16 +898,13 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return wrapped;
     }
 
-    public ResolvedJavaType getWrappedWithResolve() {
-        if (wrappedWithResolve == null) {
-            wrappedWithResolve = universe.substitutions.resolve(wrapped);
-        }
-        return wrappedWithResolve;
+    @Override
+    public ResolvedJavaType unwrapTowardsOriginalType() {
+        return wrapped;
     }
 
-    @Override
     public Class<?> getJavaClass() {
-        return OriginalClassProvider.getJavaClass(wrapped);
+        return OriginalClassProvider.getJavaClass(this);
     }
 
     @Override
@@ -1006,7 +1003,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public boolean isAssignableFrom(ResolvedJavaType other) {
-        return wrapped.isAssignableFrom(((AnalysisType) other).getWrappedWithResolve());
+        return wrapped.isAssignableFrom(OriginalClassProvider.getOriginalType(other));
     }
 
     @Override
@@ -1072,7 +1069,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public AnalysisType findLeastCommonAncestor(ResolvedJavaType otherType) {
-        return universe.lookup(wrapped.findLeastCommonAncestor(((AnalysisType) otherType).getWrappedWithResolve()));
+        return universe.lookup(wrapped.findLeastCommonAncestor(OriginalClassProvider.getOriginalType(otherType)));
     }
 
     @Override
@@ -1113,17 +1110,21 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     public AnalysisMethod resolveConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
         Object resolvedMethod = resolvedMethods.get(method);
         if (resolvedMethod == null) {
-            ResolvedJavaMethod substMethod = universe.substitutions.resolve(((AnalysisMethod) method).wrapped);
-            /*
-             * We do not want any access checks to be performed, so we use the method's declaring
-             * class as the caller type.
-             */
-            ResolvedJavaType substCallerType = substMethod.getDeclaringClass();
+            ResolvedJavaMethod originalMethod = OriginalMethodProvider.getOriginalMethod(method);
+            Object newResolvedMethod = null;
+            if (originalMethod != null) {
+                /*
+                 * We do not want any access checks to be performed, so we use the method's
+                 * declaring class as the caller type.
+                 */
+                ResolvedJavaType originalCallerType = originalMethod.getDeclaringClass();
 
-            Object newResolvedMethod = universe.lookup(wrapped.resolveConcreteMethod(substMethod, substCallerType));
-            if (newResolvedMethod == null) {
-                newResolvedMethod = getUniverse().getBigbang().fallbackResolveConcreteMethod(this, (AnalysisMethod) method);
+                newResolvedMethod = universe.lookup(wrapped.resolveConcreteMethod(originalMethod, originalCallerType));
+                if (newResolvedMethod == null) {
+                    newResolvedMethod = getUniverse().getBigbang().fallbackResolveConcreteMethod(this, (AnalysisMethod) method);
+                }
             }
+
             if (newResolvedMethod == null) {
                 newResolvedMethod = NULL_METHOD;
             }

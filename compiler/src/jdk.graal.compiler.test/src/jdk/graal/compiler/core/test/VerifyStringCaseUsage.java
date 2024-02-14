@@ -54,7 +54,7 @@ public class VerifyStringCaseUsage extends VerifyPhase<CoreProviders> {
                 }
                 String calleeName = callee.getName();
                 if (calleeName.equals(TO_LOWER_CASE_METHOD_NAME) || calleeName.equals(TO_UPPER_CASE_METHOD_NAME)) {
-                    throw new VerificationError(t, "call to parameterless %s is prohibited to avoid localization issues. Please pass a locale such as 'Locale.ENGLISH' explicitly.",
+                    throw new VerificationError(t, "call to parameterless %s is prohibited to avoid localization issues. Please pass a locale such as 'Locale.ROOT' explicitly.",
                                     callee.format("%H.%n(%p)"));
                 }
             }

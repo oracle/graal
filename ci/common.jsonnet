@@ -67,8 +67,8 @@ local common_json = import "../common.json";
   assert
     local _labsjdk = common_json.jdks["labsjdk-ee-latest"];
     local _oraclejdk = common_json.jdks["oraclejdk-latest"];
-    local _ov = "ee-%s+%s" % [_oraclejdk.version, _oraclejdk.build_id];
-    local _lv = _labsjdk.version;
+    local _ov = _oraclejdk.build_id;
+    local _lv = std.strReplace(_labsjdk.version, "ee-", "jdk-");
     # Skip the check if we are not using a labsjdk. This can happen on JDK integration branches.
     local no_labsjdk = _labsjdk.name != "labsjdk";
     assert no_labsjdk || std.startsWith(_lv, _ov) : "update oraclejdk-latest to match labsjdk-ee-latest: %s+%s vs %s" % [_oraclejdk.version, _oraclejdk.build_id, _labsjdk.version];
@@ -116,7 +116,7 @@ local common_json = import "../common.json";
     "linux-jdk19": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
     "linux-jdk20": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
     "linux-jdk21": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
-    "linux-jdk-latest": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
+    "linux-jdk-latest": { packages+: { "devkit:gcc13.2.0-OL6.4+1": "==0" }},
     "linux-jdkLatest": self["linux-jdk-latest"],
   },
 

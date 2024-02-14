@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.substitute;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 
@@ -72,6 +71,11 @@ public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, Origi
 
     public ResolvedJavaMethod getAnnotated() {
         return annotated;
+    }
+
+    @Override
+    public ResolvedJavaMethod unwrapTowardsOriginalMethod() {
+        return original;
     }
 
     @Override
@@ -253,10 +257,5 @@ public class AnnotatedMethod implements ResolvedJavaMethod, GraphProvider, Origi
     @Override
     public SpeculationLog getSpeculationLog() {
         return original.getSpeculationLog();
-    }
-
-    @Override
-    public Executable getJavaMethod() {
-        return OriginalMethodProvider.getJavaMethod(original);
     }
 }

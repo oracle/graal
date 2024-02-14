@@ -53,12 +53,22 @@ public final class JfrTicks {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long now() {
+        return System.nanoTime();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long duration(long startTicks) {
         return elapsedTicks() - startTicks;
     }
 
     public static long getTicksFrequency() {
         return TimeUtils.nanosPerSecond;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long millisToTicks(long millis) {
+        return TimeUtils.millisToNanos(millis);
     }
 
     public static long currentTimeNanos() {

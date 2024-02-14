@@ -36,10 +36,12 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jfr.events.JfrAllocationEvents;
 import com.oracle.svm.core.jfr.logging.JfrLogging;
 import com.oracle.svm.core.jfr.oldobject.JfrOldObjectProfiler;
 import com.oracle.svm.core.jfr.oldobject.JfrOldObjectRepository;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
+import com.oracle.svm.core.jfr.throttling.JfrEventThrottling;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.sampler.SamplerBufferPool;
 import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
@@ -88,6 +90,7 @@ public class SubstrateJVM {
     private final JfrOldObjectProfiler oldObjectProfiler;
 
     private final JfrLogging jfrLogging;
+    private final JfrEventThrottling eventThrottler;
 
     private boolean initialized;
     /*
@@ -125,6 +128,7 @@ public class SubstrateJVM {
         oldObjectProfiler = new JfrOldObjectProfiler();
 
         jfrLogging = new JfrLogging();
+        eventThrottler = new JfrEventThrottling();
 
         initialized = false;
         recording = false;
@@ -191,18 +195,23 @@ public class SubstrateJVM {
     }
 
     @Fold
-    public static JfrLogging getJfrLogging() {
+    public static JfrLogging getLogging() {
         return get().jfrLogging;
     }
 
     @Fold
-    public static JfrOldObjectProfiler getJfrOldObjectProfiler() {
+    public static JfrOldObjectProfiler getOldObjectProfiler() {
         return get().oldObjectProfiler;
     }
 
     @Fold
-    public static JfrOldObjectRepository getJfrOldObjectRepository() {
+    public static JfrOldObjectRepository getOldObjectRepository() {
         return get().oldObjectRepo;
+    }
+
+    @Fold
+    public static JfrEventThrottling getEventThrottling() {
+        return get().eventThrottler;
     }
 
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
@@ -684,6 +693,13 @@ public class SubstrateJVM {
     }
 
     /**
+     * See {@link JVM#setThrottle}.
+     */
+    public boolean setThrottle(long eventTypeId, long eventSampleSize, long periodMs) {
+        return eventThrottler.setThrottle(eventTypeId, eventSampleSize, periodMs);
+    }
+
+    /**
      * See {@link JVM#setThreshold}.
      */
     public boolean setThreshold(long eventTypeId, long ticks) {
@@ -720,7 +736,8 @@ public class SubstrateJVM {
 
         @Override
         protected void operate() {
-            SubstrateJVM.getJfrOldObjectProfiler().initialize();
+            SubstrateJVM.getOldObjectProfiler().reset();
+            JfrAllocationEvents.reset();
 
             SubstrateJVM.get().recording = true;
             /* Recording is enabled, so JFR events can be triggered at any time. */
@@ -761,7 +778,7 @@ public class SubstrateJVM {
             SubstrateJVM.getThreadLocal().teardown();
             SubstrateJVM.getSamplerBufferPool().teardown();
             SubstrateJVM.getGlobalMemory().clear();
-            SubstrateJVM.getJfrOldObjectProfiler().teardown();
+            SubstrateJVM.getOldObjectProfiler().teardown();
         }
     }
 

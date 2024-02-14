@@ -428,9 +428,6 @@ class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, B
             return lib.get_path(True)
         return None
 
-    def daCapoSuiteTitle(self):
-        return super(DaCapoNativeImageBenchmarkSuite, self).suite_title()
-
     def availableSuiteVersions(self):
         # This version also ships a custom harness class to allow native image to find the entry point in the nested jar
         return ["9.12-MR1-git+2baec49"]
@@ -546,9 +543,6 @@ _scala_daCapo_additional_lib = {
 class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
     def name(self):
         return 'scala-dacapo-native-image'
-
-    def daCapoSuiteTitle(self):
-        return super(ScalaDaCapoNativeImageBenchmarkSuite, self).suite_title()
 
     def daCapoPath(self):
         lib = mx.library(self.daCapoLibraryName(), False)

@@ -817,8 +817,12 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     @Override
+    public ResolvedJavaMethod unwrapTowardsOriginalMethod() {
+        return wrapped;
+    }
+
     public Executable getJavaMethod() {
-        return OriginalMethodProvider.getJavaMethod(wrapped);
+        return OriginalMethodProvider.getJavaMethod(this);
     }
 
     /**

@@ -171,7 +171,7 @@ final class JfrOldObjectSampler {
         while (cur != null) {
             Object obj = cur.getReferent();
             if (obj != null) {
-                long objectId = SubstrateJVM.getJfrOldObjectRepository().serializeOldObject(obj);
+                long objectId = SubstrateJVM.getOldObjectRepository().serializeOldObject(obj);
                 UnsignedWord objectSize = cur.getObjectSize();
                 long allocationTicks = cur.getAllocationTicks();
                 long threadId = cur.getThreadId();

@@ -106,8 +106,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
     @Override
     public JavaField lookupField(int cpi, ResolvedJavaMethod method, int opcode) {
-        ResolvedJavaMethod substMethod = universe.resolveSubstitution(((WrappedJavaMethod) method).getWrapped());
-        return universe.lookupAllowUnresolved(wrapped.lookupField(cpi, substMethod, opcode));
+        return universe.lookupAllowUnresolved(wrapped.lookupField(cpi, OriginalMethodProvider.getOriginalMethod(method), opcode));
     }
 
     @Override
@@ -118,13 +117,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
     @Override
     public JavaMethod lookupMethod(int cpi, int opcode, ResolvedJavaMethod caller) {
         try {
-            /* Unwrap the caller method. */
-            ResolvedJavaMethod substCaller = universe.resolveSubstitution(((WrappedJavaMethod) caller).getWrapped());
-            /*
-             * Delegate to the lookup with caller method of the wrapped constant pool (via
-             * reflection).
-             */
-            return universe.lookupAllowUnresolved(wrapped.lookupMethod(cpi, opcode, substCaller));
+            return universe.lookupAllowUnresolved(wrapped.lookupMethod(cpi, opcode, OriginalMethodProvider.getOriginalMethod(caller)));
         } catch (Throwable ex) {
             Throwable cause = ex;
             if (ex instanceof ExceptionInInitializerError && ex.getCause() != null) {

@@ -157,7 +157,6 @@ import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
 import com.oracle.svm.core.graal.phases.OptimizeExceptionPathsPhase;
 import com.oracle.svm.core.graal.phases.RemoveUnwindPhase;
 import com.oracle.svm.core.graal.phases.SubstrateSafepointInsertionPhase;
-import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.OpenTypeWorldSnippets;
@@ -420,7 +419,7 @@ public class NativeImageGenerator {
 
         String os = System.getProperty("svm.targetPlatformOS");
         if (os == null) {
-            os = OS.getCurrent().className.toLowerCase(Locale.ENGLISH);
+            os = OS.getCurrent().className.toLowerCase(Locale.ROOT);
         }
 
         String arch = System.getProperty("svm.targetPlatformArch");
@@ -1382,7 +1381,6 @@ public class NativeImageGenerator {
 
         plugins.appendInlineInvokePlugin(wordOperationPlugin);
         plugins.appendTypePlugin(wordOperationPlugin);
-        plugins.appendTypePlugin(new TrustedInterfaceTypePlugin());
         plugins.appendNodePlugin(wordOperationPlugin);
 
         plugins.setClassInitializationPlugin(classInitializationPlugin);
@@ -1719,7 +1717,7 @@ public class NativeImageGenerator {
     }
 
     public static String checkName(String name) {
-        String lname = name.toLowerCase(Locale.ENGLISH);
+        String lname = name.toLowerCase(Locale.ROOT);
         String message = null;
         if (lname.contains("hosted")) {
             message = "Hosted element used at run time: " + name;
