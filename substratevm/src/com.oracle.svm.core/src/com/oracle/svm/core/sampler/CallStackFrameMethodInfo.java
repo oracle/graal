@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.sampler;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -41,14 +38,12 @@ public class CallStackFrameMethodInfo {
 
     protected static final int INITIAL_METHOD_ID = -1;
 
-    private final Map<Integer, String> sampledMethods = new HashMap<>();
     @UnknownPrimitiveField(availability = AfterCompilation.class) private int enterSafepointCheckId = INITIAL_METHOD_ID;
     @UnknownPrimitiveField(availability = AfterCompilation.class) private int enterSafepointFromNativeId = INITIAL_METHOD_ID;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void addMethodInfo(ResolvedJavaMethod method, int methodId) {
         String formattedMethod = formatted(method);
-        sampledMethods.put(methodId, formattedMethod);
         if (enterSafepointCheckId == INITIAL_METHOD_ID && formattedMethod.equals(formatted(Safepoint.ENTER_SLOW_PATH_SAFEPOINT_CHECK))) {
             enterSafepointCheckId = methodId;
         }
@@ -67,10 +62,6 @@ public class CallStackFrameMethodInfo {
         return String.format("%s.%s",
                         descriptor.getDeclaringClass().getCanonicalName(),
                         descriptor.getName());
-    }
-
-    public String methodFor(int methodId) {
-        return sampledMethods.get(methodId);
     }
 
     public boolean isSamplingCodeEntry(int methodId) {

@@ -27,6 +27,7 @@ package com.oracle.svm.core.jfr;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.svm.core.sampler.SamplerStatistics;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -162,6 +163,7 @@ public class JfrFeature implements InternalFeature {
         ImageSingletons.add(SamplerStackWalkVisitor.class, new SamplerStackWalkVisitor());
         ImageSingletons.add(JfrExecutionSamplerSupported.class, new JfrExecutionSamplerSupported());
         ImageSingletons.add(SamplerStackTraceSerializer.class, new SamplerJfrStackTraceSerializer());
+        ImageSingletons.add(SamplerStatistics.class, new SamplerStatistics());
 
         JfrSerializerSupport.get().register(new JfrFrameTypeSerializer());
         JfrSerializerSupport.get().register(new JfrThreadStateSerializer());
