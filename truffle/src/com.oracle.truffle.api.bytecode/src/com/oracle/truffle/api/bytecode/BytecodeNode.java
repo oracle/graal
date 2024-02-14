@@ -178,6 +178,10 @@ public abstract class BytecodeNode extends Node {
         return findSourceLocation(bci);
     }
 
+    public BytecodeRootNode getBytecodeRootNode() {
+        return (BytecodeRootNode) getParent();
+    }
+
     /**
      * Computes the introspection data for this bytecode node.
      *

@@ -40,27 +40,32 @@
  */
 package com.oracle.truffle.api.bytecode.debug;
 
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.introspection.Instruction;
 
 /**
  * Subclass this bytecode node to get additional debug event that are normally not available. Useful
  * for testing and debugging.
  */
+@SuppressWarnings("unused")
 public interface BytecodeDebugListener {
 
     @SuppressWarnings("unused")
     default void onSpecialize(Instruction instruction, String specialization) {
     }
 
-    @SuppressWarnings("unused")
-    default void onInvalidate(Instruction before, Instruction after) {
+    default void onBytecodeStackTransition(Instruction source, Instruction target) {
     }
 
-    @SuppressWarnings("unused")
+    default void onBytecodeInvalidation(BytecodeNode node) {
+    }
+
+    default void onInvalidateInstruction(Instruction before, Instruction after) {
+    }
+
     default void onQuicken(Instruction before, Instruction after) {
     }
 
-    @SuppressWarnings("unused")
     default void onQuickenOperand(Instruction baseInstruction, int operandIndex, Instruction operandBefore, Instruction operandAfter) {
     }
 
