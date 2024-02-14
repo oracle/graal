@@ -46,26 +46,29 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * An instrumentations is an operation that can be dynamically enabled. Instrumentations must have
- * transparent stack effects, otherwise frame layouts would become incompatible for on stack
- * instrumentation updates. This means that instrumentations can use the following combinations of
- * effects:
- *
- * <ul>
- * <li>No operand and no return value.
- * <li>One operand and no return value. In this case the operand value will be used as return value
- * to ensure transparent stack effects.
- * <li>One operand and any return value.
- * </ul>
+ * Instrumentations are an operations that can be dynamically enabled at runtime. Dynamically
+ * enabling them at runtime enables to use them to implement features that are not commonly enabled,
+ * like tracing, language internal debugging, profiling or taint tracking.
  * <p>
- * If one operand is given and the return value does not match the value provided as operand then
- * the new value will be used. This allows instrumentations to augment the values of other
- * {@link Operation operations} or instrumentations. If multiple instrumentations are used, then the
- * execution order is determined by the order they are emitted in.
+ * Instrumentations are emitted like regular operations with the {@link BytecodeBuilder builder},
+ * but only generate instructions if they are enabled in the {@link BytecodeConfig}. A bytecode
+ * config with enabled instrumentations can be provided at parse time, when deserializing or using
+ * the {@link BytecodeRootNodes#update(BytecodeConfig) update} method at any time.
+ * <p>
+ * Unlike regular operations, instrumentations must have transparent stack effects. This is
+ * important to ensure that that the stack layout remains compatible when instrumentations are
+ * enabled at runtime. This means that instrumentations can either have no operand and no return
+ * value or one operand and one return value.
+ * <p>
+ * Instrumentations with one operand and return value, may freely modify values observed at runtime.
+ * {@link GenerateBytecode#boxingEliminationTypes() Boxing elimination} is reset when new
+ * instrumentations are enabled, but will also work for instrumentation operations.
  * <p>
  * Note that instrumentations cannot specify any {@link Operation#tags tags}, because tags must be
- * stable. Instrumentations cannot be used as boolean converters for {@link ShortCircuitOperation
- * short circuits}.
+ * stable and cannot be enabled at runtime. Instrumentations can also not be used as boolean
+ * converters for {@link ShortCircuitOperation short circuits}.
+ *
+ * @since 24.1
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
