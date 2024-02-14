@@ -37,7 +37,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
+import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
 import com.oracle.svm.core.reflect.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.util.VMError;
 
@@ -52,7 +52,7 @@ import sun.reflect.annotation.ExceptionProxy;
  * description of the changes and the rationale behind them.
  */
 @TargetClass(AnnotationParser.class)
-public final class Target_sun_reflect_annotation_AnnotationParser {
+final class Target_sun_reflect_annotation_AnnotationParser {
 
     @Substitute
     @SuppressWarnings("unchecked")
@@ -176,7 +176,7 @@ public final class Target_sun_reflect_annotation_AnnotationParser {
             case 's':
                 return constPool.getUTF8At(buf.getInt());
             case 'E':
-                return ImageSingletons.lookup(ReflectionMetadataDecoder.MetadataAccessor.class).getObject(buf.getInt());
+                return ImageSingletons.lookup(RuntimeMetadataDecoder.MetadataAccessor.class).getObject(buf.getInt());
             default:
                 throw new AnnotationFormatError(
                                 "Invalid member-value tag in annotation: " + tag);

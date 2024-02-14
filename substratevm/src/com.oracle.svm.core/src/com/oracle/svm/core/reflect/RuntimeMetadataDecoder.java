@@ -29,10 +29,11 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.RecordComponent;
 
 import com.oracle.svm.core.hub.DynamicHub;
 
-public interface ReflectionMetadataDecoder {
+public interface RuntimeMetadataDecoder {
     int NO_DATA = -1;
 
     Field[] parseFields(DynamicHub declaringType, int index, boolean publicOnly);
@@ -49,7 +50,7 @@ public interface ReflectionMetadataDecoder {
 
     Class<?>[] parseClasses(int index);
 
-    Target_java_lang_reflect_RecordComponent[] parseRecordComponents(DynamicHub declaringType, int index);
+    RecordComponent[] parseRecordComponents(DynamicHub declaringType, int index);
 
     Object[] parseObjects(int index);
 

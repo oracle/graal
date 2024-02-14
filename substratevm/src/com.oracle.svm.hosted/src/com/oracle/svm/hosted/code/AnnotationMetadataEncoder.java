@@ -22,12 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.reflect;
+package com.oracle.svm.hosted.code;
 
 import java.util.function.Consumer;
-
-import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
-import jdk.graal.compiler.debug.GraalError;
 
 import com.oracle.svm.core.code.CodeInfoEncoder.Encoders;
 import com.oracle.svm.hosted.annotation.AnnotationArrayValue;
@@ -40,7 +37,10 @@ import com.oracle.svm.hosted.annotation.AnnotationStringValue;
 import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.TypeAnnotationValue;
 
-public class AnnotationEncoder {
+import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
+import jdk.graal.compiler.debug.GraalError;
+
+final class AnnotationMetadataEncoder {
     static void encodeAnnotation(UnsafeArrayTypeWriter buf, AnnotationValue value, Encoders encoders) {
         if (value.isAnnotationFormatException()) {
             buf.putS4(-1);
@@ -120,5 +120,8 @@ public class AnnotationEncoder {
         for (T element : elements) {
             encoder.accept(element);
         }
+    }
+
+    private AnnotationMetadataEncoder() {
     }
 }

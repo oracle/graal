@@ -54,7 +54,7 @@ public final class Target_jdk_internal_reflect_ConstantPool {
 
     @Substitute
     public Class<?> getClassAt(int index) {
-        return ImageSingletons.lookup(ReflectionMetadataDecoder.MetadataAccessor.class).getClass(index);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.MetadataAccessor.class).getClass(index);
     }
 
     @Substitute
@@ -131,7 +131,7 @@ public final class Target_jdk_internal_reflect_ConstantPool {
 
     @Substitute
     public String getStringAt(int index) {
-        return ImageSingletons.lookup(ReflectionMetadataDecoder.MetadataAccessor.class).getString(index);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.MetadataAccessor.class).getString(index);
     }
 
     @Substitute

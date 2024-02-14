@@ -113,13 +113,11 @@ public class CodeInfoEncoder {
         public final FrequencyEncoder<JavaConstant> objectConstants;
         public final FrequencyEncoder<Class<?>> sourceClasses;
         public final FrequencyEncoder<String> sourceMethodNames;
-        final FrequencyEncoder<String> names;
 
         public Encoders() {
             this.objectConstants = FrequencyEncoder.createEqualityEncoder();
             this.sourceClasses = FrequencyEncoder.createEqualityEncoder();
             this.sourceMethodNames = FrequencyEncoder.createEqualityEncoder();
-            this.names = FrequencyEncoder.createEqualityEncoder();
         }
 
         private void encodeAllAndInstall(CodeInfo target, ReferenceAdjuster adjuster) {

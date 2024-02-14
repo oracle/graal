@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.reflect.target;
+package com.oracle.svm.core.code;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -43,7 +43,7 @@ import com.oracle.svm.core.heap.UnknownObjectField;
  * we would need an index to locate all relevant runtime metadata of an entity from all layers.
  */
 @AutomaticallyRegisteredImageSingleton
-public class ReflectionMetadataEncoding {
+public class RuntimeMetadataEncoding {
     @UnknownObjectField(availability = AfterCompilation.class) private byte[] encoding;
 
     public byte[] getEncoding() {

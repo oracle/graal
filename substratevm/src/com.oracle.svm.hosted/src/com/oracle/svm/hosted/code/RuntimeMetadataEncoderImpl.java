@@ -22,28 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.reflect;
+package com.oracle.svm.hosted.code;
 
-import static com.oracle.svm.core.reflect.ReflectionMetadataDecoder.NO_DATA;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_FLAGS_MASK;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_NEST_MEMBERS_FLAG;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_PERMITTED_SUBCLASSES_FLAG;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_SIGNERS_FLAG;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.CLASS_ACCESS_FLAGS_MASK;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.COMPLETE_FLAG_MASK;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.FIRST_ERROR_INDEX;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.HIDING_FLAG_MASK;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.IN_HEAP_FLAG_MASK;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.NEGATIVE_FLAG_MASK;
-import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.NULL_OBJECT;
-import static com.oracle.svm.hosted.reflect.ReflectionMetadata.AccessibleObjectMetadata;
-import static com.oracle.svm.hosted.reflect.ReflectionMetadata.ClassMetadata;
-import static com.oracle.svm.hosted.reflect.ReflectionMetadata.ConstructorMetadata;
-import static com.oracle.svm.hosted.reflect.ReflectionMetadata.ExecutableMetadata;
-import static com.oracle.svm.hosted.reflect.ReflectionMetadata.FieldMetadata;
-import static com.oracle.svm.hosted.reflect.ReflectionMetadata.MethodMetadata;
-import static com.oracle.svm.hosted.reflect.ReflectionMetadata.RecordComponentMetadata;
-import static com.oracle.svm.hosted.reflect.ReflectionMetadata.ReflectParameterMetadata;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_FLAGS_MASK;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_NEST_MEMBERS_FLAG;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_PERMITTED_SUBCLASSES_FLAG;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_SIGNERS_FLAG;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.CLASS_ACCESS_FLAGS_MASK;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.COMPLETE_FLAG_MASK;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.FIRST_ERROR_INDEX;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.HIDING_FLAG_MASK;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.IN_HEAP_FLAG_MASK;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.NEGATIVE_FLAG_MASK;
+import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.NULL_OBJECT;
+import static com.oracle.svm.core.reflect.RuntimeMetadataDecoder.NO_DATA;
+import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.AccessibleObjectMetadata;
+import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.ClassMetadata;
+import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.ConstructorMetadata;
+import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.ExecutableMetadata;
+import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.FieldMetadata;
+import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.MethodMetadata;
+import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.RecordComponentMetadata;
+import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.ReflectParameterMetadata;
 
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.AnnotatedElement;
@@ -77,25 +77,26 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.code.CodeInfoEncoder;
+import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
+import com.oracle.svm.core.code.RuntimeMetadataEncoding;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.reflect.Target_jdk_internal_reflect_ConstantPool;
-import com.oracle.svm.core.reflect.target.EncodedReflectionMetadataSupplier;
-import com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl;
-import com.oracle.svm.core.reflect.target.ReflectionMetadataEncoding;
-import com.oracle.svm.core.reflect.target.Target_sun_reflect_annotation_AnnotationParser;
+import com.oracle.svm.core.reflect.target.EncodedRuntimeMetadataSupplier;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.AnnotationMemberValue;
 import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.TypeAnnotationValue;
-import com.oracle.svm.hosted.image.NativeImageCodeCache.ReflectionMetadataEncoder;
 import com.oracle.svm.hosted.image.NativeImageCodeCache.ReflectionMetadataEncoderFactory;
+import com.oracle.svm.hosted.image.NativeImageCodeCache.RuntimeMetadataEncoder;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
+import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -107,10 +108,10 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
- * The reflection metadata encoder creates metadata for reflection objects (classes, fields, methods
+ * The runtime metadata encoder creates metadata for reflection objects (classes, fields, methods
  * and constructors), as well as for annotations and other objects queried from the VM to enable
- * their creation at runtime. The metadata related to classes is saved to a single byte array (see
- * {@link ReflectionMetadataEncoding}), with the index into this array saved in the corresponding
+ * their creation at runtime. The metadata related to classes is encoded in a single byte array (see
+ * {@link RuntimeMetadataEncoding}), with the index into this array saved in the corresponding
  * {@link DynamicHub}. The metadata for reflection objects already present in the image heap is
  * encoded directly as byte arrays into the corresponding object through field recomputations.
  *
@@ -124,17 +125,17 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * Emitting the metadata happens in two phases. In the first phase, the string and class encoders
  * are filled with the necessary values (in the {@code #add*Metadata} functions). In a second phase,
  * the values are encoded into their intended byte arrays (see
- * {@link ReflectionMetadataEncoder#encodeAllAndInstall()}).
+ * {@link RuntimeMetadataEncoder#encodeAllAndInstall()}).
  *
- * The metadata encoding format is detailed in {@link ReflectionMetadataDecoderImpl}.
+ * The metadata encoding format is detailed in {@link RuntimeMetadataDecoderImpl}.
  */
-public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder {
+public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
 
     @AutomaticallyRegisteredImageSingleton(ReflectionMetadataEncoderFactory.class)
     static class Factory implements ReflectionMetadataEncoderFactory {
         @Override
-        public ReflectionMetadataEncoder create(SnippetReflectionProvider snippetReflection, CodeInfoEncoder.Encoders encoders) {
-            return new ReflectionMetadataEncoderImpl(snippetReflection, encoders);
+        public RuntimeMetadataEncoder create(SnippetReflectionProvider snippetReflection, CodeInfoEncoder.Encoders encoders) {
+            return new RuntimeMetadataEncoderImpl(snippetReflection, encoders);
         }
     }
 
@@ -161,7 +162,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     private final Map<AccessibleObject, byte[]> typeAnnotationsEncodings = new HashMap<>();
     private final Map<Executable, byte[]> reflectParametersEncodings = new HashMap<>();
 
-    public ReflectionMetadataEncoderImpl(SnippetReflectionProvider snippetReflection, CodeInfoEncoder.Encoders encoders) {
+    public RuntimeMetadataEncoderImpl(SnippetReflectionProvider snippetReflection, CodeInfoEncoder.Encoders encoders) {
         this.snippetReflection = snippetReflection;
         this.encoders = encoders;
         this.accessors = new ReflectionDataAccessors();
@@ -468,7 +469,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         TypeAnnotationValue[] typeAnnotations = registerTypeAnnotationValues(analysisObject);
         AnnotationMemberValue annotationDefault = isMethod ? registerAnnotationDefaultValues((AnalysisMethod) analysisObject) : null;
         ReflectParameterMetadata[] reflectParameters = isExecutable ? registerReflectParameters((Executable) object) : null;
-        AccessibleObject holder = ReflectionMetadataEncoder.getHolder(object);
+        AccessibleObject holder = RuntimeMetadataEncoder.getHolder(object);
         JavaConstant heapObjectConstant = snippetReflection.forObject(holder);
         addConstantObject(heapObjectConstant);
 
@@ -729,7 +730,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     }
 
     /**
-     * See {@link ReflectionMetadataDecoderImpl} for the encoding format description.
+     * See {@link RuntimeMetadataDecoderImpl} for the encoding format description.
      */
     @Override
     public void encodeAllAndInstall() {
@@ -778,13 +779,13 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         }
         install(buf);
         /* Enable field recomputers in reflection objects to see the computed values */
-        ImageSingletons.add(EncodedReflectionMetadataSupplier.class, this);
+        ImageSingletons.add(EncodedRuntimeMetadataSupplier.class, this);
     }
 
     private int encodeErrorIndex(Throwable error) {
         int index = encoders.objectConstants.getIndex(snippetReflection.forObject(error));
         int encodedIndex = FIRST_ERROR_INDEX - index;
-        VMError.guarantee(ReflectionMetadataDecoderImpl.isErrorIndex(encodedIndex));
+        VMError.guarantee(RuntimeMetadataDecoderImpl.isErrorIndex(encodedIndex));
         return encodedIndex;
     }
 
@@ -829,7 +830,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     private static void install(UnsafeArrayTypeWriter encodingBuffer) {
         int encodingSize = TypeConversion.asS4(encodingBuffer.getBytesWritten());
         byte[] dataEncoding = new byte[encodingSize];
-        ImageSingletons.lookup(ReflectionMetadataEncoding.class).setEncoding(encodingBuffer.toArray(dataEncoding));
+        ImageSingletons.lookup(RuntimeMetadataEncoding.class).setEncoding(encodingBuffer.toArray(dataEncoding));
     }
 
     private static boolean anySet(int... indices) {
@@ -993,14 +994,14 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
      * We use a modified version of the ConstantPool and AnnotationParser classes to decode the
      * data, since those are not used in their original functions at runtime. (see
      * {@link Target_jdk_internal_reflect_ConstantPool} and
-     * {@link Target_sun_reflect_annotation_AnnotationParser})
+     * {@code Target_sun_reflect_annotation_AnnotationParser})
      */
-    public byte[] encodeAnnotations(AnnotationValue[] annotations) {
+    private byte[] encodeAnnotations(AnnotationValue[] annotations) {
         if (annotations.length == 0) {
             return null;
         }
         UnsafeArrayTypeWriter buf = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess(), true);
-        AnnotationEncoder.encodeArray(buf, annotations, annotation -> AnnotationEncoder.encodeAnnotation(buf, annotation, encoders));
+        AnnotationMetadataEncoder.encodeArray(buf, annotations, annotation -> AnnotationMetadataEncoder.encodeAnnotation(buf, annotation, encoders));
         return buf.toArray();
     }
 
@@ -1011,7 +1012,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         UnsafeArrayTypeWriter buf = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess(), true);
         buf.putU1(parameterAnnotations.length);
         for (AnnotationValue[] annotations : parameterAnnotations) {
-            AnnotationEncoder.encodeArray(buf, annotations, annotation -> AnnotationEncoder.encodeAnnotation(buf, annotation, encoders));
+            AnnotationMetadataEncoder.encodeArray(buf, annotations, annotation -> AnnotationMetadataEncoder.encodeAnnotation(buf, annotation, encoders));
         }
         return buf.toArray();
     }
@@ -1021,17 +1022,17 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
             return null;
         }
         UnsafeArrayTypeWriter buf = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess(), true);
-        AnnotationEncoder.encodeAnnotationMember(buf, annotationDefault, encoders);
+        AnnotationMetadataEncoder.encodeAnnotationMember(buf, annotationDefault, encoders);
         return buf.toArray();
     }
 
-    public byte[] encodeTypeAnnotations(TypeAnnotationValue[] typeAnnotations) {
+    private byte[] encodeTypeAnnotations(TypeAnnotationValue[] typeAnnotations) {
         if (typeAnnotations.length == 0) {
             return null;
         }
         UnsafeArrayTypeWriter buf = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess(), true);
-        AnnotationEncoder.encodeArray(buf, typeAnnotations,
-                        typeAnnotation -> AnnotationEncoder.encodeTypeAnnotation(buf, typeAnnotation, encoders));
+        AnnotationMetadataEncoder.encodeArray(buf, typeAnnotations,
+                        typeAnnotation -> AnnotationMetadataEncoder.encodeTypeAnnotation(buf, typeAnnotation, encoders));
         return buf.toArray();
     }
 

@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-public interface EncodedReflectionMetadataSupplier {
+public interface EncodedRuntimeMetadataSupplier {
     byte[] getAnnotationsEncoding(AccessibleObject object);
 
     byte[] getParameterAnnotationsEncoding(Executable object);
