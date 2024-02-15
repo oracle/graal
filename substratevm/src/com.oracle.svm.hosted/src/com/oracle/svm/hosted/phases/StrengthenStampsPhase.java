@@ -83,7 +83,16 @@ public class StrengthenStampsPhase extends Phase {
 
                 Stamp newStamp = strengthen(node.stamp(NodeView.DEFAULT));
                 if (newStamp != null) {
-                    assert !parseOnce : "Must be done by StrengthenGraphs";
+                    /*
+                     * This assertion no longer holds in corner cases. For example, when a
+                     * RawLoadNode is canonicalized to a LoadFieldNode after static analysis, the
+                     * stamp cannot be strengthened by StrengthenGraphs. This can happen in
+                     * equals/hashCode methods of records which (in the GraalVM 23.1 release branch)
+                     * use RawLoadNode during analysis whose field offset is then a known constant
+                     * after analysis. Since this phase is already removed in GraalVM 24.0 and
+                     * later, there is no need to fix these corner cases.
+                     */
+                    // assert !parseOnce : "Must be done by StrengthenGraphs";
                     node.setStamp(newStamp);
                 }
             }
