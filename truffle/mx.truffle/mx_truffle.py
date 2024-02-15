@@ -54,7 +54,6 @@ import mx_gate
 import mx_native
 import mx_sdk
 import mx_sdk_vm
-import mx_subst
 import mx_unittest
 import mx_jardistribution
 import mx_pomdistribution
@@ -425,38 +424,97 @@ def truffle_jvm_class_path_unit_tests_gate():
         ]
     unittest(list(['--suite', 'truffle', '-Dpolyglotimpl.DisableClassPathIsolation=false', '--use-graalvm', '--enable-timing', '--force-classpath', '--verbose', '--max-class-failures=25'] + test_classes))
 
+@mx.command(_suite.name, 'native-truffle-unittest')
+def native_truffle_unittest(args):
+    # 1. Use mx_unittest to collect root test distributions and test classes for given unittest pattern(s)
+    supported_args = ['--build-args', '--run-args', '-h', '--help', '--']
 
-def nfi_svm_module_path_unit_tests_gate():
+    def _escape(arg):
+        if arg in supported_args:
+            return arg
+        else:
+            return arg.replace('-', '$esc$')
+
+    def _unescape(arg):
+        return arg.replace('$esc$', '-')
+
+    def _split_command_line_arguments(build_args):
+        """
+        Splits command line arguments into two lists: one containing module-specific options,
+        and the other containing the remaining options.
+        """
+        module_options = {'--add-exports', '--add-opens', '--add-reads', '--add-module'}
+        module_command_line_arguments = []
+        other_command_line_arguments = []
+        for index in range(0, len(build_args)):
+            arg = build_args[index]
+            if arg in module_options:
+                module_command_line_arguments.append(arg)
+                index += 1
+                module_command_line_arguments.append(build_args[index])
+            elif arg.split('=')[0] in module_options:
+                module_command_line_arguments.append(arg)
+            else:
+                other_command_line_arguments.append(arg)
+        return module_command_line_arguments, other_command_line_arguments
+
+    args = [_escape(arg) for arg in args]
+    parser = ArgumentParser(prog='mx native-truffle-unittest', description='Run truffle unittests as native image on graalvm.')
+    parser.add_argument(supported_args[0], metavar='ARG', nargs='*', default=[])
+    parser.add_argument(supported_args[1], metavar='ARG', nargs='*', default=[])
+    parser.add_argument('unittests_args', metavar='TEST_ARG', nargs='*')
+    parsed_args = parser.parse_args(args)
+    parsed_args.build_args = [_unescape(arg) for arg in parsed_args.build_args]
+    module_args, parsed_args.build_args = _split_command_line_arguments(parsed_args.build_args)
+    parsed_args.run_args = [_unescape(arg) for arg in parsed_args.run_args]
+    parsed_args.unittests_args = [_unescape(arg) for arg in parsed_args.unittests_args]
     with mx.TempDir() as tmp:
         jdk = mx.get_jdk(tag='graalvm')
-        nfi_testlib_arg = mx_subst.path_substitutions.substitute('-Dnative.test.path=<path:truffle:TRUFFLE_TEST_NATIVE>')
+        unittest_distributions = ['mx:JUNIT-PLATFORM-NATIVE']
+        test_classes_file = os.path.join(tmp, 'test_classes.txt')
 
-        # Collect test ids for native image build
+        def collect_unittest_distributions(test_deps, vm_launcher, vm_args):
+            unittest_distributions.extend(test_deps)
+
+        mx_unittest._run_tests(parsed_args.unittests_args, collect_unittest_distributions,
+                               mx_unittest._VMLauncher('dist_collecting_launcher', None, jdk),
+                               ['@Test', '@Parameters'],
+                               test_classes_file, [], [], None, None)
+
+        enable_asserts_args = [
+            '-ea',
+            '-esa'
+        ]
         uid_tracking_args = [
-                            '-Djunit.platform.listeners.uid.tracking.enabled=true',
-                            f'-Djunit.platform.listeners.uid.tracking.output.dir={os.path.join(tmp, "test-ids")}'
+            '-Djunit.platform.listeners.uid.tracking.enabled=true',
+            f'-Djunit.platform.listeners.uid.tracking.output.dir={os.path.join(tmp, "test-ids")}'
         ]
-        open_args = [
-            '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl=ALL-UNNAMED'
-        ]
-        vm_args = uid_tracking_args + mx.get_runtime_jvm_args(names=['mx:JUNIT-PLATFORM-NATIVE', 'TRUFFLE_NFI_TEST']) + open_args
-        junit_main_with_args = [
-                            # The UniqueIdTrackingListener functions as an ExecutionListener, meaning that the discover command
-                            # alone is insufficient for generating test IDs. To generate test IDs, we must use the execute command.
-                            # However, we do not wish to execute the tests themselves; We want to only invoke the execution listeners.
-                            # To accomplish this, we execute the test with dry run enabled.
-                            '-Djunit.platform.execution.dryRun.enabled=true',
-                            'org.junit.platform.console.ConsoleLauncher',
-                            'execute',
-                            '--disable-ansi-colors',
-                            '--disable-banner',
-                            '--details=none',
-                            f'--scan-class-path={mx_subst.path_substitutions.substitute("<path:truffle:TRUFFLE_NFI_TEST>")}'
-        ]
-        mx.run_java(vm_args + [nfi_testlib_arg] + junit_main_with_args, jdk=jdk)
+        vm_args = enable_asserts_args + uid_tracking_args + mx.get_runtime_jvm_args(names=unittest_distributions) + module_args
 
-        # Build native image for unittests
+        # 2. Collect test ids for a native image build
+        junit_console_launcher_with_args = [
+            # The UniqueIdTrackingListener functions as an ExecutionListener, meaning that the discover command
+            # alone is insufficient for generating test IDs. To generate test IDs, we must use the execute command.
+            # However, we do not wish to execute the tests themselves; We want to only invoke the execution listeners.
+            # To accomplish this, we execute the test with dry run enabled.
+            '-Djunit.platform.execution.dryRun.enabled=true',
+            'org.junit.platform.console.ConsoleLauncher',
+            'execute',
+            '--disable-banner',
+            '--details=none'
+        ]
+        with open(test_classes_file) as f:
+            test_classes = [f'--select-class={clazz.strip()}' for clazz in f]
+        mx.run_java(vm_args + junit_console_launcher_with_args + test_classes, jdk=jdk)
+
+        # 3. Build a native image for unittests
         def _allow_runtime_reflection(for_types):
+            """
+            Creates a reflection configuration file for subclasses of `org.hamcrest.TypeSafeMatcher`
+            and `org.hamcrest.TypeSafeDiagnosingMatcher`. The `junit-platform-native` does not currently support
+            these classes, as indicated in issue https://github.com/graalvm/native-build-tools/issues/575.
+            To address this limitation, we must resolve the issue by generating a reflection configuration file.
+            """
             config_file = os.path.join(tmp, "reflection_config.json")
             with open(config_file, "w") as f:
                 print('[', file=f)
@@ -474,20 +532,20 @@ def nfi_svm_module_path_unit_tests_gate():
         native_image = _native_image(jdk)
         tests_executable = os.path.join(tmp, mx.exe_suffix('tests'))
         reflection_configuration_file = _allow_runtime_reflection([
-                    'org.hamcrest.core.Every',
-                    'org.junit.internal.matchers.StacktracePrintingMatcher',
-                    'org.junit.internal.matchers.ThrowableCauseMatcher'
+            'org.hamcrest.core.Every',
+            'org.junit.internal.matchers.StacktracePrintingMatcher',
+            'org.junit.internal.matchers.ThrowableCauseMatcher'
         ])
         native_image_args = [
-                    '--no-fallback',
-                    '-H:+UnlockExperimentalVMOptions', f'-H:ReflectionConfigurationFiles={reflection_configuration_file}', '-H:-UnlockExperimentalVMOptions',
-                    '-o', tests_executable,
-                    '--features=org.graalvm.junit.platform.JUnitPlatformFeature',
-                    'org.graalvm.junit.platform.NativeImageJUnitLauncher']
+            '--no-fallback',
+            '-H:+UnlockExperimentalVMOptions', f'-H:ReflectionConfigurationFiles={reflection_configuration_file}', '-H:-UnlockExperimentalVMOptions',
+            '-o', tests_executable,
+            '--features=org.graalvm.junit.platform.JUnitPlatformFeature',
+            'org.graalvm.junit.platform.NativeImageJUnitLauncher'] + parsed_args.build_args
         mx.run([native_image] + vm_args + native_image_args)
 
-        # Execute native unittests
-        mx.run([tests_executable, nfi_testlib_arg])
+        # 4. Execute native unittests
+        mx.run([tests_executable] + parsed_args.run_args)
 
 
 # Run in VM suite with:
