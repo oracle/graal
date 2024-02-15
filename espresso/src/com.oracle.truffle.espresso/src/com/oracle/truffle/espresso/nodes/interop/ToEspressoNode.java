@@ -37,6 +37,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
@@ -262,21 +263,23 @@ public abstract class ToEspressoNode extends EspressoNode {
         })
         public Object doGeneric(Object value, Klass targetType,
                         @Bind("getMeta()") Meta meta,
-                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
-            try {
-                return getUncachedToEspresso(targetType, meta).execute(value);
-            } catch (IllegalStateException ex) {
-                // hit the unknown type case, so inline generic handling for that here
-                if (targetType instanceof ObjectKlass) {
-                    try {
-                        checkHasAllFieldsOrThrow(value, (ObjectKlass) targetType, interop, getMeta());
-                        return StaticObject.createForeign(getLanguage(), targetType, value, interop);
-                    } catch (ClassCastException e) {
-                        throw UnsupportedTypeException.create(new Object[]{value}, targetType.getTypeAsString());
-                    }
-                }
-                throw UnsupportedTypeException.create(new Object[]{value}, targetType.getTypeAsString());
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached InlinedBranchProfile unknownProfile) throws UnsupportedTypeException {
+            ToEspressoNode uncachedToEspresso = getUncachedToEspresso(targetType, meta);
+            if (uncachedToEspresso != null) {
+                return uncachedToEspresso.execute(value);
             }
+            unknownProfile.enter(this);
+            // hit the unknown type case, so inline generic handling for that here
+            if (targetType instanceof ObjectKlass) {
+                try {
+                    checkHasAllFieldsOrThrow(value, (ObjectKlass) targetType, interop, getMeta());
+                    return StaticObject.createForeign(getLanguage(), targetType, value, interop);
+                } catch (ClassCastException e) {
+                    throw UnsupportedTypeException.create(new Object[]{value}, targetType.getTypeAsString());
+                }
+            }
+            throw UnsupportedTypeException.create(new Object[]{value}, targetType.getTypeAsString());
         }
     }
 
