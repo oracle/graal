@@ -25,6 +25,7 @@
 package jdk.graal.compiler.truffle.test;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.List;
 
 import org.graalvm.word.LocationIdentity;
@@ -33,7 +34,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.test.SubprocessTestUtils;
 
@@ -81,7 +81,7 @@ public class FrameHostReadsTest extends TruffleCompilerImplTest {
         initAssertionError();
         Assert.assertSame("New frame implementation detected. Make sure to update this test.", FrameWithoutBoxing.class,
                         Truffle.getRuntime().createVirtualFrame(new Object[0], FrameDescriptor.newBuilder().build()).getClass());
-        Assert.assertTrue("Frame assertions should be disabled.", checkFrameAssertionsDisabled());
+        Assert.assertTrue("Frame assertions should be disabled.", areFrameAssertionsDisabled());
 
         StructuredGraph graph = getFinalGraph("snippet0");
 
@@ -116,7 +116,7 @@ public class FrameHostReadsTest extends TruffleCompilerImplTest {
         Assert.assertEquals(5, arrayReads);
 
         /*
-         * Array.length reads. We also read one for FrameWithoutBoxing.indexedPrimitiveLocals.
+         * Array.length reads. We read one for FrameWithoutBoxing.indexedPrimitiveLocals.
          */
         Assert.assertEquals(1, arrayLengthReads);
         Assert.assertEquals(0, otherReads);
@@ -133,18 +133,21 @@ public class FrameHostReadsTest extends TruffleCompilerImplTest {
         };
     }
 
-    private static boolean checkFrameAssertionsDisabled() {
-        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
-        int slot = builder.addSlot(FrameSlotKind.Static, null, null);
-        FrameDescriptor desc = builder.build();
-        try {
-            FrameWithoutBoxing frame = new FrameWithoutBoxing(desc, new Object[0]);
-            frame.setIntStatic(slot, 1);
-            frame.getFloatStatic(slot);
-        } catch (AssertionError e) {
-            return false;
+    private static boolean areFrameAssertionsDisabled() {
+        Field assertionsEnabledField = null;
+        for (Field f : FrameWithoutBoxing.class.getDeclaredFields()) {
+            if (f.getName().equals("ASSERTIONS_ENABLED")) {
+                assertionsEnabledField = f;
+                break;
+            }
         }
-        return true;
+        Assert.assertNotNull(assertionsEnabledField);
+        try {
+            assertionsEnabledField.setAccessible(true);
+            return !((boolean) assertionsEnabledField.get(null));
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }
