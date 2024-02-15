@@ -1054,7 +1054,9 @@ def _native_image_launcher_extra_jvm_args():
     Gets the extra JVM args needed for running com.oracle.svm.driver.NativeImage.
     """
     # Support for running as Java module
-    res = []
+    res = [
+        f'-XX:MaxRAM={driver_max_memory_in_mb}m', '-XX:MaxRAMPercentage=80',
+    ]
     if not mx_sdk_vm.jdk_enables_jvmci_by_default(get_jdk()):
         res.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])
     return res
@@ -1065,11 +1067,13 @@ driver_build_args = [
     '--link-at-build-time=com.oracle.svm.driver,com.oracle.svm.driver.metainf',
 ]
 
+driver_max_memory_in_mb = 256
+
 driver_exe_build_args = driver_build_args + svm_experimental_options([
     '-H:+AllowJRTFileSystem',
     '-H:IncludeResources=com/oracle/svm/driver/launcher/.*',
     '-H:-ParseRuntimeOptions',
-    f'-R:MaxHeapSize={256 * 1024 * 1024}',
+    f'-R:MaxHeapSize={driver_max_memory_in_mb * 1024 * 1024}',
 ])
 
 additional_ni_dependencies = []
