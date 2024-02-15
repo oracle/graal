@@ -36,7 +36,6 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
@@ -47,18 +46,15 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.VarHandleFeature;
-import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
-import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.methodhandles.MethodHandleFeature;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.core.common.type.TypedConstant;
+import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -79,8 +75,9 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
 
     @SuppressWarnings("this-escape")
     public SVMImageHeapScanner(BigBang bb, ImageHeap imageHeap, ImageClassLoader loader, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflection,
-                    ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver, HostedValuesProvider hostedValuesProvider) {
-        super(bb, imageHeap, metaAccess, snippetReflection, aConstantReflection, aScanningObserver, hostedValuesProvider);
+                    ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver, HostedValuesProvider hostedValuesProvider,
+                    IdentityHashCodeProvider identityHashCodeProvider) {
+        super(bb, imageHeap, metaAccess, snippetReflection, aConstantReflection, aScanningObserver, hostedValuesProvider, identityHashCodeProvider);
         this.loader = loader;
         economicMapImpl = getClass("org.graalvm.collections.EconomicMapImpl");
         economicMapImplEntriesField = ReflectionUtil.lookupField(economicMapImpl, "entries");
@@ -107,7 +104,6 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
 
     @Override
     protected ImageHeapConstant getOrCreateImageHeapConstant(JavaConstant javaConstant, ScanReason reason) {
-        VMError.guarantee(javaConstant instanceof TypedConstant, "Not a substrate constant: %s", javaConstant);
         return super.getOrCreateImageHeapConstant(javaConstant, reason);
     }
 
@@ -124,18 +120,7 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     @Override
     public JavaConstant readStaticFieldValue(AnalysisField field) {
         AnalysisConstantReflectionProvider aConstantReflection = (AnalysisConstantReflectionProvider) this.constantReflection;
-        JavaConstant constant = aConstantReflection.readValue(field, null, true);
-        if (constant instanceof DirectSubstrateObjectConstant) {
-            /*
-             * The "late initialization" doesn't work with heap snapshots because the wrong value
-             * will be snapshot for classes proven late, so we only read via the shadow heap if
-             * simulation of class initializers is enabled. This branch will be removed when the old
-             * initialization strategy is removed.
-             */
-            VMError.guarantee(!SimulateClassInitializerSupport.singleton().isEnabled());
-            return toImageHeapObject(constant, ObjectScanner.OtherReason.UNKNOWN);
-        }
-        return constant;
+        return aConstantReflection.readValue(field, null, true);
     }
 
     @Override

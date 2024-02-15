@@ -80,16 +80,16 @@ public final class ImageHeapInstance extends ImageHeapConstant {
         }
     }
 
-    ImageHeapInstance(AnalysisType type, JavaConstant object) {
-        super(new InstanceData(type, object, createIdentityHashCode(object)), false);
+    ImageHeapInstance(AnalysisType type, JavaConstant object, int identityHashCode) {
+        super(new InstanceData(type, object, identityHashCode), false);
     }
 
-    public ImageHeapInstance(AnalysisType type) {
-        this(type, null, type.getInstanceFields(true).length);
+    public ImageHeapInstance(AnalysisType type, int identityHashCode) {
+        this(type, null, type.getInstanceFields(true).length, identityHashCode);
     }
 
-    private ImageHeapInstance(AnalysisType type, JavaConstant object, int length) {
-        this(type, object, createIdentityHashCode(object), new Object[length], false);
+    private ImageHeapInstance(AnalysisType type, JavaConstant object, int length, int identityHashCode) {
+        this(type, object, identityHashCode, new Object[length], false);
     }
 
     private ImageHeapInstance(AnalysisType type, JavaConstant object, int identityHashCode, Object[] fieldValues, boolean compressed) {
@@ -172,7 +172,7 @@ public final class ImageHeapInstance extends ImageHeapConstant {
     }
 
     @Override
-    public ImageHeapConstant forObjectClone() {
+    public ImageHeapConstant forObjectClone(int identityHashCode) {
         if (!constantData.type.isCloneableWithAllocation()) {
             return null;
         }
@@ -181,7 +181,6 @@ public final class ImageHeapInstance extends ImageHeapConstant {
         Objects.requireNonNull(fieldValues, "Cannot clone an instance before the field values are set.");
         Object[] newFieldValues = Arrays.copyOf(fieldValues, fieldValues.length);
         /* The new constant is never backed by a hosted object, regardless of the input object. */
-        JavaConstant newObject = null;
-        return new ImageHeapInstance(constantData.type, newObject, createIdentityHashCode(newObject), newFieldValues, compressed);
+        return new ImageHeapInstance(constantData.type, null, identityHashCode, newFieldValues, compressed);
     }
 }

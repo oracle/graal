@@ -39,6 +39,7 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.graal.compiler.core.common.type.TypedConstant;
+import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -66,7 +67,17 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
          */
         private final JavaConstant hostedObject;
         /**
-         * See {@link #createIdentityHashCode(JavaConstant)}.
+         * The identity hash code for the heap object. This can be the same as the identity hash
+         * code of the referenced hosted object or not. The value is provided via a
+         * {@link IdentityHashCodeProvider} which can decide to use a previously computed identity
+         * hash code, e.g., to accommodate for replaced constants.
+         * <p>
+         * For objects without a backing object in the heap of the image builder VM we create a
+         * "virtual" identity hash code that has the same properties as the image builder VM by
+         * using the identity hash code of a new and otherwise unused object in the image builder
+         * VM.
+         * <p>
+         * The value is guaranteed to be positive.
          */
         private final int identityHashCode;
         /**
@@ -86,6 +97,11 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
             Objects.requireNonNull(type);
             this.type = type;
             this.hostedObject = CompressibleConstant.uncompress(object);
+            /*
+             * The Java HotSpot VM only returns positive numbers for the identity hash code, so we
+             * want to have the same restriction on Substrate VM in order to not surprise users.
+             */
+            AnalysisError.guarantee(identityHashCode > 0, "The provided identity hashcode value must be a positive number to be on par with the Java HotSpot VM.");
             this.identityHashCode = identityHashCode;
         }
 
@@ -139,41 +155,9 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
         return constantData.isReachable;
     }
 
-    static int createIdentityHashCode(JavaConstant object) {
-        if (object == null) {
-            /*
-             * No backing object in the heap of the image builder VM. We want a "virtual" identity
-             * hash code that has the same properties as the image builder VM, so we use the
-             * identity hash code of a new and otherwise unused object in the image builder VM.
-             */
-            return System.identityHashCode(new Object());
-        } else {
-            /* Lazily looked up from the hostedObject when requested. */
-            return -1;
-        }
-    }
-
     @Override
     public int getIdentityHashCode() {
-        if (constantData.hostedObject != null) {
-            if (constantData.hostedObject.isNull()) {
-                /*
-                 * According to the JavaDoc of System.identityHashCode, the identity hash code of
-                 * null is 0.
-                 */
-                return 0;
-            } else {
-                return ((TypedConstant) constantData.hostedObject).getIdentityHashCode();
-            }
-        } else {
-            /*
-             * No backing object in the heap of the image builder VM. We want a "virtual" identity
-             * hash code that has the same properties as the image builder VM, so we use the
-             * identity hash code of a new and otherwise unused object in the image builder VM.
-             */
-            assert constantData.identityHashCode > 0 : "The Java HotSpot VM only returns positive numbers for the identity hash code, so we want to have the same restriction on Substrate VM in order to not surprise users";
-            return constantData.identityHashCode;
-        }
+        return constantData.identityHashCode;
     }
 
     public JavaConstant getHostedObject() {
@@ -248,7 +232,9 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
     @Override
     public String toValueString() {
         if (constantData.type.getJavaClass() == String.class && constantData.hostedObject != null) {
-            return constantData.hostedObject.toValueString();
+            String valueString = constantData.hostedObject.toValueString();
+            /* HotSpotObjectConstantImpl.toValueString() puts the string between quotes. */
+            return valueString.substring(1, valueString.length() - 1);
         }
         return constantData.type.getName();
     }
@@ -256,8 +242,11 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
     /**
      * Returns a new image heap instance, as if {@link Object#clone} was called on the original
      * object. If the type is not cloneable, then null is returned.
+     * <p>
+     * The new constant is never backed by a hosted object, regardless of the input object. The
+     * caller must provide a unique identity hash code.
      */
-    public abstract ImageHeapConstant forObjectClone();
+    public abstract ImageHeapConstant forObjectClone(int identityHashCode);
 
     @Override
     public boolean equals(Object o) {

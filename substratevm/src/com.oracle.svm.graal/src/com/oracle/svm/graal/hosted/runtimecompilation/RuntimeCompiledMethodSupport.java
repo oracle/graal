@@ -373,12 +373,12 @@ public class RuntimeCompiledMethodSupport {
 
         @Override
         protected void addObject(Object object) {
-            super.addObject(forRuntimeCompilation(object));
+            super.addObject(hostedToRuntime(object));
         }
 
         @Override
         protected void writeObjectId(Object object) {
-            super.writeObjectId(forRuntimeCompilation(object));
+            super.writeObjectId(hostedToRuntime(object));
         }
 
         @Override
@@ -386,11 +386,11 @@ public class RuntimeCompiledMethodSupport {
             return new RuntimeCompilationGraphDecoder(architecture, decodedGraph, heapScanner);
         }
 
-        private Object forRuntimeCompilation(Object object) {
+        private Object hostedToRuntime(Object object) {
             if (object instanceof ImageHeapConstant heapConstant) {
-                return SubstrateGraalUtils.forRuntimeCompilation(heapConstant);
+                return SubstrateGraalUtils.hostedToRuntime(heapConstant);
             } else if (object instanceof ObjectLocationIdentity oli && oli.getObject() instanceof ImageHeapConstant heapConstant) {
-                return locationIdentityCache.computeIfAbsent(heapConstant, (hc) -> ObjectLocationIdentity.create(SubstrateGraalUtils.forRuntimeCompilation(hc)));
+                return locationIdentityCache.computeIfAbsent(heapConstant, (hc) -> ObjectLocationIdentity.create(SubstrateGraalUtils.hostedToRuntime(hc)));
             }
             return object;
         }
@@ -415,9 +415,9 @@ public class RuntimeCompiledMethodSupport {
         protected Object readObject(MethodScope methodScope) {
             Object object = super.readObject(methodScope);
             if (object instanceof JavaConstant constant) {
-                return heapScanner.getImageHeapConstant(constant);
+                return SubstrateGraalUtils.runtimeToHosted(constant, heapScanner);
             } else if (object instanceof ObjectLocationIdentity oli) {
-                return locationIdentityCache.computeIfAbsent(oli.getObject(), (obj) -> ObjectLocationIdentity.create(heapScanner.getImageHeapConstant(obj)));
+                return locationIdentityCache.computeIfAbsent(oli.getObject(), (constant) -> ObjectLocationIdentity.create(SubstrateGraalUtils.runtimeToHosted(constant, heapScanner)));
             }
             return object;
         }

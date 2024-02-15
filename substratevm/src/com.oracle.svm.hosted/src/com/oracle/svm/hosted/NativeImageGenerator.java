@@ -55,6 +55,7 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -219,6 +220,7 @@ import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.CFunctionSubstitutionProcessor;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.DynamicMethodAddressResolutionHostedSupport;
+import com.oracle.svm.hosted.code.HostedIdentityHashCodeProvider;
 import com.oracle.svm.hosted.code.HostedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.code.NativeMethodSubstitutionProcessor;
 import com.oracle.svm.hosted.code.RestrictHeapAccessCalleesImpl;
@@ -948,7 +950,7 @@ public class NativeImageGenerator {
                     aScanningObserver = new ReachabilityObjectScanner(bb, aMetaAccess);
                 }
                 ImageHeapScanner heapScanner = new SVMImageHeapScanner(bb, imageHeap, loader, aMetaAccess, aProviders.getSnippetReflection(),
-                                aProviders.getConstantReflection(), aScanningObserver, new SVMHostedValueProvider(aUniverse));
+                                aProviders.getConstantReflection(), aScanningObserver, new SVMHostedValueProvider(aUniverse), aProviders.getIdentityHashCodeProvider());
                 aUniverse.setHeapScanner(heapScanner);
                 ((HostedSnippetReflectionProvider) aProviders.getSnippetReflection()).setHeapScanner(heapScanner);
                 HeapSnapshotVerifier heapVerifier = new SVMImageHeapVerifier(bb, imageHeap, heapScanner);
@@ -1146,12 +1148,12 @@ public class NativeImageGenerator {
                             bb.getAnnotationSubstitutionProcessor(), classInitializationPlugin, ConfigurationValues.getTarget(), supportsStubBasedPlugins);
             registerReplacements(debug, featureHandler, null, aProviders, true, initForeignCalls, new GraphEncoder(ConfigurationValues.getTarget().arch));
 
-            performSnippetGraphAnalysis(bb, aReplacements, options);
+            performSnippetGraphAnalysis(bb, aReplacements, options, Function.identity());
         }
     }
 
-    public static void performSnippetGraphAnalysis(BigBang bb, SubstrateReplacements replacements, OptionValues options) {
-        Collection<StructuredGraph> snippetGraphs = replacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options);
+    public static void performSnippetGraphAnalysis(BigBang bb, SubstrateReplacements replacements, OptionValues options, Function<Object, Object> objectTransformer) {
+        Collection<StructuredGraph> snippetGraphs = replacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options, objectTransformer);
         if (bb instanceof NativeImagePointsToAnalysis pointsToAnalysis) {
             for (StructuredGraph graph : snippetGraphs) {
                 MethodTypeFlowBuilder.registerUsedElements(pointsToAnalysis, graph);
@@ -1184,7 +1186,8 @@ public class NativeImageGenerator {
         StampProvider aStampProvider = new SubstrateStampProvider(aMetaAccess);
 
         HostedProviders aProviders = new HostedProviders(aMetaAccess, null, aConstantReflection, aConstantFieldProvider, aForeignCalls, aLoweringProvider, null, aStampProvider, aSnippetReflection,
-                        aWordTypes, platformConfig, aMetaAccessExtensionProvider, originalProviders.getLoopsDataProvider());
+                        aWordTypes, platformConfig, aMetaAccessExtensionProvider, originalProviders.getLoopsDataProvider(),
+                        new HostedIdentityHashCodeProvider(originalProviders.getSnippetReflection()));
 
         BytecodeProvider bytecodeProvider = new ResolvedJavaMethodBytecodeProvider();
         SubstrateReplacements aReplacements = new SubstrateReplacements(aProviders, bytecodeProvider, target, new SubstrateGraphMakerFactory());

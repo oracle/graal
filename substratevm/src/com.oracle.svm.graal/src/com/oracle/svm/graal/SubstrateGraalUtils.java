@@ -34,6 +34,8 @@ import java.util.Map;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.CPUFeatureAccess;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
@@ -63,6 +65,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.JavaConstant;
 
 public class SubstrateGraalUtils {
@@ -194,23 +197,37 @@ public class SubstrateGraalUtils {
     }
 
     /** Prepares a hosted {@link JavaConstant} for runtime compilation. */
-    public static JavaConstant forRuntimeCompilation(JavaConstant constant) {
+    public static JavaConstant hostedToRuntime(JavaConstant constant) {
         if (constant instanceof ImageHeapConstant heapConstant) {
-            return forRuntimeCompilation(heapConstant);
+            return hostedToRuntime(heapConstant);
         }
         return constant;
     }
 
     /**
-     * Prepares a hosted {@link ImageHeapConstant} for runtime compilation. For now this simply
-     * returns the hosted object which already is a {@link SubstrateObjectConstant}. When the
-     * {@link ImageHeapConstant} will reference a HotSpot constant directly (GR-50240), this code
-     * will have to do its own wrapping.
+     * Prepares a hosted {@link ImageHeapConstant} for runtime compilation: it unwraps the
+     * {@link HotSpotObjectConstant} and wraps the hosted object into a
+     * {@link SubstrateObjectConstant}. We reuse the identity hash code of the heap constant.
      */
-    public static JavaConstant forRuntimeCompilation(ImageHeapConstant heapConstant) {
-        JavaConstant hostedObject = heapConstant.getHostedObject();
-        VMError.guarantee(hostedObject instanceof SubstrateObjectConstant, "Expected to find SubstrateObjectConstant, found %s", heapConstant);
-        return hostedObject;
+    public static JavaConstant hostedToRuntime(ImageHeapConstant heapConstant) {
+        JavaConstant hostedConstant = heapConstant.getHostedObject();
+        VMError.guarantee(hostedConstant instanceof HotSpotObjectConstant, "Expected to find HotSpotObjectConstant, found %s", hostedConstant);
+        Object hostedObject = GraalAccess.getOriginalSnippetReflection().asObject(Object.class, hostedConstant);
+        return SubstrateObjectConstant.forObject(hostedObject, heapConstant.getIdentityHashCode());
+    }
+
+    /**
+     * Transforms a {@link SubstrateObjectConstant} from an encoded graph into an
+     * {@link ImageHeapConstant} for hosted processing: it unwraps the hosted object from the
+     * {@link SubstrateObjectConstant}, wraps it into an {@link HotSpotObjectConstant}, then
+     * redirects the lookup through the {@link ImageHeapScanner}.
+     */
+    public static JavaConstant runtimeToHosted(JavaConstant constant, ImageHeapScanner scanner) {
+        if (constant instanceof SubstrateObjectConstant) {
+            JavaConstant hostedConstant = GraalAccess.getOriginalSnippetReflection().forObject(SubstrateObjectConstant.asObject(constant));
+            return scanner.getImageHeapConstant(hostedConstant);
+        }
+        return constant;
     }
 
 }

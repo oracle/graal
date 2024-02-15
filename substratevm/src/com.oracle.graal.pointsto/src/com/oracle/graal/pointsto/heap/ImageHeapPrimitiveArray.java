@@ -52,18 +52,18 @@ public final class ImageHeapPrimitiveArray extends ImageHeapArray {
         }
     }
 
-    ImageHeapPrimitiveArray(AnalysisType type, int length) {
+    ImageHeapPrimitiveArray(AnalysisType type, int length, int identityHashCode) {
         this(type, null,
                         /* Without a hosted object, we need to create a backing primitive array. */
                         Array.newInstance(type.getComponentType().getStorageKind().toJavaClass(), length),
-                        createIdentityHashCode(null), false, length);
+                        identityHashCode, false, length);
     }
 
-    ImageHeapPrimitiveArray(AnalysisType type, JavaConstant hostedObject, Object array, int length) {
+    ImageHeapPrimitiveArray(AnalysisType type, JavaConstant hostedObject, Object array, int length, int identityHashCode) {
         this(type, hostedObject,
                         /* We need a clone of the hosted array so that we have a stable snapshot. */
                         getClone(type.getComponentType().getJavaKind(), array),
-                        createIdentityHashCode(hostedObject), false, length);
+                        identityHashCode, false, length);
     }
 
     private ImageHeapPrimitiveArray(AnalysisType type, JavaConstant hostedObject, Object array, int identityHashCode, boolean compressed, int length) {
@@ -134,13 +134,12 @@ public final class ImageHeapPrimitiveArray extends ImageHeapArray {
     }
 
     @Override
-    public ImageHeapConstant forObjectClone() {
+    public ImageHeapConstant forObjectClone(int identityHashCode) {
         assert constantData.type.isCloneableWithAllocation() : "all arrays implement Cloneable";
 
         PrimitiveArrayData data = getConstantData();
         Object newArray = getClone(data.type.getComponentType().getJavaKind(), data.array);
         /* The new constant is never backed by a hosted object, regardless of the input object. */
-        JavaConstant newHostedObject = null;
-        return new ImageHeapPrimitiveArray(data.type, newHostedObject, newArray, createIdentityHashCode(newHostedObject), compressed, data.length);
+        return new ImageHeapPrimitiveArray(data.type, null, newArray, identityHashCode, compressed, data.length);
     }
 }

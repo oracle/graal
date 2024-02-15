@@ -48,19 +48,16 @@ public class HostedValuesProvider {
     }
 
     private JavaConstant doReadValue(AnalysisField field, JavaConstant receiver) {
-        /* Wrap the hosted constant into a substrate constant */
         field.beforeFieldValueAccess();
-        JavaConstant hostedReceiver = universe.toHosted(receiver);
-        JavaConstant hostedValue = GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(field.wrapped, hostedReceiver);
-        return universe.fromHosted(hostedValue);
+        return interceptHosted(GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(field.wrapped, receiver));
     }
 
     public Integer readArrayLength(JavaConstant array) {
-        return GraalAccess.getOriginalProviders().getConstantReflection().readArrayLength(universe.toHosted(array));
+        return GraalAccess.getOriginalProviders().getConstantReflection().readArrayLength(array);
     }
 
     public JavaConstant readArrayElement(JavaConstant array, int index) {
-        return GraalAccess.getOriginalProviders().getConstantReflection().readArrayElement(universe.toHosted(array), index);
+        return GraalAccess.getOriginalProviders().getConstantReflection().readArrayElement(array, index);
     }
 
     /**
@@ -90,11 +87,15 @@ public class HostedValuesProvider {
     }
 
     public JavaConstant forObject(Object object) {
-        return GraalAccess.getOriginalProviders().getSnippetReflection().forObject(object);
+        return GraalAccess.getOriginalSnippetReflection().forObject(object);
     }
 
     public <T> T asObject(Class<T> type, JavaConstant constant) {
-        return GraalAccess.getOriginalProviders().getSnippetReflection().asObject(type, constant);
+        return GraalAccess.getOriginalSnippetReflection().asObject(type, constant);
     }
 
+    /** Hook to allow subclasses to intercept hosted constants. */
+    public JavaConstant interceptHosted(JavaConstant constant) {
+        return constant;
+    }
 }

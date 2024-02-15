@@ -71,16 +71,12 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
         }
     }
 
-    ImageHeapObjectArray(AnalysisType type, JavaConstant object, int length) {
-        super(new ArrayData(type, object, createIdentityHashCode(object), length), false);
+    ImageHeapObjectArray(AnalysisType type, JavaConstant object, int length, int identityHashCode) {
+        super(new ArrayData(type, object, identityHashCode, length), false);
     }
 
-    ImageHeapObjectArray(AnalysisType type, int length) {
-        this(type, null, new Object[length], length);
-    }
-
-    ImageHeapObjectArray(AnalysisType type, JavaConstant object, Object[] arrayElementValues, int length) {
-        this(type, object, createIdentityHashCode(object), arrayElementValues, length, false);
+    ImageHeapObjectArray(AnalysisType type, int length, int identityHashCode) {
+        this(type, null, identityHashCode, new Object[length], length, false);
     }
 
     private ImageHeapObjectArray(AnalysisType type, JavaConstant object, int identityHashCode, Object[] arrayElementValues, int length, boolean compressed) {
@@ -161,14 +157,13 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
     }
 
     @Override
-    public ImageHeapConstant forObjectClone() {
+    public ImageHeapConstant forObjectClone(int identityHashCode) {
         assert constantData.type.isCloneableWithAllocation() : "all arrays implement Cloneable";
 
         Object[] arrayElements = getElementValues();
         Objects.requireNonNull(arrayElements, "Cannot clone an array before the element values are set.");
         Object[] newArrayElementValues = Arrays.copyOf(arrayElements, arrayElements.length);
         /* The new constant is never backed by a hosted object, regardless of the input object. */
-        JavaConstant newObject = null;
-        return new ImageHeapObjectArray(constantData.type, newObject, createIdentityHashCode(newObject), newArrayElementValues, arrayElements.length, compressed);
+        return new ImageHeapObjectArray(constantData.type, null, identityHashCode, newArrayElementValues, arrayElements.length, compressed);
     }
 }
