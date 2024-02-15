@@ -45,10 +45,10 @@ import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.jdk.VarHandleFeature;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
+import com.oracle.svm.hosted.jdk.VarHandleFeature;
 import com.oracle.svm.hosted.methodhandles.MethodHandleFeature;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -147,9 +147,9 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
         } else if (object instanceof DynamicHub hub) {
             reflectionSupport.registerHeapDynamicHub(hub, reason);
         } else if (object instanceof VarHandle varHandle) {
-            varHandleSupport.registerHeapVarHandle(varHandle);
+            varHandleSupport.registerHeapVarHandle(varHandle, reason);
         } else if (directMethodHandleClass.isInstance(object)) {
-            varHandleSupport.registerHeapMethodHandle((MethodHandle) object);
+            varHandleSupport.registerHeapMethodHandle((MethodHandle) object, reason);
         } else if (object instanceof MethodType methodType) {
             methodHandleSupport.registerHeapMethodType(methodType);
         } else if (memberNameClass.isInstance(object)) {
