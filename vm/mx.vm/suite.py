@@ -88,7 +88,7 @@ suite = {
             "sourceDirs" : ["src"],
             "javaCompliance" : "17+",
             "license" : "GPLv2-CPE",
-            "checkstyleVersion" : "10.7.0",
+            "checkstyle": "org.graalvm.polybench",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
                 "truffle:TRUFFLE_JSON",
@@ -103,7 +103,7 @@ suite = {
                 "org.graalvm.component.installer"
             ],
             "javaCompliance" : "17+",
-            "checkstyle": "org.graalvm.component.installer",
+            "checkstyle": "org.graalvm.polybench",
             "license" : "GPLv2-CPE",
             "requires" : ["java.logging"],
         },
@@ -112,7 +112,7 @@ suite = {
             "sourceDirs" : ["src"],
             "javaCompliance" : "17+",
             "license" : "GPLv2-CPE",
-            "checkstyle": "org.graalvm.component.installer",
+            "checkstyleVersion" : "10.7.0",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
                 "sdk:POLYGLOT",
@@ -128,7 +128,7 @@ suite = {
             "sourceDirs" : ["src"],
             "javaCompliance" : "17+",
             "license" : "GPLv2-CPE",
-            "checkstyle": "org.graalvm.component.installer",
+            "checkstyle": "org.graalvm.polybench",
             "dependencies": [
                 "truffle:TRUFFLE_API",
             ],
@@ -142,7 +142,7 @@ suite = {
             "sourceDirs" : ["src"],
             "javaCompliance" : "17+",
             "license" : "GPLv2-CPE",
-            "checkstyle": "org.graalvm.component.installer",
+            "checkstyle": "org.graalvm.polybench",
             "dependencies": [
                 "truffle:TRUFFLE_API",
             ],
