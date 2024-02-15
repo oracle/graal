@@ -1631,16 +1631,16 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
         @Override
         public void setRegularState(VirtualFrame frame) {
-            frame.setBooleanStatic(booleanSlot, true);
+            frame.setByteStatic(byteSlot, (byte) 1);
             // everything else is uninitialized
         }
 
         @Override
         public void checkRegularState(VirtualFrame frame) {
             try {
-                assertEquals(true, frame.getBooleanStatic(booleanSlot));
+                assertEquals((byte) 1, frame.getByteStatic(byteSlot));
                 // these slots are uninitialized
-                ensureUninitReturnsDefault(frame, byteSlot);
+                ensureUninitReturnsDefault(frame, booleanSlot);
                 ensureUninitReturnsDefault(frame, doubleSlot);
                 ensureUninitReturnsDefault(frame, floatSlot);
                 ensureUninitReturnsDefault(frame, intSlot);
@@ -1654,16 +1654,16 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
         @Override
         public void setOSRState(VirtualFrame frame) {
-            frame.setBooleanStatic(booleanSlot, false);
+            frame.setByteStatic(byteSlot, (byte) 2);
             // everything else is uninitialized
         }
 
         @Override
         public void checkOSRState(VirtualFrame frame) {
             try {
-                assertEquals(false, frame.getBooleanStatic(booleanSlot));
+                assertEquals((byte) 2, frame.getByteStatic(byteSlot));
                 // these slots are uninitialized
-                ensureUninitReturnsDefault(frame, byteSlot);
+                ensureUninitReturnsDefault(frame, booleanSlot);
                 ensureUninitReturnsDefault(frame, doubleSlot);
                 ensureUninitReturnsDefault(frame, floatSlot);
                 ensureUninitReturnsDefault(frame, intSlot);
