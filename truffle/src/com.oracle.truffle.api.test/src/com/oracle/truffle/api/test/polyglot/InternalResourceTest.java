@@ -596,9 +596,55 @@ public class InternalResourceTest {
             System.getProperties().remove(String.format("polyglot.engine.resourcePath.%s", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class)));
             System.getProperties().remove(String.format("polyglot.engine.resourcePath.%s.%s", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class), LibraryResource.ID));
             System.getProperties().remove(String.format("polyglot.engine.resourcePath.%s.%s", TestUtils.getDefaultLanguageId(TestOverriddenResourceRoot.class), SourcesResource.ID));
-            TemporaryResourceCacheRoot.delete(cacheRoot1);
-            TemporaryResourceCacheRoot.delete(cacheRoot2);
-            TemporaryResourceCacheRoot.delete(cacheRoot3);
+            delete(cacheRoot1);
+            delete(cacheRoot2);
+            delete(cacheRoot3);
+        }
+    }
+
+    @Registration(/* ... */internalResources = {LibraryResource.class, SourcesResource.class})
+    public static class TestOverriddenVersionedCacheRoot extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        @SuppressWarnings("try")
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            String explicitCacheFolder = (String) contextArguments[0];
+            LibraryResource.unpackedCalled = 0;
+            SourcesResource.unpackedCalled = 0;
+            TruffleFile libRoot = env.getInternalResource(LibraryResource.class);
+            assertTrue(libRoot.getCanonicalFile().getPath().startsWith(explicitCacheFolder));
+            verifyResources(libRoot, LibraryResource.RESOURCES);
+            TruffleFile srcRoot = env.getInternalResource(SourcesResource.class);
+            assertTrue(srcRoot.getCanonicalFile().getPath().startsWith(explicitCacheFolder));
+            verifyResources(srcRoot, SourcesResource.RESOURCES);
+            assertEquals(1, LibraryResource.unpackedCalled);
+            assertEquals(1, SourcesResource.unpackedCalled);
+            // Verify that unpack is called just once
+            libRoot = env.getInternalResource(LibraryResource.class);
+            assertTrue(libRoot.getCanonicalFile().getPath().startsWith(explicitCacheFolder));
+            srcRoot = env.getInternalResource(SourcesResource.class);
+            assertTrue(srcRoot.getCanonicalFile().getPath().startsWith(explicitCacheFolder));
+            assertEquals(1, LibraryResource.unpackedCalled);
+            assertEquals(1, SourcesResource.unpackedCalled);
+            return "";
+        }
+    }
+
+    @Test
+    public void testOverriddenVersionedCacheRoot() throws Exception {
+        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
+        Path cacheFolder = Files.createTempDirectory("cacheFolder");
+        try {
+            TemporaryResourceCacheRoot.setTestCacheRoot(null, false);
+            System.setProperty("polyglot.engine.userResourceCache", cacheFolder.toString());
+            try (Context context = Context.create()) {
+                AbstractExecutableTestLanguage.execute(context, TestOverriddenVersionedCacheRoot.class, cacheFolder.toRealPath().toString());
+            } finally {
+                TemporaryResourceCacheRoot.setTestCacheRoot(null, false);
+            }
+        } finally {
+            System.getProperties().remove("polyglot.engine.userResourceCache");
+            delete(cacheFolder);
         }
     }
 
@@ -764,7 +810,7 @@ public class InternalResourceTest {
             assertFalse(hasResource(tmpDir, TestCopyResourcesInstrument.ID, LibraryResource.class));
             assertFalse(hasResource(tmpDir, TestCopyResourcesInstrument.ID, SourcesResource.class));
         } finally {
-            TemporaryResourceCacheRoot.delete(tmpDir);
+            delete(tmpDir);
         }
         tmpDir = Files.createTempDirectory(null);
         try {
@@ -777,7 +823,7 @@ public class InternalResourceTest {
             assertTrue(hasResource(tmpDir, TestCopyResourcesInstrument.ID, LibraryResource.class));
             assertTrue(hasResource(tmpDir, TestCopyResourcesInstrument.ID, SourcesResource.class));
         } finally {
-            TemporaryResourceCacheRoot.delete(tmpDir);
+            delete(tmpDir);
         }
         tmpDir = Files.createTempDirectory(null);
         try {
@@ -785,7 +831,7 @@ public class InternalResourceTest {
             AbstractPolyglotTest.assertFails(() -> Engine.copyResources(tmpDirFinal, InternalResourceTest.class.getSimpleName() + ".invalid_id"),
                             IllegalArgumentException.class);
         } finally {
-            TemporaryResourceCacheRoot.delete(tmpDir);
+            delete(tmpDir);
         }
     }
 
@@ -1070,15 +1116,15 @@ public class InternalResourceTest {
         }, SecurityException.class);
     }
 
-    private static void delete(Path file) throws IOException {
-        if (Files.isDirectory(file)) {
-            try (DirectoryStream<Path> children = Files.newDirectoryStream(file)) {
+    private static void delete(Path path) throws IOException {
+        if (Files.isDirectory(path)) {
+            try (DirectoryStream<Path> children = Files.newDirectoryStream(path)) {
                 for (Path child : children) {
                     delete(child);
                 }
             }
         }
-        Files.delete(file);
+        Files.delete(path);
     }
 
     @FunctionalInterface
@@ -1119,17 +1165,6 @@ public class InternalResourceTest {
             } catch (IOException | ClassNotFoundException e) {
                 throw new AssertionError("Failed to reset cache root.", e);
             }
-        }
-
-        private static void delete(Path path) throws IOException {
-            if (Files.isDirectory(path)) {
-                try (DirectoryStream<Path> children = Files.newDirectoryStream(path)) {
-                    for (Path child : children) {
-                        delete(child);
-                    }
-                }
-            }
-            Files.delete(path);
         }
 
         static void reset(boolean nativeImageRuntime) throws ClassNotFoundException {
