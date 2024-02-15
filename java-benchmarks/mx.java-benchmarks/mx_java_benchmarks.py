@@ -35,7 +35,7 @@ from tempfile import mkdtemp, mkstemp
 
 import mx
 import mx_benchmark
-from mx_benchmark import ParserEntry
+from mx_benchmark import ParserEntry, DataPoints
 import mx_sdk_benchmark
 from mx_sdk_benchmark import NativeImageBundleBasedBenchmarkMixin
 import mx_sdk_vm_impl
@@ -161,12 +161,8 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.BenchmarkSuite):
         else:
             return []
 
-    def stages(self, args):
-        # This method overrides NativeImageMixin.stages
-        parsed_arg = mx_sdk_benchmark.parse_prefixed_arg('-Dnative-image.benchmark.stages=', args, 'Native Image benchmark stages should only be specified once.')
-        return parsed_arg.split(',') if parsed_arg else self.default_stages()
-
     def default_stages(self):
+        # This method is used by NativeImageMixin.stages
         raise NotImplementedError()
 
 
@@ -186,7 +182,6 @@ class BaseSpringBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBundle
         return 's'
 
     def default_stages(self):
-        # This method overrides NativeImageMixin.stages
         return ['instrument-image', 'instrument-run', 'image', 'run']
 
     def uses_bundles(self):
@@ -419,6 +414,9 @@ class BaseQuarkusRegistryBenchmark(BaseQuarkusBenchmarkSuite, mx_sdk_benchmark.B
 
     def default_stages(self):
         return ['image']
+
+    def run(self, benchmarks, bmSuiteArgs):
+        self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
@@ -1952,7 +1950,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             )
         ]
 
-    def run(self, benchmarks, bmSuiteArgs):
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
         results = super(RenaissanceBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
         self.addAverageAcrossLatestResults(results)
         return results
@@ -2029,7 +2027,7 @@ class SparkSqlPerfBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.A
         # We average over the last 2 out of 3 total iterations done by this suite.
         return 2
 
-    def run(self, benchmarks, bmSuiteArgs):
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
         runretval = self.runAndReturnStdOut(benchmarks, bmSuiteArgs)
         retcode, out, dims = runretval
         self.validateStdoutWithDimensions(
@@ -2164,7 +2162,7 @@ class AWFYBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Averaging
             )
         ]
 
-    def run(self, benchmarks, bmSuiteArgs):
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
         results = super(AWFYBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
         self.addAverageAcrossLatestResults(results)
         return results
