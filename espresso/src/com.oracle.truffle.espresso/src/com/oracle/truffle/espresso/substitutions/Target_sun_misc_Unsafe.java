@@ -40,6 +40,8 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.ffi.Buffer;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
@@ -876,17 +878,19 @@ public final class Target_sun_misc_Unsafe {
     public static long objectFieldOffset1(@JavaType(Unsafe.class) StaticObject self, @JavaType(value = Class.class) StaticObject cl, @JavaType(value = String.class) StaticObject guestName,
                     @Inject Meta meta, @Inject EspressoLanguage language) {
         Klass k = cl.getMirrorKlass(meta);
-        String hostName = meta.toHostString(guestName);
-        if (k instanceof ObjectKlass) {
-            ObjectKlass kl = (ObjectKlass) k;
-            for (Field f : kl.getFieldTable()) {
-                if (!f.isRemoved() && f.getNameAsString().equals(hostName)) {
-                    return getGuestFieldOffset(f, language);
+        if (k instanceof ObjectKlass kl) {
+            String hostName = meta.toHostString(guestName);
+            Symbol<Name> name = meta.getNames().lookup(hostName);
+            if (name != null) {
+                for (Field f : kl.getFieldTable()) {
+                    if (!f.isRemoved() && f.getName() == name) {
+                        return getGuestFieldOffset(f, language);
+                    }
                 }
-            }
-            for (Field f : kl.getStaticFieldTable()) {
-                if (!f.isRemoved() && f.getNameAsString().equals(hostName)) {
-                    return getGuestFieldOffset(f, language);
+                for (Field f : kl.getStaticFieldTable()) {
+                    if (!f.isRemoved() && f.getName() == name) {
+                        return getGuestFieldOffset(f, language);
+                    }
                 }
             }
         }
