@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.jfr;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
+import com.oracle.svm.core.sampler.SamplerStatistics;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -53,8 +56,6 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 
 import jdk.graal.compiler.api.replacements.Fold;
-
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 /**
  * This class holds various JFR-specific thread local values.
@@ -174,7 +175,9 @@ public class JfrThreadLocal implements ThreadListener {
         dataLost.set(isolateThread, WordFactory.unsigned(0));
 
         /* Clear stacktrace-related thread-locals. */
+        SamplerStatistics.singleton().addMissedSamples(getMissedSamples(isolateThread));
         missedSamples.set(isolateThread, 0);
+        SamplerStatistics.singleton().addUnparseableSamples(getUnparseableStacks(isolateThread));
         unparseableStacks.set(isolateThread, 0);
         assert samplerWriterData.get(isolateThread).isNull();
 

@@ -899,7 +899,7 @@ else:
     LayoutSuper = mx.LayoutTARDistribution
 
 
-class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # pylint: disable=R0901
+class AbstractGraalVmLayoutDistribution(BaseGraalVmLayoutDistribution):
     def __init__(self, base_name, theLicense=None, stage1=False, components=None, include_native_image_resources_filelists=None, add_component_dependencies=True, is_graalvm=True, add_jdk_base=True, allow_incomplete_launchers=False, **kw_args):
         self.base_name = base_name
         _include_native_image_resources_filelists = not stage1 if include_native_image_resources_filelists is None else include_native_image_resources_filelists
@@ -907,7 +907,7 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # 
         if components is None:
             components_with_dependencies = []
         elif add_component_dependencies:
-            components_with_dependencies = GraalVmLayoutDistribution._add_dependencies(components)
+            components_with_dependencies = AbstractGraalVmLayoutDistribution._add_dependencies(components)
         else:
             components_with_dependencies = components
 
@@ -924,7 +924,7 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # 
             base_dir = base_name.lower().replace('_', '-')
             self.vm_config_name = None
 
-        super(GraalVmLayoutDistribution, self).__init__(
+        super(AbstractGraalVmLayoutDistribution, self).__init__(
             suite=_suite,
             name=name,
             deps=[],
@@ -963,13 +963,32 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # 
             }
 
     def remoteName(self, platform=None):
-        remote_name = super(GraalVmLayoutDistribution, self).remoteName(platform=platform)
+        remote_name = super(AbstractGraalVmLayoutDistribution, self).remoteName(platform=platform)
         # maven artifactId cannot contain '+'
         # Example: 'graalvm-community-openjdk-17.0.7+4.1-linux-amd64' -> 'graalvm-community-openjdk-17.0.7-4.1-linux-amd64'
         return remote_name.replace('+', '-')
 
+
+class GraalVmLayoutDistribution(AbstractGraalVmLayoutDistribution, LayoutSuper):  # pylint: disable=R0901
+    def __init__(self, base_name, **kw_args):
+        super(GraalVmLayoutDistribution, self).__init__(base_name, **kw_args)
+
     def getBuildTask(self, args):
         return GraalVmLayoutDistributionTask(args, self, 'latest_graalvm', 'latest_graalvm_home')
+
+
+class GraalVmLayoutCompressedTARDistribution(AbstractGraalVmLayoutDistribution, mx.LayoutTARDistribution):  # pylint: disable=R0901
+    def __init__(self, base_name, **kw_args):
+        super(GraalVmLayoutCompressedTARDistribution, self).__init__(base_name, compress=True, **kw_args)
+
+    def compress_locally(self):
+        return True
+
+    def compress_remotely(self):
+        return True
+
+    def getBuildTask(self, args):
+        return GraalVmLayoutDistributionTask(args, self)
 
 
 def _components_set(components=None, stage1=False):
@@ -1055,9 +1074,15 @@ def _get_graalvm_configuration(base_name, components=None, stage1=False):
 
 
 class GraalVmLayoutDistributionTask(BaseGraalVmLayoutDistributionTask):
-    def __init__(self, args, dist, root_link_name, home_link_name):
-        self._root_link_path = join(_suite.dir, root_link_name)
-        self._home_link_path = join(_suite.dir, home_link_name)
+    def __init__(self, args, dist, root_link_name=None, home_link_name=None):
+        """
+        :type args: list[str]
+        :type dist: AbstractGraalVmLayoutDistribution
+        :type root_link_name: str or None
+        :type home_link_name: str or None
+        """
+        self._root_link_path = join(_suite.dir, root_link_name) if root_link_name is not None else None
+        self._home_link_path = join(_suite.dir, home_link_name) if home_link_name is not None else None
         self._library_projects = None
         super(GraalVmLayoutDistributionTask, self).__init__(args, dist)
 
@@ -1066,8 +1091,10 @@ class GraalVmLayoutDistributionTask(BaseGraalVmLayoutDistributionTask):
             mx.warn('Skip adding symlink to ' + self._home_link_target() + ' (Platform Windows)')
             return
         self._rm_link()
-        os.symlink(self._root_link_target(), self._root_link_path)
-        os.symlink(self._home_link_target(), self._home_link_path)
+        if self._root_link_path is not None:
+            os.symlink(self._root_link_target(), self._root_link_path)
+        if self._home_link_path is not None:
+            os.symlink(self._home_link_target(), self._home_link_path)
 
     def _root_link_target(self):
         return relpath(self.subject.output, _suite.dir)
@@ -1079,7 +1106,7 @@ class GraalVmLayoutDistributionTask(BaseGraalVmLayoutDistributionTask):
         if mx.get_os() == 'windows':
             return
         for l in [self._root_link_path, self._home_link_path]:
-            if os.path.lexists(l):
+            if l is not None and os.path.lexists(l):
                 os.unlink(l)
 
     def needsBuild(self, newestInput):
@@ -1088,6 +1115,8 @@ class GraalVmLayoutDistributionTask(BaseGraalVmLayoutDistributionTask):
             return sup
         if mx.get_os() != 'windows' and self.subject == get_final_graalvm_distribution():
             for link_path, link_target in [(self._root_link_path, self._root_link_target()), (self._home_link_path, self._home_link_target())]:
+                if link_path is None:
+                    continue
                 if not os.path.lexists(link_path):
                     return True, '{} does not exist'.format(link_path)
                 link_file = mx.TimeStampFile(link_path, False)

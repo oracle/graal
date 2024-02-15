@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,7 +42,6 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
 import jdk.vm.ci.code.CodeUtil;
 
 /**
@@ -129,10 +128,22 @@ public final class NarrowNode extends IntegerConvertNode<Narrow> {
         switch (cond) {
             case LT:
                 return isSignedLossless();
+            /*
+             * We may use signed stamps to represent unsigned integers. This narrow preserves order
+             * if it is signed lossless and is being compared to another narrow that is signed
+             * lossless, or if it is unsigned lossless and the other narrow is also unsigned
+             * lossless. We don't have access to the other narrow here, so we must make a
+             * conservative choice. We can rely on the fact that the same computation will be
+             * performed on the other narrow, so it will make the same choice.
+             *
+             * Most Java values are signed, so we expect the signed case to be more relevant for
+             * equals comparison. In contrast, the unsigned case should be more relevant for
+             * unsigned less than comparisons.
+             */
             case EQ:
+                return isSignedLossless();
             case BT:
-                // We may use signed stamps to represent unsigned integers.
-                return isSignedLossless() || isUnsignedLossless();
+                return isUnsignedLossless();
             default:
                 throw GraalError.shouldNotReachHere("Unsupported canonical condition."); // ExcludeFromJacocoGeneratedReport
         }

@@ -306,6 +306,16 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     }
 
     private static int initializeIsolateInterruptibly0(CEntryPointCreateIsolateParameters parameters) {
+        try {
+            return initializeIsolateInterruptibly1(parameters);
+        } catch (Throwable t) {
+            Log.log().string("Uncaught exception while initializing isolate: ").exception(t).newline();
+            return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
+        }
+    }
+
+    @NeverInline("GR-24649")
+    private static int initializeIsolateInterruptibly1(CEntryPointCreateIsolateParameters parameters) {
         /*
          * The VM operation thread must be started early as no VM operations can be scheduled before
          * this thread is fully started. The isolate teardown may also use VM operations.
@@ -391,10 +401,11 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         assert !isolateInitialized;
         isolateInitialized = true;
 
+        /* Run isolate initialization hooks. */
         try {
             RuntimeSupport.executeInitializationHooks();
         } catch (Throwable t) {
-            System.err.println("Uncaught exception while running initialization hooks:");
+            System.err.println("Uncaught exception while running isolate initialization hooks:");
             t.printStackTrace();
             return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
         }
@@ -407,6 +418,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             t.printStackTrace();
             return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
         }
+
         return CEntryPointErrors.NO_ERROR;
     }
 

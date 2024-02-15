@@ -137,8 +137,21 @@ public class ReadNode extends FloatableAccessNode
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (tool.allUsagesAvailable() && hasNoUsages()) {
-            // Read without usages or guard can be safely removed.
+        if (!getUsedAsNullCheck() && tool.allUsagesAvailable() && hasNoUsages()) {
+            /**
+             * Read without usages or guard can be safely removed as long as it does not act as the
+             * null check for dominated memory accesses.
+             *
+             * <pre>
+             * readWithNullCheck(object.a);
+             * read(object.b);
+             * read(object.c);
+             * </pre>
+             *
+             * In this pattern the first read is the null check for the dominated reads of b and c.
+             * Thus, the read of a must not be removed after fix reads phase even if it has no
+             * usages.
+             */
             return null;
         }
         if (canCanonicalizeRead()) {

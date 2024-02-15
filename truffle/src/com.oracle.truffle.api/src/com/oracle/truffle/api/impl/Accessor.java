@@ -373,6 +373,8 @@ public abstract class Accessor {
 
         public abstract Map<String, InstrumentInfo> getInstruments(Object polyglotObject);
 
+        public abstract boolean isInstrumentReadyForContextEvents(Object polyglotInstrument);
+
         public abstract Object createPolyglotSourceSection(Object polyglotObject, Object source, SourceSection sectionImpl);
 
         public abstract <T> T lookup(InstrumentInfo info, Class<T> serviceClass);

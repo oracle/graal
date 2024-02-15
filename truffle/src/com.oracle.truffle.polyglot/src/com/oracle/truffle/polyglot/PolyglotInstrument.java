@@ -68,6 +68,7 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
     private volatile OptionValuesImpl optionValues;
     private volatile boolean initialized;
     private volatile boolean created;
+    private volatile boolean readyForContextEvents;
     private volatile boolean finalized;
     private volatile boolean closed;
     int requestedAsyncStackDepth = 0;
@@ -177,6 +178,10 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
         return created;
     }
 
+    public boolean isReadyForContextEvents() {
+        return readyForContextEvents;
+    }
+
     void ensureCreated() {
         if (!created) {
             validateSandbox(engine.sandboxPolicy);
@@ -201,6 +206,12 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
                     context.invokeLocalsFactories(contextLocalLocations, contextThreadLocalLocations);
                 }
             }
+            /*
+             * This instrument might have installed various listeners that access context locals
+             * defined by this instrument. Therefore, the listener events must not be invoked before
+             * the context locals for all contexts are initialized.
+             */
+            readyForContextEvents = true;
         }
     }
 

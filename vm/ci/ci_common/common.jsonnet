@@ -641,7 +641,7 @@ local devkits = graal_common.devkits;
   deploy_vm_base_javaLatest_linux_amd64: vm.vm_java_Latest + self.full_vm_build_linux_amd64 + self.linux_deploy + self.vm_base('linux', 'amd64', 'post-merge', deploy=true) + self.deploy_graalvm_base('latest') + {name: 'post-merge-deploy-vm-base-java-latest-linux-amd64', notify_groups:: ["deploy"]},
   deploy_vm_installables_standalones_javaLatest_linux_amd64: vm.vm_java_Latest + self.full_vm_build_linux_amd64 + self.linux_deploy + self.vm_base('linux', 'amd64', 'daily', deploy=true) + self.deploy_graalvm_components('latest', installables=false, standalones=true, record_file_sizes=true) + {name: 'daily-deploy-vm-installables-standalones-java-latest-linux-amd64', notify_groups:: ["deploy"]},
   # - JDK21
-  deploy_vm_base_java21_linux_amd64: vm.vm_java_21 + self.full_vm_build_linux_amd64 + self.linux_deploy + self.vm_base('linux', 'amd64', 'post-merge', deploy=true) + self.deploy_graalvm_base("java21") + {name: 'post-merge-deploy-vm-base-java21-linux-amd64', notify_groups:: ["deploy"]},
+  deploy_vm_base_java21_linux_amd64: vm.vm_java_21 + self.full_vm_build_linux_amd64 + self.linux_deploy + self.vm_base('linux', 'amd64', 'weekly', deploy=true) + self.deploy_graalvm_base("java21") + {name: 'weekly-deploy-vm-base-java21-linux-amd64', notify_groups:: ["deploy"]},
   deploy_vm_installables_standalones_java21_linux_amd64: vm.vm_java_21_llvm + self.full_vm_build_linux_amd64 + self.linux_deploy + self.vm_base('linux', 'amd64', 'weekly', deploy=true) + self.deploy_graalvm_components("java21", installables=true, standalones=true, record_file_sizes=true) + {name: 'weekly-deploy-vm-installables-standalones-java21-linux-amd64', notify_groups:: ["deploy"]},
 
   # Linux/AARCH64
