@@ -29,8 +29,6 @@ import java.util.Arrays;
 import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
@@ -80,7 +78,6 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         }
     }
 
-    private final EconomicSet<Class<?>> hostedProxyClasses = EconomicSet.create(Equivalence.IDENTITY);
     private final EconomicMap<ProxyCacheKey, Object> proxyCache = ImageHeapMap.create();
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -103,7 +100,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private Object createProxyClass(Class<?>[] interfaces) {
+    private static Object createProxyClass(Class<?>[] interfaces) {
         try {
             Class<?> clazz = createProxyClassFromImplementedInterfaces(interfaces);
 
@@ -135,8 +132,6 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
             for (Class<?> intf : interfaces) {
                 RuntimeReflection.register(intf.getMethods());
             }
-
-            hostedProxyClasses.add(clazz);
             return clazz;
         } catch (Throwable t) {
             LogUtils.warning("Could not create a proxy class from list of interfaces: %s. Reason: %s", Arrays.toString(interfaces), t.getMessage());
@@ -230,14 +225,13 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
     @Override
     public boolean isProxyClass(Class<?> clazz) {
         if (SubstrateUtil.HOSTED) {
-            return isHostedProxyClass(clazz);
+            /*
+             * All proxy classes, even the ones that we create artificially, are proper proxy
+             * classes in the host VM.
+             */
+            return java.lang.reflect.Proxy.isProxyClass(clazz);
         }
         return DynamicHub.fromClass(clazz).isProxyClass();
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private synchronized boolean isHostedProxyClass(Class<?> clazz) {
-        return hostedProxyClasses.contains(clazz);
     }
 
     @SuppressWarnings("deprecation")
