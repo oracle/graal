@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jni.headers;
 
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 
@@ -46,6 +47,7 @@ public final class JNIVersionJDKLatest {
      * gets available, the "value" property of the CConstant annotation below must be removed.
      */
     @CConstant(value = "JNI_VERSION_21")
+    @BasedOnJDKFile("src/java.base/share/native/include/jni.h#L1985-L1996")
     public static native int JNI_VERSION_LATEST();
 
     // Checkstyle: resume
