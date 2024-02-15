@@ -644,6 +644,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         return jvmtiVThreadStart != 0L && jvmtiVThreadEnd != 0L && jvmtiVThreadMount != 0L && jvmtiVThreadUnmount != 0L;
     }
 
+    // JDK-8322630
+    public final int icSpeculatedKlassOffset = getFieldOffset("CompiledICData::_speculated_klass", Integer.class, "uintptr_t", Integer.MAX_VALUE, JDK >= 23);
+
     public final int jvmciCountersSize = getFlag("JVMCICounterSize", Integer.class);
 
     // JDK-8231756, GR-16685

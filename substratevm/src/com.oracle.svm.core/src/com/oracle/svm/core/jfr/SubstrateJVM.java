@@ -26,6 +26,7 @@ package com.oracle.svm.core.jfr;
 
 import java.util.List;
 
+import com.oracle.svm.core.sampler.SamplerStatistics;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -783,8 +784,8 @@ public class SubstrateJVM {
     }
 
     private static void printSamplerStatistics() {
-        long missedSamples = 0;
-        long unparseableStacks = 0;
+        long missedSamples = SamplerStatistics.singleton().getMissedSamples();
+        long unparseableStacks = SamplerStatistics.singleton().getUnparseableSamples();
         for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
             missedSamples += JfrThreadLocal.getMissedSamples(isolateThread);
             unparseableStacks += JfrThreadLocal.getUnparseableStacks(isolateThread);

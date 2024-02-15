@@ -1046,6 +1046,8 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
         3. Invoking the platform dependent builder that we delegate to.
     """
 
+    libs = property(lambda self: self.delegate.libs)
+
     def __init__(self, suite, name, deps, workingSets, **kwargs):
         subDir = 'src'
         srcDirs = ['patches']
@@ -1107,7 +1109,6 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
             )
 
         self.include_dirs = self.delegate.include_dirs
-        self.libs = self.delegate.libs
 
     def resolveDeps(self):
         super(LibffiBuilderProject, self).resolveDeps()
