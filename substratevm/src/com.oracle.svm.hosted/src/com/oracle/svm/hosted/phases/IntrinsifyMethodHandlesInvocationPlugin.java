@@ -446,13 +446,16 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  * class initialization check manually later on when appending nodes to the target
                  * graph.
                  */
-                GraalError.guarantee(receiver.isConstant(), "Not a java constant %s", receiver.get());
-                ResolvedJavaField memberField = findField(targetMethod.getDeclaringClass(), "member");
-                JavaConstant member = b.getConstantReflection().readFieldValue(memberField, receiver.get().asJavaConstant());
-                ResolvedJavaField clazzField = findField(memberField.getType().resolve(memberField.getDeclaringClass()), "clazz");
-                JavaConstant clazz = b.getConstantReflection().readFieldValue(clazzField, member);
-                b.add(new DirectMethodHandleEnsureInitializedNode(b.getConstantReflection().asJavaType(clazz)));
-                return true;
+                JavaConstant receiverConstant = receiver.get(true).asJavaConstant();
+                if (receiverConstant != null && receiverConstant.isNonNull()) {
+                    ResolvedJavaField memberField = findField(targetMethod.getDeclaringClass(), "member");
+                    JavaConstant member = b.getConstantReflection().readFieldValue(memberField, receiverConstant);
+                    ResolvedJavaField clazzField = findField(memberField.getType().resolve(memberField.getDeclaringClass()), "clazz");
+                    JavaConstant clazz = b.getConstantReflection().readFieldValue(clazzField, member);
+                    b.add(new DirectMethodHandleEnsureInitializedNode(b.getConstantReflection().asJavaType(clazz)));
+                    return true;
+                }
+                return false;
             }
         });
 
@@ -503,7 +506,6 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                     } catch (WrongMethodTypeException t) {
                         return false;
                     }
-                    receiver.requireNonNull();
                     JavaConstant asTypeConstant = snippetReflection.forObject(asType);
                     ConstantNode asTypeNode = ConstantNode.forConstant(asTypeConstant, b.getMetaAccess(), b.getGraph());
                     b.push(JavaKind.Object, asTypeNode);

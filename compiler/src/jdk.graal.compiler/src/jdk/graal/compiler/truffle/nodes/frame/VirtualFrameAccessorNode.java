@@ -39,7 +39,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import jdk.graal.compiler.nodes.spi.VirtualizerTool;
-
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -59,7 +58,7 @@ public abstract class VirtualFrameAccessorNode extends FixedWithNextNode impleme
 
     protected VirtualFrameAccessorNode(NodeClass<? extends VirtualFrameAccessorNode> c, Stamp stamp, Receiver frame, int frameSlotIndex,
                     int accessTag, VirtualFrameAccessType type, VirtualFrameAccessFlags accessFlags) {
-        this(c, stamp, (NewFrameNode) frame.get(), frameSlotIndex, accessTag, type, accessFlags);
+        this(c, stamp, (NewFrameNode) frame.get(false), frameSlotIndex, accessTag, type, accessFlags);
     }
 
     protected VirtualFrameAccessorNode(NodeClass<? extends VirtualFrameAccessorNode> c, Stamp stamp, NewFrameNode frame, int frameSlotIndex,

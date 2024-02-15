@@ -101,11 +101,6 @@ public class InvocationPlugins {
     public static class InvocationPluginReceiver implements InvocationPlugin.Receiver {
         private final GraphBuilderContext parser;
         private ValueNode[] args;
-        /**
-         * Caches the null checked receiver value. If still {@code null} after application of a
-         * plugin, then the plugin never called {@link #get(boolean)} with {@code true}.
-         */
-        private ValueNode value;
 
         public InvocationPluginReceiver(GraphBuilderContext parser) {
             this.parser = parser;
@@ -114,25 +109,13 @@ public class InvocationPlugins {
         @Override
         public ValueNode get(boolean performNullCheck) {
             assert args != null : "Cannot get the receiver of a static method";
-            if (!performNullCheck) {
-                return args[0];
+            if (performNullCheck) {
+                args[0] = parser.nullCheckedValue(args[0]);
             }
-            if (value == null) {
-                value = parser.nullCheckedValue(args[0]);
-                if (value != args[0]) {
-                    args[0] = value;
-                }
-            }
-            return value;
-        }
-
-        @Override
-        public boolean isConstant() {
-            return args[0].isConstant();
+            return args[0];
         }
 
         public InvocationPluginReceiver init(ResolvedJavaMethod targetMethod, ValueNode[] newArgs) {
-            this.value = null;
             if (!targetMethod.isStatic()) {
                 this.args = newArgs;
                 return this;
@@ -141,23 +124,11 @@ public class InvocationPlugins {
             return null;
         }
 
-        @Override
-        public ValueNode requireNonNull() {
-            if (value == null) {
-                GraalError.guarantee(args != null, "target method is static");
-                if (!StampTool.isPointerNonNull(args[0])) {
-                    throw new GraalError("receiver might be null: %s", value);
-                }
-                value = args[0];
-            }
-            return value;
-        }
-
         /**
          * Determines if {@link #get(boolean)} was called with {@code true}.
          */
         public boolean nullCheckPerformed() {
-            return value != null;
+            return StampTool.isPointerNonNull(args[0]);
         }
     }
 
