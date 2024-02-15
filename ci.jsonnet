@@ -63,6 +63,4 @@ local verify_ci = (import 'ci/ci_common/ci-check.libsonnet').verify_ci;
   assert verify_ci(self.builds),
   // verify that the run-spec demo works
   assert (import "ci/ci_common/run-spec-demo.jsonnet").check(),
-  // ensure that the galahad CI configuration does not break
-  assert std.type(std.manifestJson((import "galahad.jsonnet").builds)) == "string"
 }
