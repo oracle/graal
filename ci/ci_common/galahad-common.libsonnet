@@ -5,6 +5,7 @@ local galahad_jdk = common_json.jdks["galahad-jdk"];
 local utils = import "common-utils.libsonnet";
 {
   local GALAHAD_PROPERTY = "_galahad_include",
+  local GALAHAD_SKIP_JDK_CHECK_PROPERTY = "_galahad_skip_jdk_check",
   local arrContains(arr, needle) =
     std.find(needle, arr) != []
   ,
@@ -78,7 +79,7 @@ local utils = import "common-utils.libsonnet";
       # we only care about gate jobs
       b
     else
-      assert utils.contains(b.name, "style") || b.downloads.JAVA_HOME.name == "jpg-jdk" : "Job %s is not using a jpg-jdk: %s" % [b.name, b.downloads];
+      assert utils.contains(b.name, "style") || utils.std_get(b, GALAHAD_SKIP_JDK_CHECK_PROPERTY, false) || b.downloads.JAVA_HOME.name == "jpg-jdk" : "Job %s is not using a jpg-jdk: %s" % [b.name, b.downloads];
       b
   ,
   local replace_mx(b) =
@@ -107,6 +108,11 @@ local utils = import "common-utils.libsonnet";
   # Exclude a job in the galahad gate
   exclude:: {
     [GALAHAD_PROPERTY]:: [false]
+  },
+
+  # Skip JDK check (e.g. for style gates)
+  skip_jdk_check:: {
+    [GALAHAD_SKIP_JDK_CHECK_PROPERTY]:: true
   },
 
   # only returns jobs that are relevant for galahad
