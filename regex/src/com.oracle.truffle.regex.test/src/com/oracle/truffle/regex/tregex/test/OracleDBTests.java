@@ -230,6 +230,17 @@ public class OracleDBTests extends RegexTestBase {
     }
 
     @Test
+    public void testNestedQuantifier() {
+        test("(a*|b)*", "", "aaaaaabaaaaaaaaaaaaaabb", 0, true, 0, 6, 6, 6);
+        test("a((b?)*)*", "", "ab", 0, true, 0, 2, 2, 2, 2, 2);
+    }
+
+    @Test
+    public void testAnchorPrecedence() {
+        test("a(\\z|())", "", "a", 0, true, 0, 1, 1, 1, -1, -1);
+    }
+
+    @Test
     public void generatedTests() {
         /* GENERATED CODE BEGIN - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
         test("abracadabra$", "", "abracadabracadabra", 0, true, 7, 18);
@@ -892,6 +903,46 @@ public class OracleDBTests extends RegexTestBase {
         test("[[=\u0132=]o]+", "i", "ij", 0, true, 0, 2);
         expectSyntaxError("[\\s-r]+", "", "invalid range in regular expression");
         test("[\\s-v]+", "", "\\stu", 0, true, 0, 4);
+        test("$(\\A|)", "", "x", 0, true, 1, 1, 1, 1);
+        test("(^\\w)|()^", "", "empty", 0, true, 0, 1, 0, 1, -1, -1);
+        test("x(y|())", "", "xy", 0, true, 0, 2, 1, 2, -1, -1);
+        test("(x|())*", "", "xxx", 0, true, 0, 3, 3, 3, 3, 3);
+        test("a(\\z|())", "", "a", 0, true, 0, 1, 1, 1, -1, -1);
+        test("a??+", "", "aaa", 0, true, 0, 0);
+        test("()??()??()??()??()??()??()??()??\\3\\5\\7", "", "a", 0, true, 0, 0, -1, -1, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1);
+        test("()*", "", "a", 0, true, 0, 0, 0, 0);
+        test("(a|)*", "", "a", 0, true, 0, 1, 1, 1);
+        test("(|a)?", "", "a", 0, true, 0, 0, 0, 0);
+        test("(a|())*", "", "a", 0, true, 0, 1, 1, 1, 1, 1);
+        test("()??\\1", "", "a", 0, true, 0, 0, 0, 0);
+        test("(a|())*?\\2", "", "a", 0, true, 0, 1, 1, 1, 1, 1);
+        test("(a*)+", "", "a", 0, true, 0, 1, 1, 1);
+        test("(\\1a|){2}", "", "aa", 0, true, 0, 0, 0, 0);
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
+    }
+
+    @Test
+    public void nfaTraversalTests() {
+        test("a+*?", "", "aaa", 0, true, 0, 0);
+        test("a??+", "", "aaa", 0, true, 0, 0);
+
+        test("(()|()|a)+b", "", "ab", 0, true, 0, 2, 1, 1, 1, 1, -1, -1);
+        test("a(|()|())*", "", "a", 0, true, 0, 1, 1, 1, -1, -1, -1, -1);
+        test("a(()|()|)*b", "", "ab", 0, true, 0, 2, 1, 1, 1, 1, -1, -1);
+        test("a(()|()|())*b", "", "ab", 0, true, 0, 2, 1, 1, 1, 1, -1, -1, -1, -1);
+        test("a(()|()|()|())*b", "", "ab", 0, true, 0, 2, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1);
+        test("a(b|()|()|()|())*c", "", "abc", 0, true, 0, 3, 2, 2, 2, 2, -1, -1, -1, -1, -1, -1);
+        test("a(()|b|()|()|())*c", "", "abc", 0, true, 0, 3, 2, 2, 2, 2, -1, -1, -1, -1, -1, -1);
+        test("a(()|()|b|()|())*c", "", "abc", 0, true, 0, 3, 2, 2, 2, 2, -1, -1, -1, -1, -1, -1);
+        test("a(()|()|()|b|())*c", "", "abc", 0, true, 0, 3, 2, 2, 2, 2, -1, -1, -1, -1, -1, -1);
+        test("a(()|()|()|()|b)*c", "", "abc", 0, true, 0, 3, 2, 2, 2, 2, -1, -1, -1, -1, -1, -1);
+        test("a(b|()|()|()|())*c", "", "abbc", 0, true, 0, 4, 3, 3, 3, 3, -1, -1, -1, -1, -1, -1);
+        test("a(()|b|()|()|())*c", "", "abbc", 0, true, 0, 4, 3, 3, 3, 3, -1, -1, -1, -1, -1, -1);
+        test("a(()|()|b|()|())*c", "", "abbc", 0, true, 0, 4, 3, 3, 3, 3, -1, -1, -1, -1, -1, -1);
+        test("a(()|()|()|b|())*c", "", "abbc", 0, true, 0, 4, 3, 3, 3, 3, -1, -1, -1, -1, -1, -1);
+        test("a(()|()|()|()|b)*c", "", "abbc", 0, true, 0, 4, 3, 3, 3, 3, -1, -1, -1, -1, -1, -1);
+
+        test("()?*", "", "c", 0, true, 0, 0, 0, 0);
+        test("X(.?){8,8}Y", "", "X1234567Y", 0, true, 0, 9, 8, 8);
     }
 }

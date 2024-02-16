@@ -975,6 +975,9 @@ fn java_string_escape(s: &str) -> String {
         if c == '\\' {
             return "\\\\".to_string();
         }
+        if c == '\n' {
+            return "\\n".to_string();
+        }
         if ' ' <= c && c <= '~' {
             return c.to_string();
         }
@@ -2010,6 +2013,21 @@ fn oracledb_generate_tests() -> Result<()> {
         ("[[=\u{0132}=]o]+", "i", "ij"),
         ("[\\s-r]+", "", "\\stu"),
         ("[\\s-v]+", "", "\\stu"),
+        ("$(\\A|)", "", "x"),
+        ("(^\\w)|()^", "", "empty"),
+        ("x(y|())", "", "xy"),
+        ("(x|())*", "", "xxx"),
+        ("a(\\z|())", "", "a"),
+        ("a??+", "", "aaa"),
+        ("()??()??()??()??()??()??()??()??\\3\\5\\7", "", "a"),
+        ("()*", "", "a"),
+        ("(a|)*", "", "a"),
+        ("(|a)?", "", "a"),
+        ("(a|())*", "", "a"),
+        ("()??\\1", "", "a"),
+        ("(a|())*?\\2", "", "a"),
+        ("(a*)+", "", "a"),
+        ("(\\1a|){2}", "", "aa")
     ] {
         let from_index = 1;
         let e_pattern = java_string_escape(pattern);
