@@ -44,11 +44,14 @@ import java.util.Set;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.Instrumentation;
 import com.oracle.truffle.api.bytecode.LocalSetter;
 import com.oracle.truffle.api.bytecode.LocalSetterRange;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
+import com.oracle.truffle.api.bytecode.Prolog;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.Epilog;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
 import com.oracle.truffle.api.bytecode.Variadic;
@@ -381,6 +384,33 @@ public class ErrorTests {
         @Operation
         public static final class Underscored_Operation {
         }
+
+        @ExpectError("@Operation and @Instrumentation cannot be used at the same time. Remove one of the annotations to resolve this.")
+        @Operation
+        @Instrumentation
+        public static final class OverlappingAnnotations1 {
+            @Specialization
+            public static void doExecute() {
+            }
+        }
+
+        @ExpectError("@Instrumentation and @Prolog cannot be used at the same time. Remove one of the annotations to resolve this.")
+        @Instrumentation
+        @Prolog
+        public static final class OverlappingAnnotations2 {
+            @Specialization
+            public static void doExecute() {
+            }
+        }
+
+        @ExpectError("@Prolog and @Epilog cannot be used at the same time. Remove one of the annotations to resolve this.")
+        @Prolog
+        @Epilog
+        public static final class OverlappingAnnotations3 {
+            @Specialization
+            public static void doExecute() {
+            }
+        }
     }
 
     @GenerateBytecode(languageClass = ErrorLanguage.class)
@@ -479,8 +509,10 @@ public class ErrorTests {
         }
     }
 
-// These specializations should not be a problem. See {@link
-// OperationErrorTests.PackagePrivateSpecializationOperation}
+    /**
+     * These specializations should not be a problem. See
+     * {@link OperationErrorTests.PackagePrivateSpecializationOperation}
+     */
     @OperationProxy.Proxyable
     public abstract static class PackagePrivateSpecializationOperationProxy extends Node {
         public abstract Object execute(Object x, Object y);

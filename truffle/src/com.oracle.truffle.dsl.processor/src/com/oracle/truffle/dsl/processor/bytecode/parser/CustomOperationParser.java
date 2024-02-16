@@ -195,26 +195,15 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             return null;
         }
 
-        Signature signature = createPolymorphicSignature(specializations, customOperation);
+        List<Signature> allSignatures = new ArrayList<>(specializations.size());
+        Signature signature = createPolymorphicSignature(specializations, customOperation, allSignatures);
 
         if (operation.kind == OperationKind.CUSTOM_INSTRUMENTATION) {
-            if (signature.valueCount > 1) {
-                customOperation.addError(String.format("An @%s annotated operation cannot have more than one operand. " +
-                                "Instrumentations must have transparent stack effects. " + //
-                                "Remove the additional operands to resolve this.",
-                                getSimpleName(types.Instrumentation)));
-            } else if (signature.isVariadic) {
-                customOperation.addError(String.format("An @%s annotated operation cannot use @%s for one of its operands. " +
-                                "Instrumentations must have transparent stack effects. " + //
-                                "Remove the variadic annotation to resolve this.",
-                                getSimpleName(types.Instrumentation),
-                                getSimpleName(types.Variadic)));
-            } else if (!signature.isVoid && signature.valueCount != 1) {
-                customOperation.addError(String.format("An @%s annotated operation cannot have a return value with also specifying a single operand. " +
-                                "Instrumentations must have transparent stack effects. " + //
-                                "Use void as return type or specify a single operand value to resolve this.",
-                                getSimpleName(types.Instrumentation)));
-            }
+            validateInstrumentationSignature(customOperation, signature);
+        } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Prolog)) {
+            validatePrologSignature(customOperation, signature);
+        } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Epilog)) {
+            validateEpilogSignature(customOperation, signature, allSignatures);
         }
 
         if (customOperation.hasErrors()) {
@@ -246,6 +235,67 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         customOperation.operation.setInstruction(createCustomInstruction(customOperation, typeElement, generatedNode, signature, name));
 
         return customOperation;
+    }
+
+    private void validateInstrumentationSignature(CustomOperationModel customOperation, Signature signature) {
+        if (signature.valueCount > 1) {
+            customOperation.addError(String.format("An @%s annotated operation cannot have more than one operand. " +
+                            "Instrumentations must have transparent stack effects. " + //
+                            "Remove the additional operands to resolve this.",
+                            getSimpleName(types.Instrumentation)));
+        } else if (signature.isVariadic) {
+            customOperation.addError(String.format("An @%s annotated operation cannot use @%s for one of its operands. " +
+                            "Instrumentations must have transparent stack effects. " + //
+                            "Remove the variadic annotation to resolve this.",
+                            getSimpleName(types.Instrumentation),
+                            getSimpleName(types.Variadic)));
+        } else if (!signature.isVoid && signature.valueCount != 1) {
+            customOperation.addError(String.format("An @%s annotated operation cannot have a return value without also specifying a single operand. " +
+                            "Instrumentations must have transparent stack effects. " + //
+                            "Use void as the return type or specify a single operand value to resolve this.",
+                            getSimpleName(types.Instrumentation)));
+        }
+    }
+
+    private void validatePrologSignature(CustomOperationModel customOperation, Signature signature) {
+        if (signature.valueCount > 0) {
+            customOperation.addError(String.format("A @%s annotated operation cannot have any operands. " +
+                            "Remove the operands to resolve this.",
+                            getSimpleName(types.Prolog)));
+        } else if (!signature.isVoid) {
+            customOperation.addError(String.format("A @%s annotated operation cannot have a return value. " +
+                            "Use void as the return type.",
+                            getSimpleName(types.Prolog)));
+        }
+    }
+
+    private void validateEpilogSignature(CustomOperationModel customOperation, Signature signature, List<Signature> allSignatures) {
+        if (signature.valueCount != 2) {
+            customOperation.addError(String.format("An @%s annotated operation must have exactly two operands for a returned value and an exception. " +
+                            "Update all specializations to take two operands to resolve this.",
+                            getSimpleName(types.Epilog)));
+            return;
+        }
+
+        /**
+         * The epilog will be called with either the returned value or the exception being null.
+         * There must be a specialization that accepts Object for both. (It is not enough to check
+         * the polymorphic signature because it defaults to Object if two types don't match.)
+         */
+        boolean objectObjectSignatureFound = false;
+        for (Signature individualSignature : allSignatures) {
+            objectObjectSignatureFound = objectObjectSignatureFound || isObject(individualSignature.argumentTypes.get(0)) && isObject(individualSignature.argumentTypes.get(1));
+        }
+
+        if (!objectObjectSignatureFound) {
+            customOperation.addError(String.format("An @%s annotated operation must have a specialization that takes %s for both operands.",
+                            getSimpleName(types.Epilog),
+                            getSimpleName(context.getDeclaredType(Object.class))));
+        } else if (!signature.isVoid) {
+            customOperation.addError(String.format("An @%s annotated operation cannot have a return value. " +
+                            "Use void as the return type.",
+                            getSimpleName(types.Epilog)));
+        }
     }
 
     public CustomOperationModel parseCustomShortCircuitOperation(TypeElement typeElement, AnnotationMirror mirror) {
@@ -621,8 +671,11 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     /**
      * Computes a {@link Signature} from the node's set of specializations. Returns {@code null} if
      * there are no specializations or the specializations do not share a common signature.
+     * <p>
+     * Also accumulates individual signatures into the {@code signatures} parameter, so they can be
+     * inspected individually.
      */
-    public static Signature createPolymorphicSignature(List<ExecutableElement> specializations, MessageContainer errorTarget) {
+    public static Signature createPolymorphicSignature(List<ExecutableElement> specializations, MessageContainer errorTarget, List<Signature> signatures) {
         boolean isValid = true;
         Signature polymorphicSignature = null;
         for (ExecutableElement specialization : specializations) {
@@ -630,6 +683,9 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             if (signature == null) {
                 isValid = false;
                 continue;
+            }
+            if (signatures != null) {
+                signatures.add(signature);
             }
             polymorphicSignature = mergeSignatures(signature, polymorphicSignature, specialization, errorTarget);
         }

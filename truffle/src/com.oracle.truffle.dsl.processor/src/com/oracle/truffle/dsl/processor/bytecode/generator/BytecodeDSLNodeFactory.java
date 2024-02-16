@@ -1682,7 +1682,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             codeBegin = new CodeVariableElement[model.getOperations().size() + 1];
             codeEnd = new CodeVariableElement[model.getOperations().size() + 1];
 
-            for (OperationModel o : model.getOperations()) {
+            // Only allocate serialization codes for non-internal operations.
+            for (OperationModel o : model.getUserOperations()) {
                 if (o.hasChildren()) {
                     codeBegin[o.id] = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class,
                                     "CODE_BEGIN_" + ElementUtils.createConstantName(o.name), String.valueOf(o.id) + " << 1");
@@ -2391,8 +2392,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
 
             final boolean hasTags = !model.getProvidedTags().isEmpty();
-            for (OperationModel operation : model.getOperations()) {
-
+            for (OperationModel operation : model.getUserOperations()) {
                 // create begin/emit code
                 b.startCase().staticReference(serializationElements.codeBegin[operation.id]).end().startBlock();
 
@@ -2786,7 +2786,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (operation.kind == OperationKind.ROOT) {
                 return createBeginRoot(operation);
             }
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "begin" + operation.name);
+            Modifier visibility = operation.isInternal ? PRIVATE : PUBLIC;
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(visibility), context.getType(void.class), "begin" + operation.name);
 
             for (OperationArgument arg : operation.operationArguments) {
                 ex.addParameter(arg.toVariableElement());
@@ -2817,7 +2818,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
             }
 
-            if (model.enableSerialization) {
+            if (model.enableSerialization && !operation.isInternal) {
                 b.startIf().string("serialization != null").end().startBlock();
                 createSerializeBegin(operation, b);
                 b.statement("return");
@@ -2826,8 +2827,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startStatement().startCall("beforeChild").end(2);
 
-            // NB: This method may emit code that declares variables referenced by the resultant
-            // tree. Thus, we have to call it before we start the beginOperation call.
+            /**
+             * NB: createOperationBeginData is side-effecting: it can emit declarations that are
+             * referenced by the returned CodeTree. We have to call it before we start the
+             * beginOperation call.
+             */
             CodeTree operationData = createOperationBeginData(b, operation);
             b.startStatement().startCall("beginOperation");
             b.tree(createOperationConstant(operation));
@@ -3131,7 +3135,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 return createEndRoot(operation);
             }
 
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "end" + operation.name);
+            Modifier visibility = operation.isInternal ? PRIVATE : PUBLIC;
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(visibility), context.getType(void.class), "end" + operation.name);
             addEndOperationDoc(operation, ex);
             CodeTreeBuilder b = ex.createBuilder();
 
@@ -3142,7 +3147,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
             }
 
-            if (model.enableSerialization) {
+            if (model.enableSerialization && !operation.isInternal) {
                 b.startIf().string("serialization != null").end().startBlock();
                 serializationWrapException(b, () -> {
                     serializationElements.writeShort(b, serializationElements.codeEnd[operation.id]);
@@ -3267,6 +3272,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     break;
                 case RETURN:
                     b.statement("doEmitLeaves(-1)");
+                    if (model.epilog != null) {
+                        buildEmitInstruction(b, model.dupInstruction);
+                        buildEmitInstruction(b, model.loadConstantInstruction, "constantPool.addConstant(null)");
+                        buildEmitInstruction(b, model.epilog.operation.instruction, "allocateNode()");
+                    }
+
                     buildEmitOperationInstruction(b, operation);
                     break;
                 default:
@@ -3528,7 +3539,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createEmit(OperationModel operation) {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "emit" + operation.name);
+            Modifier visibility = operation.isInternal ? PRIVATE : PUBLIC;
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(visibility), context.getType(void.class), "emit" + operation.name);
             ex.setVarArgs(operation.operationArgumentVarArgs);
 
             for (OperationArgument arg : operation.operationArguments) {
@@ -3546,7 +3558,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
             }
 
-            if (model.enableSerialization) {
+            if (model.enableSerialization && !operation.isInternal) {
                 b.startIf().string("serialization != null").end().startBlock();
                 createSerializeBegin(operation, b);
                 b.statement("return");
@@ -3687,6 +3699,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return args;
         }
 
+        private enum BeforeChildKind {
+            PROLOG,
+            TRANSPARENT,
+            SHORT_CIRCUIT,
+            DEFAULT
+        }
+
         private CodeExecutableElement createBeforeChild() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "beforeChild");
             CodeTreeBuilder b = ex.createBuilder();
@@ -3696,21 +3715,34 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("int childIndex = operationStack[operationSp - 1].childCount");
             b.startSwitch().string("operationStack[operationSp - 1].operation").end().startBlock();
 
-            Map<Integer, List<OperationModel>> groupedOperations = model.getOperations().stream().filter(OperationModel::hasChildren).collect(Collectors.groupingBy(op -> {
-                if (op.isTransparent && (op.isVariadic || op.numChildren > 1)) {
-                    return 1; // needs to pop
+            Map<BeforeChildKind, List<OperationModel>> groupedOperations = model.getOperations().stream().filter(OperationModel::hasChildren).collect(Collectors.groupingBy(op -> {
+                if (model.prolog != null && op == model.rootOperation) {
+                    return BeforeChildKind.PROLOG;
+                } else if (op.isTransparent && (op.isVariadic || op.numChildren > 1)) {
+                    return BeforeChildKind.TRANSPARENT;
                 } else if (op.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
-                    return 2; // short circuit
+                    return BeforeChildKind.SHORT_CIRCUIT;
                 } else {
-                    return 3; // do nothing
+                    return BeforeChildKind.DEFAULT;
                 }
             }));
-            List<OperationModel> popOperations = groupedOperations.get(1);
-            List<OperationModel> shortCircuitOperations = groupedOperations.get(2);
-            List<OperationModel> doNothingOperationModels = groupedOperations.get(3);
 
-            if (popOperations != null) {
-                for (OperationModel op : popOperations) {
+            // If prolog defined, emit prolog before Root's child.
+            if (groupedOperations.containsKey(BeforeChildKind.PROLOG)) {
+                List<OperationModel> operations = groupedOperations.get(BeforeChildKind.PROLOG);
+                assert operations.size() == 1 : "There should only be one root operation.";
+                b.startCase().tree(createOperationConstant(operations.get(0))).end();
+                b.startBlock();
+                b.startIf().string("childIndex == 0").end().startBlock();
+                buildEmitOperationInstruction(b, model.prolog.operation);
+                b.end();
+                b.statement("break");
+                b.end();
+            }
+
+            // Pop any value produced by a transparent operation's child.
+            if (groupedOperations.containsKey(BeforeChildKind.TRANSPARENT)) {
+                for (OperationModel op : groupedOperations.get(BeforeChildKind.TRANSPARENT)) {
                     b.startCase().tree(createOperationConstant(op)).end();
                 }
                 b.startBlock();
@@ -3722,8 +3754,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
             }
 
-            if (shortCircuitOperations != null) {
-                for (OperationModel op : shortCircuitOperations) {
+            // Perform check after each child of a short-circuit operation.
+            if (groupedOperations.containsKey(BeforeChildKind.SHORT_CIRCUIT)) {
+                for (OperationModel op : groupedOperations.get(BeforeChildKind.SHORT_CIRCUIT)) {
                     b.startCase().tree(createOperationConstant(op)).end().startBlock();
 
                     b.startIf().string("childIndex != 0").end().startBlock();
@@ -3745,8 +3778,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
             }
 
-            if (doNothingOperationModels != null) {
-                for (OperationModel op : doNothingOperationModels) {
+            // Do nothing for every other operation.
+            if (groupedOperations.containsKey(BeforeChildKind.DEFAULT)) {
+                for (OperationModel op : groupedOperations.get(BeforeChildKind.DEFAULT)) {
                     b.startCase().tree(createOperationConstant(op)).end();
                 }
                 b.startBlock();
@@ -4592,8 +4626,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 ensureDoEmitInstructionCreated(0);
             }
             b.end(2);
-
-            // todo: check for superinstructions
         }
 
         private CodeExecutableElement createDoEmitSourceInfo() {
@@ -4758,13 +4790,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return String.format("ACCESS.shortArrayRead(handlerBc, %s)", index);
         }
 
-        // Finally handler code gets emitted in multiple locations. When a branch target is inside a
-        // finally handler, the instruction referencing it needs to be remembered so that we can
-        // relocate the target each time we emit the instruction.
-        // This helper should only be used for a local branch within the same operation (i.e., the
-        // "defining context" of the branch target is the current finallyTryContext).
-        // For potentially non-local branches (i.e. branches to outer operations) we must instead
-        // determine the context that defines the branch target.
+        /**
+         * Finally handler code gets emitted in multiple locations. When a branch target is inside a
+         * finally handler, the instruction referencing it needs to be remembered so that we can
+         * relocate the target each time we emit the instruction. This helper should only be used
+         * for a local branch within the same operation (i.e., the "defining context" of the branch
+         * target is the current finallyTryContext). For potentially non-local branches (i.e.
+         * branches to outer operations) we must instead determine the context that defines the
+         * branch target.
+         */
         private void emitFinallyRelativeBranchCheck(CodeTreeBuilder b, int offset) {
             b.startIf().string("inFinallyTryHandler(finallyTryContext)").end().startBlock();
             b.statement("finallyTryContext.finallyRelativeBranches.add(bci + " + offset + ")");
@@ -7851,7 +7885,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             // and not the stack frame.
             b.string(localFrame());
 
-            // The tier 0 version takes all of its parameters. Other versions compute them.
+            // The uncached version takes all of its parameters. Other versions compute them.
             if (tier.isUncached()) {
                 for (int i = 0; i < instr.signature.valueCount; i++) {
                     TypeMirror targetType = instr.signature.getGenericType(i);

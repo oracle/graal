@@ -105,6 +105,11 @@ public class OperationModel implements PrettyPrintable {
     public boolean isTransparent;
     public boolean isVoid;
     public boolean isVariadic;
+    /**
+     * Internal operations are generated and used internally by the DSL. They should not be exposed
+     * through the builder and should not be serialized.
+     */
+    public boolean isInternal;
 
     public boolean[] childrenMustBeValues;
     public int numChildren;
@@ -185,6 +190,11 @@ public class OperationModel implements PrettyPrintable {
             assert this.operationArguments.length == operationArguments.length;
         }
         this.operationArguments = operationArguments;
+        return this;
+    }
+
+    public OperationModel setInternal() {
+        this.isInternal = true;
         return this;
     }
 
