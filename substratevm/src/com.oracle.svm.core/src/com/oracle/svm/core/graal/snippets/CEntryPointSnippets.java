@@ -238,14 +238,13 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             setHeapBase(Isolates.getHeapBase(isolate));
         }
 
-        return createIsolate0(parsedArgs, isolate);
+        return createIsolate0(isolate, parameters, parsedArgs);
     }
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     @NeverInline(value = "Ensure this code cannot rise above where heap base is set.")
-    private static int createIsolate0(CLongPointer parsedArgs, Isolate isolate) {
-
-        IsolateArgumentParser.singleton().persistOptions(parsedArgs);
+    private static int createIsolate0(Isolate isolate, CEntryPointCreateIsolateParameters parameters, CLongPointer parsedArgs) {
+        IsolateArgumentParser.persistOptions(parameters, parsedArgs);
         IsolateListenerSupport.singleton().afterCreateIsolate(isolate);
 
         CodeInfoTable.prepareImageCodeInfo();

@@ -41,7 +41,9 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.common.option.CommonOptionParser.BooleanOptionFormat;
 import com.oracle.svm.common.option.CommonOptionParser.OptionParseResult;
+import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.properties.RuntimePropertyParser;
 import com.oracle.svm.core.util.ImageHeapMap;
@@ -74,12 +76,20 @@ public final class RuntimeOptionParser {
      * Parse and consume all standard options and system properties supported by Substrate VM. The
      * returned array contains all arguments that were not consumed, i.e., were not recognized as
      * options.
+     *
+     * Note that this logic must be in sync with {@link IsolateArgumentParser#shouldParseArguments}.
      */
     public static String[] parseAndConsumeAllOptions(String[] initialArgs, boolean ignoreUnrecognized) {
         String[] args = initialArgs;
         if (SubstrateOptions.ParseRuntimeOptions.getValue()) {
             args = RuntimeOptionParser.singleton().parse(args, NORMAL_OPTION_PREFIX, GRAAL_OPTION_PREFIX, X_OPTION_PREFIX, ignoreUnrecognized);
             args = RuntimePropertyParser.parse(args);
+        } else if (RuntimeCompilation.isEnabled() && SubstrateOptions.supportCompileInIsolates() && IsolateArgumentParser.isCompilationIsolate()) {
+            /*
+             * Compilation isolates always need to parse the Native Image options that the main
+             * isolate passes to them.
+             */
+            args = RuntimeOptionParser.singleton().parse(args, NORMAL_OPTION_PREFIX, null, X_OPTION_PREFIX, ignoreUnrecognized);
         }
         return args;
     }
