@@ -101,7 +101,7 @@ public class BasedOnJDKFileProcessor extends AbstractProcessor {
     record SourceInfo(String path, long lineStart, long lineEnd) {
     }
 
-    public static String quoteString(String s) {
+    private static String quoteString(String s) {
         if (s == null) {
             return "null";
         }
