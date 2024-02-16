@@ -1162,16 +1162,10 @@ public class UniverseBuilder {
             assert ((SubstrateReferenceMap) referenceMap).hasNoDerivedOffsets();
             long referenceMapIndex = referenceMapEncoder.lookupEncoding(referenceMap);
 
-            /*
-             * All proxy classes, even the ones that we create artificially via DynamicProxySupport,
-             * are proper proxy classes in the host VM.
-             */
-            boolean isProxyClass = java.lang.reflect.Proxy.isProxyClass(type.getJavaClass());
-
             DynamicHub hub = type.getHub();
             SerializationRegistry s = ImageSingletons.lookup(SerializationRegistry.class);
             hub.setSharedData(layoutHelper, monitorOffset, identityHashOffset,
-                            referenceMapIndex, type.isInstantiated(), canInstantiateAsInstance, isProxyClass,
+                            referenceMapIndex, type.isInstantiated(), canInstantiateAsInstance,
                             s.isRegisteredForSerialization(type.getJavaClass()));
             if (SubstrateOptions.closedTypeWorld()) {
                 hub.setClosedWorldData(vtable, type.getTypeID(), type.getTypeCheckStart(), type.getTypeCheckRange(),

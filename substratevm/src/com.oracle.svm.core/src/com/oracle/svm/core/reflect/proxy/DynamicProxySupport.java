@@ -25,6 +25,7 @@
 package com.oracle.svm.core.reflect.proxy;
 
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.regex.Pattern;
 
@@ -148,7 +149,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
     @Platforms(Platform.HOSTED_ONLY.class)
     @SuppressWarnings("deprecation")
     private static Class<?> createProxyClassFromImplementedInterfaces(Class<?>[] interfaces) {
-        return java.lang.reflect.Proxy.getProxyClass(getCommonClassLoaderOrFail(null, interfaces), interfaces);
+        return Proxy.getProxyClass(getCommonClassLoaderOrFail(null, interfaces), interfaces);
     }
 
     private static ClassLoader getCommonClassLoaderOrFail(ClassLoader loader, Class<?>... intfs) {
