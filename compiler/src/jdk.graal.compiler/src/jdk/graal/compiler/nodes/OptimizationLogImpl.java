@@ -466,7 +466,8 @@ public class OptimizationLogImpl implements OptimizationLog {
     private final String compilationId;
 
     /**
-     * {@code true} iff the structured optimization log is {@link OptimizationLog#isStructuredOptimizationLogEnabled(OptionValues) enabled}.
+     * {@code true} iff the structured optimization log is
+     * {@link OptimizationLog#isStructuredOptimizationLogEnabled(OptionValues) enabled}.
      */
     private final boolean structuredOptimizationLogEnabled;
 
@@ -478,7 +479,8 @@ public class OptimizationLogImpl implements OptimizationLog {
 
     /**
      * The most recently entered phase which has not been exited yet. Initially, this is the root
-     * phase. If {@link #structuredOptimizationLogEnabled} is {@code false}, the field stays {@code null}.
+     * phase. If {@link #structuredOptimizationLogEnabled} is {@code false}, the field stays
+     * {@code null}.
      */
     private OptimizationPhaseNode currentPhase;
 
