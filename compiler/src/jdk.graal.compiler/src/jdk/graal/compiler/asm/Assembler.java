@@ -33,7 +33,7 @@ import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.code.site.Infopoint;
+import jdk.vm.ci.code.site.Call;
 
 /**
  * The platform-independent base class for the assembler.
@@ -271,11 +271,15 @@ public abstract class Assembler<T extends Enum<T>> {
 
     /**
      * Some platforms might require special post call code emission.
-     *
-     * @param infopoint The infopoint assoicated with the call if any
      */
-    public void postCallNop(Infopoint infopoint) {
-        ensureUniquePC();
+    public void postCallNop(Call call) {
+        if (call.debugInfo != null) {
+            // The nop inserted after a call is only required to distinguish
+            // debug info associated with the call from debug info associated
+            // with an instruction after the call. If the call has no debug
+            // info, the extra nop is not required.
+            ensureUniquePC();
+        }
     }
 
     public void reset() {
