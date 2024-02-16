@@ -434,7 +434,7 @@ public class OptimizationLogImpl implements OptimizationLog {
             NodeSourcePosition position = node.getNodeSourcePosition();
             DebugContext debug = optimizationLog.graph.getDebug();
             if (debug.isCountEnabled() || debug.hasUnscopedCounters()) {
-                DebugContext.counter(optimizationName + "_" + eventName).increment(debug);
+                DebugContext.counter("Optimization_" + optimizationName + "_" + eventName).increment(debug);
             }
             if (debug.isLogEnabled(logLevel)) {
                 debug.log(logLevel, "Performed %s %s for node %s at bci %s %s", optimizationName, eventName, node,
