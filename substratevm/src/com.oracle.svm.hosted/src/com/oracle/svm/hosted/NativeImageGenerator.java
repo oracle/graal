@@ -976,8 +976,9 @@ public class NativeImageGenerator {
                     compilerInvoker.verifyCompiler();
                 }
 
-                nativeLibraries = setupNativeLibraries(aProviders.getConstantReflection(), aMetaAccess, aProviders.getSnippetReflection(), cEnumProcessor, classInitializationSupport,
-                                debug);
+                nativeLibraries = setupNativeLibraries(aProviders, cEnumProcessor, classInitializationSupport, debug);
+                ImageSingletons.add(NativeLibraries.class, nativeLibraries);
+
                 try (Indent ignored2 = debug.logAndIndent("process startup initializers")) {
                     FeatureImpl.DuringSetupAccessImpl config = new FeatureImpl.DuringSetupAccessImpl(featureHandler, loader, bb, debug);
                     featureHandler.forEachFeature(feature -> feature.duringSetup(config));
@@ -1221,17 +1222,17 @@ public class NativeImageGenerator {
     }
 
     @SuppressWarnings("try")
-    protected NativeLibraries setupNativeLibraries(ConstantReflectionProvider aConstantReflection, MetaAccessProvider aMetaAccess,
-                    SnippetReflectionProvider aSnippetReflection, CEnumCallWrapperSubstitutionProcessor cEnumProcessor, ClassInitializationSupport classInitializationSupport, DebugContext debug) {
+    protected NativeLibraries setupNativeLibraries(HostedProviders providers, CEnumCallWrapperSubstitutionProcessor cEnumProcessor, ClassInitializationSupport classInitializationSupport,
+                    DebugContext debug) {
         try (StopTimer ignored = TimerCollection.createTimerAndStart("(cap)")) {
-            NativeLibraries nativeLibs = new NativeLibraries(aConstantReflection, aMetaAccess, aSnippetReflection, ConfigurationValues.getTarget(), classInitializationSupport,
+            NativeLibraries nativeLibs = new NativeLibraries(providers, ConfigurationValues.getTarget(), classInitializationSupport,
                             ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory(), debug);
             cEnumProcessor.setNativeLibraries(nativeLibs);
-            processNativeLibraryImports(nativeLibs, aMetaAccess, classInitializationSupport);
+            processNativeLibraryImports(nativeLibs, classInitializationSupport);
 
-            ImageSingletons.add(SizeOfSupport.class, new SizeOfSupportImpl(nativeLibs, aMetaAccess));
-            ImageSingletons.add(OffsetOf.Support.class, new OffsetOfSupportImpl(nativeLibs, aMetaAccess));
-            ImageSingletons.add(CConstantValueSupport.class, new CConstantValueSupportImpl(nativeLibs, aMetaAccess));
+            ImageSingletons.add(SizeOfSupport.class, new SizeOfSupportImpl(nativeLibs));
+            ImageSingletons.add(OffsetOf.Support.class, new OffsetOfSupportImpl(nativeLibs));
+            ImageSingletons.add(CConstantValueSupport.class, new CConstantValueSupportImpl(nativeLibs));
 
             if (CAnnotationProcessorCache.Options.ExitAfterQueryCodeGeneration.getValue()) {
                 throw new InterruptImageBuilding("Exiting image generation because of " + SubstrateOptionsParser.commandArgument(CAnnotationProcessorCache.Options.ExitAfterQueryCodeGeneration, "+"));
@@ -1725,8 +1726,8 @@ public class NativeImageGenerator {
     }
 
     @SuppressWarnings("try")
-    protected void processNativeLibraryImports(NativeLibraries nativeLibs, MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport) {
-
+    protected void processNativeLibraryImports(NativeLibraries nativeLibs, ClassInitializationSupport classInitializationSupport) {
+        MetaAccessProvider metaAccess = nativeLibs.getMetaAccess();
         for (Method method : loader.findAnnotatedMethods(CConstant.class)) {
             if (HostedLibCBase.isMethodProvidedInCurrentLibc(method)) {
                 initializeAtBuildTime(method.getDeclaringClass(), classInitializationSupport, CConstant.class);

@@ -33,21 +33,18 @@ import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.c.info.StructInfo;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class OffsetOfSupportImpl implements OffsetOf.Support {
     private final NativeLibraries nativeLibraries;
-    private final MetaAccessProvider metaAccess;
 
-    public OffsetOfSupportImpl(NativeLibraries nativeLibraries, MetaAccessProvider metaAccess) {
+    public OffsetOfSupportImpl(NativeLibraries nativeLibraries) {
         this.nativeLibraries = nativeLibraries;
-        this.metaAccess = metaAccess;
     }
 
     @Override
     public int offsetOf(Class<? extends PointerBase> clazz, String fieldName) {
-        ResolvedJavaType type = metaAccess.lookupJavaType(clazz);
+        ResolvedJavaType type = nativeLibraries.getMetaAccess().lookupJavaType(clazz);
         ElementInfo typeInfo = nativeLibraries.findElementInfo(type);
         VMError.guarantee(typeInfo instanceof StructInfo, "Class parameter %s of call to %s is not an annotated C struct", type, SizeOf.class.getSimpleName());
         StructInfo structInfo = (StructInfo) typeInfo;
