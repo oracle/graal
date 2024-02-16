@@ -355,10 +355,10 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
             } else if (recordComponentClass != null && recordComponentClass.isInstance(rootElement)) {
                 return (byte[]) recordComponentAnnotations.get(rootElement);
             } else {
-                throw new AnnotationExtractionError("Unexpected annotated element type: " + rootElement.getClass());
+                throw new AnnotationExtractionError(rootElement, "Unexpected annotated element type: " + rootElement.getClass());
             }
         } catch (InvocationTargetException | IllegalAccessException e) {
-            throw new AnnotationExtractionError(e);
+            throw new AnnotationExtractionError(rootElement, e);
         }
     }
 
@@ -369,10 +369,10 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
             } else if (rootElement instanceof Constructor<?>) {
                 return (byte[]) constructorParameterAnnotations.get(rootElement);
             } else {
-                throw new AnnotationExtractionError("Unexpected annotated element type: " + rootElement.getClass());
+                throw new AnnotationExtractionError(rootElement, "Unexpected annotated element type: " + rootElement.getClass());
             }
         } catch (IllegalAccessException e) {
-            throw new AnnotationExtractionError(e);
+            throw new AnnotationExtractionError(rootElement, e);
         }
     }
 
@@ -387,10 +387,10 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
             } else if (recordComponentClass != null && recordComponentClass.isInstance(rootElement)) {
                 return (byte[]) recordComponentTypeAnnotations.get(rootElement);
             } else {
-                throw new AnnotationExtractionError("Unexpected annotated element type: " + rootElement.getClass());
+                throw new AnnotationExtractionError(rootElement, "Unexpected annotated element type: " + rootElement.getClass());
             }
         } catch (InvocationTargetException | IllegalAccessException e) {
-            throw new AnnotationExtractionError(e);
+            throw new AnnotationExtractionError(rootElement, e);
         }
     }
 
@@ -398,7 +398,7 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
         try {
             return (byte[]) methodAnnotationDefault.get(method);
         } catch (IllegalAccessException e) {
-            throw new AnnotationExtractionError(e);
+            throw new AnnotationExtractionError(method, e);
         }
     }
 
@@ -407,7 +407,7 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
         try {
             return (ConstantPool) classGetConstantPool.invoke(container);
         } catch (InvocationTargetException | IllegalAccessException e) {
-            throw new AnnotationExtractionError(e);
+            throw new AnnotationExtractionError(rootElement, e);
         }
     }
 
@@ -422,10 +422,10 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
             try {
                 return (Class<?>) recordComponentGetDeclaringRecord.invoke(rootElement);
             } catch (IllegalAccessException | InvocationTargetException e) {
-                throw new AnnotationExtractionError(e);
+                throw new AnnotationExtractionError(rootElement, e);
             }
         } else {
-            throw new AnnotationExtractionError("Unexpected annotated element type: " + rootElement.getClass());
+            throw new AnnotationExtractionError(rootElement, "Unexpected annotated element type: " + rootElement.getClass());
         }
     }
 
@@ -459,9 +459,9 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
             if (targetException instanceof LinkageError) {
                 throw (LinkageError) targetException;
             }
-            throw new AnnotationExtractionError(e);
+            throw new AnnotationExtractionError(element, e);
         } catch (IllegalAccessException e) {
-            throw new AnnotationExtractionError(e);
+            throw new AnnotationExtractionError(element, e);
         }
     }
 }
