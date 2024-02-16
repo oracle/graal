@@ -432,19 +432,10 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         // custom operations
         boolean customOperationDeclared = false;
         for (TypeElement te : ElementFilter.typesIn(typeElement.getEnclosedElements())) {
-            AnnotationMirror operation = ElementUtils.findAnnotationMirror(te, types.Operation);
-            AnnotationMirror instrumentation = ElementUtils.findAnnotationMirror(te, types.Instrumentation);
-            if (operation == null && instrumentation == null) {
+            AnnotationMirror mir = findOperationAnnotation(model, te);
+            if (mir == null) {
                 continue;
             }
-
-            if (operation != null && instrumentation != null) {
-                model.addError(te, "@%s and @%s cannot be used at the same time. Remove one of the annotations to resolve this.",
-                                getSimpleName(types.Operation), getSimpleName(types.Instrumentation));
-                continue;
-            }
-
-            AnnotationMirror mir = operation != null ? operation : instrumentation;
             customOperationDeclared = true;
             CustomOperationParser.forCodeGeneration(model, types.Operation).parseCustomOperation(te, mir);
         }
@@ -489,7 +480,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         }
 
         if (!customOperationDeclared) {
-            model.addError("At least one operation must be declared using @%s, @%s, or @%s.", getSimpleName(types.Operation), getSimpleName(types.OperationProxy),
+            model.addError("At least one operation must be declared using @%s, @%s, or @%s.",
+                            getSimpleName(types.Operation), getSimpleName(types.OperationProxy),
                             getSimpleName(types.ShortCircuitOperation));
         }
 
@@ -647,7 +639,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                 } else {
                     name = String.join("#", includedSpecializations.stream().map((s) -> s.getId()).toList());
                 }
-                Signature signature = CustomOperationParser.createPolymorphicSignature(includedSpecializations.stream().map(s -> s.getMethod()).toList(), null);
+                Signature signature = CustomOperationParser.createPolymorphicSignature(includedSpecializations.stream().map(s -> s.getMethod()).toList(), null, null);
                 InstructionModel baseInstruction = operation.instruction;
                 InstructionModel quickenedInstruction = model.quickenInstruction(baseInstruction, signature, ElementUtils.firstLetterUpperCase(name));
                 quickenedInstruction.filteredSpecializations = includedSpecializations;
@@ -853,6 +845,26 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         }
     }
 
+    private AnnotationMirror findOperationAnnotation(BytecodeDSLModel model, TypeElement typeElement) {
+        AnnotationMirror foundMirror = null;
+        TypeMirror foundType = null;
+        for (TypeMirror annotationType : List.of(types.Operation, types.Instrumentation, types.Prolog, types.Epilog)) {
+            AnnotationMirror annotationMirror = ElementUtils.findAnnotationMirror(typeElement, annotationType);
+            if (annotationMirror == null) {
+                continue;
+            }
+            if (foundMirror == null) {
+                foundMirror = annotationMirror;
+                foundType = annotationType;
+            } else {
+                model.addError(typeElement, "@%s and @%s cannot be used at the same time. Remove one of the annotations to resolve this.",
+                                getSimpleName(foundType), getSimpleName(annotationType));
+                return null;
+            }
+        }
+        return foundMirror;
+    }
+
     /**
      * Some features are not yet "public", but we still want to support them internally for testing.
      * Throw an error if the node is not within a Truffle package.
@@ -976,8 +988,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             if (!seenSpecializationNames.add(methodName)) {
                 messageTarget.addError(specialization.getMethod(),
                                 "Specialization method name %s is not unique but might be used as an identifier to refer to specializations. " + //
-                                                "Use a unqiue specialization method name unique to resolve this." + //
-                                                "It is recommended to specialization method names that use a defining characteristic of the specialization, for example 'doBelowZero'.");
+                                                "Use a unique specialization method name to resolve this. " + //
+                                                "It is recommended to choose a defining characteristic of a specialization when naming it, for example 'doBelowZero'.");
             }
         }
     }

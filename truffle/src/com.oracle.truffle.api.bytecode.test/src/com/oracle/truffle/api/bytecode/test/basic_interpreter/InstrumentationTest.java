@@ -525,9 +525,9 @@ public class InstrumentationTest extends AbstractQuickeningTest {
             }
         }
 
-        @ExpectError("An @Instrumentation annotated operation cannot have a return value with also specifying a single operand. " + //
+        @ExpectError("An @Instrumentation annotated operation cannot have a return value without also specifying a single operand. " + //
                         "Instrumentations must have transparent stack effects. " + //
-                        "Use void as return type or specify a single operand value to resolve this.")
+                        "Use void as the return type or specify a single operand value to resolve this.")
         @Instrumentation
         static final class InvalidInstrumentation2 {
 

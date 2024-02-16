@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.bytecode.model;
 
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.isPrimitive;
 
 import java.util.ArrayList;
@@ -131,6 +132,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public OperationModel blockOperation;
     public OperationModel rootOperation;
     public OperationModel conditionalOperation;
+    public CustomOperationModel prolog = null;
+    public CustomOperationModel epilog = null;
 
     public InstructionModel popInstruction;
     public InstructionModel dupInstruction;
@@ -140,6 +143,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel branchBackwardInstruction;
     public InstructionModel branchFalseInstruction;
     public InstructionModel throwInstruction;
+    public InstructionModel loadConstantInstruction;
     public InstructionModel yieldInstruction;
     public InstructionModel[] popVariadicInstruction;
     public InstructionModel mergeVariadicInstruction;
@@ -181,6 +185,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                         .addImmediate(ImmediateKind.BRANCH_PROFILE, "branch_profile");
         throwInstruction = instruction(InstructionKind.THROW, "throw", signature(void.class, Object.class)) //
                         .addImmediate(ImmediateKind.INTEGER, "exception_local");
+        loadConstantInstruction = instruction(InstructionKind.LOAD_CONSTANT, "load.constant", signature(Object.class)) //
+                        .addImmediate(ImmediateKind.CONSTANT, "constant");
 
         blockOperation = operation(OperationKind.BLOCK, "Block") //
                         .setTransparent(true) //
@@ -233,8 +239,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         operation(OperationKind.LOAD_CONSTANT, "LoadConstant") //
                         .setNumChildren(0) //
                         .setOperationArguments(new OperationArgument(context.getType(Object.class), "constant", "the constant value to load")) //
-                        .setInstruction(instruction(InstructionKind.LOAD_CONSTANT, "load.constant", signature(Object.class)) //
-                                        .addImmediate(ImmediateKind.CONSTANT, "constant"));
+                        .setInstruction(loadConstantInstruction);
         operation(OperationKind.LOAD_ARGUMENT, "LoadArgument") //
                         .setNumChildren(0) //
                         .setOperationArguments(new OperationArgument(context.getType(int.class), "index", "the index of the argument to load")) //
@@ -363,8 +368,24 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         operationsToCustomOperations.put(op, operation);
 
         if (kind == OperationKind.CUSTOM_INSTRUMENTATION) {
-            operation.operation.setInstrumentationIndex(instrumentations.size());
+            op.setInstrumentationIndex(instrumentations.size());
             instrumentations.add(operation);
+        } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Prolog)) {
+            op.setInternal();
+            if (prolog != null) {
+                addError(typeElement, "%s is already annotated with @%s. A Bytecode DSL class can only declare one prolog.", getSimpleName(prolog.getTemplateType()),
+                                getSimpleName(types.Prolog));
+                return null;
+            }
+            prolog = operation;
+        } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Epilog)) {
+            op.setInternal();
+            if (epilog != null) {
+                addError(typeElement, "%s is already annotated with @%s. A Bytecode DSL class can only declare one epilog.", getSimpleName(epilog.getTemplateType()),
+                                getSimpleName(types.Epilog));
+                return null;
+            }
+            epilog = operation;
         }
         return operation;
     }
@@ -509,6 +530,16 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
 
     public Collection<OperationModel> getOperations() {
         return operations.values();
+    }
+
+    public Collection<OperationModel> getUserOperations() {
+        List<OperationModel> result = new ArrayList<>();
+        for (OperationModel operation : operations.values()) {
+            if (!operation.isInternal) {
+                result.add(operation);
+            }
+        }
+        return result;
     }
 
     public Collection<InstructionModel> getInstructions() {

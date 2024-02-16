@@ -363,6 +363,7 @@ public class TruffleTypes {
     public static final String ContinuationLocation_Name = "com.oracle.truffle.api.bytecode.ContinuationLocation";
     public static final String ContinuationResult_Name = "com.oracle.truffle.api.bytecode.ContinuationResult";
     public static final String ContinuationRootNode_Name = "com.oracle.truffle.api.bytecode.ContinuationRootNode";
+    public static final String Epilog_Name = "com.oracle.truffle.api.bytecode.Epilog";
     public static final String GenerateBytecode_Name = "com.oracle.truffle.api.bytecode.GenerateBytecode";
     public static final String GenerateBytecodeTestVariants_Name = "com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants";
     public static final String GenerateBytecodeTestVariants_Variant_Name = "com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant";
@@ -372,6 +373,7 @@ public class TruffleTypes {
     public static final String Operation_Name = "com.oracle.truffle.api.bytecode.Operation";
     public static final String OperationProxy_Name = "com.oracle.truffle.api.bytecode.OperationProxy";
     public static final String OperationProxy_Proxyable_Name = "com.oracle.truffle.api.bytecode.OperationProxy.Proxyable";
+    public static final String Prolog_Name = "com.oracle.truffle.api.bytecode.Prolog";
     public static final String ShortCircuitOperation_Name = "com.oracle.truffle.api.bytecode.ShortCircuitOperation";
     public static final String Variadic_Name = "com.oracle.truffle.api.bytecode.Variadic";
 
@@ -411,6 +413,7 @@ public class TruffleTypes {
     public final DeclaredType ContinuationLocation = c.getDeclaredTypeOptional(ContinuationLocation_Name);
     public final DeclaredType ContinuationResult = c.getDeclaredTypeOptional(ContinuationResult_Name);
     public final DeclaredType ContinuationRootNode = c.getDeclaredTypeOptional(ContinuationRootNode_Name);
+    public final DeclaredType Epilog = c.getDeclaredTypeOptional(Epilog_Name);
     public final DeclaredType GenerateBytecode = c.getDeclaredTypeOptional(GenerateBytecode_Name);
     public final DeclaredType GenerateBytecodeTestVariants = c.getDeclaredTypeOptional(GenerateBytecodeTestVariants_Name);
     public final DeclaredType GenerateBytecodeTestVariant_Variant = c.getDeclaredTypeOptional(GenerateBytecodeTestVariants_Variant_Name);
@@ -419,6 +422,7 @@ public class TruffleTypes {
     public final DeclaredType LocalSetterRange = c.getDeclaredTypeOptional(LocalSetterRange_Name);
     public final DeclaredType Operation = c.getDeclaredTypeOptional(Operation_Name);
     public final DeclaredType OperationProxy = c.getDeclaredTypeOptional(OperationProxy_Name);
+    public final DeclaredType Prolog = c.getDeclaredTypeOptional(Prolog_Name);
     public final DeclaredType OperationProxy_Proxyable = c.getDeclaredTypeOptional(OperationProxy_Proxyable_Name);
     public final DeclaredType ShortCircuitOperation = c.getDeclaredTypeOptional(ShortCircuitOperation_Name);
     public final DeclaredType Variadic = c.getDeclaredTypeOptional(Variadic_Name);
