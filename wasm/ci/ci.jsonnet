@@ -2,7 +2,6 @@ local graal_common = import "../../ci/ci_common/common.jsonnet";
 local wasm_common = import 'ci_common/common.jsonnet';
 
 local jdks = {
-  jdk17:: graal_common.labsjdk17,
   jdk21:: graal_common.labsjdk21,
 };
 
@@ -14,7 +13,6 @@ jdks + wasm_common +
 
   builds: [
     # Gates.
-    $.jdk17 + $.linux_amd64     + $.gate         + $.gate_graalwasm_style                                                                      + {name: 'gate-graalwasm-style-fullbuild' + self.name_suffix},
     $.jdk21 + $.linux_amd64     + $.gate         + $.gate_graalwasm_style                                                                      + {name: 'gate-graalwasm-style-fullbuild' + self.name_suffix},
   ] + [
     $.jdk21 + platform          + $.gate         + $.gate_graalwasm_full        + {environment+: {GATE_TAGS: 'build,wasmtest'}}                + {name: 'gate-graalwasm-unittest' + self.name_suffix}
