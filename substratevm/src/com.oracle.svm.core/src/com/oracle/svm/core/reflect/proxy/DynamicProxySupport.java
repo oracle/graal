@@ -34,7 +34,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
@@ -147,8 +146,9 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    @SuppressWarnings("deprecation")
     private static Class<?> createProxyClassFromImplementedInterfaces(Class<?>[] interfaces) {
-        return getJdkProxyClass(getCommonClassLoaderOrFail(null, interfaces), interfaces);
+        return java.lang.reflect.Proxy.getProxyClass(getCommonClassLoaderOrFail(null, interfaces), interfaces);
     }
 
     private static ClassLoader getCommonClassLoaderOrFail(ClassLoader loader, Class<?>... intfs) {
@@ -220,23 +220,5 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
             }
             l = l.getParent();
         }
-    }
-
-    @Override
-    public boolean isProxyClass(Class<?> clazz) {
-        if (SubstrateUtil.HOSTED) {
-            /*
-             * All proxy classes, even the ones that we create artificially, are proper proxy
-             * classes in the host VM.
-             */
-            return java.lang.reflect.Proxy.isProxyClass(clazz);
-        }
-        return DynamicHub.fromClass(clazz).isProxyClass();
-    }
-
-    @SuppressWarnings("deprecation")
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static Class<?> getJdkProxyClass(ClassLoader loader, Class<?>... interfaces) {
-        return java.lang.reflect.Proxy.getProxyClass(loader, interfaces);
     }
 }
