@@ -474,7 +474,7 @@ public final class EspressoContext {
                         // Type.java_lang_invoke_ResolvedMethodName is not used atm
                         initializeKnownClass(type);
                     }
-                    int e = (int) meta.java_lang_System_initPhase2.invokeDirect(null, false, false);
+                    int e = (int) meta.java_lang_System_initPhase2.invokeDirect(null, false, logger.isLoggable(Level.FINE));
                     if (e != 0) {
                         throw EspressoError.shouldNotReachHere();
                     }
