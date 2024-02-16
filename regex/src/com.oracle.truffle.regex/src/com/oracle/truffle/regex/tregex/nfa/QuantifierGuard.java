@@ -104,7 +104,7 @@ public final class QuantifierGuard {
          * quantifier count. This guard is added to all transitions to the special
          * {@link PureNFAState#isEmptyMatch() empty-match} state.
          */
-        enterEmptyMatch,
+        checkEmptyMatch,
         /**
          * Transition is passing a capture group boundary. We need this information in order to
          * implement the empty check test in {@link #exitZeroWidth}, which, in the case of flavors
@@ -181,8 +181,8 @@ public final class QuantifierGuard {
         return new QuantifierGuard(Kind.escapeZeroWidth, quantifier);
     }
 
-    public static QuantifierGuard createEnterEmptyMatch(Quantifier quantifier) {
-        return new QuantifierGuard(Kind.enterEmptyMatch, quantifier);
+    public static QuantifierGuard createCheckEmptyMatch(Quantifier quantifier) {
+        return new QuantifierGuard(Kind.checkEmptyMatch, quantifier);
     }
 
     public static QuantifierGuard createUpdateCG(int index) {

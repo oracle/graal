@@ -760,7 +760,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                         return false;
                     }
                     break;
-                case enterEmptyMatch:
+                case checkEmptyMatch:
                     // retreat if quantifier count is greater or equal to minimum
                     if (locals.getQuantifierCount(q) >= q.getMin()) {
                         return false;
@@ -834,7 +834,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                     locals.setZeroWidthQuantifierGuardIndex(q);
                     locals.setZeroWidthQuantifierResults(q);
                     break;
-                case enterEmptyMatch:
+                case checkEmptyMatch:
                     if (!transition.hasCaretGuard() && !transition.hasDollarGuard()) {
                         locals.setQuantifierCount(q, q.getMin());
                     } else {
@@ -963,7 +963,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                         return false;
                     }
                     break;
-                case enterEmptyMatch:
+                case checkEmptyMatch:
                     // retreat if quantifier count is greater or equal to minimum
                     if (locals.getQuantifierCount(q) >= q.getMin()) {
                         return false;
