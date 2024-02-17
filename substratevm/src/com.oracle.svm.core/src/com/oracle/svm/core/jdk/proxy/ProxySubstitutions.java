@@ -26,13 +26,13 @@ package com.oracle.svm.core.jdk.proxy;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Proxy;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.hub.DynamicHub;
 
 @TargetClass(java.lang.reflect.Proxy.class)
 final class Target_java_lang_reflect_Proxy {
@@ -56,7 +56,7 @@ final class Target_java_lang_reflect_Proxy {
 
     @Substitute
     public static boolean isProxyClass(Class<?> cl) {
-        return Proxy.class.isAssignableFrom(cl) && ImageSingletons.lookup(DynamicProxyRegistry.class).isProxyClass(cl);
+        return DynamicHub.fromClass(cl).isProxyClass();
     }
 }
 

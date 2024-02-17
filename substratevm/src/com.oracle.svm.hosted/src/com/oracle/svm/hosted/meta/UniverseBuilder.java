@@ -82,7 +82,6 @@ import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
@@ -1163,12 +1162,10 @@ public class UniverseBuilder {
             assert ((SubstrateReferenceMap) referenceMap).hasNoDerivedOffsets();
             long referenceMapIndex = referenceMapEncoder.lookupEncoding(referenceMap);
 
-            boolean isProxyClass = ImageSingletons.lookup(DynamicProxyRegistry.class).isProxyClass(type.getJavaClass());
-
             DynamicHub hub = type.getHub();
             SerializationRegistry s = ImageSingletons.lookup(SerializationRegistry.class);
             hub.setSharedData(layoutHelper, monitorOffset, identityHashOffset,
-                            referenceMapIndex, type.isInstantiated(), canInstantiateAsInstance, isProxyClass,
+                            referenceMapIndex, type.isInstantiated(), canInstantiateAsInstance,
                             s.isRegisteredForSerialization(type.getJavaClass()));
             if (SubstrateOptions.closedTypeWorld()) {
                 hub.setClosedWorldData(vtable, type.getTypeID(), type.getTypeCheckStart(), type.getTypeCheckRange(),
