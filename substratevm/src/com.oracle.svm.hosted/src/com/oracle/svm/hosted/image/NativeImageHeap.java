@@ -216,9 +216,7 @@ public final class NativeImageHeap implements ImageHeap {
         // Process any remaining objects on the worklist, especially that might intern strings.
         processAddObjectWorklist();
 
-        HostedField internedStringsField = (HostedField) StringInternFeature.getInternedStringsField(hMetaAccess);
-        boolean usesInternedStrings = internedStringsField.isAccessed();
-
+        boolean usesInternedStrings = hMetaAccess.lookupJavaField(StringInternSupport.getInternedStringsField()).isAccessed();
         if (usesInternedStrings) {
             /*
              * Ensure that the hub of the String[] array (used for the interned objects) is written.
