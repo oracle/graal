@@ -375,10 +375,10 @@ public abstract class NFATraversalRegexASTVisitor {
                 // using the exitZeroWidth/escapeZeroWidth set of quantifier guards.
                 Group emptyMatch = target.getParent().getParent().asGroup();
                 // If the successor is an empty-match group, we will need to do 2 things:
-                // 1) Add a final enterEmptyMatch guard.
+                // 1) Add a final checkEmptyMatch guard.
                 pushQuantifierGuard(QuantifierGuard.createCheckEmptyMatch(emptyMatch.getQuantifier()));
                 // 2) Filter out any guards concerning the empty-match group, except for
-                // enterEmptyMatch.
+                // checkEmptyMatch.
                 quantifierGuardsResult = quantifierGuards.toArray(guard -> guard.getKind() == QuantifierGuard.Kind.checkEmptyMatch || guard.getQuantifier() != emptyMatch.getQuantifier());
                 // 3) Pop the final guard that was introduced in 1).
                 popQuantifierGuard();
