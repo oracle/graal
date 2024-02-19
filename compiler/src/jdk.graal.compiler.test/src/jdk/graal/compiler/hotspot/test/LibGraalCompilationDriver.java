@@ -664,7 +664,7 @@ public class LibGraalCompilationDriver {
                     Map<ResolvedJavaMethod, CompilationResult> results) {
         CompilationResult result = compile(task, libgraal, options);
         if (result == null) {
-            TTY.println("Compilation of %s failed", task);
+            TTY.println("Compilation failed: %s", task);
             return;
         }
         compileTime.getAndAdd(result.compileTime());
