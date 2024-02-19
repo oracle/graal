@@ -27,6 +27,7 @@ package jdk.graal.compiler.hotspot.aarch64;
 import static java.lang.reflect.Modifier.isStatic;
 import static jdk.vm.ci.aarch64.AArch64.lr;
 import static jdk.vm.ci.aarch64.AArch64.r10;
+import static jdk.vm.ci.aarch64.AArch64.rscratch1;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
@@ -353,25 +354,23 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
 
     @Override
     public void emitCode(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, EntryPointDecorator entryPointDecorator) {
-        Label verifiedStub = new Label();
         crb.buildLabelOffsets();
         try {
-            emitCode(crb, installedCodeOwner, verifiedStub, entryPointDecorator);
+            emitCodeHelper(crb, installedCodeOwner, entryPointDecorator);
         } catch (BranchTargetOutOfBoundsException e) {
             // A branch estimation was wrong, now retry with conservative label ranges, this
             // should always work
             crb.setConservativeLabelRanges();
             crb.resetForEmittingCode();
-            verifiedStub.reset();
-            emitCode(crb, installedCodeOwner, verifiedStub, entryPointDecorator);
+            emitCodeHelper(crb, installedCodeOwner, entryPointDecorator);
         }
     }
 
-    private void emitCode(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, Label verifiedStub, EntryPointDecorator entryPointDecorator) {
+    private void emitCodeHelper(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, EntryPointDecorator entryPointDecorator) {
         AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
         FrameMap frameMap = crb.frameMap;
         RegisterConfig regConfig = frameMap.getRegisterConfig();
-        emitCodePrefix(crb, installedCodeOwner, masm, regConfig, verifiedStub);
+        emitCodePrefix(crb, installedCodeOwner, masm, regConfig);
 
         if (entryPointDecorator != null) {
             entryPointDecorator.emitEntryPoint(crb);
@@ -380,33 +379,60 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         emitCodeSuffix(crb, masm);
     }
 
-    private void emitCodePrefix(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, AArch64MacroAssembler masm, RegisterConfig regConfig, Label verifiedStub) {
+    private void emitCodePrefix(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, AArch64MacroAssembler masm, RegisterConfig regConfig) {
+        Label verifiedStub = new Label();
         HotSpotProviders providers = getProviders();
         if (installedCodeOwner != null && !isStatic(installedCodeOwner.getModifiers())) {
-            crb.recordMark(HotSpotMarkId.UNVERIFIED_ENTRY);
-            CallingConvention cc = regConfig.getCallingConvention(HotSpotCallingConventionType.JavaCallee, null, new JavaType[]{providers.getMetaAccess().lookupJavaType(Object.class)}, this);
-            // See definition of IC_Klass in c1_LIRAssembler_aarch64.cpp
-            // equal to scratch(1) careful!
-            Register inlineCacheKlass = AArch64HotSpotRegisterConfig.inlineCacheRegister;
+            JavaType[] parameterTypes = {providers.getMetaAccess().lookupJavaType(Object.class)};
+            CallingConvention cc = regConfig.getCallingConvention(HotSpotCallingConventionType.JavaCallee, null, parameterTypes, this);
             Register receiver = asRegister(cc.getArgument(0));
             int size = config.useCompressedClassPointers ? 32 : 64;
             AArch64Address klassAddress = masm.makeAddress(size, receiver, config.hubOffset);
+            if (config.icSpeculatedKlassOffset == Integer.MAX_VALUE) {
+                crb.recordMark(HotSpotMarkId.UNVERIFIED_ENTRY);
+                Register klass = rscratch1;
+                if (config.useCompressedClassPointers) {
+                    masm.ldr(32, klass, klassAddress);
+                    AArch64HotSpotMove.decodeKlassPointer(masm, klass, klass, config.getKlassEncoding());
+                } else {
+                    masm.ldr(64, klass, klassAddress);
+                }
+                // c1_LIRAssembler_aarch64.cpp: const Register IC_Klass = rscratch2;
+                Register inlineCacheKlass = AArch64HotSpotRegisterConfig.inlineCacheRegister;
+                masm.cmp(64, inlineCacheKlass, klass);
 
-            // Are r10 and r11 available scratch registers here? One would hope so.
-            Register klass = r10;
-            if (config.useCompressedClassPointers) {
-                masm.ldr(32, klass, klassAddress);
-                AArch64HotSpotMove.decodeKlassPointer(masm, klass, klass, config.getKlassEncoding());
+                masm.branchConditionally(AArch64Assembler.ConditionFlag.EQ, verifiedStub);
+                AArch64Call.directJmp(crb, masm, getForeignCalls().lookupForeignCall(IC_MISS_HANDLER));
             } else {
-                masm.ldr(64, klass, klassAddress);
+
+                // JDK-8322630 (removed ICStubs)
+                Register data = AArch64HotSpotRegisterConfig.inlineCacheRegister;
+                Register tmp1 = rscratch1;
+                Register tmp2 = r10; // Safe to use R10 as scratch register in method prologue
+                ForeignCallLinkage icMissHandler = getForeignCalls().lookupForeignCall(IC_MISS_HANDLER);
+
+                // Size of IC check sequence checked with a guarantee below.
+                int inlineCacheCheckSize = AArch64Call.isNearCall(icMissHandler) ? 20 : 32;
+                masm.align(config.codeEntryAlignment, masm.position() + inlineCacheCheckSize);
+
+                int startICCheck = masm.position();
+                crb.recordMark(HotSpotMarkId.UNVERIFIED_ENTRY);
+                AArch64Address icSpeculatedKlass = masm.makeAddress(size, data, config.icSpeculatedKlassOffset);
+
+                masm.ldr(size, tmp1, klassAddress);
+                masm.ldr(size, tmp2, icSpeculatedKlass);
+                masm.cmp(size, tmp1, tmp2);
+
+                masm.branchConditionally(AArch64Assembler.ConditionFlag.EQ, verifiedStub);
+                AArch64Call.directJmp(crb, masm, icMissHandler);
+
+                int actualInlineCacheCheckSize = masm.position() - startICCheck;
+                if (actualInlineCacheCheckSize != inlineCacheCheckSize) {
+                    // Code emission pattern has changed: adjust `inlineCacheCheckSize`
+                    // initialization above accordingly.
+                    throw new GraalError("%s != %s", actualInlineCacheCheckSize, inlineCacheCheckSize);
+                }
             }
-            masm.cmp(64, inlineCacheKlass, klass);
-            /*
-             * Conditional jumps have a much lower range than unconditional ones, which can be a
-             * problem because the miss handler could be out of range.
-             */
-            masm.branchConditionally(AArch64Assembler.ConditionFlag.EQ, verifiedStub);
-            AArch64Call.directJmp(crb, masm, getForeignCalls().lookupForeignCall(IC_MISS_HANDLER));
         }
         masm.align(config.codeEntryAlignment);
         masm.bind(verifiedStub);

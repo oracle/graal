@@ -81,6 +81,7 @@ import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.login.Configuration;
 
 import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -659,7 +660,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private static Function<String, Class<?>> getConstructorParameterClassAccessor(ImageClassLoader loader) {
         Map<String, /* EngineDescription */ Object> knownEngines = ReflectionUtil.readStaticField(Provider.class, "knownEngines");
         Class<?> clazz = loader.findClassOrFail("java.security.Provider$EngineDescription");
-        Field consParamClassNameField = ReflectionUtil.lookupField(clazz, "constructorParameterClassName");
+        Field consParamClassField = ReflectionUtil.lookupField(clazz, JavaVersionUtil.JAVA_SPEC >= 23 ? "constructorParameterClass" : "constructorParameterClassName");
 
         /*
          * The returned lambda captures the value of the Provider.knownEngines map retrieved above
@@ -684,7 +685,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                 if (engineDescription == null) {
                     return null;
                 }
-                String constrParamClassName = (String) consParamClassNameField.get(engineDescription);
+                if (JavaVersionUtil.JAVA_SPEC >= 23) {
+                    return (Class<?>) consParamClassField.get(engineDescription);
+                }
+                String constrParamClassName = (String) consParamClassField.get(engineDescription);
                 if (constrParamClassName != null) {
                     return loader.findClass(constrParamClassName).get();
                 }
