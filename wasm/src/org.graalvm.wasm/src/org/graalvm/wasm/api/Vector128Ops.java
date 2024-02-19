@@ -39,6 +39,32 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static Vector128 i32x4_relop(Vector128 vecX, Vector128 vecY, int vectorOpcode) {
+        int[] x = vecX.asInts();
+        int[] y = vecY.asInts();
+        int[] result = new int[4];
+        CompilerDirectives.ensureVirtualized(x);
+        CompilerDirectives.ensureVirtualized(y);
+        CompilerDirectives.ensureVirtualized(result);
+        for (int i = 0; i < 4; i++) {
+            result[i] = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I32X4_EQ -> y[i] == x[i];
+                case Bytecode.VECTOR_I32X4_NE -> y[i] != x[i];
+                case Bytecode.VECTOR_I32X4_LT_S -> y[i] < x[i];
+                case Bytecode.VECTOR_I32X4_LT_U -> Integer.compareUnsigned(y[i], x[i]) < 0;
+                case Bytecode.VECTOR_I32X4_GT_S -> y[i] > x[i];
+                case Bytecode.VECTOR_I32X4_GT_U -> Integer.compareUnsigned(y[i], x[i]) > 0;
+                case Bytecode.VECTOR_I32X4_LE_S -> y[i] <= x[i];
+                case Bytecode.VECTOR_I32X4_LE_U -> Integer.compareUnsigned(y[i], x[i]) <= 0;
+                case Bytecode.VECTOR_I32X4_GE_S -> y[i] >= x[i];
+                case Bytecode.VECTOR_I32X4_GE_U -> Integer.compareUnsigned(y[i], x[i]) >= 0;
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            } ? 0xffff_ffff : 0x0000_0000;
+        }
+        return Vector128.ofInts(result);
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static Vector128 f64x2_relop(Vector128 vecX, Vector128 vecY, int vectorOpcode) {
         double[] x = vecX.asDoubles();
         double[] y = vecY.asDoubles();

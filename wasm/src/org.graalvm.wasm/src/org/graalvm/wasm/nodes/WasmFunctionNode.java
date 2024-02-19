@@ -1755,6 +1755,22 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             pushVector128(frame, stackPointer, value);
                             stackPointer++;
                             break;
+                        case Bytecode.VECTOR_I32X4_EQ:
+                        case Bytecode.VECTOR_I32X4_NE:
+                        case Bytecode.VECTOR_I32X4_LT_S:
+                        case Bytecode.VECTOR_I32X4_LT_U:
+                        case Bytecode.VECTOR_I32X4_GT_S:
+                        case Bytecode.VECTOR_I32X4_GT_U:
+                        case Bytecode.VECTOR_I32X4_LE_S:
+                        case Bytecode.VECTOR_I32X4_LE_U:
+                        case Bytecode.VECTOR_I32X4_GE_S:
+                        case Bytecode.VECTOR_I32X4_GE_U: {
+                            Vector128 x = popVector128(frame, --stackPointer);
+                            Vector128 y = popVector128(frame, --stackPointer);
+                            Vector128 result = Vector128Ops.i32x4_relop(x, y, vectorOpcode);
+                            pushVector128(frame, stackPointer++, result);
+                            break;
+                        }
                         case Bytecode.VECTOR_F64X2_EQ:
                         case Bytecode.VECTOR_F64X2_NE:
                         case Bytecode.VECTOR_F64X2_LT:
