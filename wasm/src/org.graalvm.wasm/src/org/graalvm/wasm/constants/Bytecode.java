@@ -447,6 +447,17 @@ public class Bytecode {
     public static final int VECTOR_V128_LOAD = 0x00;
     public static final int VECTOR_V128_CONST = 0x0C;
 
+    public static final int VECTOR_I32X4_EQ = 0x37;
+    public static final int VECTOR_I32X4_NE = 0x38;
+    public static final int VECTOR_I32X4_LT_S = 0x39;
+    public static final int VECTOR_I32X4_LT_U = 0x3A;
+    public static final int VECTOR_I32X4_GT_S = 0x3B;
+    public static final int VECTOR_I32X4_GT_U = 0x3C;
+    public static final int VECTOR_I32X4_LE_S = 0x3D;
+    public static final int VECTOR_I32X4_LE_U = 0x3E;
+    public static final int VECTOR_I32X4_GE_S = 0x3F;
+    public static final int VECTOR_I32X4_GE_U = 0x40;
+
     public static final int VECTOR_F64X2_EQ = 0x47;
     public static final int VECTOR_F64X2_NE = 0x48;
     public static final int VECTOR_F64X2_LT = 0x49;

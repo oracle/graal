@@ -1830,6 +1830,16 @@ public class BinaryParser extends BinaryStreamParser {
                         state.push(V128_TYPE);
                         state.addInstruction(vectorOpcode);
                         break;
+                    case Instructions.VECTOR_I32X4_EQ:
+                    case Instructions.VECTOR_I32X4_NE:
+                    case Instructions.VECTOR_I32X4_LT_S:
+                    case Instructions.VECTOR_I32X4_LT_U:
+                    case Instructions.VECTOR_I32X4_GT_S:
+                    case Instructions.VECTOR_I32X4_GT_U:
+                    case Instructions.VECTOR_I32X4_LE_S:
+                    case Instructions.VECTOR_I32X4_LE_U:
+                    case Instructions.VECTOR_I32X4_GE_S:
+                    case Instructions.VECTOR_I32X4_GE_U:
                     case Instructions.VECTOR_F64X2_EQ:
                     case Instructions.VECTOR_F64X2_NE:
                     case Instructions.VECTOR_F64X2_LT:
