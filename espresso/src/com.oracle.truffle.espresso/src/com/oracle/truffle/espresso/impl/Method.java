@@ -104,6 +104,7 @@ import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.espresso.vm.VM.EspressoStackElement;
 
 public final class Method extends Member<Signature> implements TruffleObject, ContextAccess {
 
@@ -1475,6 +1476,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         public int bciToLineNumber(int bci) {
             if (bci < 0) {
                 return bci;
+            }
+            if (isNative()) {
+                return EspressoStackElement.NATIVE_BCI;
             }
             return getCodeAttribute().bciToLineNumber(bci);
         }
