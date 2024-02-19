@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,53 +24,43 @@
  * questions.
  */
 
-package com.oracle.svm.core.sampler;
+package com.oracle.svm.core.jfr;
 
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
-import org.graalvm.word.Pointer;
-import com.oracle.svm.core.jfr.Buffer;
+import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 
 /**
- * A {@link SamplerBuffer} is a block of native memory into which the results of stack walks are
- * written.
+ * A {@link Buffer} may be associated with a {@link BufferNode}.
  */
 @RawStructure
-public interface SamplerBuffer extends Buffer {
+public interface Buffer extends PointerBase {
 
     /**
-     * Returns the buffer that is next in the {@link SamplerBufferStack}, otherwise null.
+     * Returns the size of the buffer. This excludes the header of the buffer. This field is
+     * effectively final.
      */
     @RawField
-    SamplerBuffer getNext();
+    UnsignedWord getSize();
 
     /**
-     * Sets the successor to this buffer in the {@link SamplerBufferStack}.
+     * Sets the size of the buffer.
      */
     @RawField
-    void setNext(SamplerBuffer buffer);
+    void setSize(UnsignedWord value);
 
     /**
-     * Returns the current position. Any data before this position is valid sample data.
+     * Returns the {@link BufferNode} that references this {@link Buffer}. This field is only set
+     * when a {@link Buffer} was added to a {@link BufferList}
      */
     @RawField
-    Pointer getPos();
+    BufferNode getNode();
 
     /**
-     * Sets the current position.
+     * Sets the {@link BufferNode}.
      */
     @RawField
-    void setPos(Pointer pos);
+    void setNode(BufferNode value);
 
-    /**
-     * Returns the position up to which data has been serialized.
-     */
-    @RawField
-    Pointer getSerializedPos();
-
-    /**
-     * Sets the position up to which data has been serialized.
-     */
-    @RawField
-    void setSerializedPos(Pointer pos);
 }

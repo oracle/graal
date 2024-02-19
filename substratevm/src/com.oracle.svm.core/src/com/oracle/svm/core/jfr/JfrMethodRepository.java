@@ -116,6 +116,7 @@ public class JfrMethodRepository implements JfrRepository {
                 writer.writeCompressedLong(JfrType.Method.getId());
                 writer.writeCompressedInt(count);
                 writer.write(epochData.buffer);
+
             }
             epochData.clear(flushpoint);
             return count == 0 ? EMPTY : NON_EMPTY;

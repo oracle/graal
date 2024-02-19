@@ -94,7 +94,7 @@ public final class JfrBufferAccess {
      */
     @Uninterruptible(reason = "Changes flushed position.")
     public static void setFlushedPos(JfrBuffer buffer, Pointer pos) {
-        assert buffer.getNode().isNull() || VMOperation.isInProgressAtSafepoint() || JfrBufferNodeAccess.isLockedByCurrentThread(buffer.getNode());
+        assert buffer.getNode().isNull() || VMOperation.isInProgressAtSafepoint() || BufferNodeAccess.isLockedByCurrentThread(buffer.getNode());
         buffer.setFlushedPos(pos);
     }
 
@@ -103,7 +103,7 @@ public final class JfrBufferAccess {
      */
     @Uninterruptible(reason = "Accesses flushed position. Possible race between flushing and working threads.")
     public static Pointer getFlushedPos(JfrBuffer buffer) {
-        assert buffer.getNode().isNull() || VMOperation.isInProgressAtSafepoint() || JfrBufferNodeAccess.isLockedByCurrentThread(buffer.getNode());
+        assert buffer.getNode().isNull() || VMOperation.isInProgressAtSafepoint() || BufferNodeAccess.isLockedByCurrentThread(buffer.getNode());
         return buffer.getFlushedPos();
     }
 

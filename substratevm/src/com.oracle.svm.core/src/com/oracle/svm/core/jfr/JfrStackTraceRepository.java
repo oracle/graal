@@ -89,6 +89,16 @@ public class JfrStackTraceRepository implements JfrRepository {
         return stackTraceDepth;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void lock() {
+        mutex.lockNoTransition();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void unlock() {
+        mutex.unlock();
+    }
+
     public void teardown() {
         epochData0.teardown();
         epochData1.teardown();
@@ -162,6 +172,10 @@ public class JfrStackTraceRepository implements JfrRepository {
      */
     @Uninterruptible(reason = "Locking without transition and result is only valid until epoch changes.", callerMustBe = true)
     public JfrStackTraceTableEntry getOrPutStackTrace(Pointer start, UnsignedWord size, int hashCode, CIntPointer statusPtr) {
+        if (mutex.isOwner()) {
+            return getOrPutStackTrace0(start, size, hashCode, statusPtr);
+        }
+
         mutex.lockNoTransition();
         try {
             return getOrPutStackTrace0(start, size, hashCode, statusPtr);
@@ -172,6 +186,7 @@ public class JfrStackTraceRepository implements JfrRepository {
 
     @Uninterruptible(reason = "Locking without transition and result is only valid until epoch changes.", callerMustBe = true)
     private JfrStackTraceTableEntry getOrPutStackTrace0(Pointer start, UnsignedWord size, int hashCode, CIntPointer statusPtr) {
+        assert mutex.isOwner();
         assert size.rawValue() == (int) size.rawValue();
 
         JfrStackTraceTableEntry entry = StackValue.get(JfrStackTraceTableEntry.class);
@@ -216,28 +231,29 @@ public class JfrStackTraceRepository implements JfrRepository {
 
     @Uninterruptible(reason = "Locking without transition and result is only valid until epoch changes.", callerMustBe = true)
     public void commitSerializedStackTrace(JfrStackTraceTableEntry entry) {
+        if (mutex.isOwner()) {
+            commitSerializedStackTrace0(entry);
+            return;
+        }
+
         mutex.lockNoTransition();
         try {
-            entry.setSerialized(true);
-            getEpochData(false).unflushedEntries++;
+            commitSerializedStackTrace0(entry);
         } finally {
             mutex.unlock();
         }
     }
 
+    @Uninterruptible(reason = "Locking without transition and result is only valid until epoch changes.", callerMustBe = true)
+    public void commitSerializedStackTrace0(JfrStackTraceRepository.JfrStackTraceTableEntry entry) {
+        assert mutex.isOwner();
+        entry.setSerialized(true);
+        getEpochData(false).unflushedEntries++;
+    }
+
     @Override
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public int write(JfrChunkWriter writer, boolean flushpoint) {
-        if (flushpoint) {
-            /*
-             * Flushing is not support for stack traces at the moment. When a stack trace is
-             * serialized, the methods getOrPutStackTrace() and commitSerializedStackTrace() are
-             * used. The lock is not held all the time, so a flushpoint could destroy the JfrBuffer
-             * of the epoch, while it is being written.
-             */
-            return EMPTY;
-        }
-
         mutex.lockNoTransition();
         try {
             JfrStackTraceEpochData epochData = getEpochData(!flushpoint);
@@ -263,6 +279,7 @@ public class JfrStackTraceRepository implements JfrRepository {
     /** Returns null if the buffer allocation failed. */
     @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public JfrBuffer getCurrentBuffer() {
+        assert mutex.isOwner();
         JfrStackTraceEpochData epochData = getEpochData(false);
         if (epochData.buffer.isNull()) {
             epochData.buffer = JfrBufferAccess.allocate(JfrBufferType.C_HEAP);

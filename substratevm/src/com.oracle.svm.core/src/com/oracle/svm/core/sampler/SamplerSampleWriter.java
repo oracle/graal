@@ -36,6 +36,7 @@ import com.oracle.svm.core.jfr.JfrThreadLocal;
 import com.oracle.svm.core.jfr.JfrThreadState;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.core.jfr.BufferNode;
 
 public final class SamplerSampleWriter {
     public static final long JFR_STACK_TRACE_END = -1;
@@ -155,7 +156,7 @@ public final class SamplerSampleWriter {
 
         int totalRequested = requested + END_MARKER_SIZE;
         if (getAvailableSize(data).belowThan(totalRequested)) {
-            if (!accommodate(data, getUncommittedSize(data))) {
+            if (!accommodate(data)) {
                 assert !isValid(data);
                 return false;
             }
@@ -165,7 +166,7 @@ public final class SamplerSampleWriter {
     }
 
     @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
-    private static boolean accommodate(SamplerSampleWriterData data, UnsignedWord uncommitted) {
+    private static boolean accommodate(SamplerSampleWriterData data) {
         if (SamplerBufferAccess.isEmpty(data.getSamplerBuffer())) {
             /*
              * Sample is too big to fit into the size of one buffer i.e. we want to do
@@ -181,19 +182,29 @@ public final class SamplerSampleWriter {
             cancel(data);
             return false;
         }
-        JfrThreadLocal.setSamplerBuffer(newBuffer);
+        SamplerBuffer oldBuffer = data.getSamplerBuffer();
+        BufferNode oldNode = oldBuffer.getNode();
 
-        /* Copy the uncommitted content of old buffer into new one. */
+        // Signal to thread iterating list that this node can be removed
+        oldNode.setBuffer(WordFactory.nullPointer());
+
+        JfrThreadLocal.setSamplerBuffer(newBuffer);
+        UnsignedWord uncommitted = getUncommittedSize(data);
+
+        // Copy the uncommitted content of old buffer into new one.
         UnmanagedMemoryUtil.copy(data.getStartPos(), SamplerBufferAccess.getDataStart(newBuffer), uncommitted);
 
-        /* Put in the stack with other unprocessed buffers and send a signal to the JFR recorder. */
-        SamplerBuffer oldBuffer = data.getSamplerBuffer();
+        // Put in the stack with other unprocessed buffers and send a signal to the JFR
+        // recorder.
+        assert SamplerBufferAccess.verify(oldBuffer);
         SubstrateJVM.getSamplerBufferPool().pushFullBuffer(oldBuffer);
 
-        /* Reinitialize data structure. */
+        // Reinitialize data structure.
         data.setSamplerBuffer(newBuffer);
         reset(data);
         increaseCurrentPos(data, uncommitted);
+        assert SamplerBufferAccess.verify(newBuffer);
+        SamplerBufferPool.getSamplerBufferList().addNode(newBuffer.getNode());
         return true;
     }
 

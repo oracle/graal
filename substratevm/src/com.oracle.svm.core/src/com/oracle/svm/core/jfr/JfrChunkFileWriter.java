@@ -48,7 +48,6 @@ import com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.sampler.SamplerBuffersAccess;
 import com.oracle.svm.core.thread.JavaVMOperation;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
@@ -179,7 +178,7 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
     public void write(JfrBuffer buffer) {
         assert lock.isOwner();
         assert buffer.isNonNull();
-        assert buffer.getBufferType() == JfrBufferType.C_HEAP || VMOperation.isInProgressAtSafepoint() || JfrBufferNodeAccess.isLockedByCurrentThread(buffer.getNode());
+        assert buffer.getBufferType() == JfrBufferType.C_HEAP || VMOperation.isInProgressAtSafepoint() || BufferNodeAccess.isLockedByCurrentThread(buffer.getNode());
 
         UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(buffer);
         if (unflushedSize.equal(0)) {
@@ -533,25 +532,55 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
 
     @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
     private void flushStorage(boolean flushpoint) {
+        if (!flushpoint) {
+            // Order first so events emitted during processing remain with the correct chunk.
+            processSamplerBuffers();
+        }
         traverseThreadLocalBuffers(getJavaBufferList(), flushpoint);
         traverseThreadLocalBuffers(getNativeBufferList(), flushpoint);
 
         flushGlobalMemory(flushpoint);
+
+        if (flushpoint) {
+            // Order last because events in JFR buffers can reference data in sampler buffers.
+            processSamplerBuffers();
+        }
+    }
+
+    /**
+     * While serializing the stack trace data from the active buffers of other threads, we need to
+     * ensure there are no races with the recurring callback or SIGPROF-based samplers which could
+     * modify {@code SamplerBufferPool#fullBuffers} and {@code SamplerBufferPool#availableBuffers}.
+     * For the {@link JfrRecurringCallbackExecutionSampler}, it is sufficient to mark this method as
+     * uninterruptible to prevent execution of the recurring callbacks. If the SIGPROF-based sampler
+     * is used, the signal handler may still be executed at any time for any thread (including the
+     * current thread). To prevent races, we need to ensure that there are no threads that execute
+     * the SIGPROF handler while we are processing sampler buffers.
+     */
+    @Uninterruptible(reason = "Prevent JFR recording.")
+    private static void processSamplerBuffers() {
+        JfrExecutionSampler.singleton().disallowThreadsInSamplerCode();
+        try {
+            SamplerBuffersAccess.processActiveBuffers();
+            SamplerBuffersAccess.processFullBuffers();
+        } finally {
+            JfrExecutionSampler.singleton().allowThreadsInSamplerCode();
+        }
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     private void traverseThreadLocalBuffers(JfrBufferList list, boolean flushpoint) {
-        JfrBufferNode node = list.getHead();
-        JfrBufferNode prev = WordFactory.nullPointer();
+        BufferNode node = list.getHead();
+        BufferNode prev = WordFactory.nullPointer();
 
         while (node.isNonNull()) {
-            JfrBufferNode next = node.getNext();
-            boolean lockAcquired = JfrBufferNodeAccess.tryLock(node);
+            BufferNode next = node.getNext();
+            boolean lockAcquired = BufferNodeAccess.tryLock(node);
             if (lockAcquired) {
-                JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
+                JfrBuffer buffer = BufferNodeAccess.getJfrBuffer(node);
                 if (buffer.isNull()) {
                     list.removeNode(node, prev);
-                    JfrBufferNodeAccess.free(node);
+                    BufferNodeAccess.free(node);
                     node = next;
                     continue;
                 }
@@ -573,7 +602,7 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
                      * reclamation on their own time.
                      */
                 } finally {
-                    JfrBufferNodeAccess.unlock(node);
+                    BufferNodeAccess.unlock(node);
                 }
             }
 
@@ -586,16 +615,16 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     private void flushGlobalMemory(boolean flushpoint) {
         JfrBufferList buffers = globalMemory.getBuffers();
-        JfrBufferNode node = buffers.getHead();
+        BufferNode node = buffers.getHead();
         while (node.isNonNull()) {
-            boolean lockAcquired = JfrBufferNodeAccess.tryLock(node);
+            boolean lockAcquired = BufferNodeAccess.tryLock(node);
             if (lockAcquired) {
                 try {
-                    JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
+                    JfrBuffer buffer = BufferNodeAccess.getJfrBuffer(node);
                     write(buffer);
                     JfrBufferAccess.reinitialize(buffer);
                 } finally {
-                    JfrBufferNodeAccess.unlock(node);
+                    BufferNodeAccess.unlock(node);
                 }
             }
             assert lockAcquired || flushpoint;
@@ -647,7 +676,6 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
          */
         @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
         private void changeEpoch() {
-            processSamplerBuffers();
             flushStorage(false);
 
             /* Notify all event writers that the epoch changed. */
@@ -659,34 +687,6 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
 
             // Now that the epoch changed, re-register all running threads for the new epoch.
             SubstrateJVM.getThreadRepo().registerRunningThreads();
-        }
-
-        /**
-         * The VM is at a safepoint, so all other threads have a native state. However, execution
-         * sampling could still be executed. For the {@link JfrRecurringCallbackExecutionSampler},
-         * it is sufficient to mark this method as uninterruptible to prevent execution of the
-         * recurring callbacks. If the SIGPROF-based sampler is used, the signal handler may still
-         * be executed at any time for any thread (including the current thread). To prevent races,
-         * we need to ensure that there are no threads that execute the SIGPROF handler while we are
-         * accessing the currently active buffers of other threads.
-         */
-        @Uninterruptible(reason = "Prevent JFR recording.")
-        private static void processSamplerBuffers() {
-            assert VMOperation.isInProgressAtSafepoint();
-            assert ThreadingSupportImpl.isRecurringCallbackPaused();
-
-            JfrExecutionSampler.singleton().disallowThreadsInSamplerCode();
-            try {
-                processSamplerBuffers0();
-            } finally {
-                JfrExecutionSampler.singleton().allowThreadsInSamplerCode();
-            }
-        }
-
-        @Uninterruptible(reason = "Prevent JFR recording.")
-        private static void processSamplerBuffers0() {
-            SamplerBuffersAccess.processActiveBuffers();
-            SamplerBuffersAccess.processFullBuffers(false);
         }
     }
 }

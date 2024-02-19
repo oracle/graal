@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,54 +24,64 @@
  * questions.
  */
 
-package com.oracle.svm.core.jfr;
+package com.oracle.svm.core.sampler;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.thread.VMOperation;
-
+import com.oracle.svm.core.jfr.BufferNodeAccess;
+import com.oracle.svm.core.jfr.BufferNode;
+import com.oracle.svm.core.jfr.BufferList;
 import com.oracle.svm.core.Uninterruptible;
 
 /**
- * Multiple instances of this data structure are used to keep track of the global and the various
- * thread-local buffers.
+ * Nodes should only be removed from this list by
+ * {@link SamplerBuffersAccess#processActiveBuffers()}. Nodes are marked for removal if their buffer
+ * field is null. This means that the buffer has been put on the full buffer queue because it is
+ * full or the owning thread has exited.
  */
-public class JfrBufferList extends BufferList {
+public class SamplerBufferList extends BufferList {
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public JfrBufferList() {
+    public SamplerBufferList() {
     }
 
     /**
-     * This is called when a recording is stopped. We cannot safely destroy Java buffers here
-     * because their corresponding interruptible EventWriters may still be using them.
+     * This is called after {@link SamplerBufferPool#teardown()}, so all buffers should already be
+     * freed. All nodes in the list can be freed.
      */
     public void teardown() {
         assert VMOperation.isInProgressAtSafepoint();
 
         BufferNode node = head;
         while (node.isNonNull()) {
-            /* If the buffer is still alive, then mark it as removed from the list. */
-            JfrBuffer buffer = BufferNodeAccess.getJfrBuffer(node);
-            if (buffer.isNonNull()) {
-                assert JfrBufferAccess.isRetired(buffer);
-                buffer.setNode(WordFactory.nullPointer());
-            }
-
+            assert BufferNodeAccess.getSamplerBuffer(node).isNull();
             BufferNode next = node.getNext();
-            ImageSingletons.lookup(UnmanagedMemorySupport.class).free(node);
+            BufferNodeAccess.free(node);
             node = next;
         }
         head = WordFactory.nullPointer();
     }
 
+    /**
+     * This method is necessary because allocation cannot be done on code paths used by the
+     * SIGPROF-based execution sampler. The caller of this node must ensure that
+     * {@link SamplerBuffer} and {@link BufferNode} already have references to each other in both
+     * directions. This method simply adds the node to the active nodes list.
+     */
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    public BufferNode addNode(JfrBuffer buffer) {
-        assert buffer.getBufferType() != null && buffer.getBufferType() != JfrBufferType.C_HEAP;
-        return super.addNode(buffer);
+    public BufferNode addNode(BufferNode node) {
+        assert node.isNonNull();
+        assert node.getBuffer().isNonNull();
+        lockNoTransition();
+        try {
+            node.setNext(head);
+            head = node;
+            return node;
+        } finally {
+            unlock();
+        }
     }
 }

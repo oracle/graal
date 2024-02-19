@@ -54,6 +54,7 @@ public final class SamplerSampleWriterDataAccess {
                 return false;
             }
             JfrThreadLocal.setSamplerBuffer(buffer);
+            SamplerBufferPool.getSamplerBufferList().addNode(buffer.getNode());
         }
         initialize0(data, buffer, skipCount, SubstrateJVM.getStackTraceRepo().getStackTraceDepth(), allowBufferAllocation);
         return true;

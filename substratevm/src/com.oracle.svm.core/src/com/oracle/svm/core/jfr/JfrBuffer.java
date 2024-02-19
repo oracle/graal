@@ -28,8 +28,6 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawFieldOffset;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.PointerBase;
-import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.util.VMError;
@@ -63,33 +61,20 @@ import com.oracle.svm.core.util.VMError;
  * Multiple threads may access the same {@link JfrBuffer} concurrently:
  * <li>If a thread owns/created a thread-local buffer, then it may access and modify most of that
  * buffer's data at any time, without the need for any locking. Only the following operations
- * require that the {@link JfrBufferNode} is locked:
+ * require that the {@link BufferNode} is locked:
  * <ul>
  * <li>accessing or modifying the flushed position (see {@link JfrBufferAccess#setFlushedPos}</li>
  * <li>freeing the buffer</li>
  * </ul>
  * <li>Accessing a thread-local buffer of another thread is only allowed after locking the
- * corresponding {@link JfrBufferNode} (see {@link #getNode()}). This prevents other threads from
+ * corresponding {@link BufferNode} (see {@link #getNode()}). This prevents other threads from
  * freeing the buffer in meanwhile. The thread that holds the lock may read any field in the buffer
  * header and it may also access flushed or committed data (i.e., everything below
  * {@link #getCommittedPos()}). It must not modify any header fields, except for the flushed
  * position.</li>
  */
 @RawStructure
-public interface JfrBuffer extends PointerBase {
-
-    /**
-     * Returns the size of the buffer. This excludes the header of the buffer. This field is
-     * effectively final.
-     */
-    @RawField
-    UnsignedWord getSize();
-
-    /**
-     * Sets the size of the buffer.
-     */
-    @RawField
-    void setSize(UnsignedWord value);
+public interface JfrBuffer extends Buffer {
 
     /**
      * Any data before this position was committed and is therefore valid event data.
@@ -134,20 +119,6 @@ public interface JfrBuffer extends PointerBase {
     @RawField
     @PinnedObjectField
     void setBufferType(JfrBufferType value);
-
-    /**
-     * Returns the {@link JfrBufferNode} that references this {@link JfrBuffer}. This field is only
-     * set when a {@link JfrBuffer} was added to a {@link JfrBufferList} (i.e., for
-     * {@link JfrBufferType#C_HEAP} buffers, this field is usually null).
-     */
-    @RawField
-    JfrBufferNode getNode();
-
-    /**
-     * Sets the {@link JfrBufferNode}.
-     */
-    @RawField
-    void setNode(JfrBufferNode value);
 
     @RawField
     byte getFlags();

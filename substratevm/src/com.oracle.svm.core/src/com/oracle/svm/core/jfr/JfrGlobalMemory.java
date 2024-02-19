@@ -62,7 +62,7 @@ public class JfrGlobalMemory {
                 throw new OutOfMemoryError("Could not allocate JFR buffer.");
             }
 
-            JfrBufferNode node = buffers.addNode(buffer);
+            BufferNode node = buffers.addNode(buffer);
             if (node.isNull()) {
                 throw new OutOfMemoryError("Could not allocate JFR buffer node.");
             }
@@ -72,9 +72,9 @@ public class JfrGlobalMemory {
     public void clear() {
         assert VMOperation.isInProgressAtSafepoint();
 
-        JfrBufferNode node = buffers.getHead();
+        BufferNode node = buffers.getHead();
         while (node.isNonNull()) {
-            JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
+            JfrBuffer buffer = BufferNodeAccess.getJfrBuffer(node);
             JfrBufferAccess.reinitialize(buffer);
             node = node.getNext();
         }
@@ -90,15 +90,15 @@ public class JfrGlobalMemory {
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     private void freeBuffers() {
         /* Free the buffers. */
-        JfrBufferNode node = buffers.getHead();
+        BufferNode node = buffers.getHead();
         while (node.isNonNull()) {
-            JfrBufferNodeAccess.lockNoTransition(node);
+            BufferNodeAccess.lockNoTransition(node);
             try {
-                JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
+                JfrBuffer buffer = BufferNodeAccess.getJfrBuffer(node);
                 JfrBufferAccess.free(buffer);
                 node.setBuffer(WordFactory.nullPointer());
             } finally {
-                JfrBufferNodeAccess.unlock(node);
+                BufferNodeAccess.unlock(node);
             }
             node = node.getNext();
         }
@@ -121,7 +121,7 @@ public class JfrGlobalMemory {
             return true;
         }
 
-        JfrBufferNode promotionNode = tryAcquirePromotionBuffer(unflushedSize);
+        BufferNode promotionNode = tryAcquirePromotionBuffer(unflushedSize);
         if (promotionNode.isNull()) {
             return false;
         }
@@ -129,13 +129,13 @@ public class JfrGlobalMemory {
         boolean shouldSignal;
         try {
             /* Copy all committed but not yet flushed memory to the promotion buffer. */
-            JfrBuffer promotionBuffer = JfrBufferNodeAccess.getBuffer(promotionNode);
+            JfrBuffer promotionBuffer = BufferNodeAccess.getJfrBuffer(promotionNode);
             assert JfrBufferAccess.getAvailableSize(promotionBuffer).aboveOrEqual(unflushedSize);
             UnmanagedMemoryUtil.copy(JfrBufferAccess.getFlushedPos(buffer), promotionBuffer.getCommittedPos(), unflushedSize);
             JfrBufferAccess.increaseCommittedPos(promotionBuffer, unflushedSize);
             shouldSignal = SubstrateJVM.getRecorderThread().shouldSignal(promotionBuffer);
         } finally {
-            JfrBufferNodeAccess.unlock(promotionNode);
+            BufferNodeAccess.unlock(promotionNode);
         }
 
         JfrBufferAccess.increaseFlushedPos(buffer, unflushedSize);
@@ -151,20 +151,20 @@ public class JfrGlobalMemory {
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    private JfrBufferNode tryAcquirePromotionBuffer(UnsignedWord size) {
+    private BufferNode tryAcquirePromotionBuffer(UnsignedWord size) {
         assert size.belowOrEqual(WordFactory.unsigned(bufferSize));
         for (int retry = 0; retry < PROMOTION_RETRY_COUNT; retry++) {
-            JfrBufferNode node = buffers.getHead();
+            BufferNode node = buffers.getHead();
             while (node.isNonNull()) {
-                if (JfrBufferNodeAccess.tryLock(node)) {
-                    JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
+                if (BufferNodeAccess.tryLock(node)) {
+                    JfrBuffer buffer = BufferNodeAccess.getJfrBuffer(node);
                     if (JfrBufferAccess.getAvailableSize(buffer).aboveOrEqual(size)) {
                         /* Recheck the available size after acquiring the buffer. */
                         if (JfrBufferAccess.getAvailableSize(buffer).aboveOrEqual(size)) {
                             return node;
                         }
                     }
-                    JfrBufferNodeAccess.unlock(node);
+                    BufferNodeAccess.unlock(node);
                 }
                 node = node.getNext();
             }

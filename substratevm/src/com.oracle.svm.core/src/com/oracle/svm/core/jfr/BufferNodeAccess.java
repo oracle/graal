@@ -37,17 +37,15 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.thread.NativeSpinLockUtils;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.sampler.SamplerBuffer;
 
-/**
- * Used to access the raw memory of a {@link JfrBufferNode}.
- */
-public final class JfrBufferNodeAccess {
-    private JfrBufferNodeAccess() {
+public final class BufferNodeAccess {
+    private BufferNodeAccess() {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static JfrBufferNode allocate(JfrBuffer buffer) {
-        JfrBufferNode node = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(SizeOf.unsigned(JfrBufferNode.class));
+    public static BufferNode allocate(Buffer buffer) {
+        BufferNode node = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(SizeOf.unsigned(BufferNode.class));
         if (node.isNonNull()) {
             node.setBuffer(buffer);
             node.setNext(WordFactory.nullPointer());
@@ -58,19 +56,12 @@ public final class JfrBufferNodeAccess {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void free(JfrBufferNode node) {
+    public static void free(BufferNode node) {
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(node);
     }
 
-    /** Should be used instead of {@link JfrBufferNode#getBuffer}. */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static JfrBuffer getBuffer(JfrBufferNode node) {
-        assert isLockedByCurrentThread(node) || VMOperation.isInProgressAtSafepoint();
-        return node.getBuffer();
-    }
-
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", callerMustBe = true)
-    public static boolean tryLock(JfrBufferNode node) {
+    public static boolean tryLock(BufferNode node) {
         assert node.isNonNull();
         if (NativeSpinLockUtils.tryLock(ptrToLock(node))) {
             setLockOwner(node);
@@ -80,14 +71,14 @@ public final class JfrBufferNodeAccess {
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", callerMustBe = true)
-    public static void lockNoTransition(JfrBufferNode node) {
+    public static void lockNoTransition(BufferNode node) {
         assert node.isNonNull();
         NativeSpinLockUtils.lockNoTransition(ptrToLock(node));
         setLockOwner(node);
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", callerMustBe = true)
-    public static void unlock(JfrBufferNode node) {
+    public static void unlock(BufferNode node) {
         assert node.isNonNull();
         assert isLockedByCurrentThread(node);
         node.setLockOwner(WordFactory.nullPointer());
@@ -95,19 +86,31 @@ public final class JfrBufferNodeAccess {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean isLockedByCurrentThread(JfrBufferNode node) {
+    public static boolean isLockedByCurrentThread(BufferNode node) {
         assert CurrentIsolate.getCurrentThread().isNonNull();
         return node.isNonNull() && node.getLockOwner() == CurrentIsolate.getCurrentThread();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static void setLockOwner(JfrBufferNode node) {
+    private static void setLockOwner(BufferNode node) {
         assert node.getLockOwner().isNull();
         node.setLockOwner(CurrentIsolate.getCurrentThread());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static CIntPointer ptrToLock(JfrBufferNode node) {
-        return (CIntPointer) ((Pointer) node).add(JfrBufferNode.offsetOfLock());
+    private static CIntPointer ptrToLock(BufferNode node) {
+        return (CIntPointer) ((Pointer) node).add(BufferNode.offsetOfLock());
+    }
+
+    /** Should be used instead of {@link com.oracle.svm.core.jfr.BufferNode#getBuffer}. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static JfrBuffer getJfrBuffer(BufferNode node) {
+        assert isLockedByCurrentThread(node) || VMOperation.isInProgressAtSafepoint();
+        return (JfrBuffer) node.getBuffer();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static SamplerBuffer getSamplerBuffer(BufferNode node) {
+        return (SamplerBuffer) node.getBuffer();
     }
 }

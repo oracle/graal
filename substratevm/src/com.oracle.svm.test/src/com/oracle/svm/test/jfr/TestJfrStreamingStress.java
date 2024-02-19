@@ -43,6 +43,8 @@ import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordingStream;
 
+import static org.junit.Assert.assertTrue;
+
 /**
  * This test spawns several threads that create Java and native events. The goal of this test is to
  * repeatedly create and remove nodes from the {@link com.oracle.svm.core.jfr.JfrBufferList}. Unlike
@@ -63,14 +65,25 @@ public class TestJfrStreamingStress extends JfrStreamingTest {
     private final AtomicLong waitEvents = new AtomicLong(0);
 
     @Test
+
     public void test() throws Throwable {
         String[] events = new String[]{"com.jfr.String", "com.jfr.Integer", "com.jfr.Class", JfrEvent.JavaMonitorWait.getName()};
         RecordingStream stream = startStream(events);
 
-        stream.onEvent("com.jfr.Class", event -> classEvents.incrementAndGet());
-        stream.onEvent("com.jfr.Integer", event -> integerEvents.incrementAndGet());
-        stream.onEvent("com.jfr.String", event -> stringEvents.incrementAndGet());
+        stream.onEvent("com.jfr.Class", event -> {
+            assertTrue(event.getStackTrace() != null && !event.getStackTrace().getFrames().isEmpty());
+            classEvents.incrementAndGet();
+        });
+        stream.onEvent("com.jfr.Integer", event -> {
+            assertTrue(event.getStackTrace() != null && !event.getStackTrace().getFrames().isEmpty());
+            integerEvents.incrementAndGet();
+        });
+        stream.onEvent("com.jfr.String", event -> {
+            assertTrue(event.getStackTrace() != null && !event.getStackTrace().getFrames().isEmpty());
+            stringEvents.incrementAndGet();
+        });
         stream.onEvent(JfrEvent.JavaMonitorWait.getName(), event -> {
+            assertTrue(event.getStackTrace() != null && !event.getStackTrace().getFrames().isEmpty());
             if (event.<RecordedClass> getValue("monitorClass").getName().equals(MonitorWaitHelper.class.getName())) {
                 waitEvents.incrementAndGet();
             }

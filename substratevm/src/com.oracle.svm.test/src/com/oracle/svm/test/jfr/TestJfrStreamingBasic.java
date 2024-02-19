@@ -63,6 +63,7 @@ public class TestJfrStreamingBasic extends JfrStreamingTest {
         RecordingStream stream = startStream(events);
 
         stream.onEvent(JfrEvent.JavaMonitorWait.getName(), event -> {
+            assertTrue(event.getStackTrace() != null && !event.getStackTrace().getFrames().isEmpty());
             if (event.<RecordedClass> getValue("monitorClass").getName().equals(MonitorWaitHelper.class.getName())) {
                 String thread = event.getThread("eventThread").getJavaName();
                 seenThreads.add(thread);

@@ -89,8 +89,8 @@ public class JfrRecorderThread extends Thread {
     }
 
     private void run0() {
-        SamplerBuffersAccess.processFullBuffers(true);
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
+        SamplerBuffersAccess.processFullBuffers();
         try {
             if (chunkWriter.hasOpenFile()) {
                 persistBuffers(chunkWriter);
@@ -103,7 +103,7 @@ public class JfrRecorderThread extends Thread {
     @SuppressFBWarnings(value = "NN_NAKED_NOTIFY", justification = "state change is in native buffer")
     private void persistBuffers(JfrChunkWriter chunkWriter) {
         JfrBufferList buffers = globalMemory.getBuffers();
-        JfrBufferNode node = buffers.getHead();
+        BufferNode node = buffers.getHead();
         while (node.isNonNull()) {
             tryPersistBuffer(chunkWriter, node);
             node = node.getNext();
@@ -126,16 +126,16 @@ public class JfrRecorderThread extends Thread {
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    private static void tryPersistBuffer(JfrChunkWriter chunkWriter, JfrBufferNode node) {
-        if (JfrBufferNodeAccess.tryLock(node)) {
+    private static void tryPersistBuffer(JfrChunkWriter chunkWriter, BufferNode node) {
+        if (BufferNodeAccess.tryLock(node)) {
             try {
-                JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
+                JfrBuffer buffer = BufferNodeAccess.getJfrBuffer(node);
                 if (isFullEnough(buffer)) {
                     chunkWriter.write(buffer);
                     JfrBufferAccess.reinitialize(buffer);
                 }
             } finally {
-                JfrBufferNodeAccess.unlock(node);
+                BufferNodeAccess.unlock(node);
             }
         }
     }
