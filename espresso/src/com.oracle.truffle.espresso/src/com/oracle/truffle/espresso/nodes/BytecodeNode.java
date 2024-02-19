@@ -2362,7 +2362,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
         }
         // Resolution should happen outside of the bytecode patching lock.
-        InvokeDynamicConstant.CallSiteLink link = pool.linkInvokeDynamic(getMethod().getDeclaringKlass(), indyIndex);
+        InvokeDynamicConstant.CallSiteLink link = pool.linkInvokeDynamic(getMethod().getDeclaringKlass(), indyIndex, curBCI, getMethod());
 
         // re-lock to check if someone did the job for us, since this was a heavy operation.
         quick = atomic(() -> {
