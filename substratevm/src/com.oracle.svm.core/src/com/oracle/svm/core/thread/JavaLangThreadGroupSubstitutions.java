@@ -135,38 +135,6 @@ class ThreadHolderRecomputation implements FieldValueTransformer {
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)
-class ThreadGroupNUnstartedThreadsRecomputation implements FieldValueTransformer {
-    @Override
-    public Object transform(Object receiver, Object originalValue) {
-        ThreadGroup group = (ThreadGroup) receiver;
-        int result = 0;
-        for (Thread thread : JavaThreadsFeature.singleton().getReachableThreadsKeySet()) {
-            /* The main thread is recomputed as running and therefore not counted as unstarted. */
-            if (thread.getThreadGroup() == group && thread != PlatformThreads.singleton().mainThread) {
-                result++;
-            }
-        }
-        return result;
-    }
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
-class ThreadGroupNThreadsRecomputation implements FieldValueTransformer {
-    @Override
-    public Object transform(Object receiver, Object originalValue) {
-        ThreadGroup group = (ThreadGroup) receiver;
-
-        if (group == PlatformThreads.singleton().mainGroup) {
-            /* The main group contains the main thread, which we recompute as running. */
-            return 1;
-        } else {
-            /* No other thread group has a thread running at startup. */
-            return 0;
-        }
-    }
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
 class ThreadGroupThreadsRecomputation implements FieldValueTransformer {
     @Override
     public Object transform(Object receiver, Object originalValue) {

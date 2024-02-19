@@ -25,7 +25,6 @@
 package com.oracle.svm.hosted.thread;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Map;
 
 import org.graalvm.nativeimage.Platform;
@@ -202,11 +201,6 @@ public class HostedJavaThreadsFeature extends JavaThreadsFeature {
             }
         }
         return -1;
-    }
-
-    @Override
-    protected Collection<Thread> getReachableThreadsKeySet() {
-        return reachableThreads.keySet();
     }
 }
 

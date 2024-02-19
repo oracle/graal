@@ -24,20 +24,9 @@
  */
 package com.oracle.svm.core.thread;
 
-import java.util.Collection;
-
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
 import com.oracle.svm.core.feature.InternalFeature;
 
-@Platforms(Platform.HOSTED_ONLY.class)
 public abstract class JavaThreadsFeature implements InternalFeature {
-
-    protected static JavaThreadsFeature singleton() {
-        return ImageSingletons.lookup(JavaThreadsFeature.class);
-    }
 
     protected static long threadId(Thread thread) {
         if (thread == PlatformThreads.singleton().mainThread) {
@@ -53,6 +42,4 @@ public abstract class JavaThreadsFeature implements InternalFeature {
     protected static void setThreadInitNumber(int num) {
         JavaThreads.threadInitNumber.set(num);
     }
-
-    protected abstract Collection<Thread> getReachableThreadsKeySet();
 }

@@ -87,7 +87,6 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.reports.ReportUtils;
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.TypeResult;
@@ -361,11 +360,14 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                     }
                     if (Options.TraceSecurityServices.getValue()) {
                         ProviderList providerList = (ProviderList) originalValue;
-                        List<Provider> removedProviders = new ArrayList<>(providerList.providers());
-                        removedProviders.removeIf(provider -> !shouldRemoveProvider(provider));
+                        List<Provider> removedProviders = providerList.providers().stream().filter(p -> shouldRemoveProvider(p)).toList();
                         traceRemovedProviders(removedProviders);
                     }
                 }
+                /*
+                 * This object is manually rescanned during analysis to ensure its entire type
+                 * structure is part of the analysis universe.
+                 */
                 return cachedProviders;
             }
         });
@@ -387,6 +389,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                         assert cachedVerificationCache.equals(filteredCache) : Assertions.errorMessage(cachedVerificationCache, filteredCache);
                     }
                 }
+                /*
+                 * This object is manually rescanned during analysis to ensure its entire type
+                 * structure is part of the analysis universe.
+                 */
                 return cachedVerificationCache;
             }
         });
@@ -405,10 +411,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private List<Provider> filterProviderList(Object originalValue) {
-        List<Provider> filteredProviders = new ArrayList<>(((ProviderList) originalValue).providers());
-        filteredProviders.removeIf(this::shouldRemoveProvider);
-
-        return filteredProviders;
+        return ((ProviderList) originalValue).providers().stream().filter(p -> !shouldRemoveProvider(p)).toList();
     }
 
     private void addManuallyConfiguredUsedProviders(DuringSetupAccess access) {
@@ -855,33 +858,29 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private void maybeScanVerificationResultsField(DuringAnalysisAccessImpl access) {
-        if (access.getMetaAccess().lookupJavaField(verificationResultsField).isAccessed()) {
+        if (access.getMetaAccess().lookupJavaField(verificationResultsField).isRead()) {
             try {
                 var filteredVerificationCache = filterVerificationCache(verificationResultsField.get(null));
                 if (cachedVerificationCache == null || !cachedVerificationCache.equals(filteredVerificationCache)) {
                     cachedVerificationCache = filteredVerificationCache;
-                    access.rescanObject(access.getUniverse().fromHosted(GraalAccess.getOriginalSnippetReflection().forObject(cachedVerificationCache)));
+                    access.rescanObject(cachedVerificationCache);
                 }
-            } catch (RuntimeException ex) {
-                throw ex;
-            } catch (Exception ex) {
-                throw new IllegalStateException(ex);
+            } catch (IllegalAccessException ex) {
+                throw VMError.shouldNotReachHere("Cannot access field: " + verificationResultsField.getName(), ex);
             }
         }
     }
 
     private void maybeScanProvidersField(DuringAnalysisAccessImpl access) {
-        if (access.getMetaAccess().lookupJavaField(providerListField).isAccessed()) {
+        if (access.getMetaAccess().lookupJavaField(providerListField).isRead()) {
             try {
                 List<Provider> filteredProviders = filterProviderList(providerListField.get(null));
                 if (cachedProviders == null || !cachedProviders.providers().equals(filteredProviders)) {
                     cachedProviders = ProviderList.newList(filteredProviders.toArray(new Provider[0]));
-                    access.rescanObject(access.getUniverse().fromHosted(GraalAccess.getOriginalSnippetReflection().forObject(cachedProviders)));
+                    access.rescanObject(cachedProviders);
                 }
-            } catch (RuntimeException ex) {
-                throw ex;
-            } catch (Exception ex) {
-                throw new IllegalStateException(ex);
+            } catch (IllegalAccessException ex) {
+                throw VMError.shouldNotReachHere("Cannot access field: " + providerListField.getName(), ex);
             }
         }
     }
