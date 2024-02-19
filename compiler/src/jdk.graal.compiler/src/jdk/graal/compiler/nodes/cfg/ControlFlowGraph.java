@@ -322,6 +322,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
         Object[] values = null;
         int valuesTOS = 0;
         stack[0] = getStartBlock();
+        List<HIRBlock> dominated = new ArrayList<>(3);
 
         while (tos >= 0) {
             HIRBlock cur = stack[tos];
@@ -364,8 +365,20 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
                     }
                 }
 
+                dominated.clear();
+
                 HIRBlock b = cur.getFirstDominated();
                 while (b != null) {
+                    dominated.add(b);
+                    b = b.getDominatedSibling();
+                }
+
+                /*
+                 * Push dominated blocks to stack in reverse order, to make sure that branches are
+                 * handled before merges. This facilitates phi optimizations.
+                 */
+                while (!dominated.isEmpty()) {
+                    b = dominated.removeLast();
                     if (b != alwaysReached) {
                         if (isDominatorTreeLoopExit(b)) {
                             addDeferredExit(deferredExits, b);
@@ -373,7 +386,6 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
                             stack[++tos] = b;
                         }
                     }
-                    b = b.getDominatedSibling();
                 }
             }
         }
