@@ -26,6 +26,7 @@ import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -150,6 +151,7 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
          * @see RuntimeConstantPool#linkInvokeDynamic(Klass, int)
          */
         @Override
+        @SuppressWarnings("try")
         public CallSiteLink link(RuntimeConstantPool pool, Klass accessingKlass, int thisIndex) {
             // Per-callsite linking
             CompilerAsserts.neverPartOfCompilation();
@@ -168,23 +170,25 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
 
                 StaticObject appendix = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1], meta.getContext());
                 StaticObject memberName;
-                if (meta.getJavaVersion().varHandlesEnabled() && !meta.getJavaVersion().java19OrLater()) {
-                    memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkCallSite.invokeDirect(
-                                    null,
-                                    accessingKlass.mirror(),
-                                    thisIndex,
-                                    bootstrapmethodMethodHandle,
-                                    name, methodType,
-                                    StaticObject.createArray(meta.java_lang_Object_array, args.clone(), meta.getContext()),
-                                    appendix);
-                } else {
-                    memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkCallSite.invokeDirect(
-                                    null,
-                                    accessingKlass.mirror(),
-                                    bootstrapmethodMethodHandle,
-                                    name, methodType,
-                                    StaticObject.createArray(meta.java_lang_Object_array, args.clone(), meta.getContext()),
-                                    appendix);
+                try (EspressoLanguage.DisableSingleStepping ignored = meta.getLanguage().disableStepping()) {
+                    if (meta.getJavaVersion().varHandlesEnabled() && !meta.getJavaVersion().java19OrLater()) {
+                        memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkCallSite.invokeDirect(
+                                null,
+                                accessingKlass.mirror(),
+                                thisIndex,
+                                bootstrapmethodMethodHandle,
+                                name, methodType,
+                                StaticObject.createArray(meta.java_lang_Object_array, args.clone(), meta.getContext()),
+                                appendix);
+                    } else {
+                        memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkCallSite.invokeDirect(
+                                null,
+                                accessingKlass.mirror(),
+                                bootstrapmethodMethodHandle,
+                                name, methodType,
+                                StaticObject.createArray(meta.java_lang_Object_array, args.clone(), meta.getContext()),
+                                appendix);
+                    }
                 }
                 StaticObject unboxedAppendix = appendix.get(meta.getLanguage(), 0);
 

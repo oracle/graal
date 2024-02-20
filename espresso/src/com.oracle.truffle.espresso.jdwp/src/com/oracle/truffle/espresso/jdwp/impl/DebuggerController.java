@@ -809,7 +809,7 @@ public final class DebuggerController implements ContextsListener {
                 }
                 CallFrame[] callFrames = createCallFrames(ids.getIdAsLong(currentThread), event.getStackFrames(), 1, steppingInfo);
                 // get the top frame for checking instance filters
-                if (callFrames.length > 0 && checkExclusionFilters(steppingInfo, event, currentThread, callFrames[0])) {
+                if (checkExclusionFilters(steppingInfo, event, currentThread, callFrames[0])) {
                     fine(() -> "not suspending here: " + event.getSourceSection());
                     // continue stepping until completed
                     commandRequestIds.put(currentThread, steppingInfo);
@@ -975,6 +975,13 @@ public final class DebuggerController implements ContextsListener {
 
         private boolean checkExclusionFilters(SteppingInfo info, SuspendedEvent event, Object thread, CallFrame frame) {
             if (info != null) {
+                if (isSingleSteppingSuspended()) {
+                    continueStepping(event, info, thread);
+                    return true;
+                }
+                if (frame == null) {
+                    return false;
+                }
                 RequestFilter requestFilter = eventFilters.getRequestFilter(info.getRequestId());
 
                 if (requestFilter != null && requestFilter.getStepInfo() != null) {
@@ -1070,6 +1077,10 @@ public final class DebuggerController implements ContextsListener {
             }
             return list.toArray(new CallFrame[list.size()]);
         }
+    }
+
+    private boolean isSingleSteppingSuspended() {
+        return context.isSingleSteppingDisabled();
     }
 
     // Truffle logging

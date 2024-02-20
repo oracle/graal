@@ -28,6 +28,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 
@@ -39,33 +40,42 @@ public abstract class InitCheck extends EspressoNode {
 
     public abstract void execute(ObjectKlass klass);
 
+    @SuppressWarnings("try")
     @Specialization(limit = "LIMIT", guards = "cachedKlass == klass")
     void doCached(ObjectKlass klass,
                     @Cached("klass") ObjectKlass cachedKlass) {
         if (!klass.isInitialized()) {
             // Deopt loop if class initialization fails.
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            cachedKlass.safeInitialize();
+            try (EspressoLanguage.DisableSingleStepping ignored = getLanguage().disableStepping()) {
+                cachedKlass.safeInitialize();
+            }
         }
     }
 
+    @SuppressWarnings("try")
     @Specialization(replaces = "doCached")
     void doGeneric(ObjectKlass klass) {
         if (CompilerDirectives.isPartialEvaluationConstant(klass)) {
             if (!klass.isInitialized()) {
                 // Deopt loop if class initialization fails.
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                klass.safeInitialize();
+                try (EspressoLanguage.DisableSingleStepping ignored = getLanguage().disableStepping()) {
+                    klass.safeInitialize();
+                }
             }
         } else {
             initCheckBoundary(klass);
         }
     }
 
+    @SuppressWarnings("try")
     @TruffleBoundary(allowInlining = true)
     static void initCheckBoundary(ObjectKlass klass) {
         if (!klass.isInitialized()) {
-            klass.safeInitialize();
+            try (EspressoLanguage.DisableSingleStepping ignored = klass.getLanguage().disableStepping()) {
+                klass.safeInitialize();
+            }
         }
     }
 }
