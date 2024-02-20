@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes.extended;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.NodeWithIdentity;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -37,7 +38,7 @@ import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public final class OpaqueNode extends FloatingNode implements LIRLowerable, NodeWithIdentity {
+public final class OpaqueNode extends FloatingNode implements LIRLowerable, NodeWithIdentity, IterableNodeType {
     public static final NodeClass<OpaqueNode> TYPE = NodeClass.create(OpaqueNode.class);
 
     @Input protected ValueNode value;
