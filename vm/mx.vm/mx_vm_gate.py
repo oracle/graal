@@ -76,17 +76,6 @@ class VmGateTasks:
     truffle_unchained = 'truffle-unchained'
     maven_downloader = 'maven-downloader'
 
-def _unittest_config_participant(config):
-    vmArgs, mainClass, mainClassArgs = config
-    # This is required by org.graalvm.component.installer.CatalogIterableTest
-    vmArgs += [
-        '--add-exports=java.base/jdk.internal.loader=ALL-UNNAMED',
-        '--add-opens=java.base/jdk.internal.loader=ALL-UNNAMED',
-    ]
-    return vmArgs, mainClass, mainClassArgs
-
-mx_unittest.add_config_participant(_unittest_config_participant)
-
 def _get_CountUppercase_vmargs():
     cp = mx.project("jdk.internal.vm.compiler.test").classpath_repr()
     return ['-cp', cp, 'org.graalvm.compiler.test.CountUppercase']
