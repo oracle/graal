@@ -56,26 +56,29 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import jdk.internal.module.DefaultRoots;
+import jdk.internal.module.ModuleBootstrap;
+import jdk.internal.module.ModuleReferenceImpl;
+import jdk.internal.module.SystemModuleFinders;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.RuntimeModuleSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
-
-import jdk.internal.module.DefaultRoots;
-import jdk.internal.module.ModuleBootstrap;
-import jdk.internal.module.SystemModuleFinders;
 
 /**
  * This feature:
@@ -116,6 +119,7 @@ import jdk.internal.module.SystemModuleFinders;
  * </p>
  */
 @AutomaticallyRegisteredFeature
+@SuppressWarnings("unused")
 public final class ModuleLayerFeature implements InternalFeature {
     private ModuleLayerFeatureUtils moduleLayerFeatureUtils;
 
@@ -166,6 +170,31 @@ public final class ModuleLayerFeature implements InternalFeature {
                                             "Please ensure that only proper modules are found on the module-path.",
                             bootLayerAutomaticModules.stream().map(ModuleLayerFeatureUtils::formatModule).collect(Collectors.joining(System.lineSeparator())));
         }
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        scanRuntimeBootLayerPrototype((FeatureImpl.BeforeAnalysisAccessImpl) access);
+
+        access.registerFieldValueTransformer(moduleLayerFeatureUtils.moduleReferenceLocationField, ModuleLayerFeatureUtils.ResetModuleReferenceLocation.INSTANCE);
+        access.registerFieldValueTransformer(moduleLayerFeatureUtils.moduleReferenceImplLocationField, ModuleLayerFeatureUtils.ResetModuleReferenceLocation.INSTANCE);
+    }
+
+    /**
+     * Generate a temporary module layer to serve as a prototype object for
+     * {@link RuntimeModuleSupport}.bootLayer. The value doesn't need to actually be set in the
+     * field, just scanned such that the analysis sees the deep type hierarchy. The field value
+     * wouldn't be processed during analysis anyway since the field is annotated with
+     * {@link UnknownObjectField}, only the field declared type is injected in the type flow graphs.
+     * The concrete value is set in {@link ModuleLayerFeature#afterAnalysis}. Later when the field
+     * is read the lazy value supplier scans the concrete value and patches the shadow heap.
+     */
+    private void scanRuntimeBootLayerPrototype(FeatureImpl.BeforeAnalysisAccessImpl accessImpl) {
+        Set<String> baseModules = ModuleLayer.boot().modules().stream().map(Module::getName).collect(Collectors.toSet());
+        Function<String, ClassLoader> clf = moduleLayerFeatureUtils::getClassLoaderForBootLayerModule;
+        ModuleLayer runtimeBootLayer = synthesizeRuntimeModuleLayer(new ArrayList<>(List.of(ModuleLayer.empty())), accessImpl, accessImpl.imageClassLoader, baseModules, Set.of(), clf, null);
+        /* Only scan the value if module support is enabled and bootLayer field is reachable. */
+        accessImpl.registerReachabilityHandler((a) -> accessImpl.rescanObject(runtimeBootLayer), ReflectionUtil.lookupField(RuntimeModuleSupport.class, "bootLayer"));
     }
 
     @Override
@@ -519,7 +548,7 @@ public final class ModuleLayerFeature implements InternalFeature {
             applicationModuleNames = applicationModuleFinder.findAll()
                             .stream()
                             .map(m -> m.descriptor().name())
-                            .collect(Collectors.toList());
+                            .toList();
         } catch (FindException | ResolutionException | SecurityException ex) {
             throw VMError.shouldNotReachHere("Failed to locate application modules.", ex);
         }
@@ -592,6 +621,8 @@ public final class ModuleLayerFeature implements InternalFeature {
         private final Constructor<ModuleLayer> moduleLayerConstructor;
         private final Field moduleLayerNameToModuleField;
         private final Field moduleLayerParentsField;
+        private final Field moduleReferenceLocationField;
+        private final Field moduleReferenceImplLocationField;
 
         ModuleLayerFeatureUtils(ImageClassLoader cl) {
             runtimeModules = new HashMap<>();
@@ -647,6 +678,8 @@ public final class ModuleLayerFeature implements InternalFeature {
                 moduleLayerConstructor = ReflectionUtil.lookupConstructor(ModuleLayer.class, Configuration.class, List.class, Function.class);
                 moduleLayerNameToModuleField = ReflectionUtil.lookupField(ModuleLayer.class, "nameToModule");
                 moduleLayerParentsField = ReflectionUtil.lookupField(ModuleLayer.class, "parents");
+                moduleReferenceLocationField = ReflectionUtil.lookupField(ModuleReference.class, "location");
+                moduleReferenceImplLocationField = ReflectionUtil.lookupField(ModuleReferenceImpl.class, "location");
             } catch (ReflectiveOperationException | NoSuchElementException ex) {
                 throw VMError.shouldNotReachHere("Failed to retrieve fields of the Module/ModuleLayer class.", ex);
             }
@@ -1086,6 +1119,30 @@ public final class ModuleLayerFeature implements InternalFeature {
                 moduleEnableNativeAccessField.set(module, value);
             } catch (IllegalAccessException e) {
                 throw VMError.shouldNotReachHere("Failed to reflectively set Module.enableNativeAccess.", e);
+            }
+        }
+
+        /**
+         * Patch module references that contain URLs with a non-JRT protocol. Module references can
+         * contain URLs that capture hosted directories, e.g.,
+         * {@linkplain "file:///home/user/dir/foo.jar"}. See
+         * {@link com.oracle.svm.hosted.image.DisallowedImageHeapObjectFeature} for more details on
+         * what substrings are detected during the image build.
+         */
+        static final class ResetModuleReferenceLocation implements FieldValueTransformer {
+
+            static final FieldValueTransformer INSTANCE = new ResetModuleReferenceLocation();
+
+            private ResetModuleReferenceLocation() {
+            }
+
+            @Override
+            public Object transform(Object receiver, Object originalValue) {
+                if (originalValue == null || originalValue.toString().startsWith("jrt://")) {
+                    return originalValue;
+                } else {
+                    return null;
+                }
             }
         }
     }
