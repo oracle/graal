@@ -84,6 +84,16 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
     }
 
     @Override
+    public boolean isConstantExtremum() {
+        return base.isConstantExtremum();
+    }
+
+    @Override
+    public long constantExtremum() {
+        return base.constantExtremum();
+    }
+
+    @Override
     public ValueNode extremumNode(boolean assumeLoopEntered, Stamp s) {
         return base.extremumNode(assumeLoopEntered, s);
     }
@@ -92,16 +102,6 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
     public ValueNode exitValueNode() {
         boolean zeroExtend = value instanceof ZeroExtendNode;
         return IntegerConvertNode.convert(base.exitValueNode(), stamp, zeroExtend, graph(), NodeView.DEFAULT);
-    }
-
-    @Override
-    public boolean isConstantExtremum() {
-        return base.isConstantExtremum();
-    }
-
-    @Override
-    public long constantExtremum() {
-        return base.constantExtremum();
     }
 
     @Override
