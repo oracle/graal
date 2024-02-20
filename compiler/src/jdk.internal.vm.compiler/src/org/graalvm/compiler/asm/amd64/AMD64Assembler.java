@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1320,14 +1320,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRMOp VCVTTPD2DQ      = new VexRMOp("VCVTTPD2DQ",      P_66, M_0F,   WIG, 0xE6, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.FVM,       W1);
         public static final VexRMOp VCVTTPD2QQ      = new VexRMOp("VCVTTPD2QQ",      P_66, M_0F,   W1,  0x7A, VEXOpAssertion.AVX512DQ_VL,               EVEXTuple.FVM,       W1);
         public static final VexRMOp VCVTDQ2PD       = new VexRMOp("VCVTDQ2PD",       P_F3, M_0F,   WIG, 0xE6, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.HVM,       W0);
-        public static final VexRMOp VBROADCASTSS    = new VexRMOp("VBROADCASTSS",    P_66, M_0F38, W0,  0x18, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.FVM,       W0);
-        public static final VexRMOp VBROADCASTSD    = new VexRMOp("VBROADCASTSD",    P_66, M_0F38, W0,  0x19, VEXOpAssertion.AVX1_256ONLY_AVX512F_VL,   EVEXTuple.FVM,       W1);
+        public static final VexRMOp VBROADCASTSS    = new VexRMOp("VBROADCASTSS",    P_66, M_0F38, W0,  0x18, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.T1S_32BIT, W0);
+        public static final VexRMOp VBROADCASTSD    = new VexRMOp("VBROADCASTSD",    P_66, M_0F38, W0,  0x19, VEXOpAssertion.AVX1_256ONLY_AVX512F_VL,   EVEXTuple.T1S_64BIT, W1);
         public static final VexRMOp VBROADCASTF128  = new VexRMOp("VBROADCASTF128",  P_66, M_0F38, W0,  0x1A, VEXOpAssertion.AVX1_256ONLY);
         public static final VexRMOp VPBROADCASTI128 = new VexRMOp("VPBROADCASTI128", P_66, M_0F38, W0,  0x5A, VEXOpAssertion.AVX2_256ONLY);
-        public static final VexRMOp VPBROADCASTB    = new VexRMOp("VPBROADCASTB",    P_66, M_0F38, W0,  0x78, VEXOpAssertion.AVX2_AVX512BW_VL,          EVEXTuple.FVM,       W0);
-        public static final VexRMOp VPBROADCASTW    = new VexRMOp("VPBROADCASTW",    P_66, M_0F38, W0,  0x79, VEXOpAssertion.AVX2_AVX512BW_VL,          EVEXTuple.FVM,       W0);
-        public static final VexRMOp VPBROADCASTD    = new VexRMOp("VPBROADCASTD",    P_66, M_0F38, W0,  0x58, VEXOpAssertion.AVX2_AVX512F_VL,           EVEXTuple.FVM,       W0);
-        public static final VexRMOp VPBROADCASTQ    = new VexRMOp("VPBROADCASTQ",    P_66, M_0F38, W0,  0x59, VEXOpAssertion.AVX2_AVX512F_VL,           EVEXTuple.FVM,       W1);
+        public static final VexRMOp VPBROADCASTB    = new VexRMOp("VPBROADCASTB",    P_66, M_0F38, W0,  0x78, VEXOpAssertion.AVX2_AVX512BW_VL,          EVEXTuple.T1S_8BIT,  W0);
+        public static final VexRMOp VPBROADCASTW    = new VexRMOp("VPBROADCASTW",    P_66, M_0F38, W0,  0x79, VEXOpAssertion.AVX2_AVX512BW_VL,          EVEXTuple.T1S_16BIT, W0);
+        public static final VexRMOp VPBROADCASTD    = new VexRMOp("VPBROADCASTD",    P_66, M_0F38, W0,  0x58, VEXOpAssertion.AVX2_AVX512F_VL,           EVEXTuple.T1S_32BIT, W0);
+        public static final VexRMOp VPBROADCASTQ    = new VexRMOp("VPBROADCASTQ",    P_66, M_0F38, W0,  0x59, VEXOpAssertion.AVX2_AVX512F_VL,           EVEXTuple.T1S_64BIT, W1);
         public static final VexRMOp VPMOVMSKB       = new VexRMOp("VPMOVMSKB",       P_66, M_0F,   WIG, 0xD7, VEXOpAssertion.AVX1_2_CPU_XMM);
         public static final VexRMOp VPMOVB2M        = new VexRMOp("VPMOVB2M",        P_F3, M_0F38, W0,  0x29, VEXOpAssertion.MASK_NULL_XMM_AVX512BW_VL, EVEXTuple.FVM,       W0);
         public static final VexRMOp VPMOVW2M        = new VexRMOp("VPMOVW2M",        P_F3, M_0F38, W1,  0x29, VEXOpAssertion.MASK_NULL_XMM_AVX512BW_VL, EVEXTuple.FVM,       W1);
@@ -1780,8 +1780,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMOp VPCMPGTQ_AVX512 = new VexRVMOp("VPCMPGTQ",    P_66, M_0F38, WIG, 0x37, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL,      EVEXTuple.FVM,       W1);
         public static final VexRVMOp VFMADD231SS     = new VexRVMOp("VFMADD231SS", P_66, M_0F38, W0,  0xB9, VEXOpAssertion.FMA_AVX512F_128ONLY,          EVEXTuple.T1S_32BIT, W0);
         public static final VexRVMOp VFMADD231SD     = new VexRVMOp("VFMADD231SD", P_66, M_0F38, W1,  0xB9, VEXOpAssertion.FMA_AVX512F_128ONLY,          EVEXTuple.T1S_64BIT, W1);
-        public static final VexRVMOp VSQRTSD         = new VexRVMOp("VSQRTSD",     P_F2, M_0F,   WIG, 0x51, VEXOpAssertion.AVX1_AVX512F_ALL,             EVEXTuple.FVM,       W1);
-        public static final VexRVMOp VSQRTSS         = new VexRVMOp("VSQRTSS",     P_F3, M_0F,   WIG, 0x51, VEXOpAssertion.AVX1_AVX512F_ALL,             EVEXTuple.FVM,       W0);
+        public static final VexRVMOp VSQRTSD         = new VexRVMOp("VSQRTSD",     P_F2, M_0F,   WIG, 0x51, VEXOpAssertion.AVX1_AVX512F_ALL,             EVEXTuple.T1S_64BIT, W1);
+        public static final VexRVMOp VSQRTSS         = new VexRVMOp("VSQRTSS",     P_F3, M_0F,   WIG, 0x51, VEXOpAssertion.AVX1_AVX512F_ALL,             EVEXTuple.T1S_32BIT, W0);
 
         public static final VexRVMOp VPERMW          = new VexRVMOp("VPERMW",      P_66, M_0F38, W1,  0x8D, VEXOpAssertion.AVX512BW_VL,                  EVEXTuple.FVM,       W1);
         public static final VexRVMOp VPERMD          = new VexRVMOp("VPERMD",      P_66, M_0F38, W0,  0x36, VEXOpAssertion.AVX2_AVX512F_VL,              EVEXTuple.FVM,       W0);
@@ -2078,15 +2078,15 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      */
     public static final class VexShiftOp extends VexRVMOp implements VexRRIOp {
         // @formatter:off
-        public static final VexShiftOp VPSRLW = new VexShiftOp("VPSRLW", P_66, M_0F, WIG, 0xD1, 0x71, 2, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL, EVEXTuple.FVM, WIG);
-        public static final VexShiftOp VPSRLD = new VexShiftOp("VPSRLD", P_66, M_0F, WIG, 0xD2, 0x72, 2, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,  EVEXTuple.FVM, W0);
-        public static final VexShiftOp VPSRLQ = new VexShiftOp("VPSRLQ", P_66, M_0F, WIG, 0xD3, 0x73, 2, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,  EVEXTuple.FVM, W1);
-        public static final VexShiftOp VPSRAW = new VexShiftOp("VPSRAW", P_66, M_0F, WIG, 0xE1, 0x71, 4, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL, EVEXTuple.FVM, WIG);
-        public static final VexShiftOp VPSRAD = new VexShiftOp("VPSRAD", P_66, M_0F, WIG, 0xE2, 0x72, 4, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,  EVEXTuple.FVM, W0);
-        public static final VexShiftOp VPSRAQ = new VexShiftOp("VPSRAQ", P_66, M_0F, W1,  0xE2, 0x72, 4, VEXOpAssertion.AVX512F_VL,            EVEXTuple.FVM, W1);
-        public static final VexShiftOp VPSLLW = new VexShiftOp("VPSLLW", P_66, M_0F, WIG, 0xF1, 0x71, 6, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL, EVEXTuple.FVM, WIG);
-        public static final VexShiftOp VPSLLD = new VexShiftOp("VPSLLD", P_66, M_0F, WIG, 0xF2, 0x72, 6, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,  EVEXTuple.FVM, W0);
-        public static final VexShiftOp VPSLLQ = new VexShiftOp("VPSLLQ", P_66, M_0F, WIG, 0xF3, 0x73, 6, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,  EVEXTuple.FVM, W1);
+        public static final VexShiftOp VPSRLW = new VexShiftOp("VPSRLW", P_66, M_0F, WIG, 0xD1, 0x71, 2, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL, EVEXTuple.M128, WIG);
+        public static final VexShiftOp VPSRLD = new VexShiftOp("VPSRLD", P_66, M_0F, WIG, 0xD2, 0x72, 2, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,  EVEXTuple.M128, W0);
+        public static final VexShiftOp VPSRLQ = new VexShiftOp("VPSRLQ", P_66, M_0F, WIG, 0xD3, 0x73, 2, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,  EVEXTuple.M128, W1);
+        public static final VexShiftOp VPSRAW = new VexShiftOp("VPSRAW", P_66, M_0F, WIG, 0xE1, 0x71, 4, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL, EVEXTuple.M128, WIG);
+        public static final VexShiftOp VPSRAD = new VexShiftOp("VPSRAD", P_66, M_0F, WIG, 0xE2, 0x72, 4, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,  EVEXTuple.M128, W0);
+        public static final VexShiftOp VPSRAQ = new VexShiftOp("VPSRAQ", P_66, M_0F, W1,  0xE2, 0x72, 4, VEXOpAssertion.AVX512F_VL,            EVEXTuple.M128, W1);
+        public static final VexShiftOp VPSLLW = new VexShiftOp("VPSLLW", P_66, M_0F, WIG, 0xF1, 0x71, 6, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL, EVEXTuple.M128, WIG);
+        public static final VexShiftOp VPSLLD = new VexShiftOp("VPSLLD", P_66, M_0F, WIG, 0xF2, 0x72, 6, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,  EVEXTuple.M128, W0);
+        public static final VexShiftOp VPSLLQ = new VexShiftOp("VPSLLQ", P_66, M_0F, WIG, 0xF3, 0x73, 6, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,  EVEXTuple.M128, W1);
         // @formatter:on
 
         private final int immOp;
