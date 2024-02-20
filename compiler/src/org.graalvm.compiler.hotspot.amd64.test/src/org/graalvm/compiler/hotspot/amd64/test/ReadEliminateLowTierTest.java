@@ -84,7 +84,7 @@ public class ReadEliminateLowTierTest extends GraalCompilerTest {
     protected Plugins getDefaultGraphBuilderPlugins() {
         Plugins p = super.getDefaultGraphBuilderPlugins();
         Registration r = new Registration(p.getInvocationPlugins(), ReadEliminateLowTierTest.class);
-        r.register(new InvocationPlugin("foldAfterTrappingNullChecks", int.class) {
+        r.register1("foldAfterTrappingNullChecks", int.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 b.append(new FixedUsageUntilFinalCanon(arg));
