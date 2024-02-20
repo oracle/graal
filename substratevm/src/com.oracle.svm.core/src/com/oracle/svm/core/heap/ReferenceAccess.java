@@ -119,6 +119,11 @@ public interface ReferenceAccess {
     CompressEncoding getCompressEncoding();
 
     /**
+     * Returns a compile-time constant for {@link CompressEncoding#getShift()}.
+     */
+    int getCompressionShift();
+
+    /**
      * Returns the size of the address space, based on the reference size.
      */
     UnsignedWord getAddressSpaceSize();

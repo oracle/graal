@@ -39,7 +39,6 @@ import java.util.Set;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.cfg.BasicBlock;
@@ -499,7 +498,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
             ComputedIndirectCallTargetNode computedIndirectCallTargetNode = (ComputedIndirectCallTargetNode) callTarget;
             LLVMValueRef computedAddress = llvmOperand(computedIndirectCallTargetNode.getAddressBase());
-            CompressEncoding compressEncoding = ReferenceAccess.singleton().getCompressEncoding();
+            int compressionShift = ReferenceAccess.singleton().getCompressionShift();
             boolean nextMemoryAccessNeedsDecompress = false;
 
             for (var computation : computedIndirectCallTargetNode.getAddressComputation()) {
@@ -510,7 +509,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
                     if (nextMemoryAccessNeedsDecompress) {
                         computedAddress = builder.buildAddrSpaceCast(computedAddress, builder.objectType(true));
                         LLVMValueRef heapBase = ((LLVMVariable) gen.emitReadRegister(ReservedRegisters.singleton().getHeapBaseRegister(), null)).get();
-                        computedAddress = builder.buildUncompress(computedAddress, heapBase, true, compressEncoding.getShift());
+                        computedAddress = builder.buildUncompress(computedAddress, heapBase, true, compressionShift);
                     }
 
                     computedAddress = builder.buildGEP(computedAddress, builder.constantInt(field.getOffset()));
