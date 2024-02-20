@@ -38,6 +38,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+import json
+
 import os
 import re
 import shutil
@@ -426,6 +428,14 @@ def truffle_jvm_class_path_unit_tests_gate():
 
 @mx.command(_suite.name, 'native-truffle-unittest')
 def native_truffle_unittest(args):
+    """
+    This method builds a native image of JUnit tests and executes them. Unlike native_unittest from the SubstrateVM suite,
+    this method can utilize an existing GraalVM instance set as the JAVA_HOME environment variable. Consequently,
+    the gate employing this method does not require the construction of a full GraalVM. It makes this method suitable
+    for testing compatibility with older GraalVM releases. The Native Build Tools (NBT) JUnit support is employed for
+    building unittests to avoid reliance on internal SubstrateVM APIs. Consequently, the generated unittest image
+    utilizes the NBT NativeImageJUnitLauncher, which does not support the command line options provided by the MxJUnitWrapper.
+    """
     # 1. Use mx_unittest to collect root test distributions and test classes for given unittest pattern(s)
     supported_args = ['--build-args', '--run-args', '-h', '--help', '--']
 
@@ -515,31 +525,25 @@ def native_truffle_unittest(args):
             these classes, as indicated in issue https://github.com/graalvm/native-build-tools/issues/575.
             To address this limitation, we must resolve the issue by generating a reflection configuration file.
             """
-            config_file = os.path.join(tmp, "reflection_config.json")
+            config_folder = os.path.join(tmp, 'META-INF', 'native-image', 'native-truffle-unittest')
+            os.makedirs(config_folder, exist_ok=True)
+            config_file = os.path.join(config_folder, 'reflect-config.json')
+            config = [{'name': t, 'allDeclaredMethods': True} for t in for_types]
             with open(config_file, "w") as f:
-                print('[', file=f)
-                for i, for_type in enumerate(for_types):
-                    print('{', file=f)
-                    print(f'"name": "{for_type}",', file=f)
-                    print('"allDeclaredMethods": true', file=f)
-                    if i < len(for_types) - 1:
-                        print('},', file=f)
-                    else:
-                        print('}', file=f)
-                print(']', file=f)
+                print(json.dumps(config), file=f)
             return config_file
 
         native_image = _native_image(jdk)
         tests_executable = os.path.join(tmp, mx.exe_suffix('tests'))
-        reflection_configuration_file = _allow_runtime_reflection([
+        _allow_runtime_reflection([
             'org.hamcrest.core.Every',
             'org.junit.internal.matchers.StacktracePrintingMatcher',
             'org.junit.internal.matchers.ThrowableCauseMatcher'
         ])
         native_image_args = [
             '--no-fallback',
-            '-H:+UnlockExperimentalVMOptions', f'-H:ReflectionConfigurationFiles={reflection_configuration_file}', '-H:-UnlockExperimentalVMOptions',
             '-o', tests_executable,
+            '-cp', tmp,
             '--features=org.graalvm.junit.platform.JUnitPlatformFeature',
             'org.graalvm.junit.platform.NativeImageJUnitLauncher'] + parsed_args.build_args
         mx.run([native_image] + vm_args + native_image_args)
