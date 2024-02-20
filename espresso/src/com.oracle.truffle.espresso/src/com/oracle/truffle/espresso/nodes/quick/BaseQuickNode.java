@@ -67,6 +67,11 @@ public abstract class BaseQuickNode extends EspressoNode implements BciProvider,
         return (BytecodeNode) parent;
     }
 
+    @Override
+    public Node getLeafNode(int bci) {
+        return getBytecodeNode().getLeafNode(bci);
+    }
+
     @ExportMessage
     @SuppressWarnings("static-method")
     public final boolean hasScope(@SuppressWarnings("unused") Frame frame) {

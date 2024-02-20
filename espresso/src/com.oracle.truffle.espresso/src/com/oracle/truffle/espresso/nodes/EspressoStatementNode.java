@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -37,6 +38,12 @@ public final class EspressoStatementNode extends EspressoBaseStatementNode imple
     EspressoStatementNode(int startBci, int lineNumber) {
         this.lineNumber = lineNumber;
         this.startBci = startBci;
+    }
+
+    @Override
+    public Node getLeafNode(int bci) {
+        assert bci == startBci;
+        return this;
     }
 
     @Override

@@ -30,6 +30,7 @@ import static com.oracle.truffle.espresso.verifier.MethodVerifier.jlObject;
 
 import java.util.ArrayList;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -237,13 +238,16 @@ class ReferenceOperand extends Operand {
     }
 
     @Override
+    @SuppressWarnings("try")
     Klass getKlass() {
         if (klass == null) {
             try {
                 if (getType() == thisKlass.getType()) {
                     klass = thisKlass;
                 } else {
-                    klass = thisKlass.getMeta().resolveSymbolOrNull(type, thisKlass.getDefiningClassLoader(), thisKlass.protectionDomain());
+                    try (EspressoLanguage.DisableSingleStepping ignored = thisKlass.getLanguage().disableStepping()) {
+                        klass = thisKlass.getMeta().resolveSymbolOrNull(type, thisKlass.getDefiningClassLoader(), thisKlass.protectionDomain());
+                    }
                 }
             } catch (EspressoException e) {
                 // TODO(garcia) fine grain this catch

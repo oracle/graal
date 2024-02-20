@@ -597,4 +597,20 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             throw EspressoError.shouldNotReachHere(e);
         }
     }
+
+    public DisableSingleStepping disableStepping() {
+        return new DisableSingleStepping();
+    }
+
+    public final class DisableSingleStepping implements AutoCloseable {
+
+        private DisableSingleStepping() {
+            getThreadLocalState().disableSingleStepping();
+        }
+
+        @Override
+        public void close() {
+            getThreadLocalState().enableSingleStepping();
+        }
+    }
 }

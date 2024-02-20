@@ -67,17 +67,20 @@ public class MHInvokeGenericNode extends MethodHandleIntrinsicNode {
         return callNode.call(args);
     }
 
+    @SuppressWarnings("try")
     public static MHInvokeGenericNode create(EspressoLanguage language, Meta meta, Klass accessingKlass, Method method, Symbol<Symbol.Name> methodName, Symbol<Symbol.Signature> signature) {
         Klass callerKlass = accessingKlass == null ? meta.java_lang_Object : accessingKlass;
         StaticObject appendixBox = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1], meta.getContext());
         // Ask java code to spin an invoker for us.
-        StaticObject memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkMethod.invokeDirect(
-                        null,
-                        callerKlass.mirror(), (int) REF_invokeVirtual,
-                        method.getDeclaringKlass().mirror(), meta.toGuestString(methodName), meta.toGuestString(signature),
-                        appendixBox);
-        StaticObject appendix = appendixBox.get(language, 0);
-        return new MHInvokeGenericNode(method, memberName, appendix);
+        try (EspressoLanguage.DisableSingleStepping ignored = meta.getLanguage().disableStepping()) {
+            StaticObject memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkMethod.invokeDirect(
+                    null,
+                    callerKlass.mirror(), (int) REF_invokeVirtual,
+                    method.getDeclaringKlass().mirror(), meta.toGuestString(methodName), meta.toGuestString(signature),
+                    appendixBox);
+            StaticObject appendix = appendixBox.get(language, 0);
+            return new MHInvokeGenericNode(method, memberName, appendix);
+        }
     }
 
     @Override
