@@ -291,6 +291,8 @@ public class LoopFragmentInside extends LoopFragment {
                 usage.replaceFirstInput(trueSuccessor, loopTest.trueSuccessor());
             }
 
+            graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After stitching new segment into control flow after existing one");
+
             assert graph.isBeforeStage(GraphState.StageFlag.VALUE_PROXY_REMOVAL) || mainLoopBegin.loopExits().count() <= 1 : "Can only merge early loop exits if graph has value proxies " +
                             mainLoopBegin;
 
@@ -300,7 +302,16 @@ public class LoopFragmentInside extends LoopFragment {
             graph.removeSplitPropagate(newSegmentLoopTest, loopTest.trueSuccessor() == mainCounted.getBody() ? trueSuccessor : falseSuccessor);
 
             graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "Before placing segment");
-            if (mainCounted.getBody().next() instanceof LoopEndNode) {
+            if (mainCounted.getBody().next() instanceof LoopEndNode && mainCounted.getLimitTest().predecessor() == mainCounted.loop.loopBegin()) {
+                /**
+                 * We assume here that the body of the loop is completely empty, i.e., we assume
+                 * that there is no control flow in the counted loop body. This however means that
+                 * we also did not have any code between the loop header and the counted begin (we
+                 * allow a few special nodes there). Else we would be killing nodes that are as well
+                 * between - that potentially could be used by loop phis (which we also disallow).
+                 * Thus, just be safe here and ensure we really see the pattern we are expect namely
+                 * a completely empty (fixed nodes) loop body.
+                 */
                 GraphUtil.killCFG(getDuplicatedNode(mainLoopBegin));
             } else {
                 AbstractBeginNode newSegmentBegin = getDuplicatedNode(mainLoopBegin);
