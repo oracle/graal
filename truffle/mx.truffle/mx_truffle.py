@@ -1205,8 +1205,9 @@ def validate_parser(grammar_project, grammar_path, create_command, args=None, ou
                     "Make sure the grammar files are up to date with the generated code. You can regenerate the generated code using mx.")
 
 
-def register_polyglot_isolate_distributions(language_suite, register_project, register_distribution, language_id, language_distribution,
-                                            internal_resource_project, isolate_build_options=None, additional_isolate_dependencies=None):
+def register_polyglot_isolate_distributions(language_suite, register_project, register_distribution, language_id,
+                                            language_pom_distribution, language_distribution,
+                                            internal_resource_project, isolate_build_options=None, platforms=None):
     """
     Creates and registers the polyglot isolate resource distribution and isolate resource meta-POM distribution.
     The created polyglot isolate resource distribution is named `<ID>_ISOLATE_RESOURCES`, inheriting the Maven group ID
@@ -1220,17 +1221,22 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
     :param register_distribution: A callback to dynamically register the distribution, obtained as a parameter from `mx_register_dynamic_suite_constituents`.
     :type register_distribution: (mx.Distribution) -> None
     :param language_id: The language ID.
-    :param language_distribution: The language distribution used to inherit isolate distribution properties.
+    :param language_pom_distribution: The language meta pom distribution used to set the image builder module-path
+    :param language_distribution: The language distribution used to inherit isolate distribution module name and maven coordinates
     :param internal_resource_project: The internal resource project used for unpacking the polyglot isolate library.
     :param isolate_build_options: additional options passed to a native image to build the isolate library.
-    :param additional_isolate_dependencies: additional distributions used to build the isolate library.
+    :param platforms: supported platforms, defaults to ['linux-amd64', 'linux-aarch64', 'darwin-amd64', 'darwin-aarch64', 'windows-amd64']
     """
     assert language_suite
     assert register_project
     assert register_distribution
     assert language_id
+    assert language_pom_distribution
     assert language_distribution
     assert internal_resource_project
+
+    if mx.get_env('POLYGLOT_ISOLATE_LIBRARY', 'false') != 'true':
+        return False
 
     def _resolve_distribution(distribution_name):
         distribution = mx.distribution(distribution_name, fatalIfMissing=False)
@@ -1254,19 +1260,24 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
     def _qualname(distribution_name):
         return language_suite.name + ':' + distribution_name if distribution_name.find(':') < 0 else distribution_name
 
+    language_pom_distribution = _qualname(language_pom_distribution)
     language_distribution = _qualname(language_distribution)
     if isolate_build_options is None:
         isolate_build_options = []
-    if additional_isolate_dependencies:
-        additional_isolate_dependencies = [_qualname(d) for d in additional_isolate_dependencies]
-    else:
-        additional_isolate_dependencies = []
     language_id_upper_case = language_id.upper()
     resolved_language_distribution = _resolve_distribution(language_distribution)
     resolved_internal_resource_project = _resolve_project(internal_resource_project)
+    if platforms is None:
+        platforms = [
+            'linux-amd64',
+            'linux-aarch64',
+            'darwin-amd64',
+            'darwin-aarch64',
+            'windows-amd64',
+        ]
 
     # 1. Register a project building the isolate library
-    isolate_deps = [language_distribution, 'graal-enterprise:TRUFFLE_ENTERPRISE'] + additional_isolate_dependencies
+    isolate_deps = [language_pom_distribution, 'graal-enterprise:TRUFFLE_ENTERPRISE']
     import mx_sdk_vm_impl
     build_library = mx_sdk_vm_impl.PolyglotIsolateLibrary(language_suite, language_id, isolate_deps, isolate_build_options)
     register_project(build_library)
@@ -1290,13 +1301,7 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
         path=None,
         platformDependent=True,
         theLicense=None,
-        platforms=[
-            'linux-amd64',
-            'linux-aarch64',
-            'darwin-amd64',
-            'darwin-aarch64',
-            'windows-amd64',
-        ],
+        platforms=platforms,
         **attrs
     )
     register_distribution(layout_dist)
@@ -1311,10 +1316,9 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
     licenses.update(language_suite.defaultLicense)
     if resolved_language_distribution.theLicense:
         licenses.update(resolved_language_distribution.theLicense)
-    for additional_dep in additional_isolate_dependencies:
-        resolved_additional_distribution = _resolve_distribution(additional_dep)
-        if resolved_additional_distribution.theLicense:
-            licenses.update(resolved_additional_distribution.theLicense)
+    resolved_language_pom_distribution = _resolve_distribution(language_pom_distribution)
+    if resolved_language_pom_distribution.theLicense:
+        licenses.update(resolved_language_pom_distribution.theLicense)
 
     # The graal-enterprise suite may not be fully loaded.
     # We cannot look up the TRUFFLE_ENTERPRISE distribution to resolve its license
@@ -1375,6 +1379,7 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
         theLicense=sorted(list(licenses)),
         **attrs)
     register_distribution(meta_pom_dist)
+    return True
 
 class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency):  # pylint: disable=too-many-ancestors
     """Project for building libffi from source.
