@@ -26,12 +26,15 @@
 import re
 import os
 from tempfile import mkstemp
+from typing import List, Optional
 
 import mx
 import mx_benchmark
 import mx_sdk_benchmark
 import mx_compiler
 from mx_java_benchmarks import DaCapoBenchmarkSuite, ScalaDaCapoBenchmarkSuite
+from mx_benchmark import DataPoints
+from mx_sdk_benchmark import SUCCESSFUL_STAGE_PATTERNS
 
 _suite = mx.suite('compiler')
 
@@ -406,7 +409,45 @@ class ScalaDaCapoTimingBenchmarkSuite(DaCapoTimingBenchmarkMixin, ScalaDaCapoBen
 mx_benchmark.add_bm_suite(ScalaDaCapoTimingBenchmarkSuite())
 
 
-class JMHNativeImageBenchmarkMixin(mx_sdk_benchmark.NativeImageBenchmarkMixin):
+class JMHNativeImageBenchmarkMixin(mx_benchmark.JMHBenchmarkSuiteBase, mx_sdk_benchmark.NativeImageBenchmarkMixin):
+
+    def get_jmh_result_file(self, bm_suite_args: List[str]) -> Optional[str]:
+        """
+        Only generate a JMH result file in the run stage. Otherwise the file-based rule (see
+        :class:`mx_benchmark.JMHJsonRule`) will produce datapoints at every stage, based on results from a previous
+        stage.
+        """
+        if self.is_native_mode(bm_suite_args) and not self.stages_info.fallback_mode:
+            # At this point, the StagesInfo class may not have all the information yet, in that case we rely on the
+            # requested stage. But if this function is called later again when it is fully set up, we have to use the
+            # effective stage instead.
+            # This is important so that the JMH parsing rule is only enabled when the stage actually ran (if it is
+            # skipped, it would otherwise pick up a previous result file)
+            if self.stages_info.is_set_up:
+                current_stage = self.stages_info.effective_stage
+            else:
+                current_stage = self.stages_info.requested_stage
+
+            if current_stage not in ["agent", "instrument-run", "run"]:
+                return None
+
+        return super().get_jmh_result_file(bm_suite_args)
+
+    def fallback_mode_reason(self, bm_suite_args: List[str]) -> Optional[str]:
+        """
+        JMH benchmarks need to use the fallback mode if --jmh-run-individually is used.
+        The flag causes one native image to be built per JMH benchmark. This is fundamentally incompatible with the
+        default benchmarking mode of running each stage on its own because a benchmark will overwrite the intermediate
+        files of the previous benchmark if not all stages are run at once.
+
+        In the fallback mode, collection of performance data is limited. Only performance data of the ``run`` stage can
+        reliably be collected. Other metrics, such as image build statistics or profiling performance cannot reliably be
+        collected because they cannot be attributed so a specific individual JMH benchmark.
+        """
+        if self.jmhArgs(bm_suite_args).jmh_run_individually:
+            return "--jmh-run-individually is not compatible with selecting individual stages"
+        else:
+            return None
 
     def extra_image_build_argument(self, benchmark, args):
         # JMH does HotSpot-specific field offset checks in class initializers
@@ -462,6 +503,9 @@ class JMHRunnerGraalCoreBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite, JMH
     def subgroup(self):
         return "graal-compiler"
 
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
+
 
 mx_benchmark.add_bm_suite(JMHRunnerGraalCoreBenchmarkSuite())
 
@@ -476,6 +520,9 @@ class JMHJarGraalCoreBenchmarkSuite(mx_benchmark.JMHJarBenchmarkSuite, JMHJarBas
 
     def subgroup(self):
         return "graal-compiler"
+
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
 
 mx_benchmark.add_bm_suite(JMHJarGraalCoreBenchmarkSuite())
@@ -492,9 +539,15 @@ class JMHDistGraalCoreBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarB
     def subgroup(self):
         return "graal-compiler"
 
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
+
     def filter_distribution(self, dist):
         return super(JMHDistGraalCoreBenchmarkSuite, self).filter_distribution(dist) and \
                not JMHDistWhiteboxBenchmarkSuite.is_whitebox_dependency(dist)
+
+    def successPatterns(self):
+        return super().successPatterns() + SUCCESSFUL_STAGE_PATTERNS
 
 
 mx_benchmark.add_bm_suite(JMHDistGraalCoreBenchmarkSuite())
@@ -510,6 +563,9 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarBa
 
     def subgroup(self):
         return "graal-compiler"
+
+    def run(self, benchmarks, bmSuiteArgs) -> DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
     @staticmethod
     def is_whitebox_dependency(dist):
@@ -541,6 +597,9 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarBa
     def getJMHEntry(self, bmSuiteArgs):
         assert self.dist
         return [mx.distribution(self.dist).mainClass]
+
+    def successPatterns(self):
+        return super().successPatterns() + SUCCESSFUL_STAGE_PATTERNS
 
 
 mx_benchmark.add_bm_suite(JMHDistWhiteboxBenchmarkSuite())

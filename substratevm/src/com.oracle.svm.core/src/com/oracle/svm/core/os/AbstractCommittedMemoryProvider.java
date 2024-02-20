@@ -43,7 +43,6 @@ import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.code.RuntimeCodeCache;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -76,10 +75,9 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
             if (VirtualMemoryProvider.get().protect(heapBegin, heapSize, VirtualMemoryProvider.Access.READ) != 0) {
                 return CEntryPointErrors.PROTECT_HEAP_FAILED;
             }
-            UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
-            Pointer writableBoundary = PointerUtils.roundDown(IMAGE_HEAP_WRITABLE_BEGIN.get(), pageSize);
-            UnsignedWord writableSize = IMAGE_HEAP_WRITABLE_END.get().subtract(writableBoundary);
-            if (VirtualMemoryProvider.get().protect(writableBoundary, writableSize, VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE) != 0) {
+            Pointer writableBegin = IMAGE_HEAP_WRITABLE_BEGIN.get();
+            UnsignedWord writableSize = IMAGE_HEAP_WRITABLE_END.get().subtract(writableBegin);
+            if (VirtualMemoryProvider.get().protect(writableBegin, writableSize, VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE) != 0) {
                 return CEntryPointErrors.PROTECT_HEAP_FAILED;
             }
         }

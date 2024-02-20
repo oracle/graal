@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,19 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.VarHandle;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.ToLongFunction;
-
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.StaticFieldsSupport;
@@ -44,268 +31,25 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.graal.nodes.FieldOffsetNode;
-import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
- * This file contains most of the code necessary for supporting VarHandle (and DirectMethodHandle
- * field accessors) in native images. The actual intrinsification of the accessors happens in
- * hosted-only code during inlining before analysis.
- *
- * The VarHandle implementation in the JDK uses some invokedynamic and method handles, but also a
- * lot of explicit Java code (a lot of it automatically generated): The main entry point from the
- * point of view of the user is the class VarHandle, which contains signature-polymorphic method
- * prototypes for the various access modes. However, we do not need to do anything special for the
- * VarHandle class: when we parse bytecode, all the bootstrapping has already happened on the Java
- * HotSpot VM, and the bytecode parser already sees calls to guard methods defined in
- * VarHandleGuards. Methods of that class are method handle intrinsification roots for inlining
- * before analysis. The intrinsification removes all the method handle invocation logic and reduces
- * the logic to a single call to the actual access logic. This logic is in various automatically
- * generated accessor classes named
- * "VarHandle{Booleans|Bytes|Chars|Doubles|Floats|Ints|Longs|Shorts|Objects}.{Array|FieldInstanceReadOnly|FieldInstanceReadWrite|FieldStaticReadOnly|FieldStaticReadWrite}".
- * The intrinsification might be able to inline these methods and even transform unsafe accesses by
- * offset to field accesses, but we cannot rely on it always being able to do in every case.
- *
- * The accessor classes for field access (both instance and static field access) store the offset of
- * the field that is used for Unsafe memory access. We need to 1) properly register these fields as
- * unsafe accessed so that our static analysis is correct, and 2) recompute the field offsets from
- * the hosted offsets to the runtime offsets. Luckily, we have all information to reconstruct the
- * original {@link Field} (see {@link #findVarHandleField}). The registration for unsafe access
- * happens in {@link #processReachableHandle} which is called for every relevant object once it
- * becomes reachable and so part of the image heap. The field offset recomputations are registered
- * for all classes manually (a bit of code duplication on our side), but all recomputations use the
- * same custom field value recomputation handler: {@link VarHandleFieldOffsetComputer}.
- *
- * For static fields, also the base of the Unsafe access needs to be changed to the static field
- * holder arrays defined in {@link StaticFieldsSupport}: {@link VarHandleStaticBaseComputer}.
- *
- * VarHandle access to arrays is the simplest case: we only need field value recomputations for the
- * array base offset and array index shift.
+ * See JavaDoc of VarHandleFeature in the hosted project for an overview.
  */
-@AutomaticallyRegisteredFeature
-public class VarHandleFeature implements InternalFeature {
-
-    private final Map<Class<?>, VarHandleInfo> infos = new HashMap<>();
-
-    private final ConcurrentMap<Object, Boolean> processedVarHandles = new ConcurrentHashMap<>();
-    private Consumer<Field> markAsUnsafeAccessed;
-
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        /*
-         * Initialize fields of VarHandle instances that are @Stable eagerly, so that during method
-         * handle intrinsification loads of those fields and array elements can be constant-folded.
-         * 
-         * Note that we do this on purpose here in an object replacer, and not in an object
-         * reachability handler: Intrinsification happens as part of method inlining before
-         * analysis, i.e., before the static analysis, i.e., before the VarHandle object itself is
-         * marked as reachable. The goal of intrinsification is to actually avoid making the
-         * VarHandle object itself reachable.
-         */
-        access.registerObjectReplacer(VarHandleFeature::eagerlyInitializeVarHandle);
+public abstract class VarHandleSupport {
+    public static VarHandleSupport singleton() {
+        return ImageSingletons.lookup(VarHandleSupport.class);
     }
 
-    private static Object eagerlyInitializeVarHandle(Object obj) {
-        if (obj instanceof VarHandle varHandle) {
-            eagerlyInitializeVarHandle(varHandle);
-        }
-        return obj;
-    }
-
-    private static final Field varHandleVFormField = ReflectionUtil.lookupField(VarHandle.class, "vform");
-    private static final Method varFormInitMethod = ReflectionUtil.lookupMethod(ReflectionUtil.lookupClass(false, "java.lang.invoke.VarForm"), "getMethodType_V", int.class);
-    private static final Method varHandleGetMethodHandleMethod = ReflectionUtil.lookupMethod(VarHandle.class, "getMethodHandle", int.class);
-
-    public static void eagerlyInitializeVarHandle(VarHandle varHandle) {
-        try {
-            /*
-             * The field VarHandle.vform.methodType_V_table is a @Stable field but initialized
-             * lazily on first access. Therefore, constant folding can happen only after
-             * initialization has happened. We force initialization by invoking the method
-             * VarHandle.vform.getMethodType_V(0).
-             */
-            Object varForm = varHandleVFormField.get(varHandle);
-            varFormInitMethod.invoke(varForm, 0);
-
-            /*
-             * The AccessMode used for the access that we are going to intrinsify is hidden in a
-             * AccessDescriptor object that is also passed in as a parameter to the intrinsified
-             * method. Initializing all AccessMode enum values is easier than trying to extract the
-             * actual AccessMode.
-             */
-            for (VarHandle.AccessMode accessMode : VarHandle.AccessMode.values()) {
-                /*
-                 * Force initialization of the @Stable field VarHandle.vform.memberName_table.
-                 */
-                boolean isAccessModeSupported = varHandle.isAccessModeSupported(accessMode);
-                /*
-                 * Force initialization of the @Stable field
-                 * VarHandle.typesAndInvokers.methodType_table.
-                 */
-                varHandle.accessModeType(accessMode);
-
-                if (isAccessModeSupported) {
-                    /* Force initialization of the @Stable field VarHandle.methodHandleTable. */
-                    varHandleGetMethodHandleMethod.invoke(varHandle, accessMode.ordinal());
-                }
-            }
-        } catch (ReflectiveOperationException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        try {
-            for (String typeName : new String[]{"Booleans", "Bytes", "Chars", "Doubles", "Floats", "Ints", "Longs", "Shorts", "References"}) {
-                buildInfo(false, "receiverType",
-                                Class.forName("java.lang.invoke.VarHandle" + typeName + "$FieldInstanceReadOnly"),
-                                Class.forName("java.lang.invoke.VarHandle" + typeName + "$FieldInstanceReadWrite"));
-                buildInfo(true, "base",
-                                Class.forName("java.lang.invoke.VarHandle" + typeName + "$FieldStaticReadOnly"),
-                                Class.forName("java.lang.invoke.VarHandle" + typeName + "$FieldStaticReadWrite"));
-            }
-
-            Class<?> staticAccessorClass = Class.forName("java.lang.invoke.DirectMethodHandle$StaticAccessor");
-            infos.put(staticAccessorClass, new VarHandleInfo(true, createOffsetFieldGetter(staticAccessorClass, "staticOffset"),
-                            createTypeFieldGetter(staticAccessorClass, "staticBase")));
-
-            Class<?> accessorClass = Class.forName("java.lang.invoke.DirectMethodHandle$Accessor");
-            Function<Object, Class<?>> accessorTypeGetter = obj -> ((MethodHandle) obj).type().parameterType(0);
-            infos.put(accessorClass, new VarHandleInfo(false, createOffsetFieldGetter(accessorClass, "fieldOffset"), accessorTypeGetter));
-
-        } catch (ClassNotFoundException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
-
-    private void buildInfo(boolean isStatic, String typeFieldName, Class<?> readOnlyClass, Class<?> readWriteClass) {
-        ToLongFunction<Object> offsetGetter = createOffsetFieldGetter(readOnlyClass, "fieldOffset");
-        Function<Object, Class<?>> typeGetter = createTypeFieldGetter(readOnlyClass, typeFieldName);
-        VarHandleInfo readOnlyInfo = new VarHandleInfo(isStatic, offsetGetter, typeGetter);
-        infos.put(readOnlyClass, readOnlyInfo);
-        infos.put(readWriteClass, readOnlyInfo);
-    }
-
-    private static ToLongFunction<Object> createOffsetFieldGetter(Class<?> clazz, String offsetFieldName) {
-        Field offsetField = ReflectionUtil.lookupField(clazz, offsetFieldName);
-        return obj -> {
-            try {
-                return offsetField.getLong(obj);
-            } catch (IllegalAccessException e) {
-                throw VMError.shouldNotReachHere(e);
-            }
-        };
-    }
-
-    private static Function<Object, Class<?>> createTypeFieldGetter(Class<?> clazz, String typeFieldName) {
-        Field typeField = ReflectionUtil.lookupField(clazz, typeFieldName);
-        return obj -> {
-            try {
-                return (Class<?>) typeField.get(obj);
-            } catch (IllegalAccessException e) {
-                throw VMError.shouldNotReachHere(e);
-            }
-        };
-    }
-
-    /**
-     * Find the original {@link Field} referenced by a VarHandle that accesses an instance field or
-     * a static field. The VarHandle stores the field offset and the holder type. We iterate all
-     * fields of that type and look for the field with a matching offset.
-     */
-    Field findVarHandleField(Object varHandle) {
-        VarHandleInfo info = infos.get(varHandle.getClass());
-        long originalFieldOffset = info.offsetGetter.applyAsLong(varHandle);
-        Class<?> type = info.typeGetter.apply(varHandle);
-
-        for (Class<?> cur = type; cur != null; cur = cur.getSuperclass()) {
-            /* Search the declared fields for a field with a matching offset. */
-            for (Field field : cur.getDeclaredFields()) {
-                if (Modifier.isStatic(field.getModifiers()) == info.isStatic) {
-                    long fieldOffset = info.isStatic ? Unsafe.getUnsafe().staticFieldOffset(field) : Unsafe.getUnsafe().objectFieldOffset(field);
-                    if (fieldOffset == originalFieldOffset) {
-                        return field;
-                    }
-                }
-            }
-
-            if (info.isStatic) {
-                /*
-                 * For instance fields, we need to search the whole class hierarchy. For static
-                 * fields, we must only search the exact class.
-                 */
-                break;
-            }
-        }
-
-        throw VMError.shouldNotReachHere("Could not find field referenced in VarHandle: " + type + ", offset = " + originalFieldOffset + ", isStatic = " + info.isStatic);
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        markAsUnsafeAccessed = access::registerAsUnsafeAccessed;
-    }
-
-    @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
-        markAsUnsafeAccessed = null;
-    }
-
-    public void registerHeapVarHandle(VarHandle varHandle) {
-        processReachableHandle(varHandle);
-    }
-
-    public void registerHeapMethodHandle(MethodHandle directMethodHandle) {
-        processReachableHandle(directMethodHandle);
-    }
-
-    /**
-     * Register all fields accessed by a VarHandle for an instance field or a static field as unsafe
-     * accessed, which is necessary for correctness of the static analysis. We want to process every
-     * VarHandle only once, therefore we mark all VarHandle that were already processed in
-     * {@link #processedVarHandles}.
-     */
-    private Object processReachableHandle(Object obj) {
-        VarHandleInfo info = infos.get(obj.getClass());
-        if (info != null && processedVarHandles.putIfAbsent(obj, true) == null) {
-            Field field = findVarHandleField(obj);
-            /*
-             * It is OK if we see a new VarHandle after analysis, as long as the field itself was
-             * already registered as Unsafe accessed by another VarHandle during analysis. This can
-             * happen when the late class initializer analysis determines that a class is safe for
-             * initialization at build time after the analysis.
-             */
-            if (processedVarHandles.putIfAbsent(field, true) == null) {
-                VMError.guarantee(markAsUnsafeAccessed != null, "New VarHandle found after static analysis");
-                markAsUnsafeAccessed.accept(field);
-            }
-        }
-        return obj;
-    }
-}
-
-class VarHandleInfo {
-    final boolean isStatic;
-    final ToLongFunction<Object> offsetGetter;
-    final Function<Object, Class<?>> typeGetter;
-
-    VarHandleInfo(boolean isStatic, ToLongFunction<Object> offsetGetter, Function<Object, Class<?>> typeGetter) {
-        this.isStatic = isStatic;
-        this.offsetGetter = offsetGetter;
-        this.typeGetter = typeGetter;
-    }
+    protected abstract ResolvedJavaField findVarHandleField(Object varHandle);
 }
 
 abstract class VarHandleFieldOffsetComputer implements FieldValueTransformerWithAvailability {
@@ -323,8 +67,8 @@ abstract class VarHandleFieldOffsetComputer implements FieldValueTransformerWith
 
     @Override
     public Object transform(Object receiver, Object originalValue) {
-        Field field = ImageSingletons.lookup(VarHandleFeature.class).findVarHandleField(receiver);
-        int offset = ReflectionSubstitutionSupport.singleton().getFieldOffset(field, true);
+        ResolvedJavaField field = VarHandleSupport.singleton().findVarHandleField(receiver);
+        int offset = field.getOffset();
         if (offset <= 0) {
             throw VMError.shouldNotReachHere("Field is not marked as unsafe accessed: " + field);
         }
@@ -343,8 +87,8 @@ abstract class VarHandleFieldOffsetComputer implements FieldValueTransformerWith
     public ValueNode intrinsify(CoreProviders providers, JavaConstant receiver) {
         Object varHandle = providers.getSnippetReflection().asObject(Object.class, receiver);
         if (varHandle != null) {
-            Field field = ImageSingletons.lookup(VarHandleFeature.class).findVarHandleField(varHandle);
-            return FieldOffsetNode.create(kind, providers.getMetaAccess().lookupJavaField(field));
+            ResolvedJavaField field = VarHandleSupport.singleton().findVarHandleField(varHandle);
+            return FieldOffsetNode.create(kind, field);
         }
         return null;
     }
@@ -370,16 +114,16 @@ class VarHandleStaticBaseComputer implements FieldValueTransformerWithAvailabili
 
     @Override
     public Object transform(Object receiver, Object originalValue) {
-        Field field = ImageSingletons.lookup(VarHandleFeature.class).findVarHandleField(receiver);
-        return field.getType().isPrimitive() ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields();
+        ResolvedJavaField field = VarHandleSupport.singleton().findVarHandleField(receiver);
+        return field.getType().getJavaKind().isPrimitive() ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields();
     }
 
     @Override
     public ValueNode intrinsify(CoreProviders providers, JavaConstant receiver) {
         Object varHandle = providers.getSnippetReflection().asObject(Object.class, receiver);
         if (varHandle != null) {
-            Field field = ImageSingletons.lookup(VarHandleFeature.class).findVarHandleField(varHandle);
-            return StaticFieldsSupport.createStaticFieldBaseNode(field.getType().isPrimitive());
+            ResolvedJavaField field = VarHandleSupport.singleton().findVarHandleField(varHandle);
+            return StaticFieldsSupport.createStaticFieldBaseNode(field.getType().getJavaKind().isPrimitive());
         }
         return null;
     }
@@ -395,6 +139,7 @@ class VarHandleStaticBaseComputer implements FieldValueTransformerWithAvailabili
  * (instead of storing it in each individual VarHandle instance). But we just need to handle what
  * the JDK gives us.
  */
+
 @TargetClass(className = "java.lang.invoke.VarHandleBooleans", innerClass = "Array")
 final class Target_java_lang_invoke_VarHandleBooleans_Array {
     @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = boolean[].class, isFinal = true) //
@@ -471,10 +216,6 @@ final class Target_java_lang_invoke_VarHandleReferences_Array {
  * Substitutions for VarHandle instance field access classes. They all follow the same pattern: they
  * store the receiver type (no need to recompute that) and the field offset (we need to recompute
  * that).
- *
- * Because the offset field values can be set only after instance field offsets are assigned
- * following the analysis, the unsafe accesses cannot be constant-folded unless inlining before
- * analysis is already successful in transforming them to a field access.
  */
 
 @TargetClass(className = "java.lang.invoke.VarHandleBooleans", innerClass = "FieldInstanceReadOnly")

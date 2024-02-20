@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,41 +25,17 @@
 package jdk.graal.compiler.nodes.spi;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
-import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
-import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
-import jdk.graal.compiler.word.WordTypes;
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.JavaConstant;
 
-public interface CoreProviders {
+public class IdentityHashCodeProvider {
 
-    MetaAccessProvider getMetaAccess();
+    protected final SnippetReflectionProvider snippetReflection;
 
-    ConstantReflectionProvider getConstantReflection();
+    public IdentityHashCodeProvider(SnippetReflectionProvider snippetReflection) {
+        this.snippetReflection = snippetReflection;
+    }
 
-    ConstantFieldProvider getConstantFieldProvider();
-
-    LoweringProvider getLowerer();
-
-    Replacements getReplacements();
-
-    StampProvider getStampProvider();
-
-    ForeignCallsProvider getForeignCalls();
-
-    PlatformConfigurationProvider getPlatformConfigurationProvider();
-
-    MetaAccessExtensionProvider getMetaAccessExtensionProvider();
-
-    LoopsDataProvider getLoopsDataProvider();
-
-    WordTypes getWordTypes();
-
-    CodeCacheProvider getCodeCache();
-
-    SnippetReflectionProvider getSnippetReflection();
-
-    IdentityHashCodeProvider getIdentityHashCodeProvider();
+    public int identityHashCode(JavaConstant constant) {
+        return System.identityHashCode(snippetReflection.asObject(Object.class, constant));
+    }
 }

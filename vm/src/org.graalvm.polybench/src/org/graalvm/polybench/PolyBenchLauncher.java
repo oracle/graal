@@ -573,7 +573,8 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                     Object ctw = ctwArgs[0];
                     Object compilations = ctwArgs[1];
                     try {
-                        Method compileMethod = ctw.getClass().getDeclaredMethod("compile", compilations.getClass());
+                        // Avoid build time dependency on jdk.graal.compiler.hotspot.test
+                        Method compileMethod = ctw.getClass().getDeclaredMethod("compile", List.class);
                         compileMethod.invoke(ctw, compilations);
 
                         // Force a GC to encourage reclamation of nmethods when their InstalledCode

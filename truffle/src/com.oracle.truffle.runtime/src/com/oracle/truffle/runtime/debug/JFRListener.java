@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.runtime.debug;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.AnnotatedElement;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -80,7 +78,6 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     // Support for JFRListener#isInstrumented
     private static final Set<InstrumentedMethodPattern> instrumentedMethodPatterns = createInstrumentedPatterns();
     private static final AtomicReference<InstrumentedFilterState> instrumentedFilterState = new AtomicReference<>(InstrumentedFilterState.NEW);
-    private static volatile Class<? extends Annotation> requiredAnnotation;
     private static volatile ResolvedJavaType resolvedJfrEventClass;
 
     private final ThreadLocal<CompilationData> currentCompilation = new ThreadLocal<>();
@@ -288,7 +285,20 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
             return false;
         }
 
-        if ("traceThrowable".equals(method.getName()) && "Ljdk/jfr/internal/instrument/ThrowableTracer;".equals(method.getDeclaringClass().getName())) {
+        /*
+         * Between JDK-11 and JDK-21, JFR utilizes instrumentation to inject calls to
+         * jdk.jfr.internal.instrument.ThrowableTracer into constructors of Throwable and Error.
+         * These calls must never be inlined. However, in JDK-22,
+         * jdk.jfr.internal.instrument.ThrowableTracer was renamed to
+         * jdk.internal.event.ThrowableTracer, and the calls are no longer injected via
+         * instrumentation. Instead, a volatile field, Throwable#jfrTracing, is used. This field
+         * necessitates a volatile read. To prevent this in a PE code, PartialEvaluator modifies the
+         * reading of jfrTracing to a compilation constant `false`, effectively removing the JFR
+         * code during bytecode parsing. See PartialEvaluator#appendJFRTracingPlugin. This should
+         * not pose an issue because general-purpose exceptions are typically created after the
+         * TruffleBoundary.
+         */
+        if (("traceThrowable".equals(method.getName()) || "traceError".equals(method.getName())) && "Ljdk/jfr/internal/instrument/ThrowableTracer;".equals(method.getDeclaringClass().getName())) {
             return true;
         }
 
@@ -297,14 +307,11 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
             return false;
         }
 
-        ResolvedJavaType methodOwner = method.getDeclaringClass();
-        if (getAnnotation(requiredAnnotation, methodOwner) == null) {
-            return false;
-        }
-
         if (!instrumentedMethodPatterns.contains(new InstrumentedMethodPattern(method))) {
             return false;
         }
+
+        ResolvedJavaType methodOwner = method.getDeclaringClass();
         ResolvedJavaType patternOwner = getJFREventClass(methodOwner);
         return patternOwner != null && patternOwner.isAssignableFrom(methodOwner);
     }
@@ -313,7 +320,6 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
         // Do not initialize during image building.
         if (!ImageInfo.inImageBuildtimeCode()) {
             if (factory != null) {
-                requiredAnnotation = factory.getRequiredAnnotation();
                 factory.addInitializationListener(() -> {
                     instrumentedFilterState.set(InstrumentedFilterState.ACTIVE);
                 });
@@ -329,20 +335,12 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     private static ResolvedJavaType getJFREventClass(ResolvedJavaType accessingClass) {
         if (resolvedJfrEventClass == null) {
             try {
-                resolvedJfrEventClass = UnresolvedJavaType.create("Ljdk/jfr/Event;").resolve(accessingClass);
+                resolvedJfrEventClass = UnresolvedJavaType.create("Ljdk/internal/event/Event;").resolve(accessingClass);
             } catch (LinkageError e) {
                 // May happen when declaringClass is not accessible from accessingClass
             }
         }
         return resolvedJfrEventClass;
-    }
-
-    private static <T extends Annotation> T getAnnotation(Class<T> annotationClass, AnnotatedElement element) {
-        try {
-            return annotationClass.cast(element.getAnnotation(annotationClass));
-        } catch (NoClassDefFoundError e) {
-            return null;
-        }
     }
 
     private static Set<InstrumentedMethodPattern> createInstrumentedPatterns() {
