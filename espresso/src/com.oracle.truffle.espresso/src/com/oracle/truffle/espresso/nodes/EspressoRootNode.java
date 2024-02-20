@@ -29,6 +29,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -214,6 +215,20 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     public final int readBCI(Frame frame) {
         return getMethodNode().getBci(frame);
+    }
+
+    @Override
+    public Node getLeafNodeByFrame(FrameInstance frameInstance) {
+        Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
+        int bci = readBCI(frame);
+        if (bci != -1) {
+            Node leafNode = getMethodNode().getLeafNode(bci);
+            if (leafNode != null) {
+                assert leafNode.getRootNode() == this;
+                return leafNode;
+            }
+        }
+        return this;
     }
 
     public final void setFrameId(Frame frame, long frameId) {

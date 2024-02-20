@@ -33,6 +33,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -154,5 +155,10 @@ final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
     @Override
     public int getBci(@SuppressWarnings("unused") Frame frame) {
         return -2;
+    }
+
+    @Override
+    public Node getLeafNode(@SuppressWarnings("unused") int bci) {
+        return null;
     }
 }

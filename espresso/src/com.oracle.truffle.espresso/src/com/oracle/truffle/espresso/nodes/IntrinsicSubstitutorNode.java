@@ -92,6 +92,11 @@ final class IntrinsicSubstitutorNode extends EspressoInstrumentableRootNodeImpl 
     }
 
     @Override
+    public Node getLeafNode(@SuppressWarnings("unused")int bci) {
+        return null;
+    }
+
+    @Override
     boolean isTrivial() {
         return substitution.isTrivial();
     }

@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.classfile;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.FieldRefConstant;
@@ -75,6 +76,7 @@ public final class RuntimeConstantPool extends ConstantPool {
         return pool.at(index, description);
     }
 
+    @SuppressWarnings("try")
     private Resolvable.ResolvedConstant outOfLockResolvedAt(Klass accessingKlass, int index, String description) {
         Resolvable.ResolvedConstant c = constants[index];
         if (c == null) {
@@ -82,12 +84,14 @@ public final class RuntimeConstantPool extends ConstantPool {
             // double check: deopt is a heavy operation.
             c = constants[index];
             if (c == null) {
-                Resolvable.ResolvedConstant locallyResolved = ((Resolvable) pool.at(index, description)).resolve(this, index, accessingKlass);
-                synchronized (this) {
-                    // Triple check: non-trivial resolution
-                    c = constants[index];
-                    if (c == null) {
-                        constants[index] = c = locallyResolved;
+                try (EspressoLanguage.DisableSingleStepping ignored = context.getLanguage().disableStepping()) {
+                    Resolvable.ResolvedConstant locallyResolved = ((Resolvable) pool.at(index, description)).resolve(this, index, accessingKlass);
+                    synchronized (this) {
+                        // Triple check: non-trivial resolution
+                        c = constants[index];
+                        if (c == null) {
+                            constants[index] = c = locallyResolved;
+                        }
                     }
                 }
             }
@@ -95,6 +99,7 @@ public final class RuntimeConstantPool extends ConstantPool {
         return c;
     }
 
+    @SuppressWarnings("try")
     private Resolvable.ResolvedConstant resolvedAt(Klass accessingKlass, int index, String description) {
         Resolvable.ResolvedConstant c = constants[index];
         if (c == null) {
@@ -104,7 +109,9 @@ public final class RuntimeConstantPool extends ConstantPool {
                 // FIXME(peterssen): Add memory fence for array read.
                 c = constants[index];
                 if (c == null) {
-                    constants[index] = c = ((Resolvable) pool.at(index, description)).resolve(this, index, accessingKlass);
+                    try (EspressoLanguage.DisableSingleStepping ignored = context.getLanguage().disableStepping()) {
+                        constants[index] = c = ((Resolvable) pool.at(index, description)).resolve(this, index, accessingKlass);
+                    }
                 }
             }
         }
