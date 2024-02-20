@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -250,10 +250,11 @@ final class PanamaClosure implements TruffleObject {
                 }
                 return toJavaRet.execute(ret);
             } catch (Throwable t) {
-                PanamaNFILanguage.get(this).errorContext.get().setThrowable(t);
+                PanamaNFILanguage.get(this).getNFIState().setPendingException(t);
                 try {
                     return toJavaRet.execute("");
                 } catch (UnsupportedTypeException ex) {
+                    // toJavaRet expects a string, so this should always work
                     throw CompilerDirectives.shouldNotReachHere();
                 }
             }
@@ -286,7 +287,7 @@ final class PanamaClosure implements TruffleObject {
             try {
                 callClosure.execute(frame);
             } catch (Throwable t) {
-                PanamaNFILanguage.get(this).errorContext.get().setThrowable(t);
+                PanamaNFILanguage.get(this).getNFIState().setPendingException(t);
             }
             return null;
         }
@@ -323,14 +324,15 @@ final class PanamaClosure implements TruffleObject {
             try {
                 Object ret = callClosure.execute(frame);
                 if (interopLibrary.isNull(ret)) {
-                    return NativePointer.NULL.asPointer();
+                    return toJavaRet.execute(0);
                 }
                 return toJavaRet.execute(ret);
             } catch (Throwable t) {
-                PanamaNFILanguage.get(this).errorContext.get().setThrowable(t);
+                PanamaNFILanguage.get(this).getNFIState().setPendingException(t);
                 try {
                     return toJavaRet.execute(0);
                 } catch (UnsupportedTypeException e) {
+                    // we expect 0 to be convertible to every type
                     throw CompilerDirectives.shouldNotReachHere();
                 }
             }

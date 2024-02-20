@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,7 +102,8 @@ static TruffleObject getClosureObject(TruffleEnv *tenv, void *closure) {
 static bool exceptionCheck(TruffleEnv *tenv) {
     struct __TruffleEnvInternal *ienv = (struct __TruffleEnvInternal *) tenv;
     JNIEnv *env = ienv->jniEnv;
-    return (*env)->ExceptionCheck(env);
+    struct __TruffleContextInternal *context = ienv->context;
+    return (*env)->GetBooleanField(env, ienv->nfiState, context->NFIState_hasPendingException);
 }
 
 const struct __TruffleNativeAPI truffleNativeAPI = { getTruffleContext, newObjectRef,      releaseObjectRef, releaseAndReturn, isSameObject,

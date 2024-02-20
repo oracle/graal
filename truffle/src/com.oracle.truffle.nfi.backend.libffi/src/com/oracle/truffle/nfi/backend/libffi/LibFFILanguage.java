@@ -43,6 +43,7 @@ package com.oracle.truffle.nfi.backend.libffi;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -53,6 +54,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.CachedTypeInfo;
 import com.oracle.truffle.nfi.backend.spi.NFIBackend;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendFactory;
+import com.oracle.truffle.nfi.backend.spi.NFIState;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
 @TruffleLanguage.Registration(id = "internal/nfi-native", name = "nfi-native", version = "0.1", characterMimeTypes = LibFFILanguage.MIME_TYPE, internal = true, //
@@ -74,6 +76,7 @@ public class LibFFILanguage extends TruffleLanguage<LibFFIContext> {
     }
 
     @CompilationFinal private LibFFINFIBackend backend;
+    @CompilationFinal private ContextThreadLocal<NFIState> state;
 
     @CompilationFinal(dimensions = 1) final CachedTypeInfo[] simpleTypeMap = new CachedTypeInfo[NativeSimpleType.values().length];
     @CompilationFinal(dimensions = 1) final CachedTypeInfo[] arrayTypeMap = new CachedTypeInfo[NativeSimpleType.values().length];
@@ -94,18 +97,24 @@ public class LibFFILanguage extends TruffleLanguage<LibFFIContext> {
             }
 
             @Override
-            public NFIBackend createBackend() {
+            public NFIBackend createBackend(ContextThreadLocal<NFIState> newState) {
                 if (backend == null) {
                     /*
                      * Make sure there is exactly one backend instance per engine. That way we can
                      * use identity equality on the backend object for caching decisions.
                      */
                     backend = new LibFFINFIBackend(com.oracle.truffle.nfi.backend.libffi.LibFFILanguage.this);
+                    state = newState;
                 }
                 return backend;
             }
         });
         return new LibFFIContext(this, env);
+    }
+
+    protected NFIState getNFIState() {
+        assert state != null : "NFIBackendFactory.createBackend() never called by NFI frontend?";
+        return state.get();
     }
 
     @Override

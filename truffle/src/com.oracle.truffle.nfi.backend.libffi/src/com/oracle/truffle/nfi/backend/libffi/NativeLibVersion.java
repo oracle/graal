@@ -57,6 +57,7 @@ package com.oracle.truffle.nfi.backend.libffi;
  * <ul>
  * <li>0 "old" versions, before this version check was introduced
  * <li>1 first version with this version check
+ * <li>2 introduced thread-local NFIState and cross-backend exception propagation
  * </ul>
  */
 final class NativeLibVersion {
