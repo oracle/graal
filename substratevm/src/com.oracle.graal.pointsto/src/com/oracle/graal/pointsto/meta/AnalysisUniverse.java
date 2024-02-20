@@ -48,7 +48,6 @@ import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
-import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
@@ -58,7 +57,6 @@ import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisType.UsageKind;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.graal.pointsto.util.GraalAccess;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -483,44 +481,7 @@ public class AnalysisUniverse implements Universe {
         if (constant == null || constant.isNull() || constant.getJavaKind().isPrimitive()) {
             return constant;
         }
-        return heapScanner.createImageHeapConstant(fromHosted(constant), ObjectScanner.OtherReason.UNKNOWN);
-    }
-
-    /**
-     * Convert a hosted HotSpotObjectConstant into a SubstrateObjectConstant.
-     */
-    public JavaConstant fromHosted(JavaConstant constant) {
-        if (constant == null) {
-            return null;
-        } else if (constant.getJavaKind().isObject() && !constant.isNull()) {
-            Object original = GraalAccess.getOriginalSnippetReflection().asObject(Object.class, constant);
-            if (original instanceof ImageHeapConstant) {
-                /*
-                 * The value is an ImageHeapObject, i.e., it already has a build time
-                 * representation, so there is no need to re-wrap it. The value likely comes from
-                 * reading a field of a normal object that is referencing a simulated object. The
-                 * originalConstantReflection provider is not aware of simulated constants, and it
-                 * always wraps them into a HotSpotObjectConstant when reading fields.
-                 */
-                return (JavaConstant) original;
-            }
-            return getHostedValuesProvider().forObject(original);
-        } else {
-            return constant;
-        }
-    }
-
-    /**
-     * Convert a hosted SubstrateObjectConstant into a HotSpotObjectConstant.
-     */
-    public JavaConstant toHosted(JavaConstant constant) {
-        if (constant == null) {
-            return null;
-        } else if (constant.getJavaKind().isObject() && !constant.isNull()) {
-            return GraalAccess.getOriginalSnippetReflection().forObject(getHostedValuesProvider().asObject(Object.class, constant));
-        } else {
-            return constant;
-        }
+        return heapScanner.createImageHeapConstant(getHostedValuesProvider().interceptHosted(constant), ObjectScanner.OtherReason.UNKNOWN);
     }
 
     public List<AnalysisType> getTypes() {

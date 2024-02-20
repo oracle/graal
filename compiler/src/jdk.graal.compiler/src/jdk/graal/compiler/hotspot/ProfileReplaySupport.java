@@ -68,9 +68,9 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.util.json.JSONFormatter;
 import jdk.graal.compiler.util.json.JSONParser;
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -141,11 +141,11 @@ public final class ProfileReplaySupport {
         return expectedResult;
     }
 
-    public static ProfileReplaySupport profileReplayPrologue(DebugContext debug, HotSpotGraalRuntimeProvider graalRuntime, int entryBCI, HotSpotResolvedJavaMethod method,
+    public static ProfileReplaySupport profileReplayPrologue(DebugContext debug, Providers providers, int entryBCI, ResolvedJavaMethod method,
                     StableProfileProvider profileProvider, TypeFilter profileSaveFilter) {
         if (SaveProfiles.getValue(debug.getOptions()) || LoadProfiles.getValue(debug.getOptions()) != null) {
             LambdaNameFormatter lambdaNameFormatter = new LambdaNameFormatter() {
-                private final StableMethodNameFormatter stableFormatter = new HotSpotStableMethodNameFormatter(graalRuntime.getHostBackend().getProviders(), debug, true);
+                private final StableMethodNameFormatter stableFormatter = new HotSpotStableMethodNameFormatter(providers, debug, true);
 
                 @Override
                 public boolean isLambda(ResolvedJavaMethod m) {
@@ -199,16 +199,15 @@ public final class ProfileReplaySupport {
         return null;
     }
 
-    public void profileReplayEpilogue(DebugContext debug, CompilationTask.HotSpotCompilationWrapper compilation, StableProfileProvider profileProvider, CompilationIdentifier compilationId,
-                    int entryBCI,
-                    HotSpotResolvedJavaMethod method) {
+    public void profileReplayEpilogue(DebugContext debug, CompilationResult result, StructuredGraph graph, StableProfileProvider profileProvider, CompilationIdentifier compilationId,
+                    int entryBCI, ResolvedJavaMethod method) {
         if ((SaveProfiles.getValue(debug.getOptions()) || LoadProfiles.getValue(debug.getOptions()) != null) && profileFilter.matches(method)) {
             String codeSignature = null;
             String graphSignature = null;
-            if (compilation.result != null) {
-                codeSignature = compilation.result.getCodeSignature();
-                assert compilation.graph != null;
-                String s = getCanonicalGraphString(compilation.graph);
+            if (result != null) {
+                codeSignature = result.getCodeSignature();
+                assert graph != null;
+                String s = getCanonicalGraphString(graph);
                 graphSignature = CompilationResult.getSignature(s.getBytes(StandardCharsets.UTF_8));
             }
             if (Options.WarnAboutCodeSignatureMismatch.getValue(debug.getOptions())) {
@@ -229,7 +228,7 @@ public final class ProfileReplaySupport {
                     map.put("entryBCI", entryBCI);
                     map.put("codeSignature", codeSignature);
                     map.put("graphSignature", graphSignature);
-                    map.put("result", compilation.result != null);
+                    map.put("result", result != null);
                     profileProvider.recordProfiles(map, profileSaveFilter, lambdaNameFormatter);
                     String path = null;
                     if (Options.SaveProfilesPath.getValue(debug.getOptions()) != null) {

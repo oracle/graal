@@ -60,6 +60,7 @@ import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -89,13 +90,15 @@ public abstract class ImageHeapScanner {
     protected final HostedValuesProvider hostedValuesProvider;
     protected final ConstantReflectionProvider hostedConstantReflection;
     protected final SnippetReflectionProvider hostedSnippetReflection;
+    private final IdentityHashCodeProvider identityHashCodeProvider;
 
     protected ObjectScanningObserver scanningObserver;
 
     private boolean sealed;
 
     public ImageHeapScanner(BigBang bb, ImageHeap heap, AnalysisMetaAccess aMetaAccess, SnippetReflectionProvider aSnippetReflection,
-                    ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver, HostedValuesProvider aHostedValuesProvider) {
+                    ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver, HostedValuesProvider aHostedValuesProvider,
+                    IdentityHashCodeProvider identityHashCodeProvider) {
         this.bb = bb;
         imageHeap = heap;
         metaAccess = aMetaAccess;
@@ -105,6 +108,7 @@ public abstract class ImageHeapScanner {
         constantReflection = aConstantReflection;
         hostedValuesProvider = aHostedValuesProvider;
         scanningObserver = aScanningObserver;
+        this.identityHashCodeProvider = identityHashCodeProvider;
         hostedConstantReflection = GraalAccess.getOriginalProviders().getConstantReflection();
         hostedSnippetReflection = GraalAccess.getOriginalProviders().getSnippetReflection();
     }
@@ -195,6 +199,21 @@ public abstract class ImageHeapScanner {
         return constant;
     }
 
+    /** Create an {@link ImageHeapConstant} from a raw hosted object. */
+    public JavaConstant createImageHeapConstant(Object object, ScanReason reason) {
+        /*
+         * First, get the hosted constant representation and pre-process the object if necessary,
+         * e.g., transform RelocatedPointer into RelocatableConstant and WordBase into Integer.
+         */
+        JavaConstant hostedConstant = hostedValuesProvider.forObject(object);
+        /* Then create an {@link ImageHeapConstant} from a hosted constant. */
+        return createImageHeapConstant(hostedConstant, reason);
+    }
+
+    /**
+     * Create an {@link ImageHeapConstant} from a hosted constant, if that constant represents an
+     * object, otherwise return the input content.
+     */
     public JavaConstant createImageHeapConstant(JavaConstant constant, ScanReason reason) {
         if (isNonNullObjectConstant(constant)) {
             return getOrCreateImageHeapConstant(constant, reason);
@@ -259,7 +278,7 @@ public abstract class ImageHeapScanner {
         if (type.isArray()) {
             Integer length = hostedValuesProvider.readArrayLength(constant);
             if (type.getComponentType().isPrimitive()) {
-                return new ImageHeapPrimitiveArray(type, constant, snippetReflection.asObject(Object.class, constant), length);
+                return new ImageHeapPrimitiveArray(type, constant, snippetReflection.asObject(Object.class, constant), length, getIdentityHashCode(constant, identityHashCodeProvider));
             } else {
                 return createImageHeapObjectArray(constant, type, length, reason);
             }
@@ -269,7 +288,7 @@ public abstract class ImageHeapScanner {
     }
 
     private ImageHeapArray createImageHeapObjectArray(JavaConstant constant, AnalysisType type, int length, ScanReason reason) {
-        ImageHeapObjectArray array = new ImageHeapObjectArray(type, constant, length);
+        ImageHeapObjectArray array = new ImageHeapObjectArray(type, constant, length, getIdentityHashCode(constant, identityHashCodeProvider));
         /* Read hosted array element values only when the array is initialized. */
         array.constantData.hostedValuesReader = new AnalysisFuture<>(() -> {
             checkSealed(reason, "Trying to materialize an ImageHeapObjectArray for %s after the ImageHeapScanner is sealed.", constant);
@@ -291,7 +310,7 @@ public abstract class ImageHeapScanner {
     }
 
     private ImageHeapInstance createImageHeapInstance(JavaConstant constant, AnalysisType type, ScanReason reason) {
-        ImageHeapInstance instance = new ImageHeapInstance(type, constant);
+        ImageHeapInstance instance = new ImageHeapInstance(type, constant, getIdentityHashCode(constant, identityHashCodeProvider));
         /* Read hosted field values only when the receiver is initialized. */
         instance.constantData.hostedValuesReader = new AnalysisFuture<>(() -> {
             checkSealed(reason, "Trying to materialize an ImageHeapInstance for %s after the ImageHeapScanner is sealed.", constant);
@@ -751,6 +770,19 @@ public abstract class ImageHeapScanner {
 
     protected AnalysisField lookupJavaField(String className, String fieldName) {
         return metaAccess.lookupJavaField(ReflectionUtil.lookupField(getClass(className), fieldName));
+    }
+
+    public static int getIdentityHashCode(JavaConstant constant, IdentityHashCodeProvider identityHashCodeProvider) {
+        if (constant != null) {
+            return identityHashCodeProvider.identityHashCode(constant);
+        } else {
+            /*
+             * No backing object in the heap of the image builder VM. We want a "virtual" identity
+             * hash code that has the same properties as the image builder VM, so we use the
+             * identity hash code of a new and otherwise unused object in the image builder VM.
+             */
+            return identityHashCodeProvider.identityHashCode(GraalAccess.getOriginalSnippetReflection().forObject(new Object()));
+        }
     }
 
     /**

@@ -87,6 +87,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.SubstrateGraalRuntime;
+import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.graal.TruffleRuntimeCompilationSupport;
 import com.oracle.svm.graal.hosted.DeoptimizationFeature;
 import com.oracle.svm.graal.hosted.FieldsOffsetsFeature;
@@ -144,6 +145,7 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.truffle.phases.DeoptimizeOnExceptionPhase;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -386,7 +388,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                         runtimeProviders.getForeignCalls(), runtimeProviders.getLowerer(), runtimeProviders.getReplacements(), runtimeProviders.getStampProvider(),
                         runtimeConfig.getProviders().getSnippetReflection(), runtimeProviders.getWordTypes(), runtimeProviders.getPlatformConfigurationProvider(),
                         new GraphPrepareMetaAccessExtensionProvider(),
-                        runtimeProviders.getLoopsDataProvider());
+                        runtimeProviders.getLoopsDataProvider(), runtimeProviders.getIdentityHashCodeProvider());
 
         FeatureHandler featureHandler = config.getFeatureHandler();
         final boolean supportsStubBasedPlugins = !SubstrateOptions.useLLVMBackend();
@@ -432,10 +434,22 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         for (NodeClass<?> nodeClass : replacements.getSnippetNodeClasses()) {
             config.getMetaAccess().lookupJavaType(nodeClass.getClazz()).registerAsAllocated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
         }
+
+        /*
+         * The snippet graphs are prepared for runtime compilation by the
+         * RuntimeCompilationGraphEncoder, so constants are represented as SubstrateObjectConstant.
+         * Get back the ImageHeapConstant.
+         */
+        Function<Object, Object> objectTransformer = (object) -> {
+            if (object instanceof JavaConstant constant) {
+                return SubstrateGraalUtils.runtimeToHosted(constant, config.getUniverse().getHeapScanner());
+            }
+            return object;
+        };
         /*
          * Ensure runtime snippet graphs are analyzed.
          */
-        NativeImageGenerator.performSnippetGraphAnalysis(config.getBigBang(), replacements, config.getBigBang().getOptions());
+        NativeImageGenerator.performSnippetGraphAnalysis(config.getBigBang(), replacements, config.getBigBang().getOptions(), objectTransformer);
 
         /*
          * Ensure that all snippet methods have their SubstrateMethod object created by the object

@@ -13,6 +13,22 @@ local vm_common = import '../ci_common/common.jsonnet';
     name: self.targets[0] + '-vm-ce-truffle-unchained-labs' + self.jdk_name + '-linux-amd64',
   },
 
+  local truffle_unchained_lts_compatibility_check = vm_common.svm_common_linux_amd64 + {
+    downloads+: {
+      JAVA_HOME: { name: 'graalvm-java21', version: '23.1.2', platformspecific: true },
+    },
+    environment+: {
+      JVMCI_VERSION_CHECK: 'warn',
+    },
+    run+: [
+      ['mx', 'build'],
+      ['mx', '--dynamicimports', '/compiler', 'gate', '--tags', 'truffle-unchained']
+    ],
+    notify_emails: ["christian.humer@oracle.com", "tomas.zezula@oracle.com", "jakub.chaloupka@oracle.com"],
+    timelimit: '50:00',
+    name: self.targets[0] + '-vm-ce-truffle-unchained-lts-compatibility-check-labs' + self.jdk_name + '-linux-amd64',
+  },
+
   local native_substratevm_truffle = vm_common.svm_common_linux_amd64 + vm.custom_vm_linux + {
     run+: [
       ['export', 'SVM_SUITE=' + vm.svm_suite],
@@ -73,6 +89,7 @@ local vm_common = import '../ci_common/common.jsonnet';
     vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate')  + truffle_unchained,
     vm.vm_java_21     + vm_common.vm_base('linux', 'amd64', 'daily') + truffle_maven_downloader,
     vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate')  + truffle_maven_downloader,
+    vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate')  + truffle_unchained_lts_compatibility_check,
   ],
 
   builds: utils.add_defined_in(builds, std.thisFile),

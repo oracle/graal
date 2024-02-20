@@ -32,8 +32,6 @@ public interface DynamicProxyRegistry extends RuntimeProxyCreationSupport {
 
     Class<?> getProxyClass(ClassLoader loader, Class<?>... interfaces);
 
-    boolean isProxyClass(Class<?> clazz);
-
     @Platforms(Platform.HOSTED_ONLY.class)
     Class<?> createProxyClassForSerialization(Class<?>... interfaces);
 }
