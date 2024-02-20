@@ -239,15 +239,15 @@ public class RegexASTPostProcessor {
                 curTerm = term;
             }
 
-            private void createOptionalBranch(QuantifiableTerm term, Token.Quantifier quantifier, boolean copy, boolean unroll, int recurse, boolean emptyGuard) {
+            private void createOptionalBranch(QuantifiableTerm term, Token.Quantifier quantifier, boolean copy, boolean unroll, int recurse) {
                 addTerm(copy ? copyVisitor.copy(term) : term);
                 curTerm.setExpandedQuantifier(false);
                 ((QuantifiableTerm) curTerm).setQuantifier(null);
-                curTerm.setEmptyGuard(emptyGuard);
-                createOptional(term, quantifier, true, unroll, recurse - 1, emptyGuard);
+                curTerm.setEmptyGuard(true);
+                createOptional(term, quantifier, true, unroll, recurse - 1);
             }
 
-            private void createOptional(QuantifiableTerm term, Token.Quantifier quantifier, boolean copy, boolean unroll, int recurse, boolean emptyGuard) {
+            private void createOptional(QuantifiableTerm term, Token.Quantifier quantifier, boolean copy, boolean unroll, int recurse) {
                 if (recurse < 0) {
                     return;
                 }
@@ -258,17 +258,17 @@ public class RegexASTPostProcessor {
                 curGroup.setExpandedQuantifier(unroll);
                 curGroup.setQuantifier(quantifier);
                 if (term.isGroup()) {
-                    curGroup.setEnclosedCaptureGroupsLow(term.asGroup().getEnclosedCaptureGroupsLow());
-                    curGroup.setEnclosedCaptureGroupsHigh(term.asGroup().getEnclosedCaptureGroupsHigh());
+                    curGroup.setEnclosedCaptureGroupsLow(term.asGroup().getCaptureGroupsLow());
+                    curGroup.setEnclosedCaptureGroupsHigh(term.asGroup().getCaptureGroupsHigh());
                 }
                 if (quantifier.isGreedy()) {
-                    createOptionalBranch(term, quantifier, copy, unroll, recurse, emptyGuard);
+                    createOptionalBranch(term, quantifier, copy, unroll, recurse);
                     nextSequence();
                     curSequence.setExpandedQuantifier(true);
                 } else {
                     curSequence.setExpandedQuantifier(true);
                     nextSequence();
-                    createOptionalBranch(term, quantifier, copy, unroll, recurse, emptyGuard);
+                    createOptionalBranch(term, quantifier, copy, unroll, recurse);
                 }
                 popGroup();
             }
@@ -314,8 +314,7 @@ public class RegexASTPostProcessor {
                 // iteration is run because there is no backtracking after failing the empty check.
                 // We can emulate this behavior by dropping empty guards in small bounded loops,
                 // such as is the case for unrolled loops.
-                createOptional(toExpand, quantifier, unroll && quantifier.getMin() > 0, unroll, !unroll || quantifier.isInfiniteLoop() ? 0 : (quantifier.getMax() - quantifier.getMin()) - 1,
-                                !ast.getOptions().getFlavor().canHaveEmptyLoopIterations());
+                createOptional(toExpand, quantifier, unroll && quantifier.getMin() > 0, unroll, !unroll || quantifier.isInfiniteLoop() ? 0 : (quantifier.getMax() - quantifier.getMin()) - 1);
                 if (!unroll || quantifier.isInfiniteLoop()) {
                     ((Group) curTerm).setLoop(true);
                 }
