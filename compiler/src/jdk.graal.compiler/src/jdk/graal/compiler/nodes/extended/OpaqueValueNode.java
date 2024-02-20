@@ -24,6 +24,10 @@
  */
 package jdk.graal.compiler.nodes.extended;
 
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
+
+import jdk.graal.compiler.graph.IterableNodeType;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.spi.NodeWithIdentity;
 import jdk.graal.compiler.nodeinfo.InputType;
@@ -33,11 +37,8 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 
-import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
-import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
-
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public final class OpaqueValueNode extends OpaqueNode implements NodeWithIdentity, LIRLowerable, GuardingNode {
+public final class OpaqueValueNode extends OpaqueNode implements NodeWithIdentity, LIRLowerable, GuardingNode, IterableNodeType {
     public static final NodeClass<OpaqueValueNode> TYPE = NodeClass.create(OpaqueValueNode.class);
 
     @Input(InputType.Value) private ValueNode value;
