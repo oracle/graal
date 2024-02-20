@@ -53,11 +53,17 @@
 
   (func (export "benchmarkRun") (type $int_func)
     (local $i i32)
+    (local $u v128)
     (local $v v128)
+    (local $tmp v128)
+    (local.set $u (v128.const i32x4 2 4 8 16))
+    (local.set $v (v128.const i32x4 3 5 7 11))
 
     (loop $bench_loop
       ;; Perform vector addition
-      (local.set $v (i32x4.add (local.get $v) (v128.const i32x4 1 256 65536 16777216)))
+      (local.set $tmp (local.get $v))
+      (local.set $v (i32x4.add (local.get $u) (local.get $v)))
+      (local.set $u (local.get $tmp))
 
       ;; Increment loop counter and exit loop
       (local.set $i (i32.add (local.get $i) (i32.const 1)))
