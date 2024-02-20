@@ -1137,11 +1137,14 @@ public final class DebuggerSession implements Closeable {
                 while (callNode != null && !SourceSectionFilter.ANY.includes(callNode)) {
                     callNode = callNode.getParent();
                 }
-                if (callNode == null) {
+                RootNode root = callNode != null ? callNode.getRootNode() : ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
+                if (root == null || !includeInternal && root.isInternal()) {
                     return null;
                 }
-                RootNode root = callNode.getRootNode();
-                if (root == null || !includeInternal && root.isInternal()) {
+                if (callNode == null) {
+                    callNode = root.getLeafNodeByFrame(frameInstance);
+                }
+                if (callNode == null) {
                     return null;
                 }
                 return new Caller(frameInstance, callNode);
