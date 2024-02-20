@@ -37,6 +37,7 @@ import com.oracle.svm.hosted.annotation.AnnotationStringValue;
 import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.TypeAnnotationValue;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
 import jdk.graal.compiler.debug.GraalError;
 
@@ -46,12 +47,42 @@ final class AnnotationMetadataEncoder {
             buf.putS4(-1);
             return;
         }
-        buf.putS4(encoders.sourceClasses.getIndex(value.getType()));
+        buf.putS4(encoders.classes.getIndex(value.getType()));
         buf.putU2(value.getMemberCount());
         value.forEachMember((memberName, memberValue) -> {
-            buf.putS4(encoders.sourceMethodNames.getIndex(memberName));
+            buf.putS4(encoders.memberNames.getIndex(memberName));
             encodeAnnotationMember(buf, memberValue, encoders);
         });
+    }
+
+    static void registerAnnotation(AnnotationValue value, Encoders encoders, SnippetReflectionProvider snippetReflection) {
+        if (value.isAnnotationFormatException()) {
+            return;
+        }
+        encoders.classes.addObject(value.getType());
+        value.forEachMember((memberName, memberValue) -> {
+            encoders.memberNames.addObject(memberName);
+            registerAnnotationMember(memberValue, encoders, snippetReflection);
+        });
+    }
+
+    static void registerAnnotationMember(AnnotationMemberValue memberValue, Encoders encoders, SnippetReflectionProvider snippetReflection) {
+        if (memberValue instanceof AnnotationValue) {
+            registerAnnotation((AnnotationValue) memberValue, encoders, snippetReflection);
+        } else if (memberValue instanceof AnnotationClassValue) {
+            encoders.classes.addObject(((AnnotationClassValue) memberValue).getValue());
+        } else if (memberValue instanceof AnnotationEnumValue) {
+            encoders.classes.addObject(((AnnotationEnumValue) memberValue).getType());
+            encoders.memberNames.addObject(((AnnotationEnumValue) memberValue).getName());
+        } else if (memberValue instanceof AnnotationStringValue) {
+            encoders.otherStrings.addObject(((AnnotationStringValue) memberValue).getValue());
+        } else if (memberValue instanceof AnnotationArrayValue) {
+            ((AnnotationArrayValue) memberValue).forEachElement(element -> registerAnnotationMember(element, encoders, snippetReflection));
+        } else if (memberValue instanceof AnnotationExceptionProxyValue) {
+            encoders.objectConstants.addObject(((AnnotationExceptionProxyValue) memberValue).getObjectConstant(snippetReflection));
+        } else if (!(memberValue instanceof AnnotationPrimitiveValue)) {
+            throw GraalError.shouldNotReachHere("Invalid annotation member type: " + memberValue.getClass()); // ExcludeFromJacocoGeneratedReport
+        }
     }
 
     static void encodeAnnotationMember(UnsafeArrayTypeWriter buf, AnnotationMemberValue memberValue, Encoders encoders) {
@@ -59,12 +90,12 @@ final class AnnotationMetadataEncoder {
         if (memberValue instanceof AnnotationValue) {
             encodeAnnotation(buf, (AnnotationValue) memberValue, encoders);
         } else if (memberValue instanceof AnnotationClassValue) {
-            buf.putS4(encoders.sourceClasses.getIndex(((AnnotationClassValue) memberValue).getValue()));
+            buf.putS4(encoders.classes.getIndex(((AnnotationClassValue) memberValue).getValue()));
         } else if (memberValue instanceof AnnotationEnumValue) {
-            buf.putS4(encoders.sourceClasses.getIndex(((AnnotationEnumValue) memberValue).getType()));
-            buf.putS4(encoders.sourceMethodNames.getIndex(((AnnotationEnumValue) memberValue).getName()));
+            buf.putS4(encoders.classes.getIndex(((AnnotationEnumValue) memberValue).getType()));
+            buf.putS4(encoders.memberNames.getIndex(((AnnotationEnumValue) memberValue).getName()));
         } else if (memberValue instanceof AnnotationStringValue) {
-            buf.putS4(encoders.sourceMethodNames.getIndex(((AnnotationStringValue) memberValue).getValue()));
+            buf.putS4(encoders.otherStrings.getIndex(((AnnotationStringValue) memberValue).getValue()));
         } else if (memberValue instanceof AnnotationArrayValue) {
             buf.putU2(((AnnotationArrayValue) memberValue).getElementCount());
             ((AnnotationArrayValue) memberValue).forEachElement(element -> encodeAnnotationMember(buf, element, encoders));
@@ -99,7 +130,7 @@ final class AnnotationMetadataEncoder {
                     throw GraalError.shouldNotReachHere("Invalid annotation encoding"); // ExcludeFromJacocoGeneratedReport
             }
         } else if (memberValue instanceof AnnotationExceptionProxyValue) {
-            buf.putS4(encoders.objectConstants.getIndex(((AnnotationExceptionProxyValue) memberValue).getObjectConstant()));
+            buf.putS4(encoders.objectConstants.getIndex(((AnnotationExceptionProxyValue) memberValue).getObjectConstant(null)));
         } else {
             throw GraalError.shouldNotReachHere("Invalid annotation member type: " + memberValue.getClass()); // ExcludeFromJacocoGeneratedReport
         }

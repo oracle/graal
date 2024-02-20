@@ -337,8 +337,9 @@ class CodeInfoFeature implements InternalFeature {
         config.registerAsImmutable(imageInfo.codeInfoEncodings);
         config.registerAsImmutable(imageInfo.referenceMapEncoding);
         config.registerAsImmutable(imageInfo.frameInfoEncodings);
-        config.registerAsImmutable(imageInfo.frameInfoObjectConstants);
-        config.registerAsImmutable(imageInfo.frameInfoSourceClasses);
-        config.registerAsImmutable(imageInfo.frameInfoSourceMethodNames);
+        config.registerAsImmutable(imageInfo.objectConstants);
+        config.registerAsImmutable(imageInfo.classes);
+        config.registerAsImmutable(imageInfo.memberNames);
+        config.registerAsImmutable(imageInfo.otherStrings);
     }
 }

@@ -223,9 +223,10 @@ public final class CodeInfoAccess {
                             .add(NonmovableArrays.byteSizeOf(impl.getCodeInfoEncodings()))
                             .add(NonmovableArrays.byteSizeOf(impl.getStackReferenceMapEncoding()))
                             .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoEncodings()))
-                            .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoObjectConstants()))
-                            .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoSourceClasses()))
-                            .add(NonmovableArrays.byteSizeOf(impl.getFrameInfoSourceMethodNames()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getObjectConstants()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getClasses()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getMemberNames()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getOtherStrings()))
                             .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationStartOffsets()))
                             .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationEncodings()))
                             .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationObjectConstants()))
@@ -309,12 +310,13 @@ public final class CodeInfoAccess {
     }
 
     @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed.")
-    public static void setEncodings(CodeInfo info, NonmovableObjectArray<Object> objectConstants,
-                    NonmovableObjectArray<Class<?>> sourceClasses, NonmovableObjectArray<String> sourceMethodNames) {
+    public static void setEncodings(CodeInfo info, NonmovableObjectArray<Object> objectConstants, NonmovableObjectArray<Class<?>> classes,
+                    NonmovableObjectArray<String> memberNames, NonmovableObjectArray<String> otherStrings) {
         CodeInfoImpl impl = cast(info);
-        impl.setFrameInfoObjectConstants(objectConstants);
-        impl.setFrameInfoSourceClasses(sourceClasses);
-        impl.setFrameInfoSourceMethodNames(sourceMethodNames);
+        impl.setObjectConstants(objectConstants);
+        impl.setClasses(classes);
+        impl.setMemberNames(memberNames);
+        impl.setOtherStrings(otherStrings);
         if (!SubstrateUtil.HOSTED) {
             // notify the GC about the frame metadata that is now live
             Heap.getHeap().getRuntimeCodeInfoGCSupport().registerFrameMetadata(impl);
@@ -364,18 +366,23 @@ public final class CodeInfoAccess {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static NonmovableObjectArray<Object> getFrameInfoObjectConstants(CodeInfo info) {
-        return cast(info).getFrameInfoObjectConstants();
+    public static NonmovableObjectArray<Object> getObjectConstants(CodeInfo info) {
+        return cast(info).getObjectConstants();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static NonmovableObjectArray<Class<?>> getFrameInfoSourceClasses(CodeInfo info) {
-        return cast(info).getFrameInfoSourceClasses();
+    public static NonmovableObjectArray<Class<?>> getClasses(CodeInfo info) {
+        return cast(info).getClasses();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static NonmovableObjectArray<String> getFrameInfoSourceMethodNames(CodeInfo info) {
-        return cast(info).getFrameInfoSourceMethodNames();
+    public static NonmovableObjectArray<String> getMemberNames(CodeInfo info) {
+        return cast(info).getMemberNames();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static NonmovableObjectArray<String> getOtherStrings(CodeInfo info) {
+        return cast(info).getOtherStrings();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

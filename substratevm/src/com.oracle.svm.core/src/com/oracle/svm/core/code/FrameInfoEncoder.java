@@ -398,8 +398,8 @@ public class FrameInfoEncoder {
         }
 
         private static void encodeCompressedFrame(UnsafeArrayTypeWriter encodingBuffer, Encoders encoders, CompressedFrameData frame, int uniqueSuccessorIndex) {
-            int classIndex = encoders.sourceClasses.getIndex(frame.sourceClass);
-            int methodIndex = encoders.sourceMethodNames.getIndex(frame.sourceMethodName);
+            int classIndex = encoders.classes.getIndex(frame.sourceClass);
+            int methodIndex = encoders.memberNames.getIndex(frame.sourceMethodName);
 
             encodingBuffer.putSV(encodeCompressedFirstEntry(classIndex, true));
             boolean encodeUniqueSuccessor = uniqueSuccessorIndex != NO_SUCCESSOR_INDEX_MARKER;
@@ -429,8 +429,8 @@ public class FrameInfoEncoder {
             for (FrameInfoQueryResult cur = data.frame; cur != null; cur = cur.caller) {
                 assert cur == data.frame || !cur.isDeoptEntry : "Deoptimization entry information for caller frames is not persisted";
 
-                cur.sourceClassIndex = encoders.sourceClasses.getIndex(cur.sourceClass);
-                cur.sourceMethodNameIndex = encoders.sourceMethodNames.getIndex(cur.sourceMethodName);
+                cur.sourceClassIndex = encoders.classes.getIndex(cur.sourceClass);
+                cur.sourceMethodNameIndex = encoders.memberNames.getIndex(cur.sourceMethodName);
                 boolean isSliceEnd = cur.caller == null;
                 CompressedFrameData frame = new CompressedFrameData(cur.sourceClass, cur.sourceMethodName, cur.sourceLineNumber, cur.encodedBci, cur.methodId, isSliceEnd);
                 assert frame.equals(slice.get(curIdx)) : frame;
@@ -486,8 +486,8 @@ public class FrameInfoEncoder {
             // save source class and method name
             final Class<?> sourceClass = resultFrame.sourceClass;
             final String sourceMethodName = resultFrame.sourceMethodName;
-            encoders.sourceClasses.addObject(sourceClass);
-            encoders.sourceMethodNames.addObject(sourceMethodName);
+            encoders.classes.addObject(sourceClass);
+            encoders.memberNames.addObject(sourceMethodName);
 
             // save encoding metadata
             assert resultFrame.hasLocalValueInfo() == includeLocalValues : resultFrame;
@@ -516,8 +516,8 @@ public class FrameInfoEncoder {
         // save source class and method name
         Class<?> sourceClass = data.frame.sourceClass;
         String sourceMethodName = data.frame.sourceMethodName;
-        encoders.sourceClasses.addObject(sourceClass);
-        encoders.sourceMethodNames.addObject(sourceMethodName);
+        encoders.classes.addObject(sourceClass);
+        encoders.memberNames.addObject(sourceMethodName);
 
         // save encoding metadata
         CompressedFrameData frame = new CompressedFrameData(sourceClass, sourceMethodName, data.frame.sourceLineNumber, data.frame.encodedBci, data.frame.methodId, true);
@@ -896,7 +896,7 @@ public class FrameInfoEncoder {
     private static void afterInstallation(CodeInfo info) {
         ImageSingletons.lookup(Counters.class).frameInfoSize.add(
                         ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Byte, NonmovableArrays.lengthOf(CodeInfoAccess.getFrameInfoEncodings(info))) +
-                                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Object, NonmovableArrays.lengthOf(CodeInfoAccess.getFrameInfoObjectConstants(info))));
+                                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Object, NonmovableArrays.lengthOf(CodeInfoAccess.getObjectConstants(info))));
     }
 
     private NonmovableArray<Byte> encodeFrameDatas() {
@@ -951,8 +951,8 @@ public class FrameInfoEncoder {
                 }
             }
 
-            final int classIndex = encoders.sourceClasses.getIndex(cur.sourceClass);
-            final int methodIndex = encoders.sourceMethodNames.getIndex(cur.sourceMethodName);
+            final int classIndex = encoders.classes.getIndex(cur.sourceClass);
+            final int methodIndex = encoders.memberNames.getIndex(cur.sourceMethodName);
 
             cur.sourceClassIndex = classIndex;
             cur.sourceMethodNameIndex = methodIndex;

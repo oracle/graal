@@ -172,10 +172,10 @@ public class FrameInfoQueryResult {
     protected int sourceLineNumber;
     protected int methodId;
 
-    // Index of sourceClass in CodeInfoDecoder.frameInfoSourceClasses
+    // Index of sourceClass in CodeInfoDecoder.classes
     protected int sourceClassIndex;
 
-    // Index of sourceMethodName in CodeInfoDecoder.frameInfoSourceMethodNames
+    // Index of sourceMethodName in CodeInfoDecoder.memberNames
     protected int sourceMethodNameIndex;
 
     @SuppressWarnings("this-escape")

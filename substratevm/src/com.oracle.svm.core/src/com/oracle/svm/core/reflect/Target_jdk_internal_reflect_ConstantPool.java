@@ -131,12 +131,12 @@ public final class Target_jdk_internal_reflect_ConstantPool {
 
     @Substitute
     public String getStringAt(int index) {
-        return ImageSingletons.lookup(RuntimeMetadataDecoder.MetadataAccessor.class).getString(index);
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Substitute
     public String getUTF8At(int index) {
-        return getStringAt(index);
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Substitute

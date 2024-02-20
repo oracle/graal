@@ -149,6 +149,8 @@ public interface RuntimeMetadataDecoder {
 
         Class<?> getClass(int index);
 
-        String getString(int index);
+        String getMemberName(int index);
+
+        String getOtherString(int index);
     }
 }

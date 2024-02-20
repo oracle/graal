@@ -111,29 +111,35 @@ public class CodeInfoEncoder {
 
     public static final class Encoders {
         public final FrequencyEncoder<JavaConstant> objectConstants;
-        public final FrequencyEncoder<Class<?>> sourceClasses;
-        public final FrequencyEncoder<String> sourceMethodNames;
+        public final FrequencyEncoder<Class<?>> classes;
+        public final FrequencyEncoder<String> memberNames;
+        public final FrequencyEncoder<String> otherStrings;
 
         public Encoders() {
             this.objectConstants = FrequencyEncoder.createEqualityEncoder();
-            this.sourceClasses = FrequencyEncoder.createEqualityEncoder();
-            this.sourceMethodNames = FrequencyEncoder.createEqualityEncoder();
+            this.classes = FrequencyEncoder.createEqualityEncoder();
+            this.memberNames = FrequencyEncoder.createEqualityEncoder();
+            this.otherStrings = FrequencyEncoder.createEqualityEncoder();
         }
 
         private void encodeAllAndInstall(CodeInfo target, ReferenceAdjuster adjuster) {
-            JavaConstant[] encodedJavaConstants = objectConstants.encodeAll(new JavaConstant[objectConstants.getLength()]);
-            Class<?>[] sourceClassesArray = sourceClasses.encodeAll(new Class<?>[sourceClasses.getLength()]);
-            String[] sourceMethodNamesArray = sourceMethodNames.encodeAll(new String[sourceMethodNames.getLength()]);
-            install(target, encodedJavaConstants, sourceClassesArray, sourceMethodNamesArray, adjuster);
+            JavaConstant[] objectConstantsArray = objectConstants.encodeAll(new JavaConstant[objectConstants.getLength()]);
+            Class<?>[] classesArray = classes.encodeAll(new Class<?>[classes.getLength()]);
+            String[] memberNamesArray = memberNames.encodeAll(new String[memberNames.getLength()]);
+            String[] otherStringsArray = otherStrings.encodeAll(new String[otherStrings.getLength()]);
+            install(target, objectConstantsArray, classesArray, memberNamesArray, otherStringsArray, adjuster);
         }
 
         @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed in target.")
-        private static void install(CodeInfo target, JavaConstant[] objectConstants, Class<?>[] sourceClasses, String[] sourceMethodNames, ReferenceAdjuster adjuster) {
-            NonmovableObjectArray<Object> frameInfoObjectConstants = adjuster.copyOfObjectConstantArray(objectConstants, NmtCategory.Code);
-            NonmovableObjectArray<Class<?>> frameInfoSourceClasses = (sourceClasses != null) ? adjuster.copyOfObjectArray(sourceClasses, NmtCategory.Code) : NonmovableArrays.nullArray();
-            NonmovableObjectArray<String> frameInfoSourceMethodNames = (sourceMethodNames != null) ? adjuster.copyOfObjectArray(sourceMethodNames, NmtCategory.Code) : NonmovableArrays.nullArray();
+        private static void install(CodeInfo target, JavaConstant[] objectConstantsArray, Class<?>[] classesArray,
+                        String[] memberNamesArray, String[] otherStringsArray, ReferenceAdjuster adjuster) {
 
-            CodeInfoAccess.setEncodings(target, frameInfoObjectConstants, frameInfoSourceClasses, frameInfoSourceMethodNames);
+            NonmovableObjectArray<Object> objectConstants = adjuster.copyOfObjectConstantArray(objectConstantsArray, NmtCategory.Code);
+            NonmovableObjectArray<Class<?>> classes = (classesArray != null) ? adjuster.copyOfObjectArray(classesArray, NmtCategory.Code) : NonmovableArrays.nullArray();
+            NonmovableObjectArray<String> memberNames = (memberNamesArray != null) ? adjuster.copyOfObjectArray(memberNamesArray, NmtCategory.Code) : NonmovableArrays.nullArray();
+            NonmovableObjectArray<String> otherStrings = (otherStringsArray != null) ? adjuster.copyOfObjectArray(otherStringsArray, NmtCategory.Code) : NonmovableArrays.nullArray();
+
+            CodeInfoAccess.setEncodings(target, objectConstants, classes, memberNames, otherStrings);
         }
     }
 

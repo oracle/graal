@@ -188,22 +188,28 @@ interface CodeInfoImpl extends CodeInfo {
     void setFrameInfoEncodings(NonmovableArray<Byte> frameInfoEncodings);
 
     @RawField
-    NonmovableObjectArray<Object> getFrameInfoObjectConstants();
+    NonmovableObjectArray<Object> getObjectConstants();
 
     @RawField
-    void setFrameInfoObjectConstants(NonmovableObjectArray<Object> frameInfoObjectConstants);
+    void setObjectConstants(NonmovableObjectArray<Object> objectConstants);
 
     @RawField
-    NonmovableObjectArray<Class<?>> getFrameInfoSourceClasses();
+    NonmovableObjectArray<Class<?>> getClasses();
 
     @RawField
-    void setFrameInfoSourceClasses(NonmovableObjectArray<Class<?>> frameInfoSourceClasses);
+    void setClasses(NonmovableObjectArray<Class<?>> classes);
 
     @RawField
-    NonmovableObjectArray<String> getFrameInfoSourceMethodNames();
+    NonmovableObjectArray<String> getMemberNames();
 
     @RawField
-    void setFrameInfoSourceMethodNames(NonmovableObjectArray<String> frameInfoSourceMethodNames);
+    void setMemberNames(NonmovableObjectArray<String> memberNames);
+
+    @RawField
+    NonmovableObjectArray<String> getOtherStrings();
+
+    @RawField
+    void setOtherStrings(NonmovableObjectArray<String> otherStrings);
 
     @RawField
     int getState();

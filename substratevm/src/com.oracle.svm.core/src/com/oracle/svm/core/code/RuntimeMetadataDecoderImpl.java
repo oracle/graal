@@ -210,7 +210,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
      * <pre>
      * EnclosingMethodInfo {
      *     ClassIndex  declaringClass
-     *     StringIndex name
+     *     MembNameIdx name
      *     StringIndex descriptor
      * }
      * </pre>
@@ -222,8 +222,8 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         }
         UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
         Class<?> declaringClass = decodeType(reader);
-        String name = decodeName(reader);
-        String descriptor = decodeName(reader);
+        String name = decodeMemberName(reader);
+        String descriptor = decodeOtherString(reader);
         return new Object[]{declaringClass, name, descriptor};
     }
 
@@ -268,7 +268,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
      * <pre>
      * CompleteFieldMetadata : FieldMetadata {
      *     int         modifiers               (including COMPLETE flag)
-     *     StringIndex name
+     *     MembNameIdx name
      *     ClassIndex  type
      *     boolean     trustedFinal            (only on JDK 17 and later)
      *     StringIndex signature
@@ -293,7 +293,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
      * <pre>
      * HidingFieldMetadata : FieldMetadata {
      *     int         modifiers (including HIDING flag)
-     *     StringIndex name
+     *     MembNameIdx name
      *     ClassIndex  type
      * }
      * </pre>
@@ -303,7 +303,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
      * <pre>
      * ReachableFieldEncoding : FieldMetadata {
      *     int         modifiers (including EXISTS flag)
-     *     StringIndex name
+     *     MembNameIdx name
      * }
      * </pre>
      *
@@ -312,7 +312,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
      * <pre>
      * NegativeQueryFieldEncoding : FieldMetadata {
      *     int         modifiers (always zero)
-     *     StringIndex name
+     *     MembNameIdx name
      * }
      * </pre>
      */
@@ -342,7 +342,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         assert !(negative && (complete || hiding));
         modifiers &= ~COMPLETE_FLAG_MASK;
 
-        String name = decodeName(buf);
+        String name = decodeMemberName(buf);
         Class<?> type = (complete || hiding) ? decodeType(buf) : null;
         if (!complete) {
             if (reflectOnly != (hiding || negative)) {
@@ -359,11 +359,11 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
             return ReflectionObjectFactory.newField(declaringClass, name, negative ? Object.class : type, modifiers, false, null, null, ReflectionObjectFactory.FIELD_OFFSET_NONE, null, null);
         }
         boolean trustedFinal = buf.getU1() == 1;
-        String signature = decodeName(buf);
+        String signature = decodeOtherString(buf);
         byte[] annotations = decodeByteArray(buf);
         byte[] typeAnnotations = decodeByteArray(buf);
         int offset = buf.getSVInt();
-        String deletedReason = decodeName(buf);
+        String deletedReason = decodeOtherString(buf);
         if (publicOnly && !Modifier.isPublic(modifiers)) {
             modifiers |= NEGATIVE_FLAG_MASK;
         }
@@ -378,9 +378,10 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
      * <pre>
      * CompleteMethodMetadata : MethodMetadata {
      *     int          modifiers                    (including COMPLETE flag)
-     *     StringIndex  name
+     *     MembNameIdx  name
      *     ClassIndex[] parameterTypes
      *     ClassIndex   returnType
+     *     ClassIndex[] exceptionTypes
      *     StringIndex  signature
      *     byte[]       annotationsEncoding
      *     byte[]       parameterAnnotationsEncoding
@@ -405,7 +406,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
      * <pre>
      * HidingMethodMetadata : MethodMetadata {
      *     int          modifiers      (including HIDING flag)
-     *     StringIndex  name
+     *     MembNameIdx  name
      *     ClassIndex[] parameterTypes
      *     ClassIndex   returnType
      * }
@@ -415,9 +416,9 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
      *
      * <pre>
      * ReachableMethodMetadata : MethodMetadata {
-     *     int          modifiers      (including EXISTS flag)
-     *     StringIndex  name
-     *     ClassIndex[] parameterTypes
+     *     int           modifiers      (including EXISTS flag)
+     *     MembNameIdx   name
+     *     StringIndex[] parameterTypes
      * }
      * </pre>
      *
@@ -426,7 +427,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
      * <pre>
      * NegativeQueryMethodMetadata : MethodMetadata {
      *     int          modifiers      (always zero)
-     *     StringIndex  name
+     *     MembNameIdx  name
      *     ClassIndex[] parameterTypes
      * }
      * </pre>
@@ -437,6 +438,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
      * CompleteConstructorMetadata : ConstructorMetadata {
      *     int          modifiers                    (including COMPLETE flag)
      *     ClassIndex[] parameterTypes
+     *     ClassIndex[] exceptionTypes
      *     StringIndex  signature
      *     byte[]       annotationsEncoding
      *     byte[]       parameterAnnotationsEncoding
@@ -509,12 +511,12 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         assert !(negative && (complete || hiding));
         modifiers &= ~COMPLETE_FLAG_MASK;
 
-        String name = isMethod ? decodeName(buf) : null;
+        String name = isMethod ? decodeMemberName(buf) : null;
         Object[] parameterTypes;
         if (complete || hiding || negative) {
             parameterTypes = decodeArray(buf, Class.class, (i) -> decodeType(buf));
         } else {
-            parameterTypes = decodeArray(buf, String.class, (i) -> decodeName(buf));
+            parameterTypes = decodeArray(buf, String.class, (i) -> decodeOtherString(buf));
         }
         Class<?> returnType = isMethod && (complete || hiding) ? decodeType(buf) : null;
         if (!complete) {
@@ -540,7 +542,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
             }
         }
         Class<?>[] exceptionTypes = decodeArray(buf, Class.class, (i) -> decodeType(buf));
-        String signature = decodeName(buf);
+        String signature = decodeOtherString(buf);
         byte[] annotations = decodeByteArray(buf);
         byte[] parameterAnnotations = decodeByteArray(buf);
         byte[] annotationDefault = isMethod && declaringClass.isAnnotation() ? decodeByteArray(buf) : null;
@@ -575,19 +577,18 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
      *
      * <pre>
      * RecordComponentMetadata {
-     *     StringIndex name
+     *     MembNameIdx name
      *     ClassIndex  type
      *     StringIndex signature
-     *     ObjectIndex accessor
      *     byte[]      annotations
      *     byte[]      typeAnnotations
      * }
      * </pre>
      */
     private static RecordComponent decodeRecordComponent(UnsafeArrayTypeReader buf, Class<?> declaringClass) {
-        String name = decodeName(buf);
+        String name = decodeMemberName(buf);
         Class<?> type = decodeType(buf);
-        String signature = decodeName(buf);
+        String signature = decodeOtherString(buf);
         byte[] annotations = decodeByteArray(buf);
         byte[] typeAnnotations = decodeByteArray(buf);
 
@@ -606,15 +607,13 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
      */
 
     private static Parameter decodeReflectParameter(UnsafeArrayTypeReader buf, Executable executable, int i) {
-        String name = decodeName(buf);
+        String name = decodeOtherString(buf);
         int modifiers = buf.getUVInt();
 
         return ReflectionObjectFactory.newParameter(executable, i, name, modifiers);
     }
 
-    /**
-     * Types are encoded as indices in the frame info source classes array.
-     */
+    /** Types are encoded as indices in the code info classes array. */
     private static Class<?> decodeType(UnsafeArrayTypeReader buf) {
         int classIndex = buf.getSVInt();
         if (classIndex == NO_METHOD_METADATA) {
@@ -623,19 +622,25 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         return ImageSingletons.lookup(MetadataAccessor.class).getClass(classIndex);
     }
 
-    /**
-     * Names are encoded as indices in the frame info source method names array.
-     */
-    private static String decodeName(UnsafeArrayTypeReader buf) {
+    /** Names are encoded as indices in the code info member names array. */
+    private static String decodeMemberName(UnsafeArrayTypeReader buf) {
         int nameIndex = buf.getSVInt();
-        String name = ImageSingletons.lookup(MetadataAccessor.class).getString(nameIndex);
+        String name = ImageSingletons.lookup(MetadataAccessor.class).getMemberName(nameIndex);
+        /* Interning the string to ensure JDK8 method search succeeds */
+        return name == null ? null : name.intern();
+    }
+
+    /** Strings other than member names are encoded as indices in the code info strings array. */
+    private static String decodeOtherString(UnsafeArrayTypeReader buf) {
+        int nameIndex = buf.getSVInt();
+        String name = ImageSingletons.lookup(MetadataAccessor.class).getOtherString(nameIndex);
         /* Interning the string to ensure JDK8 method search succeeds */
         return name == null ? null : name.intern();
     }
 
     /**
      * Objects (method accessors and reflection objects in the heap) are encoded as indices in the
-     * frame info object constants array.
+     * code info object constants array.
      */
     private static Object decodeObject(UnsafeArrayTypeReader buf) {
         int objectIndex = buf.getSVInt();
@@ -688,20 +693,25 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         @SuppressWarnings("unchecked")
         public <T> T getObject(int index) {
             CodeInfo info = getCodeInfo();
-            return (T) NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoObjectConstants(info), index);
+            return (T) NonmovableArrays.getObject(CodeInfoAccess.getObjectConstants(info), index);
         }
 
         @Override
         public Class<?> getClass(int index) {
             CodeInfo info = getCodeInfo();
-            return NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(info), index);
+            return NonmovableArrays.getObject(CodeInfoAccess.getClasses(info), index);
         }
 
         @Override
-        public String getString(int index) {
+        public String getMemberName(int index) {
             CodeInfo info = getCodeInfo();
-            String name = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(info), index);
-            return name;
+            return NonmovableArrays.getObject(CodeInfoAccess.getMemberNames(info), index);
+        }
+
+        @Override
+        public String getOtherString(int index) {
+            CodeInfo info = getCodeInfo();
+            return NonmovableArrays.getObject(CodeInfoAccess.getOtherStrings(info), index);
         }
 
         /** @see com.oracle.svm.core.code.RuntimeMetadataEncoding */

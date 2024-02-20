@@ -94,7 +94,7 @@ final class Target_sun_reflect_annotation_AnnotationParser {
         int numMembers = buf.getShort() & 0xFFFF;
         for (int i = 0; i < numMembers; i++) {
             int memberNameIndex = buf.getInt();
-            String memberName = constPool.getUTF8At(memberNameIndex);
+            String memberName = ImageSingletons.lookup(RuntimeMetadataDecoder.MetadataAccessor.class).getMemberName(memberNameIndex);
             Class<?> memberType = memberTypes.get(memberName);
 
             if (memberType == null) {
@@ -136,7 +136,7 @@ final class Target_sun_reflect_annotation_AnnotationParser {
                     @SuppressWarnings("unused") Class<?> container) {
         int typeIndex = buf.getInt();
         int constNameIndex = buf.getInt();
-        String constName = constPool.getUTF8At(constNameIndex);
+        String constName = ImageSingletons.lookup(RuntimeMetadataDecoder.MetadataAccessor.class).getMemberName(constNameIndex);
 
         if (!enumType.isEnum() || enumType != constPool.getClassAt(typeIndex)) {
             Target_sun_reflect_annotation_AnnotationTypeMismatchExceptionProxy e = new Target_sun_reflect_annotation_AnnotationTypeMismatchExceptionProxy();
@@ -153,7 +153,7 @@ final class Target_sun_reflect_annotation_AnnotationParser {
 
     @Substitute
     private static Object parseConst(int tag,
-                    ByteBuffer buf, Target_jdk_internal_reflect_ConstantPool constPool) {
+                    ByteBuffer buf, @SuppressWarnings("unused") Target_jdk_internal_reflect_ConstantPool constPool) {
         switch (tag) {
             case 'B':
                 return buf.get();
@@ -174,7 +174,7 @@ final class Target_sun_reflect_annotation_AnnotationParser {
                 assert value == 1 || value == 0;
                 return value == 1;
             case 's':
-                return constPool.getUTF8At(buf.getInt());
+                return ImageSingletons.lookup(RuntimeMetadataDecoder.MetadataAccessor.class).getOtherString(buf.getInt());
             case 'E':
                 return ImageSingletons.lookup(RuntimeMetadataDecoder.MetadataAccessor.class).getObject(buf.getInt());
             default:
@@ -351,7 +351,7 @@ final class Target_sun_reflect_annotation_AnnotationParser {
             tag = buf.get();
             if (tag == 's') {
                 int index = buf.getInt();
-                result[i] = constPool.getUTF8At(index);
+                result[i] = ImageSingletons.lookup(RuntimeMetadataDecoder.MetadataAccessor.class).getOtherString(index);
             } else {
                 skipMemberValue(tag, buf);
                 typeMismatch = true;

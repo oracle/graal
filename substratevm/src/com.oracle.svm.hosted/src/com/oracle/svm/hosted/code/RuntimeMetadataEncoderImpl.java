@@ -171,7 +171,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
 
     private void addType(HostedType type) {
         if (type.getWrapped().isReachable() && sortedTypes.add(type)) {
-            encoders.sourceClasses.addObject(type.getJavaClass());
+            encoders.classes.addObject(type.getJavaClass());
         }
     }
 
@@ -275,7 +275,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         int flags = classAccessFlags | enabledQueries;
 
         /* Register string and class values in annotations */
-        encoders.sourceClasses.addObject(javaClass);
+        encoders.classes.addObject(javaClass);
         if (enclosingMethodInfo instanceof Throwable) {
             registerError((Throwable) enclosingMethodInfo);
         } else {
@@ -326,9 +326,9 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         if (enclosingMethodInfo == null) {
             return;
         }
-        encoders.sourceClasses.addObject((Class<?>) enclosingMethodInfo[0]);
-        encoders.sourceMethodNames.addObject((String) enclosingMethodInfo[1]);
-        encoders.sourceMethodNames.addObject((String) enclosingMethodInfo[2]);
+        encoders.classes.addObject((Class<?>) enclosingMethodInfo[0]);
+        encoders.memberNames.addObject((String) enclosingMethodInfo[1]);
+        encoders.otherStrings.addObject((String) enclosingMethodInfo[2]);
     }
 
     private static final Method getPermittedSubclasses = ReflectionUtil.lookupMethod(true, Class.class, "getPermittedSubclasses");
@@ -389,10 +389,10 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         String deletedReason = (deleteAnnotation != null) ? deleteAnnotation.value() : null;
 
         /* Fill encoders with the necessary values. */
-        encoders.sourceMethodNames.addObject(name);
-        encoders.sourceClasses.addObject(type.getJavaClass());
-        encoders.sourceMethodNames.addObject(signature);
-        encoders.sourceMethodNames.addObject(deletedReason);
+        encoders.memberNames.addObject(name);
+        encoders.classes.addObject(type.getJavaClass());
+        encoders.otherStrings.addObject(signature);
+        encoders.otherStrings.addObject(deletedReason);
         /* Register string and class values in annotations */
         AnalysisField analysisField = hostedField.getWrapped();
         AnnotationValue[] annotations = registerAnnotationValues(analysisField);
@@ -415,16 +415,16 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
 
         /* Fill encoders with the necessary values. */
         if (isMethod) {
-            encoders.sourceMethodNames.addObject(name);
-            encoders.sourceClasses.addObject(returnType.getJavaClass());
+            encoders.memberNames.addObject(name);
+            encoders.classes.addObject(returnType.getJavaClass());
         }
         for (HostedType parameterType : parameterTypes) {
-            encoders.sourceClasses.addObject(parameterType.getJavaClass());
+            encoders.classes.addObject(parameterType.getJavaClass());
         }
         for (HostedType exceptionType : exceptionTypes) {
-            encoders.sourceClasses.addObject(exceptionType.getJavaClass());
+            encoders.classes.addObject(exceptionType.getJavaClass());
         }
-        encoders.sourceMethodNames.addObject(signature);
+        encoders.otherStrings.addObject(signature);
         /* Register string and class values in annotations */
         AnalysisMethod analysisMethod = hostedMethod.getWrapped();
         AnnotationValue[] annotations = registerAnnotationValues(analysisMethod);
@@ -497,7 +497,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
                 type = null;
             }
             if (type != null && type.getWrapped().isReachable()) {
-                encoders.sourceClasses.addObject(type.getJavaClass());
+                encoders.classes.addObject(type.getJavaClass());
                 includedClasses.add(type);
             }
         }
@@ -539,22 +539,14 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     private void registerValues(AnnotationMemberValue annotationValue) {
-        for (Class<?> type : annotationValue.getTypes()) {
-            encoders.sourceClasses.addObject(type);
-        }
-        for (String string : annotationValue.getStrings()) {
-            encoders.sourceMethodNames.addObject(string);
-        }
-        for (JavaConstant proxy : annotationValue.getExceptionProxies(snippetReflection)) {
-            addConstantObject(proxy);
-        }
+        AnnotationMetadataEncoder.registerAnnotationMember(annotationValue, encoders, snippetReflection);
     }
 
     private ReflectParameterMetadata[] registerReflectParameters(Executable executable) {
         ReflectParameterMetadata[] reflectParameters = getReflectParameters(executable);
         if (reflectParameters != null) {
             for (ReflectParameterMetadata parameter : reflectParameters) {
-                encoders.sourceMethodNames.addObject(parameter.name);
+                encoders.otherStrings.addObject(parameter.name);
             }
         }
         return reflectParameters;
@@ -563,8 +555,8 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     @Override
     public void addHidingFieldMetadata(AnalysisField analysisField, HostedType declaringType, String name, HostedType type, int modifiers) {
         /* Fill encoders with the necessary values. */
-        encoders.sourceMethodNames.addObject(name);
-        encoders.sourceClasses.addObject(type.getJavaClass());
+        encoders.memberNames.addObject(name);
+        encoders.classes.addObject(type.getJavaClass());
 
         addType(declaringType);
         registerField(declaringType, analysisField, new FieldMetadata(declaringType, name, type, modifiers));
@@ -573,11 +565,11 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     @Override
     public void addHidingMethodMetadata(AnalysisMethod analysisMethod, HostedType declaringType, String name, HostedType[] parameterTypes, int modifiers, HostedType returnType) {
         /* Fill encoders with the necessary values. */
-        encoders.sourceMethodNames.addObject(name);
+        encoders.memberNames.addObject(name);
         for (HostedType parameterType : parameterTypes) {
-            encoders.sourceClasses.addObject(parameterType.getJavaClass());
+            encoders.classes.addObject(parameterType.getJavaClass());
         }
-        encoders.sourceClasses.addObject(returnType.getJavaClass());
+        encoders.classes.addObject(returnType.getJavaClass());
 
         addType(declaringType);
         registerMethod(declaringType, analysisMethod, new MethodMetadata(declaringType, name, parameterTypes, modifiers, returnType));
@@ -589,7 +581,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         String name = field.getName();
 
         /* Fill encoders with the necessary values. */
-        encoders.sourceMethodNames.addObject(name);
+        encoders.memberNames.addObject(name);
 
         registerField(declaringType, field, new FieldMetadata(declaringType, name, false));
     }
@@ -603,10 +595,10 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
 
         /* Fill encoders with the necessary values. */
         if (isMethod) {
-            encoders.sourceMethodNames.addObject(name);
+            encoders.memberNames.addObject(name);
         }
         for (String parameterTypeName : parameterTypeNames) {
-            encoders.sourceMethodNames.addObject(parameterTypeName);
+            encoders.otherStrings.addObject(parameterTypeName);
         }
 
         if (isMethod) {
@@ -618,15 +610,15 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
 
     @Override
     public void addNegativeFieldQueryMetadata(HostedType declaringClass, String fieldName) {
-        encoders.sourceMethodNames.addObject(fieldName);
+        encoders.memberNames.addObject(fieldName);
         registerField(declaringClass, fieldName, new FieldMetadata(declaringClass, fieldName, true));
     }
 
     @Override
     public void addNegativeMethodQueryMetadata(HostedType declaringClass, String methodName, HostedType[] parameterTypes) {
-        encoders.sourceMethodNames.addObject(methodName);
+        encoders.memberNames.addObject(methodName);
         for (HostedType parameterType : parameterTypes) {
-            encoders.sourceClasses.addObject(parameterType.getJavaClass());
+            encoders.classes.addObject(parameterType.getJavaClass());
         }
         registerMethod(declaringClass, Pair.create(methodName, parameterTypes), new MethodMetadata(declaringClass, methodName, parameterTypes));
     }
@@ -634,7 +626,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     @Override
     public void addNegativeConstructorQueryMetadata(HostedType declaringClass, HostedType[] parameterTypes) {
         for (HostedType parameterType : parameterTypes) {
-            encoders.sourceClasses.addObject(parameterType.getJavaClass());
+            encoders.classes.addObject(parameterType.getJavaClass());
         }
         registerConstructor(declaringClass, parameterTypes, new ConstructorMetadata(declaringClass, parameterTypes));
     }
@@ -717,9 +709,9 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             String signature = recordComponent.getGenericSignature();
 
             /* Fill encoders with the necessary values. */
-            encoders.sourceMethodNames.addObject(name);
-            encoders.sourceClasses.addObject(type.getJavaClass());
-            encoders.sourceMethodNames.addObject(signature);
+            encoders.memberNames.addObject(name);
+            encoders.classes.addObject(type.getJavaClass());
+            encoders.otherStrings.addObject(signature);
             /* Register string and class values in annotations */
             AnnotationValue[] annotations = registerAnnotationValues(recordComponent);
             TypeAnnotationValue[] typeAnnotations = registerTypeAnnotationValues(recordComponent);
@@ -854,17 +846,17 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         if (field.heapObject != null) {
             encodeObject(buf, field.heapObject);
         } else {
-            encodeName(buf, field.name);
+            encodeMemberName(buf, field.name);
             if (field.complete || field.hiding) {
                 encodeType(buf, field.type);
             }
             if (field.complete) {
                 buf.putU1(field.trustedFinal ? 1 : 0);
-                encodeName(buf, field.signature);
+                encodeOtherString(buf, field.signature);
                 encodeByteArray(buf, encodeAnnotations(field.annotations));
                 encodeByteArray(buf, encodeTypeAnnotations(field.typeAnnotations));
                 buf.putSV(field.offset);
-                encodeName(buf, field.deletedReason);
+                encodeOtherString(buf, field.deletedReason);
             }
         }
     }
@@ -884,19 +876,19 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             encodeObject(buf, executable.heapObject);
         } else {
             if (isMethod) {
-                encodeName(buf, ((MethodMetadata) executable).name);
+                encodeMemberName(buf, ((MethodMetadata) executable).name);
             }
             if (executable.complete || isHiding || executable.negative) {
                 encodeArray(buf, (HostedType[]) executable.parameterTypes, parameterType -> encodeType(buf, parameterType));
             } else {
-                encodeArray(buf, (String[]) executable.parameterTypes, parameterTypeName -> encodeName(buf, parameterTypeName));
+                encodeArray(buf, (String[]) executable.parameterTypes, parameterTypeName -> encodeOtherString(buf, parameterTypeName));
             }
             if (isMethod && (executable.complete || isHiding)) {
                 encodeType(buf, ((MethodMetadata) executable).returnType);
             }
             if (executable.complete) {
                 encodeArray(buf, executable.exceptionTypes, exceptionType -> encodeType(buf, exceptionType));
-                encodeName(buf, executable.signature);
+                encodeOtherString(buf, executable.signature);
                 encodeByteArray(buf, encodeAnnotations(executable.annotations));
                 encodeByteArray(buf, encodeParameterAnnotations(executable.parameterAnnotations));
                 if (isMethod && executable.declaringType.getHub().getHostedJavaClass().isAnnotation()) {
@@ -914,11 +906,15 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     private void encodeType(UnsafeArrayTypeWriter buf, Class<?> type) {
-        buf.putSV(encoders.sourceClasses.getIndex(type));
+        buf.putSV(encoders.classes.getIndex(type));
     }
 
-    private void encodeName(UnsafeArrayTypeWriter buf, String name) {
-        buf.putSV(encoders.sourceMethodNames.getIndex(name));
+    private void encodeMemberName(UnsafeArrayTypeWriter buf, String name) {
+        buf.putSV(encoders.memberNames.getIndex(name));
+    }
+
+    private void encodeOtherString(UnsafeArrayTypeWriter buf, String str) {
+        buf.putSV(encoders.otherStrings.getIndex(str));
     }
 
     private void encodeObject(UnsafeArrayTypeWriter buf, JavaConstant object) {
@@ -1046,14 +1042,14 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     }
 
     private void encodeReflectParameter(UnsafeArrayTypeWriter buf, ReflectParameterMetadata reflectParameter) {
-        encodeName(buf, reflectParameter.name);
+        encodeOtherString(buf, reflectParameter.name);
         buf.putUV(reflectParameter.modifiers);
     }
 
     private void encodeRecordComponent(UnsafeArrayTypeWriter buf, RecordComponentMetadata recordComponent) {
-        encodeName(buf, recordComponent.name);
+        encodeMemberName(buf, recordComponent.name);
         encodeType(buf, recordComponent.type);
-        encodeName(buf, recordComponent.signature);
+        encodeOtherString(buf, recordComponent.signature);
         encodeByteArray(buf, encodeAnnotations(recordComponent.annotations));
         encodeByteArray(buf, encodeTypeAnnotations(recordComponent.typeAnnotations));
     }
@@ -1065,8 +1061,8 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         assert enclosingMethodInfo.length == 3;
         UnsafeArrayTypeWriter buf = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
         encodeType(buf, (Class<?>) enclosingMethodInfo[0]);
-        encodeName(buf, (String) enclosingMethodInfo[1]);
-        encodeName(buf, (String) enclosingMethodInfo[2]);
+        encodeMemberName(buf, (String) enclosingMethodInfo[1]);
+        encodeOtherString(buf, (String) enclosingMethodInfo[2]);
         return buf.toArray();
     }
 
