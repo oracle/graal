@@ -56,9 +56,15 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import jdk.internal.module.DefaultRoots;
+import jdk.internal.module.ModuleBootstrap;
+import jdk.internal.module.ModuleReferenceImpl;
+import jdk.internal.module.SystemModuleFinders;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
@@ -76,10 +82,6 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
-
-import jdk.internal.module.DefaultRoots;
-import jdk.internal.module.ModuleBootstrap;
-import jdk.internal.module.SystemModuleFinders;
 
 /**
  * This feature:
@@ -120,6 +122,7 @@ import jdk.internal.module.SystemModuleFinders;
  * </p>
  */
 @AutomaticallyRegisteredFeature
+@SuppressWarnings("unused")
 public final class ModuleLayerFeature implements InternalFeature {
     private ModuleLayerFeatureUtils moduleLayerFeatureUtils;
 
@@ -172,6 +175,9 @@ public final class ModuleLayerFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         scanRuntimeBootLayerPrototype((BeforeAnalysisAccessImpl) access);
+
+        access.registerFieldValueTransformer(moduleLayerFeatureUtils.moduleReferenceLocationField, ModuleLayerFeatureUtils.ResetModuleReferenceLocation.INSTANCE);
+        access.registerFieldValueTransformer(moduleLayerFeatureUtils.moduleReferenceImplLocationField, ModuleLayerFeatureUtils.ResetModuleReferenceLocation.INSTANCE);
     }
 
     /**
@@ -244,7 +250,7 @@ public final class ModuleLayerFeature implements InternalFeature {
 
         Set<String> rootModules = calculateRootModules(extraModules);
         List<ModuleLayer> runtimeModuleLayers = synthesizeRuntimeModuleLayers(accessImpl, reachableModuleLayers, runtimeImageNamedModules, analysisReachableSyntheticModules, rootModules);
-        ModuleLayer runtimeBootLayer = runtimeModuleLayers.get(0);
+        ModuleLayer runtimeBootLayer = runtimeModuleLayers.getFirst();
         RuntimeModuleSupport.instance().setBootLayer(runtimeBootLayer);
 
         /*
@@ -536,7 +542,7 @@ public final class ModuleLayerFeature implements InternalFeature {
             applicationModuleNames = applicationModuleFinder.findAll()
                             .stream()
                             .map(m -> m.descriptor().name())
-                            .collect(Collectors.toList());
+                            .toList();
         } catch (FindException | ResolutionException | SecurityException ex) {
             throw VMError.shouldNotReachHere("Failed to locate application modules.", ex);
         }
@@ -610,6 +616,8 @@ public final class ModuleLayerFeature implements InternalFeature {
         private final Field moduleLayerNameToModuleField;
         private final Field moduleLayerParentsField;
         private final Field moduleLayerModulesField;
+        private final Field moduleReferenceLocationField;
+        private final Field moduleReferenceImplLocationField;
 
         ModuleLayerFeatureUtils(ImageClassLoader cl) {
             runtimeModules = new HashMap<>();
@@ -666,6 +674,8 @@ public final class ModuleLayerFeature implements InternalFeature {
                 moduleLayerNameToModuleField = ReflectionUtil.lookupField(ModuleLayer.class, "nameToModule");
                 moduleLayerParentsField = ReflectionUtil.lookupField(ModuleLayer.class, "parents");
                 moduleLayerModulesField = ReflectionUtil.lookupField(ModuleLayer.class, "modules");
+                moduleReferenceLocationField = ReflectionUtil.lookupField(ModuleReference.class, "location");
+                moduleReferenceImplLocationField = ReflectionUtil.lookupField(ModuleReferenceImpl.class, "location");
             } catch (ReflectiveOperationException | NoSuchElementException ex) {
                 throw VMError.shouldNotReachHere("Failed to retrieve fields of the Module/ModuleLayer class.", ex);
             }
@@ -1118,6 +1128,30 @@ public final class ModuleLayerFeature implements InternalFeature {
                 accessImpl.rescanField(module, moduleEnableNativeAccessField);
             } catch (IllegalAccessException e) {
                 throw VMError.shouldNotReachHere("Failed to reflectively set Module.enableNativeAccess.", e);
+            }
+        }
+
+        /**
+         * Patch module references that contain URLs with a non-JRT protocol. Module references can
+         * contain URLs that capture hosted directories, e.g.,
+         * {@linkplain "file:///home/user/dir/foo.jar"}. See
+         * {@link com.oracle.svm.hosted.image.DisallowedImageHeapObjectFeature} for more details on
+         * what substrings are detected during the image build.
+         */
+        static final class ResetModuleReferenceLocation implements FieldValueTransformer {
+
+            static final FieldValueTransformer INSTANCE = new ResetModuleReferenceLocation();
+
+            private ResetModuleReferenceLocation() {
+            }
+
+            @Override
+            public Object transform(Object receiver, Object originalValue) {
+                if (originalValue == null || originalValue.toString().startsWith("jrt://")) {
+                    return originalValue;
+                } else {
+                    return null;
+                }
             }
         }
     }
