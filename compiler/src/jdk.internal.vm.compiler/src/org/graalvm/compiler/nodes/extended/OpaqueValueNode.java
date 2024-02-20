@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.nodes.extended;
 
+import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.NodeWithIdentity;
 import org.graalvm.compiler.nodeinfo.InputType;
@@ -37,7 +38,7 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public final class OpaqueValueNode extends OpaqueNode implements NodeWithIdentity, LIRLowerable, GuardingNode {
+public final class OpaqueValueNode extends OpaqueNode implements NodeWithIdentity, LIRLowerable, GuardingNode, IterableNodeType {
     public static final NodeClass<OpaqueValueNode> TYPE = NodeClass.create(OpaqueValueNode.class);
 
     @Input(InputType.Value) private ValueNode value;

@@ -31,6 +31,7 @@ import org.graalvm.compiler.phases.common.BarrierSetVerificationPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ExpandLogicPhase;
 import org.graalvm.compiler.phases.common.LowTierLoweringPhase;
+import org.graalvm.compiler.phases.common.RemoveOpaqueValuePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
 
@@ -52,6 +53,7 @@ public class EconomyLowTier extends BaseTier<LowTierContext> {
          * backend or the target specific suites provider.
          */
         appendPhase(new PlaceholderPhase<LowTierContext>(AddressLoweringPhase.class));
+        appendPhase(new RemoveOpaqueValuePhase());
         appendPhase(new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS));
     }
 }

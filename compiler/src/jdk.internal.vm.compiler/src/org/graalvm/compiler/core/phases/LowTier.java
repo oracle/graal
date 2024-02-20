@@ -42,6 +42,7 @@ import org.graalvm.compiler.phases.common.LowTierLoweringPhase;
 import org.graalvm.compiler.phases.common.OptimizeExtendsPhase;
 import org.graalvm.compiler.phases.common.ProfileCompiledMethodsPhase;
 import org.graalvm.compiler.phases.common.PropagateDeoptimizeProbabilityPhase;
+import org.graalvm.compiler.phases.common.RemoveOpaqueValuePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
@@ -89,6 +90,8 @@ public class LowTier extends BaseTier<LowTierContext> {
         appendPhase(new PropagateDeoptimizeProbabilityPhase());
 
         appendPhase(new OptimizeExtendsPhase());
+
+        appendPhase(new RemoveOpaqueValuePhase());
 
         appendPhase(new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS));
     }

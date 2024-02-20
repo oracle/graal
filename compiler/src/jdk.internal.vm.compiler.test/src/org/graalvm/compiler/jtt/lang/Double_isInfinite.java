@@ -62,4 +62,20 @@ public class Double_isInfinite extends JTTTest {
     public void runNaN() {
         runTest("snippet", Double.NaN);
     }
+
+    public static void opaqueClassSnippet() {
+        /*
+         * GR-51558: This would cause an assertion failure in LIR constant load optimization if the
+         * opaque is not removed.
+         */
+        Class<?> c = GraalDirectives.opaque(Object.class);
+        if (c.getResource("resource.txt") == null) {
+            GraalDirectives.deoptimize();
+        }
+    }
+
+    @Test
+    public void testOpaqueClass() {
+        test("opaqueClassSnippet");
+    }
 }
