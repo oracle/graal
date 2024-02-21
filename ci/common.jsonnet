@@ -230,6 +230,62 @@ local common_json = import "../common.json";
       } else {},
     },
 
+    graalpy:: {
+
+    },
+
+    fastr:: {
+      # Note: On both Linux and MacOS, FastR depends on the gnur module and on gfortran
+      # of a specific version (4.8.5 on Linux, 10.2.0 on MacOS)
+      # However, we do not need to load those modules, we only configure specific environment variables to
+      # point to these specific modules. These modules and the configuration is only necessary for installation of
+      # some R packages (that have Fortran code) and in order to run GNU-R
+      packages+:
+        if (self.os == "linux" && self.arch == "amd64") then {
+          readline: '==6.3',
+          pcre2: '==10.37',
+          curl: '>=7.50.1',
+          gnur: '==4.0.3-gcc4.8.5-pcre2',
+        }
+        else if (self.os == "darwin" && self.arch == "amd64") then {
+          'pcre2': '==10.37',
+        } else error "FastR cannot be built on " + self.os + "/" + self.arch,
+      environment+:
+        {
+          FASTR_RELEASE: 'true',
+        } +
+        if (self.os == "linux" && self.arch == "amd64") then {
+          TZDIR: '/usr/share/zoneinfo',
+          PKG_INCLUDE_FLAGS_OVERRIDE : '-I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/pcre2/10.37/include -I/cm/shared/apps/curl/7.50.1/include',
+          PKG_LDFLAGS_OVERRIDE : '-L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre2/10.37/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/4.8.5/lib64',
+          FASTR_FC: '/cm/shared/apps/gcc/4.8.5/bin/gfortran',
+          FASTR_CC: '/cm/shared/apps/gcc/4.8.5/bin/gcc',
+          GNUR_HOME_BINARY: '/cm/shared/apps/gnur/4.0.3_gcc4.8.5_pcre2-10.37/R-4.0.3',
+        }
+        else if (self.os == "darwin" && self.arch == "amd64") then {
+          FASTR_FC: '/cm/shared/apps/gcc/8.3.0/bin/gfortran',
+          FASTR_CC: '/cm/shared/apps/gcc/8.3.0/bin/gcc',
+          TZDIR: '/usr/share/zoneinfo',
+          PKG_INCLUDE_FLAGS_OVERRIDE : '-I/cm/shared/apps/pcre2/pcre2-10.37/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/curl/7.50.1/include',
+          PKG_LDFLAGS_OVERRIDE : '-L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre2/pcre2-10.37/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/10.2.0/lib -L/usr/lib',
+        } else error "FastR cannot be built on " + self.os + "/" + self.arch,
+      downloads+:
+        {
+          F2C_BINARY: { name: 'f2c-binary', version: '7', platformspecific: true },
+          FASTR_RECOMMENDED_BINARY: { name: 'fastr-recommended-pkgs', version: '16', platformspecific: true },
+        } +
+        if (self.os == "linux" && self.arch == "amd64") then {
+          BLAS_LAPACK_DIR: { name: 'fastr-403-blas-lapack-gcc', version: '4.8.5', platformspecific: true },
+        }
+        else if (self.os == "darwin" && self.arch == "amd64") then {
+          BLAS_LAPACK_DIR: { name: "fastr-403-blas-lapack-gcc", version: "8.3.0", platformspecific: true },
+        } else error "FastR cannot be built on " + self.os + "/" + self.arch,
+      catch_files+: [
+        'GNUR_CONFIG_LOG = (?P<filename>.+\\.log)',
+        'GNUR_MAKE_LOG = (?P<filename>.+\\.log)',
+      ],
+    },
+
     svm:: {
       packages+: {
         cmake: "==3.22.2",

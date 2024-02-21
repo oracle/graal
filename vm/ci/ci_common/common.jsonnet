@@ -74,63 +74,6 @@ local devkits = graal_common.devkits;
   truffleruby_darwin_amd64: graal_common.deps.sulong + graal_common.deps.truffleruby,
   truffleruby_darwin_aarch64: graal_common.deps.sulong + graal_common.deps.truffleruby,
 
-  # FASTR
-  # Note: On both Linux and MacOS, FastR depends on the gnur module and on gfortran
-  # of a specific version (4.8.5 on Linux, 10.2.0 on MacOS)
-  # However, we do not need to load those modules, we only configure specific environment variables to
-  # point to these specific modules. These modules and the configuration is only necessary for installation of
-  # some R packages (that have Fortran code) and in order to run GNU-R
-
-  fastr: {
-    environment+: {
-      FASTR_RELEASE: 'true',
-    },
-    downloads+: {
-      F2C_BINARY: { name: 'f2c-binary', version: '7', platformspecific: true },
-      FASTR_RECOMMENDED_BINARY: { name: 'fastr-recommended-pkgs', version: '16', platformspecific: true },
-    },
-    catch_files+: [
-      'GNUR_CONFIG_LOG = (?P<filename>.+\\.log)',
-      'GNUR_MAKE_LOG = (?P<filename>.+\\.log)',
-    ],
-  },
-
-  fastr_linux: self.fastr + {
-    packages+: {
-      readline: '==6.3',
-      pcre2: '==10.37',
-      curl: '>=7.50.1',
-      gnur: '==4.0.3-gcc4.8.5-pcre2',
-    },
-    environment+: {
-      TZDIR: '/usr/share/zoneinfo',
-      PKG_INCLUDE_FLAGS_OVERRIDE : '-I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/pcre2/10.37/include -I/cm/shared/apps/curl/7.50.1/include',
-      PKG_LDFLAGS_OVERRIDE : '-L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre2/10.37/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/4.8.5/lib64',
-      FASTR_FC: '/cm/shared/apps/gcc/4.8.5/bin/gfortran',
-      FASTR_CC: '/cm/shared/apps/gcc/4.8.5/bin/gcc',
-      GNUR_HOME_BINARY: '/cm/shared/apps/gnur/4.0.3_gcc4.8.5_pcre2-10.37/R-4.0.3',
-    },
-    downloads+: {
-      BLAS_LAPACK_DIR: { name: 'fastr-403-blas-lapack-gcc', version: '4.8.5', platformspecific: true },
-    },
-  },
-
-  fastr_darwin: self.fastr + {
-    packages+: {
-      'pcre2': '==10.37',
-    },
-    environment+: {
-      FASTR_FC: '/cm/shared/apps/gcc/8.3.0/bin/gfortran',
-      FASTR_CC: '/cm/shared/apps/gcc/8.3.0/bin/gcc',
-      TZDIR: '/usr/share/zoneinfo',
-      PKG_INCLUDE_FLAGS_OVERRIDE : '-I/cm/shared/apps/pcre2/pcre2-10.37/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/curl/7.50.1/include',
-      PKG_LDFLAGS_OVERRIDE : '-L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre2/pcre2-10.37/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/10.2.0/lib -L/usr/lib',
-    },
-    downloads+: {
-      BLAS_LAPACK_DIR: { name: "fastr-403-blas-lapack-gcc", version: "8.3.0", platformspecific: true },
-    },
-  },
-
   fastr_no_recommended: {
     environment+: {
       FASTR_NO_RECOMMENDED: 'true'
@@ -245,9 +188,9 @@ local devkits = graal_common.devkits;
   ruby_python_vm_build_darwin_amd64:   self.ruby_vm_build_darwin_amd64   + self.graalpython_darwin_amd64,
   ruby_python_vm_build_darwin_aarch64: self.ruby_vm_build_darwin_aarch64 + self.graalpython_darwin_aarch64,
 
-  full_vm_build_linux_amd64:    self.ruby_python_vm_build_linux_amd64    + self.fastr_linux,
+  full_vm_build_linux_amd64:    self.ruby_python_vm_build_linux_amd64    + graal_common.deps.fastr,
   full_vm_build_linux_aarch64:  self.ruby_python_vm_build_linux_aarch64,
-  full_vm_build_darwin_amd64:   self.ruby_python_vm_build_darwin_amd64   + self.fastr_darwin,
+  full_vm_build_darwin_amd64:   self.ruby_python_vm_build_darwin_amd64   + graal_common.deps.fastr,
   full_vm_build_darwin_aarch64: self.ruby_python_vm_build_darwin_aarch64,
 
   graalvm_complete_build_deps(edition, os, arch, java_version):
