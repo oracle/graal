@@ -44,9 +44,9 @@ suite = {
       "packedResource": True
     },
 
-    "QUARKUS_REGISTRY_0.0.1" : {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/quarkus-registry-0.0.1.zip"],
-      "digest": "sha512:3a48ce0c3c3dd66dd24fb82abfa52e666a32e73979ececd8cc30d28c653b1583218f46a162456318c8c5462d6a3f1ed87504ca961ef9400cd50953de922a7314" ,
+    "QUARKUS_REGISTRY_0.0.2" : {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/quarkus-registry-0.0.2.zip"],
+      "digest": "sha512:0b35bc8090514cdcb7471966858c8850bdc9132432fd392593a084c95af1d5b57ed8cd31969cf7bc94583c1973103fc3b7f5364fd5c7450335783f76cc9242aa" ,
       "packedResource": True
     },
 
