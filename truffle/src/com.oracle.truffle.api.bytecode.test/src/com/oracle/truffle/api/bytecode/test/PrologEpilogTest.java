@@ -41,6 +41,9 @@
 package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInput;
@@ -60,6 +63,7 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
@@ -70,6 +74,7 @@ import com.oracle.truffle.api.bytecode.Prolog;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer;
 import com.oracle.truffle.api.bytecode.serialization.SerializationUtils;
+import com.oracle.truffle.api.bytecode.test.PrologEpilogBytecodeNode.MyException;
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectError;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -87,10 +92,16 @@ public class PrologEpilogTest {
 
     @Parameter public Boolean testSerialize;
 
+    static final byte INT_CODE = 0;
+    static final byte STRING_CODE = 1;
     static final BytecodeSerializer SERIALIZER = new BytecodeSerializer() {
         public void serialize(SerializerContext context, DataOutput buffer, Object object) throws IOException {
             if (object instanceof Integer i) {
+                buffer.writeByte(INT_CODE);
                 buffer.writeInt(i);
+            } else if (object instanceof String s) {
+                buffer.writeByte(STRING_CODE);
+                buffer.writeUTF(s);
             } else {
                 throw new AssertionError("only ints are supported.");
             }
@@ -99,7 +110,16 @@ public class PrologEpilogTest {
 
     static final BytecodeDeserializer DESERIALIZER = new BytecodeDeserializer() {
         public Object deserialize(DeserializerContext context, DataInput buffer) throws IOException {
-            return buffer.readInt();
+            byte code = buffer.readByte();
+            switch (code) {
+                case INT_CODE:
+                    return buffer.readInt();
+                case STRING_CODE:
+                    return buffer.readUTF();
+                default:
+                    throw new AssertionError("bad code " + code);
+
+            }
         }
     };
 
@@ -121,7 +141,8 @@ public class PrologEpilogTest {
     }
 
     @Test
-    public void testPrologEpilogSimpleReturn() {
+    public void testSimpleReturn() {
+        // return arg0
         PrologEpilogBytecodeNode root = parseNode(b -> {
             b.beginRoot(null);
             b.beginReturn();
@@ -129,16 +150,17 @@ public class PrologEpilogTest {
             b.endReturn();
             b.endRoot();
         });
-        Object[] refs = new Object[2];
-        root.setRefs(refs);
 
         assertEquals(42, root.getCallTarget().call(42));
-        assertEquals(42, refs[0]);
-        assertEquals(42, refs[1]);
+        assertEquals(42, root.argument);
+        assertEquals(42, root.returnValue);
+        assertNull(root.thrownValue);
     }
 
     @Test
-    public void testPrologEpilogEarlyReturn() {
+    public void testEarlyReturn() {
+        // earlyReturn(42)
+        // return 123
         PrologEpilogBytecodeNode root = parseNode(b -> {
             // @formatter:off
             b.beginRoot(null);
@@ -159,20 +181,27 @@ public class PrologEpilogTest {
             b.endRoot();
             // @formatter:on
         });
-        Object[] refs = new Object[2];
-        root.setRefs(refs);
 
         assertEquals(42, root.getCallTarget().call(true));
-        assertEquals(true, refs[0]);
-        assertEquals(42, refs[1]);
+        assertEquals(true, root.argument);
+        assertEquals(42, root.returnValue);
+        assertNull(root.thrownValue);
 
         assertEquals(123, root.getCallTarget().call(false));
-        assertEquals(false, refs[0]);
-        assertEquals(123, refs[1]);
+        assertEquals(false, root.argument);
+        assertEquals(123, root.returnValue);
+        assertNull(root.thrownValue);
     }
 
     @Test
-    public void testPrologEpilogFinallyTry() {
+    public void testFinallyTry() {
+        // @formatter:off
+        // try {
+        //    if (arg0) return 42 else throw "oops"
+        // } finally (ex) {
+        //    if (ex != null) return -1
+        // }
+        // @formatter:on
         PrologEpilogBytecodeNode root = parseNode(b -> {
             // @formatter:off
             b.beginRoot(null);
@@ -195,44 +224,166 @@ public class PrologEpilogTest {
                         b.emitLoadConstant(42);
                     b.endReturn();
 
-                    b.emitThrowException();
+                    b.beginThrowException();
+                        b.emitLoadConstant("oops");
+                    b.endThrowException();
                 b.endIfThenElse();
             b.endFinallyTry();
             b.endRoot();
             // @formatter:on
         });
-        Object[] refs = new Object[2];
-        root.setRefs(refs);
 
         assertEquals(42, root.getCallTarget().call(true));
-        assertEquals(true, refs[0]);
-        assertEquals(42, refs[1]);
+        assertEquals(true, root.argument);
+        assertEquals(42, root.returnValue);
+        assertNull(root.thrownValue);
 
         assertEquals(-1, root.getCallTarget().call(false));
-        assertEquals(false, refs[0]);
-        assertEquals(-1, refs[1]);
+        assertEquals(false, root.argument);
+        assertEquals(-1, root.returnValue);
+        assertNull(root.thrownValue);
     }
+
+    @Test
+    public void testSimpleThrow() {
+        PrologEpilogBytecodeNode root = parseNode(b -> {
+            b.beginRoot(null);
+            b.beginThrowException();
+            b.emitLoadConstant("something went wrong");
+            b.endThrowException();
+            b.endRoot();
+        });
+
+        try {
+            root.getCallTarget().call(42);
+            fail("exception expected");
+        } catch (MyException ex) {
+        }
+
+        assertEquals(42, root.argument);
+        assertNull(root.returnValue);
+        assertEquals("something went wrong", root.thrownValue);
+    }
+
+    @Test
+    public void testThrowInReturn() {
+        PrologEpilogBytecodeNode root = parseNode(b -> {
+            b.beginRoot(null);
+            b.beginReturn();
+            b.beginBlock();
+            b.beginThrowException();
+            b.emitLoadConstant("something went wrong");
+            b.endThrowException();
+            b.emitLoadArgument(0);
+            b.endBlock();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        try {
+            root.getCallTarget().call(42);
+            fail("exception expected");
+        } catch (MyException ex) {
+        }
+
+        assertEquals(42, root.argument);
+        assertNull(root.returnValue);
+        assertEquals("something went wrong", root.thrownValue);
+    }
+
+    @Test
+    public void testThrowInProlog() {
+        PrologEpilogBytecodeNode root = parseNode(b -> {
+            b.beginRoot(null);
+            b.beginReturn();
+            b.emitLoadArgument(0);
+            b.endReturn();
+            b.endRoot();
+        });
+        root.throwInProlog = true;
+
+        try {
+            root.getCallTarget().call(42);
+            fail("exception expected");
+        } catch (RuntimeException ex) {
+        }
+
+        assertNull(root.argument);
+        assertNull(root.returnValue);
+        assertNull(root.thrownValue);
+        assertTrue(root.internalExceptionIntercepted);
+    }
+
+    @Test
+    public void testThrowInRegularEpilog() {
+        PrologEpilogBytecodeNode root = parseNode(b -> {
+            b.beginRoot(null);
+            b.beginReturn();
+            b.emitLoadArgument(0);
+            b.endReturn();
+            b.endRoot();
+        });
+        root.throwInEpilog = true;
+
+        try {
+            root.getCallTarget().call(42);
+            fail("exception expected");
+        } catch (RuntimeException ex) {
+        }
+
+        assertEquals(42, root.argument);
+        assertNull(root.returnValue);
+        assertNull(root.thrownValue);
+        assertTrue(root.internalExceptionIntercepted);
+    }
+
+    @Test
+    public void testThrowInExceptionalEpilog() {
+        PrologEpilogBytecodeNode root = parseNode(b -> {
+            b.beginRoot(null);
+            b.beginThrowException();
+            b.emitLoadConstant("something went wrong");
+            b.endThrowException();
+            b.endRoot();
+        });
+        root.throwInEpilog = true;
+
+        try {
+            root.getCallTarget().call(42);
+            fail("exception expected");
+        } catch (RuntimeException ex) {
+        }
+
+        assertEquals(42, root.argument);
+        assertNull(root.returnValue);
+        assertNull(root.thrownValue);
+        assertTrue(root.internalExceptionIntercepted);
+    }
+
 }
 
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableSerialization = true)
 abstract class PrologEpilogBytecodeNode extends RootNode implements BytecodeRootNode {
-    // Used to validate whether prolog/epilog get called.
-    private transient Object[] refs;
+    transient Object argument = null;
+    transient Object returnValue = null;
+    transient Object thrownValue = null;
+
+    transient boolean throwInProlog = false;
+    transient boolean throwInEpilog = false;
+    transient boolean internalExceptionIntercepted = false;
 
     protected PrologEpilogBytecodeNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
-    }
-
-    void setRefs(Object[] refs) {
-        assert refs.length == 2;
-        this.refs = refs;
     }
 
     @Prolog
     public static final class StoreFirstArg {
         @Specialization
         public static void doStoreFirstArg(VirtualFrame frame, @Bind("$root") PrologEpilogBytecodeNode root) {
-            root.refs[0] = frame.getArguments()[0];
+            if (root.throwInProlog) {
+                throw new RuntimeException("prolog threw");
+            }
+            root.argument = frame.getArguments()[0];
         }
     }
 
@@ -241,14 +392,23 @@ abstract class PrologEpilogBytecodeNode extends RootNode implements BytecodeRoot
         @Specialization
         public static void doStoreReturnValue(Object returnValue, Object throwable,
                         @Bind("$root") PrologEpilogBytecodeNode root) {
+            if (root.throwInEpilog) {
+                throw new RuntimeException("epilog threw");
+            }
             if (throwable != null) {
                 if (throwable instanceof Exception ex) {
-                    root.refs[1] = ex.getMessage();
+                    root.thrownValue = ex.getMessage();
                 }
             } else {
-                root.refs[1] = returnValue;
+                root.returnValue = returnValue;
             }
         }
+    }
+
+    @Override
+    public Throwable interceptInternalException(Throwable t, BytecodeNode bytecodeNode, int bci) {
+        internalExceptionIntercepted = true;
+        return t;
     }
 
     @Operation
@@ -280,8 +440,8 @@ abstract class PrologEpilogBytecodeNode extends RootNode implements BytecodeRoot
     public static final class ThrowException {
 
         @Specialization
-        public static void doThrow() {
-            throw new MyException("error");
+        public static void doThrow(String message) {
+            throw new MyException(message);
         }
     }
 }
@@ -378,7 +538,7 @@ abstract class BadEpilogErrorNode2 extends RootNode implements BytecodeRootNode 
         super(language, frameDescriptor);
     }
 
-    @ExpectError("An @Epilog annotated operation must have a specialization that takes Object for both operands.")
+    @ExpectError("An @Epilog annotated operation must declare a specialization that takes Object for its first operand (the returned value will be null when an exception is thrown).")
     @Epilog
     public static final class BadEpilog {
         @Specialization
@@ -388,7 +548,7 @@ abstract class BadEpilogErrorNode2 extends RootNode implements BytecodeRootNode 
 
         @Specialization
         @SuppressWarnings("unused")
-        public static void doEpilog2(Object x, String exception) {
+        public static void doEpilog2(String x, Object exception) {
         }
     }
 }
@@ -396,6 +556,27 @@ abstract class BadEpilogErrorNode2 extends RootNode implements BytecodeRootNode 
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
 abstract class BadEpilogErrorNode3 extends RootNode implements BytecodeRootNode {
     protected BadEpilogErrorNode3(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        super(language, frameDescriptor);
+    }
+
+    @ExpectError("An @Epilog annotated operation must declare a specialization that takes Object for its second operand (the exception will be null when the root node returns normally).")
+    @Epilog
+    public static final class BadEpilog {
+        @Specialization
+        @SuppressWarnings("unused")
+        public static void doEpilog(Object x, RuntimeException exception) {
+        }
+
+        @Specialization
+        @SuppressWarnings("unused")
+        public static void doEpilog2(Object x, InternalError exception) {
+        }
+    }
+}
+
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+abstract class BadEpilogErrorNode4 extends RootNode implements BytecodeRootNode {
+    protected BadEpilogErrorNode4(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 

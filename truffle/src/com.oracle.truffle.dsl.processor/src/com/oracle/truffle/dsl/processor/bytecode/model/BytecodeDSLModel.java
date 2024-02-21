@@ -132,6 +132,9 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public OperationModel blockOperation;
     public OperationModel rootOperation;
     public OperationModel conditionalOperation;
+    public OperationModel tryCatchOperation;
+    public OperationModel loadConstantOperation;
+    public OperationModel loadLocalOperation;
     public CustomOperationModel prolog = null;
     public CustomOperationModel epilog = null;
 
@@ -183,7 +186,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         branchFalseInstruction = instruction(InstructionKind.BRANCH_FALSE, "branch.false", signature(void.class, Object.class)) //
                         .addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target") //
                         .addImmediate(ImmediateKind.BRANCH_PROFILE, "branch_profile");
-        throwInstruction = instruction(InstructionKind.THROW, "throw", signature(void.class, Object.class)) //
+        throwInstruction = instruction(InstructionKind.THROW, "throw", signature(void.class, void.class)) //
                         .addImmediate(ImmediateKind.INTEGER, "exception_local");
         loadConstantInstruction = instruction(InstructionKind.LOAD_CONSTANT, "load.constant", signature(Object.class)) //
                         .addImmediate(ImmediateKind.CONSTANT, "constant");
@@ -213,7 +216,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                         .setVoid(true) //
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(true, false);
-        operation(OperationKind.TRY_CATCH, "TryCatch") //
+        tryCatchOperation = operation(OperationKind.TRY_CATCH, "TryCatch") //
                         .setVoid(true) //
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(false, false) //
@@ -236,7 +239,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                         .setNumChildren(0) //
                         .setOperationArguments(new OperationArgument(types.BytecodeLabel, "label", "the label to branch to")) //
                         .setInstruction(branchInstruction);
-        operation(OperationKind.LOAD_CONSTANT, "LoadConstant") //
+        loadConstantOperation = operation(OperationKind.LOAD_CONSTANT, "LoadConstant") //
                         .setNumChildren(0) //
                         .setOperationArguments(new OperationArgument(context.getType(Object.class), "constant", "the constant value to load")) //
                         .setInstruction(loadConstantInstruction);
@@ -245,7 +248,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                         .setOperationArguments(new OperationArgument(context.getType(int.class), "index", "the index of the argument to load")) //
                         .setInstruction(instruction(InstructionKind.LOAD_ARGUMENT, "load.argument", signature(Object.class))//
                                         .addImmediate(ImmediateKind.INTEGER, "index"));
-        operation(OperationKind.LOAD_LOCAL, "LoadLocal") //
+        loadLocalOperation = operation(OperationKind.LOAD_LOCAL, "LoadLocal") //
                         .setNumChildren(0) //
                         .setOperationArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to load")) //
                         .setInstruction(instruction(InstructionKind.LOAD_LOCAL, "load.local", signature(Object.class)) //
