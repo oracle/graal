@@ -347,8 +347,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         } else if (elementType == DynamicHub.fromClass(void.class)) {
             throw new IllegalArgumentException("Cannot allocate void array.");
         } else if (elementType.getArrayHub() == null || !elementType.getArrayHub().isInstantiated()) {
-            throw new IllegalArgumentException("Class " + DynamicHub.toClass(elementType).getTypeName() + "[] is instantiated reflectively but was never registered." +
-                            "Register the class by adding \"unsafeAllocated\" for the class in " + ConfigurationFile.REFLECTION.getFileName() + ".");
+            throw MissingReflectionRegistrationUtils.errorForArray(DynamicHub.toClass(elementType), 1);
         } else {
             VMError.shouldNotReachHereUnexpectedInput(elementType); // ExcludeFromJacocoGeneratedReport
         }

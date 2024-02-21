@@ -29,7 +29,6 @@ package com.oracle.svm.core.jdk;
 import java.lang.reflect.Array;
 import java.util.Objects;
 
-import jdk.graal.compiler.word.BarrieredAccess;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -38,7 +37,9 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
+
+import jdk.graal.compiler.word.BarrieredAccess;
 
 @TargetClass(java.lang.reflect.Array.class)
 final class Target_java_lang_reflect_Array {
@@ -406,7 +407,7 @@ final class Target_java_lang_reflect_Array {
         for (int i = 0; i < dimensions.length; i++) {
             arrayHub = arrayHub.getArrayHub();
             if (arrayHub == null) {
-                throw VMError.unsupportedFeature("Cannot allocate " + dimensions.length + "-dimensional array of " + componentType.getName());
+                throw MissingReflectionRegistrationUtils.errorForArray(componentType, dimensions.length);
             }
         }
 
