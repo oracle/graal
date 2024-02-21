@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,9 +44,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.nfi.test.interop.TestCallback;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
@@ -54,23 +51,44 @@ import com.oracle.truffle.tck.TruffleRunner.Inject;
 @RunWith(TruffleRunner.class)
 public class ExceptionNFITest extends NFITest {
 
+    static final TestCallback NOOP = new TestCallback(0, (args) -> {
+        return 0;
+    });
+
     static class MyException extends RuntimeException {
         private static final long serialVersionUID = 5984933885288699021L;
-    }
 
-    public class NativeCallbackNode extends NFITestRootNode {
-
-        final Object throwingCallback = new TestCallback(0, (args) -> {
+        static final TestCallback THROW = new TestCallback(0, (args) -> {
             throw new MyException();
         });
+    }
 
-        final Object nativeJustCall = lookupAndBind("native_just_call", "(():void) : void");
+    static class SuccessException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
 
-        @Child InteropLibrary nativeJustCallInterop = getInterop(nativeJustCall);
+        static final TestCallback THROW = new TestCallback(0, (args) -> {
+            throw new SuccessException();
+        });
+    }
 
-        @Override
-        public Object executeTest(VirtualFrame frame) throws InteropException {
-            return nativeJustCallInterop.execute(nativeJustCall, throwingCallback);
+    public class NativeJustCall extends SendExecuteNode {
+
+        public NativeJustCall() {
+            super("native_just_call", "(():void) : void");
+        }
+    }
+
+    public class NativeJustCall2 extends SendExecuteNode {
+
+        public NativeJustCall2() {
+            super("native_just_call_2", "(():void, ():void) : void");
+        }
+    }
+
+    public class NativeCheckException extends SendExecuteNode {
+
+        public NativeCheckException() {
+            super("native_check_exception", "(env, ():void, ():void) : void");
         }
     }
 
@@ -79,7 +97,31 @@ public class ExceptionNFITest extends NFITest {
      * boundary.
      */
     @Test(expected = MyException.class)
-    public void testExceptionPropagation(@Inject(NativeCallbackNode.class) CallTarget target) {
-        target.call();
+    public void testExceptionPropagation(@Inject(NativeJustCall.class) CallTarget target) {
+        target.call(MyException.THROW);
+    }
+
+    /**
+     * Last exception wins.
+     */
+    @Test(expected = SuccessException.class)
+    public void testExceptionOverride(@Inject(NativeJustCall2.class) CallTarget target) {
+        target.call(MyException.THROW, SuccessException.THROW);
+    }
+
+    /**
+     * First call throws, so second call is skipped.
+     */
+    @Test(expected = MyException.class)
+    public void testCheckException(@Inject(NativeCheckException.class) CallTarget target) {
+        target.call(MyException.THROW, SuccessException.THROW);
+    }
+
+    /**
+     * First call doesn't throw, so we catch the exception from the second.
+     */
+    @Test(expected = SuccessException.class)
+    public void testCheckNoException(@Inject(NativeCheckException.class) CallTarget target) {
+        target.call(NOOP, SuccessException.THROW);
     }
 }
