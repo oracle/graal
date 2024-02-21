@@ -8,10 +8,8 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
 
 {
   vm_java_17:: graal_common.labsjdk17 + vm_common.vm_env_mixin('17'),
-  vm_java_20:: graal_common.labsjdk20 + vm_common.vm_env_mixin('20'),
 
   vm_java_17_llvm:: self.vm_java_17 + graal_common['labsjdk-ce-17-llvm'],
-  vm_java_20_llvm:: self.vm_java_20 + graal_common['labsjdk-ce-20-llvm'],
 
   binaries_repository: 'lafo',
   svm_suite:: '/substratevm',
@@ -103,21 +101,21 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
   },
 
   local builds = [
-    utils.add_gate_predicate(self.vm_java_20 + vm_common.gate_vm_linux_amd64 + {
+    utils.add_gate_predicate(self.vm_java_17 + vm_common.gate_vm_linux_amd64 + {
      run: [
        ['mx', 'build'],
        ['mx', 'unittest', '--suite', 'vm'],
      ],
      name: 'gate-vm-unittest-linux-amd64',
     }, ['sdk', 'truffle', 'vm']),
-    utils.add_gate_predicate(self.vm_java_20 + graal_common.devkits['windows-jdk20'] + vm_common.gate_vm_windows_amd64 + {
+    utils.add_gate_predicate(self.vm_java_17 + graal_common.devkits['windows-jdk17'] + vm_common.gate_vm_windows_amd64 + {
      run: [
          ['mx', 'build'],
          ['mx', 'unittest', '--suite', 'vm'],
      ],
      name: 'gate-vm-unittest-windows-amd64',
     }, ["sdk", "truffle", "vm"]),
-    self.vm_java_20 + vm_common.gate_vm_linux_amd64 + vm_common.sulong_linux + {
+    self.vm_java_17 + vm_common.gate_vm_linux_amd64 + vm_common.sulong_linux + {
      environment+: {
        DYNAMIC_IMPORTS: '/tools,/substratevm,/sulong',
        NATIVE_IMAGES: 'polyglot',

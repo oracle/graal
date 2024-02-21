@@ -67,11 +67,11 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
   # See definition of `gates` local variable in ../../compiler/ci_common/gate.jsonnet
   local gates = {
-    "gate-vm-libgraal_compiler-labsjdk-20-linux-amd64": {},
-    "gate-vm-libgraal_truffle-labsjdk-20-linux-amd64": {},
-    "gate-vm-libgraal_compiler_zgc-labsjdk-20-linux-amd64": {},
-    "gate-vm-libgraal_compiler_quickbuild-labsjdk-20-linux-amd64": {},
-    "gate-vm-libgraal_truffle_quickbuild-labsjdk-20-linux-amd64": t("1:10:00"),
+    "gate-vm-libgraal_compiler-labsjdk-17-linux-amd64": {},
+    "gate-vm-libgraal_truffle-labsjdk-17-linux-amd64": {},
+    "gate-vm-libgraal_compiler_zgc-labsjdk-17-linux-amd64": {},
+    "gate-vm-libgraal_compiler_quickbuild-labsjdk-17-linux-amd64": {},
+    "gate-vm-libgraal_truffle_quickbuild-labsjdk-17-linux-amd64": t("1:10:00"),
   },
 
   # See definition of `dailies` local variable in ../../compiler/ci_common/gate.jsonnet
@@ -80,7 +80,6 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     "daily-vm-libgraal_truffle-labsjdk-17-linux-amd64": {},
     "daily-vm-libgraal_compiler_zgc-labsjdk-17-linux-amd64": {},
     "daily-vm-libgraal_truffle_zgc-labsjdk-17-linux-amd64": {},
-    "daily-vm-libgraal_truffle_zgc-labsjdk-20-linux-amd64": {},
     "daily-vm-libgraal_compiler_quickbuild-labsjdk-17-linux-amd64": {},
     "daily-vm-libgraal_truffle_quickbuild-labsjdk-17-linux-amd64": {},
   },
@@ -110,8 +109,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
     for jdk in [
-      "17",
-      "20"
+      "17"
     ]
     for os_arch in [
       "linux-amd64",
@@ -130,8 +128,8 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   ],
 
 
-  # Builds run on only on linux-amd64-jdk20
-  local linux_amd64_jdk20_builds = [
+  # Builds run on only on linux-amd64-jdk17
+  local linux_amd64_jdk17_builds = [
     c["gate_vm_" + underscore(os_arch)] +
     svm_common(os_arch, jdk) +
     vm["custom_vm_" + os(os_arch)] +
@@ -143,7 +141,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
     for jdk in [
-      "20"
+      "17"
     ]
     for os_arch in [
       "linux-amd64",
@@ -158,7 +156,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   # Complete set of builds defined in this file
   local all_builds =
     all_platforms_builds +
-    linux_amd64_jdk20_builds,
+    linux_amd64_jdk17_builds,
 
   builds: if
       g.check_manifest(gates, all_builds, std.thisFile, "gates").result
