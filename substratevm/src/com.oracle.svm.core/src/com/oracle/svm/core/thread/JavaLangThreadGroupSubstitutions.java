@@ -52,18 +52,6 @@ final class Target_java_lang_ThreadGroup {
     Thread[] injectedThreads;
 
     /*
-     * JavaThreadsFeature.reachableThreadGroups is updated in an object replacer, during analysis,
-     * thus the recomputation may see an incomplete value. By disabling caching eventually the
-     * recomputed value will be the correct one. No additional caching is necessary since
-     * reachableThreadGroups will eventually reach a stable value during analysis and there is no
-     * risk to discover new objects in later phases.
-     */
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupNGroupsRecomputation.class, disableCaching = true)//
-    private int ngroups;
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupGroupsRecomputation.class, disableCaching = true)//
-    private ThreadGroup[] groups;
-
-    /*
      * All ThreadGroups in the image heap are strong and will be stored in ThreadGroup.groups.
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
@@ -147,38 +135,6 @@ class ThreadHolderRecomputation implements FieldValueTransformer {
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)
-class ThreadGroupNUnstartedThreadsRecomputation implements FieldValueTransformer {
-    @Override
-    public Object transform(Object receiver, Object originalValue) {
-        ThreadGroup group = (ThreadGroup) receiver;
-        int result = 0;
-        for (Thread thread : JavaThreadsFeature.singleton().reachableThreads.keySet()) {
-            /* The main thread is recomputed as running and therefore not counted as unstarted. */
-            if (thread.getThreadGroup() == group && thread != PlatformThreads.singleton().mainThread) {
-                result++;
-            }
-        }
-        return result;
-    }
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
-class ThreadGroupNThreadsRecomputation implements FieldValueTransformer {
-    @Override
-    public Object transform(Object receiver, Object originalValue) {
-        ThreadGroup group = (ThreadGroup) receiver;
-
-        if (group == PlatformThreads.singleton().mainGroup) {
-            /* The main group contains the main thread, which we recompute as running. */
-            return 1;
-        } else {
-            /* No other thread group has a thread running at startup. */
-            return 0;
-        }
-    }
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
 class ThreadGroupThreadsRecomputation implements FieldValueTransformer {
     @Override
     public Object transform(Object receiver, Object originalValue) {
@@ -191,24 +147,6 @@ class ThreadGroupThreadsRecomputation implements FieldValueTransformer {
             /* No other thread group has a thread running at startup. */
             return null;
         }
-    }
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
-class ThreadGroupNGroupsRecomputation implements FieldValueTransformer {
-    @Override
-    public Object transform(Object receiver, Object originalValue) {
-        ThreadGroup group = (ThreadGroup) receiver;
-        return JavaThreadsFeature.singleton().reachableThreadGroups.get(group).ngroups;
-    }
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
-class ThreadGroupGroupsRecomputation implements FieldValueTransformer {
-    @Override
-    public Object transform(Object receiver, Object originalValue) {
-        ThreadGroup group = (ThreadGroup) receiver;
-        return JavaThreadsFeature.singleton().reachableThreadGroups.get(group).groups;
     }
 }
 

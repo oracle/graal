@@ -64,7 +64,6 @@ import com.oracle.svm.core.thread.Target_java_lang_Thread;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
-import sun.security.jca.ProviderList;
 import sun.security.util.SecurityConstants;
 
 /*
@@ -290,7 +289,6 @@ final class Target_javax_crypto_JceSecurity {
     // value == PROVIDER_VERIFIED is successfully verified
     // value is failure cause Exception in error case
     @Alias //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = VerificationCacheTransformer.class, disableCaching = true) //
     private static Map<Object, Object> verificationResults;
 
     @Alias //
@@ -333,13 +331,6 @@ final class Target_javax_crypto_JceSecurity {
          */
         throw VMError.unsupportedFeature("Trying to verify a provider that was not registered at build time: " + p + ". " +
                         "All providers must be registered and verified in the Native Image builder. ");
-    }
-
-    private static class VerificationCacheTransformer implements FieldValueTransformer {
-        @Override
-        public Object transform(Object receiver, Object originalValue) {
-            return SecurityProvidersFilter.instance().cleanVerificationCache(originalValue);
-        }
     }
 }
 
@@ -547,21 +538,6 @@ final class Target_sun_security_jca_ProviderConfig_ProviderLoader {
     @Alias//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, isFinal = true)//
     static Target_sun_security_jca_ProviderConfig_ProviderLoader INSTANCE;
-}
-
-@TargetClass(className = "sun.security.jca.Providers")
-final class Target_sun_security_jca_Providers {
-    @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ProviderListTransformer.class, disableCaching = true)//
-    private static ProviderList providerList;
-
-    private static class ProviderListTransformer implements FieldValueTransformer {
-        @Override
-        public Object transform(Object receiver, Object originalValue) {
-            ProviderList originalProviderList = (ProviderList) originalValue;
-            return SecurityProvidersFilter.instance().cleanUnregisteredProviders(originalProviderList);
-        }
-    }
 }
 
 /** Dummy class to have a class with the file's name. */
