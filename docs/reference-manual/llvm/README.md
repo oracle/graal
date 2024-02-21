@@ -70,14 +70,14 @@ Additionally, a prebuilt LLVM toolchain is bundled with the GraalVM LLVM runtime
     ls $LLVM_TOOLCHAIN
     ```
 
-Now you can compile C/C++ code to LLVM bitcode using `clang` shipped with GraalVM via the LLVM toolchain.
+Now you can compile C/C++ code to LLVM bitcode using `clang` from the GraalVM LLVM toolchain.
 
-## Run LLVM Bitcode on GraalVM
+## Run LLVM Bitcode
 
-To run LLVM-based languages on GraalVM, the binaries need to be compiled with embedded bitcode.
+To run LLVM-based languages on the GraalVM LLVM runtime, the binaries need to be compiled with embedded bitcode.
 The [Compiling](Compiling.md) guide provides information on how to compile a program to LLVM bitcode and what file format is expected.
 
-The syntax to execute programs in LLVM bitcode format on GraalVM is:
+The syntax to execute programs in LLVM bitcode format is:
 ```shell
 lli [LLI options] [GraalVM options] [polyglot options] <bitcode file> [program args]
 ```

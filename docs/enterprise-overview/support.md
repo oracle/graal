@@ -7,25 +7,25 @@ permalink: /support/
 
 ## Available Distributions
 
-Oracle GraalVM for JDK 21 is based on Oracle JDK 21. 
-Each release of Oracle GraalVM for JDK 21 includes all Oracle Java critical patch updates (CPUs), which are provided on a regular schedule to remedy defects and known vulnerabilities.
+Oracle GraalVM for JDK 22 is based on Oracle JDK 22. 
+Each release of Oracle GraalVM for JDK 22 includes all Oracle Java critical patch updates (CPUs), which are provided on a regular schedule to remedy defects and known vulnerabilities.
 
-Oracle GraalVM for JDK 21 is available for Linux, macOS, and Windows on the x64 architecture, and for Linux and macOS on the AArch64 architecture.
+Oracle GraalVM for JDK 22 is available for Linux, macOS, and Windows on the x64 architecture, and for Linux and macOS on the AArch64 architecture.
 
 ## Certified Platforms
 
-Oracle GraalVM for JDK 21 is certified on the following platforms:
+Oracle GraalVM for JDK 22 is certified on the following platforms:
 
 | Operating System 	| Version 	| Architecture 	| Installation Guide 	|
 |------------------------------------	|--------------	|--------------	|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
 | Oracle Linux 	| 7, 8, 9 	| x64, AArch64| [Installation Guide for Oracle Linux](../getting-started/graalvm-enterprise/oci/installation-compute-instance-with-OL.md) 	|
 | Red Hat Enterprise Linux (RHEL) 	| 7, 8, 9 	| x64 	| [Installation Guide for Linux](../getting-started/graalvm-enterprise/linux.md) 	|
-| macOS 	| 11 (Big Sur), 12.4 (Monterey), 13.3 (Ventura)	| x64, AArch64	| [Installation Guide for macOS](../getting-started/graalvm-enterprise/macos.md) 	|
+| macOS 	| 11 (Big Sur), 12.4 (Monterey), 13.3 (Ventura), 14.3 (Sonoma)	| x64, AArch64	| [Installation Guide for macOS](../getting-started/graalvm-enterprise/macos.md) 	|
 | Microsoft Windows 	| Server 2016, 2019, 2022	| x64 	| [Installation Guide for Windows](../getting-started/graalvm-enterprise/windows.md) 	|
 
 ## Experimental Components
 
-Oracle GraalVM for JDK 21 includes some components that are considered experimental. 
+Oracle GraalVM for JDK 22 includes some components that are considered experimental. 
 These components are not meant for use in production and are not supported by Oracle. 
 Some components are considered experimental on specific platforms. 
 The GraalVM team welcomes feedback on these components, but users should be aware that the components may not be included in a future release or may change significantly before being considered production-ready:
@@ -41,7 +41,7 @@ The following components are deprecated and will be removed in Oracle GraalVM fo
 
 ## Related Technologies
 
-Additional open source language runtimes designed for use with Oracle GraalVM for JDK 21 are available on [graalvm.org](https://www.graalvm.org/reference-manual/languages/).
+Additional open source language runtimes designed for use with Oracle GraalVM for JDK 22 are available on [graalvm.org](https://www.graalvm.org/reference-manual/languages/).
 
 ## Licensing and Support
 

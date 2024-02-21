@@ -31,7 +31,7 @@ $ mx/mx
 ```
 
 the mx/*mx* command is a wrapper around Python script that serves as our build tool.
-Make sure you put it onto your ''PATH'' and then you can work with Truffle
+Make sure you put it onto your `PATH` and then you can work with Truffle
 sources from a command line:
 
 ```bash
@@ -51,10 +51,10 @@ You can open Truffle sources in your favorite Java IDE by invoking:
 $ mx ideinit
 ```
 
-the necessary IDE metadata will then be generated into *truffle* subdirectory
+The necessary IDE metadata will then be generated into *truffle* subdirectory
 and its folders.
 
-*mx* supports Maven integration. To register prebuilt binaries into local Maven
+The `mx` tool supports Maven integration. To register prebuilt binaries into local Maven
 repository you can invoke:
 
 ```bash
@@ -62,30 +62,30 @@ $ mx build
 $ mx maven-install
 ```
 
-and then it is possible to include the artifacts as dependencies to a `pom.xml`:
+Then it is possible to include the artifacts as dependencies to a `pom.xml`:
 
 ```xml
 <dependency>
     <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-api</artifactId>
-    <version>20.0.0</version> <!-- or whether version got installed by mx maven-install -->
+    <version>24.0.0</version> <!-- or whether version got installed by mx maven-install -->
 </dependency>
 <dependency>
     <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-dsl-processor</artifactId>
-    <version>20.0.0</version>
+    <version>24.0.0</version>
     <scope>provided</scope>
 </dependency>
 ```
 
 ## Contributing
 
-To contribute a change, verify it using
+To contribute a change, verify it using:
 
 ```bash
 $ mx gate
 ```
-and start a [pull request](https://help.github.com/articles/using-pull-requests/).
+Then start a [pull request](https://help.github.com/articles/using-pull-requests/).
 Detailed info can be found in the [contributing document](CONTRIBUTING.md).
 
 ## Community
