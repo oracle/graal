@@ -7,6 +7,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-49996) Ensure explicitly set image name (e.g., via `-o imagename`) is not accidentally overwritten by `-jar jarfile` option.
 * (GR-48683) Together with Red Hat, we added partial support for the JFR event `OldObjectSample`.
 * (GR-47109) Together with Red Hat, we added support for JFR event throttling and the event `ObjectAllocationSample`.
+* (GR-52030) Add a stable name for `Proxy` types in Native Image. The name `$Proxy[id]` is replaced by `$Proxy.s[hashCode]` where `hashCode` is computed using the names of the `Proxy` interfaces, the name of the class loader and the name of the module if it is not a dynamic module.
 
 ## GraalVM for JDK 22 (Internal Version 24.0.0)
 * (GR-48304) Red Hat added support for the JFR event ThreadAllocationStatistics.
