@@ -155,7 +155,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         this.envPackage = target.envPackage;
         this.envClassName = target.envClassName;
 
-        this.envName = envClassName.toLowerCase(Locale.ENGLISH);
+        this.envName = envClassName.toLowerCase(Locale.ROOT);
         this.imports = envPackage + "." + envClassName + ";\n";
     }
 

@@ -342,8 +342,8 @@ public class AnalysisToHostedGraphTransplanter {
             newReplacement = obj;
         } else {
             /* Check that we do not have a class or package name that relates to the analysis. */
-            assert !obj.getClass().getName().toLowerCase(Locale.ENGLISH).contains("analysis") : "Object " + obj + " of " + obj.getClass() + " in node " + node;
-            assert !obj.getClass().getName().toLowerCase(Locale.ENGLISH).contains("pointsto") : "Object " + obj + " of " + obj.getClass() + " in node " + node;
+            assert !obj.getClass().getName().toLowerCase(Locale.ROOT).contains("analysis") : "Object " + obj + " of " + obj.getClass() + " in node " + node;
+            assert !obj.getClass().getName().toLowerCase(Locale.ROOT).contains("pointsto") : "Object " + obj + " of " + obj.getClass() + " in node " + node;
             newReplacement = obj;
         }
 

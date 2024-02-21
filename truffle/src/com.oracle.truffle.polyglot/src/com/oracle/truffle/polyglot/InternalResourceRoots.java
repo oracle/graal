@@ -61,17 +61,18 @@ import java.util.Set;
 
 final class InternalResourceRoots {
 
-    private static final String OVERRIDDEN_CACHE_ROOT = "polyglot.engine.resourcePath";
+    private static final String PROPERTY_RESOURCE_PATH = "polyglot.engine.resourcePath";
+    private static final String PROPERTY_USER_RESOURCE_CACHE = "polyglot.engine.userResourceCache";
 
     static String overriddenComponentRootProperty(String componentId) {
-        StringBuilder builder = new StringBuilder(OVERRIDDEN_CACHE_ROOT);
+        StringBuilder builder = new StringBuilder(PROPERTY_RESOURCE_PATH);
         builder.append('.');
         builder.append(componentId);
         return builder.toString();
     }
 
     static String overriddenResourceRootProperty(String componentId, String resourceId) {
-        StringBuilder builder = new StringBuilder(OVERRIDDEN_CACHE_ROOT);
+        StringBuilder builder = new StringBuilder(PROPERTY_RESOURCE_PATH);
         builder.append('.');
         builder.append(componentId);
         builder.append('.');
@@ -208,10 +209,10 @@ final class InternalResourceRoots {
     private static Pair<Path, Root.Kind> findDefaultRoot() {
         ResolvedCacheFolder root;
         Root.Kind kind;
-        String overriddenRoot = System.getProperty(OVERRIDDEN_CACHE_ROOT);
+        String overriddenRoot = System.getProperty(PROPERTY_RESOURCE_PATH);
         if (overriddenRoot != null) {
             Path overriddenRootPath = Path.of(overriddenRoot).toAbsolutePath();
-            root = new ResolvedCacheFolder(overriddenRootPath, OVERRIDDEN_CACHE_ROOT + " system property", overriddenRootPath);
+            root = new ResolvedCacheFolder(overriddenRootPath, PROPERTY_RESOURCE_PATH + " system property", overriddenRootPath);
             kind = Root.Kind.UNVERSIONED;
         } else if (ImageInfo.inImageRuntimeCode()) {
             root = findCacheRootOnNativeImage();
@@ -264,6 +265,11 @@ final class InternalResourceRoots {
     }
 
     private static ResolvedCacheFolder findCacheRootOnHotSpot() {
+        String enforcedCacheFolder = System.getProperty(PROPERTY_USER_RESOURCE_CACHE);
+        if (enforcedCacheFolder != null) {
+            Path enforcedCacheFolderPath = Path.of(enforcedCacheFolder);
+            return new ResolvedCacheFolder(enforcedCacheFolderPath.toAbsolutePath(), PROPERTY_USER_RESOURCE_CACHE + " system property", enforcedCacheFolderPath);
+        }
         String userHomeValue = System.getProperty("user.home");
         if (userHomeValue == null) {
             throw CompilerDirectives.shouldNotReachHere("The 'user.home' system property is not set.");

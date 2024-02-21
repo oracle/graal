@@ -43,7 +43,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
@@ -93,7 +92,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
 
     @Override
     public JavaConstant unboxPrimitive(JavaConstant source) {
-        if (!source.getJavaKind().isObject()) {
+        if (!source.getJavaKind().isObject() || source.isNull()) {
             return null;
         }
         ImageHeapConstant imageHeapConstant = (ImageHeapConstant) source;
@@ -260,7 +259,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
 
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
-        return universe.getHeapScanner().createImageHeapConstant(asConstant(getHostVM().dynamicHub(type)), ObjectScanner.OtherReason.UNKNOWN);
+        return universe.getHeapScanner().createImageHeapConstant(getHostVM().dynamicHub(type), ObjectScanner.OtherReason.UNKNOWN);
     }
 
     @Override
@@ -277,11 +276,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
         if (value == null) {
             return JavaConstant.NULL_POINTER;
         }
-        return universe.getHeapScanner().createImageHeapConstant(asConstant(value), ObjectScanner.OtherReason.UNKNOWN);
-    }
-
-    private static JavaConstant asConstant(Object object) {
-        return SubstrateObjectConstant.forObject(object);
+        return universe.getHeapScanner().createImageHeapConstant(value, ObjectScanner.OtherReason.UNKNOWN);
     }
 
     private SVMHost getHostVM() {

@@ -61,7 +61,8 @@ public class ClassInitializerGraphBuilderPhase extends SharedGraphBuilderPhase {
                         providers.getMetaAccessExtensionProvider(),
                         providers.getSnippetReflection(),
                         wordTypes,
-                        providers.getLoopsDataProvider());
+                        providers.getLoopsDataProvider(),
+                        providers.getIdentityHashCodeProvider());
     }
 
     @Override

@@ -63,7 +63,7 @@ enum InitKind {
     public static final String SEPARATOR = ":";
 
     String suffix() {
-        return SEPARATOR + name().toLowerCase(Locale.ENGLISH);
+        return SEPARATOR + name().toLowerCase(Locale.ROOT);
     }
 
     Consumer<String> stringConsumer(ClassInitializationSupport support, OptionOrigin origin) {

@@ -26,7 +26,6 @@
 from __future__ import print_function
 
 import os
-import re
 import tempfile
 import zipfile
 from glob import glob
@@ -35,9 +34,9 @@ import mx
 import mx_benchmark
 import mx_java_benchmarks
 import mx_sdk_benchmark
+from mx_sdk_benchmark import SUCCESSFUL_STAGE_PATTERNS
 
 _suite = mx.suite("substratevm")
-_successful_stage_pattern = re.compile(r'Successfully finished the last specified stage:.*$', re.MULTILINE)
 
 
 def extract_archive(path, extracted_name):
@@ -57,6 +56,10 @@ def list_jars(path):
             jars.append(f)
     return jars
 
+# The agent fails to generate the configuration for org.apache.spark.status.JobDataWrapper.completionTime, which is not
+# executed on the first iteration. Therefore, we supply the missing information manually.
+# See GR-51788
+movie_lens_reflection_config = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'movie-lens-reflection-config.json')
 
 force_buildtime_init_slf4j_1_7_73 = '--initialize-at-build-time=org.slf4j,org.apache.log4j'
 force_buildtime_init_slf4j_1_7_73_spark = '--initialize-at-build-time=org.apache.logging.slf4j.Log4jLoggerFactory,\
@@ -107,7 +110,8 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
                            force_buildtime_init_netty_4_1_72,
                            force_runtime_init_netty_4_1_72,
                            force_runtime_init_netty_4_1_72_spark,
-                           force_runtime_init_slf4j_1_7_73
+                           force_runtime_init_slf4j_1_7_73,
+                           '-H:ReflectionConfigurationFiles=' + movie_lens_reflection_config
                           ],
     'dec-tree'          : [
                            '--report-unsupported-elements-at-runtime',
@@ -191,6 +195,9 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
         standalone_jars_directory = "single"
         return os.path.join(self.renaissance_unpacked(), standalone_jars_directory, "{}.jar".format(benchmark_name))
 
+    def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
+
     def extra_run_arg(self, benchmark, args, image_run_args):
         run_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_run_arg(benchmark, args, image_run_args)
         if benchmark == "dotty" and self.version() not in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"]:
@@ -262,9 +269,7 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
         return vm_args + ["-jar", self.standalone_jar_path(self.benchmarkName())] + run_args + [self.benchmarkName()]
 
     def successPatterns(self):
-        return super(RenaissanceNativeImageBenchmarkSuite, self).successPatterns() + [
-            _successful_stage_pattern
-        ]
+        return super().successPatterns() + SUCCESSFUL_STAGE_PATTERNS
 
 mx_benchmark.add_bm_suite(RenaissanceNativeImageBenchmarkSuite())
 
@@ -428,9 +433,6 @@ class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, B
             return lib.get_path(True)
         return None
 
-    def daCapoSuiteTitle(self):
-        return super(DaCapoNativeImageBenchmarkSuite, self).suite_title()
-
     def availableSuiteVersions(self):
         # This version also ships a custom harness class to allow native image to find the entry point in the nested jar
         return ["9.12-MR1-git+2baec49"]
@@ -441,6 +443,9 @@ class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, B
 
     def benchmark_resources(self, benchmark):
         return _dacapo_resources[benchmark]
+
+    def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
     def extra_agent_run_arg(self, benchmark, args, image_run_args):
         user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, image_run_args)
@@ -486,9 +491,7 @@ class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, B
         return cp
 
     def successPatterns(self):
-        return super(DaCapoNativeImageBenchmarkSuite, self).successPatterns() + [
-            _successful_stage_pattern
-        ]
+        return super().successPatterns() + SUCCESSFUL_STAGE_PATTERNS
 
 
 mx_benchmark.add_bm_suite(DaCapoNativeImageBenchmarkSuite())
@@ -547,9 +550,6 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
     def name(self):
         return 'scala-dacapo-native-image'
 
-    def daCapoSuiteTitle(self):
-        return super(ScalaDaCapoNativeImageBenchmarkSuite, self).suite_title()
-
     def daCapoPath(self):
         lib = mx.library(self.daCapoLibraryName(), False)
         if lib:
@@ -565,6 +565,9 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
 
     def benchmark_resources(self, benchmark):
         return _scala_dacapo_resources[benchmark]
+
+    def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
     def extra_agent_run_arg(self, benchmark, args, image_run_args):
         user_args = super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, image_run_args)
@@ -612,9 +615,7 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
         return cp
 
     def successPatterns(self):
-        return super(ScalaDaCapoNativeImageBenchmarkSuite, self).successPatterns() + [
-            _successful_stage_pattern
-        ]
+        return super().successPatterns() + SUCCESSFUL_STAGE_PATTERNS
 
     @staticmethod
     def substitution_path():
@@ -637,6 +638,9 @@ class ConsoleNativeImageBenchmarkSuite(mx_java_benchmarks.ConsoleBenchmarkSuite,
 
     def benchSuiteName(self, bmSuiteArgs=None):
         return 'console'
+
+    def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         args = super(ConsoleNativeImageBenchmarkSuite, self).createCommandLineArgs(benchmarks, bmSuiteArgs)
@@ -665,6 +669,9 @@ class SpecJVM2008NativeImageBenchmarkSuite(mx_java_benchmarks.SpecJvm2008Benchma
     def benchSuiteName(self, bmSuiteArgs=None):
         return 'specjvm2008'
 
+    def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
+
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         args = super().createCommandLineArgs(benchmarks, bmSuiteArgs)
 
@@ -691,6 +698,6 @@ class SpecJVM2008NativeImageBenchmarkSuite(mx_java_benchmarks.SpecJvm2008Benchma
         return super().extra_run_arg(benchmark, args, image_run_args) + SpecJVM2008NativeImageBenchmarkSuite.long_run_args
 
     def successPatterns(self):
-        return super().successPatterns() + [_successful_stage_pattern]
+        return super().successPatterns() + SUCCESSFUL_STAGE_PATTERNS
 
 mx_benchmark.add_bm_suite(SpecJVM2008NativeImageBenchmarkSuite())

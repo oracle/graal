@@ -78,7 +78,7 @@ public final class Target_java_nio_charset_Charset {
         }
 
         Map<String, Charset> charsets = ImageSingletons.lookup(LocalizationSupport.class).charsets;
-        Charset cs = charsets.get(charsetName.toLowerCase(Locale.ENGLISH));
+        Charset cs = charsets.get(charsetName.toLowerCase(Locale.ROOT));
         if (cs != null) {
             cache(charsetName, cs);
             return cs;

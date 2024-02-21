@@ -313,7 +313,7 @@ public class MethodHandleFeature implements InternalFeature {
         String srcType = src.primitiveSimpleName();
         String destType = dest.primitiveSimpleName();
         /* Capitalize first letter of destination type */
-        return srcType + "To" + destType.substring(0, 1).toUpperCase(Locale.ENGLISH) + destType.substring(1);
+        return srcType + "To" + destType.substring(0, 1).toUpperCase(Locale.ROOT) + destType.substring(1);
     }
 
     private static void registerValueConversionIgnoreForReflection(DuringAnalysisAccess access) {

@@ -228,6 +228,15 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
     }
 
     /**
+     * Gets the (inclusive) lower bound of the range of capture groups in this term. In contrast to
+     * {@link #getEnclosedCaptureGroupsLow()}, this range contains the group itself if it is a
+     * capturing group.
+     */
+    public int getCaptureGroupsLow() {
+        return isCapturing() ? getGroupNumber() : enclosedCaptureGroupsLow;
+    }
+
+    /**
      * Sets the (inclusive) lower bound of the range of capture groups contained within this group.
      */
     public void setEnclosedCaptureGroupsLow(int enclosedCaptureGroupsLow) {
@@ -239,6 +248,13 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
      * Gets the (exclusive) upper bound of the range of capture groups contained within this group.
      */
     public int getEnclosedCaptureGroupsHigh() {
+        return enclosedCaptureGroupsHigh;
+    }
+
+    /**
+     * Gets the (exclusive) upper bound of the range of capture groups in this term.
+     */
+    public int getCaptureGroupsHigh() {
         return enclosedCaptureGroupsHigh;
     }
 

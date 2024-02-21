@@ -263,7 +263,7 @@ public final class EspressoOptions {
         @Override
         public SpecComplianceMode apply(String s) {
             try {
-                return SpecComplianceMode.valueOf(s.toUpperCase(Locale.ENGLISH));
+                return SpecComplianceMode.valueOf(s.toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("--java.SpecCompliance: Mode can be 'strict' or 'hotspot'.");
             }
@@ -286,7 +286,7 @@ public final class EspressoOptions {
         @Override
         public VerifyMode apply(String s) {
             try {
-                return VerifyMode.valueOf(s.toUpperCase(Locale.ENGLISH));
+                return VerifyMode.valueOf(s.toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("-Xverify: Mode can be 'none', 'remote' or 'all'.");
             }
@@ -342,7 +342,7 @@ public final class EspressoOptions {
                 return LivenessAnalysisMode.NONE;
             }
             try {
-                return LivenessAnalysisMode.valueOf(s.toUpperCase(Locale.ENGLISH));
+                return LivenessAnalysisMode.valueOf(s.toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("--java.LivenessAnalysis can only be 'none'|'false', 'auto' or 'all'|'true'.");
             }
@@ -639,7 +639,7 @@ public final class EspressoOptions {
                         @Override
                         public JImageMode apply(String s) {
                             try {
-                                return JImageMode.valueOf(s.toUpperCase(Locale.ENGLISH));
+                                return JImageMode.valueOf(s.toUpperCase(Locale.ROOT));
                             } catch (IllegalArgumentException e) {
                                 throw new IllegalArgumentException("JImage: Mode can be 'native', 'java'.");
                             }

@@ -52,7 +52,7 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CEntryPointLiteralFeature;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
@@ -70,6 +70,7 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.Indent;
 import jdk.internal.misc.Unsafe;
+import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -96,7 +97,7 @@ public final class NativeImageHeapWriter {
     public long writeHeap(DebugContext debug, RelocatableBuffer buffer) {
         try (Indent perHeapIndent = debug.logAndIndent("NativeImageHeap.writeHeap:")) {
             for (ObjectInfo info : heap.getObjects()) {
-                assert !(info.getConstant() instanceof SubstrateObjectConstant) || !heap.isBlacklisted(info.getObject());
+                assert !(info.getConstant() instanceof HotSpotObjectConstant) || !heap.isBlacklisted(info.getObject());
                 writeObject(info, buffer);
             }
 
@@ -424,30 +425,15 @@ public final class NativeImageHeapWriter {
             bufferBytes.putInt(getIndexInBuffer(info, objectLayout.getArrayLengthOffset()), length);
             bufferBytes.putInt(getIndexInBuffer(info, objectLayout.getArrayIdentityHashOffset(kind, length)), info.getIdentityHashCode());
 
-            if (constant instanceof ImageHeapConstant) {
-                if (clazz.getComponentType().isPrimitive()) {
-                    ImageHeapPrimitiveArray imageHeapArray = (ImageHeapPrimitiveArray) constant;
-                    writePrimitiveArray(info, buffer, objectLayout, kind, imageHeapArray.getArray(), length);
-                } else {
-                    heap.hConstantReflection.forEachArrayElement(constant, (element, index) -> {
-                        final int elementIndex = getIndexInBuffer(info, objectLayout.getArrayElementOffset(kind, index));
-                        writeConstant(buffer, elementIndex, kind, element, info);
-                    });
-                }
+            VMError.guarantee(constant instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", constant);
+            if (clazz.getComponentType().isPrimitive()) {
+                ImageHeapPrimitiveArray imageHeapArray = (ImageHeapPrimitiveArray) constant;
+                writePrimitiveArray(info, buffer, objectLayout, kind, imageHeapArray.getArray(), length);
             } else {
-                Object array = info.getObject();
-                if (array instanceof Object[]) {
-                    Object[] oarray = (Object[]) array;
-                    assert oarray.length == length;
-                    for (int i = 0; i < length; i++) {
-                        final int elementIndex = getIndexInBuffer(info, objectLayout.getArrayElementOffset(kind, i));
-                        Object element = maybeReplace(oarray[i], info);
-                        assert (oarray[i] instanceof RelocatedPointer) == (element instanceof RelocatedPointer);
-                        writeConstant(buffer, elementIndex, kind, element, info);
-                    }
-                } else {
-                    writePrimitiveArray(info, buffer, objectLayout, kind, array, length);
-                }
+                heap.hConstantReflection.forEachArrayElement(constant, (element, index) -> {
+                    final int elementIndex = getIndexInBuffer(info, objectLayout.getArrayElementOffset(kind, index));
+                    writeConstant(buffer, elementIndex, kind, element, info);
+                });
             }
         } else {
             throw shouldNotReachHereUnexpectedInput(clazz); // ExcludeFromJacocoGeneratedReport

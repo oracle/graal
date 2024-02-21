@@ -304,6 +304,11 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * time will throw an error.
      */
     private static final int IS_LINKED_BIT = 10;
+    /**
+     * Indicates whether the class is a proxy class according to
+     * {@link java.lang.reflect.Proxy#isProxyClass}.
+     */
+    private static final int IS_PROXY_CLASS_BIT = 11;
 
     /**
      * Similar to {@link #flags}, but non-final because {@link #setSharedData} sets the value.
@@ -311,14 +316,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
     private byte additionalFlags;
 
-    /** Has the type been discovered as instantiated by the static analysis? */
+    /** Indicates whether the type has been discovered as instantiated by the static analysis. */
     private static final int IS_INSTANTIATED_BIT = 0;
     /** Can this class be instantiated as an instance. */
     private static final int CAN_INSTANTIATE_AS_INSTANCE_BIT = 1;
-    /** Is the class a proxy class according to {@link java.lang.reflect.Proxy#isProxyClass}? */
-    private static final int IS_PROXY_CLASS_BIT = 2;
 
-    private static final int IS_REGISTERED_FOR_SERIALIZATION = 3;
+    private static final int IS_REGISTERED_FOR_SERIALIZATION = 2;
 
     /**
      * The {@link Modifier modifiers} of this class.
@@ -439,7 +442,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(Class<?> hostedJavaClass, String name, int hubType, ReferenceType referenceType, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,
                     ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus, boolean hasDefaultMethods, boolean declaresDefaultMethods,
-                    boolean isSealed, boolean isVMInternal, boolean isLambdaFormHidden, boolean isLinked, String simpleBinaryName, Object declaringClass, String signature) {
+                    boolean isSealed, boolean isVMInternal, boolean isLambdaFormHidden, boolean isLinked, String simpleBinaryName, Object declaringClass, String signature, boolean isProxyClass) {
         this.hostedJavaClass = hostedJavaClass;
         this.module = hostedJavaClass.getModule();
         this.name = name;
@@ -464,7 +467,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                         makeFlag(IS_SEALED_FLAG_BIT, isSealed) |
                         makeFlag(IS_VM_INTERNAL_FLAG_BIT, isVMInternal) |
                         makeFlag(IS_LAMBDA_FORM_HIDDEN_BIT, isLambdaFormHidden) |
-                        makeFlag(IS_LINKED_BIT, isLinked));
+                        makeFlag(IS_LINKED_BIT, isLinked) |
+                        makeFlag(IS_PROXY_CLASS_BIT, isProxyClass));
 
         this.companion = new DynamicHubCompanion(hostedJavaClass, classLoader);
     }
@@ -494,7 +498,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setSharedData(int layoutEncoding, int monitorOffset, int identityHashOffset,
-                    long referenceMapIndex, boolean isInstantiated, boolean canInstantiateAsInstance, boolean isProxyClass,
+                    long referenceMapIndex, boolean isInstantiated, boolean canInstantiateAsInstance,
                     boolean isRegisteredForSerialization) {
         assert !(!isInstantiated && canInstantiateAsInstance);
         VMError.guarantee(monitorOffset == (char) monitorOffset, "Class %s has an invalid monitor field offset. Most likely, its objects are larger than supported.", name);
@@ -510,7 +514,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         this.referenceMapIndex = (int) referenceMapIndex;
         this.additionalFlags = NumUtil.safeToUByte(makeFlag(IS_INSTANTIATED_BIT, isInstantiated) |
                         makeFlag(CAN_INSTANTIATE_AS_INSTANCE_BIT, canInstantiateAsInstance) |
-                        makeFlag(IS_PROXY_CLASS_BIT, isProxyClass) |
                         makeFlag(IS_REGISTERED_FOR_SERIALIZATION, isRegisteredForSerialization));
     }
 
@@ -758,7 +761,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     public boolean isProxyClass() {
-        return isFlagSet(additionalFlags, IS_PROXY_CLASS_BIT);
+        return isFlagSet(flags, IS_PROXY_CLASS_BIT);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

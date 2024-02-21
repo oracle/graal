@@ -24,24 +24,26 @@
  */
 package com.oracle.svm.hosted.ameta;
 
-import java.lang.reflect.Array;
+import java.util.Optional;
 
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
-import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
 
+import jdk.vm.ci.hotspot.HotSpotObjectConstant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
 
 public class SVMHostedValueProvider extends HostedValuesProvider {
@@ -84,8 +86,8 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
     }
 
     private JavaConstant doReadValue(AnalysisField field, JavaConstant receiver) {
-        JavaConstant hostedReceiver = universe.toHosted(receiver);
-        return universe.fromHosted(fieldValueInterceptionSupport.readFieldValue(field, hostedReceiver));
+        VMError.guarantee(!(receiver instanceof SubstrateObjectConstant));
+        return interceptHosted(fieldValueInterceptionSupport.readFieldValue(field, receiver));
     }
 
     /**
@@ -94,33 +96,8 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
      */
     @Override
     public JavaConstant readArrayElement(JavaConstant array, int index) {
-        if (array.getJavaKind() != JavaKind.Object || array.isNull()) {
-            return null;
-        }
-        Object a = SubstrateObjectConstant.asObject(array);
-
-        if (!a.getClass().isArray() || index < 0 || index >= Array.getLength(a)) {
-            return null;
-        }
-
-        if (a instanceof Object[]) {
-            Object element = ((Object[]) a)[index];
-            return forObject(element);
-        } else {
-            return JavaConstant.forBoxedPrimitive(Array.get(a, index));
-        }
-    }
-
-    @Override
-    public Integer readArrayLength(JavaConstant array) {
-        if (array.getJavaKind() != JavaKind.Object || array.isNull()) {
-            return null;
-        }
-        Object a = SubstrateObjectConstant.asObject(array);
-        if (!a.getClass().isArray()) {
-            return null;
-        }
-        return java.lang.reflect.Array.getLength(a);
+        JavaConstant element = super.readArrayElement(array, index);
+        return interceptWordType(super.asObject(Object.class, element)).orElse(element);
     }
 
     /**
@@ -136,13 +113,9 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
 
     @Override
     public JavaConstant forObject(Object object) {
-        if (object instanceof RelocatedPointer pointer) {
-            return new RelocatableConstant(pointer);
-        } else if (object instanceof WordBase word) {
-            return JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), word.rawValue());
-        }
-        HostedSnippetReflectionProvider.validateRawObjectConstant(object);
-        return SubstrateObjectConstant.forObject(object);
+        /* The raw object may never be an ImageHeapConstant. */
+        AnalysisError.guarantee(!(object instanceof ImageHeapConstant), "Unexpected ImageHeapConstant %s", object);
+        return interceptWordType(object).orElse(super.forObject(object));
     }
 
     @Override
@@ -150,7 +123,55 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
         if (constant instanceof RelocatableConstant relocatable) {
             return type.cast(relocatable.getPointer());
         }
-        return SubstrateObjectConstant.asObject(type, constant);
+        return super.asObject(type, constant);
+    }
+
+    /**
+     * Intercept hosted objects that need special treatment.
+     * <ul>
+     * <li>First, we allow hosted objects to reference {@link ImageHeapConstant} directly. This is
+     * useful for example when encoding heap partition limits. Instead of referencing the raw hosted
+     * object from ImageHeapInfo we reference a {@link ImageHeapConstant} which allows using
+     * simulated constant as partition limits. However, since the original
+     * {@link ConstantReflectionProvider} is not aware of {@link ImageHeapConstant} it always treats
+     * them as hosted objects and wraps them into a {@link HotSpotObjectConstant}. Therefore, we
+     * need intercept the {@link HotSpotObjectConstant} and if it wraps an {@link ImageHeapConstant}
+     * unwrap it and return the original constant.</li>
+     * <li>Second, intercept {@link WordBase} constants. See {@link #interceptWordType(Object)} for
+     * details.</li>
+     * </ul>
+     * This method will return null if the input constant is null.
+     */
+    @Override
+    public JavaConstant interceptHosted(JavaConstant constant) {
+        if (constant != null && constant.getJavaKind().isObject() && !constant.isNull()) {
+            Object original = super.asObject(Object.class, constant);
+            if (original instanceof ImageHeapConstant heapConstant) {
+                return heapConstant;
+            }
+            /* Intercept WordBase and RelocatedPointer objects, otherwise return input constant. */
+            return interceptWordType(original).orElse(constant);
+        }
+        return constant;
+    }
+
+    /**
+     * Intercept {@link WordBase} constants and:
+     * <ul>
+     * <li>replace {@link RelocatedPointer} constants with {@link RelocatableConstant} to easily and
+     * reliably distinguish them from other {@link WordBase} values during image build.</li>
+     * <li>replace regular {@link WordBase} values with corresponding integer kind
+     * {@link PrimitiveConstant}.</li>
+     * </ul>
+     */
+    private static Optional<JavaConstant> interceptWordType(Object object) {
+        if (object instanceof RelocatedPointer pointer) {
+            return Optional.of(new RelocatableConstant(pointer));
+        }
+        if (object instanceof WordBase word) {
+            return Optional.of(JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), word.rawValue()));
+        }
+        return Optional.empty();
     }
 
 }

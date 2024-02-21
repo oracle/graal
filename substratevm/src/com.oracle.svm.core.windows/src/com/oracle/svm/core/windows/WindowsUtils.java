@@ -29,6 +29,7 @@ import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Custom;
 import java.io.FileDescriptor;
 import java.io.IOException;
 
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
@@ -170,6 +171,8 @@ public class WindowsUtils {
 
     /** Retrieve a nanosecond counter for elapsed time measurement. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @BasedOnJDKFile("src/hotspot/os/windows/os_windows.cpp#L970-L977")
+    @BasedOnJDKFile("src/hotspot/os/windows/os_windows.cpp#L1075-L1081")
     public static long getNanoCounter() {
         if (performanceFrequency == 0L) {
             CLongPointer count = StackValue.get(CLongPointer.class);

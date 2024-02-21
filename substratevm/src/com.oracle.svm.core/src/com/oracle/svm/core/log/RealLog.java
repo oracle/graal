@@ -649,36 +649,45 @@ public class RealLog extends Log {
             return this;
         }
 
-        /*
-         * We do not want to call getMessage(), since it can be overridden by subclasses of
-         * Throwable. So we access the raw detailMessage directly from the field in Throwable. That
-         * is better than printing nothing.
-         */
-        String detailMessage = JDKUtils.getRawMessage(t);
-
-        string(t.getClass().getName()).string(": ").string(detailMessage);
-        if (!JDKUtils.isStackTraceValid(t)) {
+        Throwable cur = t;
+        do {
             /*
-             * We accept that there might be a race with concurrent calls to
-             * `Throwable#fillInStackTrace`, which changes `Throwable#backtrace`. We accept that and
-             * the code can deal with that. Worst case we don't get a stack trace.
+             * We do not want to call getMessage(), since it can be overridden by subclasses of
+             * Throwable. So we access the raw detailMessage directly from the field in Throwable.
+             * That is better than printing nothing.
              */
-            int remaining = printBacktraceLocked(t, maxFrames);
-            printRemainingFramesCount(remaining);
-        } else {
-            StackTraceElement[] stackTrace = JDKUtils.getRawStackTrace(t);
-            if (stackTrace != null) {
-                int i;
-                for (i = 0; i < stackTrace.length && i < maxFrames; i++) {
-                    StackTraceElement element = stackTrace[i];
-                    if (element != null) {
-                        printJavaFrame(element.getClassName(), element.getMethodName(), element.getFileName(), element.getLineNumber());
-                    }
-                }
-                int remaining = stackTrace.length - i;
+            String detailMessage = JDKUtils.getRawMessage(cur);
+
+            string(cur.getClass().getName()).string(": ").string(detailMessage);
+            if (!JDKUtils.isStackTraceValid(cur)) {
+                /*
+                 * We accept that there might be a race with concurrent calls to
+                 * `Throwable#fillInStackTrace`, which changes `Throwable#backtrace`. We accept that
+                 * and the code can deal with that. Worst case we don't get a stack trace.
+                 */
+                int remaining = printBacktraceLocked(cur, maxFrames);
                 printRemainingFramesCount(remaining);
+            } else {
+                StackTraceElement[] stackTrace = JDKUtils.getRawStackTrace(cur);
+                if (stackTrace != null) {
+                    int i;
+                    for (i = 0; i < stackTrace.length && i < maxFrames; i++) {
+                        StackTraceElement element = stackTrace[i];
+                        if (element != null) {
+                            printJavaFrame(element.getClassName(), element.getMethodName(), element.getFileName(), element.getLineNumber());
+                        }
+                    }
+                    int remaining = stackTrace.length - i;
+                    printRemainingFramesCount(remaining);
+                }
             }
-        }
+
+            cur = JDKUtils.getRawCause(cur);
+            if (cur != null) {
+                newline().string("Caused by: ");
+            }
+        } while (cur != null);
+
         return this;
     }
 

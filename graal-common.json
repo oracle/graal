@@ -1,6 +1,6 @@
 {
   "README": "This file contains definitions that are useful for the jsonnet CI files of the graal and graal-enterprise repositories.",
   "ci": {
-    "overlay": "d8a5237997a4baf1710059843cd32f4b238c9849"
+    "overlay": "dc9efad94c6842eeea2f5f766afcac60a3dcbcfb"
   }
 }

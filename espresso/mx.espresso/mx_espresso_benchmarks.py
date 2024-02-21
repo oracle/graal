@@ -21,7 +21,6 @@
 # questions.
 #
 
-import re
 import argparse
 
 import mx
@@ -218,7 +217,7 @@ class ScalaDaCapoWarmupBenchmarkSuite(ScalaDaCapoBenchmarkSuite): #pylint: disab
         super_rules = super(ScalaDaCapoWarmupBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
         return super_rules + [
             mx_benchmark.StdOutRule(
-                r"===== " + re.escape(self.daCapoSuiteTitle()) + " (?P<benchmark>[a-zA-Z0-9_]+) walltime [0-9]+ : (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+                r"===== DaCapo (?P<version>\S+) (?P<benchmark>[a-zA-Z0-9_]+) walltime [0-9]+ : (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
                 {
                     "benchmark": ("<benchmark>", str),
                     "bench-suite": self.benchSuiteName(),

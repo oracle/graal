@@ -32,6 +32,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Proxy;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -418,9 +419,15 @@ public class SVMHost extends HostVM {
 
         nestHost = PredefinedClassesSupport.maybeAdjustLambdaNestHost(className, javaClass, classLoader, nestHost);
 
+        /*
+         * All proxy classes, even the ones that we create artificially via DynamicProxySupport, are
+         * proper proxy classes in the host VM.
+         */
+        boolean isProxyClass = Proxy.isProxyClass(javaClass);
+
         return new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type), superHub, componentHub, sourceFileName, modifiers, hubClassLoader,
                         isHidden, isRecord, nestHost, assertionStatus, type.hasDefaultMethods(), type.declaresDefaultMethods(), isSealed, isVMInternal, isLambdaFormHidden, isLinked, simpleBinaryName,
-                        getDeclaringClass(javaClass), getSignature(javaClass));
+                        getDeclaringClass(javaClass), getSignature(javaClass), isProxyClass);
     }
 
     private static final Method getSignature = ReflectionUtil.lookupMethod(Class.class, "getGenericSignature0");

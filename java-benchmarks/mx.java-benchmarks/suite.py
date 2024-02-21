@@ -44,9 +44,9 @@ suite = {
       "packedResource": True
     },
 
-    "QUARKUS_REGISTRY_0.0.1" : {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/quarkus-registry-0.0.1.zip"],
-      "digest": "sha512:3a48ce0c3c3dd66dd24fb82abfa52e666a32e73979ececd8cc30d28c653b1583218f46a162456318c8c5462d6a3f1ed87504ca961ef9400cd50953de922a7314" ,
+    "QUARKUS_REGISTRY_0.0.2" : {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/quarkus-registry-0.0.2.zip"],
+      "digest": "sha512:0b35bc8090514cdcb7471966858c8850bdc9132432fd392593a084c95af1d5b57ed8cd31969cf7bc94583c1973103fc3b7f5364fd5c7450335783f76cc9242aa" ,
       "packedResource": True
     },
 
@@ -56,9 +56,9 @@ suite = {
       "packedResource": True,
     },
 
-    "SHOPCART_0.3.9": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.3.9.zip"],
-      "digest": "sha512:8a6095426c14fab7146c2ffd368c38069321983b38b2e8c75ab4b900ccda7c86723854a61d20f9c7779a49b41fc0ddfd806988458cc76088a8ab2be5acb4df48",
+    "SHOPCART_0.3.10": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.3.10.zip"],
+      "digest": "sha512:99099b4c013527c769b0c72637e5c450e1dfad7a847eddca453377260d3146cc091fe72f8ac6e93eb2a76290e85d9721ea7c964d0185fe82fca86f7175662bde",
       "packedResource": True,
     },
 
@@ -74,9 +74,9 @@ suite = {
       "packedResource": True,
     },
 
-    "MICRONAUT_HW_1.0.6": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/micronaut-hello-world-1.0.6.zip"],
-      "digest": "sha512:62f5c22c7217f42ffb0e53fffdbdf7add7ad4b6828c59967a2cae29e94120d0f88699ce14aca1b0cc39150119532d7c20c8e8b60fe097524b471094512b2ce58",
+    "MICRONAUT_HW_1.0.7": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/micronaut-hello-world-1.0.7.zip"],
+      "digest": "sha512:f4fdba567c055ed0190c73a96c746947091751bad6ccea75a5826d72acbbedfd66736259b7e3fb2fadbb645e88c92f6ac17948cb1b3a435407f20dc77e16a61e",
       "packedResource": True,
     },
 

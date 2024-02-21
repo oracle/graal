@@ -251,7 +251,8 @@ suite = {
                 "compiler:GRAAL_PROCESSOR"
             ],
             "requires" : [
-                "java.compiler" # javax.annotation.processing.*
+                "java.compiler", # javax.annotation.processing.*
+                "jdk.compiler", # com.sun.source.util.*
             ],
             "javaCompliance" : "21+",
             "checkstyle" : "com.oracle.svm.core",

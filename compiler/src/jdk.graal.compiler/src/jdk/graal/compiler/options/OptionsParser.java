@@ -212,7 +212,7 @@ public class OptionsParser {
     }
 
     private static long parseLong(String v) {
-        String valueString = v.toLowerCase(Locale.ENGLISH);
+        String valueString = v.toLowerCase(Locale.ROOT);
         long scale = 1;
         if (valueString.endsWith("k")) {
             scale = 1024L;

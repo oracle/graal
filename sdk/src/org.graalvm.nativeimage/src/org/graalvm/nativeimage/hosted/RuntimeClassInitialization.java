@@ -150,6 +150,10 @@ public final class RuntimeClassInitialization {
     /**
      * Registers all classes in provided packages as eagerly initialized during image-build time.
      * <p>
+     * Passing {@code ""} as a package, registers all packages and classes for initialization at
+     * build time. This might have unintended side-effects and should thus be used with great
+     * caution.
+     * <p>
      * All static initializers of {@code classes} will be executed during image-build time and
      * static fields that are assigned values will be available at runtime. {@code static final}
      * fields will be considered as constant.

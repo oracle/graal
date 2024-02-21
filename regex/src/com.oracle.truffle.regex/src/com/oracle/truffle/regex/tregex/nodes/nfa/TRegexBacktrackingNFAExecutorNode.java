@@ -131,8 +131,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
             QuantifiableTerm quantifiable = zeroWidthQuantifiables.get(i);
             if (quantifiable.isGroup()) {
                 Group group = quantifiable.asGroup();
-                this.zeroWidthTermEnclosedCGLow[i] = group.getEnclosedCaptureGroupsLow();
-                offset += 2 * (group.getEnclosedCaptureGroupsHigh() - group.getEnclosedCaptureGroupsLow());
+                this.zeroWidthTermEnclosedCGLow[i] = group.getCaptureGroupsLow();
+                offset += 2 * (group.getCaptureGroupsHigh() - group.getCaptureGroupsLow());
             }
             this.zeroWidthQuantifierCGOffsets[i + 1] = offset;
         }
@@ -760,7 +760,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                         return false;
                     }
                     break;
-                case enterEmptyMatch:
+                case checkEmptyMatch:
                     // retreat if quantifier count is greater or equal to minimum
                     if (locals.getQuantifierCount(q) >= q.getMin()) {
                         return false;
@@ -815,20 +815,6 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     @ExplodeLoop
     protected void updateState(TRegexBacktrackingNFAExecutorLocals locals, PureNFATransition transition, int index) {
         CompilerAsserts.partialEvaluationConstant(transition);
-        if (isRecursiveBackreferences()) {
-            /*
-             * Note: Updating the recursive back-reference boundaries before all other quantifier
-             * guards causes back-references to empty matches to fail. This is expected behavior in
-             * OracleDBFlavor.
-             */
-            assert isForward();
-            for (QuantifierGuard guard : transition.getQuantifierGuards()) {
-                CompilerAsserts.partialEvaluationConstant(guard);
-                if (guard.getKind() == QuantifierGuard.Kind.updateRecursiveBackrefPointer) {
-                    locals.saveRecursiveBackrefGroupStart(guard.getIndex());
-                }
-            }
-        }
         locals.apply(transition, index);
         for (QuantifierGuard guard : transition.getQuantifierGuards()) {
             CompilerAsserts.partialEvaluationConstant(guard);
@@ -848,7 +834,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                     locals.setZeroWidthQuantifierGuardIndex(q);
                     locals.setZeroWidthQuantifierResults(q);
                     break;
-                case enterEmptyMatch:
+                case checkEmptyMatch:
                     if (!transition.hasCaretGuard() && !transition.hasDollarGuard()) {
                         locals.setQuantifierCount(q, q.getMin());
                     } else {
@@ -977,7 +963,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                         return false;
                     }
                     break;
-                case enterEmptyMatch:
+                case checkEmptyMatch:
                     // retreat if quantifier count is greater or equal to minimum
                     if (locals.getQuantifierCount(q) >= q.getMin()) {
                         return false;
