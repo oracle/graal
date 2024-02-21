@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,11 @@ import com.oracle.truffle.api.nodes.Node;
 
 public interface BciProvider {
 
-    int getBci(Frame frame);
+    default int getBci(Frame frame) {
+        return -2;
+    }
 
-    Node getLeafNode(int bci);
+    default Node getLeafNode(int bci) {
+        return null;
+    }
 }
