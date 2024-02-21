@@ -877,8 +877,13 @@ final class InstrumentationHandler {
         }
 
         if (!NodeUtil.isReplacementSafe(parent, node, wrapperNode)) {
+            String wrapperClass = wrapperNode.getClass().getName();
+            String nodeClass = node.getClass().getName();
+            String fieldName = NodeUtil.findChildFieldName(parent, node);
             throw new IllegalStateException(
-                            String.format("WrapperNode implementation %s cannot be safely replaced in parent node class %s.", wrapperNode.getClass().getName(), parent.getClass().getName()));
+                            String.format("Cannot insert wrapper %s for node %s because the field %s#%s cannot be assigned with a %s.%nAt %s%nYou might want to widen the field type to %s or generate a different wrapper for %s.",
+                                            wrapperClass, nodeClass, parent.getClass().getName(), fieldName, wrapperClass, node.getSourceSection(), wrapperNode.getClass().getSuperclass().getName(),
+                                            nodeClass));
         }
         return wrapperNode;
     }
