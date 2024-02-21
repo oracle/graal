@@ -20,5 +20,6 @@
   builds: [
     common.linux_amd64  + common.oraclejdk21 + sdk_gate + common.deps.eclipse + common.deps.jdt,
     common.darwin_amd64 + common.oraclejdk21 + sdk_gate,
+    common.darwin_aarch64 + common.oraclejdk21 + sdk_gate,
   ]
 }
