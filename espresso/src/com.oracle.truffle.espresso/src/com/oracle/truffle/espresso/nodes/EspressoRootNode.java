@@ -214,19 +214,16 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     }
 
     public final int readBCI(Frame frame) {
-        return getMethodNode().getBci(frame);
+        return methodNode.getBci(frame);
     }
 
     @Override
     public Node getLeafNodeByFrame(FrameInstance frameInstance) {
         Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
-        int bci = readBCI(frame);
-        if (bci >= 0) {
-            Node leafNode = getMethodNode().getLeafNode(bci);
-            if (leafNode != null) {
-                assert leafNode.getRootNode() == this;
-                return leafNode;
-            }
+        Node leafNode = methodNode.getLeafNode(readBCI(frame));
+        if (leafNode != null) {
+            assert leafNode.getRootNode() == this;
+            return leafNode;
         }
         return this;
     }
