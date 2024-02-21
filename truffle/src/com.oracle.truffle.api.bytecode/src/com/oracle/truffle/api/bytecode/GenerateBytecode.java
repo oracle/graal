@@ -158,8 +158,8 @@ public @interface GenerateBytecode {
      * Only tags are allowed to be used that are also {@link ProvidedTags provided} by the specified
      * {@link #languageClass() Truffle language}.
      *
-     * @see #enableRootBodyTagging() to enable implicit root tagging (default enabled)
-     * @see #enableRootTagging() to enable implicit root body tagging (default enabled)
+     * @see #enableRootTagging() to enable implicit root and root body tagging (default enabled)
+     * @see #enableRootBodyTagging() to enable implicit root body tagging (default enabled)
      * @since 24.1
      */
     boolean enableTagInstrumentation() default false;
@@ -182,9 +182,9 @@ public @interface GenerateBytecode {
     boolean enableRootTagging() default true;
 
     /**
-     * Enables automatic root tagging if {@link #enableTagInstrumentation() instrumentation} is
-     * enabled. Automatic root tagging automatically tags each root with {@link RootBodyTag} if the
-     * language {@link ProvidedTags provides} it.
+     * Enables automatic root body tagging if {@link #enableTagInstrumentation() instrumentation} is
+     * enabled. Automatic root body tagging automatically tags each root with {@link RootBodyTag} if
+     * the language {@link ProvidedTags provides} it.
      *
      * @since 24.1
      * @see #enableRootTagging()

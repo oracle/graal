@@ -105,13 +105,15 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
 
     @Test
     public void testSum() {
+        // @formatter:off
         // i = 0;
         // sum = 0;
         // while (i < 10) {
-        // i += 1;
-        // sum += i;
+        //   i += 1;
+        //   sum += i;
         // }
         // return sum
+        // @formatter:on
 
         long endValue = 10L;
 
@@ -167,12 +169,14 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
 
     @Test
     public void testTryCatch() {
+        // @formatter:off
         // try {
-        // throw 1;
+        //   throw 1;
         // } catch x {
-        // return x + 1;
+        //   return x + 1;
         // }
         // return 3;
+        // @formatter:on
 
         BasicInterpreter root = parseNodeForPE(interpreterClass, "sum", b -> {
             b.beginRoot(LANGUAGE);
@@ -211,7 +215,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
 
     @Test
     public void testConditionalTrue() {
-        // return 20 + 22;
+        // return true ? 42 : 21;
 
         BasicInterpreter root = parseNodeForPE(interpreterClass, "conditionalTrue", b -> {
             b.beginRoot(LANGUAGE);
@@ -233,7 +237,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
 
     @Test
     public void testConditionalFalse() {
-        // return 20 + 22;
+        // return false ? 21 : 42;
 
         BasicInterpreter root = parseNodeForPE(interpreterClass, "conditionalFalse", b -> {
             b.beginRoot(LANGUAGE);
@@ -257,6 +261,10 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
 
     @Test
     public void testEarlyReturn() {
+        // @formatter:off
+        // earlyReturn(42)  // throws exception caught by intercept hook
+        // return 123
+        // @formatter:on
         BasicInterpreter root = parseNodeForPE(interpreterClass, "earlyReturn", b -> {
             b.beginRoot(LANGUAGE);
             b.beginBlock();

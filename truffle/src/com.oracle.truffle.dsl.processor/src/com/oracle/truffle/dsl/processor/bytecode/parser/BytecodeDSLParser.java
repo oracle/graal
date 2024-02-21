@@ -208,7 +208,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.languageClass = (DeclaredType) ElementUtils.getAnnotationValue(generateBytecodeMirror, "languageClass").getValue();
         model.enableUncachedInterpreter = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableUncachedInterpreter");
         model.enableSerialization = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableSerialization");
-        model.enableSpecializationIntrospection = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableSerialization");
+        model.enableSpecializationIntrospection = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableSpecializationIntrospection");
         model.allowUnsafe = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "allowUnsafe");
         model.enableYield = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableYield");
         model.storeBciInFrame = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "storeBciInFrame");
@@ -281,9 +281,6 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                                             "Specify at least one provided tag or disable tag instrumentation for this root node.",
                                             getQualifiedName(model.languageClass),
                                             getSimpleName(types.ProvidedTags)));
-
-            ElementUtils.getAnnotationValue(generateBytecodeMirror, "enableTagInstrumentation");
-
         }
 
         Map<String, List<ExecutableElement>> constructorsByFDType = viableConstructors.stream().collect(Collectors.groupingBy(ctor -> {
