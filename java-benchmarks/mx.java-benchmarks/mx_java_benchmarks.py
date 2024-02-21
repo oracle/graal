@@ -65,14 +65,6 @@ mx.update_commands(_suite, {
         lambda args: createBenchmarkShortcut("specjvm2008", args),
         '[<benchmarks>|*] [-- [VM options] [-- [SPECjvm2008 options]]]'
     ],
-    'specjbb2005': [
-        lambda args: mx_benchmark.benchmark(["specjbb2005"] + args),
-        '[-- [VM options] [-- [SPECjbb2005 options]]]'
-    ],
-    'specjbb2013': [
-        lambda args: mx_benchmark.benchmark(["specjbb2013"] + args),
-        '[-- [VM options] [-- [SPECjbb2013 options]]]'
-    ],
     'specjbb2015': [
         lambda args: mx_benchmark.benchmark(["specjbb2015"] + args),
         '[-- [VM options] [-- [SPECjbb2015 options]]]'
