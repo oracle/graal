@@ -118,6 +118,9 @@ public class RuntimeCompiledMethodSupport {
     public static class Options {
         @Option(help = "Remove Deopt(Entries,Anchors,Proxies) determined to be unneeded after the runtime compiled graphs have been finalized.")//
         public static final HostedOptionKey<Boolean> RemoveUnneededDeoptSupport = new HostedOptionKey<>(true);
+
+        @Option(help = "Verify runtime compilation framestates during bytecode parsing.")//
+        public static final HostedOptionKey<Boolean> VerifyRuntimeCompilationFrameStates = new HostedOptionKey<>(false);
     }
 
     private record CompilationState(
@@ -462,14 +465,7 @@ public class RuntimeCompiledMethodSupport {
 
         @Override
         protected boolean shouldVerifyFrameStates() {
-            /*
-             * (GR-46115) Ideally we should verify frame states in methods registered for runtime
-             * compilations, as well as any other methods that can deoptimize. Because runtime
-             * compiled methods can pull in almost arbitrary code, this means most frame states
-             * should be verified. We currently use illegal states as placeholders in many places,
-             * so this cannot be enabled at the moment.
-             */
-            return false;
+            return Options.VerifyRuntimeCompilationFrameStates.getValue();
         }
     }
 

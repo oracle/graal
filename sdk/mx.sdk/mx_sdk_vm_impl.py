@@ -1369,6 +1369,8 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             ] + svm_experimental_options([
                 '-H:+AssertInitializationSpecifiedForAllClasses',
                 '-H:+EnforceMaxRuntimeCompileMethods',
+                '-H:+VerifyRuntimeCompilationFrameStates',
+                '-H:+GuaranteeSubstrateTypesLinked',
             ])
             if _debug_images():
                 build_args += ['-ea', '-O0',] + svm_experimental_options(['-H:+PreserveFramePointer', '-H:-DeleteLocalSymbols'])
