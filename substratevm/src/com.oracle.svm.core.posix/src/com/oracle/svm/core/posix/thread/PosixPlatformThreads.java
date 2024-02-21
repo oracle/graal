@@ -67,6 +67,7 @@ import com.oracle.svm.core.thread.Parker;
 import com.oracle.svm.core.thread.Parker.ParkerFactory;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -302,10 +303,6 @@ final class Target_java_lang_Thread {
     Pthread.pthread_t pthreadIdentifier;
 }
 
-/**
- * {@link PosixParker} is based on HotSpot class {@code Parker} in {@code os_posix.cpp}, as of JDK
- * 19 (git commit hash: 967a28c3d85fdde6d5eb48aa0edd8f7597772469, JDK tag: jdk-19+36).
- */
 final class PosixParker extends Parker {
     private static final Unsafe U = Unsafe.getUnsafe();
     private static final long EVENT_OFFSET = U.objectFieldOffset(PosixParker.class, "event");
@@ -357,6 +354,7 @@ final class PosixParker extends Parker {
         }
     }
 
+    @BasedOnJDKFile("src/hotspot/os/posix/os_posix.cpp#L1662-L1738")
     private void park0(boolean isAbsolute, long time) {
         int status = Pthread.pthread_mutex_trylock_no_transition(mutex);
         if (status == Errno.EBUSY()) {
@@ -395,6 +393,7 @@ final class PosixParker extends Parker {
     }
 
     @Override
+    @BasedOnJDKFile("src/hotspot/os/posix/os_posix.cpp#L1740-L1763")
     protected void unpark() {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {

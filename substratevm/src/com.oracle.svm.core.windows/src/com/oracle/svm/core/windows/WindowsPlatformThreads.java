@@ -43,6 +43,7 @@ import com.oracle.svm.core.thread.Parker;
 import com.oracle.svm.core.thread.Parker.ParkerFactory;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.windows.headers.Process;
@@ -179,10 +180,6 @@ public final class WindowsPlatformThreads extends PlatformThreads {
     }
 }
 
-/**
- * {@link WindowsParker} is based on HotSpot class {@code Parker} in {@code os_windows.cpp}, as of
- * JDK 19 (git commit hash: 967a28c3d85fdde6d5eb48aa0edd8f7597772469, JDK tag: jdk-19+36).
- */
 @Platforms(Platform.WINDOWS.class)
 class WindowsParker extends Parker {
     private static final long MAX_DWORD = (1L << 32) - 1;
@@ -211,6 +208,7 @@ class WindowsParker extends Parker {
     }
 
     @Override
+    @BasedOnJDKFile("src/hotspot/os/windows/os_windows.cpp#L5457-L5499")
     protected void park(boolean isAbsolute, long time) {
         assert time >= 0 && !(isAbsolute && time == 0) : "must not be called otherwise";
 
@@ -258,6 +256,7 @@ class WindowsParker extends Parker {
     }
 
     @Override
+    @BasedOnJDKFile("src/hotspot/os/windows/os_windows.cpp#L5501-L5504")
     protected void unpark() {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
