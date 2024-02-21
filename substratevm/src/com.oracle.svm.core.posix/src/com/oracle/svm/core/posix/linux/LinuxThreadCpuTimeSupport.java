@@ -66,7 +66,7 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
         return fastCpuTime(pthread);
     }
 
-    @BasedOnJDKFile("src/hotspot/os/linux/os_linux.cpp#L5072-L5084")
+    @BasedOnJDKFile("src/hotspot/os/linux/os_linux.cpp#L5086-L5098")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static long fastCpuTime(pthread_t pthread) {
         CIntPointer threadsClockId = StackValue.get(Integer.BYTES);
@@ -77,6 +77,7 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @BasedOnJDKFile("src/hotspot/os/linux/os_linux.cpp#L4290-L4295")
     private static long fastThreadCpuTime(int clockId) {
         timespec time = UnsafeStackValue.get(timespec.class);
         if (LinuxTime.NoTransitions.clock_gettime(clockId, time) != 0) {
