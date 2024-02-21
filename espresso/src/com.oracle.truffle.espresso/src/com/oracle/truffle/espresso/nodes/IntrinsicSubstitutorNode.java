@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.nodes;
 
 import java.util.Arrays;
 
-import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.Method;
@@ -84,16 +83,6 @@ final class IntrinsicSubstitutorNode extends EspressoInstrumentableRootNodeImpl 
     @Override
     public Node copy() {
         return split();
-    }
-
-    @Override
-    public int getBci(@SuppressWarnings("unused") Frame frame) {
-        return -2;
-    }
-
-    @Override
-    public Node getLeafNode(@SuppressWarnings("unused")int bci) {
-        return null;
     }
 
     @Override
