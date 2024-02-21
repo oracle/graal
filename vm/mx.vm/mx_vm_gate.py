@@ -779,16 +779,11 @@ def gate_truffle_unchained(tasks):
             if not truffle_suite:
                 mx.abort("Cannot resolve truffle suite.")
             mx_truffle.sl_native_optimized_gate_tests()
-    with Task('Truffle Unchained NFI Native', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
+    with Task('Truffle Unchained Truffle Native Unit Tests', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
         if t:
             if not truffle_suite:
                 mx.abort("Cannot resolve truffle suite.")
-            mx_truffle.native_truffle_unittest([
-                '--run-args',
-                mx_subst.path_substitutions.substitute('-Dnative.test.path=<path:truffle:TRUFFLE_TEST_NATIVE>'),
-                '--',
-                'com.oracle.truffle.nfi.test'
-            ])
+            mx_truffle.truffle_native_unit_tests_gate()
 
 def gate_maven_downloader(tasks):
     with Task('Maven Downloader prepare maven repo', tasks, tags=[VmGateTasks.maven_downloader]) as t:

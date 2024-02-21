@@ -38,8 +38,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+import fnmatch
+import itertools
 import json
-
 import os
 import re
 import shutil
@@ -56,6 +57,7 @@ import mx_gate
 import mx_native
 import mx_sdk
 import mx_sdk_vm
+import mx_subst
 import mx_unittest
 import mx_jardistribution
 import mx_pomdistribution
@@ -437,7 +439,7 @@ def native_truffle_unittest(args):
     utilizes the NBT NativeImageJUnitLauncher, which does not support the command line options provided by the MxJUnitWrapper.
     """
     # 1. Use mx_unittest to collect root test distributions and test classes for given unittest pattern(s)
-    supported_args = ['--build-args', '--run-args', '-h', '--help', '--']
+    supported_args = ['--build-args', '--run-args', '--exclude-class', '-h', '--help', '--']
 
     def _escape(arg):
         if arg in supported_args:
@@ -472,12 +474,14 @@ def native_truffle_unittest(args):
     parser = ArgumentParser(prog='mx native-truffle-unittest', description='Run truffle unittests as native image on graalvm.')
     parser.add_argument(supported_args[0], metavar='ARG', nargs='*', default=[])
     parser.add_argument(supported_args[1], metavar='ARG', nargs='*', default=[])
+    parser.add_argument(supported_args[2], metavar='CLASS_NAME', action='append', help='exclude given test from test execution')
     parser.add_argument('unittests_args', metavar='TEST_ARG', nargs='*')
     parsed_args = parser.parse_args(args)
     parsed_args.build_args = [_unescape(arg) for arg in parsed_args.build_args]
     module_args, parsed_args.build_args = _split_command_line_arguments(parsed_args.build_args)
     parsed_args.run_args = [_unescape(arg) for arg in parsed_args.run_args]
     parsed_args.unittests_args = [_unescape(arg) for arg in parsed_args.unittests_args]
+    parsed_args.exclude_class = [re.compile(fnmatch.translate(c)) for c in parsed_args.exclude_class] if parsed_args.exclude_class else []
     with mx.TempDir() as tmp:
         jdk = mx.get_jdk(tag='graalvm')
         unittest_distributions = ['mx:JUNIT-PLATFORM-NATIVE']
@@ -489,7 +493,7 @@ def native_truffle_unittest(args):
         mx_unittest._run_tests(parsed_args.unittests_args, collect_unittest_distributions,
                                mx_unittest._VMLauncher('dist_collecting_launcher', None, jdk),
                                ['@Test', '@Parameters'],
-                               test_classes_file, [], [], None, None)
+                               test_classes_file, parsed_args.exclude_class, [], None, None)
 
         enable_asserts_args = [
             '-ea',
@@ -537,11 +541,15 @@ def native_truffle_unittest(args):
         tests_executable = os.path.join(tmp, mx.exe_suffix('tests'))
         _allow_runtime_reflection([
             'org.hamcrest.core.Every',
+            'org.hamcrest.core.IsCollectionContaining',
+            'org.hamcrest.core.SubstringMatcher',
             'org.junit.internal.matchers.StacktracePrintingMatcher',
             'org.junit.internal.matchers.ThrowableCauseMatcher'
         ])
-        native_image_args = [
+        native_image_args = parsed_args.build_args + [
             '--no-fallback',
+            '-J-ea',
+            '-J-esa',
             '-o', tests_executable,
             '-cp', tmp,
             '--features=org.graalvm.junit.platform.JUnitPlatformFeature',
@@ -659,6 +667,38 @@ def _sl_native_optimized_gate_tests(force_cp):
 def sl_native_fallback_gate_tests():
     _sl_native_fallback_gate_tests(force_cp=False)
     _sl_native_fallback_gate_tests(force_cp=True)
+
+def truffle_native_unit_tests_gate():
+    # ContextPreInitializationNativeImageTest can only run with its own image.
+    # See class javadoc for details.
+    native_truffle_unittest(['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest'])
+    # Run Truffle and NFI tests
+    test_packages = [
+        'com.oracle.truffle.api.test',
+        'com.oracle.truffle.api.staticobject.test',
+        'com.oracle.truffle.nfi.test',
+    ]
+    excluded_tests = [
+        'com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest',    # runs in its own image
+        'com.oracle.truffle.api.test.profiles.*',    # GR-52260
+        'com.oracle.truffle.api.test.StackTraceTest',    # GR-52261
+        'com.oracle.truffle.api.test.nodes.*',    # GR-52262
+        'com.oracle.truffle.api.test.host.*',    # GR-52263
+        'com.oracle.truffle.api.test.interop.*',    # GR-52264
+    ]
+    build_args = [
+        '--build-args',
+        '--enable-url-protocols=http,jar',
+        '--add-exports=org.graalvm.polyglot/org.graalvm.polyglot.impl=ALL-UNNAMED',
+        '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl.asm=ALL-UNNAMED',
+    ]
+    run_args = [
+        '--run-args',
+        mx_subst.path_substitutions.substitute('-Dnative.test.path=<path:truffle:TRUFFLE_TEST_NATIVE>'),
+    ]
+    exclude_args = list(itertools.chain(*[('--exclude-class', item) for item in excluded_tests]))
+    native_truffle_unittest(test_packages + build_args + run_args + exclude_args)
+
 
 def _sl_native_fallback_gate_tests(force_cp):
     target_dir = tempfile.mkdtemp()
