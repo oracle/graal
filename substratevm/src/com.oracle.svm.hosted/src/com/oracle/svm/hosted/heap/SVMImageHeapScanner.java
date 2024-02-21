@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.heap;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.VarHandle;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.util.function.Consumer;
@@ -46,7 +44,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
-import com.oracle.svm.hosted.jdk.VarHandleFeature;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -63,8 +60,6 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     private final Field economicMapImplTotalEntriesField;
     private final Field economicMapImplDeletedEntriesField;
     private final ReflectionHostedSupport reflectionSupport;
-    private final Class<?> directMethodHandleClass;
-    private final VarHandleFeature varHandleSupport;
     private final FieldValueInterceptionSupport fieldValueInterceptionSupport;
 
     @SuppressWarnings("this-escape")
@@ -79,8 +74,6 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
         economicMapImplDeletedEntriesField = ReflectionUtil.lookupField(economicMapImpl, "deletedEntries");
         ImageSingletons.add(ImageHeapScanner.class, this);
         reflectionSupport = ImageSingletons.lookup(ReflectionHostedSupport.class);
-        directMethodHandleClass = getClass("java.lang.invoke.DirectMethodHandle");
-        varHandleSupport = ImageSingletons.lookup(VarHandleFeature.class);
         fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
     }
 
@@ -137,10 +130,6 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
             reflectionSupport.registerHeapReflectionExecutable(executable, reason);
         } else if (object instanceof DynamicHub hub) {
             reflectionSupport.registerHeapDynamicHub(hub, reason);
-        } else if (object instanceof VarHandle varHandle) {
-            varHandleSupport.registerHeapVarHandle(varHandle, reason);
-        } else if (directMethodHandleClass.isInstance(object)) {
-            varHandleSupport.registerHeapMethodHandle((MethodHandle) object, reason);
         }
     }
 }

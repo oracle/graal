@@ -35,7 +35,6 @@ import java.util.function.ToLongFunction;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.GraalAccess;
@@ -80,8 +79,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * reflection, we actually do not reconstruct the {@link Field} but the {@link ResolvedJavaField}
  * (see {@link #findVarHandleOriginalField}).
  *
- * The registration for unsafe access happens in {@link #processReachableHandle} which is called for
- * every relevant object once it becomes reachable and so part of the image heap.
+ * The registration for unsafe access happens in {@link #registerReachableHandle} which is called
+ * for every relevant object once it becomes reachable and so part of the image heap.
  *
  * The field offset recomputations are registered for all classes manually (a bit of code
  * duplication on our side), but all recomputations use the same custom field value recomputation
@@ -122,6 +121,9 @@ public class VarHandleFeature implements InternalFeature {
          * VarHandle object itself reachable.
          */
         access.registerObjectReplacer(VarHandleFeature::eagerlyInitializeVarHandle);
+
+        access.registerObjectReachableCallback(VarHandle.class, (a1, obj) -> registerReachableHandle(obj));
+        access.registerObjectReachableCallback(access.findClassByName("java.lang.invoke.DirectMethodHandle"), (a1, obj) -> registerReachableHandle(obj));
     }
 
     @Override
@@ -230,19 +232,11 @@ public class VarHandleFeature implements InternalFeature {
         };
     }
 
-    public void registerHeapVarHandle(VarHandle varHandle, ObjectScanner.ScanReason reason) {
-        processReachableHandle(varHandle, reason);
-    }
-
-    public void registerHeapMethodHandle(MethodHandle directMethodHandle, ObjectScanner.ScanReason reason) {
-        processReachableHandle(directMethodHandle, reason);
-    }
-
     /**
      * Register all fields accessed by a reachable VarHandle for an instance field or a static field
      * as unsafe accessed, which is necessary for correctness of the static analysis.
      */
-    private Object processReachableHandle(Object obj, ObjectScanner.ScanReason reason) {
+    private Object registerReachableHandle(Object obj) {
         VarHandleInfo info = infos.get(obj.getClass());
         if (info != null) {
             AnalysisField field = findVarHandleAnalysisField(obj);
@@ -254,7 +248,7 @@ public class VarHandleFeature implements InternalFeature {
              */
             if (!field.isUnsafeAccessed()) {
                 VMError.guarantee(hUniverse == null, "New VarHandle %s found after static analysis for field %s", obj, field);
-                field.registerAsUnsafeAccessed(reason);
+                field.registerAsUnsafeAccessed("Referenced by VarHandle");
             }
         }
         return obj;
@@ -294,6 +288,7 @@ public class VarHandleFeature implements InternalFeature {
     HostedField findVarHandleHostedField(Object varHandle) {
         return hUniverse.lookup(findVarHandleAnalysisField(varHandle));
     }
+
 }
 
 record VarHandleInfo(
