@@ -46,10 +46,20 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * TODO javadoc
+ * Defines a prolog operation that executes before the body of a Root operation.
+ * <p>
+ * A prolog operation is defined the same way as an {@link Operation}. It has the additional
+ * restriction that it must have no operands and must declare a {@code void} return type.
+ * <p>
+ * An exception thrown by the prolog can be handled by an intercept method (e.g.,
+ * {@link BytecodeRootNode#interceptInternalException(Throwable, BytecodeNode, int)}), but not by a
+ * language-level exception handler (e.g., a {@code TryCatch} operation). The {@link Epilog}
+ * operation (if available) will not run if the prolog throws.
+ *
+ * @since 24.1
+ * @see Epilog
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface Prolog {
-
 }

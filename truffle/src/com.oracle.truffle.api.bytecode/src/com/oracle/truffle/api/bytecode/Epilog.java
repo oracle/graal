@@ -46,10 +46,23 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * TODO javadoc
+ * Defines an epilog operation that executes before exiting a Root operation. The epilog executes
+ * before returning a value or throwing an exception out of the current root node (it does not run
+ * when a {@link GenerateBytecode#enableYield continuation} is suspended).
+ * <p>
+ * An epilog operation is defined the same way as an {@link Operation}. It has the additional
+ * restriction that it must take two operands: a returned value and a thrown value. Only one of
+ * these values will be present for a given invocation, and the other will be null. An epilog
+ * operation must also declare a {@code void} return type.
+ * <p>
+ * An exception thrown by the epilog can be handled by an intercept method (e.g.,
+ * {@link BytecodeRootNode#interceptInternalException(Throwable, BytecodeNode, int)}), but not by a
+ * language-level exception handler (e.g., a {@code TryCatch} operation).
+ *
+ * @since 24.1
+ * @see Prolog
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface Epilog {
-
 }

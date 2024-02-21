@@ -131,16 +131,14 @@ public interface BytecodeRootNode {
      * {@link AbstractTruffleException} or {@link ControlFlowException}) is thrown during execution.
      * This hook can be used to convert such exceptions into guest-language exceptions that can be
      * handled by guest code.
-     *
      * <p>
      * For example, if a Java {@link StackOverflowError} is thrown, this hook can be used to return
      * a guest-language equivalent exception that the guest code understands.
-     *
      * <p>
      * If the return value is an {@link AbstractTruffleException}, it will be forwarded to the guest
      * code for handling. The exception will also be intercepted by
      * {@link #interceptTruffleException}.
-     *
+     * <p>
      * If the return value is not an {@link AbstractTruffleException}, it will be rethrown. Thus, if
      * an internal error cannot be converted to a guest exception, it can simply be returned.
      *

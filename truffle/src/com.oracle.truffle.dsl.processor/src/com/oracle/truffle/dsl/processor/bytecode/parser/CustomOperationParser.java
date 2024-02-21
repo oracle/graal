@@ -278,17 +278,26 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
 
         /**
-         * The epilog will be called with either the returned value or the exception being null.
-         * There must be a specialization that accepts Object for both. (It is not enough to check
-         * the polymorphic signature because it defaults to Object if two types don't match.)
+         * The epilog will be called with either the returned value or the exception being null. For
+         * either parameter, there must be a specialization that accepts Object. (It is not enough
+         * to check the polymorphic signature because it defaults to Object if two types don't
+         * match.)
          */
-        boolean objectObjectSignatureFound = false;
+        boolean objectReturnFound = false;
+        boolean objectThrowFound = false;
         for (Signature individualSignature : allSignatures) {
-            objectObjectSignatureFound = objectObjectSignatureFound || isObject(individualSignature.argumentTypes.get(0)) && isObject(individualSignature.argumentTypes.get(1));
+            objectReturnFound = objectReturnFound || isObject(individualSignature.argumentTypes.get(0));
+            objectThrowFound = objectThrowFound || isObject(individualSignature.argumentTypes.get(1));
         }
 
-        if (!objectObjectSignatureFound) {
-            customOperation.addError(String.format("An @%s annotated operation must have a specialization that takes %s for both operands.",
+        if (!objectReturnFound) {
+            customOperation.addError(
+                            String.format("An @%s annotated operation must declare a specialization that takes %s for its first operand (the returned value will be null when an exception is thrown).",
+                                            getSimpleName(types.Epilog),
+                                            getSimpleName(context.getDeclaredType(Object.class))));
+        } else if (!objectThrowFound) {
+            customOperation.addError(String.format(
+                            "An @%s annotated operation must declare a specialization that takes %s for its second operand (the exception will be null when the root node returns normally).",
                             getSimpleName(types.Epilog),
                             getSimpleName(context.getDeclaredType(Object.class))));
         } else if (!signature.isVoid) {

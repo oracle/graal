@@ -1823,6 +1823,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 builderContextSensitiveState.add(new CodeVariableElement(Set.of(PRIVATE), generic(ArrayList.class, types.ContinuationLocation), "continuationLocations"));
                 builderContextInsensitiveState.add(builderContextInsensitiveState.size() - 1, new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numYields"));
             }
+
+            if (model.epilog != null) {
+                builderContextInsensitiveState.add(builderContextInsensitiveState.size() - 1, new CodeVariableElement(Set.of(PRIVATE), types.BytecodeLocal, "epilogException"));
+            }
         }
 
         List<CodeVariableElement> builderState = Stream.of(builderContextSensitiveState, builderContextInsensitiveState).flatMap(Collection::stream).collect(Collectors.toList());
@@ -1989,6 +1993,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 operationStackEntry.add(createConstructorUsingFields(Set.of(), operationStackEntry, null));
                 operationStackEntry.add(createAddDeclaredLabel());
+                operationStackEntry.add(createToString());
 
                 return operationStackEntry;
             }
@@ -2004,6 +2009,23 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
 
                 b.statement("declaredLabels.add(label)");
+
+                return ex;
+            }
+
+            private CodeExecutableElement createToString() {
+                CodeExecutableElement ex = GeneratorUtils.overrideImplement(context.getDeclaredType(Object.class), "toString");
+                CodeTreeBuilder b = ex.createBuilder();
+
+                b.startReturn();
+                b.startGroup().string("\"");
+                b.string(operationStackEntry.getSimpleName().toString());
+                b.string("(\"");
+                b.string(" + OPERATION_NAMES[operation] + ");
+                b.string("\")\"").end();
+                b.end();
+
+                addOverride(ex);
 
                 return ex;
             }
@@ -2961,6 +2983,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.tree(createOperationData("RootData", "language"));
             b.end(2);
 
+            if (model.epilog != null) {
+                b.lineComment("For epilog support, Root(ops...) is rewritten to Root(TryCatch(Block(ops...), <invoke epilog; rethrow>))");
+                b.startAssign("epilogException").startCall("createLocal").end(2);
+                buildBegin(b, model.tryCatchOperation, "epilogException");
+                buildBegin(b, model.blockOperation);
+            }
+
             return ex;
         }
 
@@ -3343,6 +3372,23 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
             }
 
+            if (model.epilog != null) {
+                b.lineComment("For epilog support, Root(ops...) is rewritten to Root(TryCatch(Block(ops...), <invoke epilog; rethrow>))");
+                buildEnd(b, model.blockOperation);
+
+                buildBegin(b, model.blockOperation);
+                buildBegin(b, model.epilog.operation);
+                // returned value is null
+                buildEmit(b, model.loadConstantOperation, "null");
+                buildEmit(b, model.loadLocalOperation, "epilogException");
+                buildEnd(b, model.epilog.operation);
+
+                buildEmitInstruction(b, model.throwInstruction, "((BytecodeLocalImpl) epilogException).index");
+
+                buildEnd(b, model.blockOperation);
+                buildEnd(b, model.tryCatchOperation);
+            }
+
             b.startStatement().startCall("endOperation");
             b.tree(createOperationConstant(rootOperation));
             b.end(2);
@@ -3442,6 +3488,26 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startReturn().string("result").end();
             return ex;
+        }
+
+        private void buildBegin(CodeTreeBuilder b, OperationModel operation, String... args) {
+            b.startStatement().startCall("begin" + operation.name);
+            for (String arg : args) {
+                b.string(arg);
+            }
+            b.end(2);
+        }
+
+        private void buildEnd(CodeTreeBuilder b, OperationModel operation) {
+            b.startStatement().startCall("end" + operation.name).end(2);
+        }
+
+        private void buildEmit(CodeTreeBuilder b, OperationModel operation, String... args) {
+            b.startStatement().startCall("emit" + operation.name);
+            for (String arg : args) {
+                b.string(arg);
+            }
+            b.end(2);
         }
 
         private void emitCastOperationData(CodeTreeBuilder b, String dataClassName, String operationSp) {
