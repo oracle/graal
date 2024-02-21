@@ -114,11 +114,10 @@
         linux_amd64  + jdk + simple_tool_maven_project_gate + common.mach5_target,
         linux_amd64  + jdk + simple_language_maven_project_gate,
         darwin_amd64 + jdk + truffle_weekly + gate_lite + guard,
-      ] for jdk in [common.oraclejdk20, common.oraclejdk17]
+      ] for jdk in [common.oraclejdk17]
     ]) if b.name != "gate-external-mvn-simplelanguage-20" /* GR-42727	*/] +
   [
     linux_amd64 + common.oraclejdk17 + truffle_gate + guard + {timelimit: "45:00"},
-    linux_amd64 + common.oraclejdk20 + truffle_gate + guard + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
 
     truffle_common + linux_amd64 + common.oraclejdk17 + guard {
       name: "gate-truffle-javadoc",
