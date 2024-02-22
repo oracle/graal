@@ -40,6 +40,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.darwin.DarwinTime;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 
 import jdk.internal.misc.Unsafe;
 
@@ -77,11 +78,8 @@ final class DarwinTimeUtil {
     DarwinTimeUtil() {
     }
 
-    /**
-     * Based on HotSpot JDK 19 (git commit hash: 967a28c3d85fdde6d5eb48aa0edd8f7597772469, JDK tag:
-     * jdk-19+36).
-     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @BasedOnJDKFile("src/hotspot/os/bsd/os_bsd.cpp#L799-L821")
     long nanoTime() {
         if (!U.getBooleanAcquire(this, INITIALIZED_OFFSET)) {
             /* Can be called by multiple threads but they should all query the same data. */
