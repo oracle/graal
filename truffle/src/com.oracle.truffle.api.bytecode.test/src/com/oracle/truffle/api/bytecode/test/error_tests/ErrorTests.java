@@ -51,7 +51,8 @@ import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.bytecode.Prolog;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
-import com.oracle.truffle.api.bytecode.Epilog;
+import com.oracle.truffle.api.bytecode.EpilogExceptional;
+import com.oracle.truffle.api.bytecode.EpilogReturn;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
 import com.oracle.truffle.api.bytecode.Variadic;
@@ -403,10 +404,19 @@ public class ErrorTests {
             }
         }
 
-        @ExpectError("@Prolog and @Epilog cannot be used at the same time. Remove one of the annotations to resolve this.")
+        @ExpectError("@Prolog and @EpilogReturn cannot be used at the same time. Remove one of the annotations to resolve this.")
         @Prolog
-        @Epilog
+        @EpilogReturn
         public static final class OverlappingAnnotations3 {
+            @Specialization
+            public static void doExecute() {
+            }
+        }
+
+        @ExpectError("@EpilogReturn and @EpilogExceptional cannot be used at the same time. Remove one of the annotations to resolve this.")
+        @EpilogReturn
+        @EpilogExceptional
+        public static final class OverlappingAnnotations4 {
             @Specialization
             public static void doExecute() {
             }

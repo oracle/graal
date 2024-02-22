@@ -136,6 +136,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     public static final String USER_LOCALS_START_IDX = "USER_LOCALS_START_IDX";
     public static final String BCI_IDX = "BCI_IDX";
     public static final String COROUTINE_FRAME_IDX = "COROUTINE_FRAME_IDX";
+    public static final String EPILOG_EXCEPTION_IDX = "EPILOG_EXCEPTION_IDX";
 
     // Bytecode version encoding: [tags][instrumentations][source bit]
     public static final int MAX_TAGS = 32;
@@ -616,16 +617,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         List<CodeVariableElement> result = new ArrayList<>();
         int reserved = 0;
 
-        int uncachedBciIndex = -1;
         if (model.needsBciSlot()) {
-            uncachedBciIndex = reserved++;
-            result.add(createInitializedVariable(Set.of(PRIVATE, STATIC, FINAL), int.class, BCI_IDX, uncachedBciIndex + ""));
+            result.add(createInitializedVariable(Set.of(PRIVATE, STATIC, FINAL), int.class, BCI_IDX, reserved++ + ""));
         }
 
-        int coroutineFrameIndex = 1;
         if (model.enableYield) {
-            coroutineFrameIndex = reserved++;
-            result.add(createInitializedVariable(Set.of(PRIVATE, STATIC, FINAL), int.class, COROUTINE_FRAME_IDX, coroutineFrameIndex + ""));
+            result.add(createInitializedVariable(Set.of(PRIVATE, STATIC, FINAL), int.class, COROUTINE_FRAME_IDX, reserved++ + ""));
+        }
+
+        if (model.epilogExceptional != null) {
+            result.add(createInitializedVariable(Set.of(PRIVATE, STATIC, FINAL), int.class, EPILOG_EXCEPTION_IDX, reserved++ + ""));
         }
 
         result.add(createInitializedVariable(Set.of(PRIVATE, STATIC, FINAL), int.class, USER_LOCALS_START_IDX, reserved + ""));
@@ -1823,10 +1824,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 builderContextSensitiveState.add(new CodeVariableElement(Set.of(PRIVATE), generic(ArrayList.class, types.ContinuationLocation), "continuationLocations"));
                 builderContextInsensitiveState.add(builderContextInsensitiveState.size() - 1, new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numYields"));
             }
-
-            if (model.epilog != null) {
-                builderContextInsensitiveState.add(builderContextInsensitiveState.size() - 1, new CodeVariableElement(Set.of(PRIVATE), types.BytecodeLocal, "epilogException"));
-            }
         }
 
         List<CodeVariableElement> builderState = Stream.of(builderContextSensitiveState, builderContextInsensitiveState).flatMap(Collection::stream).collect(Collectors.toList());
@@ -2562,7 +2559,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     serializationElements.writeShort(b, serializationElements.codeCreateLocal);
                     // TODO: serialize slot, name, info
                 });
-                b.startReturn().startNew(bytecodeLocalImpl.asType()).string("numLocals++").end(2);
+                b.startReturn().startNew(bytecodeLocalImpl.getSimpleName().toString()).string("numLocals++").end(2);
                 b.end();
             }
 
@@ -2572,7 +2569,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.string("info");
             b.end(2);
 
-            b.startReturn().startNew(bytecodeLocalImpl.asType()).string("numLocals++").end(2);
+            b.startReturn().startNew(bytecodeLocalImpl.getSimpleName().toString()).string("numLocals++").end(2);
 
             return ex;
         }
@@ -2886,7 +2883,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("sourceLocationStack[sourceLocationSp++] = -1");
 
                     b.statement("doEmitSourceInfo(index, -1, -1)");
-
                     break;
                 case SOURCE_SECTION:
                     b.startIf().string("sourceIndexSp == 0").end().startBlock();
@@ -2905,6 +2901,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case WHILE:
                     if (model.enableTracing) {
                         b.statement("basicBlockBoundary[bci] = true");
+                    }
+                    break;
+                case RETURN:
+                    if (model.epilogReturn != null) {
+                        b.lineCommentf("For return epilog support, Return(op) is rewritten to Return(%s(op))", model.epilogReturn.operation.name);
+                        buildBegin(b, model.epilogReturn.operation);
                     }
                     break;
                 case FINALLY_TRY:
@@ -2983,11 +2985,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.tree(createOperationData("RootData", "language"));
             b.end(2);
 
-            if (model.epilog != null) {
-                b.lineComment("For epilog support, Root(ops...) is rewritten to Root(TryCatch(Block(ops...), <invoke epilog; rethrow>))");
-                b.startAssign("epilogException").startCall("createLocal").end(2);
-                buildBegin(b, model.tryCatchOperation, "epilogException");
+            if (model.epilogExceptional != null) {
+                b.lineComment("For exceptional epilog support, Root(ops...) is rewritten to Root(TryCatch(Block(ops...), <invoke epilog; rethrow>))");
+                buildBegin(b, model.tryCatchOperation, String.format("new %s(%s)", bytecodeLocalImpl.getSimpleName().toString(), EPILOG_EXCEPTION_IDX));
                 buildBegin(b, model.blockOperation);
+            }
+
+            if (model.prolog != null) {
+                // If prolog defined, emit prolog before Root's child.
+                buildEmitOperationInstruction(b, model.prolog.operation);
             }
 
             return ex;
@@ -3191,6 +3197,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
             }
 
+            if (operation.kind == OperationKind.RETURN) {
+                if (model.epilogReturn != null) {
+                    b.lineCommentf("For return epilog support, Return(op) is rewritten to Return(%s(op))", model.epilogReturn.operation.name);
+                    buildEnd(b, model.epilogReturn.operation);
+                }
+            }
+
             b.startStatement().startCall("endOperation");
             b.tree(createOperationConstant(operation));
             b.end(2);
@@ -3301,12 +3314,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     break;
                 case RETURN:
                     b.statement("doEmitLeaves(-1)");
-                    if (model.epilog != null) {
-                        buildEmitInstruction(b, model.dupInstruction);
-                        buildEmitInstruction(b, model.loadConstantInstruction, "constantPool.addConstant(null)");
-                        buildEmitInstruction(b, model.epilog.operation.instruction, "allocateNode()");
-                    }
-
                     buildEmitOperationInstruction(b, operation);
                     break;
                 default:
@@ -3372,18 +3379,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
             }
 
-            if (model.epilog != null) {
-                b.lineComment("For epilog support, Root(ops...) is rewritten to Root(TryCatch(Block(ops...), <invoke epilog; rethrow>))");
+            if (model.epilogExceptional != null) {
+                b.lineComment("For exceptional epilog support, Root(ops...) is rewritten to Root(TryCatch(Block(ops...), <invoke epilog; rethrow>))");
                 buildEnd(b, model.blockOperation);
 
                 buildBegin(b, model.blockOperation);
-                buildBegin(b, model.epilog.operation);
-                // returned value is null
-                buildEmit(b, model.loadConstantOperation, "null");
-                buildEmit(b, model.loadLocalOperation, "epilogException");
-                buildEnd(b, model.epilog.operation);
+                buildBegin(b, model.epilogExceptional.operation);
+                buildEmit(b, model.loadLocalOperation, String.format("new %s(%s)", bytecodeLocalImpl.getSimpleName().toString(), EPILOG_EXCEPTION_IDX));
+                buildEnd(b, model.epilogExceptional.operation);
 
-                buildEmitInstruction(b, model.throwInstruction, "((BytecodeLocalImpl) epilogException).index");
+                buildEmitInstruction(b, model.throwInstruction, EPILOG_EXCEPTION_IDX);
 
                 buildEnd(b, model.blockOperation);
                 buildEnd(b, model.tryCatchOperation);
@@ -3766,7 +3771,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private enum BeforeChildKind {
-            PROLOG,
             TRANSPARENT,
             SHORT_CIRCUIT,
             DEFAULT
@@ -3782,9 +3786,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startSwitch().string("operationStack[operationSp - 1].operation").end().startBlock();
 
             Map<BeforeChildKind, List<OperationModel>> groupedOperations = model.getOperations().stream().filter(OperationModel::hasChildren).collect(Collectors.groupingBy(op -> {
-                if (model.prolog != null && op == model.rootOperation) {
-                    return BeforeChildKind.PROLOG;
-                } else if (op.isTransparent && (op.isVariadic || op.numChildren > 1)) {
+                if (op.isTransparent && (op.isVariadic || op.numChildren > 1)) {
                     return BeforeChildKind.TRANSPARENT;
                 } else if (op.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
                     return BeforeChildKind.SHORT_CIRCUIT;
@@ -3792,19 +3794,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     return BeforeChildKind.DEFAULT;
                 }
             }));
-
-            // If prolog defined, emit prolog before Root's child.
-            if (groupedOperations.containsKey(BeforeChildKind.PROLOG)) {
-                List<OperationModel> operations = groupedOperations.get(BeforeChildKind.PROLOG);
-                assert operations.size() == 1 : "There should only be one root operation.";
-                b.startCase().tree(createOperationConstant(operations.get(0))).end();
-                b.startBlock();
-                b.startIf().string("childIndex == 0").end().startBlock();
-                buildEmitOperationInstruction(b, model.prolog.operation);
-                b.end();
-                b.statement("break");
-                b.end();
-            }
 
             // Pop any value produced by a transparent operation's child.
             if (groupedOperations.containsKey(BeforeChildKind.TRANSPARENT)) {

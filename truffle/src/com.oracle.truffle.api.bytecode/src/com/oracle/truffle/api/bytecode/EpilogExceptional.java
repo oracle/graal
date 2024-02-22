@@ -46,20 +46,23 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Defines a prolog operation that executes before the body of a Root operation.
+ * Defines an exceptional epilog operation. This epilog executes when an uncaught Truffle exception
+ * is thrown (whereas the {@link EpilogReturn return epilog} executes before returning normally).
  * <p>
- * A prolog operation is defined the same way as an {@link Operation}. It has the additional
- * restriction that it must have no operands and must declare a {@code void} return type.
+ * An exceptional epilog operation is defined the same way as an {@link Operation}. It has the
+ * additional restriction that its specializations must take one operand (the exception), which must
+ * be of type {@link com.oracle.truffle.api.exception.AbstractTruffleException} or a subtype. The
+ * return type must also be void.
  * <p>
- * The prolog is guarded by exception intercept methods (e.g.,
- * {@link BytecodeRootNode#interceptInternalException(Throwable, BytecodeNode, int)}) as well as the
- * {@link EpilogExceptional exceptional epilog}, if present.
+ * The exceptional epilog is guarded by exception intercept methods (e.g.,
+ * {@link BytecodeRootNode#interceptInternalException(Throwable, BytecodeNode, int)}), but not
+ * language-level exception handlers.
  *
  * @since 24.1
  * @see EpilogReturn
- * @see EpilogExceptional
+ * @see Prolog
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
-public @interface Prolog {
+public @interface EpilogExceptional {
 }

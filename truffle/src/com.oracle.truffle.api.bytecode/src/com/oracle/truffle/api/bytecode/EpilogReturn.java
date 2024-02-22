@@ -46,23 +46,23 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Defines an epilog operation that executes before exiting a Root operation. The epilog executes
- * before returning a value or throwing an exception out of the current root node (it does not run
- * when a {@link GenerateBytecode#enableYield continuation} is suspended).
+ * Defines a return epilog operation. This epilog executes before returning a value (whereas the
+ * {@link EpilogExceptional exceptional epilog} handles uncaught Truffle exceptions).
  * <p>
- * An epilog operation is defined the same way as an {@link Operation}. It has the additional
- * restriction that it must take two operands: a returned value and a thrown value. Only one of
- * these values will be present for a given invocation, and the other will be null. An epilog
- * operation must also declare a {@code void} return type.
+ * A return epilog operation is defined the same way as an {@link Operation}. It has the additional
+ * restriction that its specializations must take one operand (the returned value) and must return a
+ * value. The return value (which can simply be the input operand) is returned from the root node.
  * <p>
- * An exception thrown by the epilog can be handled by an intercept method (e.g.,
- * {@link BytecodeRootNode#interceptInternalException(Throwable, BytecodeNode, int)}), but not by a
- * language-level exception handler (e.g., a {@code TryCatch} operation).
+ * The return epilog is guarded by exception intercept methods (e.g.,
+ * {@link BytecodeRootNode#interceptInternalException(Throwable, BytecodeNode, int)}) as well as any
+ * language-level exception handlers guarding the return, including the {@link EpilogExceptional
+ * exceptional epilog}, if present.
  *
  * @since 24.1
+ * @see EpilogExceptional
  * @see Prolog
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
-public @interface Epilog {
+public @interface EpilogReturn {
 }
