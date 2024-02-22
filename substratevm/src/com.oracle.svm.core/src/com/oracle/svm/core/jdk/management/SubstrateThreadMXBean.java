@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jdk.management;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
 import java.util.Arrays;
@@ -31,21 +33,19 @@ import java.util.Objects;
 
 import javax.management.ObjectName;
 
-import com.oracle.svm.core.jdk.ThreadMXUtils;
-import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.jdk.ThreadMXUtils;
+import com.oracle.svm.core.jdk.ThreadMXUtils.ThreadInfoConstructionUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicLong;
-import com.oracle.svm.core.jdk.ThreadMXUtils.ThreadInfoConstructionUtils;
 import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 
 import sun.management.Util;
-
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 /**
  * This class provides a partial implementation of {@link com.sun.management.ThreadMXBean} for SVM.
@@ -182,12 +182,12 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
         return getThreadInfo(id, maxDepth, false, false);
     }
 
-    private ThreadInfo getThreadInfo(long id, int maxDepth, boolean lockedMonitors, boolean lockedSynchronizers) {
+    private static ThreadInfo getThreadInfo(long id, int maxDepth, boolean lockedMonitors, boolean lockedSynchronizers) {
         Thread thread = getThreadById(id);
         return getThreadInfo(thread, maxDepth, lockedMonitors, lockedSynchronizers);
     }
 
-    private ThreadInfo getThreadInfo(Thread thread, int maxDepth, boolean lockedMonitors, boolean lockedSynchronizers) {
+    private static ThreadInfo getThreadInfo(Thread thread, int maxDepth, boolean lockedMonitors, boolean lockedSynchronizers) {
         return thread == null ? null : ThreadInfoConstructionUtils.getThreadInfo(thread, maxDepth, lockedMonitors, lockedSynchronizers);
     }
 
