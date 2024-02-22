@@ -607,7 +607,7 @@ public final class JDWPContextImpl implements JDWPContext {
         if (callerRoot instanceof EspressoRootNode) {
             EspressoRootNode espressoRootNode = (EspressoRootNode) callerRoot;
             int bci = (int) readBCIFromFrame(callerRoot, frame);
-            if (bci != -1) {
+            if (bci > -1) {
                 BytecodeStream bs = new BytecodeStream(espressoRootNode.getMethodVersion().getOriginalCode());
                 return bs.nextBCI(bci);
             }
