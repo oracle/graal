@@ -27,10 +27,10 @@ package com.oracle.graal.pointsto.meta;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -485,7 +485,11 @@ public class AnalysisUniverse implements Universe {
     }
 
     public List<AnalysisType> getTypes() {
-        return Collections.unmodifiableList(Arrays.asList(typesById).subList(0, getNextTypeId()));
+        /*
+         * The typesById array can contain null values because the ids from the base layers are
+         * reserved when they are loaded in a new layer.
+         */
+        return Arrays.asList(typesById).subList(0, getNextTypeId()).stream().filter(Objects::nonNull).toList();
     }
 
     public AnalysisType getType(int typeId) {
