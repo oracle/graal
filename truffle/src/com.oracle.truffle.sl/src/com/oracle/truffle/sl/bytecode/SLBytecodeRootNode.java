@@ -47,9 +47,12 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.EpilogExceptional;
+import com.oracle.truffle.api.bytecode.EpilogReturn;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
+import com.oracle.truffle.api.bytecode.Prolog;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
 import com.oracle.truffle.api.bytecode.Variadic;
@@ -59,8 +62,8 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -126,7 +129,15 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
 
     private transient String saved;
 
-    public void executeProlog(VirtualFrame frame) {
+    @Prolog
+    static final class TraceEnter {
+        @Specialization
+        public static void doEnter(@Bind("$root") SLBytecodeRootNode root) {
+            root.traceEnter();
+        }
+    }
+
+    private void traceEnter() {
         if (!TRACE_BYTECODE) {
             return;
         }
@@ -134,10 +145,27 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
             saved = dump();
             printDump(saved);
         }
-
     }
 
-    public void executeEpilog(VirtualFrame frame, Object returnValue, Throwable throwable) {
+    @EpilogReturn
+    static final class TraceReturn {
+        @Specialization
+        public static Object doReturn(Object result, @Bind("$root") SLBytecodeRootNode root) {
+            root.traceExit();
+            return result;
+        }
+    }
+
+    @EpilogExceptional
+    static final class TraceException {
+        @Specialization
+        @SuppressWarnings("unused")
+        public static void doReturn(AbstractTruffleException ex, @Bind("$root") SLBytecodeRootNode root) {
+            root.traceExit();
+        }
+    }
+
+    public void traceExit() {
         if (!TRACE_BYTECODE) {
             return;
         }

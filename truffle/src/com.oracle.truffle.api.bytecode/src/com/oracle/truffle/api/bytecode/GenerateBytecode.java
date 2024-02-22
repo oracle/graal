@@ -169,12 +169,11 @@ public @interface GenerateBytecode {
      * enabled. Automatic root tagging automatically tags each root with {@link RootTag} and
      * {@link RootBodyTag} if the language {@link ProvidedTags provides} it.
      * <p>
-     * Root tagging requires the probe to be notified before the
-     * {@link BytecodeRootNode#executeProlog(VirtualFrame) prolog} is executed. Implementing this
-     * behavior manually is not trivial and not recommended. It is recommended to use automatic root
-     * tagging. For inlining performed by the parser it may be useful to emit custom {@link RootTag
-     * root} tag using the builder methods for inlined methods. This ensures that tools can still
-     * work correctly for inlined calls.
+     * Root tagging requires the probe to be notified before the {@link Prolog prolog} is executed.
+     * Implementing this behavior manually is not trivial and not recommended. It is recommended to
+     * use automatic root tagging. For inlining performed by the parser it may be useful to emit
+     * custom {@link RootTag root} tag using the builder methods for inlined methods. This ensures
+     * that tools can still work correctly for inlined calls.
      *
      * @since 24.1
      * @see #enableRootBodyTagging()

@@ -61,10 +61,10 @@ import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instrumentation;
 import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.bytecode.Prolog;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 
@@ -143,11 +143,15 @@ public class SetTraceFuncTest extends AbstractQuickeningTest {
             super(language, frameDescriptor);
         }
 
-        public void executeProlog(VirtualFrame frame) {
-            if (getLanguage(TraceFunLanguage.class).noTraceFun.isValid()) {
-                return;
+        @Prolog
+        static final class CheckTraceFunOnEnter {
+            @Specialization
+            public static void doProlog(@Bind("$root") SetTraceFuncRootNode root) {
+                if (root.getLanguage(TraceFunLanguage.class).noTraceFun.isValid()) {
+                    return;
+                }
+                root.enableTraceFun();
             }
-            enableTraceFun();
         }
 
         private void enableTraceFun() {
