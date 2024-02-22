@@ -328,7 +328,6 @@ public class TruffleFeature implements InternalFeature {
                     callTree.add(cur.getMethod().format("%H.%n(%p)"));
                     cur = cur.outerFrameState();
                 }
-                callTree.removeLast(); // this method will be b.getMethod
                 neverPartOfCompilationViolations.add(Pair.create(b.getMethod(), String.join(",", callTree)));
             }
         }
@@ -822,8 +821,8 @@ public class TruffleFeature implements InternalFeature {
         if (neverPartOfCompilationViolations.size() > 0) {
             System.out.println("Error: CompilerAsserts.neverPartOfCompilation reachable for runtime compilation from " + neverPartOfCompilationViolations.size() + " places:");
             for (Pair<ResolvedJavaMethod, String> violation : neverPartOfCompilationViolations) {
-                System.out.println("called from");
-                System.out.println("(inlined call path): " + violation.getRight());
+                System.out.println("called from: " + violation.getRight());
+                System.out.println("runtime trace: ");
                 for (String item : runtimeCompilation.getCallTrace(treeInfo, (AnalysisMethod) violation.getLeft())) {
                     System.out.println(" " + item);
                 }
