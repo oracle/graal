@@ -54,7 +54,7 @@ public final class Target_java_lang_Module {
     public native void ensureNativeAccess(Class<?> owner, String methodName, Class<?> currentClass);
 
     @Substitute
-    @BasedOnJDKFile("src/hotspot/share/classfile/modules.cpp#L275-L479")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/share/classfile/modules.cpp#L275-L479")
     private static void defineModule0(Module module, boolean isOpen, String version, String location, Object[] pns) {
         if (Arrays.stream(pns).anyMatch(Objects::isNull)) {
             throw new IllegalArgumentException("Bad package name");
@@ -64,7 +64,7 @@ public final class Target_java_lang_Module {
     }
 
     @Substitute
-    @BasedOnJDKFile("src/hotspot/share/classfile/modules.cpp#L763-L799")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/share/classfile/modules.cpp#L763-L799")
     private static void addReads0(Module from, Module to) {
         if (Objects.isNull(from)) {
             throw new NullPointerException("The from_module is null");
@@ -72,7 +72,7 @@ public final class Target_java_lang_Module {
     }
 
     @Substitute
-    @BasedOnJDKFile("src/hotspot/share/classfile/modules.cpp#L753-L761")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/share/classfile/modules.cpp#L753-L761")
     private static void addExports0(Module from, String pn, Module to) {
         if (Objects.isNull(to)) {
             throw new NullPointerException("The to_module is null");
@@ -83,14 +83,14 @@ public final class Target_java_lang_Module {
     }
 
     @Substitute
-    @BasedOnJDKFile("src/hotspot/share/classfile/modules.cpp#L686-L750")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/share/classfile/modules.cpp#L686-L750")
     private static void addExportsToAll0(Module from, String pn) {
         ModuleUtil.checkFromModuleAndPackageNullability(from, pn);
         ModuleUtil.checkIsPackageContainedInModule(pn, from);
     }
 
     @Substitute
-    @BasedOnJDKFile("src/hotspot/share/classfile/modules.cpp#L869-L918")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/share/classfile/modules.cpp#L869-L918")
     private static void addExportsToAllUnnamed0(Module from, String pn) {
         ModuleUtil.checkFromModuleAndPackageNullability(from, pn);
         if (from.isNamed()) {

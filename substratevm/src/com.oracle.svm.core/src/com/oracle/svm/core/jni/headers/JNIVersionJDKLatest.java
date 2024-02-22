@@ -47,7 +47,7 @@ public final class JNIVersionJDKLatest {
      * gets available, the "value" property of the CConstant annotation below must be removed.
      */
     @CConstant(value = "JNI_VERSION_21")
-    @BasedOnJDKFile("src/java.base/share/native/include/jni.h#L1985-L1996")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/java.base/share/native/include/jni.h#L1985-L1996")
     public static native int JNI_VERSION_LATEST();
 
     // Checkstyle: resume
