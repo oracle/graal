@@ -24,6 +24,10 @@
  */
 package jdk.graal.compiler.nodes.loop;
 
+import static java.lang.Math.addExact;
+import static java.lang.Math.min;
+import static java.lang.Math.multiplyExact;
+import static java.lang.Math.toIntExact;
 import static jdk.graal.compiler.core.common.GraalOptions.LoopMaxUnswitch;
 import static jdk.graal.compiler.core.common.GraalOptions.MaximumDesiredSize;
 import static jdk.graal.compiler.core.common.GraalOptions.MinimumPeelFrequency;
@@ -44,6 +48,15 @@ import static jdk.graal.compiler.nodes.loop.DefaultLoopPolicies.Options.UnrollMa
 
 import java.util.List;
 
+import org.graalvm.collections.EconomicMap;
+
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.util.UnsignedLong;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeBitMap;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.ControlSplitNode;
 import jdk.graal.compiler.nodes.Invoke;
@@ -54,17 +67,9 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
+import jdk.graal.compiler.nodes.debug.ControlFlowAnchorNode;
 import jdk.graal.compiler.nodes.extended.ForeignCall;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
-import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.core.common.cfg.Loop;
-import jdk.graal.compiler.core.common.util.UnsignedLong;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.NodeBitMap;
-import jdk.graal.compiler.nodes.debug.ControlFlowAnchorNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
@@ -391,17 +396,20 @@ public class DefaultLoopPolicies implements LoopPolicies {
      * @return the maximum code size change (in the number of nodes)
      */
     private static int loopMaxCodeSizeChange(LoopEx loop) {
-        StructuredGraph graph = loop.loopBegin().graph();
-        OptionValues options = loop.loopBegin().getOptions();
+        final StructuredGraph graph = loop.loopBegin().graph();
+        final OptionValues options = loop.loopBegin().getOptions();
+        final int remainingGraphSpace = MaximumDesiredSize.getValue(options) - graph.getNodeCount();
 
-        boolean isTrusted = ProfileData.ProfileSource.isTrusted(loop.localFrequencySource());
-        double loopFrequency = isTrusted ? loop.localLoopFrequency() : DefaultLoopFrequency.getValue(options);
-        /* When a loop has a greater local loop frequency we allow a bigger change in code size */
-        int maxDiff = LoopUnswitchTrivial.getValue(options) + (int) (LoopUnswitchFrequencyBoost.getValue(options) * (loopFrequency - 1.0));
-
-        maxDiff = Math.min(maxDiff, LoopUnswitchMaxIncrease.getValue(options));
-        int remainingGraphSpace = MaximumDesiredSize.getValue(options) - graph.getNodeCount();
-        return Math.min(maxDiff, remainingGraphSpace);
+        try {
+            boolean isTrusted = ProfileData.ProfileSource.isTrusted(loop.localFrequencySource());
+            double loopFrequency = isTrusted ? loop.localLoopFrequency() : DefaultLoopFrequency.getValue(options);
+            // When a loop has a greater local loop frequency we allow a bigger change in code size
+            int maxDiff = addExact(LoopUnswitchTrivial.getValue(options), toIntExact(multiplyExact((long) ((double) LoopUnswitchFrequencyBoost.getValue(options)), (long) (loopFrequency - 1.0))));
+            maxDiff = min(maxDiff, LoopUnswitchMaxIncrease.getValue(options));
+            return min(maxDiff, remainingGraphSpace);
+        } catch (ArithmeticException e) {
+            return remainingGraphSpace;
+        }
     }
 
     @Override
