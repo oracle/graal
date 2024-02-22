@@ -51,7 +51,7 @@ public class WasmOptions {
     @Option(help = "A comma-separated list of builtin modules to use.", category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = "[<linkingName>:]<builtinModuleName>,[<linkingName>:]<builtinModuleName>,...")//
     public static final OptionKey<String> Builtins = new OptionKey<>("");
 
-    @Option(help = "The minimal binary size for which to use async parsing.", category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = "[0, inf)")//
+    @Option(help = "The minimal binary size for which to use async parsing. If a negative value is specified, async parsing is never used.", category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = "[0, inf)")//
     public static final OptionKey<Integer> AsyncParsingBinarySize = new OptionKey<>(100_000);
 
     @Option(help = "The stack size in kilobytes to use during async parsing, or zero to use defaults.", category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = "[0, inf)")//

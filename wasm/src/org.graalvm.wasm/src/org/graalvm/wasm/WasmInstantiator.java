@@ -103,7 +103,7 @@ public class WasmInstantiator {
         instance.createLinkActions();
         int binarySize = instance.module().bytecodeLength();
         final int asyncParsingBinarySize = WasmOptions.AsyncParsingBinarySize.getValue(context.environment().getOptions());
-        if (binarySize < asyncParsingBinarySize) {
+        if (binarySize < asyncParsingBinarySize || asyncParsingBinarySize < 0) {
             instantiateCodeEntries(context, instance);
         } else {
             final Runnable parsing = () -> instantiateCodeEntries(context, instance);
