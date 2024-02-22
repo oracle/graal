@@ -26,8 +26,6 @@
 
 package com.oracle.svm.test.jfr.oldobject;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-import org.junit.Assume;
 import org.junit.Test;
 
 public class TestOldObjectSampleEvent extends JfrOldObjectTest {

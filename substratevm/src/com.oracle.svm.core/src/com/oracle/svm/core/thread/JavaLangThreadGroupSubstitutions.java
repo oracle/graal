@@ -81,7 +81,8 @@ class ThreadGroupIdAccessor {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static long getId(Target_java_lang_ThreadGroup that) {
         if (that.injectedId == 0) {
-            that.injectedId = nextID.getAndIncrement();
+            Target_java_lang_ThreadGroup virtualThreadGroup = SubstrateUtil.cast(Target_java_lang_Thread.virtualThreadGroup(), Target_java_lang_ThreadGroup.class);
+            that.injectedId = that == virtualThreadGroup ? JfrThreadRepository.VIRTUAL_THREAD_GROUP_ID : nextID.getAndIncrement();
         }
         return that.injectedId;
     }
