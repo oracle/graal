@@ -245,9 +245,7 @@ class ReferenceOperand extends Operand {
                 if (getType() == thisKlass.getType()) {
                     klass = thisKlass;
                 } else {
-                    try (EspressoLanguage.DisableSingleStepping ignored = thisKlass.getLanguage().disableStepping()) {
-                        klass = thisKlass.getMeta().resolveSymbolOrNull(type, thisKlass.getDefiningClassLoader(), thisKlass.protectionDomain());
-                    }
+                    klass = thisKlass.getMeta().resolveSymbolOrNull(type, thisKlass.getDefiningClassLoader(), thisKlass.protectionDomain());
                 }
             } catch (EspressoException e) {
                 // TODO(garcia) fine grain this catch
