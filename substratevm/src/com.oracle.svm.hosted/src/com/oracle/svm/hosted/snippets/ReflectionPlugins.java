@@ -643,13 +643,22 @@ public final class ReflectionPlugins {
 
         /* Any other object that is not a Class. */
         Object result = snippetReflection.asObject(Object.class, argConstant);
-        if (result != null && ALLOWED_CONSTANT_CLASSES.contains(result.getClass())) {
+        if (result != null && isAllowedConstant(result.getClass())) {
             return result;
         }
         return null;
     }
 
     private final boolean parseOnce = SubstrateOptions.parseOnce();
+
+    private static boolean isAllowedConstant(Class<?> clazz) {
+        for (var allowed : ALLOWED_CONSTANT_CLASSES) {
+            if (allowed.isAssignableFrom(clazz)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     /**
      * This method checks if the element should be intrinsified and returns the cached intrinsic
