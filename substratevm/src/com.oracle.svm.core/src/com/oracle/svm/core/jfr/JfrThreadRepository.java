@@ -126,7 +126,8 @@ public final class JfrThreadRepository implements JfrRepository {
             /* Similar to JfrThreadConstant::serialize in HotSpot. */
             boolean isVirtual = JavaThreads.isVirtual(thread);
             long osThreadId = isVirtual ? 0 : threadId;
-            long threadGroupId = registerThreadGroup(thread, isVirtual);
+            ThreadGroup threadGroup = JavaThreads.getRawThreadGroup(thread);
+            long threadGroupId = registerThreadGroup(threadGroup, isVirtual);
 
             JfrNativeEventWriter.putLong(data, threadId);
             JfrNativeEventWriter.putString(data, thread.getName()); // OS thread name
@@ -148,22 +149,13 @@ public final class JfrThreadRepository implements JfrRepository {
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
-    private long registerThreadGroup(Thread thread, boolean isVirtual) {
-        if (isVirtual) {
-            /* For virtual threads, a fixed thread group id is reserved. */
-            return VIRTUAL_THREAD_GROUP_ID;
-        }
-        ThreadGroup group = JavaThreads.getRawThreadGroup(thread);
-        return registerThreadGroup0(group);
-    }
-
-    @Uninterruptible(reason = "Epoch must not change while in this method.")
-    private long registerThreadGroup0(ThreadGroup threadGroup) {
+    private long registerThreadGroup(ThreadGroup threadGroup, boolean isVirtual) {
         if (threadGroup == null) {
             return 0;
         }
 
-        long threadGroupId = JavaLangThreadGroupSubstitutions.getThreadGroupId(threadGroup);
+        /* For virtual threads, a fixed thread group id is reserved. */
+        long threadGroupId = isVirtual ? VIRTUAL_THREAD_GROUP_ID : JavaLangThreadGroupSubstitutions.getThreadGroupId(threadGroup);
         JfrVisited jfrVisited = StackValue.get(JfrVisited.class);
         jfrVisited.setId(threadGroupId);
         jfrVisited.setHash(UninterruptibleUtils.Long.hashCode(threadGroupId));
@@ -179,7 +171,7 @@ public final class JfrThreadRepository implements JfrRepository {
         }
 
         ThreadGroup parentThreadGroup = JavaLangThreadGroupSubstitutions.getParentThreadGroupUnsafe(threadGroup);
-        long parentThreadGroupId = registerThreadGroup0(parentThreadGroup);
+        long parentThreadGroupId = registerThreadGroup(parentThreadGroup, isVirtual);
 
         JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
         JfrNativeEventWriterDataAccess.initialize(data, epochData.threadGroupBuffer);
