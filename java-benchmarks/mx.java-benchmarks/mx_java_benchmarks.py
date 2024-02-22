@@ -468,20 +468,32 @@ class BaseQuarkusRegistryBenchmark(BaseQuarkusBenchmarkSuite, mx_sdk_benchmark.B
 
 mx_benchmark.add_bm_suite(BaseQuarkusRegistryBenchmark())
 
+_mushopConfig = {
+    'order': ['--initialize-at-build-time=io.netty.handler.codec.http.cookie.ServerCookieEncoder,java.sql.DriverInfo,kotlin.coroutines.intrinsics.CoroutineSingletons'],
+    'user': ['--initialize-at-build-time=io.netty.handler.codec.http.cookie.ServerCookieEncoder,java.sql.DriverInfo'],
+    'payment': ['--initialize-at-build-time=io.netty.handler.codec.http.cookie.ServerCookieEncoder']
+}
+
 class BaseMicronautMuShopBenchmark(BaseMicronautBenchmarkSuite, mx_sdk_benchmark.BaseMicroserviceBenchmarkSuite):
     """
-    This benchmark suite is NOT yet fully functional - there is not load for measuring its runtime performance.
-    It is only useful to collect image build time metrics.
+    This benchmark suite is used to measure the precision and performance of the static analysis in Native Image,
+    so there is no runtime load, that's why the default stage is just image.
     """
 
     def version(self):
-        return "0.0.1"
+        return "0.0.2"
 
     def name(self):
         return "mushop"
 
     def benchmarkList(self, bmSuiteArgs):
         return ["user", "order", "payment"]
+
+    def default_stages(self):
+        return ['image']
+
+    def run(self, benchmarks, bmSuiteArgs):
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
@@ -496,11 +508,11 @@ class BaseMicronautMuShopBenchmark(BaseMicronautBenchmarkSuite, mx_sdk_benchmark
         return mx.library("MICRONAUT_MUSHOP_" + self.version(), True).get_path(True)
 
     def extra_image_build_argument(self, benchmark, args):
-        return [
+        return ([
             '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
             '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.configure=ALL-UNNAMED',
-            '--add-exports=org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED'
-        ] + super(BaseMicronautBenchmarkSuite,self).extra_image_build_argument(benchmark, args)
+            '--add-exports=org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED']
+                + _mushopConfig[benchmark] + super(BaseMicronautBenchmarkSuite,self).extra_image_build_argument(benchmark, args))
 
 mx_benchmark.add_bm_suite(BaseMicronautMuShopBenchmark())
 
