@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.thread;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
-
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.security.AccessControlContext;
 import java.security.AccessController;
@@ -113,15 +111,14 @@ public final class JavaThreads {
      * code does (e.g., the method below does not check for virtual threads or
      * {@code Thread.isTerminated()}).
      */
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static ThreadGroup getRawThreadGroup(Thread thread) {
-        if (isVirtual(thread)) {
-            return Target_java_lang_Thread.virtualThreadGroup();
-        } else {
-            Target_java_lang_Thread t = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
-            Target_java_lang_Thread_FieldHolder holder = t.holder;
-            return holder != null ? holder.group : null;
+        Target_java_lang_Thread t = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
+        Target_java_lang_Thread_FieldHolder holder = t.holder;
+        if (holder != null) {
+            return holder.group;
         }
+        return null;
     }
 
     /**
