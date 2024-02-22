@@ -66,6 +66,15 @@ To install and use Oracle GraalVM in your DevOps Build Pipeline, update your bui
 
 Here is an example of a complete [build specification file](https://github.com/oracle-devrel/oci-devops-examples/blob/main/oci-build-examples/oci_devops_build_with_graalenterprise/build_spec_oracle_graalvm_jdk20.yaml).
 
+Oracle GraalVM provides more features, each of which can be installed as an add-on.
+Use the `yum list` command to get a list of the available RPMs for your installation.
+For instance, for Oracle GraalVM for JDK 22, run:
+
+```shell
+yum list graalvm-22*
+...
+```
+
 To try this feature out, use the sample project: [Using Oracle GraalVM in OCI DevOps Build Pipelines](https://github.com/oracle-devrel/oci-devops-examples/tree/main/oci-build-examples/oci_devops_build_with_graalenterprise). 
 It describes how to set up Oracle GraalVM in OCI DevOps service, create a Build Pipeline, add build stages, and so on.
 

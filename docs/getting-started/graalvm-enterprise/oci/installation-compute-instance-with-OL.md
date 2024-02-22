@@ -17,7 +17,7 @@ To replicate the steps in this guide, [create a Compute instance and connect to 
 ## Install Oracle GraalVM
 
 For convenience, Oracle GraalVM RPMs are available in the Oracle YUM repository.
-RPMs for Oracle GraalVM for JDK 17, Oracle GraalVM for JDK 21, and Oracle GraalVM for JDK 22 are available with the package names `graalvm-17-native-image`, `graalvm-21-native-image`, and `graalvm-22-native-image`, respectively.
+RPMs for Oracle GraalVM for JDK 17, JDK 21, and JDK 22 are available with the package names `graalvm-17-native-image`, `graalvm-21-native-image`, and `graalvm-22-native-image`, respectively.
 These Oracle GraalVM distributions include a JDK and Natime Image.
 Each Oracle GraalVM RPM is self-contained and all required dependencies will be automatically resolved during the installation.
 

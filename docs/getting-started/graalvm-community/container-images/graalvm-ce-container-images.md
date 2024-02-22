@@ -11,12 +11,11 @@ To support container-based development, GraalVM Community Edition container imag
 
 ## Repositories
 
-There are different GraalVM Community Edition container images provided depending on the architecture and the Java version.
-The container image repositories for the latest GraalVM versions (GraalVM for JDK 17, GraalVM for JDK 21, and GraalVM for JDK 22) have a `-community` suffix. 
+There are different GraalVM Community Edition container images provided depending on the architecture and the Java version, and have `-community` as part of their names.
 These are: **native-image-community**, **jdk-community**, **truffleruby-community**, **nodejs-community**, and **graalpy-community**.
 The container images are multi-arch, for AMD64 and AArch64 processor architectures, with a choice of Oracle Linux versions 7, 8, or 9.
 
-GraalVM is installed in `/usr/lib64/graalvm/graalvm-java<$FeatureVersion>` where `<$FeatureVersion>` is `17`, `21`, `22`, etc. 
+GraalVM is installed in `/usr/lib64/graalvm/graalvm-java<$FeatureVersion>` where `<$FeatureVersion>` is `17`, `21`, `22`, etc.
 For instance, GraalVM for JDK 22 is installed in `/usr/lib64/graalvm/graalvm-java22`. 
 All binaries, including `java`, `javac`, `native-image`, and other binaries are available as global commands via the `alternatives` command.
 
@@ -33,7 +32,7 @@ $version[-muslib(for native image only)][-$platform][-$buildnumber]
 
 The following tags are listed from the most-specific tag (at the top) to the least-specific tag (at the bottom). 
 The most-specific tag is unique and always points to the same image, while the less-specific tags point to newer image variants over time.
-
+For example:
 ```
 21.0.0-ol9-20230919
 21.0.0-ol9

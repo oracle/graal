@@ -30,7 +30,7 @@ The GraalVM Polyglot API lets you embed and run code from guest languages in JVM
 Throughout this section, you will learn how to create a host application in Java that runs on GraalVM and directly calls a guest language.
 You can use the tabs beneath each code example to choose between JavaScript, R, Ruby, and Python.
 
-> Note: The usage description for polyglot embeddings was revised with the GraalVM for JDK 21 (23.1.1) release. If you are still using an older GraalVM version, ensure the correct version of the documentation is displayed. More information on the change can be found in the [release notes](https://www.graalvm.org/release-notes/JDK_21/).
+> Note: The usage description for polyglot embeddings was revised with the GraalVM for JDK 22 (24.0.0) release. If you are still using a GraalVM version older than 23.1.x, ensure the correct version of the documentation is displayed. More information on the change can be found in the [release notes](https://www.graalvm.org/release-notes/JDK_21/#graalvm-for-jdk-21).
 
 ## Dependency Setup
 
@@ -44,13 +44,13 @@ Here is an example Maven dependency setup that you can put into your project:
 <dependency> 
 	<groupId>org.graalvm.polyglot</groupId> 
 	<artifactId>polyglot</artifactId> 
-	<version>23.1.1</version> 
+	<version>24.0.0</version> 
 </dependency>
 <dependency> 
 	<groupId>org.graalvm.polyglot</groupId> 
 	<!-- Select language: js, ruby, python, java, llvm, wasm, languages-->
 	<artifactId>js</artifactId> 
-	<version>23.1.1</version> 
+	<version>24.0.0</version> 
 	<type>pom</type>
 </dependency>
 <!-- add additional languages if needed -->
@@ -58,7 +58,7 @@ Here is an example Maven dependency setup that you can put into your project:
 	<groupId>org.graalvm.polyglot</groupId> 
 	<!-- Select tools: profiler, inspect, coverage, dap, tools -->
 	<artifactId>tools</artifactId> 
-	<version>23.1.1</version> 
+	<version>24.0.0</version> 
 	<type>pom</type>
 </dependency>
 <!-- add specific tools if needed -->
@@ -694,13 +694,13 @@ For example, a dependency on isolated JavaScript can be configured by adding a M
 <dependency>
     <groupId>org.graalvm.polyglot</groupId>
     <artifactId>polyglot</artifactId>
-    <version>23.1.1</version>
+    <version>24.0.0</version>
     <type>jar</type>
 </dependency>
 <dependency>
     <groupId>org.graalvm.polyglot</groupId>
     <artifactId>js-isolate</artifactId>
-    <version>23.1.1</version>
+    <version>24.0.0</version>
     <type>pom</type>
 </dependency>
 ```
@@ -733,7 +733,7 @@ Currently, we support the following languages as polyglot isolates:
 
 | Language.                                     | Polyglot Isolate Support                         |
 |-----------------------------------------------|--------------------------------------------------|
-| JavaScript (`js-isolate`)                     | Supported with version 23.1                      |
+| JavaScript (`js-isolate`)                     | Supported starting from version 23.1             |
 
 
 We plan to add support for more languages in future versions.

@@ -24,9 +24,10 @@ GraalVM includes a version of the HotSpot JVM that supports JVMCI.
 
 The Graal compiler provides optimized performance for programs running on the JVM through unique approaches to code analysis and optimization.
 It includes multiple optimization algorithms (called “Phases”), like aggressive inlining, polymorphic inlining, and others. 
-Find some of the platform-independent compiler optimizations in GraalVM Community Edition [here](../../../compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/core/phases/CEOptimization.java).
+Find some of the platform-independent compiler optimizations in GraalVM Community Edition [here]
+(https://github.com/oracle/graal/blob/master/compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/core/phases/CEOptimization.java){:target="_blank"}.
 
-The Graal compiler can bring performance advantages for highly-abstracted programs. For example, it includes a [partial-escape-analysis optimization](../../../compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/core/phases/CEOptimization.java) that can remove costly allocations of certain objects. 
+The Graal compiler can bring performance advantages for highly-abstracted programs. For example, it includes a [partial-escape-analysis optimization](https://github.com/oracle/graal/blob/master/compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/core/phases/CEOptimization.java#L176){:target="_blank"} that can remove costly allocations of certain objects. 
 This optimization determines when a new object is accessible outside a compilation unit and only allocates it on paths that "escape" the compilation unit (e.g. the object is passed as a parameter, stored in a field, or returned from a method). This can greatly improve performance of an application by reducing the number of heap allocations. 
 Code using more modern Java features like Streams or Lambdas will see greater speedups as this type of code involves a significant number of such non- or partially-escaping objects. Code that is bound by things like I/O or memory allocations that cannot be removed by the compiler will see less improvement. 
 For more information on performance tuning, refer to [Compiler Configuration on JVM](Options.md).
