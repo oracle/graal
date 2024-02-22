@@ -30,10 +30,8 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
-import org.junit.Assume;
 import org.junit.Test;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.jfr.EventType;
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
@@ -47,7 +45,6 @@ public class TestMirrorEvents extends JfrRecordingTest {
 
     @Test
     public void test() throws Throwable {
-        Assume.assumeFalse("Currently broken on JDK 23+ (GR-51526)", JavaVersionUtil.JAVA_SPEC >= 23);
         String[] events = new String[]{"jdk.ThreadSleep", "jdk.VirtualThreadStart", "jdk.VirtualThreadEnd"};
         Recording recording = startRecording(events);
 
