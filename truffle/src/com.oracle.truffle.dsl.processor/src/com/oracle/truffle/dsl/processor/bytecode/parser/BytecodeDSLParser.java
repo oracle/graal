@@ -845,7 +845,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
     private AnnotationMirror findOperationAnnotation(BytecodeDSLModel model, TypeElement typeElement) {
         AnnotationMirror foundMirror = null;
         TypeMirror foundType = null;
-        for (TypeMirror annotationType : List.of(types.Operation, types.Instrumentation, types.Prolog, types.Epilog)) {
+        for (TypeMirror annotationType : List.of(types.Operation, types.Instrumentation, types.Prolog, types.EpilogReturn, types.EpilogExceptional)) {
             AnnotationMirror annotationMirror = ElementUtils.findAnnotationMirror(typeElement, annotationType);
             if (annotationMirror == null) {
                 continue;

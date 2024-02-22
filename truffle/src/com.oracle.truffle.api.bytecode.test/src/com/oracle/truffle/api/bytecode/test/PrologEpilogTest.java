@@ -67,7 +67,8 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
-import com.oracle.truffle.api.bytecode.Epilog;
+import com.oracle.truffle.api.bytecode.EpilogReturn;
+import com.oracle.truffle.api.bytecode.EpilogExceptional;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.Prolog;
@@ -84,7 +85,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
 @RunWith(Parameterized.class)
-public class PrologEpilogTest {
+public class PrologEpilogTest extends AbstractQuickeningTest {
     @Parameters(name = "{0}")
     public static List<Object[]> getParameters() {
         return List.of(new Object[]{false}, new Object[]{true});
@@ -118,7 +119,6 @@ public class PrologEpilogTest {
                     return buffer.readUTF();
                 default:
                     throw new AssertionError("bad code " + code);
-
             }
         }
     };
@@ -245,7 +245,29 @@ public class PrologEpilogTest {
     }
 
     @Test
+    public void testBoxingEliminationInEpilog() {
+        PrologEpilogBytecodeNode root = parseNode(b -> {
+            // @formatter:off
+            b.beginRoot(null);
+            b.beginReturn();
+            b.emitLoadArgument(0);
+            b.endReturn();
+            b.endRoot();
+            // @formatter:on
+        });
+
+        assertQuickenings(root, 0, 0);
+        assertEquals(42, root.getCallTarget().call(42));
+        assertQuickenings(root, 2, 1);
+        assertEquals("foo", root.getCallTarget().call("foo"));
+        assertQuickenings(root, 5, 2);
+        assertEquals(42, root.getCallTarget().call(42));
+        assertQuickenings(root, 5, 2); // no change
+    }
+
+    @Test
     public void testSimpleThrow() {
+        // throw "something went wrong"
         PrologEpilogBytecodeNode root = parseNode(b -> {
             b.beginRoot(null);
             b.beginThrowException();
@@ -267,6 +289,7 @@ public class PrologEpilogTest {
 
     @Test
     public void testThrowInReturn() {
+        // return { throw "something went wrong"; arg0 }
         PrologEpilogBytecodeNode root = parseNode(b -> {
             b.beginRoot(null);
             b.beginReturn();
@@ -292,7 +315,8 @@ public class PrologEpilogTest {
     }
 
     @Test
-    public void testThrowInProlog() {
+    public void testThrowInternalErrorInProlog() {
+        // internal exceptions in the prolog just bubble up
         PrologEpilogBytecodeNode root = parseNode(b -> {
             b.beginRoot(null);
             b.beginReturn();
@@ -300,7 +324,7 @@ public class PrologEpilogTest {
             b.endReturn();
             b.endRoot();
         });
-        root.throwInProlog = true;
+        root.throwInProlog = new RuntimeException("internal error");
 
         try {
             root.getCallTarget().call(42);
@@ -315,7 +339,8 @@ public class PrologEpilogTest {
     }
 
     @Test
-    public void testThrowInRegularEpilog() {
+    public void testThrowInternalErrorInReturnEpilog() {
+        // internal exceptions in the return epilog just bubble up
         PrologEpilogBytecodeNode root = parseNode(b -> {
             b.beginRoot(null);
             b.beginReturn();
@@ -323,7 +348,7 @@ public class PrologEpilogTest {
             b.endReturn();
             b.endRoot();
         });
-        root.throwInEpilog = true;
+        root.throwInReturnEpilog = new RuntimeException("internal error");
 
         try {
             root.getCallTarget().call(42);
@@ -338,7 +363,8 @@ public class PrologEpilogTest {
     }
 
     @Test
-    public void testThrowInExceptionalEpilog() {
+    public void testThrowInternalErrorInExceptionalEpilog() {
+        // internal exceptions in the exceptional epilog just bubble up
         PrologEpilogBytecodeNode root = parseNode(b -> {
             b.beginRoot(null);
             b.beginThrowException();
@@ -346,7 +372,7 @@ public class PrologEpilogTest {
             b.endThrowException();
             b.endRoot();
         });
-        root.throwInEpilog = true;
+        root.throwInExceptionalEpilog = new RuntimeException("internal error");
 
         try {
             root.getCallTarget().call(42);
@@ -360,16 +386,88 @@ public class PrologEpilogTest {
         assertTrue(root.internalExceptionIntercepted);
     }
 
+    @Test
+    public void testThrowTruffleExceptionInProlog() {
+        // truffle exceptions in the prolog are handled by the exceptional epilog
+        PrologEpilogBytecodeNode root = parseNode(b -> {
+            b.beginRoot(null);
+            b.beginReturn();
+            b.emitLoadArgument(0);
+            b.endReturn();
+            b.endRoot();
+        });
+        root.throwInProlog = new MyException("truffle exception");
+
+        try {
+            root.getCallTarget().call(42);
+            fail("exception expected");
+        } catch (RuntimeException ex) {
+        }
+
+        assertNull(root.argument);
+        assertNull(root.returnValue);
+        assertEquals("truffle exception", root.thrownValue);
+        assertTrue(!root.internalExceptionIntercepted);
+    }
+
+    @Test
+    public void testThrowTruffleExceptionInReturnEpilog() {
+        // truffle exceptions in the return epilog are handled by the exceptional epilog
+        PrologEpilogBytecodeNode root = parseNode(b -> {
+            b.beginRoot(null);
+            b.beginReturn();
+            b.emitLoadArgument(0);
+            b.endReturn();
+            b.endRoot();
+        });
+        root.throwInReturnEpilog = new MyException("truffle exception");
+
+        try {
+            root.getCallTarget().call(42);
+            fail("exception expected");
+        } catch (RuntimeException ex) {
+        }
+
+        assertEquals(42, root.argument);
+        assertNull(root.returnValue);
+        assertEquals("truffle exception", root.thrownValue);
+        assertTrue(!root.internalExceptionIntercepted);
+    }
+
+    @Test
+    public void testThrowTruffleExceptionInExceptionalEpilog() {
+        // truffle exceptions in the exceptional epilog just bubble up
+        PrologEpilogBytecodeNode root = parseNode(b -> {
+            b.beginRoot(null);
+            b.beginThrowException();
+            b.emitLoadConstant("something went wrong");
+            b.endThrowException();
+            b.endRoot();
+        });
+        root.throwInExceptionalEpilog = new MyException("truffle exception");
+
+        try {
+            root.getCallTarget().call(42);
+            fail("exception expected");
+        } catch (RuntimeException ex) {
+        }
+
+        assertEquals(42, root.argument);
+        assertNull(root.returnValue);
+        assertNull(root.thrownValue);
+        assertTrue(!root.internalExceptionIntercepted);
+    }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableSerialization = true)
-abstract class PrologEpilogBytecodeNode extends RootNode implements BytecodeRootNode {
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableSerialization = true, boxingEliminationTypes = {int.class})
+abstract class PrologEpilogBytecodeNode extends DebugBytecodeRootNode implements BytecodeRootNode {
     transient Object argument = null;
     transient Object returnValue = null;
     transient Object thrownValue = null;
 
-    transient boolean throwInProlog = false;
-    transient boolean throwInEpilog = false;
+    transient RuntimeException throwInProlog = null;
+    transient RuntimeException throwInReturnEpilog = null;
+    transient RuntimeException throwInExceptionalEpilog = null;
     transient boolean internalExceptionIntercepted = false;
 
     protected PrologEpilogBytecodeNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
@@ -380,28 +478,42 @@ abstract class PrologEpilogBytecodeNode extends RootNode implements BytecodeRoot
     public static final class StoreFirstArg {
         @Specialization
         public static void doStoreFirstArg(VirtualFrame frame, @Bind("$root") PrologEpilogBytecodeNode root) {
-            if (root.throwInProlog) {
-                throw new RuntimeException("prolog threw");
+            if (root.throwInProlog != null) {
+                throw root.throwInProlog;
             }
             root.argument = frame.getArguments()[0];
         }
     }
 
-    @Epilog
+    @EpilogReturn
     public static final class StoreReturnValue {
         @Specialization
-        public static void doStoreReturnValue(Object returnValue, Object throwable,
-                        @Bind("$root") PrologEpilogBytecodeNode root) {
-            if (root.throwInEpilog) {
-                throw new RuntimeException("epilog threw");
+        public static int doStoreReturnValueBoxingEliminated(int returnValue, @Bind("$root") PrologEpilogBytecodeNode root) {
+            if (root.throwInReturnEpilog != null) {
+                throw root.throwInReturnEpilog;
             }
-            if (throwable != null) {
-                if (throwable instanceof Exception ex) {
-                    root.thrownValue = ex.getMessage();
-                }
-            } else {
-                root.returnValue = returnValue;
+            root.returnValue = returnValue;
+            return returnValue;
+        }
+
+        @Specialization
+        public static Object doStoreReturnValue(Object returnValue, @Bind("$root") PrologEpilogBytecodeNode root) {
+            if (root.throwInReturnEpilog != null) {
+                throw root.throwInReturnEpilog;
             }
+            root.returnValue = returnValue;
+            return returnValue;
+        }
+    }
+
+    @EpilogExceptional
+    public static final class StoreExceptionalValue {
+        @Specialization
+        public static void doStoreExceptionalValue(AbstractTruffleException exception, @Bind("$root") PrologEpilogBytecodeNode root) {
+            if (root.throwInExceptionalEpilog != null) {
+                throw root.throwInExceptionalEpilog;
+            }
+            root.thrownValue = exception.getMessage();
         }
     }
 
@@ -467,19 +579,37 @@ abstract class DuplicatePrologEpilogErrorNode extends RootNode implements Byteco
         }
     }
 
-    @Epilog
+    @EpilogReturn
     public static final class Epilog1 {
         @Specialization
-        @SuppressWarnings("unused")
-        public static void doEpilog(Object returnValue, Object exceptionValue) {
+        public static Object doEpilog(Object returnValue) {
+            return returnValue;
         }
     }
 
-    @ExpectError("Epilog1 is already annotated with @Epilog. A Bytecode DSL class can only declare one epilog.")
-    @Epilog
+    @ExpectError("Epilog1 is already annotated with @EpilogReturn. A Bytecode DSL class can only declare one return epilog.")
+    @EpilogReturn
     public static final class Epilog2 {
         @Specialization
-        public static void doEpilog() {
+        public static Object doEpilog(Object returnValue) {
+            return returnValue;
+        }
+    }
+
+    @EpilogExceptional
+    public static final class ExceptionalEpilog1 {
+        @Specialization
+        @SuppressWarnings("unused")
+        public static void doEpilog(AbstractTruffleException ex) {
+        }
+    }
+
+    @ExpectError("ExceptionalEpilog1 is already annotated with @EpilogExceptional. A Bytecode DSL class can only declare one exceptional epilog.")
+    @EpilogExceptional
+    public static final class ExceptionalEpilog2 {
+        @Specialization
+        @SuppressWarnings("unused")
+        public static void doEpilog(AbstractTruffleException ex) {
         }
     }
 }
@@ -490,7 +620,7 @@ abstract class BadPrologErrorNode extends RootNode implements BytecodeRootNode {
         super(language, frameDescriptor);
     }
 
-    @ExpectError("A @Prolog annotated operation cannot have any operands. Remove the operands to resolve this.")
+    @ExpectError("A @Prolog operation cannot have any operands. Remove the operands to resolve this.")
     @Prolog
     public static final class BadProlog {
         @Specialization
@@ -506,7 +636,7 @@ abstract class BadPrologErrorNode2 extends RootNode implements BytecodeRootNode 
         super(language, frameDescriptor);
     }
 
-    @ExpectError("A @Prolog annotated operation cannot have a return value. Use void as the return type.")
+    @ExpectError("A @Prolog operation cannot have a return value. Use void as the return type.")
     @Prolog
     public static final class BadProlog {
         @Specialization
@@ -522,12 +652,13 @@ abstract class BadEpilogErrorNode extends RootNode implements BytecodeRootNode {
         super(language, frameDescriptor);
     }
 
-    @ExpectError("An @Epilog annotated operation must have exactly two operands for a returned value and an exception. Update all specializations to take two operands to resolve this.")
-    @Epilog
+    @ExpectError("An @EpilogReturn operation must have exactly one operand for the returned value. Update all specializations to take one operand to resolve this.")
+    @EpilogReturn
     public static final class BadEpilog {
         @Specialization
         @SuppressWarnings("unused")
-        public static void doEpilog(int x) {
+        public static int doEpilog(int x, int y) {
+            return x;
         }
     }
 }
@@ -538,54 +669,85 @@ abstract class BadEpilogErrorNode2 extends RootNode implements BytecodeRootNode 
         super(language, frameDescriptor);
     }
 
-    @ExpectError("An @Epilog annotated operation must declare a specialization that takes Object for its first operand (the returned value will be null when an exception is thrown).")
-    @Epilog
+    @ExpectError("An @EpilogReturn operation must have a return value. The result is returned from the root node instead of the original return value. Update all specializations to return a value to resolve this.")
+    @EpilogReturn
     public static final class BadEpilog {
         @Specialization
         @SuppressWarnings("unused")
-        public static void doEpilog(int x, Object exception) {
+        public static void doEpilog(int x) {
         }
 
         @Specialization
         @SuppressWarnings("unused")
-        public static void doEpilog2(String x, Object exception) {
+        public static void doEpilog2(String x) {
         }
     }
 }
 
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
-abstract class BadEpilogErrorNode3 extends RootNode implements BytecodeRootNode {
-    protected BadEpilogErrorNode3(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+abstract class BadExceptionalEpilogErrorNode1 extends RootNode implements BytecodeRootNode {
+    protected BadExceptionalEpilogErrorNode1(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
-    @ExpectError("An @Epilog annotated operation must declare a specialization that takes Object for its second operand (the exception will be null when the root node returns normally).")
-    @Epilog
+    @ExpectError("An @EpilogExceptional operation must have exactly one operand for the exception. Update all specializations to take one operand to resolve this.")
+    @EpilogExceptional
     public static final class BadEpilog {
         @Specialization
         @SuppressWarnings("unused")
-        public static void doEpilog(Object x, RuntimeException exception) {
-        }
-
-        @Specialization
-        @SuppressWarnings("unused")
-        public static void doEpilog2(Object x, InternalError exception) {
+        public static void doEpilog(Object x, Object y) {
         }
     }
 }
 
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
-abstract class BadEpilogErrorNode4 extends RootNode implements BytecodeRootNode {
-    protected BadEpilogErrorNode4(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+abstract class BadExceptionalEpilogErrorNode2 extends RootNode implements BytecodeRootNode {
+    protected BadExceptionalEpilogErrorNode2(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
-    @ExpectError("An @Epilog annotated operation cannot have a return value. Use void as the return type.")
-    @Epilog
+    @ExpectError({
+                    "The operand type for doObject must be AbstractTruffleException or a subclass.",
+                    "The operand type for doRuntimeException must be AbstractTruffleException or a subclass.",
+                    "The operand type for doString must be AbstractTruffleException or a subclass.",
+                    "The operand type for doPrimitive must be AbstractTruffleException or a subclass."
+    })
+    @EpilogExceptional
     public static final class BadEpilog {
         @Specialization
         @SuppressWarnings("unused")
-        public static int doEpilog(Object x, Object exception) {
+        public static void doObject(Object exception) {
+        }
+
+        @Specialization
+        @SuppressWarnings("unused")
+        public static void doRuntimeException(RuntimeException exception) {
+        }
+
+        @Specialization
+        @SuppressWarnings("unused")
+        public static void doString(String exception) {
+        }
+
+        @Specialization
+        @SuppressWarnings("unused")
+        public static void doPrimitive(int exception) {
+        }
+    }
+}
+
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+abstract class BadExceptionalEpilogErrorNode3 extends RootNode implements BytecodeRootNode {
+    protected BadExceptionalEpilogErrorNode3(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        super(language, frameDescriptor);
+    }
+
+    @ExpectError("An @EpilogExceptional operation cannot have a return value. Use void as the return type.")
+    @EpilogExceptional
+    public static final class BadEpilog {
+        @Specialization
+        @SuppressWarnings("unused")
+        public static int doObject(AbstractTruffleException exception) {
             return 42;
         }
     }

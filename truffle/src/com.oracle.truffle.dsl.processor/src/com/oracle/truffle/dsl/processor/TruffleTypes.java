@@ -363,7 +363,8 @@ public class TruffleTypes {
     public static final String ContinuationLocation_Name = "com.oracle.truffle.api.bytecode.ContinuationLocation";
     public static final String ContinuationResult_Name = "com.oracle.truffle.api.bytecode.ContinuationResult";
     public static final String ContinuationRootNode_Name = "com.oracle.truffle.api.bytecode.ContinuationRootNode";
-    public static final String Epilog_Name = "com.oracle.truffle.api.bytecode.Epilog";
+    public static final String EpilogReturn_Name = "com.oracle.truffle.api.bytecode.EpilogReturn";
+    public static final String EpilogExceptional_Name = "com.oracle.truffle.api.bytecode.EpilogExceptional";
     public static final String GenerateBytecode_Name = "com.oracle.truffle.api.bytecode.GenerateBytecode";
     public static final String GenerateBytecodeTestVariants_Name = "com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants";
     public static final String GenerateBytecodeTestVariants_Variant_Name = "com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant";
@@ -413,7 +414,8 @@ public class TruffleTypes {
     public final DeclaredType ContinuationLocation = c.getDeclaredTypeOptional(ContinuationLocation_Name);
     public final DeclaredType ContinuationResult = c.getDeclaredTypeOptional(ContinuationResult_Name);
     public final DeclaredType ContinuationRootNode = c.getDeclaredTypeOptional(ContinuationRootNode_Name);
-    public final DeclaredType Epilog = c.getDeclaredTypeOptional(Epilog_Name);
+    public final DeclaredType EpilogReturn = c.getDeclaredTypeOptional(EpilogReturn_Name);
+    public final DeclaredType EpilogExceptional = c.getDeclaredTypeOptional(EpilogExceptional_Name);
     public final DeclaredType GenerateBytecode = c.getDeclaredTypeOptional(GenerateBytecode_Name);
     public final DeclaredType GenerateBytecodeTestVariants = c.getDeclaredTypeOptional(GenerateBytecodeTestVariants_Name);
     public final DeclaredType GenerateBytecodeTestVariant_Variant = c.getDeclaredTypeOptional(GenerateBytecodeTestVariants_Variant_Name);

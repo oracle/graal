@@ -136,7 +136,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public OperationModel loadConstantOperation;
     public OperationModel loadLocalOperation;
     public CustomOperationModel prolog = null;
-    public CustomOperationModel epilog = null;
+    public CustomOperationModel epilogReturn = null;
+    public CustomOperationModel epilogExceptional = null;
 
     public InstructionModel popInstruction;
     public InstructionModel dupInstruction;
@@ -381,15 +382,24 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                 return null;
             }
             prolog = operation;
-        } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Epilog)) {
+        } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.EpilogReturn)) {
             op.setInternal();
-            if (epilog != null) {
-                addError(typeElement, "%s is already annotated with @%s. A Bytecode DSL class can only declare one epilog.", getSimpleName(epilog.getTemplateType()),
-                                getSimpleName(types.Epilog));
+            if (epilogReturn != null) {
+                addError(typeElement, "%s is already annotated with @%s. A Bytecode DSL class can only declare one return epilog.", getSimpleName(epilogReturn.getTemplateType()),
+                                getSimpleName(types.EpilogReturn));
                 return null;
             }
-            epilog = operation;
+            epilogReturn = operation;
+        } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.EpilogExceptional)) {
+            op.setInternal();
+            if (epilogExceptional != null) {
+                addError(typeElement, "%s is already annotated with @%s. A Bytecode DSL class can only declare one exceptional epilog.", getSimpleName(epilogExceptional.getTemplateType()),
+                                getSimpleName(types.EpilogExceptional));
+                return null;
+            }
+            epilogExceptional = operation;
         }
+
         return operation;
     }
 

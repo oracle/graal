@@ -513,7 +513,7 @@ public class InstrumentationTest extends AbstractQuickeningTest {
             }
         }
 
-        @ExpectError("An @Instrumentation annotated operation cannot have more than one operand. " +
+        @ExpectError("An @Instrumentation operation cannot have more than one operand. " +
                         "Instrumentations must have transparent stack effects. " + //
                         "Remove the additional operands to resolve this.")
         @Instrumentation
@@ -525,7 +525,7 @@ public class InstrumentationTest extends AbstractQuickeningTest {
             }
         }
 
-        @ExpectError("An @Instrumentation annotated operation cannot have a return value without also specifying a single operand. " + //
+        @ExpectError("An @Instrumentation operation cannot have a return value without also specifying a single operand. " + //
                         "Instrumentations must have transparent stack effects. " + //
                         "Use void as the return type or specify a single operand value to resolve this.")
         @Instrumentation
@@ -537,7 +537,7 @@ public class InstrumentationTest extends AbstractQuickeningTest {
             }
         }
 
-        @ExpectError("An @Instrumentation annotated operation cannot use @Variadic for one of its operands. " + //
+        @ExpectError("An @Instrumentation operation cannot use @Variadic for one of its operands. " + //
                         "Instrumentations must have transparent stack effects. Remove the variadic annotation to resolve this.")
         @Instrumentation
         static final class InvalidInstrumentation3 {

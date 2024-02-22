@@ -198,20 +198,26 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         List<Signature> allSignatures = new ArrayList<>(specializations.size());
         Signature signature = createPolymorphicSignature(specializations, customOperation, allSignatures);
 
-        if (operation.kind == OperationKind.CUSTOM_INSTRUMENTATION) {
-            validateInstrumentationSignature(customOperation, signature);
-        } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Prolog)) {
-            validatePrologSignature(customOperation, signature);
-        } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Epilog)) {
-            validateEpilogSignature(customOperation, signature, allSignatures);
-        }
-
         if (customOperation.hasErrors()) {
             return customOperation;
         }
 
         if (signature == null) {
             throw new AssertionError("Signature could not be computed, but no error was reported");
+        }
+
+        if (operation.kind == OperationKind.CUSTOM_INSTRUMENTATION) {
+            validateInstrumentationSignature(customOperation, signature);
+        } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Prolog)) {
+            validatePrologSignature(customOperation, signature);
+        } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.EpilogReturn)) {
+            validateEpilogReturnSignature(customOperation, signature);
+        } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.EpilogExceptional)) {
+            validateEpilogExceptionalSignature(customOperation, signature, specializations, allSignatures);
+        }
+
+        if (customOperation.hasErrors()) {
+            return customOperation;
         }
 
         operation.numChildren = signature.valueCount;
@@ -239,18 +245,18 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
     private void validateInstrumentationSignature(CustomOperationModel customOperation, Signature signature) {
         if (signature.valueCount > 1) {
-            customOperation.addError(String.format("An @%s annotated operation cannot have more than one operand. " +
+            customOperation.addError(String.format("An @%s operation cannot have more than one operand. " +
                             "Instrumentations must have transparent stack effects. " + //
                             "Remove the additional operands to resolve this.",
                             getSimpleName(types.Instrumentation)));
         } else if (signature.isVariadic) {
-            customOperation.addError(String.format("An @%s annotated operation cannot use @%s for one of its operands. " +
+            customOperation.addError(String.format("An @%s operation cannot use @%s for one of its operands. " +
                             "Instrumentations must have transparent stack effects. " + //
                             "Remove the variadic annotation to resolve this.",
                             getSimpleName(types.Instrumentation),
                             getSimpleName(types.Variadic)));
         } else if (!signature.isVoid && signature.valueCount != 1) {
-            customOperation.addError(String.format("An @%s annotated operation cannot have a return value without also specifying a single operand. " +
+            customOperation.addError(String.format("An @%s operation cannot have a return value without also specifying a single operand. " +
                             "Instrumentations must have transparent stack effects. " + //
                             "Use void as the return type or specify a single operand value to resolve this.",
                             getSimpleName(types.Instrumentation)));
@@ -259,51 +265,54 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
     private void validatePrologSignature(CustomOperationModel customOperation, Signature signature) {
         if (signature.valueCount > 0) {
-            customOperation.addError(String.format("A @%s annotated operation cannot have any operands. " +
+            customOperation.addError(String.format("A @%s operation cannot have any operands. " +
                             "Remove the operands to resolve this.",
                             getSimpleName(types.Prolog)));
         } else if (!signature.isVoid) {
-            customOperation.addError(String.format("A @%s annotated operation cannot have a return value. " +
+            customOperation.addError(String.format("A @%s operation cannot have a return value. " +
                             "Use void as the return type.",
                             getSimpleName(types.Prolog)));
         }
     }
 
-    private void validateEpilogSignature(CustomOperationModel customOperation, Signature signature, List<Signature> allSignatures) {
-        if (signature.valueCount != 2) {
-            customOperation.addError(String.format("An @%s annotated operation must have exactly two operands for a returned value and an exception. " +
-                            "Update all specializations to take two operands to resolve this.",
-                            getSimpleName(types.Epilog)));
+    private void validateEpilogReturnSignature(CustomOperationModel customOperation, Signature signature) {
+        if (signature.valueCount != 1) {
+            customOperation.addError(String.format("An @%s operation must have exactly one operand for the returned value. " +
+                            "Update all specializations to take one operand to resolve this.",
+                            getSimpleName(types.EpilogReturn)));
+        } else if (signature.isVoid) {
+            customOperation.addError(String.format("An @%s operation must have a return value. " +
+                            "The result is returned from the root node instead of the original return value. " +
+                            "Update all specializations to return a value to resolve this.",
+                            getSimpleName(types.EpilogReturn)));
+        }
+    }
+
+    private void validateEpilogExceptionalSignature(CustomOperationModel customOperation, Signature signature, List<ExecutableElement> specializations, List<Signature> allSignatures) {
+        if (signature.valueCount != 1) {
+            customOperation.addError(String.format("An @%s operation must have exactly one operand for the exception. " +
+                            "Update all specializations to take one operand to resolve this.",
+                            getSimpleName(types.EpilogExceptional)));
             return;
         }
 
-        /**
-         * The epilog will be called with either the returned value or the exception being null. For
-         * either parameter, there must be a specialization that accepts Object. (It is not enough
-         * to check the polymorphic signature because it defaults to Object if two types don't
-         * match.)
-         */
-        boolean objectReturnFound = false;
-        boolean objectThrowFound = false;
-        for (Signature individualSignature : allSignatures) {
-            objectReturnFound = objectReturnFound || isObject(individualSignature.argumentTypes.get(0));
-            objectThrowFound = objectThrowFound || isObject(individualSignature.argumentTypes.get(1));
+        for (int i = 0; i < allSignatures.size(); i++) {
+            Signature individualSignature = allSignatures.get(i);
+            TypeMirror argType = individualSignature.argumentTypes.get(0);
+            if (!isAssignable(argType, types.AbstractTruffleException)) {
+                customOperation.addError(String.format("The operand type for %s must be %s or a subclass.",
+                                specializations.get(i).getSimpleName(),
+                                getSimpleName(types.AbstractTruffleException)));
+            }
+        }
+        if (customOperation.hasErrors()) {
+            return;
         }
 
-        if (!objectReturnFound) {
-            customOperation.addError(
-                            String.format("An @%s annotated operation must declare a specialization that takes %s for its first operand (the returned value will be null when an exception is thrown).",
-                                            getSimpleName(types.Epilog),
-                                            getSimpleName(context.getDeclaredType(Object.class))));
-        } else if (!objectThrowFound) {
-            customOperation.addError(String.format(
-                            "An @%s annotated operation must declare a specialization that takes %s for its second operand (the exception will be null when the root node returns normally).",
-                            getSimpleName(types.Epilog),
-                            getSimpleName(context.getDeclaredType(Object.class))));
-        } else if (!signature.isVoid) {
-            customOperation.addError(String.format("An @%s annotated operation cannot have a return value. " +
+        if (!signature.isVoid) {
+            customOperation.addError(String.format("An @%s operation cannot have a return value. " +
                             "Use void as the return type.",
-                            getSimpleName(types.Epilog)));
+                            getSimpleName(types.EpilogExceptional)));
         }
     }
 
@@ -716,14 +725,14 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
         if (a.isVariadic != b.isVariadic) {
             if (errorTarget != null) {
-                errorTarget.addError(el, "Error calculating operation signature: either all or none of the specialization must be variadic (have a @%s annotated parameter)",
+                errorTarget.addError(el, "Error calculating operation signature: either all or none of the specializations must be variadic (have a @%s annotated parameter)",
                                 getSimpleName(types().Variadic));
             }
             return null;
         }
         if (a.isVoid != b.isVoid) {
             if (errorTarget != null) {
-                errorTarget.addError(el, "Error calculating operation signature: either all or none of the specialization must be declared void.");
+                errorTarget.addError(el, "Error calculating operation signature: either all or none of the specializations must be declared void.");
             }
             return null;
         }
