@@ -76,30 +76,6 @@ public interface BytecodeRootNode {
     Object execute(VirtualFrame frame);
 
     /**
-     * Optional hook invoked before executing the root node.
-     *
-     * @param frame the frame used for execution
-     * @since 24.1
-     */
-    @SuppressWarnings("unused")
-    default void executeProlog(VirtualFrame frame) {
-    }
-
-    /**
-     * Optional hook invoked before leaving the root node.
-     *
-     * @param frame the frame used for execution
-     * @param returnValue the value returned by the root node ({@code null} if an exception was
-     *            thrown)
-     * @param throwable the exception thrown by the root node ({@code null} if the root node
-     *            returned normally)
-     * @since 24.1
-     */
-    @SuppressWarnings("unused")
-    default void executeEpilog(VirtualFrame frame, Object returnValue, Throwable throwable) {
-    }
-
-    /**
      * Optional hook invoked when a {@link ControlFlowException} is thrown during execution. This
      * hook can do one of four things:
      *

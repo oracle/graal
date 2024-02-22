@@ -815,19 +815,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         CodeTreeBuilder b = ex.createBuilder();
         String localFrame = localFrame();
 
-        if (model.executeEpilog != null) {
-            b.statement("Throwable throwable = null");
-            b.statement("Object returnValue = null");
-        }
-
-        if (model.executeProlog != null) {
-            b.statement("this.executeProlog(" + localFrame + ")");
-        }
-
-        if (model.executeEpilog != null) {
-            b.startTryBlock();
-        }
-
         b.statement("int state = startState");
         // These don't change between invocations. Read them once.
         b.statement("AbstractBytecodeNode bc = this.bytecode");
@@ -863,21 +850,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.end();
 
         String returnValue = getFrameObject("(state >> 16) & 0xffff");
-        if (model.executeEpilog != null) {
-            b.startAssign("returnValue").string(returnValue).end();
-            b.statement("return returnValue");
-        } else {
-            b.startReturn().string(returnValue).end();
-        }
-
-        if (model.executeEpilog != null) {
-            b.end().startCatchBlock(context.getType(Throwable.class), "th");
-            b.statement("throwable = th");
-            b.statement("throw th");
-            b.end().startFinallyBlock();
-            b.statement("this.executeEpilog(" + localFrame + ", returnValue, throwable)");
-            b.end();
-        }
+        b.startReturn().string(returnValue).end();
 
         return ex;
     }

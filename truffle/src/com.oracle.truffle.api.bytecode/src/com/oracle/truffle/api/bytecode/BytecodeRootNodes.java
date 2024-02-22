@@ -49,7 +49,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
@@ -137,8 +136,7 @@ public abstract class BytecodeRootNodes<T extends RootNode & BytecodeRootNode> {
      * {@link CompilerDirectives#transferToInterpreter() deoptimization} will be triggered. If an
      * update does not require any operation then this operation will be a no-op in compiled code.
      * In the interpreter it is also reasonably fast (read and compare of a volatile field), for
-     * example it should reasonable to call this method repeatedly in the
-     * {@link BytecodeRootNode#executeProlog(VirtualFrame) prolog}.
+     * example it should reasonable to call this method repeatedly in the {@link Prolog prolog}.
      *
      * @since 24.1
      */

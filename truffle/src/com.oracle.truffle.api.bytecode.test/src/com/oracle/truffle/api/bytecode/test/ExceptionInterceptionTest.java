@@ -57,8 +57,8 @@ import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
-import com.oracle.truffle.api.bytecode.test.BytecodeNodeWithHooks.MyException;
-import com.oracle.truffle.api.bytecode.test.BytecodeNodeWithHooks.ThrowStackOverflow;
+import com.oracle.truffle.api.bytecode.test.BytecodeNodeInterceptsAll.MyException;
+import com.oracle.truffle.api.bytecode.test.BytecodeNodeInterceptsAll.ThrowStackOverflow;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -66,66 +66,22 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class HookTest {
+public class ExceptionInterceptionTest {
 
-    public static BytecodeNodeWithHooks parseNode(BytecodeParser<BytecodeNodeWithHooksGen.Builder> builder) {
-        BytecodeRootNodes<BytecodeNodeWithHooks> nodes = BytecodeNodeWithHooksGen.create(BytecodeConfig.DEFAULT, builder);
+    public static BytecodeNodeInterceptsAll parseNode(BytecodeParser<BytecodeNodeInterceptsAllGen.Builder> builder) {
+        BytecodeRootNodes<BytecodeNodeInterceptsAll> nodes = BytecodeNodeInterceptsAllGen.create(BytecodeConfig.DEFAULT, builder);
         return nodes.getNode(0);
     }
 
     @Test
-    public void testSimplePrologEpilog() {
-        BytecodeNodeWithHooks root = parseNode(b -> {
-            b.beginRoot(null);
-            b.beginReturn();
-            b.emitReadArgument();
-            b.endReturn();
-            b.endRoot();
-        });
-        Object[] refs = new Object[2];
-        root.setRefs(refs);
-
-        assertEquals(42, root.getCallTarget().call(42));
-        assertEquals(42, refs[0]);
-        assertEquals(42, refs[1]);
-    }
-
-    @Test
-    public void testThrowPrologEpilog() {
-        BytecodeNodeWithHooks root = parseNode(b -> {
-            b.beginRoot(null);
-            b.beginReturn();
-            b.beginThrow();
-            b.emitLoadConstant(123);
-            b.endThrow();
-            b.endReturn();
-            b.endRoot();
-        });
-        Object[] refs = new Object[2];
-        root.setRefs(refs);
-
-        try {
-            root.getCallTarget().call(42);
-            Assert.fail("call should have thrown an exception");
-        } catch (MyException ex) {
-            assertEquals(123, ex.result);
-        }
-
-        assertEquals(42, refs[0]);
-        assertEquals(123, refs[1]);
-    }
-
-    @Test
     public void testInterceptStackOverflow() {
-        BytecodeNodeWithHooks root = parseNode(b -> {
+        BytecodeNodeInterceptsAll root = parseNode(b -> {
             b.beginRoot(null);
             b.beginReturn();
             b.emitThrowStackOverflow();
             b.endReturn();
             b.endRoot();
         });
-        Object[] refs = new Object[2];
-        root.setRefs(refs);
 
         try {
             root.getCallTarget().call(42);
@@ -133,14 +89,11 @@ public class HookTest {
         } catch (MyException ex) {
             assertEquals(ThrowStackOverflow.MESSAGE, ex.result);
         }
-
-        assertEquals(42, refs[0]);
-        assertEquals(ThrowStackOverflow.MESSAGE, refs[1]);
     }
 
     @Test
     public void testInterceptTruffleExceptionSimple() {
-        BytecodeNodeWithHooks root = parseNode(b -> {
+        BytecodeNodeInterceptsAll root = parseNode(b -> {
             b.beginRoot(null);
             b.beginReturn();
             b.beginThrow();
@@ -149,7 +102,6 @@ public class HookTest {
             b.endReturn();
             b.endRoot();
         });
-        root.setRefs(new Object[2]);
 
         try {
             root.getCallTarget().call(42);
@@ -165,14 +117,13 @@ public class HookTest {
     public void testInterceptTruffleExceptionFromInternal() {
         // The stack overflow should be intercepted as an internal error and then the converted
         // exception should be intercepted as a Truffle exception.
-        BytecodeNodeWithHooks root = parseNode(b -> {
+        BytecodeNodeInterceptsAll root = parseNode(b -> {
             b.beginRoot(null);
             b.beginReturn();
             b.emitThrowStackOverflow();
             b.endReturn();
             b.endRoot();
         });
-        root.setRefs(new Object[2]);
 
         try {
             root.getCallTarget().call(42);
@@ -187,7 +138,7 @@ public class HookTest {
     @Test
     public void testInterceptTruffleExceptionPropagated() {
         // The location should be overridden when it propagates to the root from child.
-        BytecodeNodeWithHooks child = parseNode(b -> {
+        BytecodeNodeInterceptsAll child = parseNode(b -> {
             b.beginRoot(null);
             b.beginReturn();
             b.beginThrow();
@@ -196,9 +147,8 @@ public class HookTest {
             b.endReturn();
             b.endRoot();
         });
-        child.setRefs(new Object[2]);
 
-        BytecodeNodeWithHooks root = parseNode(b -> {
+        BytecodeNodeInterceptsAll root = parseNode(b -> {
             b.beginRoot(null);
             b.beginBlock();
             b.beginReturn();
@@ -209,7 +159,6 @@ public class HookTest {
             b.endBlock();
             b.endRoot();
         });
-        root.setRefs(new Object[2]);
 
         BytecodeLocation childThrowLocation = null;
         try {
@@ -237,7 +186,7 @@ public class HookTest {
     @Test
     public void testControlFlowEarlyReturn() {
         // The early return value should be returned.
-        BytecodeNodeWithHooks root = parseNode(b -> {
+        BytecodeNodeInterceptsAll root = parseNode(b -> {
             b.beginRoot(null);
             b.beginBlock();
             b.beginThrowEarlyReturn();
@@ -249,7 +198,6 @@ public class HookTest {
             b.endBlock();
             b.endRoot();
         });
-        root.setRefs(new Object[2]);
 
         assertEquals(42, root.getCallTarget().call(42));
     }
@@ -257,7 +205,7 @@ public class HookTest {
     @Test
     public void testControlFlowUnhandled() {
         // The control flow exception should go unhandled.
-        BytecodeNodeWithHooks root = parseNode(b -> {
+        BytecodeNodeInterceptsAll root = parseNode(b -> {
             b.beginRoot(null);
             b.beginBlock();
             b.emitThrowUnhandledControlFlowException();
@@ -267,7 +215,6 @@ public class HookTest {
             b.endBlock();
             b.endRoot();
         });
-        root.setRefs(new Object[2]);
 
         try {
             root.getCallTarget().call(42);
@@ -281,7 +228,7 @@ public class HookTest {
     public void testControlFlowInternalError() {
         // The control flow exception should be intercepted by the internal handler and then the
         // Truffle handler.
-        BytecodeNodeWithHooks root = parseNode(b -> {
+        BytecodeNodeInterceptsAll root = parseNode(b -> {
             b.beginRoot(null);
             b.beginBlock();
             b.emitThrowControlFlowInternalError();
@@ -291,7 +238,6 @@ public class HookTest {
             b.endBlock();
             b.endRoot();
         });
-        root.setRefs(new Object[2]);
 
         try {
             root.getCallTarget().call(42);
@@ -307,7 +253,7 @@ public class HookTest {
     @Test
     public void testControlFlowTruffleException() {
         // The control flow exception should be intercepted by the Truffle handler.
-        BytecodeNodeWithHooks root = parseNode(b -> {
+        BytecodeNodeInterceptsAll root = parseNode(b -> {
             b.beginRoot(null);
             b.beginBlock();
             b.beginThrowControlFlowTruffleException();
@@ -319,7 +265,6 @@ public class HookTest {
             b.endBlock();
             b.endRoot();
         });
-        root.setRefs(new Object[2]);
 
         try {
             root.getCallTarget().call(42);
@@ -410,33 +355,9 @@ public class HookTest {
 }
 
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
-abstract class BytecodeNodeWithHooks extends RootNode implements BytecodeRootNode {
-    // Used to validate whether hooks get called.
-    private Object[] refs;
-
-    protected BytecodeNodeWithHooks(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+abstract class BytecodeNodeInterceptsAll extends RootNode implements BytecodeRootNode {
+    protected BytecodeNodeInterceptsAll(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
-    }
-
-    void setRefs(Object[] refs) {
-        assert refs.length == 2;
-        this.refs = refs;
-    }
-
-    @Override
-    public void executeProlog(VirtualFrame frame) {
-        refs[0] = frame.getArguments()[0];
-    }
-
-    @Override
-    public void executeEpilog(VirtualFrame frame, Object returnValue, Throwable throwable) {
-        if (throwable != null) {
-            if (throwable instanceof MyException myEx) {
-                refs[1] = myEx.result;
-            }
-        } else {
-            refs[1] = returnValue;
-        }
     }
 
     @Override
@@ -579,7 +500,7 @@ abstract class BytecodeNodeWithHooks extends RootNode implements BytecodeRootNod
     @Operation
     public static final class Invoke {
         @Specialization
-        public static Object perform(VirtualFrame frame, BytecodeNodeWithHooks callee) {
+        public static Object perform(VirtualFrame frame, BytecodeNodeInterceptsAll callee) {
             return callee.getCallTarget().call(frame.getArguments());
         }
     }
