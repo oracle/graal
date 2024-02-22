@@ -116,6 +116,10 @@
     "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
   },
   {
+    "name": "org.graalvm.polyglot.Engine$ImplHolder",
+    "allDeclaredFields": true
+  },
+  {
     "name": "org.graalvm.polyglot.Source",
     "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
   },

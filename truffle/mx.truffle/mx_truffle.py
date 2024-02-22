@@ -689,6 +689,7 @@ def truffle_native_unit_tests_gate():
     build_args = [
         '--build-args',
         '--enable-url-protocols=http,jar',
+        '-H:+AddAllCharsets',
         '--add-exports=org.graalvm.polyglot/org.graalvm.polyglot.impl=ALL-UNNAMED',
         '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl.asm=ALL-UNNAMED',
     ]
