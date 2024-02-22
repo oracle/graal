@@ -540,7 +540,7 @@ public class HotSpotGraphBuilderPlugins {
                     ValueNode valueLength = b.add(new ArrayLengthNode(value));
                     ValueNode limit = b.add(new SubNode(valueLength, length));
                     helper.intrinsicRangeCheck(srcBegin, Condition.GT, limit);
-                    ValueNode newArray = b.add(new NewArrayNode(b.getMetaAccess().lookupJavaType(Byte.TYPE), b.add(new LeftShiftNode(length, ConstantNode.forInt(1))), false));
+                    ValueNode newArray = new NewArrayNode(b.getMetaAccess().lookupJavaType(Byte.TYPE), b.add(new LeftShiftNode(length, ConstantNode.forInt(1))), false);
                     b.addPush(JavaKind.Object, newArray);
                     // The stateAfter should include the value pushed, so push it first and then
                     // perform the call that fills in the array.
@@ -963,7 +963,7 @@ public class HotSpotGraphBuilderPlugins {
                         int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
                         ComputeObjectAddressNode srcAddress = b.add(new ComputeObjectAddressNode(src, ConstantNode.forInt(byteArrayBaseOffset)));
                         ComputeObjectAddressNode dstAddress = b.add(new ComputeObjectAddressNode(dst, ConstantNode.forInt(byteArrayBaseOffset)));
-                        ForeignCallNode call = b.add(new ForeignCallNode(BASE64_DECODE_BLOCK, srcAddress, sp, sl, dstAddress, dp, isURL, isMime));
+                        ForeignCallNode call = new ForeignCallNode(BASE64_DECODE_BLOCK, srcAddress, sp, sl, dstAddress, dp, isURL, isMime);
                         b.addPush(JavaKind.Int, call);
                         return true;
                     }
@@ -976,7 +976,7 @@ public class HotSpotGraphBuilderPlugins {
                         int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
                         ComputeObjectAddressNode srcAddress = b.add(new ComputeObjectAddressNode(src, ConstantNode.forInt(byteArrayBaseOffset)));
                         ComputeObjectAddressNode dstAddress = b.add(new ComputeObjectAddressNode(dst, ConstantNode.forInt(byteArrayBaseOffset)));
-                        ForeignCallNode call = b.add(new ForeignCallNode(BASE64_DECODE_BLOCK, srcAddress, sp, sl, dstAddress, dp, isURL));
+                        ForeignCallNode call = new ForeignCallNode(BASE64_DECODE_BLOCK, srcAddress, sp, sl, dstAddress, dp, isURL);
                         b.addPush(JavaKind.Int, call);
                         return true;
                     }
@@ -1075,7 +1075,7 @@ public class HotSpotGraphBuilderPlugins {
                     ValueNode stateStart = helper.arrayStart(stateNotNull, JavaKind.Int);
                     ValueNode resultStart = helper.arrayStart(resultNotNull, JavaKind.Byte);
 
-                    ForeignCallNode call = b.add(new ForeignCallNode(CHACHA20Block, stateStart, resultStart));
+                    ForeignCallNode call = new ForeignCallNode(CHACHA20Block, stateStart, resultStart);
                     b.addPush(JavaKind.Int, call);
                 }
                 return true;
@@ -1160,10 +1160,11 @@ public class HotSpotGraphBuilderPlugins {
                     ValueNode instanceSize = b.add(AndNode.create(layoutHelper, ConstantNode.forInt(~(Long.BYTES - 1)), NodeView.DEFAULT));
 
                     b.add(new IfNode(isArray, arrayLengthNode, instanceBranch, BranchProbabilityData.unknown()));
-                    MergeNode merge = b.add(new MergeNode());
+                    MergeNode merge = b.append(new MergeNode());
                     merge.addForwardEnd(arrayBranch);
                     merge.addForwardEnd(instanceBranch);
                     b.addPush(JavaKind.Long, SignExtendNode.create(new ValuePhiNode(StampFactory.positiveInt(), merge, new ValueNode[]{arraySizeMasked, instanceSize}), 64, NodeView.DEFAULT));
+                    b.setStateAfter(merge);
                 }
                 return true;
             }
