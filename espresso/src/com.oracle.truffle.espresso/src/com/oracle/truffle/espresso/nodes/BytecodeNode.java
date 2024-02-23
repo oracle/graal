@@ -286,6 +286,7 @@ import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
@@ -1546,35 +1547,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
                 }
             } catch (ContinuationSupport.Unwind unwindRequest) {
-                // The guest has suspended a continuation. We need to gather the frames as we unwind
-                // the stack so the user can persist them later.
-                CompilerDirectives.transferToInterpreter();   // TODO: Is this right?
-
                 // Get the frame from the stack into the VM heap.
-                var materializedFrame = frame.materialize();
-
-                // Downcast the frame's guest heap pointers.
-                var localRefsObj = materializedFrame.getIndexedLocals();
-                var localRefsStaticObj = new StaticObject[localRefsObj.length];
-                // noinspection SuspiciousSystemArraycopy
-                System.arraycopy(localRefsObj, 0, localRefsStaticObj, 0, localRefsObj.length);
-
-                // Slot tags are only used when the VM has assertions enabled. Otherwise they're
-                // always just STATIC_TAG.
-                byte[] slotTags = null;
-                // noinspection AssertWithSideEffects
-                assert (slotTags = materializedFrame.getIndexedTags()) != null;
-
-                // Extend the linked list of frame records as we unwind.
-                unwindRequest.head = new ContinuationSupport.HostFrameRecord(
-                                localRefsStaticObj,
-                                materializedFrame.getIndexedPrimitiveLocals(),
-                                slotTags,
-                                top,
-                                statementIndex,
-                                methodVersion,
-                                unwindRequest.head);
-
+                copyFrameToUnwindRequest(unwindRequest, frame.materialize(), top, statementIndex);
                 throw unwindRequest;
             } catch (AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
                 CompilerAsserts.partialEvaluationConstant(curBCI);
@@ -1697,6 +1671,31 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             top += Bytecodes.stackEffectOf(curOpcode);
             curBCI = targetBCI;
         }
+    }
+
+    @TruffleBoundary
+    private void copyFrameToUnwindRequest(ContinuationSupport.Unwind unwindRequest, MaterializedFrame materializedFrame, int top, int statementIndex) {
+        // Downcast the frame's guest heap pointers.
+        var localRefsObj = materializedFrame.getIndexedLocals();
+        var localRefsStaticObj = new StaticObject[localRefsObj.length];
+        // noinspection SuspiciousSystemArraycopy
+        System.arraycopy(localRefsObj, 0, localRefsStaticObj, 0, localRefsObj.length);
+
+        // Slot tags are only used when the VM has assertions enabled. Otherwise they're
+        // always just STATIC_TAG.
+        byte[] slotTags = null;
+        // noinspection AssertWithSideEffects
+        assert (slotTags = materializedFrame.getIndexedTags()) != null;
+
+        // Extend the linked list of frame records as we unwind.
+        unwindRequest.head = new ContinuationSupport.HostFrameRecord(
+                localRefsStaticObj,
+                materializedFrame.getIndexedPrimitiveLocals(),
+                slotTags,
+                top,
+                statementIndex,
+                methodVersion,
+                unwindRequest.head);
     }
 
     @Override
