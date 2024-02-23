@@ -72,7 +72,8 @@ public class BasedOnJDKFileProcessor extends AbstractProcessor {
 
     static final String ANNOTATION_CLASS_NAME = "com.oracle.svm.core.util.BasedOnJDKFile";
     static final String ANNOTATION_LIST_CLASS_NAME = "com.oracle.svm.core.util.BasedOnJDKFile.List";
-    static final Pattern FILE_PATTERN = Pattern.compile("^https://github.com/openjdk/jdk/blob/(?<committish>[^/]+)/(?<path>[-_.A-Za-z0-9][-_./A-Za-z0-9]*)(#L(?<lineStart>[0-9]+)-L(?<lineEnd>[0-9]+))?$");
+    static final Pattern FILE_PATTERN = Pattern
+                    .compile("^https://github.com/openjdk/jdk/blob/(?<committish>[^/]+)/(?<path>[-_.A-Za-z0-9][-_./A-Za-z0-9]*)(#L(?<lineStart>[0-9]+)-L(?<lineEnd>[0-9]+))?$");
     static final String FILE_PATTERN_STR = "https://github.com/openjdk/jdk/blob/<tag|revision>/path/to/file.ext(#L[0-9]+-L[0-9]+)?";
     public static final int FULL_FILE_LINE_MARKER = 0;
 
@@ -182,7 +183,8 @@ public class BasedOnJDKFileProcessor extends AbstractProcessor {
         }
         String lineStart = matcher.group("lineStart");
         String lineEnd = matcher.group("lineEnd");
-        return new SourceInfo(matcher.group("committish"), matcher.group("path"), lineStart == null ? FULL_FILE_LINE_MARKER : Long.parseLong(lineStart), lineEnd == null ? FULL_FILE_LINE_MARKER : Long.parseLong(lineEnd));
+        return new SourceInfo(matcher.group("committish"), matcher.group("path"), lineStart == null ? FULL_FILE_LINE_MARKER : Long.parseLong(lineStart),
+                        lineEnd == null ? FULL_FILE_LINE_MARKER : Long.parseLong(lineEnd));
     }
 
     private SourceInfo getAnnotatedSourceInfo(Element annotatedElement) {
