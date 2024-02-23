@@ -779,7 +779,7 @@ public class ProgressReporter {
             return;
         }
         l().printLineSeparator();
-        l().yellowBold().a("Produced artifacts:").reset().println();
+        l().yellowBold().doclink("Build artifacts", "#glossary-build-artifacts").a(":").reset().println();
         // Use TreeMap to sort paths alphabetically.
         Map<Path, List<String>> pathToTypes = new TreeMap<>();
         artifacts.forEach((artifactType, paths) -> {

@@ -932,16 +932,12 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         Class<?> targetClass = originalClass;
         String targetName = "";
         boolean isFinal = original.isFinal() && annotated.isFinal();
-        boolean disableCaching = false;
 
         if (recomputeAnnotation != null) {
             kind = recomputeAnnotation.kind();
             targetName = recomputeAnnotation.name();
             isFinal = recomputeAnnotation.isFinal();
-            disableCaching = recomputeAnnotation.disableCaching();
             guarantee(!isFinal || !ComputedValueField.isOffsetRecomputation(kind), "@%s with %s can never be final during analysis: unset isFinal in the annotation on %s",
-                            RecomputeFieldValue.class.getSimpleName(), kind, annotated);
-            guarantee(!isFinal || !disableCaching, "@%s can not be final if caching is disabled: unset isFinal in the annotation on %s",
                             RecomputeFieldValue.class.getSimpleName(), kind, annotated);
             if (recomputeAnnotation.declClass() != RecomputeFieldValue.class) {
                 guarantee(recomputeAnnotation.declClassName().isEmpty(), "Both class and class name specified");
@@ -952,7 +948,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
         Class<?> transformedValueAllowedType = getTargetClass(annotatedField.getType());
 
-        return ComputedValueField.create(original, annotated, kind, transformedValueAllowedType, null, targetClass, targetName, isFinal, disableCaching);
+        return ComputedValueField.create(original, annotated, kind, transformedValueAllowedType, null, targetClass, targetName, isFinal);
     }
 
     protected void reinitializeField(Field annotatedField) {

@@ -38,9 +38,9 @@ suite = {
       "packedResource": True,
     },
 
-    "MICRONAUT_MUSHOP_0.0.1" : {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/mu-shop-0.0.1.zip"],
-      "digest": "sha512:41f91679c2077a9c252cfc29b8cbf7884f2e9f3c411cfe6c88d807d346178b76299bc5c3f446290b84139ca3a9f6f18c91511fc8ee90b47549b4a8c19cdb337d" ,
+    "MICRONAUT_MUSHOP_0.0.2" : {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/mu-shop-0.0.2.zip"],
+      "digest": "sha512:e0a503423c1cf94611e9dc14c4d8f06ae25081745b3ebe47b91225c188713537a55c9281a865d1ada364fddaac7d17b90b7da728ccf3975e4d2f584d21bee550" ,
       "packedResource": True
     },
 

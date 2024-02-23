@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.thread;
+package com.oracle.svm.hosted.reflect.proxy;
 
-import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
 
-public abstract class JavaThreadsFeature implements InternalFeature {
+import jdk.vm.ci.meta.ResolvedJavaType;
 
-    protected static long threadId(Thread thread) {
-        if (thread == PlatformThreads.singleton().mainThread) {
-            return 1;
-        }
-        return JavaThreads.getThreadId(thread);
+public class ProxySubstitutionType extends CustomSubstitutionType {
+    private final String stableName;
+
+    ProxySubstitutionType(ResolvedJavaType original, String stableName) {
+        super(original);
+        this.stableName = stableName;
     }
 
-    protected static void setThreadSeqNumber(long num) {
-        JavaThreads.threadSeqNumber.set(num);
-    }
-
-    protected static void setThreadInitNumber(int num) {
-        JavaThreads.threadInitNumber.set(num);
+    @Override
+    public String getName() {
+        return stableName;
     }
 }

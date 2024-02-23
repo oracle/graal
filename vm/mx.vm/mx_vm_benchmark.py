@@ -191,6 +191,11 @@ class NativeImageBenchmarkConfig:
             self.image_build_reports_directory = os.path.join(self.output_dir, self.bundle_create_path)
         self.image_build_stats_file = os.path.join(self.image_build_reports_directory, 'image_build_statistics.json')
 
+        # Path of the final executable
+        self.image_path = os.path.join(self.output_dir, self.final_image_name)
+        if self.bundle_create_path is not None:
+            self.image_path = os.path.join(self.output_dir, os.path.dirname(self.bundle_create_path), self.bundle_create_path.split(".")[0])
+
         if vm.is_quickbuild:
             base_image_build_args += ['-Ob']
         if vm.use_string_inlining:
@@ -252,6 +257,8 @@ class NativeImageBenchmarkConfig:
         bundle_create_arg = "--bundle-create"
         bundle_arg_idx = [idx for idx, arg in enumerate(self.extra_image_build_arguments) if arg.startswith(bundle_create_arg)]
         if len(bundle_arg_idx) == 1:
+            # This only works by convention, but not in general. For this to work, the argument after --bundle-create
+            # has to be the image name (without -o or -H:Name).
             bp = os.path.join(self.extra_image_build_arguments[bundle_arg_idx[0] + 1] + ".output", "default", "reports")
             return bp
 
@@ -960,10 +967,7 @@ class NativeImageVM(GraalVm):
 
     def _print_binary_size(self, out):
         # The image size for benchmarks is tracked by printing on stdout and matching the rule.
-        image_path = os.path.join(self.config.output_dir, self.config.final_image_name)
-        if self.config.bundle_create_path is not None:
-            image_path = os.path.join(self.config.output_dir, self.config.bundle_create_path[:-len("reports")], self.config.bundle_create_path.split(".")[0])
-        image_size = os.stat(image_path).st_size
+        image_size = os.stat(self.config.image_path).st_size
         out(f'The executed image size for benchmark {self.config.benchmark_suite_name}:{self.config.benchmark_name} is {image_size} B')
 
     def run_stage_image(self, out):
@@ -998,7 +1002,7 @@ class NativeImageVM(GraalVm):
                 NativeImageVM.copy_bundle_output(self.config)
 
             if s.exit_code == 0:
-                image_path = os.path.join(self.config.output_dir, self.config.final_image_name)
+                image_path = self.config.image_path
                 if self.use_upx:
                     upx_directory = mx.library("UPX", True).get_path(True)
                     upx_path = os.path.join(upx_directory, mx.exe_suffix("upx"))
@@ -1018,8 +1022,7 @@ class NativeImageVM(GraalVm):
     def run_stage_run(self, out):
         if not self.config.is_runnable:
             mx.abort(f"Benchmark {self.config.benchmark_suite_name}:{self.config.benchmark_name} is not runnable.")
-        image_path = os.path.join(self.config.output_dir, self.config.final_image_name)
-        with self.stages.set_command([image_path] + self.config.extra_jvm_args + self.config.image_run_args) as s:
+        with self.stages.set_command([self.config.image_path] + self.config.extra_jvm_args + self.config.image_run_args) as s:
             s.execute_command(vm=self)
 
     def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
