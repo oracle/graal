@@ -751,18 +751,25 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         var hostFrameRecord = getRoot().getContinuationHostFrameRecord(frame);
         if (hostFrameRecord != null) {
             // If yes then the frame was already set up and we need to resume in the middle of
-            // the bytecodes so pass in the necessary indexes.
-            return executeBodyFromBCI(frame,
-                            getBCI(frame),
-                            hostFrameRecord.sp,
-                            hostFrameRecord.statementIndex,
-                            false, // isOSR
-                            true   // isContinuationResume
-            );
+            // the bytecodes so pass in the necessary indexes. It has to be done in the interpreter
+            // as otherwise startbci etc wouldn't be PE constant on the normal path and we'd break
+            // compilation for everything.
+            return transferToInterpreterAndResumeContinuation(frame.materialize(), hostFrameRecord);
         } else {
             int startTop = startingStackOffset(getMethodVersion().getMaxLocals());
             return executeBodyFromBCI(frame, 0, startTop, 0, false, false);
         }
+    }
+
+    @TruffleBoundary
+    private Object transferToInterpreterAndResumeContinuation(MaterializedFrame frame, ContinuationSupport.HostFrameRecord hostFrameRecord) {
+        return executeBodyFromBCI(frame,
+                getBCI(frame),
+                hostFrameRecord.sp,
+                hostFrameRecord.statementIndex,
+                false, // isOSR
+                true   // isContinuationResume
+        );
     }
 
     @SuppressWarnings("DataFlowIssue")   // Too complex for IntelliJ to analyze.
