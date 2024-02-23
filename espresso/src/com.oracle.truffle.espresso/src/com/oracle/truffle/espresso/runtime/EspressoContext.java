@@ -466,10 +466,10 @@ public final class EspressoContext {
             try (DebugCloseable systemInit = SYSTEM_INIT.scope(espressoEnv.getTimers())) {
                 // Call guest initialization
                 if (getJavaVersion().java8OrEarlier()) {
-                    meta.java_lang_System_initializeSystemClass.invokeDirect(null);
+                    meta.java_lang_System_initializeSystemClass.invokeDirectStatic();
                 } else {
                     assert getJavaVersion().java9OrLater();
-                    meta.java_lang_System_initPhase1.invokeDirect(null);
+                    meta.java_lang_System_initPhase1.invokeDirectStatic();
                     for (Symbol<Type> type : Arrays.asList(
                                     Type.java_lang_invoke_MethodHandle,
                                     Type.java_lang_invoke_MemberName,
@@ -477,7 +477,7 @@ public final class EspressoContext {
                         // Type.java_lang_invoke_ResolvedMethodName is not used atm
                         initializeKnownClass(type);
                     }
-                    int e = (int) meta.java_lang_System_initPhase2.invokeDirect(null, false, logger.isLoggable(Level.FINE));
+                    int e = (int) meta.java_lang_System_initPhase2.invokeDirectStatic(false, logger.isLoggable(Level.FINE));
                     if (e != 0) {
                         throw EspressoError.shouldNotReachHere();
                     }
@@ -485,7 +485,7 @@ public final class EspressoContext {
                     getVM().getJvmti().postVmStart();
 
                     modulesInitialized = true;
-                    meta.java_lang_System_initPhase3.invokeDirect(null);
+                    meta.java_lang_System_initPhase3.invokeDirectStatic();
                 }
             }
 
@@ -519,13 +519,13 @@ public final class EspressoContext {
 
             this.stackOverflow = EspressoException.wrap(stackOverflowErrorInstance, meta);
             this.outOfMemory = EspressoException.wrap(outOfMemoryErrorInstance, meta);
-            meta.java_lang_StackOverflowError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(stackOverflowErrorInstance, meta.toGuestString("VM StackOverFlow"));
-            meta.java_lang_OutOfMemoryError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirect(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
+            meta.java_lang_StackOverflowError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirectSpecial(stackOverflowErrorInstance, meta.toGuestString("VM StackOverFlow"));
+            meta.java_lang_OutOfMemoryError.lookupDeclaredMethod(Name._init_, Signature._void_String).invokeDirectSpecial(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
 
             // Create application (system) class loader.
             StaticObject systemClassLoader = null;
             try (DebugCloseable systemLoader = SYSTEM_CLASSLOADER.scope(espressoEnv.getTimers())) {
-                systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
+                systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirectStatic();
             }
             bindingsLoader = createBindingsLoader(systemClassLoader);
             topBindings = new EspressoBindings(
@@ -596,7 +596,7 @@ public final class EspressoContext {
 
             List<Symbol<Type>> additionalClasslist = readClasslist(userClasslistPath);
 
-            StaticObject systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
+            StaticObject systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirectStatic();
             for (Symbol<Type> type : additionalClasslist) {
                 Klass klass = getMeta().loadKlassOrNull(type, systemClassLoader, StaticObject.NULL);
                 if (Objects.isNull(klass)) {
@@ -638,7 +638,7 @@ public final class EspressoContext {
             return systemClassLoader;
         }
         StaticObject loader = k.allocateInstance();
-        init.invokeDirect(loader,
+        init.invokeDirectSpecial(loader,
                         /* URLs */ getMeta().java_net_URL.allocateReferenceArray(0),
                         /* parent */ systemClassLoader);
         return loader;

@@ -334,22 +334,35 @@ public final class JniEnv extends NativeEnv {
     }
 
     public Object[] popVarArgs(@Pointer TruffleObject varargsPtr, final Symbol<Type>[] signature) {
+        return popVarArgs(varargsPtr, signature, null);
+    }
+
+    public Object[] popVarArgs(@Pointer TruffleObject varargsPtr, final Symbol<Type>[] signature, StaticObject receiver) {
         VarArgs varargs = new VarArgsImpl(varargsPtr);
         int paramCount = Signatures.parameterCount(signature);
-        Object[] args = new Object[paramCount];
+        int argCount = paramCount;
+        int argOffset = 0;
+        if (receiver != null) {
+            argCount += 1;
+            argOffset = 1;
+        }
+        Object[] args = new Object[argCount];
+        if (receiver != null) {
+            args[0] = receiver;
+        }
         for (int i = 0; i < paramCount; ++i) {
             JavaKind kind = Signatures.parameterKind(signature, i);
             // @formatter:off
             switch (kind) {
-                case Boolean : args[i] = varargs.popBoolean(); break;
-                case Byte    : args[i] = varargs.popByte();    break;
-                case Short   : args[i] = varargs.popShort();   break;
-                case Char    : args[i] = varargs.popChar();    break;
-                case Int     : args[i] = varargs.popInt();     break;
-                case Float   : args[i] = varargs.popFloat();   break;
-                case Long    : args[i] = varargs.popLong();    break;
-                case Double  : args[i] = varargs.popDouble();  break;
-                case Object  : args[i] = varargs.popObject();  break;
+                case Boolean : args[i + argOffset] = varargs.popBoolean(); break;
+                case Byte    : args[i + argOffset] = varargs.popByte();    break;
+                case Short   : args[i + argOffset] = varargs.popShort();   break;
+                case Char    : args[i + argOffset] = varargs.popChar();    break;
+                case Int     : args[i + argOffset] = varargs.popInt();     break;
+                case Float   : args[i + argOffset] = varargs.popFloat();   break;
+                case Long    : args[i + argOffset] = varargs.popLong();    break;
+                case Double  : args[i + argOffset] = varargs.popDouble();  break;
+                case Object  : args[i + argOffset] = varargs.popObject();  break;
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere("invalid parameter kind: " + kind);
@@ -900,7 +913,7 @@ public final class JniEnv extends NativeEnv {
         Method resolutionSeed = methodIds.getObject(methodId);
         assert !resolutionSeed.isStatic();
         assert resolutionSeed.getDeclaringKlass().isAssignableFrom(receiver.getKlass());
-        Object[] args = popVarArgs(varargsPtr, resolutionSeed.getParsedSignature());
+        Object[] args = popVarArgs(varargsPtr, resolutionSeed.getParsedSignature(), receiver);
 
         Method target;
         if (resolutionSeed.getDeclaringKlass().isInterface()) {
@@ -921,7 +934,7 @@ public final class JniEnv extends NativeEnv {
 
         assert target != null;
         assert target.getName() == resolutionSeed.getName() && resolutionSeed.getRawSignature() == target.getRawSignature();
-        return target.invokeDirect(receiver, args);
+        return target.invokeDirect(args);
     }
 
     @JniImpl
@@ -1004,7 +1017,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asObject(result);
     }
 
@@ -1014,7 +1027,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asBoolean(result, true);
     }
 
@@ -1024,7 +1037,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asChar(result, true);
     }
 
@@ -1034,7 +1047,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asByte(result, true);
     }
 
@@ -1044,7 +1057,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asShort(result, true);
     }
 
@@ -1054,7 +1067,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asInt(result, true);
     }
 
@@ -1064,7 +1077,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asFloat(result, true);
     }
 
@@ -1074,7 +1087,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asDouble(result, true);
     }
 
@@ -1084,7 +1097,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         return getMeta().asLong(result, true);
     }
 
@@ -1094,7 +1107,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert !method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirect(popVarArgs(varargsPtr, method.getParsedSignature(), receiver));
         assert result instanceof StaticObject && StaticObject.isNull((StaticObject) result) : "void methods must return StaticObject.NULL";
     }
 
@@ -1107,7 +1120,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asObject(result);
     }
 
@@ -1116,7 +1129,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asBoolean(result, true);
     }
 
@@ -1125,7 +1138,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asChar(result, true);
     }
 
@@ -1134,7 +1147,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asByte(result, true);
     }
 
@@ -1143,7 +1156,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asShort(result, true);
     }
 
@@ -1152,7 +1165,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asInt(result, true);
     }
 
@@ -1161,7 +1174,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asFloat(result, true);
     }
 
@@ -1170,7 +1183,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asDouble(result, true);
     }
 
@@ -1179,7 +1192,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         return getMeta().asLong(result, true);
     }
 
@@ -1188,7 +1201,7 @@ public final class JniEnv extends NativeEnv {
         Method method = methodIds.getObject(methodId);
         assert method.isStatic();
         assert (clazz.getMirrorKlass(getMeta())) == method.getDeclaringKlass();
-        Object result = method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
+        Object result = method.invokeDirectStatic(popVarArgs(varargsPtr, method.getParsedSignature()));
         assert result instanceof StaticObject && StaticObject.isNull((StaticObject) result) : "void methods must return StaticObject.NULL";
     }
 
@@ -1559,7 +1572,7 @@ public final class JniEnv extends NativeEnv {
         if (StaticObject.isNull(string)) {
             return 0;
         }
-        return (int) getMeta().java_lang_String_length.invokeDirect(string);
+        return (int) getMeta().java_lang_String_length.invokeDirectSpecial(string);
     }
 
     /**
@@ -1603,7 +1616,7 @@ public final class JniEnv extends NativeEnv {
         }
         StaticObject stringChars;
         if (getJavaVersion().compactStringsEnabled()) {
-            stringChars = (StaticObject) meta.java_lang_String_toCharArray.invokeDirect(str);
+            stringChars = (StaticObject) meta.java_lang_String_toCharArray.invokeDirectSpecial(str);
         } else {
             stringChars = meta.java_lang_String_value.getObject(str);
         }
@@ -1651,7 +1664,7 @@ public final class JniEnv extends NativeEnv {
         }
         char[] chars;
         if (getJavaVersion().compactStringsEnabled()) {
-            StaticObject wrappedChars = (StaticObject) getMeta().java_lang_String_toCharArray.invokeDirect(string);
+            StaticObject wrappedChars = (StaticObject) getMeta().java_lang_String_toCharArray.invokeDirectSpecial(string);
             chars = wrappedChars.unwrap(language);
         } else {
             chars = getMeta().java_lang_String_value.getObject(string).unwrap(language);
@@ -1844,10 +1857,9 @@ public final class JniEnv extends NativeEnv {
         EspressoException ex = getPendingEspressoException();
         if (ex != null) {
             StaticObject guestException = ex.getGuestException();
-            assert InterpreterToVM.instanceOf(guestException, getMeta().java_lang_Throwable);
-            // Dynamic lookup.
-            Method printStackTrace = guestException.getKlass().lookupMethod(Name.printStackTrace, Signature._void);
-            printStackTrace.invokeDirect(guestException);
+            Meta meta = getMeta();
+            assert InterpreterToVM.instanceOf(guestException, meta.java_lang_Throwable);
+            meta.java_lang_Throwable_printStackTrace.invokeDirectVirtual(guestException);
             // Restore exception cleared by invokeDirect.
             setPendingException(ex);
         }
@@ -2155,9 +2167,9 @@ public final class JniEnv extends NativeEnv {
         StaticObject instance = meta.java_nio_DirectByteBuffer.allocateInstance(getContext());
         long address = NativeUtils.interopAsPointer(addressPtr);
         if (meta.getJavaVersion().java21OrLater()) {
-            meta.java_nio_DirectByteBuffer_init_long_int.invokeDirect(instance, address, capacity);
+            meta.java_nio_DirectByteBuffer_init_long_int.invokeDirectSpecial(instance, address, capacity);
         } else {
-            meta.java_nio_DirectByteBuffer_init_long_int.invokeDirect(instance, address, (int) capacity);
+            meta.java_nio_DirectByteBuffer_init_long_int.invokeDirectSpecial(instance, address, (int) capacity);
         }
         return instance;
     }
@@ -2801,7 +2813,7 @@ public final class JniEnv extends NativeEnv {
         klass.initialize();
         StaticObject instance;
         instance = klass.allocateInstance(getContext());
-        method.invokeDirect(instance, popVarArgs(varargsPtr, method.getParsedSignature()));
+        method.invokeDirectSpecial(popVarArgs(varargsPtr, method.getParsedSignature(), instance));
         return instance;
     }
 
@@ -2872,18 +2884,18 @@ public final class JniEnv extends NativeEnv {
             Klass callerKlass = caller.getMirrorKlass(meta);
             loader = callerKlass.getDefiningClassLoader();
             if (StaticObject.isNull(loader) && meta.java_lang_ClassLoader$NativeLibrary.equals(callerKlass)) {
-                StaticObject result = (StaticObject) meta.java_lang_ClassLoader$NativeLibrary_getFromClass.invokeDirect(null);
+                StaticObject result = (StaticObject) meta.java_lang_ClassLoader$NativeLibrary_getFromClass.invokeDirectStatic();
                 loader = result.getMirrorKlass(meta).getDefiningClassLoader();
                 protectionDomain = getVM().JVM_GetProtectionDomain(result);
             }
         } else {
-            loader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
+            loader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirectStatic();
         }
 
         StaticObject guestClass = StaticObject.NULL;
         try {
             String dotName = name.replace('/', '.');
-            guestClass = (StaticObject) meta.java_lang_Class_forName_String_boolean_ClassLoader.invokeDirect(null, meta.toGuestString(dotName), false, loader);
+            guestClass = (StaticObject) meta.java_lang_Class_forName_String_boolean_ClassLoader.invokeDirectStatic(meta.toGuestString(dotName), false, loader);
             EspressoError.guarantee(StaticObject.notNull(guestClass), "Class.forName returned null", dotName);
         } catch (EspressoException e) {
             profiler.profile(5);

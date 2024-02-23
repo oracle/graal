@@ -2022,7 +2022,7 @@ public abstract class ToReference extends ToEspressoNode {
                         @Bind("getMeta()") Meta meta) {
             try {
                 LocalDate localDate = interop.asDate(value);
-                return (StaticObject) meta.java_time_LocalDate_of.invokeDirect(null, localDate.getYear(), localDate.getMonthValue(), localDate.getDayOfMonth());
+                return (StaticObject) meta.java_time_LocalDate_of.invokeDirectStatic(localDate.getYear(), localDate.getMonthValue(), localDate.getDayOfMonth());
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("Contract violation: if isDate returns true, asDate must succeed.");
@@ -2066,7 +2066,7 @@ public abstract class ToReference extends ToEspressoNode {
                         @Bind("getMeta()") Meta meta) {
             try {
                 LocalTime localTime = interop.asTime(value);
-                return (StaticObject) meta.java_time_LocalTime_of.invokeDirect(null, localTime.getHour(), localTime.getMinute(), localTime.getSecond(), localTime.getNano());
+                return (StaticObject) meta.java_time_LocalTime_of.invokeDirectStatic(localTime.getHour(), localTime.getMinute(), localTime.getSecond(), localTime.getNano());
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("Contract violation: if isTime returns true, asTime must succeed.");
@@ -2115,10 +2115,10 @@ public abstract class ToReference extends ToEspressoNode {
             try {
                 LocalDate localDate = interop.asDate(value);
                 LocalTime localTime = interop.asTime(value);
-                StaticObject guestLocalDate = (StaticObject) meta.java_time_LocalDate_of.invokeDirect(null, localDate.getYear(), localDate.getMonthValue(), localDate.getDayOfMonth());
-                StaticObject guestLocalTime = (StaticObject) meta.java_time_LocalTime_of.invokeDirect(null, localTime.getHour(), localTime.getMinute(), localTime.getSecond(), localTime.getNano());
+                StaticObject guestLocalDate = (StaticObject) meta.java_time_LocalDate_of.invokeDirectStatic(localDate.getYear(), localDate.getMonthValue(), localDate.getDayOfMonth());
+                StaticObject guestLocalTime = (StaticObject) meta.java_time_LocalTime_of.invokeDirectStatic(localTime.getHour(), localTime.getMinute(), localTime.getSecond(), localTime.getNano());
 
-                return (StaticObject) meta.java_time_LocalDateTime_of.invokeDirect(null, guestLocalDate, guestLocalTime);
+                return (StaticObject) meta.java_time_LocalDateTime_of.invokeDirectStatic(guestLocalDate, guestLocalTime);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("Contract violation: if isDate returns true, asDate must succeed.");
@@ -2170,9 +2170,9 @@ public abstract class ToReference extends ToEspressoNode {
             try {
                 Instant instant = interop.asInstant(value);
                 ZoneId zoneId = interop.asTimeZone(value);
-                StaticObject guestInstant = (StaticObject) meta.java_time_Instant_ofEpochSecond.invokeDirect(null, instant.getEpochSecond(), (long) instant.getNano());
-                StaticObject guestZoneID = (StaticObject) meta.java_time_ZoneId_of.invokeDirect(null, meta.toGuestString(zoneId.getId()));
-                return (StaticObject) meta.java_time_ZonedDateTime_ofInstant.invokeDirect(null, guestInstant, guestZoneID);
+                StaticObject guestInstant = (StaticObject) meta.java_time_Instant_ofEpochSecond.invokeDirectStatic(instant.getEpochSecond(), (long) instant.getNano());
+                StaticObject guestZoneID = (StaticObject) meta.java_time_ZoneId_of.invokeDirectStatic(meta.toGuestString(zoneId.getId()));
+                return (StaticObject) meta.java_time_ZonedDateTime_ofInstant.invokeDirectStatic(guestInstant, guestZoneID);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("Contract violation: if isTime returns true, asTime must succeed.");
@@ -2220,7 +2220,7 @@ public abstract class ToReference extends ToEspressoNode {
                         @Bind("getMeta()") Meta meta) {
             try {
                 Instant instant = interop.asInstant(value);
-                return (StaticObject) meta.java_time_Instant_ofEpochSecond.invokeDirect(null, instant.getEpochSecond(), (long) instant.getNano());
+                return (StaticObject) meta.java_time_Instant_ofEpochSecond.invokeDirectStatic(instant.getEpochSecond(), (long) instant.getNano());
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("Contract violation: if isInstant returns true, asInstant must succeed.");
@@ -2312,7 +2312,7 @@ public abstract class ToReference extends ToEspressoNode {
                         @Bind("getMeta()") Meta meta) {
             try {
                 ZoneId zoneId = interop.asTimeZone(value);
-                return (StaticObject) meta.java_time_ZoneId_of.invokeDirect(null, meta.toGuestString(zoneId.getId()));
+                return (StaticObject) meta.java_time_ZoneId_of.invokeDirectStatic(meta.toGuestString(zoneId.getId()));
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("Contract violation: if isZoneId returns true, asTimeZone must succeed.");
@@ -2357,8 +2357,8 @@ public abstract class ToReference extends ToEspressoNode {
                         @Bind("getMeta()") Meta meta) {
             try {
                 Instant instant = interop.asInstant(value);
-                StaticObject guestInstant = (StaticObject) meta.java_time_Instant_ofEpochSecond.invokeDirect(null, instant.getEpochSecond(), (long) instant.getNano());
-                return (StaticObject) meta.java_util_Date_from.invokeDirect(null, guestInstant);
+                StaticObject guestInstant = (StaticObject) meta.java_time_Instant_ofEpochSecond.invokeDirectStatic(instant.getEpochSecond(), (long) instant.getNano());
+                return (StaticObject) meta.java_util_Date_from.invokeDirectStatic(guestInstant);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("Contract violation: if isInstant returns true, asInstant must succeed.");
@@ -2401,7 +2401,7 @@ public abstract class ToReference extends ToEspressoNode {
         private StaticObject toGuestBigInteger(Meta meta, BigInteger bigInteger) {
             byte[] bytes = bigInteger.toByteArray();
             StaticObject guestBigInteger = getAllocator().createNew(meta.java_math_BigInteger);
-            meta.java_math_BigInteger_init.invokeDirect(guestBigInteger, StaticObject.wrap(bytes, meta));
+            meta.java_math_BigInteger_init.invokeDirectSpecial(guestBigInteger, StaticObject.wrap(bytes, meta));
             return guestBigInteger;
         }
 

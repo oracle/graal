@@ -88,7 +88,7 @@ public final class Target_sun_misc_Perf {
                 throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
 
-        return (StaticObject) meta.java_nio_ByteBuffer_wrap.invokeDirect(null, StaticObject.wrap(longToBytes(value), meta));
+        return (StaticObject) meta.java_nio_ByteBuffer_wrap.invokeDirectStatic(StaticObject.wrap(longToBytes(value), meta));
     }
 
     @Substitution
