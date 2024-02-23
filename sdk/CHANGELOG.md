@@ -4,6 +4,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 
 ## Version 24.1.0
 * GR-51177 Enable random offsets of runtime compiled function entry points for the UNTRUSTED polyglot sandbox policy.
+* GR-51402 Improved Polyglot guest function to host interface proxies to infer the expected return type from the corresponding type argument (`R`) of the generic target type (e.g. `BiFunction<T,U,R>`).
 
 ## Version 24.0.0
 * (GR-49334) Deprecated the `FileSystems#allowLanguageHomeAccess()` method and introduced `FileSystem#allowInternalResourceAccess()` as a replacement. To ensure compatibility, both methods now provide support for language homes and internal resources.
