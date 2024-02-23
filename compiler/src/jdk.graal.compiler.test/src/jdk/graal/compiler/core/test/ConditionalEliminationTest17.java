@@ -33,9 +33,6 @@ import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.meta.DeoptimizationReason;
 
-/**
- * GR-52269
- */
 public class ConditionalEliminationTest17 extends ConditionalEliminationTestBase {
 
     static final class A {
