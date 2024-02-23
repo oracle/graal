@@ -872,23 +872,21 @@ class NativeImageVM(GraalVm):
 
         # If the 'image' stage was run, create a rule with the template as-is. This will produce datapoints from the
         # build stats produced by the final 'image' stage.
-        if "image" in self.stages_info.stages_till_now:
+        if self.stages_info.effective_stage == "image" or self.stages_info.fallback_mode:
             rules.append(mx_benchmark.JsonFixedFileRule(self.config.image_build_stats_file, template, keys))
 
-
-        # We're prefixing metric.object with 'instrument-', so it must exist.
-        # If metrics without metric.object are ever used here, the function needs to alternatively prefix metrtic.name.
-        assert "metric.object" in template
-
-        # TODO Rewrite. We should not prefix `instrument-`. Instead, this info should be part of the `host-vm-config`
-        # TOD Gate behind flag enabling metrics for the instrumentation stages
-
-        # Prefix metric.object with 'instrument-' for instrumentation data
-        instrument_template = template.copy()
-        instrument_template["metric.object"] = "instrument-" + template["metric.object"]
-
         # Only add rule if the stage actually ran. Otherwise, the json file is not available and parsing will fail.
-        if "instrument-image" in self.stages_info.stages_till_now:
+        if self.stages_info.effective_stage == "instrument-image" or self.stages_info.fallback_mode:
+            # TODO Rewrite. We should not prefix `instrument-`. Instead, this info should be part of the `host-vm-config`
+
+            # We're prefixing metric.object with 'instrument-', so it must exist.
+            # If metrics without metric.object are ever used here, the function needs to alternatively prefix metrtic.name.
+            assert "metric.object" in template
+
+            # Prefix metric.object with 'instrument-' for instrumentation data
+            instrument_template = template.copy()
+            instrument_template["metric.object"] = "instrument-" + template["metric.object"]
+
             rules.append(mx_benchmark.JsonFixedFileRule(self.config.get_instrument_image_build_stats_file(), instrument_template, keys))
 
         return rules
@@ -964,7 +962,7 @@ class NativeImageVM(GraalVm):
     def rules(self, output, benchmarks, bmSuiteArgs):
         rules = super().rules(output, benchmarks, bmSuiteArgs)
 
-        if self.stages_info.fallback_mode or self.stages_info.effective_stage == "image":
+        if self.stages_info.fallback_mode or self.stages_info.effective_stage in ["image", "instrument-image"]:
             # Only apply image build rules for the image build stages
             rules += self.image_build_rules(output, benchmarks, bmSuiteArgs)
 
