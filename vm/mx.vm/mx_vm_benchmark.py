@@ -868,28 +868,15 @@ class NativeImageVM(GraalVm):
         :return: The list of rules for the various image build stats files
         """
 
-        rules = []
+        stats_files = []
 
-        # If the 'image' stage was run, create a rule with the template as-is. This will produce datapoints from the
-        # build stats produced by the final 'image' stage.
         if self.stages_info.effective_stage == "image" or self.stages_info.fallback_mode:
-            rules.append(mx_benchmark.JsonFixedFileRule(self.config.image_build_stats_file, template, keys))
+            stats_files.append(self.config.image_build_stats_file)
 
-        # Only add rule if the stage actually ran. Otherwise, the json file is not available and parsing will fail.
         if self.stages_info.effective_stage == "instrument-image" or self.stages_info.fallback_mode:
-            # TODO Rewrite. We should not prefix `instrument-`. Instead, this info should be part of the `host-vm-config`
+            stats_files.append(self.config.get_instrument_image_build_stats_file())
 
-            # We're prefixing metric.object with 'instrument-', so it must exist.
-            # If metrics without metric.object are ever used here, the function needs to alternatively prefix metrtic.name.
-            assert "metric.object" in template
-
-            # Prefix metric.object with 'instrument-' for instrumentation data
-            instrument_template = template.copy()
-            instrument_template["metric.object"] = "instrument-" + template["metric.object"]
-
-            rules.append(mx_benchmark.JsonFixedFileRule(self.config.get_instrument_image_build_stats_file(), instrument_template, keys))
-
-        return rules
+        return [mx_benchmark.JsonFixedFileRule(f, template, keys) for f in stats_files]
 
     def image_build_statistics_rules(self, output, benchmarks, bmSuiteArgs):
         objects_list = ["total_array_store",
