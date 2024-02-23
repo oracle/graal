@@ -22,19 +22,18 @@ local vm_common = import '../ci_common/common.jsonnet';
     },
     run+: [
       ['mx', 'build'],
-      ['mx', '--dynamicimports', '/compiler', 'gate', '--tags', 'truffle-unchained']
+      ['mx', '--dynamicimports', '/compiler', 'gate', '--tags', 'truffle-unchained,substratevm']
     ],
     notify_emails: ["christian.humer@oracle.com", "tomas.zezula@oracle.com", "jakub.chaloupka@oracle.com"],
-    timelimit: '50:00',
+    timelimit: '1:15:00',
     name: self.targets[0] + '-vm-ce-truffle-unchained-lts-compatibility-check-labs' + self.jdk_name + '-linux-amd64',
   },
 
   local native_substratevm_truffle = vm_common.svm_common + vm.custom_vm + {
     run+: [
-      ['export', 'SVM_SUITE=' + vm.svm_suite],
-      ['mx', '--dynamicimports', '$SVM_SUITE', '--disable-polyglot', '--disable-libpolyglot', 'gate', '--no-warning-as-error', '--tags', 'build,substratevm' + self.gate_tag_suffix],
+      ['mx', '--env', 'ce', 'gate', '--no-warning-as-error', '--tags', 'build,substratevm' + self.gate_tag_suffix],
     ],
-    notify_emails: ["christian.humer@oracle.com", "jakub.chaloupka@oracle.com"],
+    notify_emails: ["christian.humer@oracle.com", "jakub.chaloupka@oracle.com", "tomas.zezula@oracle.com"],
     timelimit: '40:00',
     name: self.targets[0] + '-vm-native-substratevm-truffle' + self.gate_tag_suffix + '-labs' + self.jdk_name + '-linux-amd64',
   },

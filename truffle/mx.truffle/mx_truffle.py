@@ -428,6 +428,7 @@ def truffle_jvm_class_path_unit_tests_gate():
         ]
     unittest(list(['--suite', 'truffle', '-Dpolyglotimpl.DisableClassPathIsolation=false', '--use-graalvm', '--enable-timing', '--force-classpath', '--verbose', '--max-class-failures=25'] + test_classes))
 
+
 @mx.command(_suite.name, 'native-truffle-unittest')
 def native_truffle_unittest(args):
     """
@@ -553,7 +554,7 @@ def native_truffle_unittest(args):
             '-o', tests_executable,
             '-cp', tmp,
             '--features=org.graalvm.junit.platform.JUnitPlatformFeature',
-            'org.graalvm.junit.platform.NativeImageJUnitLauncher'] + parsed_args.build_args
+            'org.graalvm.junit.platform.NativeImageJUnitLauncher']
         mx.run([native_image] + vm_args + native_image_args)
 
         # 4. Execute native unittests
@@ -668,10 +669,27 @@ def sl_native_fallback_gate_tests():
     _sl_native_fallback_gate_tests(force_cp=False)
     _sl_native_fallback_gate_tests(force_cp=True)
 
-def truffle_native_unit_tests_gate():
+
+def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False):
+    if use_optimized_runtime:
+        build_truffle_runtime_args = []
+        run_truffle_runtime_args = []
+    else:
+        build_truffle_runtime_args = ['-Dtruffle.UseFallbackRuntime=true']
+        run_truffle_runtime_args = ['-Dpolyglot.engine.WarnInterpreterOnly=false']
+    if quick_build:
+        build_optimize_args = ['-Ob']
+    else:
+        build_optimize_args = []
+
     # ContextPreInitializationNativeImageTest can only run with its own image.
     # See class javadoc for details.
-    native_truffle_unittest(['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest'])
+    # Context pre-initialization is supported only in optimized runtime.
+    # See TruffleFeature for details.
+    if use_optimized_runtime:
+        native_truffle_unittest(['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest'] +
+                                ['--build-args'] + build_optimize_args)
+
     # Run Truffle and NFI tests
     test_packages = [
         'com.oracle.truffle.api.test',
@@ -686,19 +704,21 @@ def truffle_native_unit_tests_gate():
         'com.oracle.truffle.api.test.host.*',    # GR-52263
         'com.oracle.truffle.api.test.interop.*',    # GR-52264
     ]
-    build_args = [
-        '--build-args',
+    if quick_build:
+        excluded_tests = excluded_tests + [
+            'com.oracle.truffle.api.test.TruffleSafepointTest'    # GR-44492
+        ]
+    build_args = build_optimize_args + build_truffle_runtime_args + [
         '--enable-url-protocols=http,jar',
         '-H:+AddAllCharsets',
         '--add-exports=org.graalvm.polyglot/org.graalvm.polyglot.impl=ALL-UNNAMED',
         '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl.asm=ALL-UNNAMED',
     ]
-    run_args = [
-        '--run-args',
+    run_args = run_truffle_runtime_args + [
         mx_subst.path_substitutions.substitute('-Dnative.test.path=<path:truffle:TRUFFLE_TEST_NATIVE>'),
     ]
     exclude_args = list(itertools.chain(*[('--exclude-class', item) for item in excluded_tests]))
-    native_truffle_unittest(test_packages + build_args + run_args + exclude_args)
+    native_truffle_unittest(test_packages + ['--build-args'] + build_args + ['--run-args'] + run_args + exclude_args)
 
 
 def _sl_native_fallback_gate_tests(force_cp):
