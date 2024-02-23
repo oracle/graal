@@ -42,6 +42,7 @@ import com.oracle.svm.core.code.RuntimeCodeCache.CodeInfoVisitor;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
@@ -235,7 +236,7 @@ public class RuntimeCodeInfoMemory {
     private void add0(CodeInfo info) {
         addToSizeCounters(info);
         if (table.isNull()) {
-            table = NonmovableArrays.createWordArray(32);
+            table = NonmovableArrays.createWordArray(32, NmtCategory.Code);
         }
         int index;
         boolean resized;
@@ -271,7 +272,7 @@ public class RuntimeCodeInfoMemory {
             return false;
         }
         NonmovableArray<UntetheredCodeInfo> oldTable = table;
-        table = NonmovableArrays.createWordArray(newLength);
+        table = NonmovableArrays.createWordArray(newLength, NmtCategory.Code);
         for (int i = 0; i < oldLength; i++) {
             UntetheredCodeInfo tag = NonmovableArrays.getWord(oldTable, i);
             if (tag.isNonNull()) {

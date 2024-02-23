@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,36 +23,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jvmstat;
 
-import java.nio.ByteBuffer;
+package com.oracle.svm.core.nmt;
 
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
-
-import com.oracle.svm.core.jdk.DirectByteBufferUtil;
-import com.oracle.svm.core.memory.NativeMemory;
-import com.oracle.svm.core.nmt.NmtCategory;
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 
 /**
- * Allocates a buffer with a minimal size that only contains the performance data header (see
- * {@link PerfMemoryPrologue}).
+ * A "malloc header" stores metadata about the native allocation (malloc/calloc/realloc). To do
+ * this, a small amount of additional space is requested contiguous to the user allocation. This
+ * metadata is used to update the memory tracking once the block is freed.
  */
-public class CHeapPerfMemoryProvider implements PerfMemoryProvider {
-    private Pointer memory;
+@RawStructure
+public interface NmtMallocHeader extends PointerBase {
+    @RawField
+    UnsignedWord getAllocationSize();
 
-    @Override
-    public ByteBuffer create() {
-        int size = PerfMemoryPrologue.getPrologueSize();
-        memory = NativeMemory.calloc(size, NmtCategory.JvmStat);
-        return DirectByteBufferUtil.allocate(memory.rawValue(), size);
-    }
+    @RawField
+    void setAllocationSize(UnsignedWord value);
 
-    @Override
-    public void teardown() {
-        if (memory.isNonNull()) {
-            NativeMemory.free(memory);
-            memory = WordFactory.nullPointer();
-        }
-    }
+    @RawField
+    int getCategory();
+
+    @RawField
+    void setCategory(int value);
+
+    @RawField
+    int getMagic();
+
+    @RawField
+    void setMagic(int value);
 }

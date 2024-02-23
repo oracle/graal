@@ -58,6 +58,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.Counter;
@@ -129,12 +130,10 @@ public class CodeInfoEncoder {
         }
 
         @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed in target.")
-        private static void install(CodeInfo target, JavaConstant[] objectConstantsArray, Class<?>[] sourceClassesArray,
-                        String[] sourceMethodNamesArray, ReferenceAdjuster adjuster) {
-
-            NonmovableObjectArray<Object> frameInfoObjectConstants = adjuster.copyOfObjectConstantArray(objectConstantsArray);
-            NonmovableObjectArray<Class<?>> frameInfoSourceClasses = (sourceClassesArray != null) ? adjuster.copyOfObjectArray(sourceClassesArray) : NonmovableArrays.nullArray();
-            NonmovableObjectArray<String> frameInfoSourceMethodNames = (sourceMethodNamesArray != null) ? adjuster.copyOfObjectArray(sourceMethodNamesArray) : NonmovableArrays.nullArray();
+        private static void install(CodeInfo target, JavaConstant[] objectConstants, Class<?>[] sourceClasses, String[] sourceMethodNames, ReferenceAdjuster adjuster) {
+            NonmovableObjectArray<Object> frameInfoObjectConstants = adjuster.copyOfObjectConstantArray(objectConstants, NmtCategory.Code);
+            NonmovableObjectArray<Class<?>> frameInfoSourceClasses = (sourceClasses != null) ? adjuster.copyOfObjectArray(sourceClasses, NmtCategory.Code) : NonmovableArrays.nullArray();
+            NonmovableObjectArray<String> frameInfoSourceMethodNames = (sourceMethodNames != null) ? adjuster.copyOfObjectArray(sourceMethodNames, NmtCategory.Code) : NonmovableArrays.nullArray();
 
             CodeInfoAccess.setEncodings(target, frameInfoObjectConstants, frameInfoSourceClasses, frameInfoSourceMethodNames);
         }
@@ -339,9 +338,9 @@ public class CodeInfoEncoder {
             writeEncodedFrameInfo(encodingBuffer, data, entryFlags);
         }
 
-        codeInfoIndex = NonmovableArrays.createByteArray(TypeConversion.asU4(indexBuffer.getBytesWritten()));
+        codeInfoIndex = NonmovableArrays.createByteArray(TypeConversion.asU4(indexBuffer.getBytesWritten()), NmtCategory.Code);
         indexBuffer.toByteBuffer(NonmovableArrays.asByteBuffer(codeInfoIndex));
-        codeInfoEncodings = NonmovableArrays.createByteArray(TypeConversion.asU4(encodingBuffer.getBytesWritten()));
+        codeInfoEncodings = NonmovableArrays.createByteArray(TypeConversion.asU4(encodingBuffer.getBytesWritten()), NmtCategory.Code);
         encodingBuffer.toByteBuffer(NonmovableArrays.asByteBuffer(codeInfoEncodings));
     }
 

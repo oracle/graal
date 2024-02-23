@@ -71,6 +71,7 @@ import com.oracle.svm.core.heap.dump.HeapDumpMetadata.FieldNameAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.BufferedFileOperationSupport;
 import com.oracle.svm.core.os.BufferedFileOperationSupport.BufferedFile;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
@@ -443,7 +444,7 @@ public class HeapDumpWriter {
     private boolean initialize(RawFileDescriptor fd) {
         assert topLevelRecordBegin == -1 && subRecordBegin == -1 && !error;
 
-        this.f = file().allocate(fd);
+        this.f = file().allocate(fd, NmtCategory.HeapDump);
         if (f.isNull()) {
             return false;
         }
@@ -1340,7 +1341,7 @@ public class HeapDumpWriter {
         @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Heap dumping must not allocate.")
         public boolean visitObject(Object obj) {
             if (isLarge(obj)) {
-                boolean added = GrowableWordArrayAccess.add(largeObjects, Word.objectToUntrackedPointer(obj));
+                boolean added = GrowableWordArrayAccess.add(largeObjects, Word.objectToUntrackedPointer(obj), NmtCategory.HeapDump);
                 if (!added) {
                     Log.log().string("Failed to add an element to the large object list. Heap dump will be incomplete.").newline();
                 }

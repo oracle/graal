@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,46 +24,39 @@
  * questions.
  */
 
-package com.oracle.svm.core.jfr.utils;
+package com.oracle.svm.core.nmt;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.struct.SizeOf;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.collections.AbstractUninterruptibleHashtable;
-import com.oracle.svm.core.collections.UninterruptibleEntry;
-import com.oracle.svm.core.nmt.NmtCategory;
 
-public final class JfrVisitedTable extends AbstractUninterruptibleHashtable {
+class NmtMallocMemorySnapshot {
+    private final NmtMallocMemoryInfo[] categories;
+    private final NmtMallocMemoryInfo total;
+
     @Platforms(Platform.HOSTED_ONLY.class)
-    public JfrVisitedTable() {
-        super(NmtCategory.JFR);
+    NmtMallocMemorySnapshot() {
+        total = new NmtMallocMemoryInfo();
+        categories = new NmtMallocMemoryInfo[NmtCategory.values().length];
+        for (int i = 0; i < categories.length; i++) {
+            categories[i] = new NmtMallocMemoryInfo();
+        }
     }
 
-    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected JfrVisited[] createTable(int size) {
-        return new JfrVisited[size];
+    NmtMallocMemoryInfo getInfoByCategory(NmtCategory category) {
+        return getInfoByCategory(category.ordinal());
     }
 
-    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public JfrVisited[] getTable() {
-        return (JfrVisited[]) super.getTable();
+    NmtMallocMemoryInfo getInfoByCategory(int category) {
+        assert category < categories.length;
+        return categories[category];
     }
 
-    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected boolean isEqual(UninterruptibleEntry v0, UninterruptibleEntry v1) {
-        JfrVisited a = (JfrVisited) v0;
-        JfrVisited b = (JfrVisited) v1;
-        return a.getId() == b.getId();
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected UninterruptibleEntry copyToHeap(UninterruptibleEntry visitedOnStack) {
-        return copyToHeap(visitedOnStack, SizeOf.unsigned(JfrVisited.class));
+    NmtMallocMemoryInfo getTotalInfo() {
+        return total;
     }
 }

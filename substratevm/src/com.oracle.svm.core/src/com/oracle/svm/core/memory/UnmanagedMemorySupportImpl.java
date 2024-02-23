@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,40 +22,68 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.windows;
+package com.oracle.svm.core.memory;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.headers.LibCSupport;
+import com.oracle.svm.core.util.UnsignedUtils;
 
-@AutomaticallyRegisteredImageSingleton(UnmanagedMemorySupport.class)
-class WindowsUnmanagedMemorySupportImpl implements UnmanagedMemorySupport {
+import jdk.graal.compiler.api.replacements.Fold;
+
+/**
+ * Delegates to the libc-specific memory management functions. Some platforms use a different
+ * implementation.
+ */
+class UnmanagedMemorySupportImpl implements UnmanagedMemorySupport {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public <T extends PointerBase> T malloc(UnsignedWord size) {
-        return LibC.malloc(size);
+        /*
+         * Some libc implementations may return a nullptr when the size is 0. We use a minimum size
+         * of 1 to ensure that we always get a unique pointer if the allocation succeeds.
+         */
+        UnsignedWord allocationSize = UnsignedUtils.max(size, WordFactory.unsigned(1));
+        return libc().malloc(allocationSize);
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public <T extends PointerBase> T calloc(UnsignedWord size) {
-        return LibC.calloc(WordFactory.unsigned(1), size);
+        return libc().calloc(WordFactory.unsigned(1), size);
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public <T extends PointerBase> T realloc(T ptr, UnsignedWord size) {
-        return LibC.realloc(ptr, size);
+        return libc().realloc(ptr, size);
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void free(PointerBase ptr) {
-        LibC.free(ptr);
+        libc().free(ptr);
+    }
+
+    @Fold
+    static LibCSupport libc() {
+        return ImageSingletons.lookup(LibCSupport.class);
+    }
+}
+
+@AutomaticallyRegisteredFeature
+class UnmanagedMemorySupportFeature implements InternalFeature {
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        if (!ImageSingletons.contains(UnmanagedMemorySupport.class)) {
+            ImageSingletons.add(UnmanagedMemorySupport.class, new UnmanagedMemorySupportImpl());
+        }
     }
 }

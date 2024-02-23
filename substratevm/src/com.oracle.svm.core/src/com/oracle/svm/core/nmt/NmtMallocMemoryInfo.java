@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,40 +23,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix;
 
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
-import org.graalvm.word.PointerBase;
+package com.oracle.svm.core.nmt;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicLong;
 
-@AutomaticallyRegisteredImageSingleton(UnmanagedMemorySupport.class)
-class UnmanagedMemorySupportImpl implements UnmanagedMemorySupport {
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public <T extends PointerBase> T malloc(UnsignedWord size) {
-        return LibC.malloc(size);
+class NmtMallocMemoryInfo {
+    private final AtomicLong count = new AtomicLong(0);
+    private final AtomicLong used = new AtomicLong(0);
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    NmtMallocMemoryInfo() {
     }
 
-    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public <T extends PointerBase> T calloc(UnsignedWord size) {
-        return LibC.calloc(WordFactory.unsigned(1), size);
+    void track(UnsignedWord allocationSize) {
+        count.incrementAndGet();
+        used.addAndGet(allocationSize.rawValue());
     }
 
-    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public <T extends PointerBase> T realloc(T ptr, UnsignedWord size) {
-        return LibC.realloc(ptr, size);
+    void untrack(UnsignedWord allocationSize) {
+        long lastCount = count.decrementAndGet();
+        long lastSize = used.addAndGet(-allocationSize.rawValue());
+        assert lastSize >= 0 && lastCount >= 0;
     }
 
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void free(PointerBase ptr) {
-        LibC.free(ptr);
+    long getUsed() {
+        return used.get();
+    }
+
+    long getCount() {
+        return count.get();
     }
 }

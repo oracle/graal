@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,36 +23,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jvmstat;
 
-import java.nio.ByteBuffer;
+package com.oracle.svm.core.nmt;
 
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
+import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.jdk.DirectByteBufferUtil;
-import com.oracle.svm.core.memory.NativeMemory;
-import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.core.VMInspectionOptions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 
-/**
- * Allocates a buffer with a minimal size that only contains the performance data header (see
- * {@link PerfMemoryPrologue}).
- */
-public class CHeapPerfMemoryProvider implements PerfMemoryProvider {
-    private Pointer memory;
-
+@AutomaticallyRegisteredFeature
+public class NmtFeature implements InternalFeature {
     @Override
-    public ByteBuffer create() {
-        int size = PerfMemoryPrologue.getPrologueSize();
-        memory = NativeMemory.calloc(size, NmtCategory.JvmStat);
-        return DirectByteBufferUtil.allocate(memory.rawValue(), size);
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return VMInspectionOptions.hasNativeMemoryTrackingSupport();
     }
 
     @Override
-    public void teardown() {
-        if (memory.isNonNull()) {
-            NativeMemory.free(memory);
-            memory = WordFactory.nullPointer();
-        }
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(NativeMemoryTracking.class, new NativeMemoryTracking());
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        RuntimeSupport.getRuntimeSupport().addShutdownHook(NativeMemoryTracking.shutdownHook());
     }
 }

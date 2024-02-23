@@ -31,6 +31,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
+import com.oracle.svm.core.nmt.NmtCategory;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -59,8 +60,8 @@ public class InstantReferenceAdjuster implements ReferenceAdjuster {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public <T> NonmovableObjectArray<T> copyOfObjectArray(T[] source) {
-        return NonmovableArrays.copyOfObjectArray(source);
+    public <T> NonmovableObjectArray<T> copyOfObjectArray(T[] source, NmtCategory nmtCategory) {
+        return NonmovableArrays.copyOfObjectArray(source, nmtCategory);
     }
 
     @Override
