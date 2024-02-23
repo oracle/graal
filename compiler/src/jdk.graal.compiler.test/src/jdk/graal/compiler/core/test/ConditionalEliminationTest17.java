@@ -29,6 +29,8 @@ import java.util.EnumSet;
 import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.meta.DeoptimizationReason;
 
 /**
@@ -131,24 +133,24 @@ public class ConditionalEliminationTest17 extends ConditionalEliminationTestBase
         test(getInitialOptions(), EnumSet.allOf(DeoptimizationReason.class), "test2Snippet", args);
     }
 
-    private static boolean simpleEquals(byte[] a, byte[] b) {
+    // simplified and reduced version of equals (semantics of this method is not relevant, only IR
+    // shape)
+    private static boolean simpleEquals(byte[][] a) {
         for (int i = 0; i < a.length; i++) {
-            if (a[i] != b[i]) {
-                return false;
+            if (GraalDirectives.sideEffect(i) == 123) {
+                return true;
             }
         }
-        return true;
+        return false;
 
     }
 
-    // simplified and reduced version of test1Snippet
-    public static int test3Snippet(byte[][] haystack, byte[] needle, Object[] otherValues) {
-        Object someValue = otherValues[0];
-        Object anotherValue1 = otherValues[1];
-        // if (haystack.length != 0) {
+    // simplified and reduced version of test1Snippet (semantics of this method is not relevant,
+    // only IR shape)
+    @SuppressWarnings("unused")
+    public static int test3Snippet(byte[][] haystack, byte[] needle, Object someValue, Object anotherValue1) {
         for (int i = 0; i < haystack.length; i++) {
-            byte[] hay = haystack[i];
-            if (simpleEquals(hay, needle)) {
+            if (simpleEquals(haystack)) {
                 int result = 42;
                 if (anotherValue1 == X) {
                     GraalDirectives.controlFlowAnchor();
@@ -159,14 +161,14 @@ public class ConditionalEliminationTest17 extends ConditionalEliminationTestBase
                 return result;
             }
         }
-        // }
-        return ((B) someValue).value();
+        return 0;
     }
 
     @Test
     public void test3() {
-        Object[] args = {new byte[][]{"foo".getBytes(), "bar".getBytes()}, "neither".getBytes(), new Object[]{new B(), X, Y}};
-        test(getInitialOptions(), EnumSet.allOf(DeoptimizationReason.class), "test3Snippet", args);
+        Object[] args = {new byte[][]{"foo".getBytes(), "bar".getBytes()}, "neither".getBytes(), X, Y};
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.OptFloatingReads, false);
+        test(opt, EnumSet.allOf(DeoptimizationReason.class), "test3Snippet", args);
     }
 
 }
