@@ -421,11 +421,18 @@ class NativeImageStages:
         return self
 
     def execute_command(self, vm=None):
-        write_output = self.stages_info.effective_stage in ["run", "image"] or self.is_gate
+        if self.stages_info.fallback_mode:
+            if self.is_gate:
+                write_output = True
+            else:
+                # In fallback mode, we cannot produce output from the agent or instrumented stages because they would
+                # be picked up by the rules for the final image and run stage
+                write_output = self.stages_info.effective_stage in ["image", "run"]
+        else:
+            write_output = True
 
-        cmd = self.command
-        self.exit_code = self.config.bm_suite.run_stage(vm, self.stages_info.effective_stage, cmd, self.stdout(write_output), self.stderr(write_output), self.cwd, False)
-        if "image" not in self.stages_info.effective_stage and self.config.bm_suite.validateReturnCode(self.exit_code):
+        self.exit_code = self.config.bm_suite.run_stage(vm, self.stages_info.effective_stage, self.command, self.stdout(write_output), self.stderr(write_output), self.cwd, False)
+        if self.stages_info.effective_stage not in ["instrument-image", "image"] and self.config.bm_suite.validateReturnCode(self.exit_code):
             self.exit_code = 0
 
 
@@ -1032,6 +1039,7 @@ class NativeImageVM(GraalVm):
             s.execute_command()
             if self.config.bundle_path is not None:
                 NativeImageVM.copy_bundle_output(self.config, self.config.instrumentation_executable_name)
+
             if s.exit_code == 0:
                 # Move build stats file to a unique location so that it is not overwritten later and can be used to extract
                 # per-iteration build information
