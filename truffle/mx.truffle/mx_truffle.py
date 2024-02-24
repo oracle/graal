@@ -213,6 +213,7 @@ class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
         mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.polyglot/*=ALL-UNNAMED'])
         mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.sl/*=ALL-UNNAMED'])
         mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle/*=org.graalvm.sl'])
+        mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.shadowed.jcodings/*=ALL-UNNAMED'])
         return (vmArgs, mainClass, mainClassArgs)
 
 
@@ -1205,6 +1206,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
         'sdk:JNIUTILS',
         'truffle:TRUFFLE_API',
         'truffle:TRUFFLE_RUNTIME',
+        'truffle:TRUFFLE_JCODINGS',
     ],
     stability="supported",
 ))
