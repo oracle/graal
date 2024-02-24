@@ -1805,7 +1805,7 @@ public class NativeImageGenerator {
 
     private void printTypes() {
         String reportsPath = SubstrateOptions.reportsPath();
-        ReportUtils.report("print types", reportsPath, "universe_analysis", "txt",
+        ReportUtils.report("hosted universe", reportsPath, "universe_analysis", "txt",
                         writer -> printTypes(writer));
     }
 
