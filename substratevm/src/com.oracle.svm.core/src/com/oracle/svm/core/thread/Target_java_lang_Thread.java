@@ -178,7 +178,7 @@ public final class Target_java_lang_Thread {
 
     @AnnotateOriginal
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static native ThreadGroup virtualThreadGroup();
+    public static native ThreadGroup virtualThreadGroup();
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @AnnotateOriginal

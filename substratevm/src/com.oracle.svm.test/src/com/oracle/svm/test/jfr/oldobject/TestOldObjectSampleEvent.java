@@ -26,29 +26,24 @@
 
 package com.oracle.svm.test.jfr.oldobject;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-import org.junit.Assume;
 import org.junit.Test;
 
 public class TestOldObjectSampleEvent extends JfrOldObjectTest {
 
     @Test
     public void testObjectLeak() throws Throwable {
-        Assume.assumeFalse("Currently broken on JDK 23+ (GR-51526)", JavaVersionUtil.JAVA_SPEC >= 23);
         int arrayLength = Integer.MIN_VALUE;
         testSampling(new TinyObject(43), arrayLength, events -> validateEvents(events, TinyObject.class, arrayLength));
     }
 
     @Test
     public void testSmallArrayLeak() throws Throwable {
-        Assume.assumeFalse("Currently broken on JDK 23+ (GR-51526)", JavaVersionUtil.JAVA_SPEC >= 23);
         int arrayLength = 3;
         testSampling(new TinyObject[arrayLength], arrayLength, events -> validateEvents(events, TinyObject.class.arrayType(), arrayLength));
     }
 
     @Test
     public void testLargeArrayLeak() throws Throwable {
-        Assume.assumeFalse("Currently broken on JDK 23+ (GR-51526)", JavaVersionUtil.JAVA_SPEC >= 23);
         int arrayLength = 1024 * 1024;
         testSampling(new TinyObject[arrayLength], arrayLength, events -> validateEvents(events, TinyObject.class.arrayType(), arrayLength));
     }
