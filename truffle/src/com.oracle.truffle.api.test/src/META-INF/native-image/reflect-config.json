@@ -227,5 +227,25 @@
   {
     "name": "com.oracle.truffle.api.test.polyglot.AutomaticLeaveTest$ContextCloser",
     "allPublicMethods": true
+  },
+  {
+    "name": "java.util.function.BiFunction",
+    "allPublicMethods": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.GuestFunctionToHostInterfaceProxyTest$BiFunctionLike",
+    "allPublicMethods": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.GuestFunctionToHostInterfaceProxyTest$BiFunctionBase",
+    "allPublicMethods": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.GuestFunctionToHostInterfaceProxyTest$BiFunctionReturningValue",
+    "allPublicMethods": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.GuestFunctionToHostInterfaceProxyTest$HostCallee",
+    "allPublicMethods": true
   }
 ]
