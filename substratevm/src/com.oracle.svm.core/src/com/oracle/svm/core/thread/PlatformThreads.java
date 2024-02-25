@@ -56,7 +56,6 @@ import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -95,7 +94,9 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.monitor.MonitorSupport;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.stack.StackFrameVisitor;
@@ -719,14 +720,14 @@ public abstract class PlatformThreads {
         T startData = WordFactory.nullPointer();
         ObjectHandle threadHandle = WordFactory.zero();
         try {
-            startData = UnmanagedMemory.malloc(startDataSize);
+            startData = NativeMemory.malloc(startDataSize, NmtCategory.Threading);
             threadHandle = ObjectHandles.getGlobal().create(thread);
 
             startData.setIsolate(CurrentIsolate.getIsolate());
             startData.setThreadHandle(threadHandle);
         } catch (Throwable e) {
             if (startData.isNonNull()) {
-                UnmanagedMemory.free(startData);
+                freeStartData(startData);
             }
             if (threadHandle.notEqual(WordFactory.zero())) {
                 ObjectHandles.getGlobal().destroy(threadHandle);
@@ -784,7 +785,7 @@ public abstract class PlatformThreads {
     }
 
     protected static void freeStartData(ThreadStartData startData) {
-        UnmanagedMemory.free(startData);
+        NativeMemory.free(startData);
     }
 
     void startThread(Thread thread, long stackSize) {

@@ -335,7 +335,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             this.specializationStatistics = null;
         }
 
-        this.runtimeData = RUNTIME.createRuntimeData(this, engineOptions, engineLogger);
+        this.runtimeData = RUNTIME.createRuntimeData(this, engineOptions, engineLogger, sandboxPolicy);
         notifyCreated();
 
         if (!preInitialization) {
@@ -583,7 +583,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
         this.api = getAPIAccess().newEngine(impl.engineDispatch, this, true);
 
-        this.runtimeData = RUNTIME.createRuntimeData(this, prototype.engineOptionValues, prototype.engineLoggerSupplier);
+        this.runtimeData = RUNTIME.createRuntimeData(this, prototype.engineOptionValues, prototype.engineLoggerSupplier, sandboxPolicy);
         ensureInstrumentsCreated(instrumentsToCreate);
         notifyCreated();
     }
@@ -702,7 +702,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         Map<PolyglotInstrument, Map<String, String>> instrumentsOptions = new HashMap<>();
         parseOptions(newOptions, languagesOptions, instrumentsOptions);
 
-        RUNTIME.onEnginePatch(this.runtimeData, engineOptions, logSupplier);
+        RUNTIME.onEnginePatch(this.runtimeData, engineOptions, logSupplier, sandboxPolicy);
 
         List<OptionDescriptor> deprecatedDescriptors = new ArrayList<>();
         for (PolyglotLanguage language : languagesOptions.keySet()) {

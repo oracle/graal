@@ -46,6 +46,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.SandboxPolicy;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -205,7 +206,7 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public Object createRuntimeData(Object engine, OptionValues engineOptions, Function<String, TruffleLogger> loggerFactory) {
+        public Object createRuntimeData(Object engine, OptionValues engineOptions, Function<String, TruffleLogger> loggerFactory, SandboxPolicy sandboxPolicy) {
             return null;
         }
 
@@ -225,7 +226,7 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public void onEnginePatch(Object runtimeData, OptionValues runtimeOptions, Function<String, TruffleLogger> loggerFactory) {
+        public void onEnginePatch(Object runtimeData, OptionValues runtimeOptions, Function<String, TruffleLogger> loggerFactory, SandboxPolicy sandboxPolicy) {
 
         }
 

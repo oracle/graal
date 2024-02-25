@@ -67,8 +67,9 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.HashMap;
+import java.util.Map;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
@@ -377,44 +378,44 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
-        UTF_32LE(littleEndian() ? 0 : 99, "UTF_32LE", littleEndian() ? 2 : 0, littleEndian()),
+        UTF_32LE(littleEndian() ? 0 : 99, "UTF-32LE", littleEndian() ? 2 : 0, littleEndian()),
         /**
          * UTF-32BE. Directly supported if the current system is big-endian.
          *
          * @since 22.1
          */
-        UTF_32BE(littleEndian() ? 99 : 0, "UTF_32BE", littleEndian() ? 0 : 2, bigEndian()),
+        UTF_32BE(littleEndian() ? 99 : 0, "UTF-32BE", littleEndian() ? 0 : 2, bigEndian()),
         /**
          * UTF-16LE. Directly supported if the current system is little-endian.
          *
          * @since 22.1
          */
-        UTF_16LE(littleEndian() ? 1 : 100, "UTF_16LE", littleEndian() ? 1 : 0, false),
+        UTF_16LE(littleEndian() ? 1 : 100, "UTF-16LE", littleEndian() ? 1 : 0, false),
         /**
          * UTF-16BE. Directly supported if the current system is big-endian.
          *
          * @since 22.1
          */
-        UTF_16BE(littleEndian() ? 100 : 1, "UTF_16BE", littleEndian() ? 0 : 1, false),
+        UTF_16BE(littleEndian() ? 100 : 1, "UTF-16BE", littleEndian() ? 0 : 1, false),
         /**
          * ISO-8859-1, also known as LATIN-1, which is equivalent to US-ASCII + the LATIN-1
          * Supplement Unicode block.
          *
          * @since 22.1
          */
-        ISO_8859_1(2, "ISO_8859_1", 0, true),
+        ISO_8859_1(2, "ISO-8859-1", 0, true),
         /**
          * UTF-8.
          *
          * @since 22.1
          */
-        UTF_8(3, "UTF_8", 0, false),
+        UTF_8(3, "UTF-8", 0, false),
         /**
          * US-ASCII, which maps only 7-bit characters.
          *
          * @since 22.1
          */
-        US_ASCII(4, "US_ASCII", 0, true),
+        US_ASCII(4, "US-ASCII", 0, true),
         /**
          * Special "encoding" BYTES: This encoding is identical to US-ASCII, but treats all values
          * outside the us-ascii range as valid codepoints as well. Caution: no codepoint mappings
@@ -425,7 +426,7 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
-        BYTES(5, "BYTES", 0, true),
+        BYTES(5, "ASCII-8BIT", 0, true),
 
         /* encodings supported by falling back to JCodings */
 
@@ -434,560 +435,560 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 22.1
          */
-        Big5(6, "Big5"),
+        Big5(6, "Big5", false),
         /**
          * Big5-HKSCS.
          *
          * @since 22.1
          */
-        Big5_HKSCS(7, "Big5_HKSCS"),
+        Big5_HKSCS(7, "Big5-HKSCS", false),
         /**
          * Big5-UAO.
          *
          * @since 22.1
          */
-        Big5_UAO(8, "Big5_UAO"),
+        Big5_UAO(8, "Big5-UAO", false),
         /**
          * CESU-8.
          *
          * @since 23.0
          */
-        CESU_8(9, "CESU_8"),
+        CESU_8(9, "CESU-8", false),
         /**
          * CP51932.
          *
          * @since 22.1
          */
-        CP51932(10, "CP51932"),
+        CP51932(10, "CP51932", false),
         /**
          * CP850.
          *
          * @since 22.1
          */
-        CP850(11, "CP850"),
+        CP850(11, "CP850", true),
         /**
          * CP852.
          *
          * @since 22.1
          */
-        CP852(12, "CP852"),
+        CP852(12, "CP852", true),
         /**
          * CP855.
          *
          * @since 22.1
          */
-        CP855(13, "CP855"),
+        CP855(13, "CP855", true),
         /**
          * CP949.
          *
          * @since 22.1
          */
-        CP949(14, "CP949"),
+        CP949(14, "CP949", false),
         /**
          * CP950.
          *
          * @since 22.1
          */
-        CP950(15, "CP950"),
+        CP950(15, "CP950", false),
         /**
          * CP951.
          *
          * @since 22.1
          */
-        CP951(16, "CP951"),
+        CP951(16, "CP951", false),
         /**
          * EUC-JIS-2004.
          *
          * @since 22.1
          */
-        EUC_JIS_2004(17, "EUC_JIS_2004"),
+        EUC_JIS_2004(17, "EUC-JIS-2004", false),
         /**
          * EUC-JP.
          *
          * @since 22.1
          */
-        EUC_JP(18, "EUC_JP"),
+        EUC_JP(18, "EUC-JP", false),
         /**
          * EUC-KR.
          *
          * @since 22.1
          */
-        EUC_KR(19, "EUC_KR"),
+        EUC_KR(19, "EUC-KR", false),
         /**
          * EUC-TW.
          *
          * @since 22.1
          */
-        EUC_TW(20, "EUC_TW"),
+        EUC_TW(20, "EUC-TW", false),
         /**
          * Emacs-Mule.
          *
          * @since 22.1
          */
-        Emacs_Mule(21, "Emacs_Mule"),
+        Emacs_Mule(21, "Emacs-Mule", false),
         /**
          * EucJP-ms.
          *
          * @since 22.1
          */
-        EucJP_ms(22, "EucJP_ms"),
+        EucJP_ms(22, "eucJP-ms", false),
         /**
          * GB12345.
          *
          * @since 22.1
          */
-        GB12345(23, "GB12345"),
+        GB12345(23, "GB12345", false),
         /**
          * GB18030.
          *
          * @since 22.1
          */
-        GB18030(24, "GB18030"),
+        GB18030(24, "GB18030", false),
         /**
          * GB1988.
          *
          * @since 22.1
          */
-        GB1988(25, "GB1988"),
+        GB1988(25, "GB1988", true),
         /**
          * GB2312.
          *
          * @since 22.1
          */
-        GB2312(26, "GB2312"),
+        GB2312(26, "GB2312", false),
         /**
          * GBK.
          *
          * @since 22.1
          */
-        GBK(27, "GBK"),
+        GBK(27, "GBK", false),
         /**
          * IBM437.
          *
          * @since 22.1
          */
-        IBM437(28, "IBM437"),
+        IBM437(28, "IBM437", true),
         /**
          * IBM720.
          *
          * @since 23.0
          */
-        IBM720(29, "IBM720"),
+        IBM720(29, "IBM720", true),
         /**
          * IBM737.
          *
          * @since 22.1
          */
-        IBM737(30, "IBM737"),
+        IBM737(30, "IBM737", true),
         /**
          * IBM775.
          *
          * @since 22.1
          */
-        IBM775(31, "IBM775"),
+        IBM775(31, "IBM775", true),
         /**
          * IBM852.
          *
          * @since 22.1
          */
-        IBM852(32, "IBM852"),
+        IBM852(32, "IBM852", true),
         /**
          * IBM855.
          *
          * @since 22.1
          */
-        IBM855(33, "IBM855"),
+        IBM855(33, "IBM855", true),
         /**
          * IBM857.
          *
          * @since 22.1
          */
-        IBM857(34, "IBM857"),
+        IBM857(34, "IBM857", true),
         /**
          * IBM860.
          *
          * @since 22.1
          */
-        IBM860(35, "IBM860"),
+        IBM860(35, "IBM860", true),
         /**
          * IBM861.
          *
          * @since 22.1
          */
-        IBM861(36, "IBM861"),
+        IBM861(36, "IBM861", true),
         /**
          * IBM862.
          *
          * @since 22.1
          */
-        IBM862(37, "IBM862"),
+        IBM862(37, "IBM862", true),
         /**
          * IBM863.
          *
          * @since 22.1
          */
-        IBM863(38, "IBM863"),
+        IBM863(38, "IBM863", true),
         /**
          * IBM864.
          *
          * @since 22.1
          */
-        IBM864(39, "IBM864"),
+        IBM864(39, "IBM864", true),
         /**
          * IBM865.
          *
          * @since 22.1
          */
-        IBM865(40, "IBM865"),
+        IBM865(40, "IBM865", true),
         /**
          * IBM866.
          *
          * @since 22.1
          */
-        IBM866(41, "IBM866"),
+        IBM866(41, "IBM866", true),
         /**
          * IBM869.
          *
          * @since 22.1
          */
-        IBM869(42, "IBM869"),
+        IBM869(42, "IBM869", true),
         /**
          * ISO-8859-10.
          *
          * @since 22.1
          */
-        ISO_8859_10(43, "ISO_8859_10"),
+        ISO_8859_10(43, "ISO-8859-10", true),
         /**
          * ISO-8859-11.
          *
          * @since 22.1
          */
-        ISO_8859_11(44, "ISO_8859_11"),
+        ISO_8859_11(44, "ISO-8859-11", true),
         /**
          * ISO-8859-13.
          *
          * @since 22.1
          */
-        ISO_8859_13(45, "ISO_8859_13"),
+        ISO_8859_13(45, "ISO-8859-13", true),
         /**
          * ISO-8859-14.
          *
          * @since 22.1
          */
-        ISO_8859_14(46, "ISO_8859_14"),
+        ISO_8859_14(46, "ISO-8859-14", true),
         /**
          * ISO-8859-15.
          *
          * @since 22.1
          */
-        ISO_8859_15(47, "ISO_8859_15"),
+        ISO_8859_15(47, "ISO-8859-15", true),
         /**
          * ISO-8859-16.
          *
          * @since 22.1
          */
-        ISO_8859_16(48, "ISO_8859_16"),
+        ISO_8859_16(48, "ISO-8859-16", true),
         /**
          * ISO-8859-2.
          *
          * @since 22.1
          */
-        ISO_8859_2(49, "ISO_8859_2"),
+        ISO_8859_2(49, "ISO-8859-2", true),
         /**
          * ISO-8859-3.
          *
          * @since 22.1
          */
-        ISO_8859_3(50, "ISO_8859_3"),
+        ISO_8859_3(50, "ISO-8859-3", true),
         /**
          * ISO-8859-4.
          *
          * @since 22.1
          */
-        ISO_8859_4(51, "ISO_8859_4"),
+        ISO_8859_4(51, "ISO-8859-4", true),
         /**
          * ISO-8859-5.
          *
          * @since 22.1
          */
-        ISO_8859_5(52, "ISO_8859_5"),
+        ISO_8859_5(52, "ISO-8859-5", true),
         /**
          * ISO-8859-6.
          *
          * @since 22.1
          */
-        ISO_8859_6(53, "ISO_8859_6"),
+        ISO_8859_6(53, "ISO-8859-6", true),
         /**
          * ISO-8859-7.
          *
          * @since 22.1
          */
-        ISO_8859_7(54, "ISO_8859_7"),
+        ISO_8859_7(54, "ISO-8859-7", true),
         /**
          * ISO-8859-8.
          *
          * @since 22.1
          */
-        ISO_8859_8(55, "ISO_8859_8"),
+        ISO_8859_8(55, "ISO-8859-8", true),
         /**
          * ISO-8859-9.
          *
          * @since 22.1
          */
-        ISO_8859_9(56, "ISO_8859_9"),
+        ISO_8859_9(56, "ISO-8859-9", true),
         /**
          * KOI8-R.
          *
          * @since 22.1
          */
-        KOI8_R(57, "KOI8_R"),
+        KOI8_R(57, "KOI8-R", true),
         /**
          * KOI8-U.
          *
          * @since 22.1
          */
-        KOI8_U(58, "KOI8_U"),
+        KOI8_U(58, "KOI8-U", true),
         /**
          * MacCentEuro.
          *
          * @since 22.1
          */
-        MacCentEuro(59, "MacCentEuro"),
+        MacCentEuro(59, "macCentEuro", true),
         /**
          * MacCroatian.
          *
          * @since 22.1
          */
-        MacCroatian(60, "MacCroatian"),
+        MacCroatian(60, "macCroatian", true),
         /**
          * MacCyrillic.
          *
          * @since 22.1
          */
-        MacCyrillic(61, "MacCyrillic"),
+        MacCyrillic(61, "macCyrillic", true),
         /**
          * MacGreek.
          *
          * @since 22.1
          */
-        MacGreek(62, "MacGreek"),
+        MacGreek(62, "macGreek", true),
         /**
          * MacIceland.
          *
          * @since 22.1
          */
-        MacIceland(63, "MacIceland"),
+        MacIceland(63, "macIceland", true),
         /**
          * MacJapanese.
          *
          * @since 22.1
          */
-        MacJapanese(64, "MacJapanese"),
+        MacJapanese(64, "MacJapanese", false),
         /**
          * MacRoman.
          *
          * @since 22.1
          */
-        MacRoman(65, "MacRoman"),
+        MacRoman(65, "macRoman", true),
         /**
          * MacRomania.
          *
          * @since 22.1
          */
-        MacRomania(66, "MacRomania"),
+        MacRomania(66, "macRomania", true),
         /**
          * MacThai.
          *
          * @since 22.1
          */
-        MacThai(67, "MacThai"),
+        MacThai(67, "macThai", true),
         /**
          * MacTurkish.
          *
          * @since 22.1
          */
-        MacTurkish(68, "MacTurkish"),
+        MacTurkish(68, "macTurkish", true),
         /**
          * MacUkraine.
          *
          * @since 22.1
          */
-        MacUkraine(69, "MacUkraine"),
+        MacUkraine(69, "macUkraine", true),
         /**
          * SJIS-DoCoMo.
          *
          * @since 22.1
          */
-        SJIS_DoCoMo(70, "SJIS_DoCoMo"),
+        SJIS_DoCoMo(70, "SJIS-DoCoMo", false),
         /**
          * SJIS-KDDI.
          *
          * @since 22.1
          */
-        SJIS_KDDI(71, "SJIS_KDDI"),
+        SJIS_KDDI(71, "SJIS-KDDI", false),
         /**
          * SJIS-SoftBank.
          *
          * @since 22.1
          */
-        SJIS_SoftBank(72, "SJIS_SoftBank"),
+        SJIS_SoftBank(72, "SJIS-SoftBank", false),
         /**
          * Shift-JIS.
          *
          * @since 22.1
          */
-        Shift_JIS(73, "Shift_JIS"),
+        Shift_JIS(73, "Shift_JIS", false),
         /**
          * Stateless-ISO-2022-JP.
          *
          * @since 22.1
          */
-        Stateless_ISO_2022_JP(74, "Stateless_ISO_2022_JP"),
+        Stateless_ISO_2022_JP(74, "stateless-ISO-2022-JP", false),
         /**
          * Stateless-ISO-2022-JP-KDDI.
          *
          * @since 22.1
          */
-        Stateless_ISO_2022_JP_KDDI(75, "Stateless_ISO_2022_JP_KDDI"),
+        Stateless_ISO_2022_JP_KDDI(75, "stateless-ISO-2022-JP-KDDI", false),
         /**
          * TIS-620.
          *
          * @since 22.1
          */
-        TIS_620(76, "TIS_620"),
+        TIS_620(76, "TIS-620", true),
         /**
          * UTF8-DoCoMo.
          *
          * @since 22.1
          */
-        UTF8_DoCoMo(77, "UTF8_DoCoMo"),
+        UTF8_DoCoMo(77, "UTF8-DoCoMo", false),
         /**
          * UTF8-KDDI.
          *
          * @since 22.1
          */
-        UTF8_KDDI(78, "UTF8_KDDI"),
+        UTF8_KDDI(78, "UTF8-KDDI", false),
         /**
          * UTF8-MAC.
          *
          * @since 22.1
          */
-        UTF8_MAC(79, "UTF8_MAC"),
+        UTF8_MAC(79, "UTF8-MAC", false),
         /**
          * UTF8-SoftBank.
          *
          * @since 22.1
          */
-        UTF8_SoftBank(80, "UTF8_SoftBank"),
+        UTF8_SoftBank(80, "UTF8-SoftBank", false),
         /**
          * Windows-1250.
          *
          * @since 22.1
          */
-        Windows_1250(81, "Windows_1250"),
+        Windows_1250(81, "Windows-1250", true),
         /**
          * Windows-1251.
          *
          * @since 22.1
          */
-        Windows_1251(82, "Windows_1251"),
+        Windows_1251(82, "Windows-1251", true),
         /**
          * Windows-1252.
          *
          * @since 22.1
          */
-        Windows_1252(83, "Windows_1252"),
+        Windows_1252(83, "Windows-1252", true),
         /**
          * Windows-1253.
          *
          * @since 22.1
          */
-        Windows_1253(84, "Windows_1253"),
+        Windows_1253(84, "Windows-1253", true),
         /**
          * Windows-1254.
          *
          * @since 22.1
          */
-        Windows_1254(85, "Windows_1254"),
+        Windows_1254(85, "Windows-1254", true),
         /**
          * Windows-1255.
          *
          * @since 22.1
          */
-        Windows_1255(86, "Windows_1255"),
+        Windows_1255(86, "Windows-1255", true),
         /**
          * Windows-1256.
          *
          * @since 22.1
          */
-        Windows_1256(87, "Windows_1256"),
+        Windows_1256(87, "Windows-1256", true),
         /**
          * Windows-1257.
          *
          * @since 22.1
          */
-        Windows_1257(88, "Windows_1257"),
+        Windows_1257(88, "Windows-1257", true),
         /**
          * Windows-1258.
          *
          * @since 22.1
          */
-        Windows_1258(89, "Windows_1258"),
+        Windows_1258(89, "Windows-1258", true),
         /**
          * Windows-31J.
          *
          * @since 22.1
          */
-        Windows_31J(90, "Windows_31J"),
+        Windows_31J(90, "Windows-31J", false),
         /**
          * Windows-874.
          *
          * @since 22.1
          */
-        Windows_874(91, "Windows_874"),
+        Windows_874(91, "Windows-874", true),
         /* non-ascii-compatible encodings */
         /**
          * CP50220.
          *
          * @since 22.1
          */
-        CP50220(92, "CP50220"),
+        CP50220(92, "CP50220", true),
         /**
          * CP50221.
          *
          * @since 22.1
          */
-        CP50221(93, "CP50221"),
+        CP50221(93, "CP50221", true),
         /**
          * IBM037.
          *
          * @since 22.1
          */
-        IBM037(94, "IBM037"),
+        IBM037(94, "IBM037", true),
         /**
          * ISO-2022-JP.
          *
          * @since 22.1
          */
-        ISO_2022_JP(95, "ISO_2022_JP"),
+        ISO_2022_JP(95, "ISO-2022-JP", true),
         /**
          * ISO-2022-JP-2.
          *
          * @since 22.1
          */
-        ISO_2022_JP_2(96, "ISO_2022_JP_2"),
+        ISO_2022_JP_2(96, "ISO-2022-JP-2", true),
         /**
          * ISO-2022-JP-KDDI.
          *
          * @since 22.1
          */
-        ISO_2022_JP_KDDI(97, "ISO_2022_JP_KDDI"),
+        ISO_2022_JP_KDDI(97, "ISO-2022-JP-KDDI", true),
         /**
          * UTF-7.
          *
          * @since 22.1
          */
-        UTF_7(98, "UTF_7");
+        UTF_7(98, "UTF-7", true);
 
         /**
          * UTF-32 in <i>the current system's endianness</i>, without byte-order mark, with
@@ -1005,22 +1006,29 @@ public final class TruffleString extends AbstractTruffleString {
         public static final Encoding UTF_16 = littleEndian() ? UTF_16LE : UTF_16BE;
 
         final byte id;
-        final String name;
+        final String jCodingName;
         final JCodings.Encoding jCoding;
         final byte maxCompatibleCodeRange;
         final byte naturalStride;
         final boolean fixedWidth;
 
-        Encoding(int id, String name) {
-            this(id, name, 0, JCodings.ENABLED && JCodings.getInstance().isFixedWidth(JCodings.getInstance().get(name)));
+        /**
+         * Constructor for exotic encodings (from JCodings).
+         */
+        Encoding(int id, String jCodingName, boolean fixedWidth) {
+            this(id, jCodingName, 0, fixedWidth);
+            assert !JCodings.ENABLED || fixedWidth == JCodings.getInstance().isFixedWidth(JCodings.getInstance().get(jCodingName)) : jCodingName;
         }
 
-        Encoding(int id, String name, int naturalStride, boolean fixedWidth) {
-            assert id <= 0x7f;
-            assert Stride.isStride(naturalStride);
+        /**
+         * Constructor for well-known encodings.
+         */
+        Encoding(int id, String jCodingName, int naturalStride, boolean fixedWidth) {
+            assert id <= 0x7f : id;
+            assert Stride.isStride(naturalStride) : naturalStride;
             this.id = (byte) id;
-            this.name = name;
-            this.jCoding = JCodings.ENABLED ? JCodings.getInstance().get(name) : null;
+            this.jCodingName = jCodingName;
+            this.jCoding = JCodings.ENABLED ? JCodings.getInstance().get(jCodingName) : null;
             if (is16BitCompatible()) {
                 maxCompatibleCodeRange = (byte) (TSCodeRange.get16Bit() + 1);
             } else if (is8BitCompatible()) {
@@ -1034,27 +1042,33 @@ public final class TruffleString extends AbstractTruffleString {
             this.fixedWidth = fixedWidth;
         }
 
-        @CompilationFinal(dimensions = 1) private static final Encoding[] ENCODINGS_TABLE = new Encoding[Encoding.values().length];
-        @CompilationFinal(dimensions = 1) private static final JCodings.Encoding[] J_CODINGS_TABLE = new JCodings.Encoding[Encoding.values().length];
-        @CompilationFinal(dimensions = 1) private static final byte[] MAX_COMPATIBLE_CODE_RANGE = new byte[Encoding.values().length];
-        @CompilationFinal(dimensions = 1) private static final TruffleString[] EMPTY_STRINGS = new TruffleString[Encoding.values().length];
-        private static final EconomicMap<String, Encoding> J_CODINGS_NAME_MAP = EconomicMap.create(Encoding.values().length);
+        @CompilationFinal(dimensions = 1) private static final Encoding[] ENCODINGS_TABLE;
+        @CompilationFinal(dimensions = 1) private static final byte[] MAX_COMPATIBLE_CODE_RANGE;
+        @CompilationFinal(dimensions = 1) private static final TruffleString[] EMPTY_STRINGS;
+        private static final Map<String, Encoding> JCODINGS_NAME_MAP;
 
         static {
-            for (Encoding e : Encoding.values()) {
+            final Encoding[] encodingValues = Encoding.values();
+            ENCODINGS_TABLE = new Encoding[encodingValues.length];
+            MAX_COMPATIBLE_CODE_RANGE = new byte[encodingValues.length];
+            EMPTY_STRINGS = new TruffleString[encodingValues.length];
+            // Java 17 compatible version of (Java 19) newHashMap(encodingValues.length)
+            Map<String, Encoding> jcodingsNameMap = new HashMap<>(encodingValues.length + encodingValues.length / 3);
+
+            for (Encoding e : encodingValues) {
                 assert ENCODINGS_TABLE[e.id] == null;
                 ENCODINGS_TABLE[e.id] = e;
-                assert J_CODINGS_TABLE[e.id] == null;
-                J_CODINGS_TABLE[e.id] = e.jCoding;
                 MAX_COMPATIBLE_CODE_RANGE[e.id] = e.maxCompatibleCodeRange;
                 if (JCodings.ENABLED) {
-                    J_CODINGS_NAME_MAP.put(JCodings.getInstance().name(e.jCoding), e);
+                    jcodingsNameMap.put(e.jCodingName, e);
                 }
             }
+            JCODINGS_NAME_MAP = Map.copyOf(jcodingsNameMap);
+
             assert UTF_16.naturalStride == 1;
             assert UTF_32.naturalStride == 2;
             EMPTY_STRINGS[US_ASCII.id] = createConstant(new byte[0], 0, 0, US_ASCII, 0, TSCodeRange.get7Bit());
-            for (Encoding e : Encoding.values()) {
+            for (Encoding e : encodingValues) {
                 if (e != US_ASCII) {
                     assert EMPTY_STRINGS[e.id] == null;
                     if (e.isSupported() || JCodings.ENABLED) {
@@ -1079,7 +1093,12 @@ public final class TruffleString extends AbstractTruffleString {
          * @since 22.1
          */
         public TruffleString getEmpty() {
-            return EMPTY_STRINGS[id];
+            TruffleString emptyString = EMPTY_STRINGS[id];
+            if (emptyString == null) {
+                assert !isSupported() : this;
+                throw InternalErrors.unknownEncoding(this.name());
+            }
+            return emptyString;
         }
 
         /**
@@ -1090,7 +1109,7 @@ public final class TruffleString extends AbstractTruffleString {
          */
         @TruffleBoundary
         public static Encoding fromJCodingName(String name) {
-            Encoding encoding = J_CODINGS_NAME_MAP.get(name, null);
+            Encoding encoding = JCODINGS_NAME_MAP.get(name);
             if (encoding == null) {
                 throw InternalErrors.unknownEncoding(name);
             }
@@ -1099,11 +1118,6 @@ public final class TruffleString extends AbstractTruffleString {
 
         static Encoding get(int encoding) {
             return ENCODINGS_TABLE[encoding];
-        }
-
-        static JCodings.Encoding getJCoding(int encoding) {
-            assert J_CODINGS_TABLE[encoding] == get(encoding).jCoding;
-            return J_CODINGS_TABLE[encoding];
         }
 
         static int getMaxCompatibleCodeRange(int encoding) {

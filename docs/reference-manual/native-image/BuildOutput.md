@@ -66,7 +66,7 @@ Recommendations:
 --------------------------------------------------------------------------------
     0.8s (4.6% of total time) in 35 GCs | Peak RSS: 1.93GB | CPU load: 9.61
 --------------------------------------------------------------------------------
-Produced artifacts:
+Build artifacts:
  /home/janedoe/helloworld/helloworld (executable)
  /home/janedoe/helloworld/helloworld.debug (debug_info)
  /home/janedoe/helloworld/sources (debug_info)
@@ -341,11 +341,22 @@ If there is enough headroom and the [GC statistics](#glossary-garbage-collection
 The CPU time used by the process divided by the total process time.
 Increase the number of CPU cores to reduce the time to build the native binary.
 
+## <a name="glossary-build-artifacts"></a>Build Artifacts
+
+The list of all build artifacts.
+This includes the generated native binary, but it can also contain other artifacts such as additional libraries, C header files, or debug info.
+Some of these artifacts must remain in the same location with the native binary as they are needed at run time.
+For applications using AWT, for example, the build process will also output libraries from the JDK and shims to provide compatible AWT support.
+These libraries need to be copied and distributed together with the native binary.
+Use the `-H:+GenerateBuildArtifactsFile` option to instruct the builder to produce a machine-readable version of the build artifact list in JSON format.
+Such a JSON file validates against the JSON schema defined in [`build-artifacts-schema-v0.9.0.json`](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/build-artifacts-schema-v0.9.0.json).
+This schema also contains descriptions for each possible artifact type and explains whether they are needed at run time or not.
+
 ## Machine-Readable Build Output
 
 The build output produced by the `native-image` builder is designed for humans, can evolve with new releases, and should thus not be parsed in any way by tools.
 Instead, use the `-H:BuildOutputJSONFile=<file.json>` option to instruct the builder to produce machine-readable build output in JSON format that can be used, for example, for building monitoring tools.
-The JSON files validate against the JSON schema defined in [`build-output-schema-v0.9.2.json`](https://github.com/oracle/graal/tree/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.2.json).
+Such a JSON file validates against the JSON schema defined in [`build-output-schema-v0.9.2.json`](https://github.com/oracle/graal/tree/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.2.json).
 Note that a JSON file is produced if and only if a build succeeds.
 
 The following example illustrates how this could be used in a CI/CD build pipeline to check that the number of reachable methods does not exceed a certain threshold:

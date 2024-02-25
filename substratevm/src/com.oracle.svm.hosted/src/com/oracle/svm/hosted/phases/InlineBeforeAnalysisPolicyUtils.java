@@ -44,6 +44,7 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.iterators.NodePredicate;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractEndNode;
 import jdk.graal.compiler.nodes.CallTargetNode;
@@ -71,6 +72,7 @@ import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.replacements.nodes.MethodHandleWithExceptionNode;
 import jdk.internal.vm.annotation.ForceInline;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * The defaults for node limits are very conservative. Only small methods should be inlined. The
@@ -125,8 +127,12 @@ public class InlineBeforeAnalysisPolicyUtils {
     public final int optionMethodHandleAllowedInlinings = Options.InlineBeforeAnalysisMethodHandleAllowedInlinings.getValue();
 
     @SuppressWarnings("unchecked") //
-    public static final Class<? extends Annotation> COMPILED_LAMBDA_FORM_ANNOTATION = //
+    private static final Class<? extends Annotation> COMPILED_LAMBDA_FORM_ANNOTATION = //
                     (Class<? extends Annotation>) ReflectionUtil.lookupClass(false, "java.lang.invoke.LambdaForm$Compiled");
+
+    public static boolean isMethodHandleIntrinsificationRoot(ResolvedJavaMethod method) {
+        return AnnotationAccess.isAnnotationPresent(method, COMPILED_LAMBDA_FORM_ANNOTATION);
+    }
 
     public boolean shouldInlineInvoke(GraphBuilderContext b, SVMHost hostVM, AccumulativeInlineScope policyScope, AnalysisMethod method) {
         boolean result = shouldInlineInvoke0(b, hostVM, policyScope, method);
@@ -177,7 +183,7 @@ public class InlineBeforeAnalysisPolicyUtils {
                  */
                 return false;
             }
-            if (policyScope != null && AnnotationAccess.isAnnotationPresent(method, COMPILED_LAMBDA_FORM_ANNOTATION)) {
+            if (policyScope != null && isMethodHandleIntrinsificationRoot(method)) {
                 /*
                  * We are not in a method handle intrinsification i.e., the method handle was not
                  * the root inlining context. Do not inline compiled lambda forms at all. Since the
@@ -231,48 +237,6 @@ public class InlineBeforeAnalysisPolicyUtils {
         return false;
     }
 
-    /**
-     * This scope will always allow nodes to be inlined.
-     */
-    public static class AlwaysInlineScope extends InlineBeforeAnalysisPolicy.AbstractPolicyScope {
-
-        public AlwaysInlineScope(int inliningDepth) {
-            super(inliningDepth);
-        }
-
-        @Override
-        public boolean allowAbort() {
-            // should not be able to abort
-            return false;
-        }
-
-        @Override
-        public void commitCalleeScope(InlineBeforeAnalysisPolicy.AbstractPolicyScope callee) {
-            // nothing to do
-        }
-
-        @Override
-        public void abortCalleeScope(InlineBeforeAnalysisPolicy.AbstractPolicyScope callee) {
-            // nothing to do
-        }
-
-        @Override
-        public boolean processNode(AnalysisMetaAccess metaAccess, AnalysisMethod method, Node node) {
-            // always inlining
-            return true;
-        }
-
-        @Override
-        public boolean processNonInlinedInvoke(CoreProviders providers, CallTargetNode node) {
-            return true;
-        }
-
-        @Override
-        public String toString() {
-            return "AlwaysInlineScope";
-        }
-    }
-
     static final class AccumulativeCounters {
         int maxNodes;
         int maxInvokes;
@@ -294,7 +258,7 @@ public class InlineBeforeAnalysisPolicyUtils {
      * has exceeded a specified count, or an illegal node is inlined, then the process will be
      * aborted.
      */
-    public AccumulativeInlineScope createAccumulativeInlineScope(AccumulativeInlineScope outer, AnalysisMethod method) {
+    public AccumulativeInlineScope createAccumulativeInlineScope(AccumulativeInlineScope outer, AnalysisMethod method, NodePredicate invalidNodePredicate) {
         AccumulativeCounters accumulativeCounters;
         int depth;
         if (outer == null) {
@@ -304,7 +268,7 @@ public class InlineBeforeAnalysisPolicyUtils {
              */
             depth = 1;
 
-            if (AnnotationAccess.isAnnotationPresent(method, COMPILED_LAMBDA_FORM_ANNOTATION)) {
+            if (isMethodHandleIntrinsificationRoot(method)) {
                 /*
                  * Method handle intrinsification root: create counters with relaxed limits and
                  * permit more types of nodes, but not recursively, i.e., not if we are already in a
@@ -337,11 +301,12 @@ public class InlineBeforeAnalysisPolicyUtils {
             depth = outer.inliningDepth + 1;
             accumulativeCounters = outer.accumulativeCounters;
         }
-        return new AccumulativeInlineScope(accumulativeCounters, depth);
+        return new AccumulativeInlineScope(accumulativeCounters, depth, invalidNodePredicate);
     }
 
     public final class AccumulativeInlineScope extends InlineBeforeAnalysisPolicy.AbstractPolicyScope {
         final AccumulativeCounters accumulativeCounters;
+        final NodePredicate invalidNodePredicate;
 
         /**
          * The number of nodes and invokes which have been inlined from this method (and also
@@ -351,15 +316,10 @@ public class InlineBeforeAnalysisPolicyUtils {
         int numNodes = 0;
         int numInvokes = 0;
 
-        AccumulativeInlineScope(AccumulativeCounters accumulativeCounters, int inliningDepth) {
+        AccumulativeInlineScope(AccumulativeCounters accumulativeCounters, int inliningDepth, NodePredicate invalidNodePredicate) {
             super(inliningDepth);
             this.accumulativeCounters = accumulativeCounters;
-        }
-
-        @Override
-        public boolean allowAbort() {
-            // when too many nodes are inlined any abort can occur
-            return true;
+            this.invalidNodePredicate = invalidNodePredicate;
         }
 
         @Override
@@ -392,6 +352,10 @@ public class InlineBeforeAnalysisPolicyUtils {
 
         @Override
         public boolean processNode(AnalysisMetaAccess metaAccess, AnalysisMethod method, Node node) {
+            if (invalidNodePredicate.test(node)) {
+                return false;
+            }
+
             if (node instanceof StartNode || node instanceof ParameterNode || node instanceof ReturnNode || node instanceof UnwindNode ||
                             node instanceof CallTargetNode || node instanceof MethodHandleWithExceptionNode) {
                 /*
@@ -498,7 +462,7 @@ public class InlineBeforeAnalysisPolicyUtils {
 
         @Override
         public boolean processNonInlinedInvoke(CoreProviders providers, CallTargetNode node) {
-            if (node.targetMethod() != null && AnnotationAccess.isAnnotationPresent(node.targetMethod(), COMPILED_LAMBDA_FORM_ANNOTATION)) {
+            if (node.targetMethod() != null && isMethodHandleIntrinsificationRoot(node.targetMethod())) {
                 /*
                  * Prevent partial inlining of method handle code, both with and without
                  * "intrinsification of method handles". We rather want to keep a top-level call to
@@ -530,7 +494,7 @@ public class InlineBeforeAnalysisPolicyUtils {
 
     private static boolean inlineForMethodHandleIntrinsification(AnalysisMethod method) {
         return AnnotationAccess.isAnnotationPresent(method, ForceInline.class) ||
-                        AnnotationAccess.isAnnotationPresent(method, COMPILED_LAMBDA_FORM_ANNOTATION) ||
+                        isMethodHandleIntrinsificationRoot(method) ||
                         INLINE_METHOD_HANDLE_CLASSES.contains(method.getDeclaringClass().getJavaClass()) ||
                         isManuallyListed(method.getJavaMethod());
     }
@@ -547,6 +511,6 @@ public class InlineBeforeAnalysisPolicyUtils {
      * @see MethodHandleInvokerRenamingSubstitutionProcessor
      */
     protected boolean shouldOmitIntermediateMethodInState(AnalysisMethod method) {
-        return method.isAnnotationPresent(COMPILED_LAMBDA_FORM_ANNOTATION);
+        return isMethodHandleIntrinsificationRoot(method);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,9 +52,9 @@ import static com.oracle.truffle.api.strings.TStringGuards.isUTF16Or32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF8;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.shadowed.org.jcodings.EncodingDB;
 import org.graalvm.shadowed.org.jcodings.Ptr;
 import org.graalvm.shadowed.org.jcodings.transcode.EConv;
@@ -63,8 +63,8 @@ import org.graalvm.shadowed.org.jcodings.transcode.EConvResult;
 import org.graalvm.shadowed.org.jcodings.transcode.TranscoderDB;
 import org.graalvm.shadowed.org.jcodings.util.CaseInsensitiveBytesHash;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -73,41 +73,52 @@ import com.oracle.truffle.api.strings.TruffleString.ErrorHandling;
 
 final class JCodingsImpl implements JCodings {
 
+    private static final int MAX_JCODINGS_INDEX_VALUE = 0x7f;
+
     private static final class EncodingWrapper implements Encoding {
         private final org.graalvm.shadowed.org.jcodings.Encoding encoding;
 
-        private EncodingWrapper(org.graalvm.shadowed.org.jcodings.Encoding encoding) {
-            this.encoding = encoding;
+        private EncodingWrapper(String jcodingsName) {
+            this.encoding = Lazy.load(jcodingsName);
+        }
+
+        org.graalvm.shadowed.org.jcodings.Encoding getEncoding() {
+            return encoding;
         }
     }
 
-    private static final int MAX_J_CODINGS_INDEX_VALUE = 0x7f;
+    private static final class Lazy {
 
-    @CompilationFinal private static final EconomicMap<String, EncodingWrapper> J_CODINGS_MAP = createJCodingsMap();
-
-    @TruffleBoundary
-    private static EconomicMap<String, EncodingWrapper> createJCodingsMap() {
-        CaseInsensitiveBytesHash<EncodingDB.Entry> encodings = EncodingDB.getEncodings();
-        if (encodings.size() > MAX_J_CODINGS_INDEX_VALUE) {
-            throw new RuntimeException(String.format("Assumption broken: org.graalvm.shadowed.org.jcodings has more than %d encodings (actual: %d)!", MAX_J_CODINGS_INDEX_VALUE, encodings.size()));
-        }
-        EconomicMap<String, EncodingWrapper> allEncodings = EconomicMap.create(encodings.size());
-        for (EncodingDB.Entry entry : encodings) {
-            org.graalvm.shadowed.org.jcodings.Encoding enc = entry.getEncoding();
-            int i = enc.getIndex();
-            if (i < 0 || i >= encodings.size()) {
-                throw new RuntimeException(String.format(
-                                "Assumption broken: index of org.graalvm.shadowed.org.jcodings encoding \"%s\" is greater than number of encodings (index: %d, number of encodings: %d)!", enc, i,
-                                encodings.size()));
+        static {
+            CaseInsensitiveBytesHash<EncodingDB.Entry> encodings = EncodingDB.getEncodings();
+            assert encodings.size() <= MAX_JCODINGS_INDEX_VALUE : String.format(
+                            "Assumption broken: jcodings has more than %d encodings (actual: %d)!", MAX_JCODINGS_INDEX_VALUE, encodings.size());
+            // Load all encodings in registration order to ensure consistent Encoding.getIndex().
+            for (EncodingDB.Entry entry : encodings) {
+                var enc = entry.getEncoding();
+                int i = enc.getIndex();
+                assert i >= 0 && i < encodings.size() : String.format(
+                                "Assumption broken: index of jcodings encoding \"%s\" is greater than number of encodings (index: %d, number of encodings: %d)!",
+                                enc, i, encodings.size());
             }
-            allEncodings.put(toEnumName(enc.toString()), new EncodingWrapper(enc));
         }
-        return allEncodings;
+
+        static org.graalvm.shadowed.org.jcodings.Encoding load(String jcodingsName) {
+            CompilerAsserts.neverPartOfCompilation();
+            CaseInsensitiveBytesHash<EncodingDB.Entry> encodings = EncodingDB.getEncodings();
+            EncodingDB.Entry entry = encodings.get(jcodingsName.getBytes(StandardCharsets.ISO_8859_1));
+            if (entry == null) {
+                throw new IllegalArgumentException("JCodings Encoding '%s' not found".formatted(jcodingsName));
+            }
+            var encoding = entry.getEncoding();
+            assert jcodingsName.equals(encoding.toString()) : jcodingsName + " != " + encoding;
+            return encoding;
+        }
     }
 
     @Override
     public Encoding get(String encodingName) {
-        return J_CODINGS_MAP.get(encodingName);
+        return new EncodingWrapper(encodingName);
     }
 
     @Override
@@ -378,20 +389,8 @@ final class JCodingsImpl implements JCodings {
         return new String(source);
     }
 
-    @TruffleBoundary
-    private static String toEnumName(String encodingName) {
-        if ("ASCII-8BIT".equals(encodingName)) {
-            return "BYTES";
-        }
-        String capitalized = encodingName;
-        if (Character.isLowerCase(encodingName.charAt(0))) {
-            capitalized = Character.toUpperCase(encodingName.charAt(0)) + encodingName.substring(1);
-        }
-        return capitalized.replace('-', '_');
-    }
-
     private static org.graalvm.shadowed.org.jcodings.Encoding unwrap(Encoding wrapped) {
-        return ((EncodingWrapper) wrapped).encoding;
+        return ((EncodingWrapper) wrapped).getEncoding();
     }
 
     private static byte[] asBytesMaterializeNative(Node location, AbstractTruffleString a, Object arrayA, InlinedConditionProfile nativeProfile) {

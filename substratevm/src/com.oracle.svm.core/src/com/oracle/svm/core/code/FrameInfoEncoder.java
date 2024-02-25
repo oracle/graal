@@ -56,6 +56,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.sampler.CallStackFrameMethodData;
 import com.oracle.svm.core.sampler.CallStackFrameMethodInfo;
 import com.oracle.svm.core.util.ByteArrayReader;
@@ -909,7 +910,7 @@ public class FrameInfoEncoder {
                 assert frameMetadata.writeFrameVerificationInfo(data, encoders);
             }
         }
-        NonmovableArray<Byte> frameInfoEncodings = NonmovableArrays.createByteArray(TypeConversion.asS4(encodingBuffer.getBytesWritten()));
+        NonmovableArray<Byte> frameInfoEncodings = NonmovableArrays.createByteArray(TypeConversion.asS4(encodingBuffer.getBytesWritten()), NmtCategory.Code);
         encodingBuffer.toByteBuffer(NonmovableArrays.asByteBuffer(frameInfoEncodings));
         return frameInfoEncodings;
     }

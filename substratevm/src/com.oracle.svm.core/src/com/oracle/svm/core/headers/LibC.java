@@ -35,6 +35,7 @@ import com.oracle.svm.core.Uninterruptible;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
+/** Platform-independent LibC support. */
 public class LibC {
     public static final int EXIT_CODE_ABORT = 99;
 
@@ -66,26 +67,6 @@ public class LibC {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T extends PointerBase> T memset(T s, SignedWord c, UnsignedWord n) {
         return libc().memset(s, c, n);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static <T extends PointerBase> T malloc(UnsignedWord size) {
-        return libc().malloc(size);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static <T extends PointerBase> T calloc(UnsignedWord nmemb, UnsignedWord size) {
-        return libc().calloc(nmemb, size);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static <T extends PointerBase> T realloc(PointerBase ptr, UnsignedWord size) {
-        return libc().realloc(ptr, size);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void free(PointerBase ptr) {
-        libc().free(ptr);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

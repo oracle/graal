@@ -399,12 +399,12 @@ class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBun
 
 class BaseQuarkusRegistryBenchmark(BaseQuarkusBenchmarkSuite, mx_sdk_benchmark.BaseMicroserviceBenchmarkSuite):
     """
-    This benchmark is NOT yet fully functional - there is not load for measuring its runtime performance.
-    It is only useful to collect image build time metrics.
+    This benchmark is used to measure the precision and performance of the static analysis in Native Image,
+    so there is no runtime load, that's why the default stage is just image.
     """
 
     def version(self):
-        return "0.0.1"
+        return "0.0.2"
 
     def name(self):
         return "quarkus"
@@ -416,7 +416,7 @@ class BaseQuarkusRegistryBenchmark(BaseQuarkusBenchmarkSuite, mx_sdk_benchmark.B
         return ['image']
 
     def run(self, benchmarks, bmSuiteArgs):
-        self.intercept_run(super(), benchmarks, bmSuiteArgs)
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
@@ -431,59 +431,69 @@ class BaseQuarkusRegistryBenchmark(BaseQuarkusBenchmarkSuite, mx_sdk_benchmark.B
         return mx.library("QUARKUS_REGISTRY_" + self.version(), True).get_path(True)
 
     def extra_image_build_argument(self, benchmark, args):
-        return ['-J-Dsun.nio.ch.maxUpdateArraySize=100',
-                '-J-Djava.util.logging.manager=org.jboss.logmanager.LogManager',
-                '-J-DCoordinatorEnvironmentBean.transactionStatusManagerEnable=false',
+        return ['-J-Dlogging.initial-configurator.min-level=500',
                 '-J-Dio.quarkus.caffeine.graalvm.recordStats=true',
-                '-J-Dlogging.initial-configurator.min-level=500',
+                '-J-Djava.util.logging.manager=org.jboss.logmanager.LogManager',
+                '-J-Dsun.nio.ch.maxUpdateArraySize=100',
+                '-J-DCoordinatorEnvironmentBean.transactionStatusManagerEnable=false',
                 '-J-Dvertx.logger-delegate-factory-class-name=io.quarkus.vertx.core.runtime.VertxLogDelegateFactory',
                 '-J-Dvertx.disableDnsResolver=true',
-                '-J-Dio.netty.noUnsafe=true',
-                '-J-Dio.netty.leakDetection.level=DISABLED' ,
+                '-J-Dio.netty.leakDetection.level=DISABLED',
                 '-J-Dio.netty.allocator.maxOrder=3',
                 '-J-Duser.language=en',
                 '-J-Duser.country=GB',
                 '-J-Dfile.encoding=UTF-8',
-                '--features=org.hibernate.graalvm.internal.GraalVMStaticFeature,io.quarkus.hibernate.orm.runtime.graal.DisableLoggingFeature,io.quarkus.caffeine.runtime.graal.CacheConstructorsFeature,org.hibernate.graalvm.internal.QueryParsingSupport,io.quarkus.jdbc.postgresql.runtime.graal.SQLXMLFeature,io.quarkus.runner.Feature,io.quarkus.runtime.graal.ResourcesFeature,io.quarkus.runtime.graal.DisableLoggingFeature,io.quarkus.hibernate.validator.runtime.DisableLoggingFeature',
+                '--features=io.quarkus.jdbc.postgresql.runtime.graal.SQLXMLFeature,org.hibernate.graalvm.internal.GraalVMStaticFeature,io.quarkus.hibernate.validator.runtime.DisableLoggingFeature,io.quarkus.hibernate.orm.runtime.graal.DisableLoggingFeature,io.quarkus.runner.Feature,io.quarkus.runtime.graal.DisableLoggingFeature,io.quarkus.caffeine.runtime.graal.CacheConstructorsFeature',
                 '-J--add-exports=java.security.jgss/sun.security.krb5=ALL-UNNAMED',
+                '-J--add-exports=org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED',
                 '-J--add-opens=java.base/java.text=ALL-UNNAMED',
                 '-J--add-opens=java.base/java.io=ALL-UNNAMED',
                 '-J--add-opens=java.base/java.lang.invoke=ALL-UNNAMED',
                 '-J--add-opens=java.base/java.util=ALL-UNNAMED',
+                '-H:+AllowFoldMethods',
                 '-J-Djava.awt.headless=true',
                 '--no-fallback',
-                '--enable-url-protocols=http,https',
-                '-J--add-exports=org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED',
-                '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
-                '--exclude-config' ,
-                'io\\.netty\\.netty-codec',
-                '/META-INF/native-image/io\\.netty/netty-codec/generated/handlers/reflect-config\\.json',
-                '--exclude-config',
-                'io\\.netty\\.netty-handler',
-                '/META-INF/native-image/io\\.netty/netty-handler/generated/handlers/reflect-config\\.json',
-                '-H:-AddAllCharsets',
+                '--link-at-build-time',
                 '-H:+ReportExceptionStackTraces',
-            ] + mx_sdk_vm_impl.svm_experimental_options([
-                '-H:+AllowFoldMethods',
+                '-H:-AddAllCharsets',
+                '--enable-url-protocols=http,https',
                 '-H:-UseServiceLoaderFeature',
-            ]) + super(BaseQuarkusBenchmarkSuite,self).extra_image_build_argument(benchmark, args)
+                '--exclude-config',
+                'io\.netty\.netty-codec',
+                '/META-INF/native-image/io\.netty/netty-codec/generated/handlers/reflect-config\.json',
+                '--exclude-config',
+                'io\.netty\.netty-handler',
+                '/META-INF/native-image/io\.netty/netty-handler/generated/handlers/reflect-config\.json',
+            ] + super(BaseQuarkusBenchmarkSuite,self).extra_image_build_argument(benchmark, args)
 
 mx_benchmark.add_bm_suite(BaseQuarkusRegistryBenchmark())
 
+_mushopConfig = {
+    'order': ['--initialize-at-build-time=io.netty.handler.codec.http.cookie.ServerCookieEncoder,java.sql.DriverInfo,kotlin.coroutines.intrinsics.CoroutineSingletons'],
+    'user': ['--initialize-at-build-time=io.netty.handler.codec.http.cookie.ServerCookieEncoder,java.sql.DriverInfo'],
+    'payment': ['--initialize-at-build-time=io.netty.handler.codec.http.cookie.ServerCookieEncoder']
+}
+
 class BaseMicronautMuShopBenchmark(BaseMicronautBenchmarkSuite, mx_sdk_benchmark.BaseMicroserviceBenchmarkSuite):
     """
-    This benchmark suite is NOT yet fully functional - there is not load for measuring its runtime performance.
-    It is only useful to collect image build time metrics.
+    This benchmark suite is used to measure the precision and performance of the static analysis in Native Image,
+    so there is no runtime load, that's why the default stage is just image.
     """
 
     def version(self):
-        return "0.0.1"
+        return "0.0.2"
 
     def name(self):
         return "mushop"
 
     def benchmarkList(self, bmSuiteArgs):
         return ["user", "order", "payment"]
+
+    def default_stages(self):
+        return ['image']
+
+    def run(self, benchmarks, bmSuiteArgs):
+        return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
@@ -498,17 +508,17 @@ class BaseMicronautMuShopBenchmark(BaseMicronautBenchmarkSuite, mx_sdk_benchmark
         return mx.library("MICRONAUT_MUSHOP_" + self.version(), True).get_path(True)
 
     def extra_image_build_argument(self, benchmark, args):
-        return [
+        return ([
             '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
             '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.configure=ALL-UNNAMED',
-            '--add-exports=org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED'
-        ] + super(BaseMicronautBenchmarkSuite,self).extra_image_build_argument(benchmark, args)
+            '--add-exports=org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED']
+                + _mushopConfig[benchmark] + super(BaseMicronautBenchmarkSuite,self).extra_image_build_argument(benchmark, args))
 
 mx_benchmark.add_bm_suite(BaseMicronautMuShopBenchmark())
 
 class BaseShopCartBenchmarkSuite(BaseMicronautBenchmarkSuite):
     def version(self):
-        return "0.3.9"
+        return "0.3.10"
 
     def applicationDist(self):
         return mx.library("SHOPCART_" + self.version(), True).get_path(True)
@@ -537,7 +547,7 @@ mx_benchmark.add_bm_suite(ShopCartWrkBenchmarkSuite())
 
 class BaseMicronautHelloWorldBenchmarkSuite(BaseMicronautBenchmarkSuite):
     def version(self):
-        return "1.0.6"
+        return "1.0.7"
 
     def applicationDist(self):
         return mx.library("MICRONAUT_HW_" + self.version(), True).get_path(True)

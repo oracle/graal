@@ -783,8 +783,8 @@ public final class RegexASTBuilder {
     private Group wrapTermInGroup(Term term) {
         Group wrapperGroup = ast.createGroup();
         if (term.isGroup()) {
-            wrapperGroup.setEnclosedCaptureGroupsLow(term.asGroup().getEnclosedCaptureGroupsLow());
-            wrapperGroup.setEnclosedCaptureGroupsHigh(term.asGroup().getEnclosedCaptureGroupsHigh());
+            wrapperGroup.setEnclosedCaptureGroupsLow(term.asGroup().getCaptureGroupsLow());
+            wrapperGroup.setEnclosedCaptureGroupsHigh(term.asGroup().getCaptureGroupsHigh());
         } else if (term.isAtomicGroup()) {
             wrapperGroup.setEnclosedCaptureGroupsLow(term.asAtomicGroup().getEnclosedCaptureGroupsLow());
             wrapperGroup.setEnclosedCaptureGroupsHigh(term.asAtomicGroup().getEnclosedCaptureGroupsHigh());

@@ -80,8 +80,6 @@ import javax.net.ssl.TrustManagerFactory;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.login.Configuration;
 
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -90,13 +88,14 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.core.jdk.SecurityProvidersFilter;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
@@ -108,12 +107,15 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import sun.security.jca.ProviderList;
 import sun.security.provider.NativePRNG;
 import sun.security.x509.OIDMap;
 
 @AutomaticallyRegisteredFeature
-public class SecurityServicesFeature extends JNIRegistrationUtil implements InternalFeature, SecurityProvidersFilter {
+public class SecurityServicesFeature extends JNIRegistrationUtil implements InternalFeature {
 
     public static class Options {
         @Option(help = "Enable automatic registration of security services.")//
@@ -197,16 +199,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     /** Providers marked as used by the user. */
     private final Set<String> manuallyMarkedUsedProviderClassNames = new HashSet<>();
 
-    /** Provider verification cache that contains only used providers. */
-    private Object filteredVerificationCache;
-
-    /** Provider list that contains only used providers. */
-    private ProviderList filteredProviderList;
-    /** List of providers deemed not to be used by this feature. */
-    private List<Provider> removedProviders;
-
-    private boolean shouldFilterProviders = true;
-
     private Field verificationResultsField;
     private Field providerListField;
     private Field oidTableField;
@@ -214,13 +206,15 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private Field classCacheField;
     private Field constructorCacheField;
 
+    private ConcurrentHashMap<WeakReference<Provider>, Object> cachedVerificationCache;
+    private ProviderList cachedProviders;
+
     private Class<?> jceSecurityClass;
 
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), false, "java.base", "sun.security.x509");
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, getClass(), Security.class);
-        ImageSingletons.add(SecurityProvidersFilter.class, this);
         ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime("javax.security.auth.kerberos.KeyTab",
                         "Force initialization of sun.security.krb5.KerberosSecrets.javaxSecurityAuthKerberosAccess");
     }
@@ -347,6 +341,77 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             /* Resolve calls to sun_security_mscapi* as builtIn. */
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_mscapi");
         }
+
+        access.registerFieldValueTransformer(providerListField, new FieldValueTransformerWithAvailability() {
+            @Override
+            public ValueAvailability valueAvailability() {
+                /*
+                 * We must wait until all providers have been registered before filtering the list.
+                 */
+                return ValueAvailability.AfterAnalysis;
+            }
+
+            @Override
+            public Object transform(Object receiver, Object originalValue) {
+                if (cachedProviders != null) {
+                    if (SubstrateUtil.assertionsEnabled()) {
+                        var filteredProviders = filterProviderList(originalValue);
+                        assert cachedProviders.providers().equals(filteredProviders) : Assertions.errorMessage(cachedProviders.providers(), filteredProviders);
+                    }
+                    if (Options.TraceSecurityServices.getValue()) {
+                        ProviderList providerList = (ProviderList) originalValue;
+                        List<Provider> removedProviders = providerList.providers().stream().filter(p -> shouldRemoveProvider(p)).toList();
+                        traceRemovedProviders(removedProviders);
+                    }
+                }
+                /*
+                 * This object is manually rescanned during analysis to ensure its entire type
+                 * structure is part of the analysis universe.
+                 */
+                return cachedProviders;
+            }
+        });
+
+        access.registerFieldValueTransformer(verificationResultsField, new FieldValueTransformerWithAvailability() {
+            @Override
+            public ValueAvailability valueAvailability() {
+                /*
+                 * We must wait until all providers have been registered before filtering the list.
+                 */
+                return ValueAvailability.AfterAnalysis;
+            }
+
+            @Override
+            public Object transform(Object receiver, Object originalValue) {
+                if (cachedVerificationCache != null) {
+                    if (SubstrateUtil.assertionsEnabled()) {
+                        var filteredCache = filterVerificationCache(originalValue);
+                        assert cachedVerificationCache.equals(filteredCache) : Assertions.errorMessage(cachedVerificationCache, filteredCache);
+                    }
+                }
+                /*
+                 * This object is manually rescanned during analysis to ensure its entire type
+                 * structure is part of the analysis universe.
+                 */
+                return cachedVerificationCache;
+            }
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    private ConcurrentHashMap<WeakReference<Provider>, Object> filterVerificationCache(Object originalValue) {
+        /*
+         * The verification cache is an WeakIdentityWrapper -> Verification result
+         * ConcurrentHashMap. We do not care about the private WeakIdentityWrapper class, it extends
+         * WeakReference and so using WeakReference.get() is sufficient for us.
+         */
+        var cleanedCache = new ConcurrentHashMap<>((ConcurrentHashMap<WeakReference<Provider>, Object>) originalValue);
+        cleanedCache.keySet().removeIf(key -> shouldRemoveProvider(key.get()));
+        return cleanedCache;
+    }
+
+    private List<Provider> filterProviderList(Object originalValue) {
+        return ((ProviderList) originalValue).providers().stream().filter(p -> !shouldRemoveProvider(p)).toList();
     }
 
     private void addManuallyConfiguredUsedProviders(DuringSetupAccess access) {
@@ -371,42 +436,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         return !manuallyMarkedUsedProviderClassNames.contains(p.getClass().getName());
     }
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public Object cleanVerificationCache(Object cache) {
-        if (shouldFilterProviders) {
-            /*
-             * The verification cache is an WeakIdentityWrapper -> Verification result
-             * ConcurrentHashMap. We do not care about the private WeakIdentityWrapper class, it
-             * extends WeakReference and so using WeakReference.get() is sufficient for us.
-             */
-            var cleanedCache = new ConcurrentHashMap<>((ConcurrentHashMap<WeakReference<Provider>, Object>) cache);
-            cleanedCache.keySet().removeIf(key -> shouldRemoveProvider(key.get()));
-
-            if (filteredVerificationCache == null || !filteredVerificationCache.equals(cleanedCache)) {
-                filteredVerificationCache = cleanedCache;
-            }
-        }
-        return filteredVerificationCache;
-    }
-
-    @Override
-    public ProviderList cleanUnregisteredProviders(ProviderList providerList) {
-        if (shouldFilterProviders) {
-            List<Provider> filteredProviders = new ArrayList<>(providerList.providers());
-            filteredProviders.removeIf(this::shouldRemoveProvider);
-            if (filteredProviderList == null || !filteredProviderList.providers().equals(filteredProviders)) {
-                filteredProviderList = ProviderList.newList(filteredProviders.toArray(new Provider[0]));
-                if (Options.TraceSecurityServices.getValue()) {
-                    removedProviders = new ArrayList<>(providerList.providers());
-                    removedProviders.removeIf(provider -> !shouldRemoveProvider(provider));
-                }
-            }
-        }
-        return filteredProviderList;
-    }
-
-    private void traceRemovedProviders() {
+    private static void traceRemovedProviders(List<Provider> removedProviders) {
         if (removedProviders == null || removedProviders.isEmpty()) {
             trace("No security providers have been removed.");
         } else {
@@ -814,11 +844,11 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        access.rescanRoot(verificationResultsField);
-        access.rescanRoot(providerListField);
+        maybeScanVerificationResultsField(access);
+        maybeScanProvidersField(access);
         access.rescanRoot(oidTableField);
-        if (filteredProviderList != null) {
-            for (Provider provider : filteredProviderList.providers()) {
+        if (cachedProviders != null) {
+            for (Provider provider : cachedProviders.providers()) {
                 for (Service service : provider.getServices()) {
                     access.rescanField(service, classCacheField);
                     access.rescanField(service, constructorCacheField);
@@ -827,11 +857,37 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
     }
 
+    private void maybeScanVerificationResultsField(DuringAnalysisAccessImpl access) {
+        if (access.getMetaAccess().lookupJavaField(verificationResultsField).isRead()) {
+            try {
+                var filteredVerificationCache = filterVerificationCache(verificationResultsField.get(null));
+                if (cachedVerificationCache == null || !cachedVerificationCache.equals(filteredVerificationCache)) {
+                    cachedVerificationCache = filteredVerificationCache;
+                    access.rescanObject(cachedVerificationCache);
+                }
+            } catch (IllegalAccessException ex) {
+                throw VMError.shouldNotReachHere("Cannot access field: " + verificationResultsField.getName(), ex);
+            }
+        }
+    }
+
+    private void maybeScanProvidersField(DuringAnalysisAccessImpl access) {
+        if (access.getMetaAccess().lookupJavaField(providerListField).isRead()) {
+            try {
+                List<Provider> filteredProviders = filterProviderList(providerListField.get(null));
+                if (cachedProviders == null || !cachedProviders.providers().equals(filteredProviders)) {
+                    cachedProviders = ProviderList.newList(filteredProviders.toArray(new Provider[0]));
+                    access.rescanObject(cachedProviders);
+                }
+            } catch (IllegalAccessException ex) {
+                throw VMError.shouldNotReachHere("Cannot access field: " + providerListField.getName(), ex);
+            }
+        }
+    }
+
     @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
-        traceRemovedProviders();
+    public void afterHeapLayout(AfterHeapLayoutAccess access) {
         SecurityServicesPrinter.endTracing();
-        shouldFilterProviders = false;
     }
 
     private static void registerForReflection(Class<?> clazz) {

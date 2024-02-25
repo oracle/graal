@@ -70,11 +70,6 @@ public final class SimulateClassInitializerPolicy extends InlineBeforeAnalysisPo
         }
 
         @Override
-        public boolean allowAbort() {
-            return true;
-        }
-
-        @Override
         public void commitCalleeScope(InlineBeforeAnalysisPolicy.AbstractPolicyScope callee) {
             SimulateClassInitializerInlineScope calleeScope = (SimulateClassInitializerInlineScope) callee;
             assert accumulativeCounters == calleeScope.accumulativeCounters;
@@ -164,5 +159,10 @@ public final class SimulateClassInitializerPolicy extends InlineBeforeAnalysisPo
     protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope o, AnalysisMethod method) {
         var outer = (SimulateClassInitializerInlineScope) o;
         return new SimulateClassInitializerInlineScope(outer.accumulativeCounters, outer.inliningDepth + 1);
+    }
+
+    @Override
+    protected boolean shouldOmitIntermediateMethodInState(AnalysisMethod method) {
+        return false;
     }
 }

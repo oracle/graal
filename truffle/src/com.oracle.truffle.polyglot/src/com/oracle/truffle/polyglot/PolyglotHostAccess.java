@@ -115,15 +115,15 @@ final class PolyglotHostAccess extends AbstractHostAccess {
     }
 
     @Override
-    public Object toObjectProxy(Object internalContext, Class<?> clazz, Object obj) throws IllegalArgumentException {
+    public Object toObjectProxy(Object internalContext, Class<?> clazz, Type genericType, Object obj) throws IllegalArgumentException {
         PolyglotContextImpl context = (PolyglotContextImpl) internalContext;
-        return PolyglotObjectProxyHandler.newProxyInstance(clazz, obj, context.getHostContext());
+        return PolyglotObjectProxyHandler.newProxyInstance(clazz, genericType, obj, context.getHostContext());
     }
 
     @Override
-    public <T> T toFunctionProxy(Object internalContext, Class<T> functionalType, Object function) {
+    public <T> T toFunctionProxy(Object internalContext, Class<T> functionalType, Type genericType, Object function) {
         PolyglotContextImpl context = (PolyglotContextImpl) internalContext;
-        return PolyglotFunctionProxyHandler.create(functionalType, function, context.getHostContext());
+        return PolyglotFunctionProxyHandler.create(functionalType, genericType, function, context.getHostContext());
     }
 
     @Override

@@ -39,6 +39,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK22OrLater;
+import com.oracle.svm.core.jdk.JDK23OrLater;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -526,6 +527,13 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     @TargetElement(onlyWith = JDK22OrLater.class) //
     public static long hostTotalMemory() {
+        /* Not implemented at the moment. */
+        return 0;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK23OrLater.class) //
+    public static long hostTotalSwapMemory() {
         /* Not implemented at the moment. */
         return 0;
     }

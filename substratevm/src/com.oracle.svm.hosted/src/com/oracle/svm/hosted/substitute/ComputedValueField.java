@@ -96,11 +96,11 @@ public final class ComputedValueField extends FieldValueTransformation implement
     private JavaConstant constantValue;
 
     public static ComputedValueField create(ResolvedJavaField original, ResolvedJavaField annotated, RecomputeFieldValue.Kind kind, Class<?> targetClass, String targetName, boolean isFinal) {
-        return create(original, annotated, kind, null, null, targetClass, targetName, isFinal, false);
+        return create(original, annotated, kind, null, null, targetClass, targetName, isFinal);
     }
 
     public static ComputedValueField create(ResolvedJavaField original, ResolvedJavaField annotated, RecomputeFieldValue.Kind kind, Class<?> transformedValueAllowedType,
-                    FieldValueTransformer initialTransformer, Class<?> targetClass, String targetName, boolean isFinal, boolean disableCaching) {
+                    FieldValueTransformer initialTransformer, Class<?> targetClass, String targetName, boolean isFinal) {
         assert original != null;
         assert initialTransformer != null || targetClass != null;
 
@@ -145,7 +145,7 @@ public final class ComputedValueField extends FieldValueTransformation implement
         boolean isValueAvailableOnlyAfterAnalysis = customValueAvailableOnlyAfterAnalysis || isOffsetField || isStaticFieldBase;
         boolean isValueAvailableOnlyAfterCompilation = customValueAvailableOnlyAfterCompilation;
 
-        return new ComputedValueField(original, annotated, kind, transformedValueAllowedType, transformer, isFinal, disableCaching, targetClass, f, isValueAvailableBeforeAnalysis,
+        return new ComputedValueField(original, annotated, kind, transformedValueAllowedType, transformer, isFinal, targetClass, f, isValueAvailableBeforeAnalysis,
                         isValueAvailableOnlyAfterAnalysis, isValueAvailableOnlyAfterCompilation, constantValue);
     }
 
@@ -162,9 +162,9 @@ public final class ComputedValueField extends FieldValueTransformation implement
     }
 
     private ComputedValueField(ResolvedJavaField original, ResolvedJavaField annotated, RecomputeFieldValue.Kind kind,
-                    Class<?> transformedValueAllowedType, FieldValueTransformer fieldValueTransformer, boolean isFinal, boolean disableCaching, Class<?> targetClass, Field targetField,
+                    Class<?> transformedValueAllowedType, FieldValueTransformer fieldValueTransformer, boolean isFinal, Class<?> targetClass, Field targetField,
                     boolean isValueAvailableBeforeAnalysis, boolean isValueAvailableOnlyAfterAnalysis, boolean isValueAvailableOnlyAfterCompilation, JavaConstant constantValue) {
-        super(transformedValueAllowedType, fieldValueTransformer, disableCaching);
+        super(transformedValueAllowedType, fieldValueTransformer);
         this.original = original;
         this.annotated = annotated;
         this.kind = kind;
@@ -415,7 +415,7 @@ public final class ComputedValueField extends FieldValueTransformation implement
         }
 
         ComputedValueField that = (ComputedValueField) o;
-        return isFinal == that.isFinal && disableCaching == that.disableCaching && original.equals(that.original) && kind == that.kind &&
+        return isFinal == that.isFinal && original.equals(that.original) && kind == that.kind &&
                         Objects.equals(targetClass, that.targetClass) && Objects.equals(targetField, that.targetField) && Objects.equals(constantValue, that.constantValue);
     }
 

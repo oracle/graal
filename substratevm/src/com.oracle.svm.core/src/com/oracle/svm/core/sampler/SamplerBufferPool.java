@@ -28,7 +28,6 @@ package com.oracle.svm.core.sampler;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -37,6 +36,8 @@ import com.oracle.svm.core.jdk.management.SubstrateThreadMXBean;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.core.memory.NullableNativeMemory;
+import com.oracle.svm.core.nmt.NmtCategory;
 
 /**
  * Keeps track of {@link #availableBuffers available} and {@link #fullBuffers full} buffers. If
@@ -160,7 +161,7 @@ public class SamplerBufferPool {
         UnsignedWord headerSize = SamplerBufferAccess.getHeaderSize();
         UnsignedWord dataSize = WordFactory.unsigned(SubstrateJVM.getThreadLocal().getThreadLocalBufferSize());
 
-        SamplerBuffer result = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(headerSize.add(dataSize));
+        SamplerBuffer result = NullableNativeMemory.malloc(headerSize.add(dataSize), NmtCategory.JFR);
         if (result.isNonNull()) {
             bufferCount++;
             result.setSize(dataSize);
@@ -183,7 +184,7 @@ public class SamplerBufferPool {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void free(SamplerBuffer buffer) {
-        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(buffer);
+        NullableNativeMemory.free(buffer);
         bufferCount--;
     }
 

@@ -56,6 +56,10 @@ def list_jars(path):
             jars.append(f)
     return jars
 
+# The agent fails to generate the configuration for org.apache.spark.status.JobDataWrapper.completionTime, which is not
+# executed on the first iteration. Therefore, we supply the missing information manually.
+# See GR-51788
+movie_lens_reflection_config = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'movie-lens-reflection-config.json')
 
 force_buildtime_init_slf4j_1_7_73 = '--initialize-at-build-time=org.slf4j,org.apache.log4j'
 force_buildtime_init_slf4j_1_7_73_spark = '--initialize-at-build-time=org.apache.logging.slf4j.Log4jLoggerFactory,\
@@ -106,7 +110,8 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
                            force_buildtime_init_netty_4_1_72,
                            force_runtime_init_netty_4_1_72,
                            force_runtime_init_netty_4_1_72_spark,
-                           force_runtime_init_slf4j_1_7_73
+                           force_runtime_init_slf4j_1_7_73,
+                           '-H:ReflectionConfigurationFiles=' + movie_lens_reflection_config
                           ],
     'dec-tree'          : [
                            '--report-unsupported-elements-at-runtime',

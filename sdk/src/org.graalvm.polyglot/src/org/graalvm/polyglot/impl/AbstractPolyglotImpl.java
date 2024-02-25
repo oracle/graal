@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -974,9 +974,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract <T> Function<?, ?> toFunction(Object internalContext, Object function, Class<?> returnClass, Type returnType, Class<?> paramClass, Type paramType);
 
-        public abstract Object toObjectProxy(Object internalContext, Class<?> clazz, Object obj) throws IllegalArgumentException;
+        public abstract Object toObjectProxy(Object internalContext, Class<?> clazz, Type genericType, Object obj) throws IllegalArgumentException;
 
-        public abstract <T> T toFunctionProxy(Object internalContext, Class<T> functionalType, Object function);
+        public abstract <T> T toFunctionProxy(Object internalContext, Class<T> functionalType, Type genericType, Object function);
 
         public abstract <T> Iterable<T> toIterable(Object internalContext, Object iterable, boolean implementFunction, Class<T> elementClass, Type elementType);
 

@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.runtime;
 
-import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.getRuntime;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.ArgumentTypeSpeculation;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.BackgroundCompilation;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.Compilation;
@@ -78,6 +77,7 @@ import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraceTransferTo
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueFirstTierBonus;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueFirstTierPriority;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueWeightingBothTiers;
+import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.getRuntime;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -91,6 +91,7 @@ import java.util.logging.Level;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.SandboxPolicy;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -176,16 +177,31 @@ public final class EngineData {
      */
     private volatile Map<Class<?>, Object> engineLocals;
 
-    EngineData(Object polyglotEngine, OptionValues runtimeOptions, Function<String, TruffleLogger> loggerFactory) {
+    EngineData(Object polyglotEngine, OptionValues runtimeOptions, Function<String, TruffleLogger> loggerFactory, SandboxPolicy sandboxPolicy) {
         Objects.requireNonNull(polyglotEngine);
         Objects.requireNonNull(runtimeOptions);
         this.polyglotEngine = polyglotEngine;
         this.id = engineCounter.incrementAndGet();
         this.loggerFactory = loggerFactory;
-        this.loadOptions(runtimeOptions);
+        this.loadOptions(runtimeOptions, sandboxPolicy);
 
         // the splittingStatistics requires options to be initialized
         this.splittingStatistics = new TruffleSplittingStrategy.SplitStatisticsData();
+    }
+
+    public static IllegalArgumentException sandboxPolicyException(SandboxPolicy sandboxPolicy, String reason, String fix) {
+        Objects.requireNonNull(sandboxPolicy);
+        Objects.requireNonNull(reason);
+        Objects.requireNonNull(fix);
+        String spawnIsolateHelp;
+        if (sandboxPolicy.isStricterOrEqual(SandboxPolicy.ISOLATED)) {
+            spawnIsolateHelp = " If you switch to a less strict sandbox policy you can still spawn an isolate with an isolated heap using Builder.option(\"engine.SpawnIsolate\",\"true\").";
+        } else {
+            spawnIsolateHelp = "";
+        }
+        String message = String.format("The validation for the given sandbox policy %s failed. %s " +
+                        "In order to resolve this %s or switch to a less strict sandbox policy using Builder.sandbox(SandboxPolicy).%s", sandboxPolicy, reason, fix, spawnIsolateHelp);
+        return new IllegalArgumentException(message);
     }
 
     public void preinitializeContext() {
@@ -242,9 +258,9 @@ public final class EngineData {
         getRuntime().getEngineCacheSupport().onEngineCreated(this);
     }
 
-    void onEnginePatch(OptionValues newRuntimeOptions, Function<String, TruffleLogger> newLoggerFactory) {
+    void onEnginePatch(OptionValues newRuntimeOptions, Function<String, TruffleLogger> newLoggerFactory, SandboxPolicy sandboxPolicy) {
         this.loggerFactory = newLoggerFactory;
-        loadOptions(newRuntimeOptions);
+        loadOptions(newRuntimeOptions, sandboxPolicy);
         getRuntime().getEngineCacheSupport().onEnginePatch(this);
     }
 
@@ -266,7 +282,7 @@ public final class EngineData {
         this.polyglotEngine = null;
     }
 
-    private void loadOptions(OptionValues options) {
+    private void loadOptions(OptionValues options, SandboxPolicy sandboxPolicy) {
         this.engineOptions = options;
 
         // splitting options
@@ -313,7 +329,7 @@ public final class EngineData {
         this.traceTransferToInterpreter = options.get(TraceTransferToInterpreter);
         this.traceDeoptimizeFrame = options.get(TraceDeoptimizeFrame);
         this.compilationFailureAction = options.get(CompilationFailureAction);
-        validateOptions();
+        validateOptions(sandboxPolicy);
         parsedCompileOnly = null;
 
         Map<String, String> compilerOptionValues = OptimizedTruffleRuntime.CompilerOptionsDescriptors.extractOptions(engineOptions);
@@ -421,7 +437,12 @@ public final class EngineData {
         return (Collection<OptimizedCallTarget>) OptimizedRuntimeAccessor.ENGINE.findCallTargets(polyglotEngine);
     }
 
-    private void validateOptions() {
+    private void validateOptions(SandboxPolicy sandboxPolicy) {
+        if (sandboxPolicy.isStricterOrEqual(SandboxPolicy.CONSTRAINED) && compilationFailureAction != ExceptionAction.Silent && compilationFailureAction != ExceptionAction.Print) {
+            throw OptimizedRuntimeAccessor.ENGINE.createPolyglotEngineException(
+                            sandboxPolicyException(sandboxPolicy, "The engine.CompilationFailureAction option is set to " + compilationFailureAction.name() + ", but must be set to Silent or Print.",
+                                            "use the default value (Silent) by removing Builder.option(\"engine.CompilationFailureAction\", ...) or set it to Print"));
+        }
         if (compilationFailureAction == ExceptionAction.Throw && backgroundCompilation) {
             getEngineLogger().log(Level.WARNING, "The 'Throw' value of the 'engine.CompilationFailureAction' option requires the 'engine.BackgroundCompilation' option to be set to 'false'.");
         }

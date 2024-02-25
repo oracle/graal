@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,9 +29,6 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.WrongMethodTypeException;
 import java.util.List;
-
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -161,13 +158,9 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
                 return;
             }
             JavaMethod calleeMethod = lookupMethodInPool(cpi, opcode);
-            /*
-             * Bootstrap methods are executed at build time for Web Image due to an issue with
-             * BoundMethodHandle$SpeciesData
-             */
+
             if (bootstrap == null || calleeMethod instanceof ResolvedJavaMethod ||
-                            BootstrapMethodConfiguration.singleton().isIndyAllowedAtBuildTime(OriginalMethodProvider.getJavaMethod(bootstrap.getMethod())) ||
-                            ImageSingletons.lookup(Platform.class).getOS().equals("js")) {
+                            BootstrapMethodConfiguration.singleton().isIndyAllowedAtBuildTime(OriginalMethodProvider.getJavaMethod(bootstrap.getMethod()))) {
                 super.genInvokeDynamic(cpi, opcode);
                 return;
             }
