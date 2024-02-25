@@ -55,7 +55,7 @@ final class DarwinThreadCpuTimeSupport implements ThreadCpuTimeSupport {
         return getThreadCpuTime(machThread, includeSystemTime);
     }
 
-    @BasedOnJDKFile("src/hotspot/os/bsd/os_bsd.cpp#L2403-L2428")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/os/bsd/os_bsd.cpp#L2429-L2454")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static long getThreadCpuTime(int machThread, boolean includeSystemTime) {
         CIntPointer sizePointer = UnsafeStackValue.get(Integer.BYTES);

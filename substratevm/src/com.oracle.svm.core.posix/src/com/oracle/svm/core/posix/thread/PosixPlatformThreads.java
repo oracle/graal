@@ -353,7 +353,7 @@ final class PosixParker extends Parker {
         }
     }
 
-    @BasedOnJDKFile("src/hotspot/os/posix/os_posix.cpp#L1662-L1738")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/os/posix/os_posix.cpp#L1662-L1738")
     private void park0(boolean isAbsolute, long time) {
         int status = Pthread.pthread_mutex_trylock_no_transition(mutex);
         if (status == Errno.EBUSY()) {
@@ -392,7 +392,7 @@ final class PosixParker extends Parker {
     }
 
     @Override
-    @BasedOnJDKFile("src/hotspot/os/posix/os_posix.cpp#L1740-L1763")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/os/posix/os_posix.cpp#L1740-L1763")
     protected void unpark() {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {

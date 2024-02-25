@@ -79,7 +79,7 @@ final class DarwinTimeUtil {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    @BasedOnJDKFile("src/hotspot/os/bsd/os_bsd.cpp#L799-L821")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/os/bsd/os_bsd.cpp#L799-L821")
     long nanoTime() {
         if (!U.getBooleanAcquire(this, INITIALIZED_OFFSET)) {
             /* Can be called by multiple threads but they should all query the same data. */

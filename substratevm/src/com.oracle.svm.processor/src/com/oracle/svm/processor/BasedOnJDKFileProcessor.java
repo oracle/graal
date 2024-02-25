@@ -72,8 +72,9 @@ public class BasedOnJDKFileProcessor extends AbstractProcessor {
 
     static final String ANNOTATION_CLASS_NAME = "com.oracle.svm.core.util.BasedOnJDKFile";
     static final String ANNOTATION_LIST_CLASS_NAME = "com.oracle.svm.core.util.BasedOnJDKFile.List";
-    static final Pattern FILE_PATTERN = Pattern.compile("^(?<path>[-_.A-Za-z0-9][-_./A-Za-z0-9]*)(#L(?<lineStart>[0-9]+)-L(?<lineEnd>[0-9]+))?$");
-    static final String FILE_PATTERN_STR = "path/to/file.ext(#L[0-9]+-L[0-9]+)?";
+    static final Pattern FILE_PATTERN = Pattern
+                    .compile("^https://github.com/openjdk/jdk/blob/(?<committish>[^/]+)/(?<path>[-_.A-Za-z0-9][-_./A-Za-z0-9]*)(#L(?<lineStart>[0-9]+)-L(?<lineEnd>[0-9]+))?$");
+    static final String FILE_PATTERN_STR = "https://github.com/openjdk/jdk/blob/<tag|revision>/path/to/file.ext(#L[0-9]+-L[0-9]+)?";
     public static final int FULL_FILE_LINE_MARKER = 0;
 
     private final Set<Element> processed = new HashSet<>();
@@ -98,7 +99,7 @@ public class BasedOnJDKFileProcessor extends AbstractProcessor {
         return getAnnotationValue(listMirror, "value", List.class);
     }
 
-    record SourceInfo(String path, long lineStart, long lineEnd) {
+    record SourceInfo(String committish, String path, long lineStart, long lineEnd) {
     }
 
     private static String quoteString(String s) {
@@ -133,7 +134,7 @@ public class BasedOnJDKFileProcessor extends AbstractProcessor {
         String qualifiedName = getQualifiedName(annotatedElement);
 
         Element[] originatingElements = new Element[]{annotatedElement};
-        String uniqueName = getUniqueName(qualifiedName, targetSourceInfo.path, targetSourceInfo.lineStart, targetSourceInfo.lineEnd);
+        String uniqueName = getUniqueName(qualifiedName, targetSourceInfo.committish, targetSourceInfo.path, targetSourceInfo.lineStart, targetSourceInfo.lineEnd);
 
         String filename = "jdk_source_info/" + URLEncoder.encode(uniqueName, StandardCharsets.UTF_8) + ".json";
         SourceInfo annotatedSourceInfo = getAnnotatedSourceInfo(annotatedElement);
@@ -182,7 +183,8 @@ public class BasedOnJDKFileProcessor extends AbstractProcessor {
         }
         String lineStart = matcher.group("lineStart");
         String lineEnd = matcher.group("lineEnd");
-        return new SourceInfo(matcher.group("path"), lineStart == null ? FULL_FILE_LINE_MARKER : Long.parseLong(lineStart), lineEnd == null ? FULL_FILE_LINE_MARKER : Long.parseLong(lineEnd));
+        return new SourceInfo(matcher.group("committish"), matcher.group("path"), lineStart == null ? FULL_FILE_LINE_MARKER : Long.parseLong(lineStart),
+                        lineEnd == null ? FULL_FILE_LINE_MARKER : Long.parseLong(lineEnd));
     }
 
     private SourceInfo getAnnotatedSourceInfo(Element annotatedElement) {
@@ -196,15 +198,18 @@ public class BasedOnJDKFileProcessor extends AbstractProcessor {
         long start = sp.getStartPosition(cut, tp.getLeaf());
         long end = sp.getEndPosition(cut, tp.getLeaf());
 
-        return new SourceInfo(sourceFileName, lineMap.getLineNumber(start), lineMap.getLineNumber(end));
+        return new SourceInfo(null, sourceFileName, lineMap.getLineNumber(start), lineMap.getLineNumber(end));
     }
 
-    private static String getUniqueName(String qualifiedName, String path, long lineStart, long lineEnd) {
-        return String.format("%s/%s-%s/%s", path, lineStart, lineEnd, qualifiedName);
+    private static String getUniqueName(String qualifiedName, String committish, String path, long lineStart, long lineEnd) {
+        return String.format("%s/%s/%s-%s/%s", committish, path, lineStart, lineEnd, qualifiedName);
     }
 
     private static void printSourceInfo(PrintWriter writer, SourceInfo annotatedSourceInfo, String indent) {
         writer.println(indent + "\"sourceInfo\": {");
+        if (annotatedSourceInfo.committish != null) {
+            writer.println(indent + "  \"committish\": " + quoteString(annotatedSourceInfo.committish) + ",");
+        }
         writer.println(indent + "  \"path\": " + quoteString(annotatedSourceInfo.path) + ",");
         writer.println(indent + "  \"lineStart\": " + annotatedSourceInfo.lineStart + ",");
         writer.println(indent + "  \"lineEnd\": " + annotatedSourceInfo.lineEnd);
