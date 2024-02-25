@@ -24,10 +24,7 @@
  */
 package com.oracle.svm.graal.isolated;
 
-import jdk.graal.compiler.code.CompilationResult;
-import jdk.graal.compiler.core.common.CompilationIdentifier;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -40,10 +37,15 @@ import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
+import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.graal.meta.RuntimeCodeInstaller;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.graal.meta.SubstrateMethod;
+
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.common.CompilationIdentifier;
 
 public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
 
@@ -114,23 +116,23 @@ public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
             id = proxy.getHandle();
         }
 
-        CodeInstallInfo installInfo = UnmanagedMemory.malloc(SizeOf.get(CodeInstallInfo.class));
+        CodeInstallInfo installInfo = NativeMemory.malloc(SizeOf.get(CodeInstallInfo.class), NmtCategory.Compiler);
         installInfo.setCodeInfo(codeInfo);
         installInfo.setAdjusterData(adjuster.exportData());
         installInfo.setCompilationId(id);
 
-        IsolatedRuntimeMethodInfoAccess.untrackInCurrentIsolate(installInfo.getCodeInfo());
+        IsolatedRuntimeMethodInfoAccess.untrackInCurrentIsolate(installInfo);
         return installInfo;
     }
 
     private static void installPrepared(SharedMethod method, CodeInstallInfo installInfo, SubstrateInstalledCode installedCode) {
-        IsolatedRuntimeMethodInfoAccess.startTrackingInCurrentIsolate(installInfo.getCodeInfo());
+        IsolatedRuntimeMethodInfoAccess.startTrackingInCurrentIsolate(installInfo);
 
         IsolatedReferenceAdjuster.adjustAndDispose(installInfo.getAdjusterData(), IsolatedCompileClient.get().getHandleSet());
         installInfo.setAdjusterData(WordFactory.nullPointer());
 
         doInstallPrepared(method, installInfo.getCodeInfo(), installedCode);
-        UnmanagedMemory.free(installInfo);
+        NativeMemory.free(installInfo);
     }
 
     private final IsolateThread targetIsolate;

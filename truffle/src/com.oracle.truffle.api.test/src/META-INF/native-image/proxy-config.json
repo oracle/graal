@@ -19,5 +19,8 @@
   ["com.oracle.truffle.api.test.polyglot.ExposeToGuestTest$MarkedInterface"],
   ["com.oracle.truffle.api.test.polyglot.ExposeToGuestTest$UnmarkedInterface"],
   ["com.oracle.truffle.api.test.polyglot.ExposeToGuestTest$EmptyInterface"],
-  ["com.oracle.truffle.api.test.polyglot.ExposeToGuestTest$UnmarkedFunctional"]
+  ["com.oracle.truffle.api.test.polyglot.ExposeToGuestTest$UnmarkedFunctional"],
+  ["com.oracle.truffle.api.test.polyglot.GuestFunctionToHostInterfaceProxyTest$BiFunctionLike"],
+  ["com.oracle.truffle.api.test.polyglot.GuestFunctionToHostInterfaceProxyTest$BiFunctionReturningValue"],
+  ["java.util.function.BiFunction"]
 ]

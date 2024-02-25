@@ -41,15 +41,12 @@ import static com.oracle.svm.core.posix.headers.Unistd._SC_GETPW_R_SIZE_MAX;
 
 import java.nio.ByteBuffer;
 
-import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -64,6 +61,8 @@ import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 import com.oracle.svm.core.jvmstat.PerfManager;
 import com.oracle.svm.core.jvmstat.PerfMemoryPrologue;
 import com.oracle.svm.core.jvmstat.PerfMemoryProvider;
+import com.oracle.svm.core.memory.NullableNativeMemory;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
@@ -79,6 +78,8 @@ import com.oracle.svm.core.posix.headers.Pwd.passwd;
 import com.oracle.svm.core.posix.headers.Pwd.passwdPointer;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Unistd;
+
+import jdk.graal.compiler.core.common.NumUtil;
 
 /**
  * This class uses high-level JDK features at the moment. In the future, we will need to rewrite
@@ -157,7 +158,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         }
 
         /* Retrieve the username and copy it to a String object. */
-        CCharPointer pwBuf = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(WordFactory.unsigned(bufSize));
+        CCharPointer pwBuf = NullableNativeMemory.malloc(WordFactory.unsigned(bufSize), NmtCategory.JvmStat);
         if (pwBuf.isNull()) {
             return null;
         }
@@ -182,7 +183,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
 
             return CTypeConversion.toJavaString(pwName);
         } finally {
-            UnmanagedMemory.free(pwBuf);
+            NullableNativeMemory.free(pwBuf);
         }
     }
 

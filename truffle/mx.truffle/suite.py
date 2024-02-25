@@ -646,7 +646,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.profiles",
-        "org.graalvm.shadowed.org.jcodings",
+        "TRUFFLE_JCODINGS",
       ],
       "requires" : [
         "jdk.unsupported", # sun.misc.Unsafe
@@ -1164,7 +1164,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "spotbugs" : "false",
+      "spotbugsIgnoresGenerated" : True,
       "requires" : [
         "java.logging",
         "java.xml",
@@ -1230,7 +1230,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "spotbugs" : "false",
+      "spotbugsIgnoresGenerated" : True,
       "shadedDependencies" : [
         "truffle:XZ-1.9",
       ],
@@ -1300,10 +1300,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      # We need to force javac because the generated sources in this project
-      # produce warnings in JDT.
-      "forceJavac": True,
-      "spotbugs" : "false",
+      "spotbugsIgnoresGenerated" : True,
       "requires" : [
       ],
       "dependencies" : [
@@ -1320,11 +1317,10 @@ suite = {
           "META-INF/MANIFEST.MF",
           "META-INF/maven/**",
         ],
-        "patch" : {
-        },
       },
       "description" : "JSON shaded library.",
-      "allowsJavadocWarnings": True,
+      # We need to force javac because the generated sources in this project produce warnings in JDT.
+      "forceJavac": True,
       "javac.lint.overrides" : 'none',
       "jacoco" : "exclude",
       "graalCompilerSourceEdition": "ignore",
@@ -1335,8 +1331,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "forceJavac" : "true",
-      "spotbugs" : "false",
+      "spotbugsIgnoresGenerated" : True,
       "shadedDependencies" : [
         "truffle:ANTLR4",
       ],
@@ -1352,7 +1347,7 @@ suite = {
         ],
       },
       "description" : "ANTLR4 shaded library.",
-      "allowsJavadocWarnings": True,
+      "forceJavac" : "true",
       "javac.lint.overrides" : 'none',
       "jacoco" : "exclude",
       "graalCompilerSourceEdition": "ignore",
@@ -1363,7 +1358,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "spotbugs" : "false",
+      "spotbugsIgnoresGenerated" : True,
       "shadedDependencies" : [
         "truffle:ASM_9.5",
         "truffle:ASM_TREE_9.5",
@@ -1380,7 +1375,6 @@ suite = {
         ],
       },
       "description" : "ASM library shadowed for Truffle.",
-      "allowsJavadocWarnings": True,
       # We need to force javac because the generated sources in this project produce warnings in JDT.
       "forceJavac" : "true",
       "javac.lint.overrides" : "none",
@@ -1393,7 +1387,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "spotbugs" : "false",
+      "spotbugsIgnoresGenerated" : True,
       "shadedDependencies" : [
         "truffle:JCODINGS_1.0.58",
       ],
@@ -1455,7 +1449,6 @@ suite = {
         },
       },
       "description" : "JCodings library shadowed for Truffle.",
-      "allowsJavadocWarnings": True,
       # We need to force javac because the generated sources in this project produce warnings in JDT.
       "forceJavac" : "true",
       "javac.lint.overrides" : "none",
@@ -1649,7 +1642,10 @@ suite = {
           "jdk.unsupported", # sun.misc.Unsafe
           "java.logging",
           "java.management",
-          "java.sql" # java.sql.date java.sql.Time
+          "java.sql", # java.sql.date java.sql.Time
+          "org.graalvm.collections",
+          "org.graalvm.nativeimage",
+          "org.graalvm.shadowed.jcodings",
         ],
         "exports" : [
           # Unqualified exports
@@ -1728,7 +1724,10 @@ suite = {
         "TRUFFLE_API_VERSION",
       ],
       "distDependencies" : [
+        "sdk:COLLECTIONS",
+        "sdk:NATIVEIMAGE",
         "sdk:POLYGLOT",
+        "TRUFFLE_JCODINGS",
       ],
       "description" : "Truffle is a multi-language framework for executing dynamic languages\nthat achieves high performance when combined with Graal.",
       "javadocType": "api",
@@ -2300,7 +2299,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "spotbugs" : "false",
       "dependencies" : [
         "org.graalvm.shadowed.com.ibm.icu",
       ],
@@ -2335,7 +2333,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "spotbugs" : "false",
       "dependencies" : [
         "org.graalvm.shadowed.org.tukaani.xz",
       ],
@@ -2363,7 +2360,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "spotbugs" : "false",
       "dependencies" : [
         "org.graalvm.shadowed.org.json",
       ],
@@ -2392,7 +2388,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "spotbugs" : "false",
       "dependencies" : [
         "org.graalvm.shadowed.org.antlr.v4.runtime",
       ],
@@ -2404,6 +2399,44 @@ suite = {
         "artifactId" : "antlr4",
         "tag": ["default", "public"],
       },
+      "graalCompilerSourceEdition": "ignore",
+    },
+
+    "TRUFFLE_JCODINGS" : {
+      # JCODINGS library shadowed for Truffle.
+      # This distribution defines a module.
+      "moduleInfo" : {
+        "name" : "org.graalvm.shadowed.jcodings",
+        "exports" : [
+          # Unqualified exports
+          "org.graalvm.shadowed.org.jcodings",
+          "org.graalvm.shadowed.org.jcodings.ascii",
+          "org.graalvm.shadowed.org.jcodings.constants",
+          "org.graalvm.shadowed.org.jcodings.exception",
+          "org.graalvm.shadowed.org.jcodings.specific",
+          "org.graalvm.shadowed.org.jcodings.transcode",
+          "org.graalvm.shadowed.org.jcodings.transcode.specific",
+          "org.graalvm.shadowed.org.jcodings.unicode",
+          "org.graalvm.shadowed.org.jcodings.util",
+        ],
+      },
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "dependencies" : [
+        "org.graalvm.shadowed.org.jcodings",
+      ],
+      "distDependencies" : [],
+      "description" : "JCodings module shadowed for Truffle.",
+      "allowsJavadocWarnings" : True,
+      "license" : ["MIT"],
+      "useModulePath": True,
+      "maven" : {
+        "groupId" : "org.graalvm.shadowed",
+        "artifactId" : "jcodings",
+        "tag": ["default", "public"],
+      },
+      "compress" : True,
       "graalCompilerSourceEdition": "ignore",
     },
   },

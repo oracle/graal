@@ -162,7 +162,7 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
     @SuppressWarnings("unchecked")
     @Override
     public Class<? extends Annotation>[] getAnnotationTypes(AnnotatedElement element) {
-        return Arrays.stream(getAnnotationData(element, false)).map(AnnotationValue::getType).filter(t -> t != null).toArray(Class[]::new);
+        return Arrays.stream(getAnnotationData(element, false)).map(AnnotationValue::getType).filter(Objects::nonNull).toArray(Class[]::new);
     }
 
     public AnnotationValue[] getDeclaredAnnotationData(AnnotatedElement element) {
@@ -175,8 +175,7 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
             cur = ((WrappedElement) cur).getWrapped();
         }
         AnnotationValue[] result = NO_ANNOTATIONS;
-        while (cur instanceof AnnotationWrapper) {
-            AnnotationWrapper wrapper = (AnnotationWrapper) cur;
+        while (cur instanceof AnnotationWrapper wrapper) {
             result = concat(result, wrapper.getInjectedAnnotations());
             cur = wrapper.getAnnotationRoot();
         }
@@ -201,11 +200,10 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
     }
 
     private AnnotationValue[] getAnnotationDataFromRoot(AnnotatedElement rootElement) {
-        if (!(rootElement instanceof Class<?>)) {
+        if (!(rootElement instanceof Class<?> clazz)) {
             return getDeclaredAnnotationDataFromRoot(rootElement);
         }
 
-        Class<?> clazz = (Class<?>) rootElement;
         AnnotationValue[] existing = annotationCache.get(clazz);
         if (existing != null) {
             return existing;
@@ -355,10 +353,10 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
             } else if (recordComponentClass != null && recordComponentClass.isInstance(rootElement)) {
                 return (byte[]) recordComponentAnnotations.get(rootElement);
             } else {
-                throw new AnnotationExtractionError("Unexpected annotated element type: " + rootElement.getClass());
+                throw new AnnotationExtractionError(rootElement, "Unexpected annotated element type: " + rootElement.getClass());
             }
         } catch (InvocationTargetException | IllegalAccessException e) {
-            throw new AnnotationExtractionError(e);
+            throw new AnnotationExtractionError(rootElement, e);
         }
     }
 
@@ -369,10 +367,10 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
             } else if (rootElement instanceof Constructor<?>) {
                 return (byte[]) constructorParameterAnnotations.get(rootElement);
             } else {
-                throw new AnnotationExtractionError("Unexpected annotated element type: " + rootElement.getClass());
+                throw new AnnotationExtractionError(rootElement, "Unexpected annotated element type: " + rootElement.getClass());
             }
         } catch (IllegalAccessException e) {
-            throw new AnnotationExtractionError(e);
+            throw new AnnotationExtractionError(rootElement, e);
         }
     }
 
@@ -387,10 +385,10 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
             } else if (recordComponentClass != null && recordComponentClass.isInstance(rootElement)) {
                 return (byte[]) recordComponentTypeAnnotations.get(rootElement);
             } else {
-                throw new AnnotationExtractionError("Unexpected annotated element type: " + rootElement.getClass());
+                throw new AnnotationExtractionError(rootElement, "Unexpected annotated element type: " + rootElement.getClass());
             }
         } catch (InvocationTargetException | IllegalAccessException e) {
-            throw new AnnotationExtractionError(e);
+            throw new AnnotationExtractionError(rootElement, e);
         }
     }
 
@@ -398,7 +396,7 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
         try {
             return (byte[]) methodAnnotationDefault.get(method);
         } catch (IllegalAccessException e) {
-            throw new AnnotationExtractionError(e);
+            throw new AnnotationExtractionError(method, e);
         }
     }
 
@@ -407,7 +405,7 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
         try {
             return (ConstantPool) classGetConstantPool.invoke(container);
         } catch (InvocationTargetException | IllegalAccessException e) {
-            throw new AnnotationExtractionError(e);
+            throw new AnnotationExtractionError(rootElement, e);
         }
     }
 
@@ -422,10 +420,10 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
             try {
                 return (Class<?>) recordComponentGetDeclaringRecord.invoke(rootElement);
             } catch (IllegalAccessException | InvocationTargetException e) {
-                throw new AnnotationExtractionError(e);
+                throw new AnnotationExtractionError(rootElement, e);
             }
         } else {
-            throw new AnnotationExtractionError("Unexpected annotated element type: " + rootElement.getClass());
+            throw new AnnotationExtractionError(rootElement, "Unexpected annotated element type: " + rootElement.getClass());
         }
     }
 
@@ -443,14 +441,14 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
     private static AnnotatedElement findRoot(AnnotatedElement element) {
         assert !(element instanceof WrappedElement || element instanceof AnnotationWrapper);
         try {
-            if (element instanceof ResolvedJavaType) {
-                return OriginalClassProvider.getJavaClass((ResolvedJavaType) element);
-            } else if (element instanceof ResolvedJavaMethod) {
-                return OriginalMethodProvider.getJavaMethod((ResolvedJavaMethod) element);
-            } else if (element instanceof ResolvedJavaField) {
-                return OriginalFieldProvider.getJavaField((ResolvedJavaField) element);
-            } else if (element instanceof Package) {
-                return (Class<?>) packageGetPackageInfo.invoke(element);
+            if (element instanceof ResolvedJavaType type) {
+                return OriginalClassProvider.getJavaClass(type);
+            } else if (element instanceof ResolvedJavaMethod method) {
+                return OriginalMethodProvider.getJavaMethod(method);
+            } else if (element instanceof ResolvedJavaField field) {
+                return OriginalFieldProvider.getJavaField(field);
+            } else if (element instanceof Package packageObject) {
+                return (Class<?>) packageGetPackageInfo.invoke(packageObject);
             } else {
                 return element;
             }
@@ -459,9 +457,9 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
             if (targetException instanceof LinkageError) {
                 throw (LinkageError) targetException;
             }
-            throw new AnnotationExtractionError(e);
+            throw new AnnotationExtractionError(element, e);
         } catch (IllegalAccessException e) {
-            throw new AnnotationExtractionError(e);
+            throw new AnnotationExtractionError(element, e);
         }
     }
 }

@@ -46,6 +46,7 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
@@ -192,7 +193,7 @@ public class RuntimeCodeCache {
         if (newTableSize < INITIAL_TABLE_SIZE) {
             newTableSize = INITIAL_TABLE_SIZE;
         }
-        NonmovableArray<UntetheredCodeInfo> newCodeInfos = NonmovableArrays.createWordArray(newTableSize);
+        NonmovableArray<UntetheredCodeInfo> newCodeInfos = NonmovableArrays.createWordArray(newTableSize, NmtCategory.Code);
         if (codeInfos.isNonNull()) {
             NonmovableArrays.arraycopy(codeInfos, 0, newCodeInfos, 0, NonmovableArrays.lengthOf(codeInfos));
             NonmovableArrays.releaseUnmanagedArray(codeInfos);

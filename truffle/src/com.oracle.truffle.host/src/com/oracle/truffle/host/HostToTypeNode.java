@@ -46,6 +46,8 @@ import java.lang.reflect.Array;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
+import java.lang.reflect.WildcardType;
 import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
@@ -476,12 +478,12 @@ abstract class HostToTypeNode extends Node {
                 throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have array elements.");
             }
         } else if (targetType == Function.class) {
-            TypeAndClass<?> paramType = getGenericParameterType(genericType, 0);
-            TypeAndClass<?> returnType = getGenericParameterType(genericType, 1);
             if (interop.isExecutable(value) || interop.isInstantiable(value)) {
+                TypeAndClass<?> paramType = getGenericParameterType(genericType, 0);
+                TypeAndClass<?> returnType = getGenericParameterType(genericType, 1);
                 obj = hostContext.language.access.toFunction(hostContext.internalContext, value, returnType.clazz, returnType.type, paramType.clazz, paramType.type);
             } else if (interop.hasMembers(value)) {
-                obj = hostContext.language.access.toObjectProxy(hostContext.internalContext, targetType, value);
+                obj = hostContext.language.access.toObjectProxy(hostContext.internalContext, targetType, genericType, value);
             } else {
                 throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must be executable or instantiable.");
             }
@@ -606,7 +608,7 @@ abstract class HostToTypeNode extends Node {
                 TypeAndClass<?> elementType = getGenericParameterType(genericType, 0);
                 obj = hostContext.language.access.toIterable(hostContext.internalContext, value, implementsFunction, elementType.clazz, elementType.type);
             } else if (allowsImplementation && interop.hasMembers(value)) {
-                obj = hostContext.language.access.toObjectProxy(hostContext.internalContext, targetType, value);
+                obj = hostContext.language.access.toObjectProxy(hostContext.internalContext, targetType, genericType, value);
             } else {
                 throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have an iterator.");
             }
@@ -619,7 +621,7 @@ abstract class HostToTypeNode extends Node {
                 TypeAndClass<?> elementType = getGenericParameterType(genericType, 0);
                 obj = hostContext.language.access.toIterator(hostContext.internalContext, value, implementsFunction, elementType.clazz, elementType.type);
             } else if (allowsImplementation && interop.hasMembers(value)) {
-                obj = hostContext.language.access.toObjectProxy(hostContext.internalContext, targetType, value);
+                obj = hostContext.language.access.toObjectProxy(hostContext.internalContext, targetType, genericType, value);
             } else {
                 throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must be an iterator.");
             }
@@ -628,13 +630,13 @@ abstract class HostToTypeNode extends Node {
                 if (!hostContext.getMutableTargetMappings().contains(MutableTargetMapping.EXECUTABLE_TO_JAVA_INTERFACE)) {
                     return null;
                 }
-                obj = hostContext.language.access.toFunctionProxy(hostContext.internalContext, targetType, value);
+                obj = hostContext.language.access.toFunctionProxy(hostContext.internalContext, targetType, genericType, value);
             } else if (interop.hasMembers(value)) {
                 if (!hostContext.getMutableTargetMappings().contains(MutableTargetMapping.MEMBERS_TO_JAVA_INTERFACE)) {
                     return null;
                 }
                 if (targetType.isInterface()) {
-                    obj = hostContext.language.access.toObjectProxy(hostContext.internalContext, targetType, value);
+                    obj = hostContext.language.access.toObjectProxy(hostContext.internalContext, targetType, genericType, value);
                 } else {
                     obj = HostInteropReflect.newAdapterInstance(node, hostContext, targetType, value);
                 }
@@ -691,20 +693,101 @@ abstract class HostToTypeNode extends Node {
         return HostEngineException.classCast(context.access, message);
     }
 
+    /**
+     * Get upper bound type of this type variable or wildcard type.
+     */
+    private static Type getUpperBoundType(Type type) {
+        if (type instanceof WildcardType wildcardType) {
+            Type[] upperBounds = wildcardType.getUpperBounds();
+            if (upperBounds.length == 1) {
+                return getUpperBoundType(upperBounds[0]);
+            }
+        } else if (type instanceof TypeVariable<?> typeVar) {
+            Type[] upperBounds = typeVar.getBounds();
+            if (upperBounds.length == 1) {
+                return getUpperBoundType(upperBounds[0]);
+            }
+        }
+        return type;
+    }
+
+    /**
+     * Extract (upper bound) raw type from a generic type.
+     *
+     * @param genericType the input generic type
+     * @param defaultRawType the default non-generic type
+     */
+    static Class<?> getRawTypeFromGenericType(Type genericType, Class<?> defaultRawType) {
+        Type rawType = getUpperBoundType(genericType);
+        if (rawType instanceof ParameterizedType parameterizedType) {
+            rawType = parameterizedType.getRawType();
+        }
+        if (rawType instanceof Class<?> asClass) {
+            return asClass;
+        }
+        return defaultRawType;
+    }
+
+    /**
+     * Substitutes a type variable with the actual type argument from {@code genericTargetType}.
+     *
+     * Searches the generic interface type hierarchy for the generic type parameter declaration that
+     * corresponds to the type variable, then substitutes it with the actual type argument.
+     */
+    static Type findActualTypeArgument(Type typeOrTypeVar, Type genericTargetType) {
+        if (genericTargetType != null && typeOrTypeVar instanceof TypeVariable<?> typeVar) {
+            if (getUpperBoundType(genericTargetType) instanceof ParameterizedType parameterizedTargetType) {
+                if (parameterizedTargetType.getRawType() instanceof Class<?> declaringType) {
+                    if (typeVar.getGenericDeclaration() instanceof Class<?>) {
+                        // Search for the type parameter that declares this type variable.
+                        if (!declaringType.equals(typeVar.getGenericDeclaration())) {
+                            // Type variable not declared in this type.
+                            // Ascend to superinterfaces to find the declaring type.
+                            for (Type superinterface : declaringType.getGenericInterfaces()) {
+                                Type actualType = findActualTypeArgument(typeVar, superinterface);
+                                if (actualType instanceof TypeVariable<?> anotherTypeVar) {
+                                    /*
+                                     * Found an actual type argument in the superinterface but it is
+                                     * again a type variable, continue with the new type variable to
+                                     * look for a type argument in this interface.
+                                     */
+                                    typeVar = anotherTypeVar;
+                                    break;
+                                } else {
+                                    return actualType;
+                                }
+                            }
+                        }
+                        if (declaringType.equals(typeVar.getGenericDeclaration())) {
+                            TypeVariable<?>[] typeParameters = declaringType.getTypeParameters();
+                            for (int i = 0; i < typeParameters.length; i++) {
+                                if (typeParameters[i].equals(typeVar)) {
+                                    return parameterizedTargetType.getActualTypeArguments()[i];
+                                }
+                            }
+                        }
+                    } else {
+                        // Unwrap any method type variables, e.g.:
+                        // <RR extends R> RR apply(T t, U u);
+                        Type[] upperBounds = typeVar.getBounds();
+                        if (upperBounds.length == 1 && upperBounds[0] instanceof TypeVariable<?> anotherTypeVar) {
+                            return findActualTypeArgument(anotherTypeVar, genericTargetType);
+                        }
+                    }
+                    return typeVar;
+                }
+            }
+        }
+        return typeOrTypeVar;
+    }
+
     private static TypeAndClass<?> getGenericParameterType(Type genericType, int index) {
-        if (genericType instanceof ParameterizedType) {
-            ParameterizedType parametrizedType = (ParameterizedType) genericType;
-            final Type[] typeArguments = parametrizedType.getActualTypeArguments();
-            Class<?> elementClass = Object.class;
+        if (getUpperBoundType(genericType) instanceof ParameterizedType parameterizedType) {
+            final Type[] typeArguments = parameterizedType.getActualTypeArguments();
             if (index < typeArguments.length) {
                 Type elementType = typeArguments[index];
-                if (elementType instanceof ParameterizedType) {
-                    elementType = ((ParameterizedType) elementType).getRawType();
-                }
-                if (elementType instanceof Class<?>) {
-                    elementClass = (Class<?>) elementType;
-                }
-                return new TypeAndClass<>(typeArguments[index], elementClass);
+                Class<?> elementClass = getRawTypeFromGenericType(elementType, Object.class);
+                return new TypeAndClass<>(elementType, elementClass);
             }
         }
         return TypeAndClass.ANY;

@@ -44,7 +44,6 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -125,10 +124,12 @@ import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.Indent;
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
+import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -138,6 +139,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Bytec
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
@@ -174,7 +176,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         @Option(help = "Enforce checking of maximum number of methods allowed for runtime compilation. Useful for checking in the gate that the number of methods does not go up without a good reason.")//
         public static final HostedOptionKey<Boolean> EnforceMaxRuntimeCompileMethods = new HostedOptionKey<>(false);
 
-        @Option(help = "Perform InlineBeforeAnalysis on runtime compiled methods")//
+        @Option(help = "Deprecated, option no longer has any effect.", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
         public static final HostedOptionKey<Boolean> RuntimeCompilationInlineBeforeAnalysis = new HostedOptionKey<>(true);
     }
 
@@ -693,11 +695,6 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                 }
                 new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, analysisProviders);
 
-                if (DeoptimizationUtils.createGraphInvalidator(graph).get()) {
-                    recordFailed(method);
-                    return HostVM.PARSING_FAILED;
-                }
-
             } catch (Throwable ex) {
                 debug.handle(ex);
             }
@@ -714,16 +711,16 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         public boolean validateGraph(PointsToAnalysis bb, StructuredGraph graph) {
             PointsToAnalysisMethod aMethod = (PointsToAnalysisMethod) graph.method();
             MultiMethod.MultiMethodKey multiMethodKey = aMethod.getMultiMethodKey();
-            Supplier<Boolean> graphInvalidator = DeoptimizationUtils.createGraphInvalidator(graph);
-            if (aMethod.isOriginalMethod() && DeoptimizationUtils.canDeoptForTesting(aMethod, false, graphInvalidator)) {
-                DeoptimizationUtils.registerDeoptEntriesForDeoptTesting(bb, graph, aMethod);
-                return true;
-            }
+            Supplier<Boolean> graphChecker = DeoptimizationUtils.createGraphChecker(graph,
+                            multiMethodKey == RUNTIME_COMPILED_METHOD ? DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES : DeoptimizationUtils.AOT_COMPILATION_INVALID_NODES);
             if (multiMethodKey != ORIGINAL_METHOD) {
-                if (graphInvalidator.get()) {
+                if (!graphChecker.get()) {
                     recordFailed(aMethod);
                     return false;
                 }
+            } else if (DeoptimizationUtils.canDeoptForTesting(aMethod, false, graphChecker)) {
+                DeoptimizationUtils.registerDeoptEntriesForDeoptTesting(bb, graph, aMethod);
+                return true;
             }
             if (multiMethodKey == RUNTIME_COMPILED_METHOD) {
                 /*
@@ -770,10 +767,8 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
 
         @Override
         public void initializeInlineBeforeAnalysisPolicy(SVMHost svmHost, InlineBeforeAnalysisPolicyUtils inliningUtils) {
-            if (RuntimeCompilationFeature.Options.RuntimeCompilationInlineBeforeAnalysis.getValue()) {
-                assert runtimeInlineBeforeAnalysisPolicy == null;
-                runtimeInlineBeforeAnalysisPolicy = new RuntimeCompilationInlineBeforeAnalysisPolicy(svmHost, inliningUtils);
-            }
+            assert runtimeInlineBeforeAnalysisPolicy == null : runtimeInlineBeforeAnalysisPolicy;
+            runtimeInlineBeforeAnalysisPolicy = new RuntimeCompilationInlineBeforeAnalysisPolicy(svmHost, inliningUtils);
         }
 
         @Override
@@ -783,11 +778,8 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
             } else if (multiMethodKey == DEOPT_TARGET_METHOD) {
                 return InlineBeforeAnalysisPolicy.NO_INLINING;
             } else if (multiMethodKey == RUNTIME_COMPILED_METHOD) {
-                if (RuntimeCompilationFeature.Options.RuntimeCompilationInlineBeforeAnalysis.getValue()) {
-                    assert runtimeInlineBeforeAnalysisPolicy != null;
-                    return runtimeInlineBeforeAnalysisPolicy;
-                }
-                return InlineBeforeAnalysisPolicy.NO_INLINING;
+                assert runtimeInlineBeforeAnalysisPolicy != null;
+                return runtimeInlineBeforeAnalysisPolicy;
             } else {
                 throw VMError.shouldNotReachHere("Unexpected method key: %s", multiMethodKey);
             }
@@ -844,8 +836,18 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         }
 
         @Override
+        protected boolean shouldOmitIntermediateMethodInState(AnalysisMethod method) {
+            /*
+             * We don't want to miss any FrameStates within runtime compiled methods since they are
+             * needed in case a deoptimization occurs.
+             */
+            return false;
+        }
+
+        @Override
         protected FixedWithNextNode processInvokeArgs(AnalysisMethod targetMethod, FixedWithNextNode insertionPoint, ValueNode[] arguments, NodeSourcePosition sourcePosition) {
             StructuredGraph graph = insertionPoint.graph();
+            assert SubstrateCompilationDirectives.isRuntimeCompiledMethod(targetMethod) : targetMethod;
             InlinedInvokeArgumentsNode newNode = graph.add(new InlinedInvokeArgumentsNode(targetMethod, arguments));
             newNode.setNodeSourcePosition(sourcePosition);
             graph.addAfterFixed(insertionPoint, newNode);
@@ -859,7 +861,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
             }
 
             InlineBeforeAnalysisPolicyUtils.AccumulativeInlineScope accScope;
-            if (policyScope instanceof InlineBeforeAnalysisPolicyUtils.AlwaysInlineScope) {
+            if (policyScope instanceof RuntimeCompilationAlwaysInlineScope) {
                 /*
                  * If we are in "trivial inlining" mode, we make inlining decisions as if we are
                  * still the root (= null) accumulative inlining scope.
@@ -892,13 +894,13 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMethod method) {
             if (outer instanceof InlineBeforeAnalysisPolicyUtils.AccumulativeInlineScope accOuter) {
                 /*
-                 * once the accumulative policy is activated, then we cannot return to the trivial
-                 * policy
+                 * Once the accumulative policy is activated, we cannot return to the trivial
+                 * policy.
                  */
-                return inliningUtils.createAccumulativeInlineScope(accOuter, method);
+                return inliningUtils.createAccumulativeInlineScope(accOuter, method, DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES);
             }
 
-            assert outer == null || outer instanceof InlineBeforeAnalysisPolicyUtils.AlwaysInlineScope : "unexpected outer scope: " + outer;
+            assert outer == null || outer instanceof RuntimeCompilationAlwaysInlineScope : "unexpected outer scope: " + outer;
 
             /*
              * Check if trivial is possible. We use the graph size as the main criteria, similar to
@@ -909,13 +911,13 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
              * handle intrinsification with larger thresholds in order to fully inline the method
              * handle.
              */
-            boolean trivialInlineAllowed = hostVM.isAnalysisTrivialMethod(method) && !AnnotationAccess.isAnnotationPresent(method, InlineBeforeAnalysisPolicyUtils.COMPILED_LAMBDA_FORM_ANNOTATION);
+            boolean trivialInlineAllowed = hostVM.isAnalysisTrivialMethod(method) && !InlineBeforeAnalysisPolicyUtils.isMethodHandleIntrinsificationRoot(method);
             int inliningDepth = outer == null ? 1 : outer.inliningDepth + 1;
             if (trivialInlineAllowed && inliningDepth <= trivialAllowingInliningDepth) {
-                return new InlineBeforeAnalysisPolicyUtils.AlwaysInlineScope(inliningDepth);
+                return new RuntimeCompilationAlwaysInlineScope(inliningDepth);
             } else {
                 // start with a new accumulative inline scope
-                return inliningUtils.createAccumulativeInlineScope(null, method);
+                return inliningUtils.createAccumulativeInlineScope(null, method, DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES);
             }
         }
     }
@@ -1133,5 +1135,44 @@ class GraphPrepareMetaAccessExtensionProvider implements MetaAccessExtensionProv
     @Override
     public boolean canVirtualize(ResolvedJavaType instanceType) {
         return true;
+    }
+}
+
+/**
+ * This scope will always allow nodes to be inlined.
+ */
+class RuntimeCompilationAlwaysInlineScope extends InlineBeforeAnalysisPolicy.AbstractPolicyScope {
+
+    RuntimeCompilationAlwaysInlineScope(int inliningDepth) {
+        super(inliningDepth);
+    }
+
+    @Override
+    public void commitCalleeScope(InlineBeforeAnalysisPolicy.AbstractPolicyScope callee) {
+        // nothing to do
+    }
+
+    @Override
+    public void abortCalleeScope(InlineBeforeAnalysisPolicy.AbstractPolicyScope callee) {
+        // nothing to do
+    }
+
+    @Override
+    public boolean processNode(AnalysisMetaAccess metaAccess, AnalysisMethod method, Node node) {
+        /*
+         * Inline as long as an invalid node has not been seen.
+         */
+        return !DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES.test(node);
+    }
+
+    @Override
+    public boolean processNonInlinedInvoke(CoreProviders providers, CallTargetNode node) {
+        // always inlining
+        return true;
+    }
+
+    @Override
+    public String toString() {
+        return "RuntimeCompilationAlwaysInlineScope";
     }
 }

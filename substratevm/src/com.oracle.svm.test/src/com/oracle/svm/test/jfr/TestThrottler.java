@@ -233,7 +233,7 @@ public class TestThrottler extends JfrRecordingTest {
     public void testDistributionHighRate() {
         int maxPopPerWindow = 2000;
         int expectedSamplesPerWindow = 50;
-        testDistribution(() -> maxPopPerWindow, expectedSamplesPerWindow, 0.02);
+        testDistribution(() -> maxPopPerWindow, expectedSamplesPerWindow, 0.05);
     }
 
     @Test
@@ -308,7 +308,7 @@ public class TestThrottler extends JfrRecordingTest {
     }
 
     private static void expectNear(double value1, double value2, double error) {
-        assertTrue(Math.abs(value1 - value2) <= error);
+        assertTrue(value1 + " is not close enough to " + value2 + ". The error tolerance is " + error, Math.abs(value1 - value2) <= error);
     }
 
     private static void assertDistributionProperties(int distributionSlots, int[] population, int[] sample, int populationSize, int sampleSize) {

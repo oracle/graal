@@ -28,23 +28,30 @@ package com.oracle.svm.test.jfr.utils.poolparsers;
 
 import java.io.IOException;
 
+import org.junit.Assert;
+
+import com.oracle.svm.core.jfr.JfrThreadRepository;
 import com.oracle.svm.core.jfr.JfrType;
 import com.oracle.svm.test.jfr.utils.JfrFileParser;
 import com.oracle.svm.test.jfr.utils.RecordingInput;
 
 public class ThreadGroupConstantPoolParser extends AbstractRepositoryParser {
     public ThreadGroupConstantPoolParser(JfrFileParser parser) {
-        /* 0 is the null thread group, 1 is the virtual thread group. */
-        super(parser, 0L, 1L);
+        /* 0 is the null thread group. */
+        super(parser, 0L);
     }
 
     @Override
     public void parse(RecordingInput input) throws IOException {
         int numberOfThreadGroups = input.readInt();
         for (int i = 0; i < numberOfThreadGroups; i++) {
-            addFoundId(input.readLong()); // ThreadGroupId.
+            long threadGroupId = input.readLong();
+            addFoundId(threadGroupId); // ThreadGroupId.
             addExpectedId(JfrType.ThreadGroup, input.readLong()); // ParentThreadGroupId.
-            input.readUTF(); // ThreadGroupName.
+            String threadGroupName = input.readUTF(); // ThreadGroupName.
+
+            /* For virtual threads, a fixed thread group id is reserved. */
+            Assert.assertTrue(threadGroupId != JfrThreadRepository.VIRTUAL_THREAD_GROUP_ID || threadGroupName.equals("VirtualThreads"));
         }
     }
 }

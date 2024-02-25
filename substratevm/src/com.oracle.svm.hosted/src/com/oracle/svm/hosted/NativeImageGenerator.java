@@ -141,7 +141,6 @@ import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
 import com.oracle.svm.core.c.struct.OffsetOf;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.cpufeature.RuntimeCPUFeatureCheck;
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.graal.EconomyGraalConfiguration;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -253,6 +252,7 @@ import com.oracle.svm.hosted.phases.IntrinsifyMethodHandlesInvocationPlugin;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.phases.VerifyDeoptLIRFrameStatesPhase;
 import com.oracle.svm.hosted.phases.VerifyNoGuardsPhase;
+import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedFieldsPlugin;
@@ -1056,7 +1056,8 @@ public class NativeImageGenerator {
                     List<SubstitutionProcessor> additionalSubstitutionProcessors) {
         List<SubstitutionProcessor> allProcessors = new ArrayList<>();
         SubstitutionProcessor cFunctionSubstitutions = new CFunctionSubstitutionProcessor();
-        allProcessors.addAll(Arrays.asList(annotationSubstitutions, cFunctionSubstitutions, cEnumProcessor));
+        SubstitutionProcessor proxySubstitutionProcessor = new ProxyRenamingSubstitutionProcessor();
+        allProcessors.addAll(Arrays.asList(annotationSubstitutions, cFunctionSubstitutions, cEnumProcessor, proxySubstitutionProcessor));
         allProcessors.addAll(additionalSubstitutionProcessors);
         return SubstitutionProcessor.chainUpInOrder(allProcessors.toArray(new SubstitutionProcessor[0]));
     }
@@ -1366,9 +1367,7 @@ public class NativeImageGenerator {
         SubstrateReplacements replacements = (SubstrateReplacements) providers.getReplacements();
         plugins.appendInlineInvokePlugin(replacements);
 
-        boolean useInlineBeforeAnalysisMethodHandleSupport = !SubstrateOptions.UseOldMethodHandleIntrinsics.getValue() &&
-                        !DeoptimizationSupport.enabled();
-        if (useInlineBeforeAnalysisMethodHandleSupport) {
+        if (!SubstrateOptions.UseOldMethodHandleIntrinsics.getValue()) {
             if (reason.duringAnalysis()) {
                 plugins.appendNodePlugin(new MethodHandleWithExceptionPlugin(providers.getConstantReflection().getMethodHandleAccess(), false));
             }
@@ -1806,7 +1805,7 @@ public class NativeImageGenerator {
 
     private void printTypes() {
         String reportsPath = SubstrateOptions.reportsPath();
-        ReportUtils.report("print types", reportsPath, "universe_analysis", "txt",
+        ReportUtils.report("hosted universe", reportsPath, "universe_analysis", "txt",
                         writer -> printTypes(writer));
     }
 

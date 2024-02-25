@@ -36,7 +36,6 @@ import java.util.Objects;
 import java.util.function.BiConsumer;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-
 import jdk.internal.reflect.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import sun.reflect.annotation.AnnotationParser;
@@ -95,7 +94,7 @@ public final class AnnotationValue extends AnnotationMemberValue {
             try {
                 memberValue = AnnotationMemberValue.from(annotationType.memberTypes().get(memberName), memberAccessor.invoke(annotation));
             } catch (IllegalAccessException | InvocationTargetException e) {
-                throw new AnnotationMetadata.AnnotationExtractionError(e);
+                throw new AnnotationMetadata.AnnotationExtractionError(annotation, e);
             }
             Object memberDefault = annotationType.memberDefaults().get(memberName);
             if (!memberValue.equals(memberDefault)) {

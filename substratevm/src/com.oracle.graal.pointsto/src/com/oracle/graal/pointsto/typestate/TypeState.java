@@ -165,6 +165,7 @@ public abstract class TypeState {
     }
 
     public static SingleTypeState forExactType(PointsToAnalysis bb, AnalysisType exactType, boolean canBeNull) {
+        assert exactType.getContextInsensitiveAnalysisObject() != null : exactType;
         return forExactType(bb, exactType.getContextInsensitiveAnalysisObject(), canBeNull);
     }
 

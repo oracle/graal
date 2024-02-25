@@ -63,8 +63,6 @@ public abstract class InlineBeforeAnalysisPolicy {
             this.inliningDepth = inliningDepth;
         }
 
-        public abstract boolean allowAbort();
-
         public abstract void commitCalleeScope(AbstractPolicyScope callee);
 
         public abstract void abortCalleeScope(AbstractPolicyScope callee);
@@ -104,9 +102,7 @@ public abstract class InlineBeforeAnalysisPolicy {
     protected abstract AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMethod method);
 
     /** @see InlineBeforeAnalysisGraphDecoder#shouldOmitIntermediateMethodInStates */
-    protected boolean shouldOmitIntermediateMethodInState(AnalysisMethod method) {
-        return false;
-    }
+    protected abstract boolean shouldOmitIntermediateMethodInState(AnalysisMethod method);
 
     public static final InlineBeforeAnalysisPolicy NO_INLINING = new InlineBeforeAnalysisPolicy(new NodePlugin[0]) {
 
@@ -148,6 +144,11 @@ public abstract class InlineBeforeAnalysisPolicy {
         @Override
         protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMethod method) {
             throw AnalysisError.shouldNotReachHere("NO_INLINING policy should not try to inline");
+        }
+
+        @Override
+        protected boolean shouldOmitIntermediateMethodInState(AnalysisMethod method) {
+            return false;
         }
     };
 }

@@ -125,7 +125,6 @@ import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
 import jdk.graal.compiler.nodes.extended.LoadHubNode;
-import jdk.graal.compiler.nodes.extended.StateSplitProxyNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
@@ -829,8 +828,6 @@ public class SubstrateGraphBuilderPlugins {
                 EnsureClassInitializedNode ensureInitialized = b.append(new EnsureClassInitializedNode(clazzNonNull));
                 ensureInitialized.setStateAfter(b.getInvocationPluginBeforeState());
                 DynamicNewInstanceNode.createAndPush(b, clazzNonNull);
-                /* Capture the correct state after these operations. */
-                b.add(new StateSplitProxyNode());
                 return true;
             }
         });

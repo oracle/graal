@@ -33,7 +33,6 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -51,6 +50,8 @@ import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.jfr.utils.JfrVisited;
 import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.core.memory.NullableNativeMemory;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.sampler.SamplerSampleWriter;
 import com.oracle.svm.core.sampler.SamplerSampleWriterData;
 import com.oracle.svm.core.sampler.SamplerSampleWriterDataAccess;
@@ -193,7 +194,7 @@ public class JfrStackTraceRepository implements JfrRepository {
              * the thread-local buffer to the C heap because the thread-local buffer will be
              * overwritten or freed at some point.
              */
-            Pointer to = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(size);
+            Pointer to = NullableNativeMemory.malloc(size, NmtCategory.JFR);
             if (to.isNonNull()) {
                 UnmanagedMemoryUtil.copy(start, to, size);
                 entry.setRawStackTrace(to);
@@ -205,7 +206,8 @@ public class JfrStackTraceRepository implements JfrRepository {
                 }
 
                 /* Hashtable entry allocation failed. */
-                ImageSingletons.lookup(UnmanagedMemorySupport.class).free(to);
+                NullableNativeMemory.free(to);
+                to = WordFactory.nullPointer();
             }
 
             /* Some allocation failed. */
@@ -303,6 +305,11 @@ public class JfrStackTraceRepository implements JfrRepository {
     public static final class JfrStackTraceTable extends AbstractUninterruptibleHashtable {
         private static long nextId;
 
+        @Platforms(Platform.HOSTED_ONLY.class)
+        JfrStackTraceTable() {
+            super(NmtCategory.JFR);
+        }
+
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected JfrStackTraceTableEntry[] createTable(int size) {
@@ -333,7 +340,7 @@ public class JfrStackTraceRepository implements JfrRepository {
         protected void free(UninterruptibleEntry entry) {
             JfrStackTraceTableEntry stackTraceEntry = (JfrStackTraceTableEntry) entry;
             /* The base method will free only the entry itself, not the pointer with stacktrace. */
-            ImageSingletons.lookup(UnmanagedMemorySupport.class).free(stackTraceEntry.getRawStackTrace());
+            NullableNativeMemory.free(stackTraceEntry.getRawStackTrace());
             super.free(entry);
         }
     }

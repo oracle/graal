@@ -47,6 +47,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
@@ -315,6 +316,10 @@ public abstract class Accessor {
         public abstract boolean bigIntegerFitsInFloat(BigInteger b);
 
         public abstract boolean bigIntegerFitsInDouble(BigInteger b);
+
+        public abstract Class<?> getRawTypeFromGenericType(Type genericType, Class<?> defaultRawType);
+
+        public abstract Type findActualTypeArgument(Type typeOrTypeVar, Type genericTargetType);
     }
 
     public abstract static class EngineSupport extends Support {
@@ -1213,7 +1218,7 @@ public abstract class Accessor {
 
         public abstract void flushCompileQueue(Object runtimeData);
 
-        public abstract Object createRuntimeData(Object engine, OptionValues engineOptions, Function<String, TruffleLogger> loggerFactory);
+        public abstract Object createRuntimeData(Object engine, OptionValues engineOptions, Function<String, TruffleLogger> loggerFactory, SandboxPolicy sandboxPolicy);
 
         public abstract Object tryLoadCachedEngine(OptionValues runtimeData, Function<String, TruffleLogger> logger);
 
@@ -1221,7 +1226,7 @@ public abstract class Accessor {
 
         public abstract boolean isStoreEnabled(OptionValues options);
 
-        public abstract void onEnginePatch(Object runtimeData, OptionValues runtimeOptions, Function<String, TruffleLogger> logSupplier);
+        public abstract void onEnginePatch(Object runtimeData, OptionValues runtimeOptions, Function<String, TruffleLogger> logSupplier, SandboxPolicy sandboxPolicy);
 
         public abstract boolean onEngineClosing(Object runtimeData);
 

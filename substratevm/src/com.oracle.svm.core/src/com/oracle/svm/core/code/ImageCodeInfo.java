@@ -41,6 +41,7 @@ import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.word.Word;
@@ -71,7 +72,7 @@ public class ImageCodeInfo {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     ImageCodeInfo() {
-        NonmovableObjectArray<Object> objfields = NonmovableArrays.createObjectArray(Object[].class, CodeInfoImpl.OBJFIELDS_COUNT);
+        NonmovableObjectArray<Object> objfields = NonmovableArrays.createObjectArray(Object[].class, CodeInfoImpl.OBJFIELDS_COUNT, NmtCategory.Code);
         NonmovableArrays.setObject(objfields, CodeInfoImpl.NAME_OBJFIELD, CODE_INFO_NAME);
         // The image code info is never invalidated, so we consider it as always tethered.
         NonmovableArrays.setObject(objfields, CodeInfoImpl.TETHER_OBJFIELD, new CodeInfoTether(true));

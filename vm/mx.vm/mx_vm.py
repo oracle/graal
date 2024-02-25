@@ -43,9 +43,6 @@ _suite = mx.suite('vm')
 """:type: mx.SourceSuite | mx.Suite"""
 
 
-gu_build_args = [] # externalized to simplify extensions
-
-
 @mx.command(_suite.name, "local-path-to-url")
 def local_path_to_url(args):
     """Print the url representation of a canonicalized path"""
@@ -54,54 +51,6 @@ def local_path_to_url(args):
     args = parser.parse_args(args)
 
     print(pathlib.Path(os.path.realpath(args.path)).as_uri())
-
-
-if mx_sdk_vm_impl.USE_LEGACY_GU:
-    gu_component = mx_sdk_vm.GraalVmJdkComponent(
-        suite=_suite,
-        name='Component installer',
-        short_name='gu',
-        dir_name='installer',
-        license_files=[],
-        third_party_license_files=[],
-        dependencies=['sdk'],
-        jar_distributions=[
-            'vm:INSTALLER',
-            'truffle:TRUFFLE_JSON'
-        ],
-        support_distributions=['vm:INSTALLER_GRAALVM_SUPPORT'],
-        launcher_configs=[
-            mx_sdk_vm.LauncherConfig(
-                destination="bin/<exe:gu>",
-                jar_distributions=[
-                    'vm:INSTALLER',
-                    'truffle:TRUFFLE_JSON'
-                ],
-                dir_jars=True,
-                main_class="org.graalvm.component.installer.ComponentInstaller",
-                link_at_build_time=False,
-                build_args=gu_build_args,
-                # Please see META-INF/native-image in the project for custom build options for native-image
-                is_sdk_launcher=True,
-                custom_launcher_script="mx.vm/gu.cmd" if mx.is_windows() else None,
-            ),
-        ],
-        stability="supported",
-    )
-else:
-    gu_component = mx_sdk_vm.GraalVmJdkComponent(
-        suite=_suite,
-        name='Deprecated GraalVM Updater launchers',
-        short_name='gu',
-        dir_name='installer',
-        provided_executables=['bin/gu.cmd' if mx.is_windows() else 'bin/gu'],
-        license_files=[],
-        third_party_license_files=[],
-        dependencies=[],
-        support_distributions=['vm:INSTALLER_DEPRECATED_GRAALVM_SUPPORT'],
-        stability="supported",
-    )
-mx_sdk_vm.register_graalvm_component(gu_component)
 
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmComponent(
@@ -190,11 +139,11 @@ llvm_components = ['bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm
 
 # pylint: disable=line-too-long
 ce_unchained_components = ['bnative-image-configure', 'cmp', 'lg', 'ni', 'nic', 'nil', 'nr_lib_jvmcicompiler', 'sdkc', 'sdkni', 'svm', 'svmsl', 'svmt', 'tflc', 'tflsm']
-ce_components_minimal = ['bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'insightheap', 'lg', 'libpoly', 'lsp', 'nfi-libffi', 'nfi', 'poly', 'polynative', 'pro', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'spolyglot', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json']
+ce_components_minimal = ['bpolyglot', 'cmp', 'cov', 'dap', 'gvm', 'ins', 'insight', 'insightheap', 'lg', 'libpoly', 'lsp', 'nfi-libffi', 'nfi', 'poly', 'polynative', 'pro', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'spolyglot', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json']
 ce_components = ce_components_minimal + ['nr_lib_jvmcicompiler', 'bnative-image-configure', 'ni', 'nic', 'nil', 'svm', 'svmt', 'svmnfi', 'svmsl']
-ce_python_components = ['antlr4', 'sllvmvm', 'bpolybench', 'bpolyglot', 'cmp', 'cov', 'dap', 'dis', 'gu', 'gvm', 'icu4j', 'xz', 'ins', 'insight', 'insightheap', 'lg', 'libpoly', 'llp', 'llrc', 'llrl', 'llrlf', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'pbm', 'pmh', 'poly', 'polynative', 'pro', 'pyn', 'pynl', 'rgx', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'spolyglot', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json']
+ce_python_components = ['antlr4', 'sllvmvm', 'bpolybench', 'bpolyglot', 'cmp', 'cov', 'dap', 'dis', 'gvm', 'icu4j', 'xz', 'ins', 'insight', 'insightheap', 'lg', 'libpoly', 'llp', 'llrc', 'llrl', 'llrlf', 'llrn', 'lsp', 'nfi-libffi', 'nfi', 'pbm', 'pmh', 'poly', 'polynative', 'pro', 'pyn', 'pynl', 'rgx', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'spolyglot', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json']
 ce_fastr_components = ce_components + llvm_components + ['antlr4', 'xz', 'sllvmvm', 'llp', 'bnative-image', 'snative-image-agent', 'R', 'sRvm', 'bnative-image-configure', 'llrc', 'snative-image-diagnostics-agent', 'llrn', 'llrl', 'llrlf']
-ce_no_native_components = ['bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'insightheap', 'lsp', 'nfi-libffi', 'nfi', 'polynative', 'pro', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'spolyglot', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json', 'libpoly', 'poly']
+ce_no_native_components = ['bpolyglot', 'cmp', 'cov', 'dap', 'gvm', 'ins', 'insight', 'insightheap', 'lsp', 'nfi-libffi', 'nfi', 'polynative', 'pro', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'spolyglot', 'tfl', 'tfla', 'tflc', 'tflm', 'truffle-json', 'libpoly', 'poly']
 
 # Main GraalVMs
 mx_sdk_vm.register_vm_config('community', ce_unchained_components, _suite, env_file='ce-win')
@@ -213,8 +162,8 @@ mx_sdk_vm.register_vm_config('ce-fastr', ce_fastr_components, _suite)
 mx_sdk_vm.register_vm_config('ce-no_native', ce_no_native_components, _suite)
 mx_sdk_vm.register_vm_config('libgraal', ['cmp', 'lg', 'sdkc', 'tflc'], _suite)
 mx_sdk_vm.register_vm_config('toolchain-only', ['antlr4', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tflm', 'nfi-libffi', 'nfi', 'cmp', 'llp', 'llrc', 'llrlf', 'llrn'], _suite)
-mx_sdk_vm.register_vm_config('libgraal-bash', llvm_components + ['cmp', 'gu', 'gvm', 'lg', 'nfi-libffi', 'nfi', 'poly', 'polynative', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tflm', 'bpolyglot'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('toolchain-only-bash', llvm_components + ['antlr4', 'tfl', 'tfla', 'tflc', 'tflm', 'gu', 'gvm', 'polynative', 'llp', 'nfi-libffi', 'nfi', 'svml', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'llrc', 'llrlf', 'llrn', 'cmp'], _suite, env_file=False)
+mx_sdk_vm.register_vm_config('libgraal-bash', llvm_components + ['cmp', 'gvm', 'lg', 'nfi-libffi', 'nfi', 'poly', 'polynative', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tflm', 'bpolyglot'], _suite, env_file=False)
+mx_sdk_vm.register_vm_config('toolchain-only-bash', llvm_components + ['antlr4', 'tfl', 'tfla', 'tflc', 'tflm', 'gvm', 'polynative', 'llp', 'nfi-libffi', 'nfi', 'svml', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'llrc', 'llrlf', 'llrn', 'cmp'], _suite, env_file=False)
 mx_sdk_vm.register_vm_config('ce', llvm_components + ['antlr4', 'java', 'libpoly', 'sjavavm', 'spolyglot', 'ejvm', 'sjsvm', 'sllvmvm', 'bnative-image', 'srubyvm', 'pynl', 'spythonvm', 'pyn', 'cmp', 'gwa', 'gwal', 'icu4j', 'xz', 'js', 'jsl', 'jss', 'lg', 'llp', 'nfi-libffi', 'nfi', 'ni', 'nil', 'pbm', 'pmh', 'pbi', 'rby', 'rbyl', 'rgx', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'llrc', 'llrn', 'llrl', 'llrlf', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'svmt', 'svmnfi', 'svmsl', 'swasmvm', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, env_file='polybench-ce')
 mx_sdk_vm.register_vm_config('ce', ['bnative-image', 'bpolybench', 'cmp', 'icu4j', 'xz', 'lg', 'nfi', 'ni', 'nil', 'pbi', 'pbm', 'pmh', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'svmt', 'svmnfi', 'svmsl', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, dist_name='ce', env_file='polybench-ctw-ce')
 mx_sdk_vm.register_vm_config('ce', ['pbm', 'pmh', 'pbi', 'ni', 'icu4j', 'xz', 'js', 'jsl', 'jss', 'lg', 'nfi-libffi', 'nfi', 'tfl', 'tfla', 'tflc', 'svm', 'svmt', 'nil', 'rgx', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'cmp', 'tflm', 'svmnfi', 'svmsl', 'bnative-image', 'sjsvm', 'snative-image-agent', 'snative-image-diagnostics-agent'], _suite, env_file='polybench-nfi-ce')
@@ -223,7 +172,7 @@ mx_sdk_vm.register_vm_config('ce', llvm_components + ['antlr4', 'sllvmvm', 'bnat
 if mx.get_os() == 'windows':
     mx_sdk_vm.register_vm_config('svm', ['bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gvm', 'nfi-libffi', 'nfi', 'ni', 'nil', 'nju', 'njucp', 'nic', 'poly', 'polynative', 'rgx', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'svmt', 'svmnfi', 'svmsl', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, env_file=False)
 else:
-    mx_sdk_vm.register_vm_config('svm', ['bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gu', 'gvm', 'nfi-libffi', 'nfi', 'ni', 'nil', 'nju', 'njucp', 'nic', 'poly', 'polynative', 'rgx', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'svmt', 'svmnfi', 'svmsl', 'svml', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, env_file=False)
+    mx_sdk_vm.register_vm_config('svm', ['bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gvm', 'nfi-libffi', 'nfi', 'ni', 'nil', 'nju', 'njucp', 'nic', 'poly', 'polynative', 'rgx', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'snative-image-agent', 'snative-image-diagnostics-agent', 'svm', 'svmt', 'svmnfi', 'svmsl', 'svml', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, env_file=False)
 # pylint: enable=line-too-long
 
 

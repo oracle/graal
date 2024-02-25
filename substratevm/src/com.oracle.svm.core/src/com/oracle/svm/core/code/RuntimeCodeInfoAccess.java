@@ -26,10 +26,7 @@ package com.oracle.svm.core.code;
 
 import java.util.EnumSet;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -45,6 +42,9 @@ import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.core.memory.NativeMemory;
+import com.oracle.svm.core.memory.NullableNativeMemory;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.VMError;
@@ -203,12 +203,12 @@ public final class RuntimeCodeInfoAccess {
     }
 
     public static CodeInfo allocateMethodInfo() {
-        NonmovableObjectArray<Object> objectFields = NonmovableArrays.createObjectArray(Object[].class, CodeInfoImpl.OBJFIELDS_COUNT);
+        NonmovableObjectArray<Object> objectFields = NonmovableArrays.createObjectArray(Object[].class, CodeInfoImpl.OBJFIELDS_COUNT, NmtCategory.Code);
         return allocateMethodInfo(objectFields);
     }
 
     public static CodeInfo allocateMethodInfo(NonmovableObjectArray<Object> objectData) {
-        CodeInfoImpl info = UnmanagedMemory.calloc(CodeInfoAccess.getSizeOfCodeInfo());
+        CodeInfoImpl info = NativeMemory.calloc(CodeInfoAccess.getSizeOfCodeInfo(), NmtCategory.Code);
 
         assert objectData.isNonNull() && NonmovableArrays.lengthOf(objectData) == CodeInfoImpl.OBJFIELDS_COUNT;
         info.setObjectFields(objectData);
@@ -279,7 +279,7 @@ public final class RuntimeCodeInfoAccess {
         }
 
         impl.setState(CodeInfo.STATE_FREED);
-        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(info);
+        NullableNativeMemory.free(info);
     }
 
     private static final NonmovableArrayAction GUARANTEE_ALL_OBJECTS_IN_IMAGE_HEAP_ACTION = new NonmovableArrayAction() {

@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -53,6 +52,7 @@ import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
@@ -254,7 +254,7 @@ public abstract class VMThreads {
         UnsignedWord alignment = WordFactory.unsigned(64);
 
         UnsignedWord memorySize = WordFactory.unsigned(isolateThreadSize).add(alignment);
-        Pointer memory = ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(memorySize);
+        Pointer memory = UntrackedNullableNativeMemory.calloc(memorySize);
         if (memory.isNull()) {
             return WordFactory.nullPointer();
         }
@@ -274,7 +274,7 @@ public abstract class VMThreads {
     @Uninterruptible(reason = "Thread state no longer set up.")
     protected void freeIsolateThread(IsolateThread thread) {
         Pointer memory = unalignedIsolateThreadMemoryTL.get(thread);
-        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(memory);
+        UntrackedNullableNativeMemory.free(memory);
     }
 
     /**

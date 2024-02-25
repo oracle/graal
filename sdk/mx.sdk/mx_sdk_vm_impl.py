@@ -765,28 +765,6 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
         graalvm_dists.difference_update(component_dists)
         _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in sorted(graalvm_dists)], with_sources=True)
 
-        if mx.suite('vm', fatalIfMissing=False):
-            import mx_vm
-            installer_components_dir = _get_component_type_base(mx_vm.gu_component) + mx_vm.gu_component.dir_name + '/components/'
-            if not is_graalvm or get_component(mx_vm.gu_component.short_name, stage1=stage1):
-                # Execute the following code if this is not a GraalVM distribution (e.g., is an installable) or if the
-                # GraalVM distribution includes `gu`.
-                #
-                # Register pre-installed components
-                for installable_components in installable_component_lists.values():
-                    manifest_str = _gen_gu_manifest(installable_components, _format_properties, bundled=True)
-                    main_component = _get_main_component(installable_components)
-                    mx.logv("Adding gu metadata for{}installable '{}'".format(' disabled ' if _disable_installable(main_component) else ' ', main_component.installable_id))
-                    _add(layout, installer_components_dir + 'org.graalvm.' + main_component.installable_id + '.component', "string:" + manifest_str)
-                # Register Core
-                manifest_str = _format_properties({
-                    "Bundle-Name": "GraalVM Core",
-                    "Bundle-Symbolic-Name": "org.graalvm",
-                    "Bundle-Version": _suite.release_version(),
-                    "x-GraalVM-Stability-Level": _get_core_stability(),
-                })
-                _add(layout, installer_components_dir + 'org.graalvm.component', "string:" + manifest_str)
-
         for _base, _suites in component_suites.items():
             _metadata = self._get_metadata(_suites)
             _add(layout, _base + 'release', "string:{}".format(_metadata))
@@ -857,26 +835,6 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
         _source += ' '.join(['{}:{}'.format(_s.name, _s.version()) for _s in suites])
         _metadata_dict['SOURCE'] = _source
         _metadata_dict['COMMIT_INFO'] = json.dumps(_commit_info, sort_keys=True)
-        if _suite.is_release():
-            catalog = _release_catalog()
-            gds_product_id = _release_product_id()
-        else:
-            snapshot_catalog = _snapshot_catalog()
-            gds_product_id = _snapshot_product_id()
-            gds_snapshot_catalog = _gds_snapshot_catalog()
-            if snapshot_catalog and _suite.vc:
-                catalog = "{}/{}".format(snapshot_catalog, _suite.vc.parent(_suite.vc_dir))
-                if gds_snapshot_catalog:
-                    catalog += "|" + gds_snapshot_catalog
-            elif gds_snapshot_catalog:
-                catalog = gds_snapshot_catalog
-            else:
-                catalog = None
-        if USE_LEGACY_GU:
-            if catalog:
-                _metadata_dict['component_catalog'] = catalog
-            if gds_product_id:
-                _metadata_dict['GDS_PRODUCT_ID'] = gds_product_id
 
         # COMMIT_INFO is unquoted to simplify JSON parsing
         return mx_sdk_vm.format_release_file(_metadata_dict, {'COMMIT_INFO'})
@@ -2636,148 +2594,6 @@ def _gen_gu_manifest(components, formatter, bundled=False):
     return formatter(manifest)
 
 
-class InstallableComponentArchiver(mx.Archiver):
-    def __init__(self, path, components, **kw_args):
-        """
-        :type path: str
-        :type components: list[mx_sdk.GraalVmLanguage]
-        :type kind: str
-        :type reset_user_group: bool
-        :type duplicates_action: str
-        :type context: object
-        """
-        super(InstallableComponentArchiver, self).__init__(path, **kw_args)
-        self.components = components
-        self.permissions = []
-        self.symlinks = []
-
-    @staticmethod
-    def _perm_str(filename):
-        _perm = str(oct(os.lstat(filename).st_mode)[-3:])
-        _str = ''
-        for _p in _perm:
-            if _p == '7':
-                _str += 'rwx'
-            elif _p == '6':
-                _str += 'rw-'
-            elif _p == '5':
-                _str += 'r-x'
-            elif _p == '4':
-                _str += 'r--'
-            elif _p == '0':
-                _str += '---'
-            else:
-                mx.abort('File {} has unsupported permission {}'.format(filename, _perm))
-        return _str
-
-    def add(self, filename, archive_name, provenance):
-        self.permissions.append('{} = {}'.format(archive_name, self._perm_str(filename)))
-        super(InstallableComponentArchiver, self).add(filename, archive_name, provenance)
-
-    def add_str(self, data, archive_name, provenance):
-        self.permissions.append('{} = {}'.format(archive_name, 'rw-rw-r--'))
-        super(InstallableComponentArchiver, self).add_str(data, archive_name, provenance)
-
-    def add_link(self, target, archive_name, provenance):
-        self.permissions.append('{} = {}'.format(archive_name, 'rwxrwxrwx'))
-        self.symlinks.append('{} = {}'.format(archive_name, target))
-        # do not add symlinks, use the metadata to create them
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        assert self.components[0] == _get_main_component(self.components)
-        _manifest_str_wrapped = _gen_gu_manifest(self.components, _format_manifest)
-        _manifest_arc_name = 'META-INF/MANIFEST.MF'
-
-        _permissions_str = '\n'.join(self.permissions)
-        _permissions_arc_name = 'META-INF/permissions'
-
-        _symlinks_str = '\n'.join(self.symlinks)
-        _symlinks_arc_name = 'META-INF/symlinks'
-
-        for _str, _arc_name in [(_manifest_str_wrapped, _manifest_arc_name), (_permissions_str, _permissions_arc_name),
-                                (_symlinks_str, _symlinks_arc_name)]:
-            self.add_str(_str, _arc_name, '{}<-string:{}'.format(_arc_name, _str))
-
-        super(InstallableComponentArchiver, self).__exit__(exc_type, exc_value, traceback)
-
-
-class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDistribution):  # pylint: disable=R0901
-    def __init__(self, component, extra_components=None, **kw_args):
-        """
-        :type component: mx_sdk.GraalVmComponent
-        """
-        self.main_component = component
-
-        def create_archive(path, **_kw_args):
-            return InstallableComponentArchiver(path, self.components, **_kw_args)
-
-        launcher_configs = list(_get_launcher_configs(component))
-        for component_ in extra_components:
-            launcher_configs += _get_launcher_configs(component_)
-
-        library_configs = list(_get_library_configs(component))
-        for component_ in extra_components:
-            library_configs += _get_library_configs(component_)
-
-        extra_installable_qualifiers = list(component.extra_installable_qualifiers)
-        for component_ in extra_components:
-            extra_installable_qualifiers += component_.extra_installable_qualifiers
-
-        other_involved_components = []
-        if self.main_component.short_name not in ('svm', 'svmee') \
-                and _get_svm_support().is_supported() \
-                and (
-                    any(not _force_bash_launchers(lc) for lc in launcher_configs) or
-                    any(not _skip_libraries(lc) for lc in library_configs)):
-            other_involved_components += [c for c in registered_graalvm_components(stage1=True) if c.short_name in ('svm', 'svmee')]
-
-        name = '{}_INSTALLABLE'.format(component.installable_id.replace('-', '_').upper())
-        for library_config in library_configs:
-            if _skip_libraries(library_config):
-                name += '_S' + basename(library_config.destination).upper()
-        if other_involved_components:
-            extra_installable_qualifiers += [c.short_name for c in other_involved_components]
-        if not extra_installable_qualifiers:
-            extra_installable_qualifiers = mx_sdk_vm.extra_installable_qualifiers(mx_sdk_vm.base_jdk().home, ['ce'], None)
-        if extra_installable_qualifiers:
-            name += '_' + '_'.join(sorted(q.upper() for q in extra_installable_qualifiers))
-        name += '_JAVA{}'.format(_src_jdk_version)
-
-        for component_ in [component] + extra_components:
-            for boot_jar in component_.boot_jars:
-                mx.warn("Component '{}' declares '{}' as 'boot_jar', which is ignored by the build process of the '{}' installable".format(component_.name, boot_jar, name))
-
-        self.maven = _graalvm_maven_attributes(tag='installable')
-        components = [component]
-        if extra_components:
-            components += extra_components
-        super(GraalVmInstallableComponent, self).__init__(
-            suite=_suite,
-            name=name,
-            deps=[],
-            components=components,
-            is_graalvm=False,
-            exclLibs=[],
-            platformDependent=True,
-            theLicense=None,
-            testDistribution=False,
-            archive_factory=create_archive,
-            path=None,
-            include_native_image_resources_filelists=True,
-            **kw_args)
-
-    def get_artifact_metadata(self):
-        meta = super(GraalVmInstallableComponent, self).get_artifact_metadata()
-        meta.update({
-            'type': 'installable',
-            'installableName': self.main_component.installable_id.lower().replace('-', '_'),
-            'longName': self.main_component.name,
-            'stability': self.main_component.stability,
-            'symbolicName': 'org.graalvm.{}'.format(self.main_component.installable_id),
-        })
-        return meta
-
-
 class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
     def __init__(self, main_component, graalvm, is_jvm, **kw_args):
         """
@@ -3594,7 +3410,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     ))
     main_dists = {
         'graalvm': [],
-        'graalvm_installables': [],
         'graalvm_standalones': [],
     }
     with_non_rebuildable_configs = False
@@ -3718,12 +3533,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     # Register main distribution
     register_main_dist(_final_graalvm_distribution, 'graalvm')
 
-    # Register installables
-    for components in installables.values():
-        main_component = _get_main_component(components)
-        installable_component = GraalVmInstallableComponent(main_component, extra_components=[c for c in components if c != main_component])
-        register_main_dist(installable_component, 'graalvm_installables')
-
     # Register standalones
     needs_java_standalone_jimage = False
     for components in installables.values():
@@ -3827,7 +3636,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 jimage_project=final_jimage_project,
         ))
 
-    # Trivial distributions to trigger the build of the final GraalVM distribution, installables, and standalones
+    # Trivial distributions to trigger the build of the final GraalVM distribution and standalones
     all_main_dists = []
     for label, dists in main_dists.items():
         if dists:
@@ -4306,7 +4115,7 @@ def graalvm_show(args, forced_graalvm_dist=None):
 
     if forced_graalvm_dist is None:
         # Custom GraalVM distributions with a forced component list do not yet support launchers and libraries.
-        # No installable or standalone is derived from them.
+        # No standalone is derived from them.
         launchers = [p for p in _suite.projects if isinstance(p, GraalVmLauncher) and p.get_containing_graalvm() == graalvm_dist]
         if launchers:
             print("Launchers:")
@@ -4345,17 +4154,6 @@ def graalvm_show(args, forced_graalvm_dist=None):
                     suffix=suffix))
         else:
             print("No library")
-
-        installables = _get_dists(GraalVmInstallableComponent)
-        if installables and not args.stage1:
-            print("Installables:")
-            for i in sorted(installables):
-                print(" - {}".format(i))
-                if args.verbose:
-                    for c in i.components:
-                        print("    - {}".format(c.name))
-        else:
-            print("No installable")
 
         if not args.stage1:
             jvm_standalones = []
@@ -4402,7 +4200,7 @@ def graalvm_show(args, forced_graalvm_dist=None):
                     for config in cfg['configs']:
                         print(f" {config} (from {cfg['source']})")
             if args.verbose:
-                for dist_name in 'GRAALVM', 'GRAALVM_INSTALLABLES', 'GRAALVM_STANDALONES', 'ALL_GRAALVM_ARTIFACTS':
+                for dist_name in 'GRAALVM', 'GRAALVM_STANDALONES', 'ALL_GRAALVM_ARTIFACTS':
                     dist = mx.distribution(dist_name, fatalIfMissing=False)
                     if dist is not None:
                         print(f"Dependencies of the '{dist_name}' distribution:\n -", '\n - '.join(sorted(dep.name for dep in dist.deps)))
@@ -4536,11 +4334,6 @@ mx.add_argument('--sources', action='store', help='Comma-separated list of proje
 mx.add_argument('--debuginfo-dists', action='store_true', help='Generate debuginfo distributions.')
 mx.add_argument('--generate-debuginfo', action='store', help='Comma-separated list of launchers and libraries (syntax: lib:polyglot) for which to generate debug information (`native-image -g`) (all by default)', default=None)
 mx.add_argument('--disable-debuginfo-stripping', action='store_true', help='Disable the stripping of debug symbols from the native image.')
-mx.add_argument('--snapshot-catalog', action='store', help='Change the default URL of the component catalog for snapshots.', default=None)
-mx.add_argument('--gds-snapshot-catalog', action='store', help='Change the default appended URL of the component catalog for snapshots.', default=None)
-mx.add_argument('--release-catalog', action='store', help='Change the default URL of the component catalog for releases.', default=None)
-mx.add_argument('--snapshot-product-id', action='store', help='Change the default ID of the GDS product ID for snapshots.', default=None)
-mx.add_argument('--release-product-id', action='store', help='Change the default ID of the GDS product ID for releases.', default=None)
 mx.add_argument('--extra-image-builder-argument', action='append', help='Add extra arguments to the image builder.', default=[])
 mx.add_argument('--image-profile', action='append', help='Add a profile to be used while building a native image.', default=[])
 mx.add_argument('--no-licenses', action='store_true', help='Do not add license files in the archives.')
@@ -4894,26 +4687,6 @@ def _rebuildable_image(image_config):
         return not non_rebuildable
     else:
         return name not in non_rebuildable
-
-
-def _snapshot_catalog():
-    return mx.get_opts().snapshot_catalog or mx.get_env('SNAPSHOT_CATALOG')
-
-
-def _gds_snapshot_catalog():
-    return mx.get_opts().gds_snapshot_catalog or mx.get_env('GDS_SNAPSHOT_CATALOG')
-
-
-def _snapshot_product_id():
-    return mx.get_opts().snapshot_product_id or mx.get_env('SNAPSHOT_PRODUCT_ID')
-
-
-def _release_catalog():
-    return mx.get_opts().release_catalog or mx.get_env('RELEASE_CATALOG')
-
-
-def _release_product_id():
-    return mx.get_opts().release_product_id or mx.get_env('RELEASE_PRODUCT_ID')
 
 
 def _base_jdk_info():

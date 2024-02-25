@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import java.net.URLClassLoader;
 import java.security.ProtectionDomain;
 import java.util.Map;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.shadowed.org.jcodings.EncodingDB;
 import org.junit.After;
 import static org.junit.Assert.assertNotNull;
 import org.junit.Assume;
@@ -72,6 +73,9 @@ public class SLSeparatedClassLoadersTest {
         URL truffleURL = Truffle.class.getProtectionDomain().getCodeSource().getLocation();
         Assume.assumeNotNull(truffleURL);
 
+        URL jcodingsURL = EncodingDB.class.getProtectionDomain().getCodeSource().getLocation();
+        Assume.assumeNotNull(jcodingsURL);
+
         URL slURL = SLLanguage.class.getProtectionDomain().getCodeSource().getLocation();
         Assume.assumeNotNull(slURL);
 
@@ -86,7 +90,7 @@ public class SLSeparatedClassLoadersTest {
             sdkLoaderLoadsTruffleLanguage = false;
         }
         Assume.assumeFalse(sdkLoaderLoadsTruffleLanguage);
-        URLClassLoader truffleLoader = new URLClassLoader(new URL[]{truffleURL}, sdkLoader);
+        URLClassLoader truffleLoader = new URLClassLoader(new URL[]{truffleURL, jcodingsURL}, sdkLoader);
         URLClassLoader slLoader = new URLClassLoader(new URL[]{slURL}, truffleLoader);
         Thread.currentThread().setContextClassLoader(slLoader);
 
