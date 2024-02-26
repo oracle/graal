@@ -163,7 +163,7 @@ class NativeImageBenchmarkConfig:
         self.root_dir = self.benchmark_output_dir if self.benchmark_output_dir else mx.suite('vm').get_output_root(platformDependent=False, jdkDependent=False)
         unique_suite_name = f"{self.bm_suite.benchSuiteName()}-{self.bm_suite.version().replace('.', '-')}" if self.bm_suite.version() != 'unknown' else self.bm_suite.benchSuiteName()
         self.executable_name = (unique_suite_name + '-' + self.benchmark_name).lower() if self.benchmark_name else unique_suite_name.lower()
-        self.instrumentation_executable_name = self.executable_name + "-instrument"
+        instrumentation_executable_name = self.executable_name + "-instrument"
         self.final_image_name = self.executable_name + '-' + vm.config_name()
         self.output_dir = os.path.join(os.path.abspath(self.root_dir), 'native-image-benchmarks', self.executable_name + '-' + vm.config_name())
         self.profile_path = os.path.join(self.output_dir, self.executable_name) + ".iprof"
@@ -176,7 +176,7 @@ class NativeImageBenchmarkConfig:
 
         base_image_build_args += self.system_properties
         self.bundle_path = self.get_bundle_path_if_present()
-        self.bundle_create_path = self.get_bundle_create_path_if_present()
+        bundle_create_path = self.get_bundle_create_path_if_present()
         if not self.bundle_path:
             base_image_build_args += self.classpath_arguments
             base_image_build_args += self.modulepath_arguments
@@ -190,13 +190,14 @@ class NativeImageBenchmarkConfig:
             '-H:+CollectImageBuildStatistics',
         ]
         self.image_build_reports_directory: Path = Path(self.output_dir) / "reports"
-        if self.bundle_create_path is not None:
-            self.image_build_reports_directory = Path(self.output_dir) / self.bundle_create_path
+        if bundle_create_path is not None:
+            self.image_build_reports_directory = Path(self.output_dir) / bundle_create_path
 
         # Path of the final executable
-        self.image_path = os.path.join(self.output_dir, self.final_image_name)
-        if self.bundle_create_path is not None:
-            self.image_path = os.path.join(self.output_dir, os.path.dirname(self.bundle_create_path), self.bundle_create_path.split(".")[0])
+        self.image_path = Path(self.output_dir) / self.final_image_name
+        self.instrumented_image_path = Path(self.output_dir) / instrumentation_executable_name
+        if bundle_create_path is not None:
+            self.image_path = Path(self.output_dir) / bundle_create_path.parent / str(bundle_create_path).split(".")[0]
 
         if vm.is_quickbuild:
             base_image_build_args += ['-Ob']
@@ -285,14 +286,13 @@ class NativeImageBenchmarkConfig:
 
         return None
 
-    def get_bundle_create_path_if_present(self):
+    def get_bundle_create_path_if_present(self) -> Optional[Path]:
         bundle_create_arg = "--bundle-create"
         bundle_arg_idx = [idx for idx, arg in enumerate(self.extra_image_build_arguments) if arg.startswith(bundle_create_arg)]
         if len(bundle_arg_idx) == 1:
             # This only works by convention, but not in general. For this to work, the argument after --bundle-create
             # has to be the image name (without -o or -H:Name).
-            bp = os.path.join(self.extra_image_build_arguments[bundle_arg_idx[0] + 1] + ".output", "default", "reports")
-            return bp
+            return Path(self.extra_image_build_arguments[bundle_arg_idx[0] + 1] + ".output") / "default" / "reports"
 
         return None
 
@@ -788,7 +788,7 @@ class NativeImageVM(GraalVm):
                + self.image_build_statistics_rules(benchmarks) + self.image_build_timers_rules(benchmarks)
 
     def image_build_general_rules(self, benchmarks):
-        return [
+        rules =[
             mx_benchmark.StdOutRule(
                 r"The executed image size for benchmark (?P<bench_suite>[a-zA-Z0-9_\-]+):(?P<benchmark>[a-zA-Z0-9_\-]+) is (?P<value>[0-9]+) B",
                 {
@@ -818,19 +818,14 @@ class NativeImageVM(GraalVm):
                     "metric.iteration": 0,
                     "metric.object": ("<type>", str)
                 }),
-            # Parses output produced by objdump
-            mx_benchmark.StdOutRule(r'^[ ]*[0-9]+[ ]+.(?P<section>[a-zA-Z0-9._-]+?)[ ]+(?P<size>[0-9a-f]+?)[ ]+', {
-                "benchmark": benchmarks[0],
-                "metric.name": "binary-section-size",
-                "metric.type": "numeric",
-                "metric.unit": "B",
-                "metric.value": ("<size>", _native_image_hex_to_int),
-                "metric.score-function": "id",
-                "metric.better": "lower",
-                "metric.iteration": 0,
-                "metric.object": ("<section>", str),
-            })
         ]
+
+        if self.stages_info.effective_stage == Stage.INSTRUMENT_IMAGE:
+            rules.append(ObjdumpSectionRule(self.config.instrumented_image_path, benchmarks[0]))
+        elif self.stages_info.effective_stage == Stage.IMAGE:
+            rules.append(ObjdumpSectionRule(self.config.image_path, benchmarks[0]))
+
+        return rules
 
     def image_build_analysis_rules(self, benchmarks):
         return [
@@ -1039,7 +1034,7 @@ class NativeImageVM(GraalVm):
                         zipf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), os.path.join(path, '..')))
 
     def run_stage_instrument_image(self, out):
-        executable_name_args = ['-o', self.config.instrumentation_executable_name]
+        executable_name_args = ['-o', str(self.config.instrumented_image_path)]
         instrument_args = ['--pgo-sampling'] if self.pgo_sampler_only else ['--pgo-instrument']
         instrument_args += ['-R:ProfilesDumpFile=' + self.config.profile_path]
         if self.jdk_profiles_collect:
@@ -1056,7 +1051,8 @@ class NativeImageVM(GraalVm):
             if s.exit_code == 0:
                 self._move_image_build_stats_file()
 
-                image_size = os.stat(os.path.join(self.config.output_dir, self.config.instrumentation_executable_name)).st_size
+                # TODO refactor
+                image_size = os.stat(self.config.instrumented_image_path).st_size
                 out('Instrumented image size: ' + str(image_size) + ' B')
 
     def _move_image_build_stats_file(self):
@@ -1090,7 +1086,7 @@ class NativeImageVM(GraalVm):
                     assert sample["records"][0] > 0, "Sampling profiles seem to have a 0 in records in file " + profile_path
 
     def run_stage_instrument_run(self):
-        image_run_cmd = [os.path.join(self.config.output_dir, self.config.instrumentation_executable_name)]
+        image_run_cmd = [str(self.config.instrumented_image_path)]
         image_run_cmd += self.config.extra_jvm_args
         image_run_cmd += self.config.extra_profile_run_args
         with self.stages.set_command(image_run_cmd) as s:
@@ -1142,27 +1138,24 @@ class NativeImageVM(GraalVm):
             if s.exit_code == 0:
                 self._move_image_build_stats_file()
 
-                image_path = self.config.image_path
                 if self.use_upx:
                     upx_directory = mx.library("UPX", True).get_path(True)
                     upx_path = os.path.join(upx_directory, mx.exe_suffix("upx"))
-                    upx_cmd = [upx_path, image_path]
+                    upx_cmd = [upx_path, str(self.config.image_path)]
                     mx.log(f"Compressing image: {' '.join(upx_cmd)}")
                     mx.run(upx_cmd, s.stdout(True), s.stderr(True))
 
                 self._print_binary_size(out)
-                image_sections_command = "objdump -h " + image_path
-                out(subprocess.check_output(image_sections_command, shell=True, universal_newlines=True))
                 for config_type in ['jni', 'proxy', 'predefined-classes', 'reflect', 'resource', 'serialization']:
                     config_path = os.path.join(self.config.config_dir, config_type + '-config.json')
                     if os.path.exists(config_path):
                         config_size = os.stat(config_path).st_size
                         out('The ' + config_type + ' configuration size for benchmark ' + self.config.benchmark_suite_name + ':' + self.config.benchmark_name + ' is ' + str(config_size) + ' B')
 
-    def run_stage_run(self, out):
+    def run_stage_run(self):
         if not self.config.is_runnable:
             mx.abort(f"Benchmark {self.config.benchmark_suite_name}:{self.config.benchmark_name} is not runnable.")
-        with self.stages.set_command([self.config.image_path] + self.config.extra_jvm_args + self.config.image_run_args) as s:
+        with self.stages.set_command([str(self.config.image_path)] + self.config.extra_jvm_args + self.config.image_run_args) as s:
             s.execute_command(vm=self)
 
     def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
@@ -1220,13 +1213,41 @@ class NativeImageVM(GraalVm):
         elif stage_to_run == Stage.IMAGE:
             self.run_stage_image(out)
         elif stage_to_run == Stage.RUN:
-            self.run_stage_run(out)
+            self.run_stage_run()
         else:
             raise ValueError(f"Unknown stage {stage_to_run}")
 
 
+class ObjdumpSectionRule(mx_benchmark.StdOutRule):
+
+    PATTERN = re.compile(r"^ *(?P<section_num>\d+)[ ]+.(?P<section>[a-zA-Z0-9._-]+?) +(?P<size>[0-9a-f]+?) +", re.MULTILINE)
+    """
+    Regex to match lines in the output of ``objdump -d`` to extract the size of individual sections.
+    """
+
+    def __init__(self, executable: Path, benchmark: str):
+        super().__init__(ObjdumpSectionRule.PATTERN, {
+            "benchmark": benchmark,
+            "metric.name": "binary-section-size",
+            "metric.type": "numeric",
+            "metric.unit": "B",
+            "metric.value": ("<size>", _native_image_hex_to_int),
+            "metric.score-function": "id",
+            "metric.better": "lower",
+            "metric.iteration": 0,
+            "metric.object": ("<section>", str),
+        })
+        self.executable = executable
+
+    def parse(self, _) -> Iterable[DataPoint]:
+        # Instead of the benchmark output, we pass the objdump output
+        return super().parse(subprocess.check_output(["objdump", "-h", str(self.executable)], text=True))
+
+
 class AnalysisReportJsonFileRule(mx_benchmark.JsonStdOutFileRule):
-    """Rule that looks for JSON file names in the output of the benchmark and looks up the files in the report directory"""
+    """
+    Rule that looks for JSON file names in the output of the benchmark and looks up the files in the report directory
+    """
 
     def __init__(self, report_directory, is_diagnostics_mode, replacement, keys):
         super().__init__(r"^# Printing analysis results stats to: (?P<path>\S+?)$", "path", replacement, keys)
