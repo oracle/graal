@@ -200,6 +200,10 @@ class Stage(Enum):
         """Whether this is an image stage (a stage that performs an image build)"""
         return self in [Stage.INSTRUMENT_IMAGE, Stage.IMAGE]
 
+    def is_instrument(self) -> bool:
+        """Whether this is an image stage (a stage that performs an image build)"""
+        return self in [Stage.INSTRUMENT_IMAGE, Stage.INSTRUMENT_RUN]
+
 class StagesInfo:
     """
     Holds information about benchmark stages that should be persisted across multiple stages in the same

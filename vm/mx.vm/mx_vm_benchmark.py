@@ -186,12 +186,12 @@ class NativeImageBenchmarkConfig:
             '-H:ConfigurationFileDirectories=' + self.config_dir,
             '-H:+PrintAnalysisStatistics',
             '-H:+PrintCallEdges',
+            # Produces the image_build_statistics.json file
             '-H:+CollectImageBuildStatistics',
         ]
-        self.image_build_reports_directory = os.path.join(self.output_dir, 'reports')
+        self.image_build_reports_directory: Path = Path(self.output_dir) / "reports"
         if self.bundle_create_path is not None:
-            self.image_build_reports_directory = os.path.join(self.output_dir, self.bundle_create_path)
-        self.image_build_stats_file = os.path.join(self.image_build_reports_directory, 'image_build_statistics.json')
+            self.image_build_reports_directory = Path(self.output_dir) / self.bundle_create_path
 
         # Path of the final executable
         self.image_path = os.path.join(self.output_dir, self.final_image_name)
@@ -236,25 +236,38 @@ class NativeImageBenchmarkConfig:
         # the bundle might also inject experimental options, but they will be appropriately locked/unlocked.
         self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')] + svm_experimental_options(base_image_build_args) + bundle_args
 
-    def get_build_output_json_file(self, instrument_phase: bool) -> Path:
+    def get_build_output_json_file(self, stage: Stage) -> Path:
         """
-        TODO document
+        Path to the build output statistics JSON file (see also ``-H:BuildOutputJSONFile``).
+
+        For image stages, specifies the location where the file should be placed.
+
+        :param stage: The stage for which the file is required. The run stages use the file generated from the
+                      corresponding image stage.
         """
-        return Path(self.image_build_reports_directory) / f"build-output-{'instrument' if instrument_phase else 'final'}.json"
+        if stage.is_instrument():
+            suffix = "instrument"
+        elif stage in [Stage.IMAGE, Stage.RUN]:
+            suffix = "final"
+        else:
+            raise AssertionError(f"There is no build output file for the {stage} stage")
 
-    def get_instrument_image_build_stats_file(self) -> Path:
+        return self.image_build_reports_directory / f"build-output-{suffix}.json"
+
+    def get_image_build_stats_file(self, stage: Stage) -> Path:
         """
-        Produce a unique path to put image build stats for 'instrument-image' stages.
+        Same concept as :meth:`get_build_output_json_file`, but for the ``image_build_statistics.json`` file.
 
-        The 'image_build_statistics.json' file produced by the build gets overwritten by any subsequent
-        builds (other 'instrument-image' iterations or the 'image' stage).
-        Because of this, we need unique paths for stats files produced by the instrumentation builds.
-
-        :param iteration: The instrumented iteration (see :attr:`NativeImageVM.instrumented_iterations`)
-        :return: A unique path to store the instrumented image build stats for the given iteration
+        The file is produced with the ``-H:+CollectImageBuildStatistics`` option
         """
-        return Path(self.image_build_stats_file).parent / f"image_build_statistics-instrument.json"
+        if stage.is_instrument():
+            suffix = "instrument"
+        elif stage in [Stage.IMAGE, Stage.RUN]:
+            suffix = "final"
+        else:
+            raise AssertionError(f"There is no image build statistics file for the {stage} stage")
 
+        return self.image_build_reports_directory / f"image_build_statistics-{suffix}.json"
 
     def check_runnable(self):
         # TODO remove once there is load available for the specified benchmarks
@@ -705,11 +718,11 @@ class NativeImageVM(GraalVm):
 
         return executable, classpath_arguments, modulepath_arguments, system_properties, image_vm_args, image_run_args, split_run
 
-    def image_build_rules(self, output, benchmarks, bmSuiteArgs):
-        return self.image_build_general_rules(output, benchmarks, bmSuiteArgs) + self.image_build_analysis_rules(output, benchmarks, bmSuiteArgs) \
-               + self.image_build_statistics_rules(output, benchmarks, bmSuiteArgs) + self.image_build_timers_rules(output, benchmarks, bmSuiteArgs)
+    def image_build_rules(self, benchmarks):
+        return self.image_build_general_rules(benchmarks) + self.image_build_analysis_rules(benchmarks) \
+               + self.image_build_statistics_rules(benchmarks) + self.image_build_timers_rules(benchmarks)
 
-    def image_build_general_rules(self, output, benchmarks, bmSuiteArgs):
+    def image_build_general_rules(self, benchmarks):
         class NativeImageTimeToInt(object):
             def __call__(self, *args, **kwargs):
                 return int(float(args[0].replace(',', '')))
@@ -772,7 +785,7 @@ class NativeImageVM(GraalVm):
             })
         ]
 
-    def image_build_analysis_rules(self, output, benchmarks, bmSuiteArgs):
+    def image_build_analysis_rules(self, benchmarks):
         return [
             AnalysisReportJsonFileRule(self.config.image_build_reports_directory, self.is_gate, {
                 "benchmark": benchmarks[0],
@@ -835,13 +848,7 @@ class NativeImageVM(GraalVm):
         """
         Produces rules that parse the ``image_build_statistics.json`` (and its variants from instrumented builds).
 
-        Which rules depend on the stages being run.
-
-        For the ``image`` stage, creates a rule that reads ``image_build_statistics.json`` and uses the template as-is
-        to produce a datapoint.
-
-        For the ``instrument-image`` stage, creates one rule that reads the associated build stats files
-        (see :func:`BenchmarkConfig.get_instrument_image_build_stats_file`).
+        See also :meth:`NativeImageBenchmarkConfig.get_image_build_stats_file`.
 
         :param template: Replacement template for the datapoint. Should produce a datapoint from the
                          ``image_build_statistics.json`` file.
@@ -854,14 +861,14 @@ class NativeImageVM(GraalVm):
         stats_files = []
 
         if self.stages_info.effective_stage == Stage.IMAGE or self.stages_info.fallback_mode:
-            stats_files.append(self.config.image_build_stats_file)
+            stats_files.append(self.config.get_image_build_stats_file(Stage.IMAGE))
 
         if self.stages_info.effective_stage == Stage.INSTRUMENT_IMAGE or self.stages_info.fallback_mode:
-            stats_files.append(self.config.get_instrument_image_build_stats_file())
+            stats_files.append(self.config.get_image_build_stats_file(Stage.INSTRUMENT_IMAGE))
 
         return [mx_benchmark.JsonFixedFileRule(f, template, keys) for f in stats_files]
 
-    def image_build_statistics_rules(self, output, benchmarks, bmSuiteArgs):
+    def image_build_statistics_rules(self, benchmarks):
         objects_list = ["total_array_store",
                         "total_assertion_error_nullary",
                         "total_assertion_error_object",
@@ -893,7 +900,7 @@ class NativeImageVM(GraalVm):
             }, [metric_objects[i]])
         return rules
 
-    def image_build_timers_rules(self, output, benchmarks, bmSuiteArgs):
+    def image_build_timers_rules(self, benchmarks):
         class NativeImageTimeToInt(object):
             def __call__(self, *args, **kwargs):
                 return int(float(args[0].replace(',', '')))
@@ -934,7 +941,7 @@ class NativeImageVM(GraalVm):
 
         if self.stages_info.fallback_mode or self.stages_info.effective_stage in [Stage.INSTRUMENT_IMAGE, Stage.IMAGE]:
             # Only apply image build rules for the image build stages
-            rules += self.image_build_rules(output, benchmarks, bmSuiteArgs)
+            rules += self.image_build_rules(benchmarks)
 
         return rules
 
@@ -946,6 +953,7 @@ class NativeImageVM(GraalVm):
         """
         bundle_dir = os.path.dirname(config.bundle_path)
         bundle_name = os.path.basename(config.bundle_path)
+        assert bundle_name.endswith(".nib"), bundle_name
         bundle_output = os.path.join(bundle_dir, bundle_name[:-len(".nib")] + ".output", "default")
         shutil.copytree(bundle_output, config.output_dir, dirs_exist_ok=True)
 
@@ -1000,8 +1008,7 @@ class NativeImageVM(GraalVm):
             instrument_args += svm_experimental_options(['-H:+AOTPriorityInline', '-H:-SamplingCollect', f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}'])
 
         collection_args = []
-        # TODO Gate behind flag enabling metrics for the instrumentation stages
-        collection_args += svm_experimental_options([f"-H:BuildOutputJSONFile={self.config.get_build_output_json_file(True)}"])
+        collection_args += svm_experimental_options([f"-H:BuildOutputJSONFile={self.config.get_build_output_json_file(Stage.INSTRUMENT_IMAGE)}"])
 
         with self.stages.set_command(self.config.base_image_build_args + executable_name_args + instrument_args + collection_args) as s:
             s.execute_command()
@@ -1009,14 +1016,24 @@ class NativeImageVM(GraalVm):
                 NativeImageVM.copy_bundle_output(self.config, self.config.instrumentation_executable_name)
 
             if s.exit_code == 0:
-                # Move build stats file to a unique location so that it is not overwritten later and can be used to extract
-                # per-iteration build information
-                # Move instead of copy to prevent the file being confused with the image build stats for the 'image' stage.
-                # TODO Rewrite now that we don't have pgo iterations anymore
-                mx.move(self.config.image_build_stats_file, self.config.get_instrument_image_build_stats_file())
+                self._move_image_build_stats_file()
 
                 image_size = os.stat(os.path.join(self.config.output_dir, self.config.instrumentation_executable_name)).st_size
                 out('Instrumented image size: ' + str(image_size) + ' B')
+
+    def _move_image_build_stats_file(self):
+        """
+        Moves build stats file to a unique location so that it can be attributed to a specific stage and is not
+        overwritten later and can be used to extract per-iteration build information.
+
+        The initial location of the ``image_build_statistics.json`` file produced by an image build cannot be changed,
+        so a move after the fact is necessary.
+        """
+
+        mx.move(
+            self.config.image_build_reports_directory / "image_build_statistics.json",
+            self.config.get_image_build_stats_file(self.stages_info.requested_stage)
+        )
 
     def _ensureSamplesAreInProfile(self, profile_path):
         # If your benchmark suite fails this assertion and the suite does not expect PGO Sampling profiles (e.g. Truffle workloads)
@@ -1077,7 +1094,7 @@ class NativeImageVM(GraalVm):
         else:
             ml_args = []
 
-        collection_args = svm_experimental_options([f"-H:BuildOutputJSONFile={self.config.get_build_output_json_file(False)}"])
+        collection_args = svm_experimental_options([f"-H:BuildOutputJSONFile={self.config.get_build_output_json_file(Stage.IMAGE)}"])
         final_image_command = self.config.base_image_build_args + executable_name_args + (pgo_args if self.pgo_instrumentation else []) + jdk_profiles_args + ml_args + collection_args
         with self.stages.set_command(final_image_command) as s:
             s.execute_command()
@@ -1085,6 +1102,8 @@ class NativeImageVM(GraalVm):
                 NativeImageVM.copy_bundle_output(self.config, self.config.final_image_name)
 
             if s.exit_code == 0:
+                self._move_image_build_stats_file()
+
                 image_path = self.config.image_path
                 if self.use_upx:
                     upx_directory = mx.library("UPX", True).get_path(True)
