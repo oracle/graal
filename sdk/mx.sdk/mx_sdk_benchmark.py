@@ -256,7 +256,7 @@ class StagesInfo:
     @property
     def skip_current_stage(self) -> bool:
         if self._skip_current_stage is None:
-            self._skip_current_stage = self._requested_stage not in self.effective_stages
+            self._skip_current_stage = self.requested_stage not in self.effective_stages
         return self._skip_current_stage
 
     @property
