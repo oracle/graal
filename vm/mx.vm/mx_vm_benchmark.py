@@ -787,34 +787,23 @@ class NativeImageVM(GraalVm):
                + self.image_build_statistics_rules(benchmarks) + self.image_build_timers_rules(benchmarks)
 
     def image_build_general_rules(self, benchmarks):
-        rules = [
-            mx_benchmark.StdOutRule(
-                r"The (?P<type>[a-zA-Z0-9_\-]+) configuration size for benchmark (?P<bench_suite>[a-zA-Z0-9_\-]+):(?P<benchmark>[a-zA-Z0-9_\-]+) is (?P<value>[0-9]+) B",
-                {
-                    "bench-suite": ("<bench_suite>", str),
-                    "benchmark": ("<benchmark>", str),
-                    "vm": "svm",
-                    "metric.name": "config-size",
-                    "metric.value": ("<value>", int),
-                    "metric.unit": "B",
-                    "metric.type": "numeric",
-                    "metric.score-function": "id",
-                    "metric.better": "lower",
-                    "metric.iteration": 0,
-                    "metric.object": ("<type>", str)
-                }),
-        ]
+        rules = []
 
         if self.stages_info.effective_stage == Stage.INSTRUMENT_IMAGE:
             image_path = self.config.instrumented_image_path
         elif self.stages_info.effective_stage == Stage.IMAGE:
             image_path = self.config.image_path
+
+            for config_type in ['jni', 'proxy', 'predefined-classes', 'reflect', 'resource', 'serialization']:
+                config_path = Path(self.config.config_dir) / f"{config_type}-config.json"
+                if config_path.exists():
+                    rules.append(FileSizeRule(config_path, self.config.benchmark_suite_name, self.config.benchmark_name, "config-size", config_type))
         else:
             image_path = None
 
         if image_path:
             rules.append(ObjdumpSectionRule(image_path, benchmarks[0]))
-            rules.append(ImageSizeRule(image_path, self.config.benchmark_suite_name, self.config.benchmark_name))
+            rules.append(FileSizeRule(image_path, self.config.benchmark_suite_name, self.config.benchmark_name, "binary-size"))
 
         return rules
 
@@ -1131,12 +1120,6 @@ class NativeImageVM(GraalVm):
                     mx.log(f"Compressing image: {' '.join(upx_cmd)}")
                     mx.run(upx_cmd, s.stdout(True), s.stderr(True))
 
-                for config_type in ['jni', 'proxy', 'predefined-classes', 'reflect', 'resource', 'serialization']:
-                    config_path = os.path.join(self.config.config_dir, config_type + '-config.json')
-                    if os.path.exists(config_path):
-                        config_size = os.stat(config_path).st_size
-                        out('The ' + config_type + ' configuration size for benchmark ' + self.config.benchmark_suite_name + ':' + self.config.benchmark_name + ' is ' + str(config_size) + ' B')
-
     def run_stage_run(self):
         if not self.config.is_runnable:
             mx.abort(f"Benchmark {self.config.benchmark_suite_name}:{self.config.benchmark_name} is not runnable.")
@@ -1229,23 +1212,33 @@ class ObjdumpSectionRule(mx_benchmark.StdOutRule):
         return super().parse(subprocess.check_output(["objdump", "-h", str(self.executable)], text=True))
 
 
-class ImageSizeRule(mx_benchmark.FixedRule):
+class FileSizeRule(mx_benchmark.FixedRule):
     """
-    Produces a ``binary-size`` datapoint for the given file.
+    Produces a single datapoint for the size of the given file
     """
-    def __init__(self, file: Path, bench_suite: str, benchmark: str):
-        super().__init__({
+
+    def __init__(self, file: Path, bench_suite: str, benchmark: str, metric_name: str, metric_object: Optional[str] = None):
+        """
+        :param file: The file to stat
+        :param metric_name: Value for the ``metric.name`` key
+        :param metric_object: Value for the ``metric.object`` key. Will not be added if None
+        """
+        datapoint = {
             "bench-suite": bench_suite,
             "benchmark": benchmark,
-            "metric.name": "binary-size",
+            "metric.name": metric_name,
             "metric.value": file.stat().st_size,
             "metric.unit": "B",
             "metric.type": "numeric",
             "metric.score-function": "id",
             "metric.better": "lower",
             "metric.iteration": 0,
-        })
+        }
 
+        if metric_object:
+            datapoint["metric.object"] = metric_object
+
+        super().__init__(datapoint)
 
 
 class AnalysisReportJsonFileRule(mx_benchmark.JsonStdOutFileRule):
