@@ -718,6 +718,63 @@ class NativeImageVM(GraalVm):
 
         return executable, classpath_arguments, modulepath_arguments, system_properties, image_vm_args, image_run_args, split_run
 
+    def dimensions(self, cwd, args, code, out):
+        """
+        Adds some Native-Image-specific extra fields to the produced datapoints.
+
+        The field values are determined from the executed stage and some are extracted from build output files.
+        That's why they cannot be added in fallback mode.
+        """
+        dims = super().dimensions(cwd, args, code, out)
+
+        if not self.stages_info.fallback_mode and not self.stages_info.skip_current_stage and self.stages_info.requested_stage != Stage.AGENT:
+            assert self.stages_info.failed or self.stages_info.requested_stage in self.stages_info.stages_till_now, "dimensions method was called before stage was executed, not all information is available"
+
+            def gc_mapper(value: str) -> str:
+                """
+                Maps the GC value given in the ``BuildOutputJSONFile`` to the corresponding value in the bench server schema.
+                """
+                if value == "G1 GC":
+                    return "g1"
+                elif value == "Epsilon GC":
+                    return "epsilon"
+                elif value == "Serial GC":
+                    return "serial"
+                else:
+                    raise AssertionError(f"Unknown GC value: {value}")
+
+            def opt_mapper(value: str) -> str:
+                """
+                Maps the optimization level value given in the ``BuildOutputJSONFile`` to the corresponding value in the bench server schema.
+                """
+                return f"O{value}"
+
+            if self.pgo_instrumentation:
+                pgo_value = "pgo"
+            elif self.adopted_jdk_pgo:
+                pgo_value = "adopted"
+            else:
+                pgo_value = "off"
+
+            rule = mx_benchmark.JsonFixedFileRule(
+                self.config.get_build_output_json_file(self.stages_info.requested_stage),
+                {
+                    "runtime.gc": ("<general_info.garbage_collector>", gc_mapper),
+                    "native-image.stage": str(self.stages_info.requested_stage),
+                    "native-image.instrumented": self.stages_info.requested_stage.is_instrument(),
+                    "native-image.pgo": pgo_value,
+                    "native-image.opt": ("<general_info.graal_compiler.optimization_level>", opt_mapper),
+                },
+                ["general_info.garbage_collector", "general_info.graal_compiler.optimization_level"]
+            )
+
+            datapoints = list(rule.parse(""))
+            assert len(datapoints) == 1
+            dims.update(datapoints[0])
+
+        return dims
+
+
     def image_build_rules(self, benchmarks):
         return self.image_build_general_rules(benchmarks) + self.image_build_analysis_rules(benchmarks) \
                + self.image_build_statistics_rules(benchmarks) + self.image_build_timers_rules(benchmarks)
