@@ -330,6 +330,26 @@ class StagesInfo:
         """Called when the current stage finished with an error"""
         self._failed = True
 
+    def should_produce_datapoints(self, stage: Optional[Stage] = None) -> bool:
+        """
+        Whether, under the current configuration, datapoints should be produced for the given stage
+
+        In fallback mode, we only produce datapoints for the ``image`` and ``run`` stage because stages are not run
+        individually and datapoints from other stages may not be distinguishable from the ``image`` and ``run`` stage.
+
+        :param stage: If None, the current effective stage is used
+        """
+
+        if not stage:
+            stage = self.effective_stage
+
+        if self.fallback_mode:
+            # In fallback mode, all datapoints are generated at once and not in a specific stage, checking whether the
+            # given stage matches the current stage will almost never yield the sensible result
+            return stage in [Stage.IMAGE, Stage.RUN]
+        else:
+            return self.effective_stage == stage
+
 
 class NativeImageBenchmarkMixin(object):
     """

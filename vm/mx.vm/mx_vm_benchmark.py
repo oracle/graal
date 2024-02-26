@@ -433,15 +433,7 @@ class NativeImageStages:
         return self
 
     def execute_command(self, vm=None):
-        if self.stages_info.fallback_mode:
-            if self.is_gate:
-                write_output = True
-            else:
-                # In fallback mode, we cannot produce output from the agent or instrumented stages because they would
-                # be picked up by the rules for the final image and run stage
-                write_output = self.stages_info.effective_stage in ["image", "run"]
-        else:
-            write_output = True
+        write_output = self.stages_info.should_produce_datapoints()
 
         self.exit_code = self.config.bm_suite.run_stage(vm, self.stages_info.effective_stage, self.command, self.stdout(write_output), self.stderr(write_output), self.cwd, False)
         if self.stages_info.effective_stage not in [Stage.INSTRUMENT_IMAGE, Stage.IMAGE] and self.config.bm_suite.validateReturnCode(self.exit_code):
@@ -735,8 +727,8 @@ class NativeImageVM(GraalVm):
         """
         dims = super().dimensions(cwd, args, code, out)
 
-        if not self.stages_info.fallback_mode and not self.stages_info.skip_current_stage and self.stages_info.requested_stage != Stage.AGENT:
-            assert self.stages_info.failed or self.stages_info.requested_stage in self.stages_info.stages_till_now, "dimensions method was called before stage was executed, not all information is available"
+        if not self.stages_info.fallback_mode and not self.stages_info.skip_current_stage and self.stages_info.effective_stage != Stage.AGENT:
+            assert self.stages_info.failed or self.stages_info.effective_stage in self.stages_info.stages_till_now, "dimensions method was called before stage was executed, not all information is available"
 
             def gc_mapper(value: str) -> str:
                 """
@@ -765,11 +757,11 @@ class NativeImageVM(GraalVm):
                 pgo_value = "off"
 
             rule = mx_benchmark.JsonFixedFileRule(
-                self.config.get_build_output_json_file(self.stages_info.requested_stage),
+                self.config.get_build_output_json_file(self.stages_info.effective_stage),
                 {
                     "runtime.gc": ("<general_info.garbage_collector>", gc_mapper),
-                    "native-image.stage": str(self.stages_info.requested_stage),
-                    "native-image.instrumented": self.stages_info.requested_stage.is_instrument(),
+                    "native-image.stage": str(self.stages_info.effective_stage),
+                    "native-image.instrumented": self.stages_info.effective_stage.is_instrument(),
                     "native-image.pgo": pgo_value,
                     "native-image.opt": ("<general_info.graal_compiler.optimization_level>", opt_mapper),
                 },
@@ -789,9 +781,9 @@ class NativeImageVM(GraalVm):
     def image_build_general_rules(self, benchmarks):
         rules = []
 
-        if self.stages_info.effective_stage == Stage.INSTRUMENT_IMAGE:
+        if self.stages_info.should_produce_datapoints(Stage.INSTRUMENT_IMAGE):
             image_path = self.config.instrumented_image_path
-        elif self.stages_info.effective_stage == Stage.IMAGE:
+        elif self.stages_info.should_produce_datapoints(Stage.IMAGE):
             image_path = self.config.image_path
 
             for config_type in ['jni', 'proxy', 'predefined-classes', 'reflect', 'resource', 'serialization']:
@@ -877,10 +869,10 @@ class NativeImageVM(GraalVm):
 
         stats_files = []
 
-        if self.stages_info.effective_stage == Stage.IMAGE or self.stages_info.fallback_mode:
+        if self.stages_info.should_produce_datapoints(Stage.IMAGE):
             stats_files.append(self.config.get_image_build_stats_file(Stage.IMAGE))
 
-        if self.stages_info.effective_stage == Stage.INSTRUMENT_IMAGE or self.stages_info.fallback_mode:
+        if self.stages_info.should_produce_datapoints(Stage.INSTRUMENT_IMAGE):
             stats_files.append(self.config.get_image_build_stats_file(Stage.INSTRUMENT_IMAGE))
 
         return [mx_benchmark.JsonFixedFileRule(f, template, keys) for f in stats_files]
@@ -952,7 +944,7 @@ class NativeImageVM(GraalVm):
     def rules(self, output, benchmarks, bmSuiteArgs):
         rules = super().rules(output, benchmarks, bmSuiteArgs)
 
-        if self.stages_info.fallback_mode or self.stages_info.effective_stage in [Stage.INSTRUMENT_IMAGE, Stage.IMAGE]:
+        if self.stages_info.should_produce_datapoints(Stage.INSTRUMENT_IMAGE) or self.stages_info.should_produce_datapoints(Stage.IMAGE):
             # Only apply image build rules for the image build stages
             rules += self.image_build_rules(benchmarks)
 
@@ -1046,7 +1038,7 @@ class NativeImageVM(GraalVm):
 
         mx.move(
             self.config.image_build_reports_directory / "image_build_statistics.json",
-            self.config.get_image_build_stats_file(self.stages_info.requested_stage)
+            self.config.get_image_build_stats_file(self.stages_info.effective_stage)
         )
 
     def _ensureSamplesAreInProfile(self, profile_path):
