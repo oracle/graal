@@ -83,6 +83,24 @@ public class NativeMemoryTrackingTests {
         assertEquals(0, getUsedMemory());
     }
 
+    @Test
+    public void testPeakTracking() {
+        assertEquals(0, getUsedMemory());
+
+        Pointer ptr1 = NativeMemory.malloc(WordFactory.unsigned(ALLOCATION_SIZE), NmtCategory.Code);
+        long initialPeak = NativeMemoryTracking.singleton().getPeakUsedMemory(NmtCategory.Code);
+        assertTrue(initialPeak > 0);
+
+        Pointer ptr2 = NativeMemory.malloc(WordFactory.unsigned(initialPeak * 2), NmtCategory.Code);
+        long newPeak = NativeMemoryTracking.singleton().getPeakUsedMemory(NmtCategory.Code);
+        assertTrue(newPeak >= initialPeak * 2);
+
+        NativeMemory.free(ptr1);
+        NativeMemory.free(ptr2);
+        assertTrue(NativeMemoryTracking.singleton().getPeakUsedMemory(NmtCategory.Code) == newPeak);
+        assertEquals(0, getUsedMemory());
+    }
+
     private static long getUsedMemory() {
         return NativeMemoryTracking.singleton().getUsedMemory(NmtCategory.Code);
     }

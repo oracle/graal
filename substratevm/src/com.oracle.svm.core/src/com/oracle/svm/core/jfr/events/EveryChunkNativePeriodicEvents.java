@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,8 +39,11 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
+import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.VMInspectionOptions;
 
 import jdk.jfr.Event;
 import jdk.jfr.Name;
@@ -54,6 +58,7 @@ public class EveryChunkNativePeriodicEvents extends Event {
         emitPhysicalMemory();
         emitClassLoadingStatistics();
         emitPerThreadEvents();
+        emitNativeMemoryTrackingEvents();
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
@@ -100,6 +105,66 @@ public class EveryChunkNativePeriodicEvents extends Event {
             JfrNativeEventWriter.putLong(data, 0); /* unloadedClassCount */
             JfrNativeEventWriter.endSmallEvent(data);
         }
+    }
+
+    /**
+     * Emit events for NativeMemoryUsage and NativeMemoryUsageTotal. We do not guarantee consistent
+     * measurements across NMT categories and the total. Each individual NMT category uses atomic
+     * counters which may change while we are in this method. Similar to OpenJDK, it is only a
+     * best-effort approach.
+     */
+    private static void emitNativeMemoryTrackingEvents() {
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            emitJdkNmtEvents(NmtCategory.values());
+            emitNmtPeakEvents();
+        }
+    }
+
+    /** These peak events are specific to SubstrateVM. */
+    private static void emitNmtPeakEvents() {
+        NativeMemoryUsageTotalPeakEvent nmtTotalPeakEvent = new NativeMemoryUsageTotalPeakEvent();
+        nmtTotalPeakEvent.countAtPeak = NativeMemoryTracking.singleton().getCountAtTotalPeakUsage();
+        nmtTotalPeakEvent.peakUsage = NativeMemoryTracking.singleton().getPeakTotalUsedMemory();
+        nmtTotalPeakEvent.commit();
+
+        for (NmtCategory nmtCategory : NmtCategory.values()) {
+            NativeMemoryUsagePeakEvent nmtPeakEvent = new NativeMemoryUsagePeakEvent();
+            nmtPeakEvent.type = nmtCategory.getName();
+            nmtPeakEvent.countAtPeak = NativeMemoryTracking.singleton().getCountAtPeakUsage(nmtCategory);
+            nmtPeakEvent.peakUsage = NativeMemoryTracking.singleton().getPeakUsedMemory(nmtCategory);
+            nmtPeakEvent.commit();
+        }
+    }
+
+    @Uninterruptible(reason = "Accesses a JFR buffer.")
+    private static void emitJdkNmtEvents(NmtCategory[] nmtCategories) {
+        long timestamp = JfrTicks.elapsedTicks();
+        JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
+        JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
+
+        if (JfrEvent.NativeMemoryUsage.shouldEmit()) {
+            for (NmtCategory nmtCategory : nmtCategories) {
+                JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.NativeMemoryUsage);
+                JfrNativeEventWriter.putLong(data, timestamp);
+                /* Category */
+                JfrNativeEventWriter.putLong(data, nmtCategory.ordinal());
+                /* Reserved usage */
+                JfrNativeEventWriter.putLong(data, NativeMemoryTracking.singleton().getUsedMemory(nmtCategory));
+                /* Committed usage */
+                JfrNativeEventWriter.putLong(data, NativeMemoryTracking.singleton().getUsedMemory(nmtCategory));
+                JfrNativeEventWriter.endSmallEvent(data);
+            }
+        }
+        if (JfrEvent.NativeMemoryUsageTotal.shouldEmit()) {
+            JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.NativeMemoryUsageTotal);
+            JfrNativeEventWriter.putLong(data, timestamp);
+            /* Reserved usage */
+            JfrNativeEventWriter.putLong(data, NativeMemoryTracking.singleton().getTotalUsedMemory());
+            /* Committed usage */
+            JfrNativeEventWriter.putLong(data, NativeMemoryTracking.singleton().getTotalUsedMemory());
+            JfrNativeEventWriter.endSmallEvent(data);
+        }
+
     }
 
     private static void emitPerThreadEvents() {

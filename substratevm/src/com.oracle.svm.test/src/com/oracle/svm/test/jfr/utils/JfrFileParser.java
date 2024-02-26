@@ -54,6 +54,7 @@ import com.oracle.svm.test.jfr.utils.poolparsers.GCWhenConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.MethodConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.ModuleConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.MonitorInflationCauseConstantPoolParser;
+import com.oracle.svm.test.jfr.utils.poolparsers.NmtCategoryConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.OldObjectConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.PackageConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.StacktraceConstantPoolParser;
@@ -92,6 +93,7 @@ public class JfrFileParser {
         addParser(JfrType.MonitorInflationCause, new MonitorInflationCauseConstantPoolParser(this));
         addParser(JfrType.GCWhen, new GCWhenConstantPoolParser(this));
         addParser(JfrType.OldObject, new OldObjectConstantPoolParser(this));
+        addParser(JfrType.NMTType, new NmtCategoryConstantPoolParser(this));
     }
 
     private void addParser(JfrType type, ConstantPoolParser parser) {

@@ -172,7 +172,9 @@ public class JfrFeature implements InternalFeature {
         JfrSerializerSupport.get().register(new JfrGCNameSerializer());
         JfrSerializerSupport.get().register(new JfrVMOperationNameSerializer());
         JfrSerializerSupport.get().register(new JfrGCWhenSerializer());
-
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            JfrSerializerSupport.get().register(new JfrNmtCategorySerializer());
+        }
         ThreadListenerSupport.get().register(SubstrateJVM.getThreadLocal());
 
         RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
