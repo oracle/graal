@@ -81,18 +81,10 @@ local devkits = graal_common.devkits;
   },
 
   # GRAALPYTHON
-  graalpython_common_linux: {
-    packages+: {
-      libffi: '>=3.2.1',
-      bzip2: '>=1.0.6',
-      maven: ">=3.3.9",
-    },
-  },
-
-  graalpython_linux_amd64: self.sulong_linux + self.graalpython_common_linux,
-  graalpython_linux_aarch64: self.sulong_linux + self.graalpython_common_linux,
-  graalpython_darwin_amd64: self.sulong_darwin_amd64 + {},
-  graalpython_darwin_aarch64: self.sulong_darwin_aarch64 + {},
+  graalpython_linux_amd64: self.sulong_linux + graal_common.deps.graalpy,
+  graalpython_linux_aarch64: self.sulong_linux + graal_common.deps.graalpy,
+  graalpython_darwin_amd64: self.sulong_darwin_amd64 + graal_common.deps.graalpy,
+  graalpython_darwin_aarch64: self.sulong_darwin_aarch64 + graal_common.deps.graalpy,
 
   vm_linux_amd64_common: graal_common.deps.svm {
     capabilities+: ['manycores', 'ram16gb', 'fast'],
@@ -183,10 +175,10 @@ local devkits = graal_common.devkits;
   ruby_vm_build_darwin_amd64:   self.svm_common_darwin_amd64   + self.sulong_darwin_amd64   + self.truffleruby_darwin_amd64   + vm.custom_vm_darwin,
   ruby_vm_build_darwin_aarch64: self.svm_common_darwin_aarch64 + self.sulong_darwin_aarch64 + self.truffleruby_darwin_aarch64 + vm.custom_vm_darwin,
 
-  ruby_python_vm_build_linux_amd64:    self.ruby_vm_build_linux_amd64    + self.graalpython_linux_amd64,
-  ruby_python_vm_build_linux_aarch64:  self.ruby_vm_build_linux_aarch64  + self.graalpython_linux_aarch64,
-  ruby_python_vm_build_darwin_amd64:   self.ruby_vm_build_darwin_amd64   + self.graalpython_darwin_amd64,
-  ruby_python_vm_build_darwin_aarch64: self.ruby_vm_build_darwin_aarch64 + self.graalpython_darwin_aarch64,
+  ruby_python_vm_build_linux_amd64:    self.ruby_vm_build_linux_amd64    + self.graalpy,
+  ruby_python_vm_build_linux_aarch64:  self.ruby_vm_build_linux_aarch64  + self.graalpy,
+  ruby_python_vm_build_darwin_amd64:   self.ruby_vm_build_darwin_amd64   + self.graalpy,
+  ruby_python_vm_build_darwin_aarch64: self.ruby_vm_build_darwin_aarch64 + self.graalpy,
 
   full_vm_build_linux_amd64:    self.ruby_python_vm_build_linux_amd64    + graal_common.deps.fastr,
   full_vm_build_linux_aarch64:  self.ruby_python_vm_build_linux_aarch64,

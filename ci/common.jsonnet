@@ -231,7 +231,11 @@ local common_json = import "../common.json";
     },
 
     graalpy:: {
-
+      packages+: if (self.os == "linux") then {
+        libffi: '>=3.2.1',
+        bzip2: '>=1.0.6',
+        maven: ">=3.3.9",
+      } else {},
     },
 
     fastr:: {
