@@ -141,6 +141,19 @@ public final class ProfileReplaySupport {
         return expectedResult;
     }
 
+    /**
+     * Start the profile record/replay process. If {@link Options#SaveProfiles} is set, this method
+     * installs {@link StableProfileProvider}s to record profiling information that can be
+     * subsequently saved with {@link #profileReplayEpilogue}. If {@link Options#LoadProfiles} is
+     * set, the method initializes {@link StableProfileProvider}s with profiles loaded from disk.
+     * <p>
+     * Note that there might be cases where profiles cannot be restored, even if they are present in
+     * the on-disk representation. For example, the profiles of {@code invokedynamic} call sites
+     * (e.g. lambda expressions) cannot be restored due to unpredictable type names of the lambda
+     * objects. Depending on {@link Options#StrictProfiles}, the {@link StableProfileProvider}s will
+     * either throw an exception or emit a warning in this case.
+     * </p>
+     */
     public static ProfileReplaySupport profileReplayPrologue(DebugContext debug, Providers providers, int entryBCI, ResolvedJavaMethod method,
                     StableProfileProvider profileProvider, TypeFilter profileSaveFilter) {
         if (SaveProfiles.getValue(debug.getOptions()) || LoadProfiles.getValue(debug.getOptions()) != null) {
@@ -199,6 +212,13 @@ public final class ProfileReplaySupport {
         return null;
     }
 
+    /**
+     * Finishes a previously started profile record/replay (see {@link #profileReplayPrologue}.
+     * Both, for record and replay, the method validates various expectations (see
+     * {@link Options#WarnAboutCodeSignatureMismatch} and
+     * {@link Options#WarnAboutGraphSignatureMismatch}). If {@link Options#SaveProfiles} is set, the
+     * method additionally saves the previously collected profiles to the given profile path.
+     */
     public void profileReplayEpilogue(DebugContext debug, CompilationResult result, StructuredGraph graph, StableProfileProvider profileProvider, CompilationIdentifier compilationId,
                     int entryBCI, ResolvedJavaMethod method) {
         if ((SaveProfiles.getValue(debug.getOptions()) || LoadProfiles.getValue(debug.getOptions()) != null) && profileFilter.matches(method)) {
