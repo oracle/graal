@@ -448,6 +448,14 @@ class NativeImageStages:
             self.exit_code = 0
 
 
+def _native_image_time_to_int(value: str) -> int:
+    return int(float(value.replace(',', '')))
+
+
+def _native_image_hex_to_int(value: str) -> int:
+    return int(value, 16)
+
+
 class NativeImageVM(GraalVm):
     """
     A VM implementation to build and run Native Image benchmarks.
@@ -780,14 +788,6 @@ class NativeImageVM(GraalVm):
                + self.image_build_statistics_rules(benchmarks) + self.image_build_timers_rules(benchmarks)
 
     def image_build_general_rules(self, benchmarks):
-        class NativeImageTimeToInt(object):
-            def __call__(self, *args, **kwargs):
-                return int(float(args[0].replace(',', '')))
-
-        class NativeImageHexToInt(object):
-            def __call__(self, *args, **kwargs):
-                return int(args[0], 16)
-
         return [
             mx_benchmark.StdOutRule(
                 r"The executed image size for benchmark (?P<bench_suite>[a-zA-Z0-9_\-]+):(?P<benchmark>[a-zA-Z0-9_\-]+) is (?P<value>[0-9]+) B",
@@ -818,12 +818,13 @@ class NativeImageVM(GraalVm):
                     "metric.iteration": 0,
                     "metric.object": ("<type>", str)
                 }),
+            # Parses output produced by objdump
             mx_benchmark.StdOutRule(r'^[ ]*[0-9]+[ ]+.(?P<section>[a-zA-Z0-9._-]+?)[ ]+(?P<size>[0-9a-f]+?)[ ]+', {
                 "benchmark": benchmarks[0],
                 "metric.name": "binary-section-size",
                 "metric.type": "numeric",
                 "metric.unit": "B",
-                "metric.value": ("<size>", NativeImageHexToInt()),
+                "metric.value": ("<size>", _native_image_hex_to_int),
                 "metric.score-function": "id",
                 "metric.better": "lower",
                 "metric.iteration": 0,
@@ -839,7 +840,6 @@ class NativeImageVM(GraalVm):
                 "metric.type": "numeric",
                 "metric.unit": "#",
                 "metric.value": ("<total_call_edges>", int),
-                "metric.score-function": "id",
                 "metric.better": "lower",
                 "metric.iteration": 0,
                 "metric.object": "call-edges",
@@ -850,7 +850,6 @@ class NativeImageVM(GraalVm):
                 "metric.type": "numeric",
                 "metric.unit": "#",
                 "metric.value": ("<total_reachable_types>", int),
-                "metric.score-function": "id",
                 "metric.better": "lower",
                 "metric.iteration": 0,
                 "metric.object": "reachable-types",
@@ -861,7 +860,6 @@ class NativeImageVM(GraalVm):
                 "metric.type": "numeric",
                 "metric.unit": "#",
                 "metric.value": ("<total_reachable_methods>", int),
-                "metric.score-function": "id",
                 "metric.better": "lower",
                 "metric.iteration": 0,
                 "metric.object": "reachable-methods",
@@ -872,7 +870,6 @@ class NativeImageVM(GraalVm):
                 "metric.type": "numeric",
                 "metric.unit": "#",
                 "metric.value": ("<total_reachable_fields>", int),
-                "metric.score-function": "id",
                 "metric.better": "lower",
                 "metric.iteration": 0,
                 "metric.object": "reachable-fields",
@@ -883,7 +880,6 @@ class NativeImageVM(GraalVm):
                 "metric.type": "numeric",
                 "metric.unit": "B",
                 "metric.value": ("<total_memory_bytes>", int),
-                "metric.score-function": "id",
                 "metric.better": "lower",
                 "metric.iteration": 0,
                 "metric.object": "memory"
@@ -947,10 +943,6 @@ class NativeImageVM(GraalVm):
         return rules
 
     def image_build_timers_rules(self, benchmarks):
-        class NativeImageTimeToInt(object):
-            def __call__(self, *args, **kwargs):
-                return int(float(args[0].replace(',', '')))
-
         measured_phases = ['total', 'setup', 'classlist', 'analysis', 'universe', 'compile', 'layout', 'dbginfo',
                            'image', 'write']
         rules = []
@@ -962,7 +954,7 @@ class NativeImageVM(GraalVm):
                 "metric.name": "compile-time",
                 "metric.type": "numeric",
                 "metric.unit": "ms",
-                "metric.value": ("<" + value_name + ">", NativeImageTimeToInt()),
+                "metric.value": ("<" + value_name + ">", _native_image_time_to_int),
                 "metric.score-function": "id",
                 "metric.better": "lower",
                 "metric.iteration": 0,
@@ -974,7 +966,7 @@ class NativeImageVM(GraalVm):
                 "metric.name": "compile-time",
                 "metric.type": "numeric",
                 "metric.unit": "B",
-                "metric.value": ("<" + value_name + ">", NativeImageTimeToInt()),
+                "metric.value": ("<" + value_name + ">", _native_image_time_to_int),
                 "metric.score-function": "id",
                 "metric.better": "lower",
                 "metric.iteration": 0,
