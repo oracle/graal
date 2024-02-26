@@ -64,6 +64,28 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static byte[] f32x4_relop(byte[] vecX, byte[] vecY, int vectorOpcode) {
+        float[] x = Vector128.ofBytes(vecX).asFloats();
+        float[] y = Vector128.ofBytes(vecY).asFloats();
+        int[] result = new int[4];
+        CompilerDirectives.ensureVirtualized(x);
+        CompilerDirectives.ensureVirtualized(y);
+        CompilerDirectives.ensureVirtualized(result);
+        for (int i = 0; i < 4; i++) {
+            result[i] = switch (vectorOpcode) {
+                case Bytecode.VECTOR_F32X4_EQ -> y[i] == x[i];
+                case Bytecode.VECTOR_F32X4_NE -> y[i] != x[i];
+                case Bytecode.VECTOR_F32X4_LT -> y[i] < x[i];
+                case Bytecode.VECTOR_F32X4_GT -> y[i] > x[i];
+                case Bytecode.VECTOR_F32X4_LE -> y[i] <= x[i];
+                case Bytecode.VECTOR_F32X4_GE -> y[i] >= x[i];
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            } ? 0xffff_ffff : 0x0000_0000;
+        }
+        return Vector128.ofInts(result).asBytes();
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] f64x2_relop(byte[] vecX, byte[] vecY, int vectorOpcode) {
         double[] x = Vector128.ofBytes(vecX).asDoubles();
         double[] y = Vector128.ofBytes(vecY).asDoubles();
@@ -102,6 +124,51 @@ public class Vector128Ops {
             };
         }
         return Vector128.ofInts(result).asBytes();
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static byte[] f32x4_unop(byte[] vecX, int vectorOpcode) {
+        float[] x = Vector128.ofBytes(vecX).asFloats();
+        float[] result = new float[4];
+        CompilerDirectives.ensureVirtualized(x);
+        CompilerDirectives.ensureVirtualized(result);
+        for (int i = 0; i < 4; i++) {
+            result[i] = switch (vectorOpcode) {
+                case Bytecode.VECTOR_F32X4_ABS -> Math.abs(x[i]);
+                case Bytecode.VECTOR_F32X4_NEG -> -x[i];
+                case Bytecode.VECTOR_F32X4_SQRT -> (float) Math.sqrt(x[i]);
+                case Bytecode.VECTOR_F32X4_CEIL -> (float) Math.ceil(x[i]);
+                case Bytecode.VECTOR_F32X4_FLOOR -> (float) Math.floor(x[i]);
+                case Bytecode.VECTOR_F32X4_TRUNC -> ExactMath.truncate(x[i]);
+                case Bytecode.VECTOR_F32X4_NEAREST -> (float) Math.rint(x[i]);
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
+        return Vector128.ofFloats(result).asBytes();
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static byte[] f32x4_binop(byte[] vecX, byte[] vecY, int vectorOpcode) {
+        float[] x = Vector128.ofBytes(vecX).asFloats();
+        float[] y = Vector128.ofBytes(vecY).asFloats();
+        float[] result = new float[4];
+        CompilerDirectives.ensureVirtualized(x);
+        CompilerDirectives.ensureVirtualized(y);
+        CompilerDirectives.ensureVirtualized(result);
+        for (int i = 0; i < 4; i++) {
+            result[i] = switch (vectorOpcode) {
+                case Bytecode.VECTOR_F32X4_ADD -> y[i] + x[i];
+                case Bytecode.VECTOR_F32X4_SUB -> y[i] - x[i];
+                case Bytecode.VECTOR_F32X4_MUL -> y[i] * x[i];
+                case Bytecode.VECTOR_F32X4_DIV -> y[i] / x[i];
+                case Bytecode.VECTOR_F32X4_MIN -> Math.min(y[i], x[i]);
+                case Bytecode.VECTOR_F32X4_MAX -> Math.max(y[i], x[i]);
+                case Bytecode.VECTOR_F32X4_PMIN -> x[i] < y[i] ? x[i] : y[i];
+                case Bytecode.VECTOR_F32X4_PMAX -> y[i] < x[i] ? x[i] : y[i];
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
+        return Vector128.ofFloats(result).asBytes();
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)

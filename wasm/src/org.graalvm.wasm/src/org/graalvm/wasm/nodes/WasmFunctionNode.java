@@ -1771,6 +1771,18 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             pushVector128(frame, stackPointer++, result);
                             break;
                         }
+                        case Bytecode.VECTOR_F32X4_EQ:
+                        case Bytecode.VECTOR_F32X4_NE:
+                        case Bytecode.VECTOR_F32X4_LT:
+                        case Bytecode.VECTOR_F32X4_GT:
+                        case Bytecode.VECTOR_F32X4_LE:
+                        case Bytecode.VECTOR_F32X4_GE: {
+                            Vector128 x = popVector128(frame, --stackPointer);
+                            Vector128 y = popVector128(frame, --stackPointer);
+                            Vector128 result = Vector128.ofBytes(Vector128Ops.f32x4_relop(x.asBytes(), y.asBytes(), vectorOpcode));
+                            pushVector128(frame, stackPointer++, result);
+                            break;
+                        }
                         case Bytecode.VECTOR_F64X2_EQ:
                         case Bytecode.VECTOR_F64X2_NE:
                         case Bytecode.VECTOR_F64X2_LT:
@@ -1801,6 +1813,32 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             Vector128 x = popVector128(frame, --stackPointer);
                             Vector128 y = popVector128(frame, --stackPointer);
                             Vector128 result = Vector128.ofBytes(Vector128Ops.i32x4_binop(x.asBytes(), y.asBytes(), vectorOpcode));
+                            pushVector128(frame, stackPointer++, result);
+                            break;
+                        }
+                        case Bytecode.VECTOR_F32X4_CEIL:
+                        case Bytecode.VECTOR_F32X4_FLOOR:
+                        case Bytecode.VECTOR_F32X4_TRUNC:
+                        case Bytecode.VECTOR_F32X4_NEAREST:
+                        case Bytecode.VECTOR_F32X4_ABS:
+                        case Bytecode.VECTOR_F32X4_NEG:
+                        case Bytecode.VECTOR_F32X4_SQRT: {
+                            Vector128 x = popVector128(frame, --stackPointer);
+                            Vector128 result = Vector128.ofBytes(Vector128Ops.f32x4_unop(x.asBytes(), vectorOpcode));
+                            pushVector128(frame, stackPointer++, result);
+                            break;
+                        }
+                        case Bytecode.VECTOR_F32X4_ADD:
+                        case Bytecode.VECTOR_F32X4_SUB:
+                        case Bytecode.VECTOR_F32X4_MUL:
+                        case Bytecode.VECTOR_F32X4_DIV:
+                        case Bytecode.VECTOR_F32X4_MIN:
+                        case Bytecode.VECTOR_F32X4_MAX:
+                        case Bytecode.VECTOR_F32X4_PMIN:
+                        case Bytecode.VECTOR_F32X4_PMAX: {
+                            Vector128 x = popVector128(frame, --stackPointer);
+                            Vector128 y = popVector128(frame, --stackPointer);
+                            Vector128 result = Vector128.ofBytes(Vector128Ops.f32x4_binop(x.asBytes(), y.asBytes(), vectorOpcode));
                             pushVector128(frame, stackPointer++, result);
                             break;
                         }

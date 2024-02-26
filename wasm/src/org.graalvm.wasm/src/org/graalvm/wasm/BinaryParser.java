@@ -1819,6 +1819,13 @@ public class BinaryParser extends BinaryStreamParser {
                         state.push(I32_TYPE);
                         state.addInstruction(vectorOpcode);
                         break;
+                    case Instructions.VECTOR_F32X4_CEIL:
+                    case Instructions.VECTOR_F32X4_FLOOR:
+                    case Instructions.VECTOR_F32X4_TRUNC:
+                    case Instructions.VECTOR_F32X4_NEAREST:
+                    case Instructions.VECTOR_F32X4_ABS:
+                    case Instructions.VECTOR_F32X4_NEG:
+                    case Instructions.VECTOR_F32X4_SQRT:
                     case Instructions.VECTOR_F64X2_CEIL:
                     case Instructions.VECTOR_F64X2_FLOOR:
                     case Instructions.VECTOR_F64X2_TRUNC:
@@ -1840,6 +1847,12 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.VECTOR_I32X4_LE_U:
                     case Instructions.VECTOR_I32X4_GE_S:
                     case Instructions.VECTOR_I32X4_GE_U:
+                    case Instructions.VECTOR_F32X4_EQ:
+                    case Instructions.VECTOR_F32X4_NE:
+                    case Instructions.VECTOR_F32X4_LT:
+                    case Instructions.VECTOR_F32X4_GT:
+                    case Instructions.VECTOR_F32X4_LE:
+                    case Instructions.VECTOR_F32X4_GE:
                     case Instructions.VECTOR_F64X2_EQ:
                     case Instructions.VECTOR_F64X2_NE:
                     case Instructions.VECTOR_F64X2_LT:
@@ -1849,6 +1862,14 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.VECTOR_I32X4_ADD:
                     case Instructions.VECTOR_I32X4_SUB:
                     case Instructions.VECTOR_I32X4_MUL:
+                    case Instructions.VECTOR_F32X4_ADD:
+                    case Instructions.VECTOR_F32X4_SUB:
+                    case Instructions.VECTOR_F32X4_MUL:
+                    case Instructions.VECTOR_F32X4_DIV:
+                    case Instructions.VECTOR_F32X4_MIN:
+                    case Instructions.VECTOR_F32X4_MAX:
+                    case Instructions.VECTOR_F32X4_PMIN:
+                    case Instructions.VECTOR_F32X4_PMAX:
                     case Instructions.VECTOR_F64X2_ADD:
                     case Instructions.VECTOR_F64X2_SUB:
                     case Instructions.VECTOR_F64X2_MUL:
