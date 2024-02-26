@@ -29,6 +29,7 @@ import static jdk.graal.compiler.core.common.GraalOptions.TrackNodeSourcePositio
 import static jdk.graal.compiler.debug.DebugOptions.Count;
 import static jdk.graal.compiler.debug.DebugOptions.Dump;
 import static jdk.graal.compiler.debug.DebugOptions.DumpPath;
+import static jdk.graal.compiler.debug.DebugOptions.IsRetryCompilation;
 import static jdk.graal.compiler.debug.DebugOptions.MethodFilter;
 import static jdk.graal.compiler.debug.DebugOptions.PrintBackendCFG;
 import static jdk.graal.compiler.debug.DebugOptions.Time;
@@ -48,7 +49,6 @@ import jdk.graal.compiler.debug.PathUtilities;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
-
 import jdk.vm.ci.code.BailoutException;
 
 /**
@@ -344,6 +344,7 @@ public abstract class CompilationWrapper<T> {
             }
 
             OptionValues retryOptions = new OptionValues(initialOptions,
+                            IsRetryCompilation, true,
                             Dump, diagnoseLevel,
                             MethodFilter, null,
                             Count, "",
