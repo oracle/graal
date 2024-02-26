@@ -720,22 +720,6 @@ class NativeImageVM(GraalVm):
                 return int(args[0], 16)
 
         return [
-            # TODO this is just a proof-of-concept
-            mx_benchmark.JsonFixedFileRule(
-                self.config.get_build_output_json_file(True),
-                {
-                    "benchmark": benchmarks[0],
-                    "metric.name": "max-rss",
-                    "metric.type": "numeric",
-                    "metric.unit": "MB",
-                    "metric.value": ("<resource_usage.memory.peak_rss_bytes>", lambda b: int(float(b) / 2**20)),
-                    "metric.score-function": "id",
-                    "metric.better": "lower",
-                    "metric.iteration": 0,
-                    "native-image.opt": ("O<general_info.graal_compiler.optimization_level>", str),
-                },
-                ["general_info.graal_compiler.optimization_level", "resource_usage.memory.peak_rss_bytes"],
-            ),
             mx_benchmark.StdOutRule(
                 r"The executed image size for benchmark (?P<bench_suite>[a-zA-Z0-9_\-]+):(?P<benchmark>[a-zA-Z0-9_\-]+) is (?P<value>[0-9]+) B",
                 {
