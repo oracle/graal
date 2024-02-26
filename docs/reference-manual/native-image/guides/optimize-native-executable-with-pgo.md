@@ -24,6 +24,8 @@ Note that executing all relevant application code paths and giving the applicati
 
 > Note: PGO is not available in GraalVM Community Edition.
 
+Find more information on this topic in the [Profile-Guided Optimization reference documentation](../PGO.md).
+
 ### Run a Demo
 
 For the demo part, you will run a Java application performing queries implemented with the [Java Streams API](https://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html). A user is expected to provide two integer arguments: the number of iterations and the length of the data array. The application creates the data set with a deterministic random seed and iterates 10 times. The time taken for each iteration  and its checksum is printed to the console.
@@ -192,4 +194,5 @@ With PGO you "train" your application for specific workloads and significantly i
 
 ### Related Documentation
 
+- [Profile-Guided Optimization reference documentation](../PGO.md)
 - [Optimize Cloud Native Java Apps with Oracle GraalVM PGO](https://luna.oracle.com/lab/3f0b7c86-6105-4b7a-9a3b-eb73b251a1aa)
