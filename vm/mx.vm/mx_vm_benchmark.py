@@ -818,17 +818,6 @@ class NativeImageVM(GraalVm):
                     "metric.iteration": 0,
                     "metric.object": ("<type>", str)
                 }),
-            mx_benchmark.StdOutRule(r'^\[\S+:[0-9]+\][ ]+\[total\]:[ ]+(?P<time>[0-9,.]+?) ms', {
-                "benchmark": benchmarks[0],
-                "metric.name": "compile-time",
-                "metric.type": "numeric",
-                "metric.unit": "ms",
-                "metric.value": ("<time>", NativeImageTimeToInt()),
-                "metric.score-function": "id",
-                "metric.better": "lower",
-                "metric.iteration": 0,
-                "metric.object": "total",
-            }),
             mx_benchmark.StdOutRule(r'^[ ]*[0-9]+[ ]+.(?P<section>[a-zA-Z0-9._-]+?)[ ]+(?P<size>[0-9a-f]+?)[ ]+', {
                 "benchmark": benchmarks[0],
                 "metric.name": "binary-section-size",
