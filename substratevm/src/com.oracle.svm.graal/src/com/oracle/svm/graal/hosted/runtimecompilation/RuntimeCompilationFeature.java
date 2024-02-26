@@ -222,6 +222,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
     private final Set<SubstrateMethod> substrateAnalysisMethods = ConcurrentHashMap.newKeySet();
     private final Map<AnalysisMethod, String> invalidForRuntimeCompilation = new ConcurrentHashMap<>();
     private final Set<RuntimeCompilationCandidate> runtimeCompilationCandidates = ConcurrentHashMap.newKeySet();
+    private final Set<AnalysisMethod> runtimeCompilationsFailedDuringParsing = ConcurrentHashMap.newKeySet();
     private CallTreeInfo callTreeMetadata = null;
     private HostedProviders analysisProviders = null;
     private AllowInliningPredicate allowInliningPredicate = (builder, target) -> AllowInliningPredicate.InlineDecision.INLINING_DISALLOWED;
@@ -513,6 +514,12 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
     public void afterAnalysis(Feature.AfterAnalysisAccess access) {
         VMError.guarantee(callTreeMetadata == null);
         callTreeMetadata = CallTreeInfo.create(((FeatureImpl.AfterAnalysisAccessImpl) access).getUniverse(), invalidForRuntimeCompilation);
+        if (!runtimeCompilationsFailedDuringParsing.isEmpty()) {
+            System.out.println("PermanentBailouts seen while parsing runtime compiled methods. One reason for this can be encountering invalid frame states.");
+            for (AnalysisMethod failedMethod : runtimeCompilationsFailedDuringParsing) {
+                printFailingRuntimeMethodTrace(callTreeMetadata, failedMethod, failedMethod);
+            }
+        }
 
         ProgressReporter.singleton().setNumRuntimeCompiledMethods(callTreeMetadata.runtimeCompilations().size());
         // after analysis has completed we must ensure no new SubstrateTypes are introduced
@@ -596,17 +603,21 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                         } else if (errorMethod.isDeoptTarget()) {
                             failingRuntimeMethod = errorMethod.getMultiMethod(RUNTIME_COMPILED_METHOD);
                         }
-                        System.out.println("Parsing failed on a special method version: " + errorMethod.format("%H.%n"));
-                        System.out.println("Method reachability trace");
-                        if (failingRuntimeMethod != null) {
-                            Arrays.stream(CallTreeInfo.getCallTrace(treeInfo, failingRuntimeMethod, registeredRuntimeCompilations)).forEach(System.out::println);
-                        } else {
-                            System.out.println("trace unavailable");
-                        }
+                        printFailingRuntimeMethodTrace(treeInfo, failingRuntimeMethod, errorMethod);
                         System.out.println("error: " + e.getMessage());
                     }
                 }
             }
+        }
+    }
+
+    private void printFailingRuntimeMethodTrace(CallTreeInfo treeInfo, AnalysisMethod failingRuntimeMethod, AnalysisMethod errorMethod) {
+        System.out.println("Parsing failed on a special method version: " + errorMethod.format("%H.%n"));
+        System.out.println("Method reachability trace");
+        if (failingRuntimeMethod != null) {
+            Arrays.stream(CallTreeInfo.getCallTrace(treeInfo, failingRuntimeMethod, registeredRuntimeCompilations)).forEach(System.out::println);
+        } else {
+            System.out.println("trace unavailable");
         }
     }
 
@@ -665,6 +676,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
             if (graph == null) {
                 if (!method.hasBytecodes()) {
                     recordFailed(method);
+                    runtimeCompilationsFailedDuringParsing.add(method);
                     return HostVM.PARSING_FAILED;
                 }
 
@@ -684,6 +696,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                     } catch (PermanentBailoutException ex) {
                         bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.getLocalizedMessage(), null, ex);
                         recordFailed(method);
+                        runtimeCompilationsFailedDuringParsing.add(method);
                         return HostVM.PARSING_FAILED;
                     }
                 }
