@@ -48,7 +48,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     base_cmd:: ['mx', '--env', env, '--dy', 'polybenchmarks'],
   },
 
-  vm_bench_polybenchmarks_linux_build: vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux_amd64 + vm_common.graalpython_linux_amd64 + vm.custom_vm_linux + self.vm_bench_common + vm.vm_java_21 + self.polybench_hpc_linux_common + self.vm_bench_polybenchmarks_base(env='polybench-${VM_ENV}') + {
+  vm_bench_polybenchmarks_linux_build: vm_common.svm_common_linux_amd64 + vm_common.truffleruby + vm_common.graalpython_linux_amd64 + vm.custom_vm_linux + self.vm_bench_common + vm.vm_java_21 + self.polybench_hpc_linux_common + self.vm_bench_polybenchmarks_base(env='polybench-${VM_ENV}') + {
     setup+: [
       self.base_cmd + ['sforceimports'],
     ],
@@ -67,7 +67,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     ],
   },
 
-  vm_bench_polybenchmarks_linux_common(vm_config='jvm', is_gate=false, suite='default:*'): vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux_amd64 + vm.custom_vm_linux + self.vm_bench_common + vm.vm_java_21 + self.polybench_hpc_linux_common + self.vm_bench_polybenchmarks_base(env='polybench-${VM_ENV}') {
+  vm_bench_polybenchmarks_linux_common(vm_config='jvm', is_gate=false, suite='default:*'): vm_common.svm_common_linux_amd64 + vm_common.truffleruby + vm.custom_vm_linux + self.vm_bench_common + vm.vm_java_21 + self.polybench_hpc_linux_common + self.vm_bench_polybenchmarks_base(env='polybench-${VM_ENV}') {
     bench_cmd:: self.base_cmd + ['benchmark', '--results-file', self.result_file],
     setup+: [
       self.base_cmd + ['sforceimports'],
@@ -104,7 +104,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     },
   },
 
-  vm_bench_polybench_linux_common(env='polybench-${VM_ENV}', is_gate=false): vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux_amd64 + vm_common.graalpython_linux_amd64 + vm.custom_vm_linux + self.vm_bench_common + wabt {
+  vm_bench_polybench_linux_common(env='polybench-${VM_ENV}', is_gate=false): vm_common.svm_common_linux_amd64 + vm_common.truffleruby + vm_common.graalpython_linux_amd64 + vm.custom_vm_linux + self.vm_bench_common + wabt {
     base_cmd:: ['mx', '--env', env],
     bench_cmd:: self.base_cmd + ['benchmark'] + (if (is_gate) then ['--fail-fast'] else []),
     interpreter_bench_cmd(vmConfig):: self.bench_cmd +

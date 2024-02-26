@@ -66,10 +66,7 @@ local devkits = graal_common.devkits;
   sulong: graal_common.deps.sulong,
 
   # TRUFFLERUBY, needs OpenSSL 1.0.2+, so OracleLinux 7+
-  truffleruby_linux_amd64: graal_common.deps.sulong + graal_common.deps.truffleruby,
-  truffleruby_linux_aarch64: graal_common.deps.sulong + graal_common.deps.truffleruby,
-  truffleruby_darwin_amd64: graal_common.deps.sulong + graal_common.deps.truffleruby,
-  truffleruby_darwin_aarch64: graal_common.deps.sulong + graal_common.deps.truffleruby,
+  truffleruby: graal_common.deps.sulong + graal_common.deps.truffleruby,
 
   fastr_no_recommended: {
     environment+: {
@@ -167,10 +164,10 @@ local devkits = graal_common.devkits;
     $.mx_vm_complete + self.artifact_deploy_sdk_components_dry_run(os)
   ],
 
-  ruby_vm_build_linux_amd64:    self.svm_common_linux_amd64    + self.sulong          + self.truffleruby_linux_amd64    + vm.custom_vm_linux,
-  ruby_vm_build_linux_aarch64:  self.svm_common_linux_aarch64  + self.sulong          + self.truffleruby_linux_aarch64  + vm.custom_vm_linux,
-  ruby_vm_build_darwin_amd64:   self.svm_common_darwin_amd64   + self.sulong   + self.truffleruby_darwin_amd64   + vm.custom_vm_darwin,
-  ruby_vm_build_darwin_aarch64: self.svm_common_darwin_aarch64 + self.sulong + self.truffleruby_darwin_aarch64 + vm.custom_vm_darwin,
+  ruby_vm_build_linux_amd64:    self.svm_common_linux_amd64    + self.sulong          + self.truffleruby    + vm.custom_vm_linux,
+  ruby_vm_build_linux_aarch64:  self.svm_common_linux_aarch64  + self.sulong          + self.truffleruby  + vm.custom_vm_linux,
+  ruby_vm_build_darwin_amd64:   self.svm_common_darwin_amd64   + self.sulong   + self.truffleruby   + vm.custom_vm_darwin,
+  ruby_vm_build_darwin_aarch64: self.svm_common_darwin_aarch64 + self.sulong + self.truffleruby + vm.custom_vm_darwin,
 
   ruby_python_vm_build_linux_amd64:    self.ruby_vm_build_linux_amd64    + self.graalpython_linux_amd64,
   ruby_python_vm_build_linux_aarch64:  self.ruby_vm_build_linux_aarch64  + self.graalpython_linux_aarch64,
