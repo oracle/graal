@@ -82,7 +82,7 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (!getUsedAsNullCheck() && tool.allUsagesAvailable() && hasNoUsages()) {
+        if (!getNullCheck() && tool.allUsagesAvailable() && hasNoUsages()) {
             /**
              * Read without usages or guard can be safely removed as long as it does not act as the
              * null check for dominated memory accesses.
