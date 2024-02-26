@@ -63,10 +63,7 @@ local devkits = graal_common.devkits;
   },
 
   # SULONG
-  sulong_linux: graal_common.deps.sulong,
-  sulong_darwin_amd64: graal_common.deps.sulong,
-  sulong_darwin_aarch64: graal_common.deps.sulong,
-  sulong_windows: graal_common.deps.sulong,
+  sulong: graal_common.deps.sulong,
 
   # TRUFFLERUBY, needs OpenSSL 1.0.2+, so OracleLinux 7+
   truffleruby_linux_amd64: graal_common.deps.sulong + graal_common.deps.truffleruby,
@@ -81,10 +78,10 @@ local devkits = graal_common.devkits;
   },
 
   # GRAALPYTHON
-  graalpython_linux_amd64: self.sulong_linux + graal_common.deps.graalpy,
-  graalpython_linux_aarch64: self.sulong_linux + graal_common.deps.graalpy,
-  graalpython_darwin_amd64: self.sulong_darwin_amd64 + graal_common.deps.graalpy,
-  graalpython_darwin_aarch64: self.sulong_darwin_aarch64 + graal_common.deps.graalpy,
+  graalpython_linux_amd64: self.sulong + graal_common.deps.graalpy,
+  graalpython_linux_aarch64: self.sulong + graal_common.deps.graalpy,
+  graalpython_darwin_amd64: self.sulong + graal_common.deps.graalpy,
+  graalpython_darwin_aarch64: self.sulong + graal_common.deps.graalpy,
 
   vm_linux_amd64_common: graal_common.deps.svm {
     capabilities+: ['manycores', 'ram16gb', 'fast'],
@@ -170,15 +167,15 @@ local devkits = graal_common.devkits;
     $.mx_vm_complete + self.artifact_deploy_sdk_components_dry_run(os)
   ],
 
-  ruby_vm_build_linux_amd64:    self.svm_common_linux_amd64    + self.sulong_linux          + self.truffleruby_linux_amd64    + vm.custom_vm_linux,
-  ruby_vm_build_linux_aarch64:  self.svm_common_linux_aarch64  + self.sulong_linux          + self.truffleruby_linux_aarch64  + vm.custom_vm_linux,
-  ruby_vm_build_darwin_amd64:   self.svm_common_darwin_amd64   + self.sulong_darwin_amd64   + self.truffleruby_darwin_amd64   + vm.custom_vm_darwin,
-  ruby_vm_build_darwin_aarch64: self.svm_common_darwin_aarch64 + self.sulong_darwin_aarch64 + self.truffleruby_darwin_aarch64 + vm.custom_vm_darwin,
+  ruby_vm_build_linux_amd64:    self.svm_common_linux_amd64    + self.sulong          + self.truffleruby_linux_amd64    + vm.custom_vm_linux,
+  ruby_vm_build_linux_aarch64:  self.svm_common_linux_aarch64  + self.sulong          + self.truffleruby_linux_aarch64  + vm.custom_vm_linux,
+  ruby_vm_build_darwin_amd64:   self.svm_common_darwin_amd64   + self.sulong   + self.truffleruby_darwin_amd64   + vm.custom_vm_darwin,
+  ruby_vm_build_darwin_aarch64: self.svm_common_darwin_aarch64 + self.sulong + self.truffleruby_darwin_aarch64 + vm.custom_vm_darwin,
 
-  ruby_python_vm_build_linux_amd64:    self.ruby_vm_build_linux_amd64    + self.graalpy,
-  ruby_python_vm_build_linux_aarch64:  self.ruby_vm_build_linux_aarch64  + self.graalpy,
-  ruby_python_vm_build_darwin_amd64:   self.ruby_vm_build_darwin_amd64   + self.graalpy,
-  ruby_python_vm_build_darwin_aarch64: self.ruby_vm_build_darwin_aarch64 + self.graalpy,
+  ruby_python_vm_build_linux_amd64:    self.ruby_vm_build_linux_amd64    + self.graalpython_linux_amd64,
+  ruby_python_vm_build_linux_aarch64:  self.ruby_vm_build_linux_aarch64  + self.graalpython_linux_aarch64,
+  ruby_python_vm_build_darwin_amd64:   self.ruby_vm_build_darwin_amd64   + self.graalpython_darwin_amd64,
+  ruby_python_vm_build_darwin_aarch64: self.ruby_vm_build_darwin_aarch64 + self.graalpython_darwin_aarch64,
 
   full_vm_build_linux_amd64:    self.ruby_python_vm_build_linux_amd64    + graal_common.deps.fastr,
   full_vm_build_linux_aarch64:  self.ruby_python_vm_build_linux_aarch64,
@@ -224,7 +221,7 @@ local devkits = graal_common.devkits;
       else if (os == 'windows') then
         if (arch == 'amd64') then
           # Windows/AMD64
-          java_deps(edition) + (if (java_version == 'latest') then self.svm_common_windows_amd64("Latest") else self.svm_common_windows_amd64(java_version)) + self.js_windows_common + self.sulong_windows
+          java_deps(edition) + (if (java_version == 'latest') then self.svm_common_windows_amd64("Latest") else self.svm_common_windows_amd64(java_version)) + self.js_windows_common + self.sulong
         else
           error 'Unknown windows arch: ' + arch
       else
@@ -607,10 +604,10 @@ local devkits = graal_common.devkits;
   # Windows/AMD64
   # - JDK-Latest
   deploy_vm_base_javaLatest_windows_amd64: vm.vm_java_Latest + self.svm_common_windows_amd64('Latest') + self.js_windows_common + self.vm_base('windows', 'amd64', 'daily', deploy=true, jdk_hint='Latest') + self.deploy_graalvm_base('latest') + self.deploy_build + {name: 'daily-deploy-vm-base-java-latest-windows-amd64', notify_groups:: ["deploy"], timelimit: '1:30:00'},
-  deploy_vm_standalones_javaLatest_windows_amd64: vm.vm_java_Latest + self.svm_common_windows_amd64('Latest') + self.js_windows_common + self.sulong_windows + self.vm_base('windows', 'amd64', 'daily', deploy=true, jdk_hint='Latest') + self.deploy_graalvm_components('latest', standalones=true) + self.deploy_build + {name: 'daily-deploy-vm-standalones-java-latest-windows-amd64', diskspace_required: "31GB", timelimit: '2:30:00', notify_groups:: ["deploy"]},
+  deploy_vm_standalones_javaLatest_windows_amd64: vm.vm_java_Latest + self.svm_common_windows_amd64('Latest') + self.js_windows_common + self.sulong + self.vm_base('windows', 'amd64', 'daily', deploy=true, jdk_hint='Latest') + self.deploy_graalvm_components('latest', standalones=true) + self.deploy_build + {name: 'daily-deploy-vm-standalones-java-latest-windows-amd64', diskspace_required: "31GB", timelimit: '2:30:00', notify_groups:: ["deploy"]},
   # - JDK21
   deploy_vm_base_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.js_windows_common + self.vm_base('windows', 'amd64', 'weekly', deploy=true, jdk_hint='21') + self.deploy_graalvm_base("java21") + self.deploy_build + {name: 'weekly-deploy-vm-base-java21-windows-amd64', notify_groups:: ["deploy"], timelimit: '1:30:00'},
-  deploy_vm_standalones_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.js_windows_common + self.sulong_windows + self.vm_base('windows', 'amd64', 'weekly', deploy=true, jdk_hint='21') + self.deploy_graalvm_components("java21", standalones=true) + self.deploy_build + {name: 'weekly-deploy-vm-standalones-java21-windows-amd64', diskspace_required: "31GB", timelimit: '2:30:00', notify_groups:: ["deploy"]},
+  deploy_vm_standalones_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.js_windows_common + self.sulong + self.vm_base('windows', 'amd64', 'weekly', deploy=true, jdk_hint='21') + self.deploy_graalvm_components("java21", standalones=true) + self.deploy_build + {name: 'weekly-deploy-vm-standalones-java21-windows-amd64', diskspace_required: "31GB", timelimit: '2:30:00', notify_groups:: ["deploy"]},
 
   #
   # Deploy the GraalVM Espresso artifact (GraalVM Base + espresso - native image)
@@ -620,9 +617,9 @@ local devkits = graal_common.devkits;
   deploy_vm_espresso_java21_linux_aarch64: vm.vm_java_21 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.vm_base('linux', 'aarch64', 'weekly', deploy=true) + self.deploy_graalvm_espresso('linux', 'aarch64', 'java21') + {name: 'weekly-deploy-vm-espresso-java21-linux-aarch64', notify_groups:: ["deploy"]},
   deploy_vm_espresso_java21_darwin_amd64: vm.vm_java_21_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.vm_base('darwin', 'amd64', 'weekly', deploy=true) + self.deploy_graalvm_espresso('darwin', 'amd64', 'java21') + {name: 'weekly-deploy-vm-espresso-java21-darwin-amd64', notify_groups:: ["deploy"]},
   deploy_vm_espresso_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.vm_base('darwin', 'aarch64', 'weekly', deploy=true) + self.deploy_graalvm_espresso('darwin', 'aarch64', 'java21') + {name: 'weekly-deploy-vm-espresso-java21-darwin-aarch64', notify_groups:: ["deploy"]},
-  deploy_vm_espresso_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.sulong_windows + self.deploy_build + self.vm_base('windows', 'amd64', 'weekly', deploy=true, jdk_hint='21') + self.deploy_graalvm_espresso('windows', 'amd64', 'java21') + {name: 'weekly-deploy-vm-espresso-java21-windows-amd64', notify_groups:: ["deploy"]},
+  deploy_vm_espresso_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.sulong + self.deploy_build + self.vm_base('windows', 'amd64', 'weekly', deploy=true, jdk_hint='21') + self.deploy_graalvm_espresso('windows', 'amd64', 'java21') + {name: 'weekly-deploy-vm-espresso-java21-windows-amd64', notify_groups:: ["deploy"]},
 
-  local sulong_vm_tests = self.svm_common_linux_amd64 + self.sulong_linux + vm.custom_vm_linux + self.vm_base('linux', 'amd64', 'gate') + {
+  local sulong_vm_tests = self.svm_common_linux_amd64 + self.sulong + vm.custom_vm_linux + self.vm_base('linux', 'amd64', 'gate') + {
      run: [
        ['export', 'SVM_SUITE=' + vm.svm_suite],
        ['mx', '--dynamicimports', '$SVM_SUITE,/sulong', '--disable-polyglot', '--disable-libpolyglot', 'gate', '--no-warning-as-error', '--tags', 'build,sulong'],

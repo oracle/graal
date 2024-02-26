@@ -49,7 +49,7 @@ local vm_common = import '../ci_common/common.jsonnet';
     name: self.targets[0] + '-vm-svm-truffle-tck-labs' + self.jdk_name + '-linux-amd64',
   },
 
-  local truffle_maven_downloader = vm_common.svm_common_linux_amd64 + vm_common.sulong_linux + {
+  local truffle_maven_downloader = vm_common.svm_common_linux_amd64 + vm_common.sulong + {
     run+: [
       ['export', 'SVM_SUITE=' + vm.svm_suite],
       ['mx', '--env', 'ce-llvm', '--native-images=', 'gate', '--no-warning-as-error', '--tags', 'build,maven-downloader'],
@@ -63,7 +63,7 @@ local vm_common = import '../ci_common/common.jsonnet';
   },
 
   local builds = [
-    vm.vm_java_Latest + vm_common.svm_common_linux_amd64 + vm_common.sulong_linux + vm_common.graalpython_linux_amd64 + vm.custom_vm_linux + vm_common.vm_base('linux', 'amd64', 'gate') + {
+    vm.vm_java_Latest + vm_common.svm_common_linux_amd64 + vm_common.sulong + vm_common.graalpython_linux_amd64 + vm.custom_vm_linux + vm_common.vm_base('linux', 'amd64', 'gate') + {
      run+: [
        ['export', 'SVM_SUITE=' + vm.svm_suite],
        ['mx', '--dynamicimports', '$SVM_SUITE,graalpython', '--disable-polyglot', '--disable-libpolyglot', '--force-bash-launchers=lli,native-image', 'gate', '--no-warning-as-error', '--tags', 'build,python'],

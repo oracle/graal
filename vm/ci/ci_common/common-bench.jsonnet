@@ -16,7 +16,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     timelimit: '1:30:00',
   },
 
-  vm_bench_js_linux_amd64(bench_suite=null): vm.vm_java_21 + vm_common.svm_common_linux_amd64 + vm_common.sulong_linux + vm.custom_vm_linux + self.vm_bench_common + {
+  vm_bench_js_linux_amd64(bench_suite=null): vm.vm_java_21 + vm_common.svm_common_linux_amd64 + vm_common.sulong + vm.custom_vm_linux + self.vm_bench_common + {
     cmd_base:: vm_common.mx_vm_common + ['--dynamicimports', 'js-benchmarks', 'benchmark', '--results-file', self.result_file],
     config_base:: ['--js-vm=graal-js', '--js-vm-config=default', '--jvm=graalvm-${VM_ENV}'],
     setup+: [
