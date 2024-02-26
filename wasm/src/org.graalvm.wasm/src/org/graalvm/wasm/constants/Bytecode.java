@@ -458,6 +458,13 @@ public class Bytecode {
     public static final int VECTOR_I32X4_GE_S = 0x3F;
     public static final int VECTOR_I32X4_GE_U = 0x40;
 
+    public static final int VECTOR_F32X4_EQ = 0x41;
+    public static final int VECTOR_F32X4_NE = 0x42;
+    public static final int VECTOR_F32X4_LT = 0x43;
+    public static final int VECTOR_F32X4_GT = 0x44;
+    public static final int VECTOR_F32X4_LE = 0x45;
+    public static final int VECTOR_F32X4_GE = 0x46;
+
     public static final int VECTOR_F64X2_EQ = 0x47;
     public static final int VECTOR_F64X2_NE = 0x48;
     public static final int VECTOR_F64X2_LT = 0x49;
@@ -471,6 +478,22 @@ public class Bytecode {
     public static final int VECTOR_I32X4_ADD = 0xAE;
     public static final int VECTOR_I32X4_SUB = 0xB1;
     public static final int VECTOR_I32X4_MUL = 0xB5;
+
+    public static final int VECTOR_F32X4_CEIL = 0x67;
+    public static final int VECTOR_F32X4_FLOOR = 0x68;
+    public static final int VECTOR_F32X4_TRUNC = 0x69;
+    public static final int VECTOR_F32X4_NEAREST = 0x6A;
+    public static final int VECTOR_F32X4_ABS = 0xE0;
+    public static final int VECTOR_F32X4_NEG = 0xE1;
+    public static final int VECTOR_F32X4_SQRT = 0xE3;
+    public static final int VECTOR_F32X4_ADD = 0xE4;
+    public static final int VECTOR_F32X4_SUB = 0xE5;
+    public static final int VECTOR_F32X4_MUL = 0xE6;
+    public static final int VECTOR_F32X4_DIV = 0xE7;
+    public static final int VECTOR_F32X4_MIN = 0xE8;
+    public static final int VECTOR_F32X4_MAX = 0xE9;
+    public static final int VECTOR_F32X4_PMIN = 0xEA;
+    public static final int VECTOR_F32X4_PMAX = 0xEB;
 
     public static final int VECTOR_F64X2_CEIL = 0x74;
     public static final int VECTOR_F64X2_FLOOR = 0x75;

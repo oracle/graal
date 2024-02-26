@@ -917,6 +917,12 @@ public abstract class BytecodeParser {
                         case Bytecode.VECTOR_I32X4_LE_U:
                         case Bytecode.VECTOR_I32X4_GE_S:
                         case Bytecode.VECTOR_I32X4_GE_U:
+                        case Bytecode.VECTOR_F32X4_EQ:
+                        case Bytecode.VECTOR_F32X4_NE:
+                        case Bytecode.VECTOR_F32X4_LT:
+                        case Bytecode.VECTOR_F32X4_GT:
+                        case Bytecode.VECTOR_F32X4_LE:
+                        case Bytecode.VECTOR_F32X4_GE:
                         case Bytecode.VECTOR_F64X2_EQ:
                         case Bytecode.VECTOR_F64X2_NE:
                         case Bytecode.VECTOR_F64X2_LT:
@@ -928,6 +934,21 @@ public abstract class BytecodeParser {
                         case Bytecode.VECTOR_I32X4_ADD:
                         case Bytecode.VECTOR_I32X4_SUB:
                         case Bytecode.VECTOR_I32X4_MUL:
+                        case Bytecode.VECTOR_F32X4_CEIL:
+                        case Bytecode.VECTOR_F32X4_FLOOR:
+                        case Bytecode.VECTOR_F32X4_TRUNC:
+                        case Bytecode.VECTOR_F32X4_NEAREST:
+                        case Bytecode.VECTOR_F32X4_ABS:
+                        case Bytecode.VECTOR_F32X4_NEG:
+                        case Bytecode.VECTOR_F32X4_SQRT:
+                        case Bytecode.VECTOR_F32X4_ADD:
+                        case Bytecode.VECTOR_F32X4_SUB:
+                        case Bytecode.VECTOR_F32X4_MUL:
+                        case Bytecode.VECTOR_F32X4_DIV:
+                        case Bytecode.VECTOR_F32X4_MIN:
+                        case Bytecode.VECTOR_F32X4_MAX:
+                        case Bytecode.VECTOR_F32X4_PMIN:
+                        case Bytecode.VECTOR_F32X4_PMAX:
                         case Bytecode.VECTOR_F64X2_CEIL:
                         case Bytecode.VECTOR_F64X2_FLOOR:
                         case Bytecode.VECTOR_F64X2_TRUNC:
