@@ -28,21 +28,31 @@ package jdk.graal.compiler.core.amd64;
 import jdk.graal.compiler.core.gen.NodeLIRBuilder;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
+import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.LIRFrameState;
+import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.amd64.AMD64Call;
+import jdk.graal.compiler.lir.amd64.AMD64ControlFlow;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.IndirectCallTargetNode;
+import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.AndNode;
+import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.IntegerDivRemNode;
 import jdk.graal.compiler.nodes.calc.IntegerDivRemNode.Op;
+import jdk.graal.compiler.nodes.calc.OrNode;
+import jdk.graal.compiler.nodes.calc.XorNode;
 import jdk.graal.compiler.debug.Assertions;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 
 public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
@@ -63,6 +73,8 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
     protected boolean peephole(ValueNode valueNode) {
         if (valueNode instanceof IntegerDivRemNode divRemNode) {
             return peepholeDivRem(divRemNode);
+        } else if (valueNode instanceof IfNode ifNode) {
+            return peepholeIf(ifNode);
         }
         return false;
     }
@@ -113,6 +125,38 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                 }
             }
             node = fixedWithNextNode.next();
+        }
+        return false;
+    }
+
+    private boolean peepholeIf(IfNode ifNode) {
+        if (ifNode.condition() instanceof CompareNode cmpNode) {
+            PlatformKind kind = gen.getLIRKind(cmpNode.getX().stamp(NodeView.DEFAULT)).getPlatformKind();
+            if (kind != AMD64Kind.SINGLE && kind != AMD64Kind.DOUBLE) {
+                Value c = operand(cmpNode.getX());
+                ValueNode opNode = cmpNode.getY();
+                if (!LIRValueUtil.isJavaConstant(c)) {
+                    c = operand(opNode);
+                    opNode = cmpNode.getX();
+                    if (!LIRValueUtil.isJavaConstant(c)) {
+                        return false;
+                    }
+                }
+                if (opNode.hasExactlyOneUsage() && cmpNode.hasExactlyOneUsage() &&
+                        LIRValueUtil.asJavaConstant(c).isDefaultForKind()) {
+                    NodeClass<?> nodeClass = opNode.getNodeClass();
+                    if (nodeClass == AndNode.TYPE ||
+                            nodeClass == OrNode.TYPE ||
+                            nodeClass == XorNode.TYPE) {
+                        gen.append(new AMD64ControlFlow.BranchOp(
+                                ((CompareNode) ifNode.condition()).condition().asCondition(),
+                                getLIRBlock(ifNode.trueSuccessor()),
+                                getLIRBlock(ifNode.falseSuccessor()),
+                                ifNode.probability(ifNode.trueSuccessor())));
+                        return true;
+                    }
+                }
+            }
         }
         return false;
     }
