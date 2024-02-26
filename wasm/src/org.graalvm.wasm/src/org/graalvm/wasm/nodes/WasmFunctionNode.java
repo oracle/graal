@@ -1752,7 +1752,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             break;
                         }
                         case Bytecode.VECTOR_V128_CONST:
-                            final Vector128 value = Vector128Ops.v128_const(rawPeekI128(bytecode, offset));
+                            final Vector128 value = Vector128.ofBytes(Vector128Ops.v128_const(rawPeekI128(bytecode, offset)));
                             offset += 16;
 
                             pushVector128(frame, stackPointer, value);
@@ -1770,7 +1770,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         case Bytecode.VECTOR_I32X4_GE_U: {
                             Vector128 x = popVector128(frame, --stackPointer);
                             Vector128 y = popVector128(frame, --stackPointer);
-                            Vector128 result = Vector128Ops.i32x4_relop(x, y, vectorOpcode);
+                            Vector128 result = Vector128.ofBytes(Vector128Ops.i32x4_relop(x.asBytes(), y.asBytes(), vectorOpcode));
                             pushVector128(frame, stackPointer++, result);
                             break;
                         }
@@ -1782,19 +1782,19 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         case Bytecode.VECTOR_F64X2_GE: {
                             Vector128 x = popVector128(frame, --stackPointer);
                             Vector128 y = popVector128(frame, --stackPointer);
-                            Vector128 result = Vector128Ops.f64x2_relop(x, y, vectorOpcode);
+                            Vector128 result = Vector128.ofBytes(Vector128Ops.f64x2_relop(x.asBytes(), y.asBytes(), vectorOpcode));
                             pushVector128(frame, stackPointer++, result);
                             break;
                         }
                         case Bytecode.VECTOR_V128_ANY_TRUE: {
                             Vector128 vec = popVector128(frame, --stackPointer);
-                            int result = Vector128Ops.v128_any_true(vec);
+                            int result = Vector128Ops.v128_any_true(vec.asBytes());
                             pushInt(frame, stackPointer++, result);
                             break;
                         }
                         case Bytecode.VECTOR_I32X4_ALL_TRUE: {
                             Vector128 vec = popVector128(frame, --stackPointer);
-                            int result = Vector128Ops.i32x4_all_true(vec);
+                            int result = Vector128Ops.i32x4_all_true(vec.asBytes());
                             pushInt(frame, stackPointer++, result);
                             break;
                         }
@@ -1803,7 +1803,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         case Bytecode.VECTOR_I32X4_MUL: {
                             Vector128 x = popVector128(frame, --stackPointer);
                             Vector128 y = popVector128(frame, --stackPointer);
-                            Vector128 result = Vector128Ops.i32x4_binop(x, y, vectorOpcode);
+                            Vector128 result = Vector128.ofBytes(Vector128Ops.i32x4_binop(x.asBytes(), y.asBytes(), vectorOpcode));
                             pushVector128(frame, stackPointer++, result);
                             break;
                         }
@@ -1815,7 +1815,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         case Bytecode.VECTOR_F64X2_NEG:
                         case Bytecode.VECTOR_F64X2_SQRT: {
                             Vector128 x = popVector128(frame, --stackPointer);
-                            Vector128 result = Vector128Ops.f64x2_unop(x, vectorOpcode);
+                            Vector128 result = Vector128.ofBytes(Vector128Ops.f64x2_unop(x.asBytes(), vectorOpcode));
                             pushVector128(frame, stackPointer++, result);
                             break;
                         }
@@ -1829,7 +1829,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         case Bytecode.VECTOR_F64X2_PMAX: {
                             Vector128 x = popVector128(frame, --stackPointer);
                             Vector128 y = popVector128(frame, --stackPointer);
-                            Vector128 result = Vector128Ops.f64x2_binop(x, y, vectorOpcode);
+                            Vector128 result = Vector128.ofBytes(Vector128Ops.f64x2_binop(x.asBytes(), y.asBytes(), vectorOpcode));
                             pushVector128(frame, stackPointer++, result);
                             break;
                         }
