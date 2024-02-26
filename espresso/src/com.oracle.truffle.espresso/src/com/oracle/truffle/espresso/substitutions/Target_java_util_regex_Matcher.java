@@ -22,12 +22,20 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import static com.oracle.truffle.espresso.substitutions.Target_java_util_regex_Pattern.convertFlags;
+import static java.lang.Math.max;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -38,295 +46,287 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.espresso.impl.Field;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.bytecodes.InvokeInterface;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import static com.oracle.truffle.espresso.substitutions.Target_java_util_regex_Pattern.convertFlags;
-
 @EspressoSubstitutions
 public final class Target_java_util_regex_Matcher {
+    private Target_java_util_regex_Matcher() {
+    }
+
+    @ImportStatic({Target_java_util_regex_Pattern.class, Target_java_util_regex_Matcher.class})
     @Substitution(hasReceiver = true, methodName = "<init>")
     abstract static class Init extends SubstitutionNode {
-        public static boolean isUnsupported(EspressoContext context, StaticObject parentPattern) {
-            Object unsupported = context.getMeta().java_util_regex_Pattern_HIDDEN_unsupported.getHiddenObject(parentPattern);
-            return unsupported == null || (boolean) unsupported;
-        }
-
         abstract void execute(@JavaType(Matcher.class) StaticObject self, @JavaType(Pattern.class) StaticObject parent, @JavaType(CharSequence.class) StaticObject text);
 
-        @Specialization(guards = {"context.regexSubstitutionsEnabled()", "!isUnsupported(getContext(), parent)"})
-        void doTruffleStringConversion(
-                        @JavaType(Matcher.class) StaticObject self, @JavaType(Pattern.class) StaticObject parent, @JavaType(CharSequence.class) StaticObject text,
-                        @Bind("getContext()") EspressoContext context,
-                        @Cached TruffleString.FromJavaStringNode fromJavaStringNode,
-                        @Cached("create(context.getMeta().java_util_regex_Matcher_init.getCallTargetNoSubstitution())") DirectCallNode original) {
-            saveTruffleString(self, context, fromJavaStringNode, text);
+        @Specialization(guards = {"!isUnsupportedPattern(parent, meta)", "isString(text, meta)"})
+        void doStringConversion(StaticObject self, StaticObject parent, StaticObject text,
+                        @Bind("getMeta()") Meta meta,
+                        @Shared("fromJavaString") @Cached TruffleString.FromJavaStringNode fromJavaStringNode,
+                        @Shared("original") @Cached("create(getMeta().java_util_regex_Matcher_init.getCallTargetNoSubstitution())") DirectCallNode original) {
+            assert getContext().regexSubstitutionsEnabled();
+            saveTruffleString(self, fromJavaStringNode, text, meta);
             original.call(self, parent, text);
         }
 
-        @Specialization
-        void doFallback(
-                        @JavaType(Matcher.class) StaticObject self, @JavaType(Pattern.class) StaticObject parent, @JavaType(CharSequence.class) StaticObject text,
-                        @Cached("create(getContext().getMeta().java_util_regex_Matcher_init.getCallTargetNoSubstitution())") DirectCallNode original) {
+        @Specialization(guards = {"!isUnsupportedPattern(parent, meta)", "!isString(text, meta)"})
+        void doCharSeqConversion(StaticObject self, StaticObject parent, StaticObject text,
+                        @Bind("getMeta()") Meta meta,
+                        @Shared("fromJavaString") @Cached TruffleString.FromJavaStringNode fromJavaStringNode,
+                        @Shared("original") @Cached("create(getMeta().java_util_regex_Matcher_init.getCallTargetNoSubstitution())") DirectCallNode original,
+                        @Cached("create(meta.java_lang_CharSequence_toString)") InvokeInterface toStringCall) {
+            assert getContext().regexSubstitutionsEnabled();
+            StaticObject espressoString = (StaticObject) toStringCall.execute(new Object[]{text});
+            saveTruffleString(self, fromJavaStringNode, espressoString, meta);
+            original.call(self, parent, text);
+        }
+
+        @Specialization(guards = "isUnsupportedPattern(parent, meta)")
+        static void doFallback(StaticObject self, StaticObject parent, StaticObject text,
+                        @Bind("getMeta()") Meta meta,
+                        @Shared("original") @Cached("create(getMeta().java_util_regex_Matcher_init.getCallTargetNoSubstitution())") DirectCallNode original) {
             original.call(self, parent, text);
         }
     }
 
-    @Substitution(hasReceiver = true, methodName = "reset")
+    @ImportStatic(Target_java_util_regex_Matcher.class)
+    @Substitution(hasReceiver = true)
     abstract static class Reset extends SubstitutionNode {
-        public static boolean isUnsupported(EspressoContext context, StaticObject self) {
-            return Target_java_util_regex_Matcher.isUnsupported(context, self);
-        }
-
         abstract @JavaType(Matcher.class) StaticObject execute(@JavaType(Matcher.class) StaticObject self, @JavaType(CharSequence.class) StaticObject text);
 
-        @Specialization(guards = {"context.regexSubstitutionsEnabled()", "!isUnsupported(getContext(), self)"})
-        @JavaType(Matcher.class)
-        StaticObject doTruffleStringConversion(
-                        @JavaType(Matcher.class) StaticObject self, @JavaType(CharSequence.class) StaticObject text,
-                        @Bind("getContext()") EspressoContext context,
-                        @Cached TruffleString.FromJavaStringNode fromJavaStringNode,
-                        @Cached("create(context.getMeta().java_util_regex_Matcher_reset.getCallTargetNoSubstitution())") DirectCallNode original) {
-            saveTruffleString(self, context, fromJavaStringNode, text);
+        @Specialization(guards = {"!isUnsupportedMatcher(self, meta)", "isString(text, meta)"})
+        StaticObject doStringConversion(StaticObject self, StaticObject text,
+                        @Bind("getMeta()") Meta meta,
+                        @Shared("fromJavaString") @Cached TruffleString.FromJavaStringNode fromJavaStringNode,
+                        @Shared("original") @Cached("create(getMeta().java_util_regex_Matcher_reset.getCallTargetNoSubstitution())") DirectCallNode original) {
+            assert getContext().regexSubstitutionsEnabled();
+            saveTruffleString(self, fromJavaStringNode, text, meta);
             return (StaticObject) original.call(self, text);
         }
 
-        @Specialization
-        @JavaType(Matcher.class)
-        StaticObject doFallback(
-                        @JavaType(Matcher.class) StaticObject self, @JavaType(CharSequence.class) StaticObject text,
-                        @Cached("create(getContext().getMeta().java_util_regex_Matcher_reset.getCallTargetNoSubstitution())") DirectCallNode original) {
+        @Specialization(guards = {"!isUnsupportedMatcher(self, meta)", "!isString(text, meta)"})
+        StaticObject doCharSeqConversion(StaticObject self, StaticObject text,
+                        @Bind("getMeta()") Meta meta,
+                        @Shared("fromJavaString") @Cached TruffleString.FromJavaStringNode fromJavaStringNode,
+                        @Shared("original") @Cached("create(getMeta().java_util_regex_Matcher_reset.getCallTargetNoSubstitution())") DirectCallNode original,
+                        @Cached("create(meta.java_lang_CharSequence_toString)") InvokeInterface toStringCall) {
+            assert getContext().regexSubstitutionsEnabled();
+            StaticObject espressoString = (StaticObject) toStringCall.execute(new Object[]{text});
+            saveTruffleString(self, fromJavaStringNode, espressoString, meta);
+            return (StaticObject) original.call(self, text);
+        }
+
+        @Specialization(guards = "isUnsupportedMatcher(self, meta)")
+        static StaticObject doFallback(StaticObject self, StaticObject text,
+                        @Bind("getMeta()") Meta meta,
+                        @Shared("original") @Cached("create(getMeta().java_util_regex_Matcher_reset.getCallTargetNoSubstitution())") DirectCallNode original) {
             return (StaticObject) original.call(self, text);
         }
     }
 
-    @Substitution(hasReceiver = true, methodName = "match")
+    private static final int NOANCHOR = 0;
+    private static final int ENDANCHOR = 1;
+
+    private enum MatchMode {
+        MATCH_NOANCHOR,
+        MATCH_ENDANCHOR,
+        SEARCH
+    }
+
+    @ImportStatic(Target_java_util_regex_Matcher.class)
+    @Substitution(hasReceiver = true)
     abstract static class Match extends SubstitutionNode {
         abstract boolean execute(@JavaType(Matcher.class) StaticObject self, int from, int anchor);
 
-        private static final int ENDANCHOR = 1;
-
-        public static boolean isUnsupported(EspressoContext context, StaticObject self) {
-            return Target_java_util_regex_Matcher.isUnsupported(context, self);
-        }
-
-        public static Object getRegexObject(EspressoContext context, StaticObject self, int anchor) {
-            StaticObject parentPattern = context.getMeta().java_util_regex_Matcher_parentPattern.getObject(self);
-            if (anchor == ENDANCHOR) {
-                return context.getMeta().java_util_regex_Pattern_HIDDEN_tregexFullmatch.getHiddenObject(parentPattern);
-            } else {
-                return context.getMeta().java_util_regex_Pattern_HIDDEN_tregexMatch.getHiddenObject(parentPattern);
-            }
-        }
-
-        private static boolean checkResult(StaticObject self, int from, int anchor, EspressoContext context, InteropLibrary regexInterop, Object regexObject, JavaRegexExecNode javaRegexExecNode,
-                        Node node) {
-            saveBackup(context, self);
-            boolean isMatch = javaRegexExecNode.execute(node, context, regexObject, self, from);
-
-            if (isMatch) {
-                if (anchor == ENDANCHOR) {
-                    int last = context.getMeta().java_util_regex_Matcher_last.getInt(self);
-                    int to = context.getMeta().java_util_regex_Matcher_to.getInt(self);
-
-                    if (last == to) {
-                        return true;
-                    }
-                } else {
-                    return true;
-                }
-            }
-            context.getMeta().java_util_regex_Matcher_first.setInt(self, -1);
-            return false;
-        }
-
-        @Specialization(guards = {"context.regexSubstitutionsEnabled()", "getRegexObject(context, self, anchor) != null", "!isUnsupported(getContext(), self)"})
-        boolean doLazy(@JavaType(Matcher.class) StaticObject self, int from, int anchor,
-                        @Bind("getContext()") EspressoContext context,
-                        @CachedLibrary(limit = "3") InteropLibrary regexInterop,
-                        @Cached JavaRegexExecNode javaRegexExecNode,
+        @Specialization(guards = {"!isUnsupportedMatcher(self, meta)", "regexObject != null"})
+        boolean doLazy(StaticObject self, int from, int anchor,
+                        @Bind("getMeta()") Meta meta,
+                        @Bind("getRegexObject(self, anchor, meta)") Object regexObject,
+                        @Shared("exec") @Cached JavaRegexExecNode javaRegexExecNode,
                         @Bind("this") Node node) {
-            getMeta().java_util_regex_Matcher_HIDDEN_searchFromBackup.setHiddenObject(self, from);
-            getMeta().java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, ENDANCHOR);
-
-            Object regexObject = getRegexObject(context, self, anchor);
-            return checkResult(self, from, anchor, context, regexInterop, regexObject, javaRegexExecNode, node);
+            assert getContext().regexSubstitutionsEnabled();
+            meta.java_util_regex_Matcher_HIDDEN_searchFromBackup.setHiddenObject(self, from);
+            meta.java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, getMatchMode(anchor));
+            return checkResult(self, from, anchor, regexObject, javaRegexExecNode, node, meta);
         }
 
-        @Specialization(guards = {"context.regexSubstitutionsEnabled()", "getRegexObject(context, self, anchor) == null", "!isUnsupported(getContext(), self)"})
-        boolean doCompile(@JavaType(Matcher.class) StaticObject self, int from, int anchor,
+        @Specialization(guards = {"getRegexObject(self, anchor, meta) == null", "!isUnsupportedMatcher(self, meta)"})
+        static boolean doCompile(StaticObject self, int from, int anchor,
                         @Bind("getContext()") EspressoContext context,
-                        @CachedLibrary(limit = "3") InteropLibrary regexInterop,
-                        @Cached JavaRegexExecNode javaRegexExecNode,
+                        @Bind("context.getMeta()") Meta meta,
+                        @Shared("exec") @Cached JavaRegexExecNode javaRegexExecNode,
                         @Cached JavaRegexCompileNode javaRegexCompileNode,
                         @Bind("this") Node node) {
-            getMeta().java_util_regex_Matcher_HIDDEN_searchFromBackup.setHiddenObject(self, from);
-            getMeta().java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, ENDANCHOR);
+            assert context.regexSubstitutionsEnabled();
+            meta.java_util_regex_Matcher_HIDDEN_searchFromBackup.setHiddenObject(self, from);
+            meta.java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, getMatchMode(anchor));
             String method;
             Field destination;
             if (anchor == ENDANCHOR) {
                 method = "fullmatch";
-                destination = getMeta().java_util_regex_Pattern_HIDDEN_tregexFullmatch;
+                destination = meta.java_util_regex_Pattern_HIDDEN_tregexFullmatch;
             } else {
                 method = "match";
-                destination = getMeta().java_util_regex_Pattern_HIDDEN_tregexMatch;
+                destination = meta.java_util_regex_Pattern_HIDDEN_tregexMatch;
             }
-            Object regexObject = javaRegexCompileNode.execute(node, context, self, method, destination);
-            return checkResult(self, from, anchor, context, regexInterop, regexObject, javaRegexExecNode, node);
+            Object regexObject = javaRegexCompileNode.execute(node, self, method, destination, context);
+            return checkResult(self, from, anchor, regexObject, javaRegexExecNode, node, meta);
         }
 
-        @Specialization(guards = {"context.regexSubstitutionsEnabled()", "isUnsupported(getContext(), self)"})
-        boolean doFallback(@JavaType(Matcher.class) StaticObject self, int from, int anchor,
+        @Specialization(guards = "isUnsupportedMatcher(self, context.getMeta())")
+        static boolean doFallback(StaticObject self, int from, int anchor,
                         @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().java_util_regex_Matcher_match.getCallTargetNoSubstitution())") DirectCallNode original) {
-            getMeta().java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, StaticObject.NULL);
-            compileFallBackIfRequired(context, self);
+            if (context.regexSubstitutionsEnabled()) {
+                Meta meta = context.getMeta();
+                meta.java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, StaticObject.NULL);
+                compileFallBackIfRequired(self, meta);
+            }
             return (Boolean) original.call(self, from, anchor);
         }
 
-        // additional substitution because the fallback case is not a trivial fallback and requires
-        // field accesses
-        @Specialization
-        boolean doDisabled(@JavaType(Matcher.class) StaticObject self, int from, int anchor,
-                        @Cached("create(getContext().getMeta().java_util_regex_Matcher_match.getCallTargetNoSubstitution())") DirectCallNode original) {
-            return (Boolean) original.call(self, from, anchor);
+        private static MatchMode getMatchMode(int anchor) {
+            MatchMode mode;
+            if (anchor == NOANCHOR) {
+                mode = MatchMode.MATCH_NOANCHOR;
+            } else {
+                assert anchor == ENDANCHOR;
+                mode = MatchMode.MATCH_ENDANCHOR;
+            }
+            return mode;
+        }
+
+        public static Object getRegexObject(StaticObject self, int anchor, Meta meta) {
+            StaticObject parentPattern = meta.java_util_regex_Matcher_parentPattern.getObject(self);
+            if (anchor == ENDANCHOR) {
+                return meta.java_util_regex_Pattern_HIDDEN_tregexFullmatch.getHiddenObject(parentPattern);
+            } else {
+                assert anchor == NOANCHOR;
+                return meta.java_util_regex_Pattern_HIDDEN_tregexMatch.getHiddenObject(parentPattern);
+            }
+        }
+
+        private static boolean checkResult(StaticObject self, int from, int anchor, Object regexObject, JavaRegexExecNode javaRegexExecNode, Node node, Meta meta) {
+            saveBackup(self, meta);
+            if (javaRegexExecNode.execute(node, regexObject, self, from, meta)) {
+                if (anchor == ENDANCHOR) {
+                    int last = meta.java_util_regex_Matcher_last.getInt(self);
+                    int to = meta.java_util_regex_Matcher_to.getInt(self);
+                    if (last == to) {
+                        return true;
+                    }
+                } else {
+                    assert anchor == NOANCHOR;
+                    return true;
+                }
+            }
+            meta.java_util_regex_Matcher_first.setInt(self, -1);
+            return false;
         }
     }
 
-    @Substitution(hasReceiver = true, methodName = "search")
+    @ImportStatic(Target_java_util_regex_Matcher.class)
+    @Substitution(hasReceiver = true)
     abstract static class Search extends SubstitutionNode {
         abstract boolean execute(@JavaType(Matcher.class) StaticObject self, int from);
 
-        public static Object getRegexSearchObject(EspressoContext context, StaticObject self) {
-            StaticObject parentPattern = context.getMeta().java_util_regex_Matcher_parentPattern.getObject(self);
-            return context.getMeta().java_util_regex_Pattern_HIDDEN_tregexSearch.getHiddenObject(parentPattern);
-        }
-
-        public static boolean isUnsupported(EspressoContext context, StaticObject self) {
-            return Target_java_util_regex_Matcher.isUnsupported(context, self);
-        }
-
-        @Specialization(guards = {"context.regexSubstitutionsEnabled()", "getRegexSearchObject(context, self) != null", "!isUnsupported(getContext(), self)"})
-        boolean doLazy(@JavaType(Matcher.class) StaticObject self, int from,
-                        @Bind("getContext()") EspressoContext context,
-                        // @CachedLibrary(limit = "3") InteropLibrary regexInterop,
-                        @Cached JavaRegexExecNode javaRegexExecNode,
+        @Specialization(guards = {"!isUnsupportedMatcher(self, meta)", "regexObject != null"})
+        boolean doLazy(StaticObject self, int from,
+                        @Bind("getMeta()") Meta meta,
+                        @Bind("getRegexSearchObject(self, meta)") Object regexObject,
+                        @Shared("exec") @Cached JavaRegexExecNode javaRegexExecNode,
                         @Bind("this") Node node) {
-            getMeta().java_util_regex_Matcher_HIDDEN_searchFromBackup.setHiddenObject(self, from);
-            getMeta().java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, 2);
+            assert getContext().regexSubstitutionsEnabled();
+            meta.java_util_regex_Matcher_HIDDEN_searchFromBackup.setHiddenObject(self, from);
+            meta.java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, MatchMode.SEARCH);
 
-            Object regexObject = getRegexSearchObject(context, self);
-            saveBackup(context, self);
-            boolean isMatch = javaRegexExecNode.execute(node, context, regexObject, self, from);
-
+            saveBackup(self, meta);
+            boolean isMatch = javaRegexExecNode.execute(node, regexObject, self, from, meta);
             if (!isMatch) {
-                context.getMeta().java_util_regex_Matcher_first.setInt(self, -1);
+                meta.java_util_regex_Matcher_first.setInt(self, -1);
             }
             return isMatch;
         }
 
-        @Specialization(guards = {"context.regexSubstitutionsEnabled()", "getRegexSearchObject(context, self) == null", "!isUnsupported(getContext(), self)"})
-        boolean doCompile(@JavaType(Matcher.class) StaticObject self, int from,
+        @Specialization(guards = {"!isUnsupportedMatcher(self, meta)", "getRegexSearchObject(self, meta) == null"})
+        static boolean doCompile(StaticObject self, int from,
                         @Bind("getContext()") EspressoContext context,
-                        @Cached JavaRegexExecNode javaRegexExecNode,
+                        @Bind("context.getMeta()") Meta meta,
+                        @Shared("exec") @Cached JavaRegexExecNode javaRegexExecNode,
                         @Cached JavaRegexCompileNode javaRegexCompileNode,
                         @Bind("this") Node node) {
-            getMeta().java_util_regex_Matcher_HIDDEN_searchFromBackup.setHiddenObject(self, from);
-            getMeta().java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, 2);
+            assert context.regexSubstitutionsEnabled();
+            meta.java_util_regex_Matcher_HIDDEN_searchFromBackup.setHiddenObject(self, from);
+            meta.java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, MatchMode.SEARCH);
 
-            Object regexObject = javaRegexCompileNode.execute(node, context, self, "search", getMeta().java_util_regex_Pattern_HIDDEN_tregexSearch);
-            saveBackup(context, self);
-            boolean isMatch = javaRegexExecNode.execute(node, context, regexObject, self, from);
-
+            Object regexObject = javaRegexCompileNode.execute(node, self, "search", meta.java_util_regex_Pattern_HIDDEN_tregexSearch, context);
+            saveBackup(self, meta);
+            boolean isMatch = javaRegexExecNode.execute(node, regexObject, self, from, meta);
             if (!isMatch) {
-                context.getMeta().java_util_regex_Matcher_first.setInt(self, -1);
+                meta.java_util_regex_Matcher_first.setInt(self, -1);
             }
             return isMatch;
         }
 
-        @Specialization(guards = {"context.regexSubstitutionsEnabled()", "isUnsupported(getContext(), self)"})
-        boolean doFallback(@JavaType(Matcher.class) StaticObject self, int from,
+        @Specialization(guards = "isUnsupportedMatcher(self, meta)")
+        static boolean doFallback(StaticObject self, int from,
                         @Bind("getContext()") EspressoContext context,
-                        @Cached("create(context.getMeta().java_util_regex_Matcher_search.getCallTargetNoSubstitution())") DirectCallNode original) {
-            getMeta().java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, StaticObject.NULL);
-
-            compileFallBackIfRequired(context, self);
+                        @Bind("context.getMeta()") Meta meta,
+                        @Cached("create(meta.java_util_regex_Matcher_search.getCallTargetNoSubstitution())") DirectCallNode original) {
+            if (context.regexSubstitutionsEnabled()) {
+                meta.java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, StaticObject.NULL);
+                compileFallBackIfRequired(self, meta);
+            }
             return (Boolean) original.call(self, from);
         }
 
-        // additional substitution because the fallback case is not a trivial fallback and requires
-        // field accesses
-        @Specialization
-        boolean doDisabled(@JavaType(Matcher.class) StaticObject self, int from,
-                        @Cached("create(getContext().getMeta().java_util_regex_Matcher_search.getCallTargetNoSubstitution())") DirectCallNode original) {
-            return (Boolean) original.call(self, from);
+        public static Object getRegexSearchObject(StaticObject self, Meta meta) {
+            StaticObject parentPattern = meta.java_util_regex_Matcher_parentPattern.getObject(self);
+            return meta.java_util_regex_Pattern_HIDDEN_tregexSearch.getHiddenObject(parentPattern);
         }
     }
 
-    @Substitution(hasReceiver = true, methodName = "hitEnd")
-    abstract static class HitEnd extends SubstitutionNode {
-        abstract boolean execute(@JavaType(Matcher.class) StaticObject self);
-
-        @Specialization(guards = "context.regexSubstitutionsEnabled()")
-        boolean doDefault(@JavaType(Matcher.class) StaticObject self,
-                        @Bind("getContext()") EspressoContext context) {
-            // if action field is null, then the last action was already executed with fallback
-            executeLastWithFallback(context, self);
-            return getMeta().java_util_regex_Matcher_hitEnd.getBoolean(self);
+    @Substitution(hasReceiver = true)
+    public static boolean hitEnd(StaticObject self, @Inject EspressoContext context) {
+        Meta meta = context.getMeta();
+        if (context.regexSubstitutionsEnabled()) {
+            executeLastWithFallback(self, meta);
         }
-
-        @Specialization
-        boolean doDefault(@JavaType(Matcher.class) StaticObject self) {
-            return getMeta().java_util_regex_Matcher_hitEnd.getBoolean(self);
-        }
+        return meta.java_util_regex_Matcher_hitEnd.getBoolean(self);
     }
 
-    @Substitution(hasReceiver = true, methodName = "requireEnd")
-    abstract static class RequireEnd extends SubstitutionNode {
-        abstract boolean execute(@JavaType(Matcher.class) StaticObject self);
-
-        @Specialization(guards = "context.regexSubstitutionsEnabled()")
-        boolean doDefault(@JavaType(Matcher.class) StaticObject self,
-                        @Bind("getContext()") EspressoContext context) {
-            executeLastWithFallback(context, self);
-            return getMeta().java_util_regex_Matcher_requireEnd.getBoolean(self);
+    @Substitution(hasReceiver = true)
+    public static boolean requireEnd(StaticObject self, @Inject EspressoContext context) {
+        Meta meta = context.getMeta();
+        if (context.regexSubstitutionsEnabled()) {
+            executeLastWithFallback(self, meta);
         }
-
-        @Specialization
-        boolean doDefault(@JavaType(Matcher.class) StaticObject self) {
-            return getMeta().java_util_regex_Matcher_requireEnd.getBoolean(self);
-        }
+        return meta.java_util_regex_Matcher_requireEnd.getBoolean(self);
     }
 
-    @Substitution(hasReceiver = true, methodName = "groupCount")
+    @Substitution(hasReceiver = true)
     abstract static class GroupCount extends SubstitutionNode {
         abstract int execute(@JavaType(Matcher.class) StaticObject self);
 
-        @Specialization(guards = "context.regexSubstitutionsEnabled()")
-        int doDefault(@JavaType(Matcher.class) StaticObject self,
+        @Specialization
+        static int doDefault(StaticObject self,
                         @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().java_util_regex_Matcher_groupCount.getCallTargetNoSubstitution())") DirectCallNode original) {
-
-            StaticObject parentPattern = context.getMeta().java_util_regex_Matcher_parentPattern.getObject(self);
-            if (context.getMeta().java_util_regex_Pattern_capturingGroupCount.getInt(parentPattern) == -1) {
-                context.getMeta().java_util_regex_Pattern_capturingGroupCount.setInt(parentPattern, 1);
-                compileFallBackIfRequired(context, self);
+            if (context.regexSubstitutionsEnabled()) {
+                Meta meta = context.getMeta();
+                StaticObject parentPattern = meta.java_util_regex_Matcher_parentPattern.getObject(self);
+                if (meta.java_util_regex_Pattern_capturingGroupCount.getInt(parentPattern) == -1) {
+                    meta.java_util_regex_Pattern_capturingGroupCount.setInt(parentPattern, 1);
+                    compileFallBackIfRequired(self, meta);
+                }
             }
-
-            return (Integer) original.call(self);
-        }
-
-        @Specialization
-        int doDefault(@JavaType(Matcher.class) StaticObject self,
-                        @Cached("create(getContext().getMeta().java_util_regex_Matcher_groupCount.getCallTargetNoSubstitution())") DirectCallNode original) {
             return (Integer) original.call(self);
         }
     }
@@ -334,105 +334,153 @@ public final class Target_java_util_regex_Matcher {
     @GenerateInline
     @GenerateUncached
     public abstract static class JavaRegexCompileNode extends Node {
-        public abstract Object execute(Node node, EspressoContext context, StaticObject self, String method, Field destination);
+        public abstract Object execute(Node node, StaticObject self, String method, Field destination, EspressoContext context);
 
         @Specialization
-        static Object doDefault(EspressoContext context, StaticObject self, String method, Field destination,
+        static Object doDefault(StaticObject self, String method, Field destination, EspressoContext context,
                         @CachedLibrary(limit = "3") InteropLibrary regexObjectInterop,
                         @CachedLibrary(limit = "3") InteropLibrary integerInterop,
                         @CachedLibrary(limit = "3") InteropLibrary mapInterop,
                         @CachedLibrary(limit = "3") InteropLibrary stringInterop,
                         @CachedLibrary(limit = "3") InteropLibrary arrayInterop) {
-            StaticObject patternObject = context.getMeta().java_util_regex_Matcher_parentPattern.getObject(self);
-            String pattern = context.getMeta().toHostString(context.getMeta().java_util_regex_Pattern_pattern.getObject(patternObject));
+            Meta meta = context.getMeta();
+            StaticObject patternObject = meta.java_util_regex_Matcher_parentPattern.getObject(self);
+            String pattern = meta.toHostString(meta.java_util_regex_Pattern_pattern.getObject(patternObject));
 
-            Source src = getSource(context, method, pattern, patternObject);
+            Source src = getSource(method, pattern, patternObject, meta);
 
             Object regexObject = context.getEnv().parseInternal(src).call();
             destination.setHiddenObject(patternObject, regexObject);
 
-            try {
-                int groupCount = integerInterop.asInt(regexObjectInterop.readMember(regexObject, "groupCount"));
-                StaticObject parentPattern = context.getMeta().java_util_regex_Matcher_parentPattern.getObject(self);
-                context.getMeta().java_util_regex_Pattern_capturingGroupCount.setInt(parentPattern, groupCount);
-                reallocateGroupsArrayIfNecessary(context, self, parentPattern);
-            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                throw CompilerDirectives.shouldNotReachHere();
-            }
+            int groupCount = getGroupCount(regexObject, regexObjectInterop, integerInterop);
+            meta.java_util_regex_Pattern_capturingGroupCount.setInt(patternObject, groupCount);
+            reallocateGroupsArrayIfNecessary(self, patternObject, meta);
 
-            if (context.getMeta().java_util_regex_Pattern_namedGroups_field.getObject(patternObject) == null) {
-                try {
-                    Object map = regexObjectInterop.readMember(regexObject, "groups");
-                    Object keys = mapInterop.getMembers(map);
-                    long size = arrayInterop.getArraySize(keys);
+            if (meta.java_util_regex_Pattern_namedGroups_field.getObject(patternObject) == null) {
+                Object map = getGroups(regexObject, regexObjectInterop);
+                Object keys = getMembers(map, mapInterop);
+                long size = getArraySize(keys, arrayInterop);
 
-                    StaticObject guestMap = context.getMeta().java_util_HashMap.allocateInstance();
-                    context.getMeta().java_util_HashMap_init.getCallTarget().call(guestMap, (int) size);
+                StaticObject guestMap = meta.java_util_HashMap.allocateInstance();
+                meta.java_util_HashMap_init.invokeDirect(guestMap, (int) size);
 
-                    for (long i = 0; i < size; i++) {
-                        String key = stringInterop.asString(arrayInterop.readArrayElement(keys, i));
-                        Object value = mapInterop.readMember(map, key);
-                        StaticObject guestKey = context.getMeta().toGuestString(key);
+                for (long i = 0; i < size; i++) {
+                    String key = getKey(keys, i, stringInterop, arrayInterop);
+                    Object value = getValue(map, key, mapInterop);
+                    StaticObject guestKey = meta.toGuestString(key);
 
-                        Object integerValue = context.getMeta().java_lang_Integer_valueOf.getCallTarget().call(value);
-                        context.getMeta().java_util_HashMap_put.getCallTarget().call(guestMap, guestKey, integerValue);
-                    }
-                    context.getMeta().java_util_regex_Pattern_namedGroups_field.setObject(patternObject, guestMap);
-                } catch (UnsupportedMessageException | UnknownIdentifierException | InvalidArrayIndexException e) {
-                    throw CompilerDirectives.shouldNotReachHere(e);
+                    Object integerValue = meta.java_lang_Integer_valueOf.invokeDirect(value);
+                    meta.java_util_HashMap_put.invokeDirect(guestMap, guestKey, integerValue);
                 }
+                meta.java_util_regex_Pattern_namedGroups_field.setObject(patternObject, guestMap);
             }
             return regexObject;
+        }
+    }
+
+    private static Object getValue(Object map, String key, InteropLibrary mapInterop) {
+        try {
+            return mapInterop.readMember(map, key);
+        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere(e);
+        }
+    }
+
+    private static String getKey(Object keys, long i, InteropLibrary stringInterop, InteropLibrary arrayInterop) {
+        try {
+            return stringInterop.asString(arrayInterop.readArrayElement(keys, i));
+        } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere(e);
+        }
+    }
+
+    private static long getArraySize(Object keys, InteropLibrary arrayInterop) {
+        try {
+            return arrayInterop.getArraySize(keys);
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere(e);
+        }
+    }
+
+    private static Object getMembers(Object map, InteropLibrary mapInterop) {
+        try {
+            return mapInterop.getMembers(map);
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere(e);
+        }
+    }
+
+    private static Object getGroups(Object regexObject, InteropLibrary regexObjectInterop) {
+        try {
+            return regexObjectInterop.readMember(regexObject, "groups");
+        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere(e);
+        }
+    }
+
+    private static int getGroupCount(Object regexObject, InteropLibrary regexObjectInterop, InteropLibrary integerInterop) {
+        try {
+            return integerInterop.asInt(regexObjectInterop.readMember(regexObject, "groupCount"));
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw CompilerDirectives.shouldNotReachHere(e);
         }
     }
 
     @GenerateInline
     @GenerateUncached
     public abstract static class JavaRegexExecNode extends Node {
-        public abstract boolean execute(Node node, EspressoContext context, Object regexObject, StaticObject self, int from);
+        public abstract boolean execute(Node node, Object regexObject, StaticObject self, int from, Meta meta);
 
         @Specialization
-        static boolean doDefault(EspressoContext context, Object regexObject, StaticObject self, int from,
+        static boolean doDefault(Node node, Object regexObject, StaticObject self, int from, Meta meta,
                         @Cached TruffleString.SubstringByteIndexNode substringNode,
                         @CachedLibrary(limit = "3") InteropLibrary regexObjectInterop,
                         @CachedLibrary(limit = "3") InteropLibrary integerInterop,
                         @CachedLibrary(limit = "3") InteropLibrary booleanInterop,
-                        @CachedLibrary(limit = "3") InteropLibrary execResInterop) {
+                        @CachedLibrary(limit = "3") InteropLibrary execResInterop,
+                        @Cached InlinedBranchProfile ioobeProfile) {
             Object execRes;
             try {
-                TruffleString truffleString = (TruffleString) context.getMeta().java_util_regex_Matcher_HIDDEN_tstring.getHiddenObject(self);
+                TruffleString truffleString = (TruffleString) meta.java_util_regex_Matcher_HIDDEN_tstring.getHiddenObject(self);
 
-                int fromClipped = from < 0 ? 0 : from;
-                context.getMeta().java_util_regex_Matcher_first.setInt(self, fromClipped);
+                int fromClipped = max(from, 0);
+                meta.java_util_regex_Matcher_first.setInt(self, fromClipped);
 
                 // bounds of the region we feed to TRegex
-                int regionFrom = context.getMeta().java_util_regex_Matcher_from.getInt(self);
-                int regionTo = context.getMeta().java_util_regex_Matcher_to.getInt(self);
+                int regionFrom = meta.java_util_regex_Matcher_from.getInt(self);
+                int regionTo = meta.java_util_regex_Matcher_to.getInt(self);
 
                 TruffleString matchTruffleString = truffleString;
-                if (regionFrom != 0 || regionTo != truffleString.byteLength(TruffleString.Encoding.UTF_16) / 2) {
-                    try {
-                        matchTruffleString = substringNode.execute(truffleString, regionFrom * 2, (regionTo - regionFrom) * 2, TruffleString.Encoding.UTF_16, true);
-                    } catch (IndexOutOfBoundsException e) {
-                        context.getMeta().throwException(context.getMeta().java_lang_IndexOutOfBoundsException);
+                int truffleStringLength = truffleString.byteLength(TruffleString.Encoding.UTF_16) >> 1;
+                if (regionFrom != 0 || regionTo != truffleStringLength) {
+                    if (regionFrom < 0 || regionTo < regionFrom || regionTo > truffleStringLength) {
+                        ioobeProfile.enter(node);
+                        meta.throwException(meta.java_lang_IndexOutOfBoundsException);
                     }
+                    matchTruffleString = substringNode.execute(truffleString, regionFrom * 2, (regionTo - regionFrom) * 2, TruffleString.Encoding.UTF_16, true);
                 }
 
                 execRes = regexObjectInterop.invokeMember(regexObject, "exec", matchTruffleString, fromClipped - regionFrom);
                 boolean isMatch = booleanInterop.asBoolean(execResInterop.readMember(execRes, "isMatch"));
-                int modCount = context.getMeta().java_util_regex_Matcher_modCount.getInt(self);
-                context.getMeta().java_util_regex_Matcher_modCount.setInt(self, modCount + 1);
+                int modCount = meta.java_util_regex_Matcher_modCount.getInt(self);
+                meta.java_util_regex_Matcher_modCount.setInt(self, modCount + 1);
 
                 if (isMatch) {
                     int first = regionFrom + integerInterop.asInt(execResInterop.invokeMember(execRes, "getStart", 0));
                     int last = regionFrom + integerInterop.asInt(execResInterop.invokeMember(execRes, "getEnd", 0));
 
-                    context.getMeta().java_util_regex_Matcher_first.setInt(self, first);
-                    context.getMeta().java_util_regex_Matcher_last.setInt(self, last);
+                    meta.java_util_regex_Matcher_first.setInt(self, first);
+                    meta.java_util_regex_Matcher_last.setInt(self, last);
 
                     int groupCount = integerInterop.asInt(regexObjectInterop.readMember(regexObject, "groupCount"));
-                    StaticObject array = context.getMeta().java_util_regex_Matcher_groups.getObject(self);
-                    int[] unwrapped = array.unwrap(context.getLanguage());
+                    StaticObject array = meta.java_util_regex_Matcher_groups.getObject(self);
+                    int[] unwrapped = array.unwrap(meta.getLanguage());
                     for (int i = 0; i < groupCount; i++) {
                         int start = regionFrom + integerInterop.asInt(execResInterop.invokeMember(execRes, "getStart", i));
                         int end = regionFrom + integerInterop.asInt(execResInterop.invokeMember(execRes, "getEnd", i));
@@ -449,105 +497,97 @@ public final class Target_java_util_regex_Matcher {
     }
 
     @TruffleBoundary
-    private static Source getSource(EspressoContext context, String method, String pattern, StaticObject patternObject) {
+    private static Source getSource(String method, String pattern, StaticObject patternObject, Meta meta) {
         String combined = "Encoding=UTF-16,Flavor=JavaUtilPattern,PythonMethod=" + method;
-        String sourceStr = combined + '/' + pattern + '/' + convertFlags(context.getMeta().java_util_regex_Pattern_flags0.getInt(patternObject));
+        String sourceStr = combined + '/' + pattern + '/' + convertFlags(meta.java_util_regex_Pattern_flags0.getInt(patternObject));
         return Source.newBuilder("regex", sourceStr, "patternExpr").build();
     }
 
     @TruffleBoundary
-    private static void executeSearch(EspressoContext context, StaticObject self, int from) {
-        context.getMeta().java_util_regex_Matcher_search.getCallTargetNoSubstitution().call(self, from);
+    private static void executeSearch(StaticObject self, int from, Meta meta) {
+        meta.java_util_regex_Matcher_search.getCallTargetNoSubstitution().call(self, from);
     }
 
     @TruffleBoundary
-    private static void executeMatch(EspressoContext context, StaticObject self, int from, int action) {
-        context.getMeta().java_util_regex_Matcher_match.getCallTargetNoSubstitution().call(self, from, action);
+    private static void executeMatch(StaticObject self, int from, int anchor, Meta meta) {
+        meta.java_util_regex_Matcher_match.getCallTargetNoSubstitution().call(self, from, anchor);
     }
 
-    private static void reallocateGroupsArrayIfNecessary(EspressoContext context, StaticObject self, StaticObject parentPattern) {
-        int parentGroupCount = Math.max(context.getMeta().java_util_regex_Pattern_capturingGroupCount.getInt(parentPattern), 10);
-        StaticObject groups = context.getMeta().java_util_regex_Matcher_groups.getObject(self);
-        if (groups.length(context.getLanguage()) != parentGroupCount * 2) {
-            StaticObject newGroups = context.getMeta()._int.allocatePrimitiveArray(parentGroupCount * 2);
-            context.getMeta().java_util_regex_Matcher_groups.setObject(self, newGroups);
+    private static void reallocateGroupsArrayIfNecessary(StaticObject self, StaticObject parentPattern, Meta meta) {
+        int parentGroupCount = max(meta.java_util_regex_Pattern_capturingGroupCount.getInt(parentPattern), 10);
+        StaticObject groups = meta.java_util_regex_Matcher_groups.getObject(self);
+        if (groups.length(meta.getLanguage()) != parentGroupCount * 2) {
+            StaticObject newGroups = meta._int.allocatePrimitiveArray(parentGroupCount * 2);
+            meta.java_util_regex_Matcher_groups.setObject(self, newGroups);
         }
     }
 
-    private static void compileFallBackIfRequired(EspressoContext context, StaticObject self) {
-        StaticObject parentPattern = context.getMeta().java_util_regex_Matcher_parentPattern.getObject(self);
-        if (StaticObject.isNull(context.getMeta().java_util_regex_Pattern_root.getObject(parentPattern))) {
-            context.getMeta().java_util_regex_Pattern_compile.invokeDirect(parentPattern);
-            reallocateGroupsArrayIfNecessary(context, self, parentPattern);
+    private static void compileFallBackIfRequired(StaticObject self, Meta meta) {
+        StaticObject parentPattern = meta.java_util_regex_Matcher_parentPattern.getObject(self);
+        if (StaticObject.isNull(meta.java_util_regex_Pattern_root.getObject(parentPattern))) {
+            meta.java_util_regex_Pattern_compile.invokeDirect(parentPattern);
+            reallocateGroupsArrayIfNecessary(self, parentPattern, meta);
 
-            int localCount = context.getMeta().java_util_regex_Pattern_localCount.getInt(parentPattern);
-            int localsTCNCount = context.getMeta().java_util_regex_Pattern_localTCNCount.getInt(parentPattern);
-            StaticObject locals = context.getMeta()._int.allocatePrimitiveArray(localCount);
-            StaticObject localsPos = context.getMeta().java_util_regex_IntHashSet.allocateReferenceArray(localsTCNCount);
-            context.getMeta().java_util_regex_Matcher_locals.setObject(self, locals);
-            context.getMeta().java_util_regex_Matcher_localsPos.setObject(self, localsPos);
+            int localCount = meta.java_util_regex_Pattern_localCount.getInt(parentPattern);
+            int localsTCNCount = meta.java_util_regex_Pattern_localTCNCount.getInt(parentPattern);
+            StaticObject locals = meta._int.allocatePrimitiveArray(localCount);
+            StaticObject localsPos = meta.java_util_regex_IntHashSet.allocateReferenceArray(localsTCNCount);
+            meta.java_util_regex_Matcher_locals.setObject(self, locals);
+            meta.java_util_regex_Matcher_localsPos.setObject(self, localsPos);
         }
     }
 
-    private static void executeLastWithFallback(EspressoContext context, StaticObject self) {
-        if (context.getMeta().java_util_regex_Matcher_HIDDEN_matchingModeBackup.getHiddenObject(self) != StaticObject.NULL) {
-            int from = (int) context.getMeta().java_util_regex_Matcher_HIDDEN_searchFromBackup.getHiddenObject(self);
-            int action = (int) context.getMeta().java_util_regex_Matcher_HIDDEN_matchingModeBackup.getHiddenObject(self);
+    private static void executeLastWithFallback(StaticObject self, Meta meta) {
+        if (meta.java_util_regex_Matcher_HIDDEN_matchingModeBackup.getHiddenObject(self) != StaticObject.NULL) {
+            int from = (int) meta.java_util_regex_Matcher_HIDDEN_searchFromBackup.getHiddenObject(self);
+            MatchMode action = (MatchMode) meta.java_util_regex_Matcher_HIDDEN_matchingModeBackup.getHiddenObject(self);
 
-            compileFallBackIfRequired(context, self);
+            compileFallBackIfRequired(self, meta);
+            applyBackup(self, meta);
 
-            applyBackup(context, self);
-
-            if (action <= 1) {
-                executeMatch(context, self, from, action);
-            } else {
-                executeSearch(context, self, from);
+            switch (action) {
+                case MATCH_NOANCHOR -> executeMatch(self, from, NOANCHOR, meta);
+                case MATCH_ENDANCHOR -> executeMatch(self, from, ENDANCHOR, meta);
+                case SEARCH -> executeSearch(self, from, meta);
             }
         }
     }
 
-    private static void saveBackup(EspressoContext context, StaticObject self) {
-        context.getMeta().java_util_regex_Matcher_HIDDEN_oldLastBackup.setHiddenObject(self, context.getMeta().java_util_regex_Matcher_oldLast.getValue(self));
-        context.getMeta().java_util_regex_Matcher_HIDDEN_modCountBackup.setHiddenObject(self, context.getMeta().java_util_regex_Matcher_modCount.getValue(self));
-        context.getMeta().java_util_regex_Matcher_HIDDEN_transparentBoundsBackup.setHiddenObject(self, context.getMeta().java_util_regex_Matcher_transparentBounds.getValue(self));
-        context.getMeta().java_util_regex_Matcher_HIDDEN_anchoringBoundsBackup.setHiddenObject(self, context.getMeta().java_util_regex_Matcher_anchoringBounds.getValue(self));
-        context.getMeta().java_util_regex_Matcher_HIDDEN_fromBackup.setHiddenObject(self, context.getMeta().java_util_regex_Matcher_from.getValue(self));
-        context.getMeta().java_util_regex_Matcher_HIDDEN_toBackup.setHiddenObject(self, context.getMeta().java_util_regex_Matcher_to.getValue(self));
+    private static void saveBackup(StaticObject self, Meta meta) {
+        meta.java_util_regex_Matcher_HIDDEN_oldLastBackup.setHiddenObject(self, meta.java_util_regex_Matcher_oldLast.getValue(self));
+        meta.java_util_regex_Matcher_HIDDEN_modCountBackup.setHiddenObject(self, meta.java_util_regex_Matcher_modCount.getValue(self));
+        meta.java_util_regex_Matcher_HIDDEN_transparentBoundsBackup.setHiddenObject(self, meta.java_util_regex_Matcher_transparentBounds.getValue(self));
+        meta.java_util_regex_Matcher_HIDDEN_anchoringBoundsBackup.setHiddenObject(self, meta.java_util_regex_Matcher_anchoringBounds.getValue(self));
+        meta.java_util_regex_Matcher_HIDDEN_fromBackup.setHiddenObject(self, meta.java_util_regex_Matcher_from.getValue(self));
+        meta.java_util_regex_Matcher_HIDDEN_toBackup.setHiddenObject(self, meta.java_util_regex_Matcher_to.getValue(self));
     }
 
-    private static void applyBackup(EspressoContext context, StaticObject self) {
-        context.getMeta().java_util_regex_Matcher_oldLast.setValue(self, context.getMeta().java_util_regex_Matcher_HIDDEN_oldLastBackup.getHiddenObject(self));
-        context.getMeta().java_util_regex_Matcher_modCount.setValue(self, context.getMeta().java_util_regex_Matcher_HIDDEN_modCountBackup.getHiddenObject(self));
-        context.getMeta().java_util_regex_Matcher_transparentBounds.setValue(self, context.getMeta().java_util_regex_Matcher_HIDDEN_transparentBoundsBackup.getHiddenObject(self));
-        context.getMeta().java_util_regex_Matcher_anchoringBounds.setValue(self, context.getMeta().java_util_regex_Matcher_HIDDEN_anchoringBoundsBackup.getHiddenObject(self));
-        context.getMeta().java_util_regex_Matcher_from.setValue(self, context.getMeta().java_util_regex_Matcher_HIDDEN_fromBackup.getHiddenObject(self));
-        context.getMeta().java_util_regex_Matcher_to.setValue(self, context.getMeta().java_util_regex_Matcher_HIDDEN_toBackup.getHiddenObject(self));
+    private static void applyBackup(StaticObject self, Meta meta) {
+        meta.java_util_regex_Matcher_oldLast.setValue(self, meta.java_util_regex_Matcher_HIDDEN_oldLastBackup.getHiddenObject(self));
+        meta.java_util_regex_Matcher_modCount.setValue(self, meta.java_util_regex_Matcher_HIDDEN_modCountBackup.getHiddenObject(self));
+        meta.java_util_regex_Matcher_transparentBounds.setValue(self, meta.java_util_regex_Matcher_HIDDEN_transparentBoundsBackup.getHiddenObject(self));
+        meta.java_util_regex_Matcher_anchoringBounds.setValue(self, meta.java_util_regex_Matcher_HIDDEN_anchoringBoundsBackup.getHiddenObject(self));
+        meta.java_util_regex_Matcher_from.setValue(self, meta.java_util_regex_Matcher_HIDDEN_fromBackup.getHiddenObject(self));
+        meta.java_util_regex_Matcher_to.setValue(self, meta.java_util_regex_Matcher_HIDDEN_toBackup.getHiddenObject(self));
     }
 
-    private static boolean isUnsupported(EspressoContext context, StaticObject self) {
-        StaticObject parentPattern = context.getMeta().java_util_regex_Matcher_parentPattern.getObject(self);
-        Object unsupported = context.getMeta().java_util_regex_Pattern_HIDDEN_unsupported.getHiddenObject(parentPattern);
-        boolean anchoringBounds = context.getMeta().java_util_regex_Matcher_anchoringBounds.getBoolean(self);
-        boolean transparentBounds = context.getMeta().java_util_regex_Matcher_transparentBounds.getBoolean(self);
-        return unsupported == null || (boolean) unsupported || !anchoringBounds || transparentBounds;
+    static boolean isUnsupportedMatcher(StaticObject self, Meta meta) {
+        StaticObject parentPattern = meta.java_util_regex_Matcher_parentPattern.getObject(self);
+        if (Target_java_util_regex_Pattern.isUnsupportedPattern(parentPattern, meta)) {
+            return true;
+        }
+        return !meta.java_util_regex_Matcher_anchoringBounds.getBoolean(self) || meta.java_util_regex_Matcher_transparentBounds.getBoolean(self);
+    }
+
+    static boolean isString(StaticObject obj, Meta meta) {
+        return obj.getKlass() == meta.java_lang_String;
     }
 
     private static void saveTruffleString(
                     StaticObject self,
-                    EspressoContext context,
                     TruffleString.FromJavaStringNode fromJavaStringNode,
-                    StaticObject originalCharSeq) {
-        StaticObject originalString = originalCharSeq;
-        if (originalCharSeq.getKlass() != context.getMeta().java_lang_String) {
-            if (originalCharSeq.getKlass() == null) {
-                context.getMeta().throwNullPointerException();
-            }
-            Method handleMethodToString = ((ObjectKlass) originalCharSeq.getKlass()).itableLookup(context.getMeta().java_lang_CharSequence,
-                            context.getMeta().java_lang_CharSequence_toString.getITableIndex());
-            originalString = (StaticObject) handleMethodToString.invokeDirect(originalCharSeq);
-        }
-
-        TruffleString truffleString = fromJavaStringNode.execute(context.getMeta().toHostString(originalString), TruffleString.Encoding.UTF_16);
-        context.getMeta().java_util_regex_Matcher_HIDDEN_tstring.setHiddenObject(self, truffleString);
+                    StaticObject espressoString, Meta meta) {
+        TruffleString truffleString = fromJavaStringNode.execute(meta.toHostString(espressoString), TruffleString.Encoding.UTF_16);
+        meta.java_util_regex_Matcher_HIDDEN_tstring.setHiddenObject(self, truffleString);
     }
 }

@@ -1010,7 +1010,6 @@ public abstract class RegexLexer {
     }
 
     private Token parseQuantifier(char c) throws RegexSyntaxException {
-        int startPos = position - 1;
         final long min;
         final long max;
         final boolean braces = c == '{';
