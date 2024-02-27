@@ -298,13 +298,12 @@ class NativeImageBenchmarkConfig:
 
 
 class NativeImageStages:
-    def __init__(self, stages_info: StagesInfo, config, bench_out, bench_err, is_gate, non_zero_is_fatal, cwd):
+    def __init__(self, stages_info: StagesInfo, config, bench_out, bench_err, non_zero_is_fatal, cwd):
         self.stages_info = stages_info
         self.config: NativeImageBenchmarkConfig = config
         self.bench_out = bench_out
         self.bench_err = bench_err
         self.final_image_name = config.final_image_name
-        self.is_gate = is_gate
         self.non_zero_is_fatal = non_zero_is_fatal
         self.cwd = cwd
 
@@ -1006,7 +1005,7 @@ class NativeImageVM(GraalVm):
                     if file.endswith(".json"):
                         zipf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), os.path.join(path, '..')))
 
-    def run_stage_instrument_image(self, out):
+    def run_stage_instrument_image(self):
         executable_name_args = ['-o', str(self.config.instrumented_image_path)]
         instrument_args = ['--pgo-sampling'] if self.pgo_sampler_only else ['--pgo-instrument']
         instrument_args += ['-R:ProfilesDumpFile=' + self.config.profile_path]
@@ -1023,10 +1022,6 @@ class NativeImageVM(GraalVm):
 
             if exit_code == 0:
                 self._move_image_build_stats_file()
-
-                # TODO refactor
-                image_size = os.stat(self.config.instrumented_image_path).st_size
-                out('Instrumented image size: ' + str(image_size) + ' B')
 
     def _move_image_build_stats_file(self):
         """
@@ -1070,7 +1065,7 @@ class NativeImageVM(GraalVm):
             else:
                 print(f"Profile file {self.config.profile_path} not dumped. Instrument run failed with exit code {exit_code}")
 
-    def run_stage_image(self, out):
+    def run_stage_image(self):
         executable_name_args = ['-o', self.config.final_image_name]
         pgo_args = ['--pgo=' + self.config.profile_path]
         pgo_args += svm_experimental_options(['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled'])
@@ -1142,7 +1137,7 @@ class NativeImageVM(GraalVm):
 
         # never fatal, we handle it ourselves
         self.config = NativeImageBenchmarkConfig(self, self.bmSuite, args)
-        self.stages = NativeImageStages(self.stages_info, self.config, out, err, self.is_gate, True if self.is_gate else nonZeroIsFatal, os.path.abspath(cwd if cwd else os.getcwd()))
+        self.stages = NativeImageStages(self.stages_info, self.config, out, err, True if self.is_gate else nonZeroIsFatal, os.path.abspath(cwd if cwd else os.getcwd()))
 
         os.makedirs(self.config.output_dir, exist_ok=True)
         os.makedirs(self.config.config_dir, exist_ok=True)
@@ -1152,27 +1147,28 @@ class NativeImageVM(GraalVm):
             # We simply emulate the dispatching of the individual stages as in `NativeImageBenchmarkMixin.intercept_run`
             for stage in self.stages_info.effective_stages:
                 self.stages_info.change_stage(stage)
-                self.run_single_stage(out)
+                self.run_single_stage()
         else:
-            self.run_single_stage(out)
+            if self.stages_info.skip_current_stage:
+                self.stages.bench_out(f"{mx_sdk_benchmark.STAGE_SKIPPED_PREFIX} {self.stages_info.requested_stage}")
+            else:
+                self.run_single_stage()
 
         if self.stages_info.failed:
             mx.abort('Exiting the benchmark due to the failure.')
 
-    def run_single_stage(self, out):
-        if self.stages_info.skip_current_stage:
-            self.stages.bench_out(f"{mx_sdk_benchmark.STAGE_SKIPPED_PREFIX} {self.stages_info.requested_stage}")
-            return
+    def run_single_stage(self):
+        assert not self.stages_info.skip_current_stage
 
         stage_to_run = self.stages_info.effective_stage
         if stage_to_run == Stage.AGENT:
             self.run_stage_agent()
         elif stage_to_run == Stage.INSTRUMENT_IMAGE:
-            self.run_stage_instrument_image(out)
+            self.run_stage_instrument_image()
         elif stage_to_run == Stage.INSTRUMENT_RUN:
             self.run_stage_instrument_run()
         elif stage_to_run == Stage.IMAGE:
-            self.run_stage_image(out)
+            self.run_stage_image()
         elif stage_to_run == Stage.RUN:
             self.run_stage_run()
         else:
