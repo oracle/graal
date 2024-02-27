@@ -247,6 +247,37 @@ def register_community_tools_distribution(owner_suite, register_distribution):
         register_distribution(tools_community)
 
 
+def create_polyglot_meta_pom_distribution_from_base_distribution(suite_local_meta_distribution):
+    """
+Creates a meta-POM distribution based on the `suite_local_meta_distribution` prototype with the Maven group id set to
+'org.graalvm.polyglot'. The new distribution inherits properties from `suite_local_meta_distribution`
+and includes it as a runtime dependency. The name of the new distribution is derived from `suite_local_meta_distribution`
+by appending the '_POLYGLOT' suffix.
+
+:param suite_local_meta_distribution: The language meta-POM distribution with the language suite group id.
+"""
+    dist_name = suite_local_meta_distribution.name + '_POLYGLOT'
+    groupId = 'org.graalvm.polyglot'
+    artifactId = suite_local_meta_distribution.maven_artifact_id()
+    artifactTags = 'default'
+    maven_data = getattr(suite_local_meta_distribution, 'maven')
+    if isinstance(maven_data, dict) and 'tag' in maven_data:
+        artifactTags = maven_data['tag']
+    description = getattr(suite_local_meta_distribution, 'description')
+    distDeps = []
+    runtimeDeps = [suite_local_meta_distribution]
+    licenses = _distribution_license(suite_local_meta_distribution)
+    attrs = {
+        'maven': {
+            'groupId': groupId,
+            'artifactId': artifactId,
+            'tag': artifactTags,
+        },
+        'description': description,
+    }
+    return mx_pomdistribution.POMDistribution(_suite, dist_name, distDeps, runtimeDeps, sorted(list(licenses)), **attrs)
+
+
 def register_community_languages_distribution(owner_suite, register_distribution):
     """
     Creates a dynamic LANGUAGES_COMMUNITY meta-POM distribution containing all
@@ -259,6 +290,10 @@ def register_community_languages_distribution(owner_suite, register_distribution
         language_distribution = mx.distribution(distribution_name, fatalIfMissing=False)
         if language_distribution:
             assert language_distribution.isPOMDistribution(), f'LANGUAGES_COMMUNITY dependency {language_distribution.name} must be a meta-POM distribution.'
+            # GR-52374: When all language PRs are merged, convert the if-condition into an assertion.
+            if language_distribution.maven_group_id() != 'org.graalvm.polyglot':
+                language_distribution = create_polyglot_meta_pom_distribution_from_base_distribution(language_distribution)
+                register_distribution(language_distribution)
             languages_meta_poms.append(language_distribution)
             languages_licenses.update(_distribution_license(language_distribution))
     if languages_meta_poms:

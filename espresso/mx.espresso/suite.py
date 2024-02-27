@@ -392,7 +392,6 @@ suite = {
             ],
             "description": "Java on Truffle (aka Espresso): a Java bytecode interpreter",
             "maven": {
-                "groupId" : "org.graalvm.polyglot",
                 "artifactId": "java-community",
                 "tag": ["default", "public"],
             },
