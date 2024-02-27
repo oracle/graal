@@ -412,6 +412,10 @@ public interface InstrumentableNode extends NodeInterface {
         return inode;
     }
 
+    default ProbeNode createProbe(SourceSection sourceSection) {
+        return new ProbeNode(this, sourceSection);
+    }
+
     /**
      * Nodes that the instrumentation framework inserts into guest language ASTs (between
      * {@link InstrumentableNode instrumentable} guest language nodes and their parents) for the

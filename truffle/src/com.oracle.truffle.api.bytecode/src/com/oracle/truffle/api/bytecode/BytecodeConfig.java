@@ -141,7 +141,7 @@ public final class BytecodeConfig {
          *
          * @since 24.1
          */
-        public Builder addInstrumentations(Class<?> instrumentation) {
+        public Builder addInstrumentation(Class<?> instrumentation) {
             CompilerAsserts.neverPartOfCompilation();
             Objects.requireNonNull(instrumentation);
             long encodedTag = encoder.encodeInstrumentation(instrumentation);

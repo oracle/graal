@@ -2092,9 +2092,6 @@ final class InstrumentationHandler {
                     if (!(materializedNode instanceof Node)) {
                         throw new IllegalStateException("The returned materialized syntax node is not a Truffle Node.");
                     }
-                    if (((Node) materializedNode).getParent() != null) {
-                        throw new IllegalStateException("The returned materialized syntax node is already adopted.");
-                    }
                     SourceSection newSourceSection = ((Node) materializedNode).getSourceSection();
                     if (!Objects.equals(sourceSection, newSourceSection)) {
                         throw new IllegalStateException(String.format("The source section of the materialized syntax node must match the source section of the original node. %s != %s.", sourceSection,
@@ -2102,6 +2099,15 @@ final class InstrumentationHandler {
                     }
 
                     Node currentParent = ((Node) currentNode).getParent();
+
+                    if (((Node) materializedNode).getParent() == currentParent) {
+                        return (Node) materializedNode;
+                    }
+                    
+                    if (((Node) materializedNode).getParent() != null) {
+                        throw new IllegalStateException("The returned materialized syntax node is already adopted by a different parent.");
+                    }
+                    
                     // The current parent is a wrapper. We need to replace the wrapper.
                     if (currentParent instanceof WrapperNode && !NodeUtil.isReplacementSafe(currentParent, instrumentableNode, (Node) materializedNode)) {
                         ProbeNode probe = ((WrapperNode) currentParent).getProbeNode();

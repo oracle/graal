@@ -126,6 +126,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.WildcardTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeParameterElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
@@ -190,6 +191,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     private CodeTypeElement abstractBytecodeNode;
 
+    private CodeTypeElement tagNode;
+
+    private CodeTypeElement tagRootNode;
+
     // Represents the index that user locals start from. Depends on the number of reserved slots.
     private int userLocalsStartIndex;
 
@@ -227,10 +232,24 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
         }
 
+        TagNodeFactory tagNodeFactory = null;
+        TagRootNodeFactory tagRootNodeFactory = null;
+        if (model.enableTagInstrumentation) {
+            tagNodeFactory = new TagNodeFactory();
+            this.tagNode = bytecodeNodeGen.add(tagNodeFactory.type);
+
+            tagRootNodeFactory = new TagRootNodeFactory();
+            this.tagRootNode = bytecodeNodeGen.add(tagRootNodeFactory.type);
+        }
+
         this.abstractBytecodeNode = bytecodeNodeGen.add(new AbstractBytecodeNodeFactory().create());
+        if (model.enableTagInstrumentation) {
+            tagNodeFactory.create();
+            tagRootNodeFactory.create();
+        }
 
         CodeVariableElement bytecodeNode = new CodeVariableElement(Set.of(PRIVATE, VOLATILE), abstractBytecodeNode.asType(), "bytecode");
-        bytecodeNodeGen.add(compFinal(bytecodeNode));
+        bytecodeNodeGen.add(child(bytecodeNode));
         bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), bytecodeRootNodesImpl.asType(), "nodes"));
         bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "numLocals"));
         bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "buildIndex"));
@@ -913,7 +932,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         CodeTreeBuilder b = ex.getBuilder();
 
-        b.declaration("BytecodeRootNodesImpl", "nodes", "new BytecodeRootNodesImpl(parser)");
+        b.declaration("BytecodeRootNodesImpl", "nodes", "new BytecodeRootNodesImpl(parser, config)");
         b.startAssign("Builder builder").startNew(builder.getSimpleName().toString());
         b.string("nodes");
         b.string("config");
@@ -991,6 +1010,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         init.startGroup();
         init.startNew(bytecodeRootNodesImpl.asType());
         init.string("parser");
+        init.staticReference(types.BytecodeConfig, "COMPLETE");
         init.end(2);
         init.staticReference(types.BytecodeConfig, "COMPLETE");
         init.end();
@@ -1423,14 +1443,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         for (int i = 0; i < model.getInstrumentations().size(); i++) {
-            mask |= 1 << (INSTRUMENTATION_OFFSET + i);
+            mask |= 1L << (INSTRUMENTATION_OFFSET + i);
         }
 
         for (int i = 0; i < model.getProvidedTags().size(); i++) {
-            mask |= 1 << (TAG_OFFSET + i);
+            mask |= 1L << (TAG_OFFSET + i);
         }
 
-        b.startReturn().string("(encoding & 0x" + Long.toHexString(mask) + ")").end();
+        b.startReturn().string("(encoding & 0x" + Long.toHexString(mask) + "L)").end();
         return ex;
     }
 
@@ -1785,10 +1805,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceLocationSp"),
                         new CodeVariableElement(Set.of(PRIVATE), finallyTryContext.asType(), "finallyTryContext"),
                         new CodeVariableElement(Set.of(PRIVATE), constantPool.asType(), "constantPool"),
+
                         // must be last
                         new CodeVariableElement(Set.of(PRIVATE), savedState.asType(), "savedState")));
 
         {
+            if (model.enableTagInstrumentation) {
+                builderContextSensitiveState.add(new CodeVariableElement(Set.of(PRIVATE), generic(type(List.class), tagNode.asType()), "tagRoots"));
+                builderContextSensitiveState.add(new CodeVariableElement(Set.of(PRIVATE), generic(type(List.class), tagNode.asType()), "tagNodes"));
+            }
+
             if (model.enableTracing) {
                 builderContextSensitiveState.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean[].class), "basicBlockBoundary"));
             }
@@ -1819,6 +1845,19 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                 field(context.getType(boolean.class), "mayFallThrough").withInitializer("true")));
 
                 result.add(createDataClass("TransparentOperationData",
+                                field(context.getType(boolean.class), "producedValue"),
+                                field(context.getType(int.class), "childBci")));
+
+                if (model.enableTagInstrumentation) {
+                    result.add(createDataClass("TagOperationData",
+                                    field(context.getType(boolean.class), "producedValue"),
+                                    field(context.getType(int.class), "childBci"),
+                                    field(context.getType(int.class), "nodeId"),
+                                    field(generic(type(List.class), tagNode.asType()), "children").withInitializer("null"),
+                                    field(tagNode.asType(), "node")));
+                }
+
+                result.add(createDataClass("ReturnOperationData",
                                 field(context.getType(boolean.class), "producedValue"),
                                 field(context.getType(int.class), "childBci")));
 
@@ -2388,7 +2427,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 // create begin/emit code
                 b.startCase().staticReference(serializationElements.codeBegin[operation.id]).end().startBlock();
 
-                if (operation.kind == OperationKind.INSTRUMENT_TAG && !hasTags) {
+                if (operation.kind == OperationKind.TAG && !hasTags) {
                     b.startThrow().startNew(context.getType(IllegalStateException.class));
                     b.doubleQuote(String.format("Cannot deserialize instrument tag. The language does not specify any tags with a @%s annotation.",
                                     ElementUtils.getSimpleName(types.ProvidedTags)));
@@ -2414,7 +2453,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("BytecodeLabel ", argumentName, " = labels.get(buffer.readShort())");
                     } else if (ElementUtils.typeEquals(argType, context.getType(int.class))) {
                         b.statement("int ", argumentName, " = buffer.readInt()");
-                    } else if (operation.kind == OperationKind.INSTRUMENT_TAG && i == 0) {
+                    } else if (operation.kind == OperationKind.TAG && i == 0) {
                         b.startStatement().type(argType).string(" ", argumentName, " = TAG_MASK_TO_TAGS.computeIfAbsent(buffer.readInt(), (v) -> mapTagMaskToTagsArray(v))").end();
                     } else if (ElementUtils.isObject(argType) || ElementUtils.typeEquals(argType, types.Source)) {
                         b.startStatement().type(argType).string(" ", argumentName, " = ");
@@ -2452,6 +2491,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.type(model.getTemplateType().asType()).string(" node = ").string("end" + operation.name + "()");
                         b.end();
                         b.startStatement().startCall("builtNodes.add").startGroup().cast(bytecodeNodeGen.asType()).string("node").end().end().end();
+                    } else if (operation.kind == OperationKind.TAG) {
+                        b.statement("Class<?>[] newTags = TAG_MASK_TO_TAGS.computeIfAbsent(buffer.readInt(), (v) -> mapTagMaskToTagsArray(v))");
+                        b.statement("end", operation.name, "(newTags)");
                     } else {
                         b.statement("end", operation.name, "()");
                     }
@@ -2789,22 +2831,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             CodeTreeBuilder b = ex.createBuilder();
 
-            if (operation.kind == OperationKind.INSTRUMENT_TAG) {
-                if (model.getProvidedTags().isEmpty()) {
-                    b.startThrow().startNew(context.getType(IllegalArgumentException.class));
-                    b.doubleQuote(String.format("Given tag is not provided by the language. Add a @%s annotation to the %s class.",
-                                    ElementUtils.getSimpleName(types.ProvidedTags), ElementUtils.getSimpleName(model.languageClass)));
-                    b.end().end();
-                    return ex;
-                }
+            if (operation.kind == OperationKind.TAG) {
+                b.declaration(type(int.class), "encodedTags", "encodeTags(newTags)");
+                b.startIf().string("(encodedTags & this.tags) == 0").end().startBlock();
+                b.returnStatement();
+                b.end();
             } else if (operation.kind == OperationKind.CUSTOM_INSTRUMENTATION) {
                 int mask = 1 << operation.instrumentationIndex;
                 b.startIf().string("(instrumentations & ").string("0x", Integer.toHexString(mask)).string(") == 0").end().startBlock();
                 b.returnStatement();
                 b.end();
-            }
-
-            if (operation.isSourceOnly()) {
+            } else if (operation.isSourceOnly()) {
                 b.startIf().string("!parseSources").end().startBlock();
                 b.returnStatement();
                 b.end();
@@ -2815,6 +2852,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 createSerializeBegin(operation, b);
                 b.statement("return");
                 b.end();
+            }
+
+            if (operation.kind == OperationKind.TAG) {
+                b.declaration(tagNode.asType(), "node", "new TagNode(encodedTags, (short)bci)");
+                b.startIf().string("tagNodes == null").end().startBlock();
+                b.statement("tagNodes = new ArrayList<>()");
+                b.end();
+                b.declaration(type(int.class), "nodeId", "tagNodes.size()");
+                b.statement("tagNodes.add(node)");
             }
 
             b.startStatement().startCall("beforeChild").end(2);
@@ -2881,6 +2927,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.lineCommentf("For return epilog support, Return(op) is rewritten to Return(%s(op))", model.epilogReturn.operation.name);
                         buildBegin(b, model.epilogReturn.operation);
                     }
+                    break;
+                case TAG:
+                    buildEmitInstruction(b, model.tagEnterInstruction, "nodeId");
                     break;
                 case FINALLY_TRY:
                 case FINALLY_TRY_NO_EXCEPT:
@@ -2992,8 +3041,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         serializationElements.writeShort(after, "(short) ((BytecodeLabelImpl) " + argumentName + ").declaringOp");
                     } else if (ElementUtils.typeEquals(argType, context.getType(int.class))) {
                         serializationElements.writeInt(after, argumentName);
-                    } else if (operation.kind == OperationKind.INSTRUMENT_TAG && i == 0) {
-                        serializationElements.writeInt(after, "encodeTags(" + operation.getOperationArgumentName(0) + ")");
+                    } else if (operation.kind == OperationKind.TAG && i == 0) {
+                        serializationElements.writeInt(after, "encodedTags");
                     } else if (ElementUtils.isObject(argType) || ElementUtils.typeEquals(argType, types.Source)) {
                         String index = argumentName + "_index";
                         b.statement("short ", index, " = ", "serialization.serializeObject(", argumentName, ")");
@@ -3083,6 +3132,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         yield createOperationData("CustomShortCircuitOperationData");
                     }
                 }
+                case TAG -> {
+                    yield createOperationData("TagOperationData", "false", UNINIT, "nodeId", "node");
+                }
+                case RETURN -> {
+                    yield createOperationData("ReturnOperationData", "false", UNINIT);
+                }
                 default -> CodeTreeBuilder.singleString("null");
             };
         }
@@ -3145,12 +3200,27 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             Modifier visibility = operation.isInternal ? PRIVATE : PUBLIC;
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(visibility), context.getType(void.class), "end" + operation.name);
+
+            if (operation.kind == OperationKind.TAG) {
+                ex.setVarArgs(true);
+                ex.addParameter(new CodeVariableElement(arrayOf(context.getDeclaredType(Class.class)), "newTags"));
+            }
+
             addEndOperationDoc(operation, ex);
             CodeTreeBuilder b = ex.createBuilder();
 
-            if (operation.kind == OperationKind.CUSTOM_INSTRUMENTATION) {
+            if (operation.kind == OperationKind.TAG) {
+                b.declaration(type(int.class), "encodedTags", "encodeTags(newTags)");
+                b.startIf().string("(encodedTags & this.tags) == 0").end().startBlock();
+                b.returnStatement();
+                b.end();
+            } else if (operation.kind == OperationKind.CUSTOM_INSTRUMENTATION) {
                 int mask = 1 << operation.instrumentationIndex;
                 b.startIf().string("(instrumentations & ").string("0x", Integer.toHexString(mask)).string(") == 0").end().startBlock();
+                b.returnStatement();
+                b.end();
+            } else if (operation.isSourceOnly()) {
+                b.startIf().string("!parseSources").end().startBlock();
                 b.returnStatement();
                 b.end();
             }
@@ -3159,14 +3229,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startIf().string("serialization != null").end().startBlock();
                 serializationWrapException(b, () -> {
                     serializationElements.writeShort(b, serializationElements.codeEnd[operation.id]);
+                    if (operation.kind == OperationKind.TAG) {
+                        serializationElements.writeShort(b, "encodedTags");
+                    }
                     b.statement("return");
                 });
-                b.end();
-            }
-
-            if (operation.isSourceOnly()) {
-                b.startIf().string("!parseSources").end().startBlock();
-                b.returnStatement();
                 b.end();
             }
 
@@ -3286,8 +3353,80 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("doEmitFinallyHandler(ctx)");
                     break;
                 case RETURN:
-                    b.statement("doEmitLeaves(-1)");
+                    emitCastOperationData(b, "ReturnOperationData", "operationSp");
+                    b.statement("doEmitLeaves(-1, operationData.childBci)");
                     buildEmitOperationInstruction(b, operation);
+                    break;
+                case TAG:
+                    emitCastOperationData(b, "TagOperationData", "operationSp");
+                    b.declaration(type(int.class), "sp", "operationSp - 1");
+                    b.startWhile().string("sp >= 0").end().startBlock();
+                    b.declaration("OperationStackEntry", "e", "operationStack[sp]");
+                    b.startIf().string("e.data instanceof TagOperationData t").end().startBlock();
+                    b.startIf().string("t.children == null").end().startBlock();
+                    b.statement("t.children = new ArrayList<>(3)");
+                    b.end();
+                    b.statement("t.children.add(operationData.node)");
+                    b.statement("break");
+                    b.end(); // if
+                    b.statement("sp--");
+                    b.end(); // while
+
+                    b.startIf().string("sp < 0").end().startBlock();
+                    b.lineComment("not found");
+                    b.startIf().string("tagRoots == null").end().startBlock();
+                    b.statement("tagRoots = new ArrayList<>(3)");
+                    b.end();
+                    b.statement("tagRoots.add(operationData.node)");
+
+                    b.end();
+                    b.end();
+
+                    b.declaration(tagNode.asType(), "tagNode", "operationData.node");
+                    b.declaration(arrayOf(tagNode.asType()), "children");
+                    b.declaration(generic(type(List.class), tagNode.asType()), "operationChildren", "operationData.children");
+
+                    b.startIf().string("operationChildren == null").end().startBlock();
+                    b.statement("children = TagNode.EMPTY_ARRAY");
+                    b.end().startElseBlock();
+                    b.statement("children = new TagNode[operationChildren.size()]");
+                    b.startFor().string("int i = 0; i < children.length; i++").end().startBlock();
+                    b.statement("children[i] = tagNode.insert(operationChildren.get(i))");
+                    b.end();
+                    b.end();
+
+                    b.statement("tagNode.children = operationData.children == null ? TagNode.EMPTY_ARRAY : operationData.children.toArray(TagNode[]::new)");
+
+                    b.startFor().string("TagNode child : tagNode.children").end().startBlock();
+                    b.statement("tagNode.insert(child)");
+                    b.end();
+
+                    b.statement("tagNode.leaveBci = (short)bci");
+
+                    b.startIf().string("operationData.producedValue").end().startBlock();
+                    String[] args;
+                    InstructionImmediate imm = operation.instruction.getImmediate(ImmediateKind.BYTECODE_INDEX);
+                    if (imm == null) {
+                        args = new String[]{"operationData.nodeId"};
+                    } else {
+                        args = new String[]{"operationData.nodeId", "operationData.childBci"};
+                    }
+
+                    buildEmitInstruction(b, model.tagLeaveValueInstruction, args);
+                    b.startStatement().startCall("afterChild");
+                    b.string("true");
+                    b.string("bci - " + model.tagLeaveValueInstruction.getInstructionLength());
+                    b.end(2);
+
+                    b.end().startElseBlock();
+                    buildEmitInstruction(b, model.tagLeaveVoidInstruction, "operationData.nodeId");
+                    b.startStatement().startCall("afterChild");
+                    b.string("false");
+                    b.string("-1");
+                    b.end(2);
+
+                    b.end();
+
                     break;
                 default:
                     if (operation.instruction != null) {
@@ -3296,7 +3435,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     break;
             }
 
-            if (operation.isTransparent) {
+            if (operation.kind == OperationKind.TAG) {
+                // handled in tag section
+            } else if (operation.isTransparent) {
                 emitCastOperationData(b, "TransparentOperationData", "operationSp");
                 b.startStatement().startCall("afterChild");
                 b.string("operationData.producedValue");
@@ -3393,8 +3534,33 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startAssign("handlers_").startStaticCall(type(Arrays.class), "copyOf").string("exHandlers").string("exHandlerCount").end().end();
             b.startAssign("sources_").string("sources").end();
             b.startAssign("numNodes_").string("numNodes").end();
-
             b.end();
+
+            if (model.enableTagInstrumentation) {
+                b.startIf().string("tags != 0 && this.tagNodes != null").end().startBlock();
+                b.startDeclaration(arrayOf(tagNode.asType()), "tagNodes_").string("this.tagNodes.toArray(TagNode[]::new)").end();
+
+                b.declaration(tagNode.asType(), "tagTree_");
+                b.startIf().string("this.tagRoots == null || this.tagRoots.isEmpty()").end().startBlock();
+                b.startAssign("tagTree_").string("null").end();
+                b.end().startElseIf().string("this.tagRoots.size() == 1").end().startBlock();
+                b.startAssign("tagTree_").string("this.tagRoots.get(0)").end();
+                b.end().startElseBlock();
+                b.startAssign("tagTree_").startNew(tagNode.asType());
+                b.string("0").string("(short) -1");
+                b.end().end();
+                b.statement("tagTree_.children = tagTree_.insert(this.tagRoots.toArray(TagNode[]::new))");
+                b.end();
+
+                b.startAssign("tagRoot_");
+                b.startNew(tagRootNode.asType());
+                b.string("tagTree_");
+                b.string("tagNodes_");
+                b.end();
+                b.end();
+
+                b.end();
+            }
 
             b.declaration(bytecodeNodeGen.asType(), "result", (CodeTree) null);
             b.startIf().string("reparseReason != null").end().startBlock(); // {
@@ -3527,7 +3693,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     emitThrowIllegalStateException(b, "\"Branch must be targeting a label that is declared in an enclosing operation. Jumps into other operations are not permitted.\"");
                     b.end();
 
-                    b.statement("doEmitLeaves(labelImpl.declaringOp)");
+                    b.statement("doEmitLeaves(labelImpl.declaringOp, -1)");
 
                     b.startIf().string("labelImpl.isDefined()").end().startBlock();
                     emitThrowIllegalStateException(b, "\"Backward branches are unsupported. Use a While operation to model backward control flow.\"");
@@ -3734,6 +3900,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         yield "localSetterRangeLength" + (localSetterRangeIndex++);
                     }
                     case NODE_PROFILE -> "allocateNode()";
+                    case TAG_NODE -> "node";
+
                     case INTEGER, CONSTANT, BRANCH_PROFILE -> throw new AssertionError(
                                     "Operation " + operation.name + " takes an immediate " + immediate.name() + " with unexpected kind " + immediate.kind() +
                                                     ". This is a bug in the Bytecode DSL processor.");
@@ -3811,13 +3979,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 for (OperationModel op : groupedOperations.get(BeforeChildKind.DEFAULT)) {
                     b.startCase().tree(createOperationConstant(op)).end();
                 }
-                b.startBlock();
+                b.startCaseBlock();
                 b.statement("break");
                 b.end();
             }
 
             b.caseDefault();
-            b.startBlock();
+            b.startCaseBlock();
             emitThrowAssertionError(b, "\"beforeChild should not be called on an operation with no children.\"");
             b.end();
 
@@ -3997,6 +4165,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         if (model.enableTracing) {
                             b.statement("basicBlockBoundary[bci] = true");
                         }
+                        break;
+                    case TAG:
+                        emitCastOperationData(b, "TagOperationData", "operationSp - 1");
+                        b.statement("operationData.producedValue = producedValue");
+                        b.statement("operationData.childBci = childBci");
+                        break;
+                    case RETURN:
+                        emitCastOperationData(b, "ReturnOperationData", "operationSp - 1");
+                        b.statement("operationData.producedValue = producedValue");
+                        b.statement("operationData.childBci = childBci");
                         break;
                     case IF_THEN_ELSE:
                         emitCastOperationData(b, "IfThenElseData", "operationSp - 1");
@@ -4373,7 +4551,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private static boolean needsRelocation(InstructionImmediate i) {
             return switch (i.kind()) {
-                case CONSTANT, INTEGER, LOCAL_SETTER, LOCAL_SETTER_RANGE_START, LOCAL_SETTER_RANGE_LENGTH -> false;
+                case CONSTANT, INTEGER, LOCAL_SETTER, LOCAL_SETTER_RANGE_START, LOCAL_SETTER_RANGE_LENGTH, TAG_NODE -> false;
                 case BYTECODE_INDEX, NODE_PROFILE, BRANCH_PROFILE -> true;
                 default -> throw new AssertionError("Unexpected kind");
             };
@@ -4425,6 +4603,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case LOCAL_SETTER:
                     case LOCAL_SETTER_RANGE_LENGTH:
                     case LOCAL_SETTER_RANGE_START:
+                    case TAG_NODE:
                         // nothing to relocate
                         break;
                     default:
@@ -4576,9 +4755,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             switch (instr.kind) {
                 case BRANCH:
                 case BRANCH_BACKWARD:
-                case INSTRUMENTATION_ENTER:
-                case INSTRUMENTATION_EXIT:
-                case INSTRUMENTATION_LEAVE:
+                case TAG_ENTER:
+                case TAG_LEAVE:
+                case TAG_LEAVE_VOID:
                 case LOAD_LOCAL_MATERIALIZED:
                 case THROW:
                 case YIELD:
@@ -4718,10 +4897,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createDoEmitLeaves() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "doEmitLeaves");
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "targetSeq"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "parentBci"));
 
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.startFor().string("int i = operationSp - 1; i >= 0; i--").end().startBlock();
+            b.declaration(type(int.class), "childBci", "parentBci");
+
+            b.startFor().string("int i = operationSp -1; i >= 0; i--").end().startBlock();
 
             b.startIf().string("operationStack[i].sequenceNumber == targetSeq").end().startBlock();
             b.returnStatement();
@@ -4729,11 +4911,34 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startSwitch().string("operationStack[i].operation").end().startBlock();
 
+            if (model.enableTagInstrumentation) {
+                OperationModel op = model.findOperation(OperationKind.TAG);
+                b.startCase().tree(createOperationConstant(op)).end();
+                b.startBlock();
+                emitCastOperationData(b, "TagOperationData", "i");
+                b.startIf().string("childBci == -1").end().startBlock();
+                buildEmitInstruction(b, model.tagLeaveVoidInstruction, "operationData.nodeId");
+                b.end().startElseBlock();
+                InstructionImmediate operandIndex = op.instruction.getImmediate(ImmediateKind.BYTECODE_INDEX);
+                if (operandIndex == null) {
+                    buildEmitInstruction(b, op.instruction, "operationData.nodeId");
+                } else {
+                    buildEmitInstruction(b, op.instruction, "operationData.nodeId", "childBci");
+                }
+                b.statement("childBci = bci - " + op.instruction.getInstructionLength());
+                b.end();
+
+                b.statement("break");
+                b.end();
+            }
+
             for (OperationModel op : model.getOperations()) {
                 switch (op.kind) {
                     case FINALLY_TRY:
                     case FINALLY_TRY_NO_EXCEPT:
                         b.startCase().tree(createOperationConstant(op)).end();
+                        break;
+
                 }
             }
             b.startBlock();
@@ -4915,7 +5120,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             bytecodeRootNodesImpl.setSuperClass(generic(types.BytecodeRootNodes, model.templateType.asType()));
             bytecodeRootNodesImpl.setEnclosingElement(bytecodeNodeGen);
             bytecodeRootNodesImpl.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(Object.class), "VISIBLE_TOKEN")).createInitBuilder().string("TOKEN");
-
             bytecodeRootNodesImpl.add(new CodeVariableElement(Set.of(PRIVATE, VOLATILE), type(long.class), "encoding"));
 
             updateReason = bytecodeRootNodesImpl.add(createUpdateReason());
@@ -5004,8 +5208,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createConstructor() {
             CodeExecutableElement ctor = new CodeExecutableElement(null, "BytecodeRootNodesImpl");
             ctor.addParameter(new CodeVariableElement(parserType, "generator"));
+            ctor.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
+            CodeTreeBuilder b = ctor.createBuilder();
+            b.statement("super(generator)");
+            b.startAssign("this.encoding");
+            b.startStaticCall(configEncoder.asType(), "decode").string("config").end();
+            b.end();
 
-            ctor.createBuilder().statement("super(generator)");
             return ctor;
         }
 
@@ -5162,6 +5371,263 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
     }
 
+    class TagNodeFactory {
+
+        private CodeTypeElement type;
+
+        TagNodeFactory() {
+            type = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL),
+                            ElementKind.CLASS, null, "TagNode");
+            type.setSuperClass(types.Node);
+            type.getImplements().add(types.InstrumentableNode);
+            type.getImplements().add(types.TagTree);
+
+            type.add(new CodeVariableElement(Set.of(FINAL, STATIC), arrayOf(type.asType()), "EMPTY_ARRAY")).createInitBuilder().string("new TagNode[0]");
+
+            type.add(new CodeVariableElement(Set.of(FINAL), type(int.class), "tags"));
+            type.add(new CodeVariableElement(Set.of(FINAL), type(short.class), "enterBci"));
+
+            type.add(createConstructorUsingFields(Set.of(), type));
+
+            compFinal(type.add(new CodeVariableElement(Set.of(), type(short.class), "leaveBci")));
+            child(type.add(new CodeVariableElement(Set.of(), arrayOf(type.asType()), "children")));
+
+            child(type.add(new CodeVariableElement(Set.of(PRIVATE, VOLATILE), types.ProbeNode, "probe")));
+            compFinal(type.add(new CodeVariableElement(Set.of(PRIVATE, VOLATILE), types.SourceSection, "sourceSection")));
+
+        }
+
+        private void create() {
+            type.add(createCreateWrapper());
+            type.add(createFindProbe());
+            type.add(createIsInstrumentable());
+            type.add(createHasTag());
+            type.add(createInsertProbe());
+            type.add(createRemoveProbe());
+            type.add(createGetSourceSection());
+            type.add(createCreateSourceSection());
+            type.add(createFindBytecodeNode());
+            type.add(createToString());
+
+            // TagTree
+            type.add(createGetTreeChildren());
+            type.add(createGetTags());
+            type.add(createGetStartBci());
+            type.add(createGetEndBci());
+
+        }
+
+        private CodeExecutableElement createGetTreeChildren() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.TagTree, "getTreeChildren");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startReturn().startStaticCall(type(List.class), "of").string("this.children").end().end();
+            return ex;
+        }
+
+        private CodeExecutableElement createGetTags() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.TagTree, "getTags");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startReturn().startStaticCall(type(List.class), "of").string("mapTagMaskToTagsArray(this.tags)").end().end();
+            return ex;
+        }
+
+        private CodeExecutableElement createGetStartBci() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.TagTree, "getStartBci");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            CodeTreeBuilder b = ex.createBuilder();
+            b.statement("return this.enterBci");
+            return ex;
+        }
+
+        private CodeExecutableElement createGetEndBci() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.TagTree, "getEndBci");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            CodeTreeBuilder b = ex.createBuilder();
+            b.statement("return this.leaveBci");
+            return ex;
+        }
+
+        private CodeExecutableElement createCreateWrapper() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "createWrapper");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            CodeTreeBuilder b = ex.createBuilder();
+            b.statement("return null");
+            return ex;
+        }
+
+        private CodeExecutableElement createFindProbe() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "findProbe");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            CodeTreeBuilder b = ex.createBuilder();
+            b.declaration(types.ProbeNode, "probe", "this.probe");
+            b.startIf().string("probe == null").end().startBlock();
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+            b.statement("this.probe = probe = insert(createProbe(getSourceSection()))");
+            b.end();
+            b.statement("return probe");
+            return ex;
+        }
+
+        private CodeExecutableElement createFindBytecodeNode() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), abstractBytecodeNode.asType(), "findBytecodeNode");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.declaration(types.Node, "current", "this");
+            b.startWhile().string("!(").instanceOf("current", abstractBytecodeNode.asType()).string(" bytecodeNode)").end().startBlock();
+            b.statement("current = current.getParent()");
+            b.end();
+
+            b.startIf().string("bytecodeNode == null").end().startBlock();
+            b.tree(GeneratorUtils.createShouldNotReachHere("Unexpected disconnected node."));
+            b.end();
+            b.statement("return bytecodeNode");
+            return ex;
+        }
+
+        private CodeExecutableElement createToString() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, FINAL), type(String.class), "toString");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startDeclaration(type(StringBuilder.class), "b").startNew(type(StringBuilder.class)).doubleQuote("Node[").end().end();
+            b.statement("b.append(String.format(\"%04x\", enterBci))");
+            b.statement("b.append(\"-\")");
+            b.statement("b.append(String.format(\"%04x\", leaveBci))");
+
+            int index = 0;
+            for (TypeMirror tag : model.getProvidedTags()) {
+                int mask = 1 << index;
+                b.startIf().string("(tags & 0x", Integer.toHexString(mask), ") != 0").end().startBlock();
+                b.statement("b.append(\", \")");
+                b.startStatement().startCall("b.append").startStaticCall(types.Tag, "getIdentifier").typeLiteral(tag).end().end().end();
+                b.end();
+                index++;
+            }
+            b.statement("b.append(\"]\")");
+            b.statement("return b.toString()");
+
+            return ex;
+        }
+
+        private CodeExecutableElement createGetSourceSection() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.Node, "getSourceSection");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.declaration(types.SourceSection, "section", "this.sourceSection");
+            b.startIf().string("section == null").end().startBlock();
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+            b.statement("this.sourceSection = section = createSourceSection()");
+            b.end();
+            b.statement("return section");
+            return ex;
+        }
+
+        private CodeExecutableElement createCreateSourceSection() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), types.SourceSection, "createSourceSection");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.declaration(abstractBytecodeNode.asType(), "bytecode", "findBytecodeNode()");
+            b.declaration(types.SourceSection, "enter", "bytecode.findSourceLocation(enterBci)");
+            b.declaration(types.SourceSection, "leave", "bytecode.findSourceLocation(leaveBci)");
+
+            b.startIf().string("enter == null").end().startBlock();
+            b.statement("return leave");
+            b.end().startElseIf().string("enter.getSource().equals(leave.getSource())").end().startBlock();
+            b.declaration(type(int.class), "start", "enter.getCharIndex()");
+            b.declaration(type(int.class), "end", "leave.getCharIndex()");
+            b.statement("return enter.getSource().createSection(start, end - start)");
+            b.end().startElseBlock();
+            b.startThrow().startNew(type(IllegalStateException.class)).doubleQuote("Invalid source section. Started in one source ended in another.").end().end();
+            b.end();
+
+            return ex;
+        }
+
+        private CodeExecutableElement createInsertProbe() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "insertProbe");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startThrow().startNew(type(UnsupportedOperationException.class)).end().end();
+            return ex;
+        }
+
+        private CodeExecutableElement createRemoveProbe() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "removeProbe");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            CodeTreeBuilder b = ex.createBuilder();
+            b.lineComment("We never remove probes.");
+            return ex;
+        }
+
+        private CodeExecutableElement createIsInstrumentable() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "isInstrumentable");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            ex.createBuilder().returnTrue();
+            return ex;
+        }
+
+        private CodeExecutableElement createHasTag() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "hasTag");
+            ex.renameArguments("tag");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+
+            CodeTreeBuilder b = ex.createBuilder();
+
+            boolean elseIf = false;
+            int index = 0;
+            for (TypeMirror tag : model.getProvidedTags()) {
+                elseIf = b.startIf(elseIf);
+                b.string("tag == ").typeLiteral(tag).end().startBlock();
+                int mask = 1 << index;
+                b.startReturn().string("(tags & 0x", Integer.toHexString(mask), ") != 0").end();
+                b.end();
+                index++;
+            }
+            b.returnFalse();
+            return ex;
+        }
+
+    }
+
+    class TagRootNodeFactory {
+
+        private CodeTypeElement type;
+
+        TagRootNodeFactory() {
+            type = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL),
+                            ElementKind.CLASS, null, "TagRootNode");
+            type.setSuperClass(types.Node);
+            child(type.add(new CodeVariableElement(Set.of(), tagNode.asType(), "root")));
+            type.add(new CodeVariableElement(Set.of(FINAL), arrayOf(tagNode.asType()), "tagNodes"));
+        }
+
+        private CodeTypeElement create() {
+            type.add(GeneratorUtils.createConstructorUsingFields(Set.of(), type));
+
+            child(type.add(new CodeVariableElement(Set.of(), types.ProbeNode, "probe")));
+            CodeExecutableElement getProbe = type.add(new CodeExecutableElement(Set.of(), types.ProbeNode, "getProbe"));
+            CodeTreeBuilder b = getProbe.createBuilder();
+            b.declaration(types.ProbeNode, "localProbe", "this.probe");
+            b.startIf().string("localProbe == null").end().startBlock();
+            b.statement("this.probe = localProbe = root.createProbe(null)");
+            b.end();
+            b.statement("return localProbe");
+
+            return type;
+        }
+
+    }
+
     class AbstractBytecodeNodeFactory {
 
         private CodeTypeElement type;
@@ -5184,6 +5650,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             type.add(new CodeVariableElement(Set.of(FINAL), generic(type(List.class), types.Source), "sources"));
             type.add(new CodeVariableElement(Set.of(FINAL), type(int.class), "numNodes"));
 
+            if (model.enableTagInstrumentation) {
+                child(type.add(new CodeVariableElement(Set.of(), tagRootNode.asType(), "tagRoot")));
+            }
+
             for (ExecutableElement superConstructor : ElementFilter.constructorsIn(ElementUtils.castTypeElement(types.BytecodeNode).getEnclosedElements())) {
                 CodeExecutableElement constructor = CodeExecutableElement.cloneNoAnnotations(superConstructor);
                 constructor.setReturnType(null);
@@ -5203,6 +5673,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
                 type.add(constructor);
                 break;
+            }
+
+            if (model.enableTagInstrumentation) {
+                type.getImplements().add(types.InstrumentableNode);
+                type.add(createInstrumentableNodeCreateWrapper());
+                type.add(createInstrumentableNodeIsInstrumentable());
+                type.add(createInstrumentableNodeFindProbe());
+                type.add(createInstrumentableNodeHasTag());
+                type.add(createInstrumentableNodeMaterializeInstrumentableNodes());
             }
 
             continueAt = type.add(new CodeExecutableElement(Set.of(ABSTRACT), type(int.class), "continueAt"));
@@ -5256,6 +5735,62 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             return type;
+        }
+
+        private CodeExecutableElement createInstrumentableNodeCreateWrapper() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "createWrapper");
+            ex.renameArguments("probe");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            CodeTreeBuilder b = ex.createBuilder();
+            b.statement("return null");
+            return ex;
+        }
+
+        private CodeExecutableElement createInstrumentableNodeIsInstrumentable() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "isInstrumentable");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            ex.createBuilder().returnTrue();
+            return ex;
+        }
+
+        private CodeExecutableElement createInstrumentableNodeFindProbe() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "findProbe");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            ex.createBuilder().statement("return this.tagRoot != null ? this.tagRoot.getProbe() : null");
+            return ex;
+        }
+
+        private CodeExecutableElement createInstrumentableNodeHasTag() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "hasTag");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            ex.createBuilder().returnFalse();
+            return ex;
+        }
+
+        private CodeExecutableElement createInstrumentableNodeMaterializeInstrumentableNodes() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "materializeInstrumentableNodes");
+            ex.renameArguments("materializedTags");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startIf().string("materializedTags.isEmpty()").end().startBlock();
+            b.statement("return this");
+            b.end();
+
+            b.declaration(types.BytecodeConfig_Builder, "b", "newConfigBuilder()");
+            b.lineComment("Sources are always needed for instrumentation.");
+            b.statement("b.addSource()");
+
+            b.startFor().type(generic(Class.class, new WildcardTypeMirror(types.Tag, null))).string(" tag : materializedTags").end().startBlock();
+            b.statement("b.addTag(tag)");
+            b.end();
+
+            b.statement("getBytecodeRootNode().getRootNodes().update(b.build())");
+            b.statement("return getRoot().bytecode");
+            return ex;
         }
 
         private CodeExecutableElement createTransitionState() {
@@ -5662,8 +6197,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
             b.end();
 
+            b.declaration(type(Object.class), "tagTree", "null");
+
+            if (model.enableTagInstrumentation) {
+                b.startIf().string("tagRoot != null").end().startBlock();
+                b.startAssign("tagTree").string("this.tagRoot.root").end();
+                b.end();
+            }
+
             b.startReturn().startNew(types.BytecodeIntrospection);
-            b.string("new Object[]{0, instructions.toArray(), exHandlersInfo, sourceData.toArray()}");
+            b.string("new Object[]{0, instructions.toArray(), exHandlersInfo, sourceData.toArray(), tagTree}");
             b.end(2);
 
             return withTruffleBoundary(ex);
@@ -5710,6 +6253,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.declaration(arrayOf(types.Node), "cachedNodes", "getCachedNodes()");
             b.declaration(arrayOf(type(int.class)), "branchProfiles", "getBranchProfiles()");
             b.declaration(types.BytecodeLocation, "location", "findLocation(bci)");
+            if (model.enableTagInstrumentation) {
+                b.declaration(arrayOf(tagNode.asType()), "tagNodes", "tagRoot != null ? tagRoot.tagNodes : null");
+            }
 
             b.startSwitch().string("operand").end().startBlock();
 
@@ -5738,6 +6284,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         case INTEGER, LOCAL_SETTER, LOCAL_SETTER_RANGE_LENGTH, LOCAL_SETTER_RANGE_START -> "INTEGER";
                         case NODE_PROFILE -> "NODE_PROFILE";
                         case BRANCH_PROFILE -> "BRANCH_PROFILE";
+                        case TAG_NODE -> "INSTRUMENT_PROFILE";
                         default -> throw new AssertionError("Unexpected kind");
                     });
                     b.doubleQuote(immediate.name());
@@ -5762,6 +6309,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             break;
                         case BRANCH_PROFILE:
                             b.string("new int[] {" + readImmediate + ", " + readBranchProfile(readImmediate + " * 2") + ", " + readBranchProfile(readImmediate + " * 2 + 1") + "}");
+                            break;
+                        case TAG_NODE:
+                            b.startGroup();
+                            b.string("tagNodes != null ? ");
+                            b.string(readInstrumentationProfile(tagNode.asType(), CodeTreeBuilder.singleString(readImmediate)));
+                            b.string(" : null");
+                            b.end();
                             break;
                         default:
                             throw new AssertionError("Unexpected kind");
@@ -5798,7 +6352,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeTypeElement create() {
-
             type = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, tier.bytecodeClassName());
             type.setSuperClass(abstractBytecodeNode.asType());
             type.addAll(createContinueAt());
@@ -5807,7 +6360,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (tier.isUncached()) {
                 type.add(GeneratorUtils.createConstructorUsingFields(Set.of(), type));
                 type.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "uncachedExecuteCount_")).createInitBuilder().string("16");
-                type.add(createLoadConstantCompiled());
             } else if (tier.isCached()) {
                 type.add(createCachedConstructor());
                 type.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE, FINAL), arrayOf(types.Node), "cachedNodes_")));
@@ -6027,6 +6579,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.statement("constants__ = constants_");
                 b.statement("handlers__ = handlers_");
                 b.statement("numNodes__ = numNodes_");
+
+                if (model.enableTagInstrumentation) {
+                    b.statement("tagRoot__ = tagRoot_");
+                }
+
             } else {
                 b.tree(GeneratorUtils.createShouldNotReachHere("The bytecode is not updatable for this node."));
             }
@@ -6035,6 +6592,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("constants__ = this.constants");
             b.statement("handlers__ = this.handlers");
             b.statement("numNodes__ = this.numNodes");
+
+            if (model.enableTagInstrumentation) {
+                b.statement("tagRoot__ = this.tagRoot");
+            }
+
             b.end();
 
             b.startIf().string("sourceInfo_ != null").end().startBlock();
@@ -6485,9 +7047,45 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("continue loop");
                         b.end();
                         break;
-                    case INSTRUMENTATION_ENTER:
-                    case INSTRUMENTATION_EXIT:
-                    case INSTRUMENTATION_LEAVE:
+                    case TAG_ENTER:
+                        b.startStatement();
+                        b.startCall(lookupTagEnter(instr).getSimpleName().toString());
+                        b.string("frame");
+                        b.string("bc").string("bci").string("sp");
+                        b.end();
+                        b.end();
+                        break;
+                    case TAG_LEAVE:
+                        if (tier.isUncached() || instr.isQuickening() || !model.usesBoxingElimination()) {
+                            b.startStatement();
+                            b.startCall(lookupTagLeave(instr).getSimpleName().toString());
+                            if (model.specializationDebugListener) {
+                                b.string("this");
+                            }
+                            b.string("frame");
+                            b.string("bc").string("bci").string("sp");
+                            b.end();
+                            b.end();
+                        } else {
+                            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                            b.startStatement();
+                            b.startCall(lookupSpecializeTagLeave(instr).getSimpleName().toString());
+                            if (model.specializationDebugListener) {
+                                b.string("this");
+                            }
+                            b.string("frame");
+                            b.string("bc").string("bci").string("sp");
+                            b.end();
+                            b.end();
+                        }
+                        break;
+                    case TAG_LEAVE_VOID:
+                        b.startStatement();
+                        b.startCall(lookupTagLeaveVoid(instr).getSimpleName().toString());
+                        b.string("frame");
+                        b.string("bc").string("bci").string("sp");
+                        b.end();
+                        b.end();
                         break;
                     case LOAD_ARGUMENT:
                         if (instr.isReturnTypeQuickening()) {
@@ -6526,7 +7124,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         break;
                     case LOAD_CONSTANT:
                         TypeMirror returnType = instr.signature.returnType;
-                        if (model.usesBoxingElimination() && !ElementUtils.isObject(returnType)) {
+                        if (tier.isUncached() || (model.usesBoxingElimination() && !ElementUtils.isObject(returnType))) {
                             b.startStatement();
                             startSetFrame(b, returnType).string("frame").string("sp");
                             b.startGroup();
@@ -6545,31 +7143,27 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("sp += 1");
                         break;
                     case POP:
-                        if (model.usesBoxingElimination()) {
-                            if (instr.isQuickening()) {
-                                b.startStatement();
-                                b.startCall(lookupDoPop(instr).getSimpleName().toString());
-                                if (model.specializationDebugListener) {
-                                    b.string("this");
-                                }
-                                b.string("frame");
-                                b.string("bc").string("bci").string("sp");
-                                b.end();
-                                b.end();
-                            } else {
-                                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                                b.startStatement();
-                                b.startCall(lookupDoSpecializePop(instr).getSimpleName().toString());
-                                if (model.specializationDebugListener) {
-                                    b.string("this");
-                                }
-                                b.string("frame");
-                                b.string("bc").string("bci").string("sp");
-                                b.end();
-                                b.end();
+                        if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
+                            b.startStatement();
+                            b.startCall(lookupDoPop(instr).getSimpleName().toString());
+                            if (model.specializationDebugListener) {
+                                b.string("this");
                             }
+                            b.string("frame");
+                            b.string("bc").string("bci").string("sp");
+                            b.end();
+                            b.end();
                         } else {
-                            b.statement(clearFrame("frame", "sp - 1"));
+                            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                            b.startStatement();
+                            b.startCall(lookupDoSpecializePop(instr).getSimpleName().toString());
+                            if (model.specializationDebugListener) {
+                                b.string("this");
+                            }
+                            b.string("frame");
+                            b.string("bc").string("bci").string("sp");
+                            b.end();
+                            b.end();
                         }
                         b.statement("sp -= 1");
                         break;
@@ -6586,102 +7180,87 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         emitReturnTopOfStack(b);
                         break;
                     case LOAD_LOCAL:
-                        if (model.usesBoxingElimination()) {
-                            if (instr.isQuickening()) {
-                                b.startStatement();
-                                b.startCall(lookupDoLoadLocal(instr).getSimpleName().toString());
-                                if (model.specializationDebugListener) {
-                                    b.string("this");
-                                }
-                                b.string("frame");
-                                if (model.enableYield) {
-                                    b.string("localFrame");
-                                }
-                                b.string("bc").string("bci").string("sp");
-
-                                b.end();
-                                b.end();
-                            } else {
-                                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                                b.startStatement();
-                                b.startCall(lookupDoSpecializeLoadLocal(instr).getSimpleName().toString());
-                                if (model.specializationDebugListener) {
-                                    b.string("this");
-                                }
-                                b.string("frame");
-                                if (model.enableYield) {
-                                    b.string("localFrame");
-                                }
-                                b.string("bc").string("bci").string("sp");
-                                b.end();
-                                b.end();
+                        if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
+                            b.startStatement();
+                            b.startCall(lookupDoLoadLocal(instr).getSimpleName().toString());
+                            if (model.specializationDebugListener) {
+                                b.string("this");
                             }
+                            b.string("frame");
+                            if (model.enableYield) {
+                                b.string("localFrame");
+                            }
+                            b.string("bc").string("bci").string("sp");
+                            b.end();
+                            b.end();
                         } else {
-                            b.statement(setFrameObject("sp", getFrameObject(localFrame(), readBc("bci + 1"))));
+                            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                            b.startStatement();
+                            b.startCall(lookupDoSpecializeLoadLocal(instr).getSimpleName().toString());
+                            if (model.specializationDebugListener) {
+                                b.string("this");
+                            }
+                            b.string("frame");
+                            if (model.enableYield) {
+                                b.string("localFrame");
+                            }
+                            b.string("bc").string("bci").string("sp");
+                            b.end();
+                            b.end();
                         }
                         b.statement("sp += 1");
                         break;
                     case LOAD_LOCAL_MATERIALIZED:
                         String materializedFrame = "((VirtualFrame) " + getFrameObject("sp - 2)");
-                        if (model.usesBoxingElimination()) {
-                            if (instr.isQuickening()) {
-                                b.startStatement();
-                                b.startCall(lookupDoLoadLocal(instr).getSimpleName().toString());
-                                if (model.specializationDebugListener) {
-                                    b.string("this");
-                                }
-                                b.string("frame").string(materializedFrame).string("bc").string("bci").string("sp");
-                                b.end();
-                                b.end();
-                            } else {
-                                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                                b.startStatement();
-                                b.startCall(lookupDoSpecializeLoadLocal(instr).getSimpleName().toString());
-                                if (model.specializationDebugListener) {
-                                    b.string("this");
-                                }
-                                b.string("frame").string(materializedFrame).string("bc").string("bci").string("sp");
-                                b.end();
-                                b.end();
+                        if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
+                            b.startStatement();
+                            b.startCall(lookupDoLoadLocal(instr).getSimpleName().toString());
+                            if (model.specializationDebugListener) {
+                                b.string("this");
                             }
+                            b.string("frame").string(materializedFrame).string("bc").string("bci").string("sp");
+                            b.end();
+                            b.end();
                         } else {
-                            b.statement(setFrameObject("sp - 1", getFrameObject("(VirtualFrame) " + getFrameObject("sp - 1"), readBc("bci + 1"))));
+                            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                            b.startStatement();
+                            b.startCall(lookupDoSpecializeLoadLocal(instr).getSimpleName().toString());
+                            if (model.specializationDebugListener) {
+                                b.string("this");
+                            }
+                            b.string("frame").string(materializedFrame).string("bc").string("bci").string("sp");
+                            b.end();
+                            b.end();
                         }
                         break;
                     case STORE_LOCAL:
-                        if (model.usesBoxingElimination()) {
-                            if (instr.isQuickening()) {
-                                b.startStatement();
-                                b.startCall(lookupDoStoreLocal(instr).getSimpleName().toString());
-                                if (model.specializationDebugListener) {
-                                    b.string("this");
-                                }
-                                b.string("frame");
-                                if (model.enableYield) {
-                                    b.string("localFrame");
-                                }
-                                b.string("bc").string("bci").string("sp");
-                                b.end();
-                                b.end();
-                            } else {
-                                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                                b.startStatement();
-                                b.startCall(lookupDoSpecializeStoreLocal(instr).getSimpleName().toString());
-                                if (model.specializationDebugListener) {
-                                    b.string("this");
-                                }
-                                b.string("frame");
-                                if (model.enableYield) {
-                                    b.string("localFrame");
-                                }
-                                b.string("bc").string("bci").string("sp");
-                                startGetFrameUnsafe(b, "frame", type(Object.class)).string("sp - 1").end();
-                                b.end();
-                                b.end();
-                            }
-                        } else {
+                        if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
                             b.startStatement();
-                            startSetFrame(b, type(Object.class)).string(localFrame()).string(readBc("bci + 1")).string(getFrameObject("sp - 1")).end();
+                            b.startCall(lookupDoStoreLocal(instr).getSimpleName().toString());
+                            if (model.specializationDebugListener) {
+                                b.string("this");
+                            }
+                            b.string("frame");
+                            if (model.enableYield) {
+                                b.string("localFrame");
+                            }
+                            b.string("bc").string("bci").string("sp");
+                            b.end();
+                            b.end();
+                        } else {
+                            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                            b.startStatement();
+                            b.startCall(lookupDoSpecializeStoreLocal(instr).getSimpleName().toString());
+                            if (model.specializationDebugListener) {
+                                b.string("this");
+                            }
+                            b.string("frame");
+                            if (model.enableYield) {
+                                b.string("localFrame");
+                            }
+                            b.string("bc").string("bci").string("sp");
+                            startGetFrameUnsafe(b, "frame", type(Object.class)).string("sp - 1").end();
+                            b.end();
                             b.end();
                         }
                         b.statement(clearFrame("frame", "sp - 1"));
@@ -6690,32 +7269,26 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case STORE_LOCAL_MATERIALIZED:
                         materializedFrame = "((VirtualFrame) " + getFrameObject("sp - 2)");
 
-                        if (model.usesBoxingElimination()) {
-                            if (instr.isQuickening()) {
-                                b.startStatement();
-                                b.startCall(lookupDoStoreLocal(instr).getSimpleName().toString());
-                                if (model.specializationDebugListener) {
-                                    b.string("this");
-                                }
-                                b.string("frame").string(materializedFrame).string("bc").string("bci").string("sp");
-                                b.end();
-                                b.end();
-                            } else {
-                                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                                b.startStatement();
-                                b.startCall(lookupDoSpecializeStoreLocal(instr).getSimpleName().toString());
-                                if (model.specializationDebugListener) {
-                                    b.string("this");
-                                }
-                                b.string("frame").string(materializedFrame).string("bc").string("bci").string("sp");
-                                startGetFrameUnsafe(b, localFrame(), type(Object.class)).string("sp - 1").end();
-                                b.end();
-                                b.end();
+                        if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
+                            b.startStatement();
+                            b.startCall(lookupDoStoreLocal(instr).getSimpleName().toString());
+                            if (model.specializationDebugListener) {
+                                b.string("this");
                             }
+                            b.string("frame").string(materializedFrame).string("bc").string("bci").string("sp");
+                            b.end();
+                            b.end();
                         } else {
-                            b.statement(materializedFrame + ".setObject(" + readBc("bci + 1") + ", " + getFrameObject("sp - 1") + ")");
-                            b.statement(clearFrame("frame", "sp - 1"));
-                            b.statement(clearFrame("frame", "sp - 2"));
+                            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                            b.startStatement();
+                            b.startCall(lookupDoSpecializeStoreLocal(instr).getSimpleName().toString());
+                            if (model.specializationDebugListener) {
+                                b.string("this");
+                            }
+                            b.string("frame").string(materializedFrame).string("bc").string("bci").string("sp");
+                            startGetFrameUnsafe(b, localFrame(), type(Object.class)).string("sp - 1").end();
+                            b.end();
+                            b.end();
                         }
 
                         b.statement("sp -= 2");
@@ -6724,7 +7297,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         if (!model.usesBoxingElimination()) {
                             throw new AssertionError("Merge.conditional only supports boxing elimination enabled.");
                         }
-                        if (instr.isQuickening()) {
+                        if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
                             b.startStatement();
                             b.startCall(lookupDoMergeConditional(instr).getSimpleName().toString());
                             if (model.specializationDebugListener) {
@@ -6784,7 +7357,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement(setFrameObject("sp - 1", "mergeVariadic((Object[]) " + getFrameObject("sp - 1") + ")"));
                         break;
                     case INVALIDATE:
-                        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                        if (tier.isCached()) {
+                            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                        }
                         b.startReturn().string("(sp << 16) | bci").end();
                         break;
                     case CUSTOM:
@@ -6938,6 +7513,207 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             results.addAll(doInstructionMethods.values());
             return results;
+        }
+
+        private CodeExecutableElement lookupTagEnter(InstructionModel instr) {
+            CodeExecutableElement method = doInstructionMethods.get(instr);
+            if (method != null) {
+                return method;
+            }
+            method = new CodeExecutableElement(
+                            Set.of(PRIVATE),
+                            type(void.class), instructionMethodName(instr),
+                            new CodeVariableElement(types.VirtualFrame, "frame"),
+                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(int.class), "bci"),
+                            new CodeVariableElement(type(int.class), "sp"));
+
+            method.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_InliningCutoff));
+
+            CodeTreeBuilder b = method.createBuilder();
+            InstructionImmediate imm = instr.getImmediate(ImmediateKind.TAG_NODE);
+            b.startDeclaration(tagNode.asType(), "tagNode");
+            b.string(readInstrumentationProfile(tagNode.asType(), CodeTreeBuilder.singleString(readBc("bci + " + imm.offset()))));
+            b.end();
+            b.statement("tagNode.findProbe().onEnter(frame)");
+
+            doInstructionMethods.put(instr, method);
+            return method;
+
+        }
+
+        private CodeExecutableElement lookupTagLeaveVoid(InstructionModel instr) {
+            CodeExecutableElement method = doInstructionMethods.get(instr);
+            if (method != null) {
+                return method;
+            }
+            method = new CodeExecutableElement(
+                            Set.of(PRIVATE),
+                            type(void.class), instructionMethodName(instr),
+                            new CodeVariableElement(types.VirtualFrame, "frame"),
+                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(int.class), "bci"),
+                            new CodeVariableElement(type(int.class), "sp"));
+
+            method.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_InliningCutoff));
+
+            CodeTreeBuilder b = method.createBuilder();
+            InstructionImmediate imm = instr.getImmediate(ImmediateKind.TAG_NODE);
+            b.startDeclaration(tagNode.asType(), "tagNode");
+            b.string(readInstrumentationProfile(tagNode.asType(), CodeTreeBuilder.singleString(readBc("bci + " + imm.offset()))));
+            b.end();
+            b.statement("tagNode.findProbe().onReturnValue(frame, null)");
+
+            doInstructionMethods.put(instr, method);
+            return method;
+
+        }
+
+        private CodeExecutableElement lookupTagLeave(InstructionModel instr) {
+            CodeExecutableElement method = doInstructionMethods.get(instr);
+            if (method != null) {
+                return method;
+            }
+
+            method = new CodeExecutableElement(
+                            Set.of(PRIVATE),
+                            type(void.class), instructionMethodName(instr),
+                            new CodeVariableElement(types.VirtualFrame, "frame"),
+                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(int.class), "bci"),
+                            new CodeVariableElement(type(int.class), "sp"));
+
+            boolean isMaterialized = instr.kind == InstructionKind.LOAD_LOCAL_MATERIALIZED;
+            if (isMaterialized) {
+                method.getParameters().add(0, new CodeVariableElement(types.Frame, "stackFrame"));
+            }
+
+            if (model.specializationDebugListener) {
+                method.getParameters().add(0, new CodeVariableElement(abstractBytecodeNode.asType(), "$this"));
+            }
+
+            CodeTreeBuilder b = method.createBuilder();
+            TypeMirror inputType = instr.specializedType == null ? instr.signature.getSpecializedType(0) : instr.specializedType;
+            TypeMirror returnType = instr.signature.returnType;
+
+            boolean isSpecialized = instr.specializedType != null;
+
+            b.declaration(inputType, "returnValue");
+            if (isSpecialized) {
+                b.startTryBlock();
+            }
+            b.startAssign("returnValue");
+            if (isSpecialized) {
+                startExpectFrameUnsafe(b, "frame", inputType);
+            } else {
+                startRequireFrame(b, inputType);
+                b.string("frame");
+            }
+            b.string("sp - 1");
+            b.end();
+            b.end(); // declaration
+
+            if (isSpecialized) {
+                b.end().startCatchBlock(types.UnexpectedResultException, "ex");
+
+                b.startReturn().startCall(lookupSpecializeTagLeave(instr.getQuickeningRoot()).getSimpleName().toString());
+                if (model.specializationDebugListener) {
+                    b.string("$this");
+                }
+                b.string("frame").string("bc").string("bci").string("sp");
+                b.end().end();
+            }
+
+            b.end();
+
+            InstructionImmediate imm = instr.getImmediate(ImmediateKind.TAG_NODE);
+            b.startDeclaration(tagNode.asType(), "tagNode");
+            b.string(readInstrumentationProfile(tagNode.asType(), CodeTreeBuilder.singleString(readBc("bci + " + imm.offset()))));
+            b.end();
+            b.statement("tagNode.findProbe().onReturnValue(frame, returnValue)");
+
+            if (isSpecialized && !ElementUtils.typeEquals(inputType, returnType)) {
+                b.startStatement();
+                startSetFrame(b, returnType).string("frame").string("sp - 1").string("returnValue").end();
+                b.end();
+            }
+
+            doInstructionMethods.put(instr, method);
+            return method;
+
+        }
+
+        private CodeExecutableElement lookupSpecializeTagLeave(InstructionModel instr) {
+            CodeExecutableElement method = doInstructionMethods.get(instr);
+            if (method != null) {
+                return method;
+            }
+            method = new CodeExecutableElement(
+                            Set.of(PRIVATE),
+                            type(void.class), instructionMethodName(instr),
+                            new CodeVariableElement(types.VirtualFrame, "frame"),
+                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(int.class), "bci"),
+                            new CodeVariableElement(type(int.class), "sp"));
+
+            if (model.specializationDebugListener) {
+                method.getParameters().add(0, new CodeVariableElement(type.getSuperclass(), "$this"));
+            }
+
+            Map<TypeMirror, InstructionModel> typeToSpecialization = new LinkedHashMap<>();
+            List<InstructionModel> specializations = instr.quickenedInstructions;
+            InstructionModel genericInstruction = null;
+            for (InstructionModel specialization : specializations) {
+                if (model.isBoxingEliminated(specialization.specializedType)) {
+                    typeToSpecialization.put(specialization.specializedType, specialization);
+                } else if (specialization.specializedType == null) {
+                    genericInstruction = specialization;
+                }
+            }
+
+            CodeTreeBuilder b = method.createBuilder();
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+
+            b.declaration(type(short.class), "newInstruction");
+            b.declaration(type(short.class), "newOperand");
+            b.declaration(type(int.class), "operandIndex", readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
+            b.declaration(type(short.class), "operand", readInstruction("bc", "operandIndex"));
+
+            b.startStatement();
+            b.type(type(Object.class)).string(" value = ");
+            startRequireFrame(b, type(Object.class)).string("frame").string("sp - 1").end();
+            b.end();
+
+            boolean elseIf = false;
+            for (var entry : typeToSpecialization.entrySet()) {
+                TypeMirror typeGroup = entry.getKey();
+                elseIf = b.startIf(elseIf);
+                b.string("value instanceof ").type(ElementUtils.boxType(typeGroup)).string(" && ");
+                b.newLine().string("     (newOperand = ").startCall(createApplyQuickeningName(typeGroup)).string("operand").end().string(") != -1");
+                b.end().startBlock();
+
+                InstructionModel specialization = entry.getValue();
+                b.startStatement().string("newInstruction = ").tree(createInstructionConstant(specialization)).end();
+                b.end(); // else block
+                b.end(); // if block
+            }
+
+            b.startElseBlock(elseIf);
+            b.statement("newOperand = undoQuickening(operand)");
+            b.startStatement().string("newInstruction = ").tree(createInstructionConstant(genericInstruction)).end();
+            b.end();
+
+            emitQuickeningOperand(b, "$this", "bc", "bci", null, 0, "operandIndex", "operand", "newOperand");
+            emitQuickening(b, "$this", "bc", "bci", null, "newInstruction");
+
+            InstructionImmediate imm = instr.getImmediate(ImmediateKind.TAG_NODE);
+            b.startDeclaration(tagNode.asType(), "tagNode");
+            b.string(readInstrumentationProfile(tagNode.asType(), CodeTreeBuilder.singleString(readBc("bci + " + imm.offset()))));
+            b.end();
+            b.statement("tagNode.findProbe().onReturnValue(frame, value)");
+
+            doInstructionMethods.put(instr, method);
+            return method;
         }
 
         private CodeExecutableElement lookupDoPop(InstructionModel instr) {
@@ -7373,24 +8149,29 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             final TypeMirror returnType = instr.signature.returnType;
 
             CodeTreeBuilder b = method.createBuilder();
-            b.declaration(inputType, "value");
-            b.startTryBlock();
-            b.startStatement();
-            b.string("value = ");
-            startExpectFrameUnsafe(b, "frame", inputType).string("sp - 1").end();
-            b.end();
 
-            b.end().startCatchBlock(types.UnexpectedResultException, "ex");
+            if (tier.isCached() && model.usesBoxingElimination()) {
+                b.declaration(inputType, "value");
+                b.startTryBlock();
+                b.startStatement();
+                b.string("value = ");
+                startExpectFrameUnsafe(b, "frame", inputType).string("sp - 1").end();
+                b.end();
+                b.end().startCatchBlock(types.UnexpectedResultException, "ex");
+                b.startStatement().startCall(lookupDoSpecializeMergeConditional(instr.getQuickeningRoot()).getSimpleName().toString());
+                if (model.specializationDebugListener) {
+                    b.string("$this");
+                }
+                b.string("frame").string("bc").string("bci").string("sp").string("ex.getResult()");
+                b.end().end();
 
-            b.startStatement().startCall(lookupDoSpecializeMergeConditional(instr.getQuickeningRoot()).getSimpleName().toString());
-            if (model.specializationDebugListener) {
-                b.string("$this");
+                b.returnDefault();
+                b.end(); // catch block
+            } else {
+                b.startDeclaration(inputType, "value");
+                startRequireFrame(b, inputType).string("frame").string("sp - 1").end();
+                b.end();
             }
-            b.string("frame").string("bc").string("bci").string("sp").string("ex.getResult()");
-            b.end().end();
-
-            b.returnDefault();
-            b.end(); // catch block
 
             b.startStatement();
             startSetFrame(b, returnType).string("frame").string("sp - 2").string("value").end();
@@ -7541,28 +8322,32 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             CodeTreeBuilder b = method.createBuilder();
 
-            b.declaration(inputType, "local");
-            b.startTryBlock();
-
-            b.startStatement().string("local = ");
             String stackFrame = needsStackFrame ? "stackFrame" : "frame";
-            startExpectFrameUnsafe(b, stackFrame, inputType).string("sp - 1").end();
-            b.end();
+            if (tier.isCached() && model.usesBoxingElimination()) {
+                b.declaration(inputType, "local");
+                b.startTryBlock();
+                b.startStatement().string("local = ");
+                startExpectFrameUnsafe(b, stackFrame, inputType).string("sp - 1").end();
+                b.end();
 
-            b.end().startCatchBlock(types.UnexpectedResultException, "ex");
+                b.end().startCatchBlock(types.UnexpectedResultException, "ex");
+                b.startStatement().startCall(lookupDoSpecializeStoreLocal(instr.getQuickeningRoot()).getSimpleName().toString());
+                if (model.specializationDebugListener) {
+                    b.string("$this");
+                }
+                if (needsStackFrame) {
+                    b.string("stackFrame");
+                }
+                b.string("frame").string("bc").string("bci").string("sp").string("ex.getResult()");
+                b.end().end();
 
-            b.startStatement().startCall(lookupDoSpecializeStoreLocal(instr.getQuickeningRoot()).getSimpleName().toString());
-            if (model.specializationDebugListener) {
-                b.string("$this");
+                b.returnDefault();
+                b.end(); // catch block
+            } else {
+                b.startDeclaration(inputType, "local");
+                startRequireFrame(b, inputType).string(stackFrame).string("sp - 1").end();
+                b.end();
             }
-            if (needsStackFrame) {
-                b.string("stackFrame");
-            }
-            b.string("frame").string("bc").string("bci").string("sp").string("ex.getResult()");
-            b.end().end();
-
-            b.returnDefault();
-            b.end(); // catch block
 
             boolean generic = ElementUtils.typeEquals(type(Object.class), inputType);
 
@@ -8391,6 +9176,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return fld;
     }
 
+    private CodeVariableElement child(CodeVariableElement fld) {
+        CodeAnnotationMirror mir = new CodeAnnotationMirror(fld.asType().getKind() == TypeKind.ARRAY ? types.Node_Children : types.Node_Child);
+        fld.addAnnotationMirror(mir);
+        return fld;
+    }
+
     private void emitFence(CodeTreeBuilder b) {
         b.startStatement().startStaticCall(context.getType(VarHandle.class), "storeStoreFence").end(2);
     }
@@ -8481,6 +9272,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     private static String readBranchProfile(String index) {
         return String.format("branchProfiles == null ? 0 : ACCESS.intArrayRead(branchProfiles, %s)", index);
+    }
+
+    private static String readInstrumentationProfile(TypeMirror expectedType, CodeTree index) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.startCall("ACCESS.cast");
+        b.startCall("ACCESS.objectArrayRead");
+        b.string("tagRoot.tagNodes");
+        b.tree(index);
+        b.end();
+        b.typeLiteral(expectedType);
+        b.end();
+        return b.toString();
     }
 
     private static String readNodeProfile(TypeMirror expectedType, CodeTree index) {

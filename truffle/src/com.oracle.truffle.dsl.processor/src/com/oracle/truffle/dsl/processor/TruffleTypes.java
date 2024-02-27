@@ -132,6 +132,7 @@ public class TruffleTypes {
     public static final String FinalBitSet_Name = "com.oracle.truffle.api.utilities.FinalBitSet";
     public static final String HostCompilerDirectives_Name = "com.oracle.truffle.api.HostCompilerDirectives";
     public static final String HostCompilerDirectives_BytecodeInterpreterSwitch_Name = "com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch";
+    public static final String HostCompilerDirectives_InliningCutoff_Name = "com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff";
 
     public static final String InternalResource_Name = "com.oracle.truffle.api.InternalResource";
     public static final String InternalResource_Id_Name = "com.oracle.truffle.api.InternalResource.Id";
@@ -190,6 +191,7 @@ public class TruffleTypes {
     public final DeclaredType FinalBitSet = c.getDeclaredType(FinalBitSet_Name);
     public final DeclaredType HostCompilerDirectives = c.getDeclaredType(HostCompilerDirectives_Name);
     public final DeclaredType HostCompilerDirectives_BytecodeInterpreterSwitch = c.getDeclaredType(HostCompilerDirectives_BytecodeInterpreterSwitch_Name);
+    public final DeclaredType HostCompilerDirectives_InliningCutoff = c.getDeclaredType(HostCompilerDirectives_InliningCutoff_Name);
     public final DeclaredType InternalResource = c.getDeclaredType(InternalResource_Name);
     public final DeclaredType InternalResource_Id = c.getDeclaredType(InternalResource_Id_Name);
     public final DeclaredType InvalidAssumptionException = c.getDeclaredType(InvalidAssumptionException_Name);
@@ -350,7 +352,6 @@ public class TruffleTypes {
     public static final String BytecodeConfig_Name = "com.oracle.truffle.api.bytecode.BytecodeConfig";
     public static final String BytecodeConfig_Builder_Name = "com.oracle.truffle.api.bytecode.BytecodeConfig.Builder";
     public static final String BytecodeConfigEncoder_Name = "com.oracle.truffle.api.bytecode.BytecodeConfigEncoder";
-    public static final String BytecodeInstrumentTreeNode_Name = "com.oracle.truffle.api.bytecode.BytecodeInstrumentTreeNode";
     public static final String BytecodeLabel_Name = "com.oracle.truffle.api.bytecode.BytecodeLabel";
     public static final String BytecodeLocal_Name = "com.oracle.truffle.api.bytecode.BytecodeLocal";
     public static final String BytecodeParser_Name = "com.oracle.truffle.api.bytecode.BytecodeParser";
@@ -377,14 +378,12 @@ public class TruffleTypes {
     public static final String Prolog_Name = "com.oracle.truffle.api.bytecode.Prolog";
     public static final String ShortCircuitOperation_Name = "com.oracle.truffle.api.bytecode.ShortCircuitOperation";
     public static final String Variadic_Name = "com.oracle.truffle.api.bytecode.Variadic";
-
-    public static final String InstrumentRootNode_Name = "com.oracle.truffle.api.bytecode.instrumentation.InstrumentRootNode";
-    public static final String InstrumentTreeNode_Name = "com.oracle.truffle.api.bytecode.instrumentation.InstrumentTreeNode";
+    public static final String Instrumentation_Name = "com.oracle.truffle.api.bytecode.Instrumentation";
 
     public static final String Argument_ArgumentType_Name = "com.oracle.truffle.api.bytecode.introspection.Argument.ArgumentType";
     public static final String BytecodeIntrospection_Name = "com.oracle.truffle.api.bytecode.introspection.BytecodeIntrospection";
     public static final String Instruction_Name = "com.oracle.truffle.api.bytecode.introspection.Instruction";
-    public static final String Instrumentation_Name = "com.oracle.truffle.api.bytecode.Instrumentation";
+    public static final String TagTree_Name = "com.oracle.truffle.api.bytecode.introspection.TagTree";
 
     public static final String BytecodeSerializer_Name = "com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer";
     public static final String BytecodeSerializer_SerializerContext_Name = "com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer.SerializerContext";
@@ -401,7 +400,6 @@ public class TruffleTypes {
     public final DeclaredType BytecodeConfig = c.getDeclaredTypeOptional(BytecodeConfig_Name);
     public final DeclaredType BytecodeConfigEncoder = c.getDeclaredTypeOptional(BytecodeConfigEncoder_Name);
     public final DeclaredType BytecodeConfig_Builder = c.getDeclaredTypeOptional(BytecodeConfig_Builder_Name);
-    public final DeclaredType BytecodeInstrumentTreeNode = c.getDeclaredTypeOptional(BytecodeInstrumentTreeNode_Name);
     public final DeclaredType BytecodeLabel = c.getDeclaredTypeOptional(BytecodeLabel_Name);
     public final DeclaredType BytecodeLocal = c.getDeclaredTypeOptional(BytecodeLocal_Name);
     public final DeclaredType BytecodeParser = c.getDeclaredTypeOptional(BytecodeParser_Name);
@@ -428,14 +426,12 @@ public class TruffleTypes {
     public final DeclaredType OperationProxy_Proxyable = c.getDeclaredTypeOptional(OperationProxy_Proxyable_Name);
     public final DeclaredType ShortCircuitOperation = c.getDeclaredTypeOptional(ShortCircuitOperation_Name);
     public final DeclaredType Variadic = c.getDeclaredTypeOptional(Variadic_Name);
-
-    public final DeclaredType InstrumentRootNode = c.getDeclaredTypeOptional(InstrumentRootNode_Name);
-    public final DeclaredType InstrumentTreeNode = c.getDeclaredTypeOptional(InstrumentTreeNode_Name);
+    public final DeclaredType Instrumentation = c.getDeclaredTypeOptional(Instrumentation_Name);
 
     public final DeclaredType Argument_ArgumentType = c.getDeclaredTypeOptional(Argument_ArgumentType_Name);
     public final DeclaredType BytecodeIntrospection = c.getDeclaredTypeOptional(BytecodeIntrospection_Name);
     public final DeclaredType Instruction = c.getDeclaredTypeOptional(Instruction_Name);
-    public final DeclaredType Instrumentation = c.getDeclaredTypeOptional(Instrumentation_Name);
+    public final DeclaredType TagTree = c.getDeclaredTypeOptional(TagTree_Name);
 
     public final DeclaredType BytecodeSerializer = c.getDeclaredTypeOptional(BytecodeSerializer_Name);
     public final DeclaredType BytecodeSerializer_SerializerContext = c.getDeclaredTypeOptional(BytecodeSerializer_SerializerContext_Name);
@@ -502,6 +498,9 @@ public class TruffleTypes {
     public static final String TruffleInstrumentProvider_Name = "com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider";
     public static final String TruffleInstrument_Registration_Name = "com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration";
 
+    public static final String StandardTags_RootTag_Name = "com.oracle.truffle.api.instrumentation.StandardTags.RootTag";
+    public static final String StandardTags_RootBodyTag_Name = "com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag";
+
     /*
      * Instrumentation types may not be available when compiling instrumentation itself.
      */
@@ -518,6 +517,8 @@ public class TruffleTypes {
     public final DeclaredType TruffleInstrument = c.getDeclaredTypeOptional(TruffleInstrument_Name);
     public final DeclaredType TruffleInstrumentProvider = c.getDeclaredTypeOptional(TruffleInstrumentProvider_Name);
     public final DeclaredType TruffleInstrument_Registration = c.getDeclaredTypeOptional(TruffleInstrument_Registration_Name);
+    public final DeclaredType StandardTags_RootTag = c.getDeclaredTypeOptional(StandardTags_RootTag_Name);
+    public final DeclaredType StandardTags_RootBodyTag = c.getDeclaredTypeOptional(StandardTags_RootBodyTag_Name);
 
     // OM API
     public static final String DynamicObjectFactory_Name = "com.oracle.truffle.api.object.DynamicObjectFactory";

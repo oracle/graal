@@ -136,7 +136,7 @@ public class SetTraceFuncTest extends AbstractQuickeningTest {
                     boxingEliminationTypes = {long.class, int.class, boolean.class})
     public abstract static class SetTraceFuncRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
-        private static final BytecodeConfig TRACE_FUN = SetTraceFuncRootNodeGen.newConfigBuilder().addInstrumentations(TraceFun.class).build();
+        private static final BytecodeConfig TRACE_FUN = SetTraceFuncRootNodeGen.newConfigBuilder().addInstrumentation(TraceFun.class).build();
 
         protected SetTraceFuncRootNode(TruffleLanguage<?> language,
                         FrameDescriptor frameDescriptor) {
