@@ -729,12 +729,11 @@ public class PolyglotIsolate {
 }
 ```
 
-Currently, we support the following languages as polyglot isolates:
+Currently, the following languages are available as polyglot isolates:
 
-| Language.                                     | Polyglot Isolate Support                         |
-|-----------------------------------------------|--------------------------------------------------|
-| JavaScript (`js-isolate`)                     | Supported starting from version 23.1             |
-
+| Language                      | Available from |
+|-------------------------------|----------------|
+| JavaScript (`js-isolate`)     | 23.1           |
 
 We plan to add support for more languages in future versions.
 
