@@ -294,7 +294,9 @@ public class InstrumentationTest extends AbstractQuickeningTest {
             b.emitLoadConstant((Consumer<ThreadLocalData>) (d) -> {
                 assertEquals(2, d.events.size());
                 assertEquals(InstrumentationDecrement.class, d.events.get(0));
+                assertEquals(3, d.operands.get(0));
                 assertEquals(InstrumentationDecrement.class, d.events.get(1));
+                assertEquals(1, d.operands.get(1));
             });
             b.endRunAsserts();
 
@@ -322,16 +324,14 @@ public class InstrumentationTest extends AbstractQuickeningTest {
 
         @Operation
         static final class EnableInstrumentation {
-
             @Specialization
             @TruffleBoundary
             public static void doDefault(Class<?> instrumentationClass,
                             @Bind("$location") BytecodeLocation location) {
 
-                location.getBytecodeNode().getBytecodeRootNode().getRootNodes().update(InstrumentationTestRootNodeGen.newConfigBuilder().addInstrumentations(instrumentationClass).build());
+                location.getBytecodeNode().getBytecodeRootNode().getRootNodes().update(InstrumentationTestRootNodeGen.newConfigBuilder().addInstrumentation(instrumentationClass).build());
 
             }
-
         }
 
         @Operation
@@ -373,7 +373,7 @@ public class InstrumentationTest extends AbstractQuickeningTest {
             @Specialization
             public static void doDefault(@Bind("$root") InstrumentationTestRootNode root) {
                 root.getLanguage(BytecodeInstrumentationTestLanguage.class).threadLocal.get().add(PointInstrumentationRecursive1.class, null);
-                root.getRootNodes().update(InstrumentationTestRootNodeGen.newConfigBuilder().addInstrumentations(PointInstrumentation1.class).build());
+                root.getRootNodes().update(InstrumentationTestRootNodeGen.newConfigBuilder().addInstrumentation(PointInstrumentation1.class).build());
             }
 
         }
@@ -387,7 +387,7 @@ public class InstrumentationTest extends AbstractQuickeningTest {
                 tl.add(PointInstrumentationRecursive2.class, null);
 
                 if (tl.pointInstrumentationRecursive2Counter <= 0) {
-                    root.getRootNodes().update(InstrumentationTestRootNodeGen.newConfigBuilder().addInstrumentations(PointInstrumentation2.class).build());
+                    root.getRootNodes().update(InstrumentationTestRootNodeGen.newConfigBuilder().addInstrumentation(PointInstrumentation2.class).build());
                 }
                 tl.pointInstrumentationRecursive2Counter--;
             }
@@ -410,7 +410,7 @@ public class InstrumentationTest extends AbstractQuickeningTest {
             @Specialization
             public static int doInt(int operand, @Bind("$root") InstrumentationTestRootNode root) {
                 if (operand == 4) {
-                    root.getRootNodes().update(InstrumentationTestRootNodeGen.newConfigBuilder().addInstrumentations(InstrumentationDecrement.class).build());
+                    root.getRootNodes().update(InstrumentationTestRootNodeGen.newConfigBuilder().addInstrumentation(InstrumentationDecrement.class).build());
                 }
                 return operand - 1;
             }

@@ -45,12 +45,13 @@ import java.util.Objects;
 import java.util.function.Predicate;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.bytecode.introspection.BytecodeIntrospection;
 import com.oracle.truffle.api.bytecode.introspection.ExceptionHandler;
 import com.oracle.truffle.api.bytecode.introspection.Instruction;
 import com.oracle.truffle.api.bytecode.introspection.SourceInformation;
+import com.oracle.truffle.api.bytecode.introspection.TagTree;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.Node;
@@ -107,7 +108,7 @@ public abstract class BytecodeNode extends Node {
     }
 
     /**
-     * Gets the bytecode location associated with a {@code bci}. This method should only be used if
+     * Gets the bytecode location associated with a {@code bci}. This method must only be used if
      * the {@code bci} was obtained while executing this bytecode node.
      *
      * @param bci the bytecode index
@@ -240,6 +241,7 @@ public abstract class BytecodeNode extends Node {
                             instructions(%s) = %s
                             exceptionHandlers(%s) = %s
                             sourceInformation(%s) = %s
+                            tagTree%s
                         ]""",
                         getClass().getSimpleName(),
                         ((RootNode) getParent()).getQualifiedName(),
@@ -248,7 +250,8 @@ public abstract class BytecodeNode extends Node {
                         exceptions.size(),
                         formatList(exceptions, (e) -> highlightedBci >= e.getStartIndex() && highlightedBci < e.getEndIndex()),
                         sourceInformation != null ? sourceInformation.size() : "-",
-                        formatList(sourceInformation, (s) -> highlightedBci >= s.getStartBci() && highlightedBci < s.getEndBci()));
+                        formatList(sourceInformation, (s) -> highlightedBci >= s.getStartBci() && highlightedBci < s.getEndBci()),
+                        formatTagTree(id.getTagTree(), (s) -> highlightedBci >= s.getStartBci() && highlightedBci <= s.getEndBci()));
     }
 
     private static <T> String formatList(List<T> list, Predicate<T> highlight) {
@@ -267,6 +270,38 @@ public abstract class BytecodeNode extends Node {
             b.append(o.toString());
         }
         return b.toString();
+    }
+
+    private static String formatTagTree(TagTree tree, Predicate<TagTree> highlight) {
+        if (tree == null) {
+            return "Not Available";
+        } else if (tree.getTreeChildren().isEmpty()) {
+            return "Empty";
+        }
+        StringBuilder b = new StringBuilder();
+        int count = appendTagTree(b, 0, tree, highlight);
+        b.insert(0, "(" + count + ") = ");
+        return b.toString();
+    }
+
+    private static int appendTagTree(StringBuilder b, int spaces, TagTree tree, Predicate<TagTree> highlight) {
+        b.append("\n");
+        if (highlight.test(tree)) {
+            b.append("    ==> ");
+        } else {
+            b.append("        ");
+        }
+        for (int i = 0; i < spaces; i++) {
+            b.append(" ");
+        }
+
+        b.append(tree.toString());
+
+        int count = 1;
+        for (TagTree child : tree.getTreeChildren()) {
+            count += appendTagTree(b, spaces + 2, child, highlight);
+        }
+        return count;
     }
 
     /**

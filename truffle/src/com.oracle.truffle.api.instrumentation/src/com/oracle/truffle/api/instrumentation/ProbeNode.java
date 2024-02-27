@@ -166,6 +166,18 @@ public final class ProbeNode extends Node {
         ASSERT_ENTER_RETURN_PARITY = assertsOn;
     }
 
+    ProbeNode(InstrumentableNode node, SourceSection sourceSection) {
+        this(findInstrumentationHandler(node), sourceSection);
+    }
+
+    private static InstrumentationHandler findInstrumentationHandler(InstrumentableNode node) {
+        RootNode root = ((Node) node).getRootNode();
+        if (root == null) {
+            throw new IllegalArgumentException("Unadopted nodes cannot be used to create probes.");
+        }
+        return (InstrumentationHandler) InstrumentAccessor.ENGINE.getInstrumentationHandler(root);
+    }
+
     /** Instantiated by the instrumentation framework. */
     ProbeNode(InstrumentationHandler handler, SourceSection sourceSection) {
         this.handler = handler;

@@ -60,9 +60,9 @@ public final class InstructionModel implements PrettyPrintable {
         POP,
         DUP,
         TRAP,
-        INSTRUMENTATION_ENTER,
-        INSTRUMENTATION_EXIT,
-        INSTRUMENTATION_LEAVE,
+        TAG_ENTER,
+        TAG_LEAVE,
+        TAG_LEAVE_VOID,
         LOAD_ARGUMENT,
         LOAD_CONSTANT,
         LOAD_LOCAL,
@@ -93,6 +93,7 @@ public final class InstructionModel implements PrettyPrintable {
         LOCAL_SETTER_RANGE_START("setter_range_start"),
         LOCAL_SETTER_RANGE_LENGTH("setter_range_length"),
         NODE_PROFILE("node"),
+        TAG_NODE("probe"),
         BRANCH_PROFILE("profile");
 
         final String shortName;
@@ -322,9 +323,8 @@ public final class InstructionModel implements PrettyPrintable {
 
     public boolean isInstrumentationOnly() {
         switch (kind) {
-            case INSTRUMENTATION_ENTER:
-            case INSTRUMENTATION_EXIT:
-            case INSTRUMENTATION_LEAVE:
+            case TAG_ENTER:
+            case TAG_LEAVE:
                 return true;
             default:
                 return false;
@@ -394,8 +394,10 @@ public final class InstructionModel implements PrettyPrintable {
 
     public InstructionImmediate getImmediate(ImmediateKind immediateKind) {
         List<InstructionImmediate> filteredImmediates = getImmediates(immediateKind);
-        if (filteredImmediates.size() != 1) {
-            throw new AssertionError("Too many immediates of kind " + immediateKind + ". Use getImmediates() instead.");
+        if (filteredImmediates.isEmpty()) {
+            return null;
+        } else if (filteredImmediates.size() > 1) {
+            throw new AssertionError("Too many immediates of kind " + immediateKind + ". Use getImmediates() instead. Found immediates: " + filteredImmediates);
         }
         return filteredImmediates.get(0);
     }

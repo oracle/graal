@@ -38,76 +38,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.instrumentation;
+package com.oracle.truffle.api.bytecode.introspection;
 
-import java.util.Set;
+import java.util.List;
 
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.source.SourceSection;
 
-/**
- * Internal class for tags-based instrumentation, a not-yet-supported feature; do not use.
- *
- * @since 24.1
- */
-// TODO GR-51946 implement Tags support
-public class InstrumentRootNode extends Node implements InstrumentableNode {
+public interface TagTree {
 
-    private static final InstrumentTreeNode[] EMPTY_NODE_ARRAY = new InstrumentTreeNode[0];
+    List<TagTree> getTreeChildren();
 
-    public static InstrumentRootNode create() {
-        return new InstrumentRootNode(EMPTY_NODE_ARRAY);
-    }
+    List<Class<? extends Tag>> getTags();
 
-    public static InstrumentRootNode create(InstrumentTreeNode... nodes) {
-        return new InstrumentRootNode(nodes);
-    }
+    int getStartBci();
 
-    @Children private final InstrumentTreeNode[] children;
+    int getEndBci();
 
-    private InstrumentRootNode(InstrumentTreeNode[] children) {
-        this.children = children;
-    }
-
-    public boolean isInstrumentable() {
-        return true;
-    }
-
-    public WrapperNode createWrapper(ProbeNode probe) {
-        return new Wrapper(this, probe);
-    }
-
-    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        return null;
-    }
-
-    static final class Wrapper extends InstrumentRootNode implements WrapperNode {
-        @Child private InstrumentRootNode delegateNode;
-        @Child private ProbeNode probeNode;
-
-        Wrapper(InstrumentRootNode delegateNode, ProbeNode probeNode) {
-            super(EMPTY_NODE_ARRAY);
-            this.delegateNode = delegateNode;
-            this.probeNode = probeNode;
-        }
-
-        @Override
-        public InstrumentRootNode getDelegateNode() {
-            return delegateNode;
-        }
-
-        @Override
-        public ProbeNode getProbeNode() {
-            return probeNode;
-        }
-
-        @Override
-        public NodeCost getCost() {
-            return NodeCost.NONE;
-        }
-    }
+    SourceSection getSourceSection();
 
 }

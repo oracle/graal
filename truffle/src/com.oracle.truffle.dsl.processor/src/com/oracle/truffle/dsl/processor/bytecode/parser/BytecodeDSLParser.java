@@ -730,6 +730,30 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         genericQuickening.returnTypeQuickening = false;
                         genericQuickening.specializedType = null;
                         break;
+                    case TAG_LEAVE:
+                        instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, createChildBciName(0));
+                        instruction.specializedType = context.getType(Object.class);
+
+                        for (TypeMirror boxedType : model.boxingEliminatedTypes) {
+                            InstructionModel specializedInstruction = model.quickenInstruction(instruction,
+                                            new Signature(context.getType(Object.class), List.of(boxedType)),
+                                            ElementUtils.firstLetterUpperCase(ElementUtils.getSimpleName(boxedType)));
+                            specializedInstruction.returnTypeQuickening = false;
+                            specializedInstruction.specializedType = boxedType;
+
+                            Signature newSignature = new Signature(boxedType, instruction.signature.argumentTypes);
+                            InstructionModel argumentQuickening = model.quickenInstruction(specializedInstruction,
+                                            newSignature,
+                                            "unboxed");
+                            argumentQuickening.returnTypeQuickening = true;
+                            argumentQuickening.specializedType = boxedType;
+                        }
+
+                        genericQuickening = model.quickenInstruction(instruction,
+                                        instruction.signature, "generic");
+                        genericQuickening.returnTypeQuickening = false;
+                        genericQuickening.specializedType = null;
+                        break;
                     case DUP:
                         break;
                     case LOAD_LOCAL:

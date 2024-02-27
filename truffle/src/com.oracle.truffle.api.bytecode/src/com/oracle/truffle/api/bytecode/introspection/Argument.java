@@ -77,7 +77,8 @@ public final class Argument {
         BYTECODE_INDEX,
         INTEGER,
         NODE_PROFILE,
-        BRANCH_PROFILE;
+        BRANCH_PROFILE,
+        INSTRUMENT_PROFILE;
     }
 
     public ArgumentType getKind() {
@@ -149,9 +150,18 @@ public final class Argument {
                 return String.format("%s(%04x)", getName(), (short) data[2]);
             case BRANCH_PROFILE:
                 return String.format("%s(%s)", getName(), getBranchProfile().toString());
+            case INSTRUMENT_PROFILE:
+                return String.format("%s(%s)", getName(), printInstrumentationProfile(data[2]));
             default:
                 throw new UnsupportedOperationException("Unexpected value: " + this);
         }
+    }
+
+    private static String printInstrumentationProfile(Object o) {
+        if (o == null) {
+            return "null";
+        }
+        return o.toString();
     }
 
     private String printNodeProfile(Object o) {

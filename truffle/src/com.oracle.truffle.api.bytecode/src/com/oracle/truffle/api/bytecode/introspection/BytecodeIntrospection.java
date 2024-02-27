@@ -44,6 +44,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.truffle.api.dsl.Introspection.Provider;
+
 /**
  * Models the introspection data for a bytecode root node.
  *
@@ -107,6 +109,12 @@ public final class BytecodeIntrospection {
         return Collections.unmodifiableList(result);
     }
 
+    /**
+     */
+    public TagTree getTagTree() {
+        return (TagTree) data[4];
+    }
+
     @Override
     public String toString() {
         List<Instruction> instructions = getInstructions();
@@ -117,13 +125,14 @@ public final class BytecodeIntrospection {
                             instructions(%s) = %s
                             exceptionHandlers(%s) = %s
                             sourceInformation(%s) = %s
+                            tagTree = %s
                         ]""",
                         instructions.size(),
                         formatList(instructions),
                         exceptions.size(),
                         formatList(exceptions),
                         sourceInformation != null ? sourceInformation.size() : "-",
-                        formatList(sourceInformation));
+                        formatTagTree(getTagTree()));
 
     }
 
@@ -135,6 +144,32 @@ public final class BytecodeIntrospection {
         }
         String sep = "\n        ";
         return sep + String.join(sep, list.stream().map(element -> element.toString()).toArray(String[]::new));
+    }
+
+    private static String formatTagTree(TagTree tree) {
+        if (tree == null) {
+            return "Not Available";
+        } else if (tree.getTreeChildren().isEmpty()) {
+            return "Empty";
+        }
+        StringBuilder b = new StringBuilder();
+        int count = appendTagTree(b, 4, tree);
+        b.insert(0, "Nodes(" + count + ")");
+        return b.toString();
+    }
+
+    private static int appendTagTree(StringBuilder b, int spaces, TagTree tree) {
+        b.append("\n");
+        for (int i = 0; i < spaces; i++) {
+            b.append(" ");
+        }
+        b.append(tree.toString());
+
+        int count = 1;
+        for (TagTree child : tree.getTreeChildren()) {
+            count += appendTagTree(b, spaces + 2, child);
+        }
+        return count;
     }
 
 }

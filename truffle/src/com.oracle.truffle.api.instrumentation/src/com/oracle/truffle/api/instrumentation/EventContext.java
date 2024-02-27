@@ -142,7 +142,7 @@ public final class EventContext {
      */
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == null) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new NullPointerException();
         }
         Node node = getInstrumentedNode();

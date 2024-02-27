@@ -59,7 +59,7 @@ public class OperationModel implements PrettyPrintable {
         FINALLY_TRY_NO_EXCEPT,
         SOURCE,
         SOURCE_SECTION,
-        INSTRUMENT_TAG,
+        TAG,
 
         LABEL,
         BRANCH,

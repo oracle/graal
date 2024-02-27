@@ -150,6 +150,10 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel[] popVariadicInstruction;
     public InstructionModel mergeVariadicInstruction;
     public InstructionModel storeNullInstruction;
+    public InstructionModel tagEnterInstruction;
+    public InstructionModel tagLeaveValueInstruction;
+    public InstructionModel tagLeaveVoidInstruction;
+    public InstructionModel leaveTagInstruction;
 
     public final List<CustomOperationModel> instrumentations = new ArrayList<>();
 
@@ -171,6 +175,26 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
             arguments[i] = context.getType(argumentTypes[i]);
         }
         return new Signature(context.getType(returnType), List.of(arguments));
+    }
+
+    public TypeMirror findProvidedTag(TypeMirror searchTag) {
+        if (!enableTagInstrumentation) {
+            return null;
+        }
+        for (TypeMirror tag : getProvidedTags()) {
+            if (ElementUtils.typeEquals(tag, searchTag)) {
+                return tag;
+            }
+        }
+        return null;
+    }
+
+    public TypeMirror getProvidedRootTag() {
+        return findProvidedTag(types.StandardTags_RootTag);
+    }
+
+    public TypeMirror getProvidedRootBodyTag() {
+        return findProvidedTag(types.StandardTags_RootBodyTag);
     }
 
     public void addDefault() {
@@ -295,11 +319,18 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                                         new OperationArgument(context.getType(int.class), "length", "the length (in characters) of the source section"));
 
         if (enableTagInstrumentation) {
-            operation(OperationKind.INSTRUMENT_TAG, "Tag") //
+            tagEnterInstruction = instruction(InstructionKind.TAG_ENTER, "tag.enter", signature(void.class));
+            tagEnterInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
+            tagLeaveValueInstruction = instruction(InstructionKind.TAG_LEAVE, "tag.leave", signature(Object.class, Object.class));
+            tagLeaveValueInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
+            tagLeaveVoidInstruction = instruction(InstructionKind.TAG_LEAVE_VOID, "tag.leaveVoid", signature(Object.class));
+            tagLeaveVoidInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
+            operation(OperationKind.TAG, "Tag") //
                             .setNumChildren(1) //
-                            .setTransparent(true) //
                             .setOperationArgumentVarArgs(true) //
-                            .setOperationArguments(new OperationArgument(array(context.getDeclaredType(Class.class)), "newTags", "the tags to associate with the enclosed operations"));
+                            .setOperationArguments(new OperationArgument(array(context.getDeclaredType(Class.class)), "newTags", "the tags to associate with the enclosed operations"))//
+                            .setInstruction(tagLeaveValueInstruction);
+
         }
 
         popVariadicInstruction = new InstructionModel[9];
@@ -578,5 +609,19 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     @Override
     public String toString() {
         return getClass().getSimpleName() + "[" + getName() + "]";
+    }
+
+    public OperationModel findOperation(OperationKind kind) {
+        OperationModel found = null;
+        for (OperationModel o : getOperations()) {
+            if (o.kind == kind) {
+                if (found != null) {
+                    throw new IllegalStateException("Multiple operations of kind found.");
+                }
+                found = o;
+            }
+        }
+        return found;
+
     }
 }
