@@ -691,9 +691,9 @@ public final class JDWPContextImpl implements JDWPContext {
         return EspressoLanguage.class;
     }
 
-    private static BciProvider getBciProviderNode(Node node) {
-        if (node instanceof BciProvider) {
-            return (BciProvider) node;
+    private BciProvider getBciProviderNode(Node node) {
+        if (node instanceof BciProvider bciProvider) {
+            return bciProvider;
         }
         Node currentNode = node.getParent();
         while (currentNode != null) {
@@ -701,6 +701,10 @@ public final class JDWPContextImpl implements JDWPContext {
                 return (BciProvider) currentNode;
             }
             currentNode = currentNode.getParent();
+        }
+        Node instrumentableNode = getInstrumentableNode(node.getRootNode());
+        if (instrumentableNode instanceof BciProvider bciProvider) {
+            return bciProvider;
         }
         return null;
     }
