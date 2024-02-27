@@ -682,7 +682,8 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id, langu
         ] + mx_sdk_vm_impl.svm_experimental_options([
             '-H:ClassInitialization=:build_time',
             '-H:+EnforceMaxRuntimeCompileMethods',
-            '-H:+UseOldMethodHandleIntrinsics',
+            '--add-exports=jdk.graal.compiler/jdk.graal.compiler.graph.iterators=ALL-UNNAMED',
+            '--add-exports=jdk.graal.compiler/jdk.graal.compiler.nodes.spi=ALL-UNNAMED',
             '-cp',
             cp,
             '-H:-FoldSecurityManagerGetter',

@@ -60,6 +60,7 @@ import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.spi.TrackedUnsafeAccess;
 import jdk.graal.compiler.nodes.spi.ProfileProvider;
 import jdk.graal.compiler.nodes.spi.ResolvedJavaMethodProfileProvider;
 import jdk.graal.compiler.nodes.spi.VirtualizableAllocation;
@@ -315,9 +316,23 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      */
     private final List<ResolvedJavaMethod> methods;
 
+    /**
+     * See {@link #markUnsafeAccess(Class)} for explanation.
+     */
     private enum UnsafeAccessState {
+        /**
+         * A {@link TrackedUnsafeAccess} node has never been added to this graph.
+         */
         NO_ACCESS,
+
+        /**
+         * A {@link TrackedUnsafeAccess} node was added to this graph at a prior point.
+         */
         HAS_ACCESS,
+
+        /**
+         * In synthetic methods we disable unsafe access tracking.
+         */
         DISABLED
     }
 
@@ -1104,7 +1119,32 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return hasUnsafeAccess == UnsafeAccessState.HAS_ACCESS;
     }
 
-    public void markUnsafeAccess() {
+    /**
+     * HotSpot requires compilations with unsafe accesses to set a flag and uses that information to
+     * modify the behavior of its signal handling. In Graal we label nodes which require this flag
+     * with the marker interface {@link TrackedUnsafeAccess}.
+     *
+     * @param nodeClass The class from which a node is created that requires unsafe access to be
+     *            set.
+     */
+    public void markUnsafeAccess(Class<?> nodeClass) {
+        assert TrackedUnsafeAccess.class.isAssignableFrom(nodeClass) : Assertions.errorMessage("%s does not implement MarkedUnsafeAccess", nodeClass);
+        markUnsafeAccess();
+    }
+
+    public void maybeMarkUnsafeAccess(EncodedGraph graph) {
+        if (graph.hasUnsafeAccess()) {
+            markUnsafeAccess();
+        }
+    }
+
+    public void maybeMarkUnsafeAccess(StructuredGraph graph) {
+        if (graph.hasUnsafeAccess()) {
+            markUnsafeAccess();
+        }
+    }
+
+    private void markUnsafeAccess() {
         if (hasUnsafeAccess == UnsafeAccessState.DISABLED) {
             return;
         }
