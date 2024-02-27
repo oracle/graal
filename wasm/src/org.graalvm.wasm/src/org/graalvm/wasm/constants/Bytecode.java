@@ -474,10 +474,31 @@ public class Bytecode {
 
     public static final int VECTOR_V128_ANY_TRUE = 0x53;
 
+    public static final int VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_S = 0x7E;
+    public static final int VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_U = 0x7F;
+    public static final int VECTOR_I32X4_ABS = 0xA0;
+    public static final int VECTOR_I32X4_NEG = 0xA1;
     public static final int VECTOR_I32X4_ALL_TRUE = 0xA3;
+    public static final int VECTOR_I32X4_BITMASK = 0xA4;
+    public static final int VECTOR_I32X4_EXTEND_LOW_I16X8_S = 0xA7;
+    public static final int VECTOR_I32X4_EXTEND_HIGH_I16X8_S = 0xA8;
+    public static final int VECTOR_I32X4_EXTEND_LOW_I16X8_U = 0xA9;
+    public static final int VECTOR_I32X4_EXTEND_HIGH_I16X8_U = 0xAA;
+    public static final int VECTOR_I32X4_SHL = 0xAB;
+    public static final int VECTOR_I32X4_SHR_S = 0xAC;
+    public static final int VECTOR_I32X4_SHR_U = 0xAD;
     public static final int VECTOR_I32X4_ADD = 0xAE;
     public static final int VECTOR_I32X4_SUB = 0xB1;
     public static final int VECTOR_I32X4_MUL = 0xB5;
+    public static final int VECTOR_I32X4_MIN_S = 0xB6;
+    public static final int VECTOR_I32X4_MIN_U = 0xB7;
+    public static final int VECTOR_I32X4_MAX_S = 0xB8;
+    public static final int VECTOR_I32X4_MAX_U = 0xB9;
+    public static final int VECTOR_I32X4_DOT_I16X8_S = 0xBA;
+    public static final int VECTOR_I32X4_EXTMUL_LOW_I16X8_S = 0xBC;
+    public static final int VECTOR_I32X4_EXTMUL_HIGH_I16X8_S = 0xBD;
+    public static final int VECTOR_I32X4_EXTMUL_LOW_I16X8_U = 0xBE;
+    public static final int VECTOR_I32X4_EXTMUL_HIGH_I16X8_U = 0xBF;
 
     public static final int VECTOR_F32X4_CEIL = 0x67;
     public static final int VECTOR_F32X4_FLOOR = 0x68;
@@ -510,6 +531,11 @@ public class Bytecode {
     public static final int VECTOR_F64X2_MAX = 0xF5;
     public static final int VECTOR_F64X2_PMIN = 0xF6;
     public static final int VECTOR_F64X2_PMAX = 0xF7;
+
+    public static final int VECTOR_I32X4_TRUNC_SAT_F32X4_S = 0xF8;
+    public static final int VECTOR_I32X4_TRUNC_SAT_F32X4_U = 0xF9;
+    public static final int VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO = 0xFC;
+    public static final int VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO = 0xFD;
 
     public static final byte[] EMPTY_BYTES = {};
     public static final int COMMON_BYTECODE_OFFSET = Bytecode.I32_EQ - Instructions.I32_EQ;
