@@ -35,10 +35,18 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
+/**
+ * This node type acts as an optimization barrier between its input node and its usages. For
+ * example, a MulNode with two ConstantNodes as input will be canonicalized to a ConstantNode. This
+ * optimization will be prevented if either of the two constants is wrapped by an OpaqueValueNode.
+ * <p>
+ * </p>
+ * This node is not {@link LIRLowerable}, so it should be removed from the graph before LIR
+ * generation (see org.graalvm.compiler.phases.common.RemoveOpaqueValuePhase).
+ */
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public final class OpaqueNode extends FloatingNode implements LIRLowerable, NodeWithIdentity, IterableNodeType {
+public final class OpaqueNode extends FloatingNode implements NodeWithIdentity, IterableNodeType {
     public static final NodeClass<OpaqueNode> TYPE = NodeClass.create(OpaqueNode.class);
 
     @Input protected ValueNode value;
@@ -59,10 +67,5 @@ public final class OpaqueNode extends FloatingNode implements LIRLowerable, Node
 
     public void remove() {
         replaceAndDelete(getValue());
-    }
-
-    @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.operand(value));
     }
 }

@@ -31,7 +31,7 @@ import org.graalvm.compiler.core.test.GraalCompilerTest;
 
 public class OpaqueNodeTest extends GraalCompilerTest {
 
-        public static void opaqueClassSnippet() {
+    public static void opaqueClassSnippet() {
         /*
          * GR-51558: This would cause an assertion failure in LIR constant load optimization if the
          * opaque is not removed.
