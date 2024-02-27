@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,34 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.code;
+package jdk.graal.compiler.hotspot.meta;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.util.VMError;
-
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
+import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
-public class HostedIdentityHashCodeProvider extends IdentityHashCodeProvider {
-
-    public HostedIdentityHashCodeProvider(SnippetReflectionProvider snippetReflection) {
-        super(snippetReflection);
-    }
+public class HotSpotIdentityHashCodeProvider implements IdentityHashCodeProvider {
 
     @Override
-    public int identityHashCode(JavaConstant constant) {
-        VMError.guarantee(SubstrateUtil.HOSTED);
-        Object object = snippetReflection.asObject(Object.class, constant);
-        if (object instanceof DynamicHub) {
-            /*
-             * We need to use the identity hash code of the original java.lang.Class object and not
-             * of the DynamicHub, so that hash maps that are filled during image generation and use
-             * Class keys still work at run time.
-             */
-            return System.identityHashCode(((DynamicHub) object).getHostedJavaClass());
+    public Integer identityHashCode(JavaConstant constant) {
+        if (constant == null || constant.getJavaKind() != JavaKind.Object) {
+            return null;
+        } else if (constant.isNull()) {
+            /* System.identityHashCode is specified to return 0 when passed null. */
+            return 0;
         }
-        return super.identityHashCode(constant);
+        return ((HotSpotObjectConstant) constant).getIdentityHashCode();
     }
 }

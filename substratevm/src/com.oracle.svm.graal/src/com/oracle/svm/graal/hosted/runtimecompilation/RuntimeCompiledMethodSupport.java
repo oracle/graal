@@ -391,9 +391,9 @@ public class RuntimeCompiledMethodSupport {
 
         private Object hostedToRuntime(Object object) {
             if (object instanceof ImageHeapConstant heapConstant) {
-                return SubstrateGraalUtils.hostedToRuntime(heapConstant);
+                return SubstrateGraalUtils.hostedToRuntime(heapConstant, heapScanner.getConstantReflection());
             } else if (object instanceof ObjectLocationIdentity oli && oli.getObject() instanceof ImageHeapConstant heapConstant) {
-                return locationIdentityCache.computeIfAbsent(heapConstant, (hc) -> ObjectLocationIdentity.create(SubstrateGraalUtils.hostedToRuntime(hc)));
+                return locationIdentityCache.computeIfAbsent(heapConstant, (hc) -> ObjectLocationIdentity.create(SubstrateGraalUtils.hostedToRuntime(hc, heapScanner.getConstantReflection())));
             }
             return object;
         }
