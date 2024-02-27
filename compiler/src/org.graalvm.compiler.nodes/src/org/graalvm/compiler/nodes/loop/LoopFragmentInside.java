@@ -284,14 +284,8 @@ public class LoopFragmentInside extends LoopFragment {
                 usage.replaceFirstInput(trueSuccessor, loopTest.trueSuccessor());
             }
 
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.nodes/src/org/graalvm/compiler/nodes/loop/LoopFragmentInside.java
-            assert graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL) || mainLoopBegin.loopExits().count() <= 1 : "Can only merge early loop exits if graph has value proxies " + mainLoopBegin;
-=======
             graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After stitching new segment into control flow after existing one");
-
-            assert graph.isBeforeStage(GraphState.StageFlag.VALUE_PROXY_REMOVAL) || mainLoopBegin.loopExits().count() <= 1 : "Can only merge early loop exits if graph has value proxies " +
-                            mainLoopBegin;
->>>>>>> 89ce6d15dcf (loop fragment: ensure we are not killing control flow when we have):compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/nodes/loop/LoopFragmentInside.java
+            assert graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL) || mainLoopBegin.loopExits().count() <= 1 : "Can only merge early loop exits if graph has value proxies " + mainLoopBegin;
 
             mergeEarlyLoopExits(graph, mainLoopBegin, mainCounted, new2OldPhis, loop);
 
