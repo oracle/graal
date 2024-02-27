@@ -67,7 +67,6 @@ public class MHInvokeGenericNode extends MethodHandleIntrinsicNode {
         return callNode.call(args);
     }
 
-    @SuppressWarnings("try")
     public static MHInvokeGenericNode create(EspressoLanguage language, Meta meta, Klass accessingKlass, Method method, Symbol<Symbol.Name> methodName, Symbol<Symbol.Signature> signature) {
         Klass callerKlass = accessingKlass == null ? meta.java_lang_Object : accessingKlass;
         StaticObject appendixBox = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1], meta.getContext());
