@@ -2575,7 +2575,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
      *   curBCI = bs.next(curBCI);
      * </pre>
      */
-    @SuppressWarnings("try")
     private int putField(VirtualFrame frame, int top, Field field, int curBCI, int opcode, int statementIndex) {
         assert opcode == PUTFIELD || opcode == PUTSTATIC;
         CompilerAsserts.partialEvaluationConstant(field);
@@ -2741,7 +2740,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
      *   curBCI = bs.next(curBCI);
      * </pre>
      */
-    @SuppressWarnings("try")
     private int getField(VirtualFrame frame, int top, Field field, int curBCI, int opcode, int statementIndex) {
         assert opcode == GETFIELD || opcode == GETSTATIC;
 

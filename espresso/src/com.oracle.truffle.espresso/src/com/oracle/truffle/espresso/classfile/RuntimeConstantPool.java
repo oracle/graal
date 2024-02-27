@@ -95,7 +95,6 @@ public final class RuntimeConstantPool extends ConstantPool {
         return c;
     }
 
-    @SuppressWarnings("try")
     private Resolvable.ResolvedConstant resolvedAt(Klass accessingKlass, int index, String description) {
         Resolvable.ResolvedConstant c = constants[index];
         if (c == null) {
