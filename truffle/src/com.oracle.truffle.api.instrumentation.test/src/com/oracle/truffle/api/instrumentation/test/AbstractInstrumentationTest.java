@@ -42,7 +42,9 @@ package com.oracle.truffle.api.instrumentation.test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -52,6 +54,10 @@ import org.graalvm.polyglot.SourceSection;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.test.ReflectionUtils;
@@ -60,15 +66,33 @@ import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 /**
  * Base class for instrumentation tests.
  */
+@RunWith(Parameterized.class)
 public abstract class AbstractInstrumentationTest extends AbstractPolyglotTest {
+
+    public enum TestRun {
+        WRAPPER,
+        INLINED_PROBES;
+
+    }
 
     protected Engine engine;
 
     protected final ByteArrayOutputStream out = new ByteArrayOutputStream();
     protected final ByteArrayOutputStream err = new ByteArrayOutputStream();
 
+    @Parameter // first data value (0) is default
+    public /* NOT private */ TestRun run;
+
+    @Parameters(name = "{0}")
+    public static List<TestRun> data() {
+        return Arrays.asList(TestRun.WRAPPER, TestRun.INLINED_PROBES);
+    }
+
     Context newContext() {
         Context.Builder builder = Context.newBuilder().allowAllAccess(true);
+        if (run == TestRun.INLINED_PROBES) {
+            builder.option(InstrumentationTestLanguage.ID + ".InlineProbes", "true");
+        }
         builder.engine(getEngine());
         return builder.build();
     }

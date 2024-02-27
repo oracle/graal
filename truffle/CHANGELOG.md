@@ -34,6 +34,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-53454 Added warning in the annotation processor when `@ReportPolymorphism` is used incorrectly.
 * GR-54516 The `Future` returned by submitting `ThreadLocalAction` now throws `CancellationException` on `Future#get()` when the future is cancelled, as it should per `Future` interface semantics.
 * GR-54516 Synchronous `ThreadLocalAction`s which wait longer than `--engine.SynchronousThreadLocalActionMaxWait` (default 60) seconds for all threads to start executing that action now show a warning and are automatically cancelled to prevent applications to hang.
+* GR-49484 Deprecated `RootNode.isCaptureFramesForTrace()`. Implementers should use `RootNode.isCaptureFramesForTrace(Node)` instead.
+* GR-52145 Added `InstrumentableNode#findProbe` and `InstrumentableNode.createProbe` to allow customization of probe storage, e.g. eager insertion of probes without wrappers.
 
 ## Version 24.0.0
 

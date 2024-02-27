@@ -821,25 +821,26 @@ final class InstrumentationHandler {
         return newBindings;
     }
 
-    private void insertWrapper(Node instrumentableNode, SourceSection sourceSection) {
+    private ProbeNode insertWrapper(Node instrumentableNode, SourceSection sourceSection) {
         Lock lock = InstrumentAccessor.nodesAccess().getLock(instrumentableNode);
         try {
             lock.lock();
-            insertWrapperImpl(instrumentableNode, sourceSection);
+            return insertWrapperImpl(instrumentableNode, sourceSection);
         } finally {
             lock.unlock();
         }
     }
 
     @SuppressWarnings({"unchecked", "deprecation"})
-    private void insertWrapperImpl(Node node, SourceSection sourceSection) {
-        Node parent = node.getParent();
-        if (parent instanceof WrapperNode) {
+    private ProbeNode insertWrapperImpl(Node node, SourceSection sourceSection) {
+        InstrumentableNode instrumentable = (InstrumentableNode) node;
+        ProbeNode probe = instrumentable.findProbe();
+        if (probe != null) {
             // already wrapped, need to invalidate the wrapper something changed
-            invalidateWrapperImpl((WrapperNode) parent, node);
-            return;
+            invalidateProbe(node, probe);
+            return probe;
         }
-        ProbeNode probe = new ProbeNode(InstrumentationHandler.this, sourceSection);
+        probe = new ProbeNode(InstrumentationHandler.this, sourceSection);
         WrapperNode wrapper;
         if (node instanceof InstrumentableNode) {
             try {
@@ -851,11 +852,11 @@ final class InstrumentationHandler {
             throw new AssertionError();
         }
 
-        final Node wrapperNode = getWrapperNodeChecked(wrapper, node, parent);
-
+        final Node wrapperNode = getWrapperNodeChecked(wrapper, node, node.getParent());
         node.replace(wrapperNode, "Insert instrumentation wrapper node.");
 
         assert probe.getContext().validEventContextOnWrapperInsert();
+        return probe;
     }
 
     private static Node getWrapperNodeChecked(Object wrapper, Node node, Node parent) {
@@ -1225,16 +1226,17 @@ final class InstrumentationHandler {
     }
 
     private static void invalidateWrapper(Node node) {
-        Node parent = node.getParent();
-        if (!(parent instanceof WrapperNode)) {
-            // not yet wrapped
+        assert node instanceof InstrumentableNode;
+
+        ProbeNode probe = ((InstrumentableNode) node).findProbe();
+        if (probe == null) {
+            // not yet inserted
             return;
         }
-        invalidateWrapperImpl((WrapperNode) parent, node);
+        invalidateProbe(node, probe);
     }
 
-    private static void invalidateWrapperImpl(WrapperNode parent, Node node) {
-        ProbeNode probeNode = parent.getProbeNode();
+    private static void invalidateProbe(Node node, ProbeNode probeNode) {
         if (TRACE) {
             SourceSection section = probeNode.getContext().getInstrumentedSourceSection();
             trace("Invalidate wrapper for %s, section %s %n", node, section);
@@ -1289,21 +1291,19 @@ final class InstrumentationHandler {
         exception.printStackTrace(stream);
     }
 
-    private static WrapperNode getWrapperNode(Node node) {
-        Node parent = node.getParent();
-        return parent instanceof WrapperNode ? (WrapperNode) parent : null;
-    }
-
     private static void clearRetiredNodeReference(Node node) {
         // There are no retired nodes the subtrees of which we need to traverse.
-        WrapperNode wrapperNode = getWrapperNode(node);
-        if (wrapperNode != null) {
-            wrapperNode.getProbeNode().clearRetiredNodeReference();
-            // At this point the probe node might already have no chain, and it
-            // also might not be updated further, and so only invalidation makes
-            // sure the wrapper gets eventually removed.
-            invalidateWrapperImpl(wrapperNode, node);
+
+        ProbeNode probe = ((InstrumentableNode) node).findProbe();
+        if (probe == null) {
+            // not yet inserted
+            return;
         }
+        probe.clearRetiredNodeReference();
+        // At this point the probe node might already have no chain, and it
+        // also might not be updated further, and so only invalidation makes
+        // sure the wrapper gets eventually removed.
+        invalidateProbe(node, probe);
     }
 
     private abstract static class VisitOperation {
@@ -2019,13 +2019,11 @@ final class InstrumentationHandler {
                  * materialized node that replaced the retired node. If the wrapper does not exist
                  * yet, we create it, otherwise the reference to the retired node would be lost.
                  */
-                WrapperNode wrapperNode = getWrapperNode(node);
-                if (wrapperNode == null) {
-                    insertWrapper(node, sourceSection);
+                ProbeNode probe = ((InstrumentableNode) node).findProbe();
+                if (probe == null) {
+                    probe = insertWrapper(node, sourceSection);
                 }
-                wrapperNode = getWrapperNode(node);
-                assert wrapperNode != null : "Node must have an instrumentation wrapper at this point!";
-                wrapperNode.getProbeNode().setRetiredNode(originalNode, materializeTags);
+                probe.setRetiredNode(originalNode, materializeTags);
                 /*
                  * We also need to traverse all children of the retired node that was just retired.
                  * This is necessary if the retired node is still currently executing and does not
@@ -2046,8 +2044,8 @@ final class InstrumentationHandler {
          */
         private boolean visitPreviouslyRetiredNodes(Node node) {
             if (!firstExecution) {
-                WrapperNode wrapperNode = getWrapperNode(node);
-                ProbeNode.RetiredNodeReference retiredNodeReference = (wrapperNode != null ? wrapperNode.getProbeNode().getRetiredNodeReference() : null);
+                ProbeNode probe = ((InstrumentableNode) node).findProbe();
+                ProbeNode.RetiredNodeReference retiredNodeReference = (probe != null ? probe.getRetiredNodeReference() : null);
                 if (retiredNodeReference != null) {
                     boolean hasRetiredNodes = false;
                     while (retiredNodeReference != null) {
@@ -2097,17 +2095,16 @@ final class InstrumentationHandler {
                         throw new IllegalStateException(String.format("The source section of the materialized syntax node must match the source section of the original node. %s != %s.", sourceSection,
                                         newSourceSection));
                     }
-
                     Node currentParent = ((Node) currentNode).getParent();
 
                     if (((Node) materializedNode).getParent() == currentParent) {
                         return (Node) materializedNode;
                     }
-                    
+
                     if (((Node) materializedNode).getParent() != null) {
                         throw new IllegalStateException("The returned materialized syntax node is already adopted by a different parent.");
                     }
-                    
+
                     // The current parent is a wrapper. We need to replace the wrapper.
                     if (currentParent instanceof WrapperNode && !NodeUtil.isReplacementSafe(currentParent, instrumentableNode, (Node) materializedNode)) {
                         ProbeNode probe = ((WrapperNode) currentParent).getProbeNode();
@@ -2583,13 +2580,11 @@ final class InstrumentationHandler {
             if (!InstrumentationHandler.isInstrumentableNode(node)) {
                 return null;
             }
-            Node p = node.getParent();
-            if (p instanceof WrapperNode) {
-                WrapperNode w = (WrapperNode) p;
-                return w.getProbeNode().lookupExecutionEventNode(binding);
-            } else {
-                return null;
+            ProbeNode probe = ((InstrumentableNode) node).findProbe();
+            if (probe != null) {
+                return probe.lookupExecutionEventNode(binding);
             }
+            return null;
         }
 
         @Override

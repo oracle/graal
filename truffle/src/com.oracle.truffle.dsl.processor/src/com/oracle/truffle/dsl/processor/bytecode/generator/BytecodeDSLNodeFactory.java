@@ -5402,8 +5402,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             type.add(createFindProbe());
             type.add(createIsInstrumentable());
             type.add(createHasTag());
-            type.add(createInsertProbe());
-            type.add(createRemoveProbe());
             type.add(createGetSourceSection());
             type.add(createCreateSourceSection());
             type.add(createFindBytecodeNode());
@@ -5546,24 +5544,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startThrow().startNew(type(IllegalStateException.class)).doubleQuote("Invalid source section. Started in one source ended in another.").end().end();
             b.end();
 
-            return ex;
-        }
-
-        private CodeExecutableElement createInsertProbe() {
-            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "insertProbe");
-            ex.getModifiers().remove(Modifier.ABSTRACT);
-            ex.getModifiers().add(Modifier.FINAL);
-            CodeTreeBuilder b = ex.createBuilder();
-            b.startThrow().startNew(type(UnsupportedOperationException.class)).end().end();
-            return ex;
-        }
-
-        private CodeExecutableElement createRemoveProbe() {
-            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "removeProbe");
-            ex.getModifiers().remove(Modifier.ABSTRACT);
-            ex.getModifiers().add(Modifier.FINAL);
-            CodeTreeBuilder b = ex.createBuilder();
-            b.lineComment("We never remove probes.");
             return ex;
         }
 
