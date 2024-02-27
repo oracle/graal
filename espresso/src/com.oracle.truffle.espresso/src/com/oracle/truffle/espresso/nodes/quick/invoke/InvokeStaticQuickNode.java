@@ -57,7 +57,6 @@ public final class InvokeStaticQuickNode extends InvokeQuickNode {
         return pushResult(frame, invokeStatic.execute(args));
     }
 
-    @Override
     public void initializeResolvedKlass() {
         invokeStatic.getStaticMethod().getDeclaringKlass().safeInitialize();
     }
