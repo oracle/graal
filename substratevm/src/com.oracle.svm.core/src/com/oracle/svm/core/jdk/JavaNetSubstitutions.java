@@ -58,6 +58,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.resources.ResourceURLConnection;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
 import sun.net.NetProperties;
@@ -141,7 +142,7 @@ class JavaNetFeature implements InternalFeature {
         JavaNetSubstitutions.defaultProtocols.forEach(protocol -> {
             if (!disabledURLProtocols.contains(protocol)) {
                 boolean registered = JavaNetSubstitutions.addURLStreamHandler(protocol);
-                VMError.guarantee(registered, "The URL protocol %s is not available.", protocol);
+                VMError.guarantee(registered, "The URL protocol %s is not available. It should be available as it is supported by default.", protocol);
             }
         });
 
@@ -151,26 +152,19 @@ class JavaNetFeature implements InternalFeature {
             }
 
             if (JavaNetSubstitutions.defaultProtocols.contains(protocol)) {
-                printWarning("The URL protocol " + protocol + " is enabled by default. " +
-                                "The option " + JavaNetSubstitutions.enableProtocolsOption + protocol + " is not needed.");
+                LogUtils.warning("The URL protocol " + protocol + " is enabled by default. The option " + JavaNetSubstitutions.enableProtocolsOption + protocol + " is not needed.");
             } else if (JavaNetSubstitutions.onDemandProtocols.contains(protocol)) {
                 boolean registered = JavaNetSubstitutions.addURLStreamHandler(protocol);
-                VMError.guarantee(registered, "The URL protocol %s is not available.", protocol);
+                VMError.guarantee(registered, "The URL protocol %s is not available. It should be available as it is a supported on-demand protocol.", protocol);
             } else {
-                printWarning("The URL protocol " + protocol + " is not tested and might not work as expected." +
-                                System.lineSeparator() + JavaNetSubstitutions.supportedProtocols());
                 boolean registered = JavaNetSubstitutions.addURLStreamHandler(protocol);
                 if (!registered) {
-                    printWarning("Registering the " + protocol + " URL protocol failed. " +
-                                    "It will not be available at runtime." + System.lineSeparator());
+                    LogUtils.warning("Registering the " + protocol + " URL protocol failed. It will not be available at runtime.");
                 }
             }
         }
     }
 
-    private static void printWarning(String warningMessage) {
-        System.out.println(warningMessage);
-    }
 }
 
 @AutomaticallyRegisteredImageSingleton
