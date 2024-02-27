@@ -37,7 +37,7 @@ from pathlib import Path
 from traceback import print_tb
 import subprocess
 import zipfile
-from typing import Iterable, Optional, Sequence, Set
+from typing import Iterable, Optional, Sequence, Set, Callable, TextIO
 
 import mx
 import mx_benchmark
@@ -297,6 +297,25 @@ class NativeImageBenchmarkConfig:
         return None
 
 
+class BenchOutStream:
+    """
+    Writes incoming data to both the given text file and callable output stream.
+
+    Is callable itself and can also be passed to the ``print`` function.
+    """
+    def __init__(self, log_file: TextIO, output_stream: Callable[[str], None]):
+        self.log_file = log_file
+        self.output_stream = output_stream
+
+    def __call__(self, string: str) -> int:
+        v = self.log_file.write(string)
+        self.output_stream(string)
+        return v
+
+    def write(self, string: str) -> int:
+        return self(string)
+
+
 class NativeImageStages:
     def __init__(self, stages_info: StagesInfo, config, bench_out, bench_err, non_zero_is_fatal, cwd):
         self.stages_info = stages_info
@@ -331,9 +350,9 @@ class NativeImageStages:
         mx.log('Running: ')
         mx.log(' '.join(self.command))
         if self.stdout_path:
-            mx.log('The standard output is saved to ' + str(self.stdout_path))
+            mx.log(f"The standard output is saved to {self.stdout_path}")
         if self.stderr_path:
-            mx.log('The standard error is saved to ' + str(self.stderr_path))
+            mx.log(f"The standard error is saved to {self.stderr_path}")
 
         return self
 
@@ -341,11 +360,15 @@ class NativeImageStages:
         self.stdout_file.flush()
         self.stderr_file.flush()
 
-        if self.exit_code == 0 and (tb is None):
+        is_success = self.exit_code == 0 and (tb is None)
+
+        if self.config.split_run:
+            suffix = "PASS" if is_success else "FAILURE"
+            with open(self.config.split_run, 'a') as f:
+                f.write(f"{self.get_timestamp()}{self.config.bm_suite.name()}:{self.config.benchmark_name} {self.stages_info.requested_stage}: {suffix}\n")
+
+        if is_success:
             self.stages_info.success()
-            if self.config.split_run:
-                with open(self.config.split_run, 'a') as stdout:
-                    stdout.write(f"{self.get_timestamp()}{self.config.bm_suite.name()}:{self.config.benchmark_name} {self.stages_info.requested_stage}: PASS\n")
             if self.stages_info.requested_stage == self.stages_info.last_stage:
                 self.bench_out(f"{self.get_timestamp()}{mx_sdk_benchmark.STAGE_LAST_SUCCESSFUL_PREFIX} {self.stages_info.requested_stage} for {self.final_image_name}")
             else:
@@ -354,25 +377,20 @@ class NativeImageStages:
             self.separator_line()
         else:
             self.stages_info.fail()
-            if self.config.split_run:
-                with open(self.config.split_run, 'a') as stdout:
-                    stdout.write(f"{self.get_timestamp()}{self.config.bm_suite.name()}:{self.config.benchmark_name} {self.stages_info.requested_stage}: FAILURE\n")
+            failure_prefix = f"{self.get_timestamp()}Failed in stage {self.stages_info.requested_stage} for {self.final_image_name}"
             if self.exit_code is not None and self.exit_code != 0:
-                mx.log(mx.colorize(f"{self.get_timestamp()}Failed in stage {self.stages_info.requested_stage} for {self.final_image_name} with exit code {self.exit_code}", 'red'))
+                mx.log(mx.colorize(f"{failure_prefix} with exit code {self.exit_code}", 'red'))
+            elif tb:
+                mx.log(mx.colorize(f"{failure_prefix} with exception:", 'red'))
+                print_tb(tb)
+            else:
+                raise AssertionError(f"Unexpected error condition {self.exit_code=}, {tb=}")
 
             if self.stdout_path:
-                mx.log(mx.colorize('--------- Standard output:', 'blue'))
-                with open(self.stdout_path, 'r') as stdout:
-                    mx.log(stdout.read())
+                mx.log(mx.colorize(f"Standard error written to {self.stdout_path}", "blue"))
 
             if self.stderr_path:
-                mx.log(mx.colorize('--------- Standard error:', 'red'))
-                with open(self.stderr_path, 'r') as stderr:
-                    mx.log(stderr.read())
-
-            if tb:
-                mx.log(mx.colorize(f"{self.get_timestamp()}Failed in stage {self.stages_info.requested_stage} with ", 'red'))
-                print_tb(tb)
+                mx.log(mx.colorize(f"Standard error written to {self.stderr_path}", "red"))
 
             self.separator_line()
 
@@ -398,25 +416,11 @@ class NativeImageStages:
         self.stderr_file.close()
         self.reset_stage()
 
-    def stdout(self, include_bench_out=False):
-        def writeFun(s):
-            v = self.stdout_file.write(s)
-            if include_bench_out:
-                self.bench_out(s)
-            else:
-                mx.log(s, end='')
-            return v
-        return writeFun
+    def stdout(self, include_bench_out):
+        return BenchOutStream(self.stdout_file, lambda s: self.bench_out(s) if include_bench_out else mx.log(s, end=""))
 
-    def stderr(self, include_bench_err=False):
-        def writeFun(s):
-            v = self.stderr_file.write(s)
-            if include_bench_err:
-                self.bench_err(s)
-            else:
-                mx.log(s, end='')
-            return v
-        return writeFun
+    def stderr(self, include_bench_err):
+        return BenchOutStream(self.stderr_file, lambda s: self.bench_err(s) if include_bench_err else mx.log(s, end=""))
 
     @staticmethod
     def separator_line():
@@ -861,8 +865,6 @@ class NativeImageVM(GraalVm):
 
         :param template: Replacement template for the datapoint. Should produce a datapoint from the
                          ``image_build_statistics.json`` file.
-                         The ``metric.object`` key must be used for the datapoint, it will be prefixed with
-                         ``instrument-`` in the rules for the instrumented iterations.
         :param keys: List of keys to extract from the json file.
         :return: The list of rules for the various image build stats files
         """
@@ -1106,7 +1108,8 @@ class NativeImageVM(GraalVm):
                     upx_path = os.path.join(upx_directory, mx.exe_suffix("upx"))
                     upx_cmd = [upx_path, str(self.config.image_path)]
                     mx.log(f"Compressing image: {' '.join(upx_cmd)}")
-                    mx.run(upx_cmd, s.stdout(True), s.stderr(True))
+                    write_output = self.stages_info.should_produce_datapoints()
+                    mx.run(upx_cmd, out=s.stdout(write_output), err=s.stderr(write_output))
 
     def run_stage_run(self):
         if not self.config.is_runnable:
