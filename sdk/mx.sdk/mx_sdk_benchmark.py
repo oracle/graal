@@ -41,6 +41,7 @@
 
 from __future__ import print_function
 
+import collections.abc
 import os.path
 import time
 import signal
@@ -48,7 +49,7 @@ import threading
 import json
 import argparse
 from enum import Enum
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Collection, Union
 
 import mx
 import mx_benchmark
@@ -330,25 +331,27 @@ class StagesInfo:
         """Called when the current stage finished with an error"""
         self._failed = True
 
-    def should_produce_datapoints(self, stage: Optional[Stage] = None) -> bool:
+    def should_produce_datapoints(self, stages: Union[None, Stage, Collection[Stage]] = None) -> bool:
         """
-        Whether, under the current configuration, datapoints should be produced for the given stage
+        Whether, under the current configuration, datapoints should be produced for any of the given stage
 
         In fallback mode, we only produce datapoints for the ``image`` and ``run`` stage because stages are not run
         individually and datapoints from other stages may not be distinguishable from the ``image`` and ``run`` stage.
 
-        :param stage: If None, the current effective stage is used
+        :param stages: If None, the current effective stage is used. A single stage will be treated as a singleton list
         """
 
-        if not stage:
-            stage = self.effective_stage
+        if not stages:
+            stages = [self.effective_stage]
+        elif not isinstance(stages, collections.abc.Collection):
+            stages = [stages]
 
         if self.fallback_mode:
             # In fallback mode, all datapoints are generated at once and not in a specific stage, checking whether the
             # given stage matches the current stage will almost never yield the sensible result
-            return stage in [Stage.IMAGE, Stage.RUN]
+            return not {Stage.IMAGE, Stage.RUN}.isdisjoint(stages)
         else:
-            return self.effective_stage == stage
+            return self.effective_stage in stages
 
 
 class NativeImageBenchmarkMixin(object):
@@ -510,7 +513,7 @@ class NativeImageBenchmarkMixin(object):
         # Apply command mapper hooks (e.g. trackers) for all stages that run benchmark workloads
         # We cannot apply them for the image stages because the datapoints are indistinguishable from datapoints
         # produced in the the corresponding run stages.
-        if stage in [Stage.AGENT, Stage.INSTRUMENT_RUN, Stage.RUN]:
+        if self.stages_info.should_produce_datapoints([Stage.AGENT, Stage.INSTRUMENT_RUN, Stage.RUN]):
             final_command = self.apply_command_mapper_hooks(command, vm)
         return mx.run(final_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
 
@@ -525,8 +528,7 @@ class NativeImageBenchmarkMixin(object):
         return "native-image" in jvm_flag
 
     def apply_command_mapper_hooks(self, cmd, vm):
-        # TODO use vm to access hooks
-        return mx.apply_command_mapper_hooks(cmd, self._command_mapper_hooks)
+        return mx.apply_command_mapper_hooks(cmd, vm.command_mapper_hooks)
 
     def extra_image_build_argument(self, _, args):
         return parse_prefixed_args('-Dnative-image.benchmark.extra-image-build-argument=', args)

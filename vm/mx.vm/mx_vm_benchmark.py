@@ -434,7 +434,7 @@ class NativeImageStages:
         self.command = command
         return self
 
-    def execute_command(self, vm=None) -> int:
+    def execute_command(self, vm) -> int:
         write_output = self.stages_info.should_produce_datapoints()
 
         self.exit_code = self.config.bm_suite.run_stage(vm, self.stages_info.effective_stage, self.command, self.stdout(write_output), self.stderr(write_output), self.cwd, False)
@@ -946,7 +946,7 @@ class NativeImageVM(GraalVm):
     def rules(self, output, benchmarks, bmSuiteArgs):
         rules = super().rules(output, benchmarks, bmSuiteArgs)
 
-        if self.stages_info.should_produce_datapoints(Stage.INSTRUMENT_IMAGE) or self.stages_info.should_produce_datapoints(Stage.IMAGE):
+        if self.stages_info.should_produce_datapoints([Stage.INSTRUMENT_IMAGE, Stage.IMAGE]):
             # Only apply image build rules for the image build stages
             rules += self.image_build_rules(benchmarks)
 
@@ -998,7 +998,7 @@ class NativeImageVM(GraalVm):
 
         hotspot_args = hotspot_vm_args + self.config.classpath_arguments + self.config.modulepath_arguments + self.config.system_properties + self.config.executable + self.config.extra_agent_run_args
         with self.stages.set_command(self.generate_java_command(hotspot_args)) as s:
-            s.execute_command()
+            s.execute_command(self)
 
         path = os.path.join(self.config.config_dir, "config.zip")
         with zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -1018,7 +1018,7 @@ class NativeImageVM(GraalVm):
         collection_args += svm_experimental_options([f"-H:BuildOutputJSONFile={self.config.get_build_output_json_file(Stage.INSTRUMENT_IMAGE)}"])
 
         with self.stages.set_command(self.config.base_image_build_args + executable_name_args + instrument_args + collection_args) as s:
-            exit_code = s.execute_command()
+            exit_code = s.execute_command(self)
             if self.config.bundle_path is not None:
                 NativeImageVM.copy_bundle_output(self.config, self.config.instrumentation_executable_name)
 
@@ -1060,7 +1060,7 @@ class NativeImageVM(GraalVm):
         image_run_cmd += self.config.extra_jvm_args
         image_run_cmd += self.config.extra_profile_run_args
         with self.stages.set_command(image_run_cmd) as s:
-            exit_code = s.execute_command()
+            exit_code = s.execute_command(self)
             if exit_code == 0:
                 print(f"Profile file {self.config.profile_path} sha1 is {mx.sha1OfFile(self.config.profile_path)}")
                 self._ensureSamplesAreInProfile(self.config.profile_path)
@@ -1096,7 +1096,7 @@ class NativeImageVM(GraalVm):
         collection_args = svm_experimental_options([f"-H:BuildOutputJSONFile={self.config.get_build_output_json_file(Stage.IMAGE)}"])
         final_image_command = self.config.base_image_build_args + executable_name_args + (pgo_args if self.pgo_instrumentation else []) + jdk_profiles_args + ml_args + collection_args
         with self.stages.set_command(final_image_command) as s:
-            exit_code = s.execute_command()
+            exit_code = s.execute_command(self)
             if self.config.bundle_path is not None:
                 NativeImageVM.copy_bundle_output(self.config, self.config.final_image_name)
 
@@ -1115,7 +1115,7 @@ class NativeImageVM(GraalVm):
         if not self.config.is_runnable:
             mx.abort(f"Benchmark {self.config.benchmark_suite_name}:{self.config.benchmark_name} is not runnable.")
         with self.stages.set_command([str(self.config.image_path)] + self.config.extra_jvm_args + self.config.image_run_args) as s:
-            s.execute_command(vm=self)
+            s.execute_command(self)
 
     def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
         # This is also called with -version to gather information about the Java VM. Since this is not technically a
