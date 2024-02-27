@@ -30,7 +30,6 @@ import static com.oracle.truffle.espresso.verifier.MethodVerifier.jlObject;
 
 import java.util.ArrayList;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Klass;
