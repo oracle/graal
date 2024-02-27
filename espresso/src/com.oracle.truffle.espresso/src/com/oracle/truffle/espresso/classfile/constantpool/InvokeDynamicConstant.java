@@ -150,7 +150,6 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
          * @see RuntimeConstantPool#linkInvokeDynamic(Klass, int)
          */
         @Override
-        @SuppressWarnings("try")
         public CallSiteLink link(RuntimeConstantPool pool, Klass accessingKlass, int thisIndex) {
             // Per-callsite linking
             CompilerAsserts.neverPartOfCompilation();
