@@ -56,6 +56,8 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    if: github.repository == 'oracle/graal'
+
     steps:
     - name: Checkout oracle/graal
       uses: actions/checkout@v4
@@ -78,7 +80,7 @@ jobs:
         ref: master
         path: ${{ env.MX_PATH }}
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.8'
     - name: Fetch LabsJDK
