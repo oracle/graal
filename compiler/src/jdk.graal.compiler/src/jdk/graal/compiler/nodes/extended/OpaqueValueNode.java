@@ -35,10 +35,21 @@ import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
-import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.phases.common.RemoveOpaqueValuePhase;
 
+/**
+ * This node type acts as an optimization barrier between its input node and its usages. For
+ * example, a MulNode with two ConstantNodes as input will be canonicalized to a ConstantNode. This
+ * optimization will be prevented if either of the two constants is wrapped by an OpaqueValueNode.
+ * <p>
+ * </p>
+ * This node is not {@link LIRLowerable}, so it should be removed from the graph before LIR
+ * generation.
+ *
+ * @see RemoveOpaqueValuePhase
+ */
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public final class OpaqueValueNode extends OpaqueNode implements NodeWithIdentity, LIRLowerable, GuardingNode, IterableNodeType {
+public final class OpaqueValueNode extends OpaqueNode implements NodeWithIdentity, GuardingNode, IterableNodeType {
     public static final NodeClass<OpaqueValueNode> TYPE = NodeClass.create(OpaqueValueNode.class);
 
     @Input(InputType.Value) private ValueNode value;
@@ -57,10 +68,5 @@ public final class OpaqueValueNode extends OpaqueNode implements NodeWithIdentit
     public void setValue(ValueNode value) {
         this.updateUsages(this.value, value);
         this.value = value;
-    }
-
-    @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.operand(getValue()));
     }
 }
