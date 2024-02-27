@@ -59,7 +59,6 @@ import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -589,26 +588,6 @@ public abstract class RootNode extends ExecutableNode {
      * @since 22.3.0
      */
     protected FrameDescriptor getParentFrameDescriptor() {
-        return null;
-    }
-
-    /**
-     * If this root node supports obtaining precise location information from a frame instance, this
-     * method returns the leaf node corresponding to that location. The returned node must have this
-     * root node as a parent or be this root node itself. The passed frame instance must be the
-     * instance from which the reference to this root node was obtained.
-     * <p>
-     * This is particularly useful in situations where the frame instance doesn't have an
-     * instrumentable call node. Hence, the precise location {@link SourceSection} in the associated
-     * frame cannot be obtained. Examples where a call node is not available include languages where
-     * e.g. substitutions or lazy class loading trigger calls into the guest language without being
-     * able to (easily) obtain the current caller node.
-     *
-     * @param frameInstance the frame instance
-     * @return The leaf node if supported. <code>null</code> otherwise.
-     * @since 24.1.0
-     */
-    public Node getLeafNodeByFrame(FrameInstance frameInstance) {
         return null;
     }
 

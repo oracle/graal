@@ -33,7 +33,6 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 
 /**
@@ -56,11 +55,6 @@ final class MethodWithBytecodeNode extends EspressoInstrumentableRootNodeImpl {
     @Override
     public int getBci(Frame frame) {
         return bytecodeNode.getBci(frame);
-    }
-
-    @Override
-    public Node getLeafNode(int bci) {
-        return bytecodeNode.getLeafNode(bci);
     }
 
     @Override

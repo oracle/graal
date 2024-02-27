@@ -296,7 +296,6 @@ import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -491,16 +490,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         }
         int line = table.getLineNumber(bci);
         return s.createSection(line);
-    }
-
-    @Override
-    public Node getLeafNode(int bci) {
-        InstrumentationSupport support = instrumentation;
-        if (support == null) {
-            return null;
-        }
-        int index = support.hookBCIToNodeIndex.lookup(0, bci - 1, bci);
-        return support.statementNodes[index];
     }
 
     @ExplodeLoop

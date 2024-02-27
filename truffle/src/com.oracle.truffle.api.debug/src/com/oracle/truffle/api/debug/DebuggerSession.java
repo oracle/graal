@@ -1142,10 +1142,9 @@ public final class DebuggerSession implements Closeable {
                     return null;
                 }
                 if (callNode == null) {
-                    callNode = root.getLeafNodeByFrame(frameInstance);
-                }
-                if (callNode == null) {
-                    return null;
+                    // GR-52192 temporary workaround for Espresso, where a meaningful call node
+                    // cannot always be set as encapsulated node reference.
+                    callNode = root;
                 }
                 return new Caller(frameInstance, callNode);
             }

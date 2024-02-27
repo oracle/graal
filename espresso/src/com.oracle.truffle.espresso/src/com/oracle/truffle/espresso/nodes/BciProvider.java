@@ -23,15 +23,8 @@
 package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.nodes.Node;
 
 public interface BciProvider {
 
-    default int getBci(Frame frame) {
-        return -2;
-    }
-
-    default Node getLeafNode(int bci) {
-        return null;
-    }
+    int getBci(Frame frame);
 }
