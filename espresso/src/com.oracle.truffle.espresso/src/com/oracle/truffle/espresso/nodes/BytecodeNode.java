@@ -2039,9 +2039,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             Method resolutionSeed = resolveMethod(opcode, cpi);
             return dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, getContext().getEspressoEnv().bytecodeLevelInlining);
         });
-        try (EspressoLanguage.DisableSingleStepping ignored = getLanguage().disableStepping()) {
-            // whenever possible, we should do a one-time class initialization during quickening
-            quick.initializeResolvedKlass();
+        if (opcode == INVOKESTATIC && quick instanceof InvokeStaticQuickNode invokeStaticQuickNode) {
+            try (EspressoLanguage.DisableSingleStepping ignored = getLanguage().disableStepping()) {
+                invokeStaticQuickNode.initializeResolvedKlass();
+            }
         }
         // Perform the call outside of the lock.
         return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
@@ -2641,9 +2642,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         int slot = top - slotCount - 1; // -receiver
         StaticObject receiver;
         if (opcode == PUTSTATIC) {
-            try (EspressoLanguage.DisableSingleStepping ignored = getLanguage().disableStepping()) {
-                receiver = field.getDeclaringKlass().tryInitializeAndGetStatics();
-            }
+            receiver = getStaticsBoundary(field);
         } else {
             // Do not release the object, it might be read again in PutFieldNode
             receiver = nullCheck(popObject(frame, slot));
@@ -2729,6 +2728,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         return -slotCount;
     }
 
+    @TruffleBoundary
+    @SuppressWarnings("try")
+    private StaticObject getStaticsBoundary(Field field) {
+        try (EspressoLanguage.DisableSingleStepping ignored = getLanguage().disableStepping()) {
+           return field.getDeclaringKlass().tryInitializeAndGetStatics();
+        }
+    }
+
     /**
      * Returns the stack effect (slot delta) that cannot be inferred solely from the bytecode. e.g.
      * PUTFIELD always pops the receiver, but the result size (1 or 2) is unknown.
@@ -2765,9 +2772,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         int slot = top - 1;
         StaticObject receiver;
         if (opcode == GETSTATIC) {
-            try (EspressoLanguage.DisableSingleStepping ignored = getLanguage().disableStepping()) {
-                receiver = field.getDeclaringKlass().tryInitializeAndGetStatics();
-            }
+            receiver = getStaticsBoundary(field);
         } else {
             // Do not release the object, it might be read again in GetFieldNode
             receiver = nullCheck(peekObject(frame, slot));

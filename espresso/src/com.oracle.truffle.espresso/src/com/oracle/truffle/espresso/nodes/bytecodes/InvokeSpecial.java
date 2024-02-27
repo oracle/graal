@@ -88,10 +88,6 @@ public abstract class InvokeSpecial extends EspressoNode {
             this.method = method;
         }
 
-        public Method getMethod() {
-            return method;
-        }
-
         public abstract Object execute(Object[] args);
 
         static StaticObject getReceiver(Object[] args) {

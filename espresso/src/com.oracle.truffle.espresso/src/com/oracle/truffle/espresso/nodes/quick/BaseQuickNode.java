@@ -82,8 +82,4 @@ public abstract class BaseQuickNode extends EspressoNode implements BciProvider,
     private Object getScopeSlowPath(MaterializedFrame frame, boolean nodeEnter) {
         return getBytecodeNode().getScope(frame, nodeEnter);
     }
-
-    public void initializeResolvedKlass() {
-        // do nothing by default
-    }
 }

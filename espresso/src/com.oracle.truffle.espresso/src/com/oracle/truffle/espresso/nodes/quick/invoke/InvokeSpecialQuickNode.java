@@ -45,11 +45,4 @@ public final class InvokeSpecialQuickNode extends InvokeQuickNode {
         nullCheck((StaticObject) args[0]);
         return pushResult(frame, invokeSpecial.execute(args));
     }
-
-    @Override
-    public void initializeResolvedKlass() {
-        if (Symbol.Name._init_.equals(method.getName())) {
-            method.getDeclaringKlass().safeInitialize();
-        }
-    }
 }
