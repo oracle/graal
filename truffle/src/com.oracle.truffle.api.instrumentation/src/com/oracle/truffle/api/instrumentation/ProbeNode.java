@@ -411,7 +411,7 @@ public final class ProbeNode extends Node {
 
     WrapperNode findWrapper() throws AssertionError {
         Node parent = getParent();
-        if (!(parent instanceof WrapperNode)) {
+        if (!(parent instanceof WrapperNode wrapper)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             if (parent == null) {
                 throw new AssertionError("Probe node disconnected from AST.");
@@ -419,7 +419,20 @@ public final class ProbeNode extends Node {
                 throw new AssertionError("ProbeNodes must have a parent Node that implements NodeWrapper.");
             }
         }
-        return (WrapperNode) parent;
+        return wrapper;
+    }
+
+    InstrumentableNode findInstrumentableNode() throws AssertionError {
+        Node parent = getParent();
+        while (parent != null) {
+            if (parent instanceof WrapperNode n) {
+                return (InstrumentableNode) n.getDelegateNode();
+            } else if (parent instanceof InstrumentableNode n) {
+                return n;
+            }
+            parent = parent.getParent();
+        }
+        throw CompilerDirectives.shouldNotReachHere("Instrumentable node not found.");
     }
 
     synchronized void invalidate() {
