@@ -56,6 +56,8 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    if: github.repository == 'oracle/graal'
+
     steps:
     - name: Checkout oracle/graal
       uses: actions/checkout@v4

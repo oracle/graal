@@ -72,6 +72,7 @@ jobs:
 
     name: Nightly Quarkus and GraalVM build
     runs-on: ubuntu-20.04
+    if: (github.event_name == 'schedule' && github.repository == 'oracle/graal') || (github.event_name != 'schedule')
     outputs:
       matrix: ${{ steps.read.outputs.matrix }}
     steps:
