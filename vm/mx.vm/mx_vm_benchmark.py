@@ -331,7 +331,6 @@ class NativeImageStages:
 
         mx.log('Running: ')
         mx.log(' '.join(self.command))
-
         if self.stdout_path:
             mx.log('The standard output is saved to ' + str(self.stdout_path))
         if self.stderr_path:
@@ -432,12 +431,14 @@ class NativeImageStages:
         self.command = command
         return self
 
-    def execute_command(self, vm=None):
+    def execute_command(self, vm=None) -> int:
         write_output = self.stages_info.should_produce_datapoints()
 
         self.exit_code = self.config.bm_suite.run_stage(vm, self.stages_info.effective_stage, self.command, self.stdout(write_output), self.stderr(write_output), self.cwd, False)
         if self.stages_info.effective_stage not in [Stage.INSTRUMENT_IMAGE, Stage.IMAGE] and self.config.bm_suite.validateReturnCode(self.exit_code):
             self.exit_code = 0
+
+        return self.exit_code
 
 
 def _native_image_time_to_int(value: str) -> int:
@@ -1016,11 +1017,11 @@ class NativeImageVM(GraalVm):
         collection_args += svm_experimental_options([f"-H:BuildOutputJSONFile={self.config.get_build_output_json_file(Stage.INSTRUMENT_IMAGE)}"])
 
         with self.stages.set_command(self.config.base_image_build_args + executable_name_args + instrument_args + collection_args) as s:
-            s.execute_command()
+            exit_code = s.execute_command()
             if self.config.bundle_path is not None:
                 NativeImageVM.copy_bundle_output(self.config, self.config.instrumentation_executable_name)
 
-            if s.exit_code == 0:
+            if exit_code == 0:
                 self._move_image_build_stats_file()
 
                 # TODO refactor
@@ -1062,12 +1063,12 @@ class NativeImageVM(GraalVm):
         image_run_cmd += self.config.extra_jvm_args
         image_run_cmd += self.config.extra_profile_run_args
         with self.stages.set_command(image_run_cmd) as s:
-            s.execute_command()
-            if s.exit_code == 0:
+            exit_code = s.execute_command()
+            if exit_code == 0:
                 print(f"Profile file {self.config.profile_path} sha1 is {mx.sha1OfFile(self.config.profile_path)}")
                 self._ensureSamplesAreInProfile(self.config.profile_path)
             else:
-                print(f"Profile file {self.config.profile_path} not dumped. Instrument run failed with exit code {s.exit_code}")
+                print(f"Profile file {self.config.profile_path} not dumped. Instrument run failed with exit code {exit_code}")
 
     def run_stage_image(self, out):
         executable_name_args = ['-o', self.config.final_image_name]
@@ -1098,11 +1099,11 @@ class NativeImageVM(GraalVm):
         collection_args = svm_experimental_options([f"-H:BuildOutputJSONFile={self.config.get_build_output_json_file(Stage.IMAGE)}"])
         final_image_command = self.config.base_image_build_args + executable_name_args + (pgo_args if self.pgo_instrumentation else []) + jdk_profiles_args + ml_args + collection_args
         with self.stages.set_command(final_image_command) as s:
-            s.execute_command()
+            exit_code = s.execute_command()
             if self.config.bundle_path is not None:
                 NativeImageVM.copy_bundle_output(self.config, self.config.final_image_name)
 
-            if s.exit_code == 0:
+            if exit_code == 0:
                 self._move_image_build_stats_file()
 
                 if self.use_upx:
