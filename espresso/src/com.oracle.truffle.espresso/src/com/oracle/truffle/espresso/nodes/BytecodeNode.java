@@ -2732,7 +2732,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     @SuppressWarnings("try")
     private StaticObject getStaticsBoundary(Field field) {
         try (EspressoLanguage.DisableSingleStepping ignored = getLanguage().disableStepping()) {
-           return field.getDeclaringKlass().tryInitializeAndGetStatics();
+            return field.getDeclaringKlass().tryInitializeAndGetStatics();
         }
     }
 
