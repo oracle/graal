@@ -238,7 +238,6 @@ class ReferenceOperand extends Operand {
     }
 
     @Override
-    @SuppressWarnings("try")
     Klass getKlass() {
         if (klass == null) {
             try {

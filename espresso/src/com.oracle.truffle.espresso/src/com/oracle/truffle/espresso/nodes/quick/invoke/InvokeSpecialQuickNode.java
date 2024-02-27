@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeSpecial;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeSpecialNodeGen;
@@ -43,5 +44,12 @@ public final class InvokeSpecialQuickNode extends InvokeQuickNode {
         Object[] args = getArguments(frame);
         nullCheck((StaticObject) args[0]);
         return pushResult(frame, invokeSpecial.execute(args));
+    }
+
+    @Override
+    public void initializeResolvedKlass() {
+        if (Symbol.Name._init_.equals(method.getName())) {
+            method.getDeclaringKlass().safeInitialize();
+        }
     }
 }
