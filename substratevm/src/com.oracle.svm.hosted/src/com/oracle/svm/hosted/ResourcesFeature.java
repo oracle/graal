@@ -29,7 +29,6 @@ import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATO
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.JarURLConnection;
@@ -92,6 +91,7 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
+import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -621,11 +621,11 @@ public final class ResourcesFeature implements InternalFeature {
         Method resolveResourceName = ReflectionUtil.lookupMethod(Class.class, "resolveName", String.class);
 
         for (Method method : resourceMethods) {
-            registerResourceRegistrationPlugin(plugins.getInvocationPlugins(), method, providers, resolveResourceName, reason);
+            registerResourceRegistrationPlugin(plugins.getInvocationPlugins(), method, resolveResourceName, reason);
         }
     }
 
-    private void registerResourceRegistrationPlugin(InvocationPlugins plugins, Method method, Providers providers, Method resolveResourceName, ParsingReason reason) {
+    private void registerResourceRegistrationPlugin(InvocationPlugins plugins, Method method, Method resolveResourceName, ParsingReason reason) {
         List<Class<?>> parameterTypes = new ArrayList<>();
         assert !Modifier.isStatic(method.getModifiers());
         parameterTypes.add(InvocationPlugin.Receiver.class);
@@ -639,16 +639,18 @@ public final class ResourcesFeature implements InternalFeature {
 
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                try {
-                    if (!sealed && receiver.isConstant() && arg.isJavaConstant() && !arg.isNullConstant()) {
-                        Class<?> clazz = providers.getSnippetReflection().asObject(Class.class, receiver.get().asJavaConstant());
-                        String resource = providers.getSnippetReflection().asObject(String.class, arg.asJavaConstant());
-                        String resourceName = (String) resolveResourceName.invoke(clazz, resource);
-                        b.add(ReachabilityRegistrationNode.create(() -> RuntimeResourceAccess.addResource(clazz.getModule(), resourceName), reason));
-                        return true;
+                VMError.guarantee(!sealed, "All bytecode parsing happens before the analysis, i.e., before the registry is sealed");
+                Class<?> clazz = SubstrateGraphBuilderPlugins.asConstantObject(b, Class.class, receiver.get(false));
+                String resource = SubstrateGraphBuilderPlugins.asConstantObject(b, String.class, arg);
+                if (clazz != null && resource != null) {
+                    String resourceName;
+                    try {
+                        resourceName = (String) resolveResourceName.invoke(clazz, resource);
+                    } catch (ReflectiveOperationException e) {
+                        throw VMError.shouldNotReachHere(e);
                     }
-                } catch (IllegalAccessException | InvocationTargetException e) {
-                    throw VMError.shouldNotReachHere(e);
+                    b.add(ReachabilityRegistrationNode.create(() -> RuntimeResourceAccess.addResource(clazz.getModule(), resourceName), reason));
+                    return true;
                 }
                 return false;
             }

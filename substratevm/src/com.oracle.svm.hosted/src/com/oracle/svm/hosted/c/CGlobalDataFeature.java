@@ -127,7 +127,7 @@ public class CGlobalDataFeature implements InternalFeature {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 assert providers.getSnippetReflection() instanceof HostedSnippetReflectionProvider;
                 JavaConstant nonConstantRegistryJavaConstant = providers.getSnippetReflection().forObject(nonConstantRegistry);
-                ValueNode cGlobalDataNode = receiver.get();
+                ValueNode cGlobalDataNode = receiver.get(true);
                 if (cGlobalDataNode.isConstant()) {
                     CGlobalDataImpl<?> data = providers.getSnippetReflection().asObject(CGlobalDataImpl.class, cGlobalDataNode.asJavaConstant());
                     CGlobalDataInfo info = CGlobalDataFeature.this.map.get(data);

@@ -348,15 +348,6 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
         return arguments[0];
     }
 
-    /**
-     * The non-null check assertion for the receiver is ignored for the reasons stated in
-     * {@link #get(boolean)}.
-     */
-    @Override
-    public ValueNode requireNonNull() {
-        return get(false);
-    }
-
     @SuppressWarnings("try")
     public final StructuredGraph buildGraph(InvocationPlugin plugin) {
         // The caller is expected to have filtered out decorator plugins since they cannot be
