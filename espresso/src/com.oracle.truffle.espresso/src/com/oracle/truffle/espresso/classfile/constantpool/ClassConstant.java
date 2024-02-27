@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ import java.util.Objects;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -114,39 +115,42 @@ public interface ClassConstant extends PoolConstant {
          * If steps 1 and 2 succeed but step 3 fails, C is still valid and usable. Nevertheless,
          * resolution fails, and D is prohibited from accessing C.
          */
+        @SuppressWarnings("try")
         @Override
         public Resolved resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
-            CLASS_RESOLVE_COUNT.inc();
-            assert accessingKlass != null;
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            Symbol<Name> klassName = getName(pool);
-            try {
-                EspressoContext context = pool.getContext();
-                Symbol<Symbol.Type> type = context.getTypes().fromName(klassName);
-                Klass klass = context.getMeta().resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader(), accessingKlass.protectionDomain());
-                if (!Klass.checkAccess(klass.getElementalType(), accessingKlass, false)) {
-                    Meta meta = context.getMeta();
-                    context.getLogger().log(Level.FINE,
-                                    "Access check of: " + klass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
-                    throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(klassName));
-                }
+            try (EspressoLanguage.DisableSingleStepping ignored = accessingKlass.getLanguage().disableStepping()) {
+                CLASS_RESOLVE_COUNT.inc();
+                assert accessingKlass != null;
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Symbol<Name> klassName = getName(pool);
+                try {
+                    EspressoContext context = pool.getContext();
+                    Symbol<Symbol.Type> type = context.getTypes().fromName(klassName);
+                    Klass klass = context.getMeta().resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader(), accessingKlass.protectionDomain());
+                    if (!Klass.checkAccess(klass.getElementalType(), accessingKlass, false)) {
+                        Meta meta = context.getMeta();
+                        context.getLogger().log(Level.FINE,
+                                "Access check of: " + klass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
+                        throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(klassName));
+                    }
 
-                return new Resolved(klass);
+                    return new Resolved(klass);
 
-            } catch (EspressoException e) {
-                CompilerDirectives.transferToInterpreter();
-                Meta meta = pool.getContext().getMeta();
-                if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
-                    throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, meta.toGuestString(klassName));
+                } catch (EspressoException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    Meta meta = pool.getContext().getMeta();
+                    if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
+                        throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, meta.toGuestString(klassName));
+                    }
+                    throw e;
+                } catch (VirtualMachineError e) {
+                    // Comment from Hotspot:
+                    // Just throw the exception and don't prevent these classes from
+                    // being loaded for virtual machine errors like StackOverflow
+                    // and OutOfMemoryError, etc.
+                    // Needs clarification to section 5.4.3 of the JVM spec (see 6308271)
+                    throw e;
                 }
-                throw e;
-            } catch (VirtualMachineError e) {
-                // Comment from Hotspot:
-                // Just throw the exception and don't prevent these classes from
-                // being loaded for virtual machine errors like StackOverflow
-                // and OutOfMemoryError, etc.
-                // Needs clarification to section 5.4.3 of the JVM spec (see 6308271)
-                throw e;
             }
         }
 

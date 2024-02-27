@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -2028,6 +2028,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         return 0; // Bytecodes.stackEffectOf(opcode);
     }
 
+    @SuppressWarnings("try")
     private int quickenInvoke(VirtualFrame frame, int top, int curBCI, int opcode, int statementIndex) {
         QUICKENED_INVOKES.inc();
         CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -2039,6 +2040,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             Method resolutionSeed = resolveMethod(opcode, cpi);
             return dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, getContext().getEspressoEnv().bytecodeLevelInlining);
         });
+        try (EspressoLanguage.DisableSingleStepping ignored = getLanguage().disableStepping()) {
+            // whenever possible, we should do a one-time class initialization during quickening
+            quick.initializeResolvedKlass();
+        }
         // Perform the call outside of the lock.
         return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
     }
@@ -2332,6 +2337,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         throw getMeta().throwExceptionWithMessage(exceptionKlass, String.format(Locale.ENGLISH, messageFormat, (Object[]) args));
     }
 
+    @SuppressWarnings("try")
     private int quickenInvokeDynamic(final VirtualFrame frame, int top, int curBCI, int opcode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert (Bytecodes.INVOKEDYNAMIC == opcode);
@@ -2355,7 +2361,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             // Do invocation outside of the lock.
             return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
         }
-
         // Resolution should happen outside of the bytecode patching lock.
         InvokeDynamicConstant.CallSiteLink link = pool.linkInvokeDynamic(getMethod().getDeclaringKlass(), indyIndex);
 
@@ -2571,6 +2576,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
      *   curBCI = bs.next(curBCI);
      * </pre>
      */
+    @SuppressWarnings("try")
     private int putField(VirtualFrame frame, int top, Field field, int curBCI, int opcode, int statementIndex) {
         assert opcode == PUTFIELD || opcode == PUTSTATIC;
         CompilerAsserts.partialEvaluationConstant(field);
@@ -2635,11 +2641,15 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         int slotCount = (typeHeader == 'J' || typeHeader == 'D') ? 2 : 1;
         assert slotCount == field.getKind().getSlotCount();
         int slot = top - slotCount - 1; // -receiver
-        StaticObject receiver = (opcode == PUTSTATIC)
-                        ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                        // Do not release the object, it might be read again in PutFieldNode
-                        : nullCheck(popObject(frame, slot));
-
+        StaticObject receiver;
+        if (opcode == PUTSTATIC) {
+            try (EspressoLanguage.DisableSingleStepping ignored = getLanguage().disableStepping()) {
+                receiver = field.getDeclaringKlass().tryInitializeAndGetStatics();
+            }
+        } else {
+            // Do not release the object, it might be read again in PutFieldNode
+            receiver = nullCheck(popObject(frame, slot));
+        }
         if (!noForeignObjects.isValid() && opcode == PUTFIELD) {
             if (receiver.isForeignObject()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -2732,6 +2742,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
      *   curBCI = bs.next(curBCI);
      * </pre>
      */
+    @SuppressWarnings("try")
     private int getField(VirtualFrame frame, int top, Field field, int curBCI, int opcode, int statementIndex) {
         assert opcode == GETFIELD || opcode == GETSTATIC;
 
@@ -2755,11 +2766,15 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         assert field.isStatic() == (opcode == GETSTATIC);
 
         int slot = top - 1;
-        StaticObject receiver = opcode == GETSTATIC
-                        ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                        // Do not release the object, it might be read again in GetFieldNode
-                        : nullCheck(peekObject(frame, slot));
-
+        StaticObject receiver;
+        if (opcode == GETSTATIC) {
+            try (EspressoLanguage.DisableSingleStepping ignored = getLanguage().disableStepping()) {
+                receiver = field.getDeclaringKlass().tryInitializeAndGetStatics();
+            }
+        } else {
+            // Do not release the object, it might be read again in GetFieldNode
+            receiver = nullCheck(peekObject(frame, slot));
+        }
         if (!noForeignObjects.isValid() && opcode == GETFIELD) {
             if (receiver.isForeignObject()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
