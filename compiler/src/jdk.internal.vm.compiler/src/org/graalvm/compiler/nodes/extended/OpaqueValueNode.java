@@ -32,13 +32,24 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.phases.common.RemoveOpaqueValuePhase;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
+/**
+ * This node type acts as an optimization barrier between its input node and its usages. For
+ * example, a MulNode with two ConstantNodes as input will be canonicalized to a ConstantNode. This
+ * optimization will be prevented if either of the two constants is wrapped by an OpaqueValueNode.
+ * <p>
+ * </p>
+ * This node is not {@link LIRLowerable}, so it should be removed from the graph before LIR
+ * generation.
+ *
+ * @see RemoveOpaqueValuePhase
+ */
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public final class OpaqueValueNode extends OpaqueNode implements NodeWithIdentity, LIRLowerable, GuardingNode, IterableNodeType {
+public final class OpaqueValueNode extends OpaqueNode implements NodeWithIdentity, GuardingNode, IterableNodeType {
     public static final NodeClass<OpaqueValueNode> TYPE = NodeClass.create(OpaqueValueNode.class);
 
     @Input(InputType.Value) private ValueNode value;
@@ -57,10 +68,5 @@ public final class OpaqueValueNode extends OpaqueNode implements NodeWithIdentit
     public void setValue(ValueNode value) {
         this.updateUsages(this.value, value);
         this.value = value;
-    }
-
-    @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.operand(getValue()));
     }
 }
