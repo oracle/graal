@@ -73,10 +73,10 @@ public class MHInvokeGenericNode extends MethodHandleIntrinsicNode {
         StaticObject appendixBox = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1], meta.getContext());
         // Ask java code to spin an invoker for us.
         StaticObject memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkMethod.invokeDirect(
-                null,
-                callerKlass.mirror(), (int) REF_invokeVirtual,
-                method.getDeclaringKlass().mirror(), meta.toGuestString(methodName), meta.toGuestString(signature),
-                appendixBox);
+                        null,
+                        callerKlass.mirror(), (int) REF_invokeVirtual,
+                        method.getDeclaringKlass().mirror(), meta.toGuestString(methodName), meta.toGuestString(signature),
+                        appendixBox);
         StaticObject appendix = appendixBox.get(language, 0);
         return new MHInvokeGenericNode(method, memberName, appendix);
     }

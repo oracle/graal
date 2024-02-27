@@ -130,7 +130,7 @@ public interface ClassConstant extends PoolConstant {
                     if (!Klass.checkAccess(klass.getElementalType(), accessingKlass, false)) {
                         Meta meta = context.getMeta();
                         context.getLogger().log(Level.FINE,
-                                "Access check of: " + klass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
+                                        "Access check of: " + klass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
                         throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(klassName));
                     }
 
