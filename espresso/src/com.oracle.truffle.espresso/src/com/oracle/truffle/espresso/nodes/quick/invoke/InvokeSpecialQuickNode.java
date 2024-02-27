@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeSpecial;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeSpecialNodeGen;
