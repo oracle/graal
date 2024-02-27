@@ -412,7 +412,7 @@ class NativeImageStages:
 
     def stderr(self, include_bench_err=False):
         def writeFun(s):
-            v = self.stdout_file.write(s)
+            v = self.stderr_file.write(s)
             if include_bench_err:
                 self.bench_err(s)
             else:
