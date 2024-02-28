@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1134,6 +1134,7 @@ public final class DebuggerSession implements Closeable {
                     return null;
                 }
                 Node callNode = frameInstance.getCallNode();
+                boolean callNodeAvailable = callNode != null;
                 while (callNode != null && !SourceSectionFilter.ANY.includes(callNode)) {
                     callNode = callNode.getParent();
                 }
@@ -1144,6 +1145,11 @@ public final class DebuggerSession implements Closeable {
                 if (callNode == null) {
                     // GR-52192 temporary workaround for Espresso, where a meaningful call node
                     // cannot always be set as encapsulated node reference.
+                    if (callNodeAvailable) {
+                        // Call node was available but no instrumentable node in parent node
+                        // hierarchy, so we can't use the root node as the call node.
+                        return null;
+                    }
                     callNode = root;
                 }
                 return new Caller(frameInstance, callNode);
