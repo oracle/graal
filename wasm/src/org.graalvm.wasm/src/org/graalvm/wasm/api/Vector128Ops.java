@@ -67,30 +67,29 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    public static int i32x4_all_true(byte[] vec) {
-        int[] ints = Vector128.bytesAsInts(vec);
-        CompilerDirectives.ensureVirtualized(ints);
-        int result = 1;
-        for (int i = 0; i < ints.length; i++) {
-            if (ints[i] == 0) {
-                result = 0;
-                break;
-            }
+    public static byte[] i16x8_relop(byte[] vecX, byte[] vecY, int vectorOpcode) {
+        short[] x = Vector128.bytesAsShorts(vecX);
+        short[] y = Vector128.bytesAsShorts(vecY);
+        short[] result = new short[8];
+        CompilerDirectives.ensureVirtualized(x);
+        CompilerDirectives.ensureVirtualized(y);
+        CompilerDirectives.ensureVirtualized(result);
+        for (int i = 0; i < result.length; i++) {
+            result[i] = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I16X8_EQ -> x[i] == y[i];
+                case Bytecode.VECTOR_I16X8_NE -> x[i] != y[i];
+                case Bytecode.VECTOR_I16X8_LT_S -> x[i] < y[i];
+                case Bytecode.VECTOR_I16X8_LT_U -> Short.compareUnsigned(x[i], y[i]) < 0;
+                case Bytecode.VECTOR_I16X8_GT_S -> x[i] > y[i];
+                case Bytecode.VECTOR_I16X8_GT_U -> Short.compareUnsigned(x[i], y[i]) > 0;
+                case Bytecode.VECTOR_I16X8_LE_S -> x[i] <= y[i];
+                case Bytecode.VECTOR_I16X8_LE_U -> Short.compareUnsigned(x[i], y[i]) <= 0;
+                case Bytecode.VECTOR_I16X8_GE_S -> x[i] >= y[i];
+                case Bytecode.VECTOR_I16X8_GE_U -> Short.compareUnsigned(x[i], y[i]) >= 0;
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            } ? (short) 0xffff : (short) 0x0000;
         }
-        return result;
-    }
-
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    public static int i32x4_bitmask(byte[] vec) {
-        int[] ints = Vector128.bytesAsInts(vec);
-        CompilerDirectives.ensureVirtualized(ints);
-        int result = 0;
-        for (int i = 0; i < ints.length; i++) {
-            if (ints[i] < 0) {
-                result |= 1 << i;
-            }
-        }
-        return result;
+        return Vector128.shortsAsBytes(result);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
@@ -186,6 +185,150 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static byte[] i16x8_extend_i8x16(byte[] x, int vectorOpcode) {
+        short[] result = new short[8];
+        CompilerDirectives.ensureVirtualized(result);
+        for (int i = 0; i < result.length; i++) {
+            result[i] = (short) switch (vectorOpcode) {
+                case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8x16_S -> x[2 * i] + x[2 * i + 1];
+                case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8x16_U -> Byte.toUnsignedInt(x[2 * i]) + Byte.toUnsignedInt(x[2 * i + 1]);
+                case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8x16_S -> x[i];
+                case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8x16_S -> x[i + result.length];
+                case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8x16_U -> Byte.toUnsignedInt(x[i]);
+                case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8x16_U -> Byte.toUnsignedInt(x[i + result.length]);
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
+        return Vector128.shortsAsBytes(result);
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static byte[] i16x8_unop(byte[] vecX, int vectorOpcode) {
+        short[] x = Vector128.bytesAsShorts(vecX);
+        short[] result = new short[8];
+        CompilerDirectives.ensureVirtualized(x);
+        CompilerDirectives.ensureVirtualized(result);
+        for (int i = 0; i < result.length; i++) {
+            result[i] = (short) switch (vectorOpcode) {
+                case Bytecode.VECTOR_I16X8_ABS -> Math.abs(x[i]);
+                case Bytecode.VECTOR_I16X8_NEG -> -x[i];
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
+        return Vector128.shortsAsBytes(result);
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static int i16x8_all_true(byte[] vec) {
+        short[] shorts = Vector128.bytesAsShorts(vec);
+        CompilerDirectives.ensureVirtualized(shorts);
+        int result = 1;
+        for (int i = 0; i < shorts.length; i++) {
+            if (shorts[i] == 0) {
+                result = 0;
+                break;
+            }
+        }
+        return result;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static int i16x8_bitmask(byte[] vec) {
+        short[] shorts = Vector128.bytesAsShorts(vec);
+        CompilerDirectives.ensureVirtualized(shorts);
+        int result = 0;
+        for (int i = 0; i < shorts.length; i++) {
+            if (shorts[i] < 0) {
+                result |= 1 << i;
+            }
+        }
+        return result;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static byte[] i16x8_narrow_i32x4(byte[] vecX, byte[] vecY, int vectorOpcode) {
+        int[] x = Vector128.bytesAsInts(vecX);
+        int[] y = Vector128.bytesAsInts(vecY);
+        short[] result = new short[8];
+        CompilerDirectives.ensureVirtualized(x);
+        CompilerDirectives.ensureVirtualized(y);
+        CompilerDirectives.ensureVirtualized(result);
+        for (int i = 0; i < result.length; i++) {
+            int[] src = i < 4 ? x : y;
+            int index = i < 4 ? i : i - 4;
+            result[i] = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I16X8_NARROW_I32X4_S -> satS16(src[index]);
+                case Bytecode.VECTOR_I16X8_NARROW_I32X4_U -> satU16(src[index]);
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
+        return Vector128.shortsAsBytes(result);
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static byte[] i16x8_shiftop(byte[] vecX, int shift, int vectorOpcode) {
+        short[] x = Vector128.bytesAsShorts(vecX);
+        short[] result = new short[8];
+        int shiftMod = shift % 16;
+        CompilerDirectives.ensureVirtualized(x);
+        CompilerDirectives.ensureVirtualized(result);
+        for (int i = 0; i < result.length; i++) {
+            result[i] = (short) switch (vectorOpcode) {
+                case Bytecode.VECTOR_I16X8_SHL -> x[i] << shiftMod;
+                case Bytecode.VECTOR_I16X8_SHR_S -> x[i] >> shiftMod;
+                case Bytecode.VECTOR_I16X8_SHR_U -> x[i] >>> shiftMod;
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
+        return Vector128.shortsAsBytes(result);
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static byte[] i16x8_binop(byte[] vecX, byte[] vecY, int vectorOpcode) {
+        short[] x = Vector128.bytesAsShorts(vecX);
+        short[] y = Vector128.bytesAsShorts(vecY);
+        short[] result = new short[8];
+        CompilerDirectives.ensureVirtualized(x);
+        CompilerDirectives.ensureVirtualized(y);
+        CompilerDirectives.ensureVirtualized(result);
+        for (int i = 0; i < result.length; i++) {
+            result[i] = (short) switch (vectorOpcode) {
+                case Bytecode.VECTOR_I16X8_Q15MULR_SAT_S -> satS16((x[i] * y[i] + (1 << 14)) >> 15);
+                case Bytecode.VECTOR_I16X8_ADD -> x[i] + y[i];
+                case Bytecode.VECTOR_I16X8_ADD_SAT_S -> satS16(x[i] + y[i]);
+                case Bytecode.VECTOR_I16X8_ADD_SAT_U -> satU16(Short.toUnsignedInt(x[i]) + Short.toUnsignedInt(y[i]));
+                case Bytecode.VECTOR_I16X8_SUB -> x[i] - y[i];
+                case Bytecode.VECTOR_I16X8_SUB_SAT_S -> satS16(x[i] - y[i]);
+                case Bytecode.VECTOR_I16X8_SUB_SAT_U -> satU16(Short.toUnsignedInt(x[i]) - Short.toUnsignedInt(y[i]));
+                case Bytecode.VECTOR_I16X8_MUL -> x[i] * y[i];
+                case Bytecode.VECTOR_I16X8_MIN_S -> Math.min(x[i], y[i]);
+                case Bytecode.VECTOR_I16X8_MIN_U -> Short.compareUnsigned(x[i], y[i]) <= 0 ? x[i] : y[i];
+                case Bytecode.VECTOR_I16X8_MAX_S -> Math.max(x[i], y[i]);
+                case Bytecode.VECTOR_I16X8_MAX_U -> Short.compareUnsigned(x[i], y[i]) >= 0 ? x[i] : y[i];
+                case Bytecode.VECTOR_I16X8_AVGR_U -> (Short.toUnsignedInt(x[i]) + Short.toUnsignedInt(y[i]) + 1) / 2;
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
+        return Vector128.shortsAsBytes(result);
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static byte[] i16x8_binop_extend_i8x16(byte[] x, byte[] y, int vectorOpcode) {
+        short[] result = new short[8];
+        CompilerDirectives.ensureVirtualized(result);
+        for (int i = 0; i < result.length; i++) {
+            result[i] = (short) switch (vectorOpcode) {
+                case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8x16_S -> x[i] * y[i];
+                case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8x16_S -> x[i + result.length] * y[i + result.length];
+                case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8x16_U -> Byte.toUnsignedInt(x[i]) * Byte.toUnsignedInt(y[i]);
+                case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8x16_U -> Byte.toUnsignedInt(x[i + result.length]) * Byte.toUnsignedInt(y[i + result.length]);
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
+        return Vector128.shortsAsBytes(result);
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] i32x4_extend_i16x8(byte[] vecX, int vectorOpcode) {
         short[] x = Vector128.bytesAsShorts(vecX);
         int[] result = new int[4];
@@ -219,6 +362,33 @@ public class Vector128Ops {
             };
         }
         return Vector128.intsAsBytes(result);
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static int i32x4_all_true(byte[] vec) {
+        int[] ints = Vector128.bytesAsInts(vec);
+        CompilerDirectives.ensureVirtualized(ints);
+        int result = 1;
+        for (int i = 0; i < ints.length; i++) {
+            if (ints[i] == 0) {
+                result = 0;
+                break;
+            }
+        }
+        return result;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static int i32x4_bitmask(byte[] vec) {
+        int[] ints = Vector128.bytesAsInts(vec);
+        CompilerDirectives.ensureVirtualized(ints);
+        int result = 0;
+        for (int i = 0; i < ints.length; i++) {
+            if (ints[i] < 0) {
+                result |= 1 << i;
+            }
+        }
+        return result;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
@@ -489,16 +659,6 @@ public class Vector128Ops {
         return Vector128.doublesAsBytes(result);
     }
 
-    private static int trunc_sat_u(double x) {
-        if (Double.isNaN(x) || x < 0) {
-            return 0;
-        } else if (x > 0xffff_ffffL) {
-            return 0xffff_ffff;
-        } else {
-            return (int) (long) ExactMath.truncate(x);
-        }
-    }
-
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] i32x4_trunc_sat_f32x4(byte[] vecX, int vectorOpcode) {
         float[] x = Vector128.bytesAsFloats(vecX);
@@ -508,7 +668,7 @@ public class Vector128Ops {
         for (int i = 0; i < result.length; i++) {
             result[i] = switch (vectorOpcode) {
                 case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S -> (int) x[i];
-                case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U -> trunc_sat_u(x[i]);
+                case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U -> truncSatU32(x[i]);
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
@@ -524,7 +684,7 @@ public class Vector128Ops {
         for (int i = 0; i < result.length; i++) {
             result[i] = switch (vectorOpcode) {
                 case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO -> (int) x[i];
-                case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO -> trunc_sat_u(x[i]);
+                case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO -> truncSatU32(x[i]);
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
@@ -532,4 +692,34 @@ public class Vector128Ops {
     }
 
     // Checkstyle: resume method name check
+
+    private static short satS16(int x) {
+        if (x > Short.MAX_VALUE) {
+            return Short.MAX_VALUE;
+        } else if (x < Short.MIN_VALUE) {
+            return Short.MIN_VALUE;
+        } else {
+            return (short) x;
+        }
+    }
+
+    private static short satU16(int x) {
+        if (x > 0xffff) {
+            return (short) 0xffff;
+        } else if (x < 0) {
+            return 0;
+        } else {
+            return (short) x;
+        }
+    }
+
+    private static int truncSatU32(double x) {
+        if (Double.isNaN(x) || x < 0) {
+            return 0;
+        } else if (x > 0xffff_ffffL) {
+            return 0xffff_ffff;
+        } else {
+            return (int) (long) ExactMath.truncate(x);
+        }
+    }
 }
