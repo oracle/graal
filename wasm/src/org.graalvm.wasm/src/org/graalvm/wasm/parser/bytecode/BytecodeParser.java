@@ -917,6 +917,12 @@ public abstract class BytecodeParser {
                         case Bytecode.VECTOR_I32X4_LE_U:
                         case Bytecode.VECTOR_I32X4_GE_S:
                         case Bytecode.VECTOR_I32X4_GE_U:
+                        case Bytecode.VECTOR_I64X2_EQ:
+                        case Bytecode.VECTOR_I64X2_NE:
+                        case Bytecode.VECTOR_I64X2_LT_S:
+                        case Bytecode.VECTOR_I64X2_GT_S:
+                        case Bytecode.VECTOR_I64X2_LE_S:
+                        case Bytecode.VECTOR_I64X2_GE_S:
                         case Bytecode.VECTOR_F32X4_EQ:
                         case Bytecode.VECTOR_F32X4_NE:
                         case Bytecode.VECTOR_F32X4_LT:
@@ -955,6 +961,24 @@ public abstract class BytecodeParser {
                         case Bytecode.VECTOR_I32X4_EXTMUL_HIGH_I16X8_S:
                         case Bytecode.VECTOR_I32X4_EXTMUL_LOW_I16X8_U:
                         case Bytecode.VECTOR_I32X4_EXTMUL_HIGH_I16X8_U:
+                        case Bytecode.VECTOR_I64X2_ABS:
+                        case Bytecode.VECTOR_I64X2_NEG:
+                        case Bytecode.VECTOR_I64X2_ALL_TRUE:
+                        case Bytecode.VECTOR_I64X2_BITMASK:
+                        case Bytecode.VECTOR_I64X2_EXTEND_LOW_I32X4_S:
+                        case Bytecode.VECTOR_I64X2_EXTEND_HIGH_I32X4_S:
+                        case Bytecode.VECTOR_I64X2_EXTEND_LOW_I32X4_U:
+                        case Bytecode.VECTOR_I64X2_EXTEND_HIGH_I32X4_U:
+                        case Bytecode.VECTOR_I64X2_SHL:
+                        case Bytecode.VECTOR_I64X2_SHR_S:
+                        case Bytecode.VECTOR_I64X2_SHR_U:
+                        case Bytecode.VECTOR_I64X2_ADD:
+                        case Bytecode.VECTOR_I64X2_SUB:
+                        case Bytecode.VECTOR_I64X2_MUL:
+                        case Bytecode.VECTOR_I64X2_EXTMUL_LOW_I32X4_S:
+                        case Bytecode.VECTOR_I64X2_EXTMUL_HIGH_I32X4_S:
+                        case Bytecode.VECTOR_I64X2_EXTMUL_LOW_I32X4_U:
+                        case Bytecode.VECTOR_I64X2_EXTMUL_HIGH_I32X4_U:
                         case Bytecode.VECTOR_F32X4_CEIL:
                         case Bytecode.VECTOR_F32X4_FLOOR:
                         case Bytecode.VECTOR_F32X4_TRUNC:
