@@ -622,14 +622,15 @@ def _sl_jvm_gate_tests(jdk, force_cp=False, supports_optimization=True):
 # Run in VM suite with:
 # mx --env ce --native-images=. build
 # mx --env ce --native-images=. gate -o -s "Truffle Unchained SL Native Optimized"
-def sl_native_optimized_gate_tests():
-    _sl_native_optimized_gate_tests(force_cp=False)
-    _sl_native_optimized_gate_tests(force_cp=True)
+def sl_native_optimized_gate_tests(quick_build=False):
+    _sl_native_optimized_gate_tests(force_cp=False, quick_build=quick_build)
+    _sl_native_optimized_gate_tests(force_cp=True, quick_build=quick_build)
 
-def _sl_native_optimized_gate_tests(force_cp):
+def _sl_native_optimized_gate_tests(force_cp, quick_build):
     target_dir = tempfile.mkdtemp()
     jdk = mx.get_jdk(tag='graalvm')
-    image = _native_image_sl(jdk, [], target_dir, use_optimized_runtime=True, use_enterprise=True)
+    vm_args = ['-Ob'] if quick_build else []
+    image = _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, use_enterprise=True)
 
     def run_native_optimized(test_file):
         return [image] + [test_file, '--disable-launcher-output']
@@ -648,7 +649,7 @@ def _sl_native_optimized_gate_tests(force_cp):
     enterprise = _get_enterprise_truffle()
     if enterprise:
         target_dir = tempfile.mkdtemp()
-        image = _native_image_sl(jdk, [], target_dir, use_optimized_runtime=True, use_enterprise=False, force_cp=force_cp)
+        image = _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, use_enterprise=False, force_cp=force_cp)
 
         def run_no_enterprise_native_optimized(test_file):
             return [image] + [test_file, '--disable-launcher-output']
@@ -662,12 +663,13 @@ def _sl_native_optimized_gate_tests(force_cp):
 
         shutil.rmtree(target_dir)
 
+
 # Run in VM suite with:
 # mx --env ce --native-images=. build
 # mx --env ce --native-images=. gate -o -s "Truffle Unchained SL Native Fallback"
-def sl_native_fallback_gate_tests():
-    _sl_native_fallback_gate_tests(force_cp=False)
-    _sl_native_fallback_gate_tests(force_cp=True)
+def sl_native_fallback_gate_tests(quick_build=False):
+    _sl_native_fallback_gate_tests(force_cp=False, quick_build=quick_build)
+    _sl_native_fallback_gate_tests(force_cp=True, quick_build=quick_build)
 
 
 def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False):
@@ -721,10 +723,11 @@ def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False
     native_truffle_unittest(test_packages + ['--build-args'] + build_args + ['--run-args'] + run_args + exclude_args)
 
 
-def _sl_native_fallback_gate_tests(force_cp):
+def _sl_native_fallback_gate_tests(force_cp, quick_build):
     target_dir = tempfile.mkdtemp()
     jdk = mx.get_jdk(tag='graalvm')
-    image = _native_image_sl(jdk, [], target_dir, use_optimized_runtime=False, force_cp=force_cp)
+    vm_args = ['-Ob'] if quick_build else []
+    image = _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=False, force_cp=force_cp)
 
     def run_native_fallback(test_file):
         return [image] + [test_file, '--disable-launcher-output', '--engine.WarnInterpreterOnly=false']
