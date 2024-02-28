@@ -132,10 +132,7 @@ local devkits = graal_common.devkits;
   mx_vm_common: vm.mx_cmd_base_no_env + ['--env', '${VM_ENV}'] + self.mx_vm_cmd_suffix,
   mx_vm_complete: vm.mx_cmd_base_no_env + ['--env', '${VM_ENV}-complete'] + self.mx_vm_cmd_suffix,
 
-  svm_common_linux_amd64:        graal_common.deps.svm,
-  svm_common_linux_aarch64:      graal_common.deps.svm,
-  svm_common_darwin_amd64:       graal_common.deps.svm,
-  svm_common_darwin_aarch64:     graal_common.deps.svm,
+  svm_common: graal_common.deps.svm,
   svm_common_windows_amd64(jdk): graal_common.deps.svm + graal_common.devkits["windows-jdk" + jdk],
 
   maven_deploy_sdk:                     ['--suite', 'sdk', 'maven-deploy', '--validate', 'none', '--all-distribution-types', '--with-suite-revisions-metadata'],
@@ -161,10 +158,10 @@ local devkits = graal_common.devkits;
     $.mx_vm_complete + self.artifact_deploy_sdk_components_dry_run(os)
   ],
 
-  ruby_vm_build_linux_amd64:    self.svm_common_linux_amd64    + self.sulong          + self.truffleruby    + vm.custom_vm_linux,
-  ruby_vm_build_linux_aarch64:  self.svm_common_linux_aarch64  + self.sulong          + self.truffleruby  + vm.custom_vm_linux,
-  ruby_vm_build_darwin_amd64:   self.svm_common_darwin_amd64   + self.sulong   + self.truffleruby   + vm.custom_vm_darwin,
-  ruby_vm_build_darwin_aarch64: self.svm_common_darwin_aarch64 + self.sulong + self.truffleruby + vm.custom_vm_darwin,
+  ruby_vm_build_linux_amd64:    self.svm_common    + self.sulong          + self.truffleruby    + vm.custom_vm_linux,
+  ruby_vm_build_linux_aarch64:  self.svm_common  + self.sulong          + self.truffleruby  + vm.custom_vm_linux,
+  ruby_vm_build_darwin_amd64:   self.svm_common   + self.sulong   + self.truffleruby   + vm.custom_vm_darwin,
+  ruby_vm_build_darwin_aarch64: self.svm_common + self.sulong + self.truffleruby + vm.custom_vm_darwin,
 
   ruby_python_vm_build_linux_amd64:    self.ruby_vm_build_linux_amd64    + self.graalpy,
   ruby_python_vm_build_linux_aarch64:  self.ruby_vm_build_linux_aarch64  + self.graalpy,
@@ -613,7 +610,7 @@ local devkits = graal_common.devkits;
   deploy_vm_espresso_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.vm_base('darwin', 'aarch64', 'weekly', deploy=true) + self.deploy_graalvm_espresso('darwin', 'aarch64', 'java21') + {name: 'weekly-deploy-vm-espresso-java21-darwin-aarch64', notify_groups:: ["deploy"]},
   deploy_vm_espresso_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.sulong + self.deploy_build + self.vm_base('windows', 'amd64', 'weekly', deploy=true, jdk_hint='21') + self.deploy_graalvm_espresso('windows', 'amd64', 'java21') + {name: 'weekly-deploy-vm-espresso-java21-windows-amd64', notify_groups:: ["deploy"]},
 
-  local sulong_vm_tests = self.svm_common_linux_amd64 + self.sulong + vm.custom_vm_linux + self.vm_base('linux', 'amd64', 'gate') + {
+  local sulong_vm_tests = self.svm_common + self.sulong + vm.custom_vm_linux + self.vm_base('linux', 'amd64', 'gate') + {
      run: [
        ['export', 'SVM_SUITE=' + vm.svm_suite],
        ['mx', '--dynamicimports', '$SVM_SUITE,/sulong', '--disable-polyglot', '--disable-libpolyglot', 'gate', '--no-warning-as-error', '--tags', 'build,sulong'],

@@ -106,8 +106,10 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   local monthlies = {},
 
   local svm_common(os_arch, jdk) =
-    local obj = c["svm_common_" + underscore(os_arch)];
-    if std.type(obj) == "function" then obj(jdk) else obj,
+    if (os_arch == 'windows-amd64') then
+      c.svm_common_windows_amd64(jdk)
+    else
+      c.svm_common,
 
   local all_os_arches = [
     "linux-amd64",
