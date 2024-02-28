@@ -42,6 +42,11 @@ public class RemoveOpaqueValuePhase extends BasePhase<CoreProviders> {
     }
 
     @Override
+    public boolean shouldApply(StructuredGraph graph) {
+        return graph.hasNode(OpaqueValueNode.TYPE);
+    }
+
+    @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
         for (OpaqueValueNode opaque : graph.getNodes(OpaqueValueNode.TYPE)) {
             opaque.replaceAtUsagesAndDelete(opaque.getValue());
