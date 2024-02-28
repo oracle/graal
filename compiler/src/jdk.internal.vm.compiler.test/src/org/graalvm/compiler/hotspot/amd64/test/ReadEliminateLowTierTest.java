@@ -22,31 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.amd64.test;
+package org.graalvm.compiler.hotspot.amd64.test;
 
-import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
-import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import org.junit.Test;
+import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.InputType;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.IsNullNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.graalvm.compiler.nodes.memory.ReadNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
+import org.graalvm.compiler.phases.common.UseTrappingNullChecksPhase;
 
-import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.core.common.type.StampFactory;
-import jdk.graal.compiler.core.test.GraalCompilerTest;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodeinfo.InputType;
-import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodes.FixedWithNextNode;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.calc.IsNullNode;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import jdk.graal.compiler.nodes.memory.ReadNode;
-import jdk.graal.compiler.nodes.spi.Canonicalizable;
-import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
-import jdk.graal.compiler.phases.common.UseTrappingNullChecksPhase;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.InvalidInstalledCodeException;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
