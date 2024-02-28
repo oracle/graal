@@ -9,7 +9,7 @@ Oracle GraalVM is available for Windows on the x64 architecture.
 
 Follow these steps to install Oracle GraalVM:
 
-1. Navigate to [Oracle Java Downloads](https://www.oracle.com/java/technologies/downloads/). Select the preferred Oracle GraalVM version, **21** for the Java version, and **Windows** for the operating system. Start downloading.
+1. Navigate to [Oracle Java Downloads](https://www.oracle.com/java/technologies/downloads/). Select the preferred Oracle GraalVM version, **22** for the Java version, and **Windows** for the operating system. Start downloading.
 
 2. Change the directory to the location where you want to install GraalVM, then move the _.zip_ archive file to it.
 

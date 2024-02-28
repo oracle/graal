@@ -73,7 +73,6 @@ Run `native-image --help` for help on build options.
 * `--shared`: build a shared library
 * `--silent`: silence build output
 * `--static`: build a statically-linked executable (requires `libc` and `zlib` static libraries)
-* `--strict-image-heap`:  enable the strict image heap mode that allows all classes to be used at build-time but also requires types of all objects in the heap to be explicitly marked for build-time initialization.
 * `--target`: select the compilation target for `native-image` (in the `<OS>-<architecture>` format). It defaults to host's OS-architecture pair.
 * `--trace-class-initialization`: provide a comma-separated list of fully-qualified class names that a class initialization is traced for
 * `--trace-object-instantiation`: provide a comma-separated list of fully-qualified class names that an object instantiation is traced for
