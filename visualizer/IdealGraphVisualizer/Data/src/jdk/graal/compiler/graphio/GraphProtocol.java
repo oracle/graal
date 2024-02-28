@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.graphio;
+package jdk.graal.compiler.graphio;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -575,7 +575,9 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
                     writeShort((char) 0);
                 } else {
                     int listSize = list.size();
-                    assert listSize == ((char) listSize);
+                    if (listSize != ((char) listSize)) {
+                        throw new IOException("Too many nodes in list: " + list.size());
+                    }
                     writeShort((char) listSize);
                     for (Node edge : list) {
                         writeNodeRef(edge);

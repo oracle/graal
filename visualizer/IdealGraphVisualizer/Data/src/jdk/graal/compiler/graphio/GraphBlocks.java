@@ -22,39 +22,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.graphio;
+package jdk.graal.compiler.graphio;
 
 import java.util.Collection;
-import java.util.Collections;
 
-final class DefaultGraphBlocks implements GraphBlocks<Object, Object, Object> {
-    private static final DefaultGraphBlocks DEFAULT = new DefaultGraphBlocks();
+/**
+ * Special support for dealing with blocks.
+ *
+ * @param <G> the type that represents the graph
+ * @param <B> the type that represents the block
+ * @param <N> the type of the node
+ */
+public interface GraphBlocks<G, B, N> {
+    /**
+     * All blocks in the graph.
+     *
+     * @param graph the graph
+     * @return collection of blocks in the graph
+     */
+    Collection<? extends B> blocks(G graph);
 
-    private DefaultGraphBlocks() {
-    }
+    /**
+     * Unique id of a block.
+     *
+     * @param block the block
+     * @return the id of the block
+     */
+    int blockId(B block);
 
-    @SuppressWarnings("unchecked")
-    public static <G, B, N> GraphBlocks<G, B, N> empty() {
-        return (GraphBlocks<G, B, N>) DEFAULT;
-    }
+    Collection<? extends N> blockNodes(G info, B block);
 
-    @Override
-    public Collection<? extends Void> blocks(Object graph) {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public int blockId(Object block) {
-        return -1;
-    }
-
-    @Override
-    public Collection<? extends Object> blockNodes(Object info, Object block) {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public Collection<? extends Object> blockSuccessors(Object block) {
-        return Collections.emptyList();
-    }
+    Collection<? extends B> blockSuccessors(B block);
 }

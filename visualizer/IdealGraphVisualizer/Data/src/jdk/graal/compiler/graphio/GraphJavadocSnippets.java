@@ -23,7 +23,7 @@
  * questions.
  */
 
-package org.graalvm.graphio;
+package jdk.graal.compiler.graphio;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -38,7 +38,7 @@ import java.util.Set;
 final class GraphJavadocSnippets {
     static GraphStructure<AcmeGraph, AcmeNode, AcmeNodeType, AcmePorts> acmeGraphStructure() {
         // @formatter:off
-        // BEGIN: org.graalvm.graphio.GraphJavadocSnippets#acmeGraphStructure
+        // BEGIN: jdk.graal.compiler.graphio.GraphJavadocSnippets#acmeGraphStructure
         class AcmeGraphStructure implements
         GraphStructure<AcmeGraph, AcmeNode, AcmeNodeType, AcmePorts> {
 
@@ -142,12 +142,12 @@ final class GraphJavadocSnippets {
             }
         }
 
-        // END: org.graalvm.graphio.GraphJavadocSnippets#acmeGraphStructure
+        // END: jdk.graal.compiler.graphio.GraphJavadocSnippets#acmeGraphStructure
 
         return new AcmeGraphStructure();
     }
 
-    // BEGIN: org.graalvm.graphio.GraphJavadocSnippets#buildOutput
+    // BEGIN: jdk.graal.compiler.graphio.GraphJavadocSnippets#buildOutput
     static GraphOutput<AcmeGraph, ?> buildOutput(WritableByteChannel channel)
     throws IOException {
         return GraphOutput.newBuilder(acmeGraphStructure()).
@@ -155,9 +155,9 @@ final class GraphJavadocSnippets {
             protocolVersion(6, 0).
             build(channel);
     }
-    // END: org.graalvm.graphio.GraphJavadocSnippets#buildOutput
+    // END: jdk.graal.compiler.graphio.GraphJavadocSnippets#buildOutput
 
-    // BEGIN: org.graalvm.graphio.GraphJavadocSnippets#buildAll
+    // BEGIN: jdk.graal.compiler.graphio.GraphJavadocSnippets#buildAll
     static GraphOutput<AcmeGraph, ?> buildAll(WritableByteChannel channel)
     throws IOException {
         GraphBlocks<AcmeGraph, AcmeBlocks, AcmeNode> graphBlocks = acmeBlocks();
@@ -172,7 +172,7 @@ final class GraphJavadocSnippets {
             types(graphTypes).
             build(channel);
     }
-    // END: org.graalvm.graphio.GraphJavadocSnippets#buildAll
+    // END: jdk.graal.compiler.graphio.GraphJavadocSnippets#buildAll
 
     private static GraphTypes acmeTypes() {
         GraphTypes graphTypes = null;
@@ -259,7 +259,7 @@ final class GraphJavadocSnippets {
     private static class AcmeCodePosition {
     }
 
-    // BEGIN: org.graalvm.graphio.GraphJavadocSnippets#dump
+    // BEGIN: jdk.graal.compiler.graphio.GraphJavadocSnippets#dump
     static void dump(File toFile) throws IOException {
         try (
             FileChannel ch = new FileOutputStream(toFile).getChannel();
@@ -282,6 +282,6 @@ final class GraphJavadocSnippets {
             output.endGroup();
         }
     }
-    // END: org.graalvm.graphio.GraphJavadocSnippets#dump
+    // END: jdk.graal.compiler.graphio.GraphJavadocSnippets#dump
 
 }
