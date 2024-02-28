@@ -29,6 +29,8 @@ import org.graalvm.nativeimage.c.constant.CConstant;
 
 @CContext(JvmtiDirectives.class)
 public final class JvmtiHeapObjectFilter {
+    // Checkstyle: stop: MethodName
+
     @CConstant
     public static native int JVMTI_HEAP_OBJECT_TAGGED();
 
@@ -37,4 +39,6 @@ public final class JvmtiHeapObjectFilter {
 
     @CConstant
     public static native int JVMTI_HEAP_OBJECT_EITHER();
+
+    // Checkstyle: resume
 }

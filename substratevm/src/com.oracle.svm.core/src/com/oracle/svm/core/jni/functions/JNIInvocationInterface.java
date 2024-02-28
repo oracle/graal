@@ -39,6 +39,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.c.CGlobalData;
@@ -68,7 +69,8 @@ import com.oracle.svm.core.jni.headers.JNIJavaVMInitArgs;
 import com.oracle.svm.core.jni.headers.JNIJavaVMOption;
 import com.oracle.svm.core.jni.headers.JNIJavaVMPointer;
 import com.oracle.svm.core.jni.headers.JNIVersion;
-import com.oracle.svm.core.jvmti.JvmtiEnvManager;
+import com.oracle.svm.core.jvmti.JvmtiEnvs;
+import com.oracle.svm.core.jvmti.headers.JvmtiExternalEnv;
 import com.oracle.svm.core.jvmti.headers.JvmtiVersion;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
@@ -294,8 +296,8 @@ public final class JNIInvocationInterface {
     @SuppressWarnings("unused")
     static int GetEnv(JNIJavaVM vm, WordPointer env, int version) {
         if (SubstrateOptions.JVMTI.getValue() && JvmtiVersion.isSupported(version)) {
-            JvmtiEnvManager envManager = JvmtiEnvManager.singleton();
-            envManager.createJvmtiEnv(env);
+            JvmtiExternalEnv jvmtiEnv = JvmtiEnvs.singleton().create();
+            env.write(jvmtiEnv);
             return JNIErrors.JNI_OK();
         } else if (JNIVersion.isSupported(version, false)) {
             env.write(JNIThreadLocalEnvironment.getAddress());

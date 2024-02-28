@@ -29,6 +29,8 @@ import org.graalvm.nativeimage.c.constant.CConstant;
 
 @CContext(JvmtiDirectives.class)
 public final class JvmtiVerboseFlag {
+    // Checkstyle: stop: MethodName
+
     @CConstant
     public static native int JVMTI_VERBOSE_OTHER();
 
@@ -40,4 +42,6 @@ public final class JvmtiVerboseFlag {
 
     @CConstant
     public static native int JVMTI_VERBOSE_JNI();
+
+    // Checkstyle: resume
 }

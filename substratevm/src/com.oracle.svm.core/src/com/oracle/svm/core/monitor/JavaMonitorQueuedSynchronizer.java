@@ -34,7 +34,6 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.JavaMonitorWaitEvent;
-import com.oracle.svm.core.jvmti.JvmtiPostEvents;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.BasedOnJDKClass;
 
@@ -433,11 +432,9 @@ abstract class JavaMonitorQueuedSynchronizer {
     protected abstract boolean isHeldExclusively();
 
     // see AbstractQueuedLongSynchronizer.acquire(long)
-    protected final void acquire(long arg, Object obj) {
+    protected final void acquire(long arg) {
         if (!tryAcquire(arg)) {
-            JvmtiPostEvents.postMonitorContendedEnter(Thread.currentThread(), obj);
             acquire(null, arg);
-            JvmtiPostEvents.postMonitorContendedEntered(Thread.currentThread(), obj);
         }
     }
 
@@ -647,7 +644,6 @@ abstract class JavaMonitorQueuedSynchronizer {
             }
             node.clearStatus();
             // waiting is done, emit wait event
-            JvmtiPostEvents.postMonitorWaited(Thread.currentThread(), obj, cancelled);
             JavaMonitorWaitEvent.emit(startTicks, obj, node.notifierJfrTid, time, cancelled);
             acquire(node, savedAcquisitions);
             if (cancelled) {

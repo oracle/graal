@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jvmti.headers;
 
-import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
@@ -33,6 +32,7 @@ import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
+import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 
 /**
  * Only a small subset of the callbacks is supported at the moment. All unsupported callbacks use
@@ -160,56 +160,56 @@ public interface JvmtiEventCallbacks extends PointerBase {
 
     interface JvmtiEventVMInitFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
-        int invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv, JThread thread);
+        void invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv, JThread thread);
     }
 
     interface JvmtiEventVMDeathFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
-        int invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv);
+        void invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv);
     }
 
     interface JvmtiEventVMStartFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
-        int invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv);
+        void invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv);
     }
 
     interface JvmtiEventGarbageCollectionFinishFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
-        int invoke(JvmtiExternalEnv jvmtiEnv);
+        void invoke(JvmtiExternalEnv jvmtiEnv);
     }
 
     interface JvmtiEventGarbageCollectionStartFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
-        int invoke(JvmtiExternalEnv jvmtiEnv);
+        void invoke(JvmtiExternalEnv jvmtiEnv);
     }
 
     interface JvmtiEventThreadStartFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
-        int invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv, JThread jthread);
+        void invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv, JThread jthread);
     }
 
     interface JvmtiEventThreadEndFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
-        int invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv, JThread jthread);
+        void invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv, JThread jthread);
     }
 
     interface JvmtiEventMonitorWaitFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
-        int invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv, JThread jthread, JNIObjectHandle obj, long timeout);
+        void invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv, JThread jthread, JNIObjectHandle obj, long timeout);
     }
 
     interface JvmtiEventMonitorWaitedFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
-        int invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv, JThread jthread, JNIObjectHandle obj, boolean timedOut);
+        void invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv, JThread jthread, JNIObjectHandle obj, boolean timedOut);
     }
 
     interface JvmtiEventMonitorContendedEnterFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
-        int invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv, JThread thread, JNIObjectHandle obj);
+        void invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv, JThread thread, JNIObjectHandle obj);
     }
 
     interface JvmtiEventMonitorContendedEnteredFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
-        int invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv, JThread thread, JNIObjectHandle obj);
+        void invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv, JThread thread, JNIObjectHandle obj);
     }
 }

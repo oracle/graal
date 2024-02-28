@@ -24,9 +24,11 @@
  */
 package com.oracle.svm.core.jni.headers;
 
+import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.word.PointerBase;
 
+@CContext(JNIHeaderDirectives.class)
 @CPointerTo(JNIFieldIdPointer.class)
 public interface JNIFieldIdPointerPointer extends PointerBase {
 }

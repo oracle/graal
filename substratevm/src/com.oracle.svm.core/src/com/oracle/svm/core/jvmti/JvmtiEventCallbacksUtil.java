@@ -26,47 +26,22 @@ package com.oracle.svm.core.jvmti;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.UnmanagedMemoryUtil;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.jvmti.headers.JvmtiEvent;
 import com.oracle.svm.core.jvmti.headers.JvmtiEventCallbacks;
 
+/** Methods related to {@link JvmtiEventCallbacks}. */
 public final class JvmtiEventCallbacksUtil {
-
     @Platforms(Platform.HOSTED_ONLY.class)
     private JvmtiEventCallbacksUtil() {
     }
 
-    public static long convertCallbacksToBitVector(JvmtiEventCallbacks callbacks) {
-
-        long enabledCallbacks = 0L;
-        Pointer rawCFunPointer = (Pointer) callbacks;
-
-        for (int i = 0; i < JvmtiEnvEventEnabledUtils.JVMTI_NB_EVENTS; i++) {
-            CFunctionPointer value = rawCFunPointer.readWord(0);
-            if (value.isNonNull()) {
-                enabledCallbacks |= 1L << i;
-            }
-            rawCFunPointer = rawCFunPointer.add(ConfigurationValues.getTarget().wordSize);
-        }
-        return enabledCallbacks;
-    }
-
-    private static boolean hasCallback(JvmtiEventCallbacks callbacks, JvmtiEvent event) {
-        long callBacksBitVector = convertCallbacksToBitVector(callbacks);
-        long eventIndex = JvmtiEnvEventEnabledUtils.getBitForEvent(event);
-        return (callBacksBitVector & eventIndex) != 0;
-    }
-
     public static void setEventCallbacks(JvmtiEventCallbacks envEventCallbacks, JvmtiEventCallbacks newCallbacks, int sizeOfCallbacks) {
-        int internalStructSize = SizeOf.get(JvmtiEventCallbacks.class); // Clear the whole struct
-                                                                        // (including gaps).
+        int internalStructSize = SizeOf.get(JvmtiEventCallbacks.class);
         UnmanagedMemoryUtil.fill((Pointer) envEventCallbacks, WordFactory.unsigned(internalStructSize), (byte) 0);
 
         if (newCallbacks.isNonNull()) {

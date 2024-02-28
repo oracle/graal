@@ -29,6 +29,8 @@ import org.graalvm.nativeimage.c.constant.CConstant;
 
 @CContext(JvmtiDirectives.class)
 public final class JvmtiHeapRootKind {
+    // Checkstyle: stop: MethodName
+
     @CConstant
     public static native int JVMTI_HEAP_ROOT_JNI_GLOBAL();
 
@@ -49,4 +51,6 @@ public final class JvmtiHeapRootKind {
 
     @CConstant
     public static native int JVMTI_HEAP_ROOT_OTHER();
+
+    // Checkstyle: resume
 }

@@ -29,7 +29,6 @@ import java.io.IOException;
 import java.io.Serial;
 import java.util.ArrayList;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -50,6 +49,9 @@ import com.oracle.svm.core.jni.headers.JNIJavaVM;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.util.StringUtil;
 
+import jdk.graal.compiler.api.replacements.Fold;
+
+/** Loads/Unloads JVMTI agents that are located in shared object files. */
 public class JvmtiAgents {
     private static final String AGENT_ON_LOAD = "Agent_OnLoad";
     private static final String AGENT_ON_UNLOAD = "Agent_OnUnload";
@@ -65,15 +67,13 @@ public class JvmtiAgents {
         return ImageSingletons.lookup(JvmtiAgents.class);
     }
 
-    // TEMP (chaeubl): we could call `Agent_OnAttach` instead - would be closer in terms of the
-    // semantics.
     public void load() {
-        String agentLib = SubstrateOptions.AgentLib.getValue();
+        String agentLib = SubstrateOptions.JVMTIAgentLib.getValue();
         if (agentLib != null) {
             loadAgent(agentLib, true);
         }
 
-        String agentPath = SubstrateOptions.AgentPath.getValue();
+        String agentPath = SubstrateOptions.JVMTIAgentPath.getValue();
         if (agentPath != null) {
             loadAgent(agentPath, false);
         }
@@ -90,6 +90,10 @@ public class JvmtiAgents {
     }
 
     private void loadAgent(String agentAndOptions, boolean relative) {
+        if (!agents.isEmpty()) {
+            throw new AgentInitException("Only a single agent is supported at the moment.");
+        }
+
         try {
             loadAgent0(agentAndOptions, relative);
         } catch (AgentInitException e) {
@@ -129,8 +133,6 @@ public class JvmtiAgents {
             String libname = System.mapLibraryName(agent);
             file = new File(sysPath, libname);
             if (!file.exists()) {
-                // TEMP (chaeubl): is this really accurate? What if someone uses a custom
-                // LD_LIBRARY_PATH?
                 throw new AgentInitException("Could not find agent library '" + agent + "' on the library path.");
             }
         } else {

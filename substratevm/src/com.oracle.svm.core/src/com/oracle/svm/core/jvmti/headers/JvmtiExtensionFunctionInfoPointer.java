@@ -24,9 +24,11 @@
  */
 package com.oracle.svm.core.jvmti.headers;
 
+import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.word.PointerBase;
 
+@CContext(JvmtiDirectives.class)
 @CPointerTo(JvmtiExtensionFunctionInfo.class)
 public interface JvmtiExtensionFunctionInfoPointer extends PointerBase {
 }
