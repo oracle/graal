@@ -458,6 +458,13 @@ public class Bytecode {
     public static final int VECTOR_I32X4_GE_S = 0x3F;
     public static final int VECTOR_I32X4_GE_U = 0x40;
 
+    public static final int VECTOR_I64X2_EQ = 0xD6;
+    public static final int VECTOR_I64X2_NE = 0xD7;
+    public static final int VECTOR_I64X2_LT_S = 0xD8;
+    public static final int VECTOR_I64X2_GT_S = 0xD9;
+    public static final int VECTOR_I64X2_LE_S = 0xDA;
+    public static final int VECTOR_I64X2_GE_S = 0xDB;
+
     public static final int VECTOR_F32X4_EQ = 0x41;
     public static final int VECTOR_F32X4_NE = 0x42;
     public static final int VECTOR_F32X4_LT = 0x43;
@@ -499,6 +506,25 @@ public class Bytecode {
     public static final int VECTOR_I32X4_EXTMUL_HIGH_I16X8_S = 0xBD;
     public static final int VECTOR_I32X4_EXTMUL_LOW_I16X8_U = 0xBE;
     public static final int VECTOR_I32X4_EXTMUL_HIGH_I16X8_U = 0xBF;
+
+    public static final int VECTOR_I64X2_ABS = 0xC0;
+    public static final int VECTOR_I64X2_NEG = 0xC1;
+    public static final int VECTOR_I64X2_ALL_TRUE = 0xC3;
+    public static final int VECTOR_I64X2_BITMASK = 0xC4;
+    public static final int VECTOR_I64X2_EXTEND_LOW_I32X4_S = 0xC7;
+    public static final int VECTOR_I64X2_EXTEND_HIGH_I32X4_S = 0xC8;
+    public static final int VECTOR_I64X2_EXTEND_LOW_I32X4_U = 0xC9;
+    public static final int VECTOR_I64X2_EXTEND_HIGH_I32X4_U = 0xCA;
+    public static final int VECTOR_I64X2_SHL = 0xCB;
+    public static final int VECTOR_I64X2_SHR_S = 0xCC;
+    public static final int VECTOR_I64X2_SHR_U = 0xCD;
+    public static final int VECTOR_I64X2_ADD = 0xCE;
+    public static final int VECTOR_I64X2_SUB = 0xD1;
+    public static final int VECTOR_I64X2_MUL = 0xD5;
+    public static final int VECTOR_I64X2_EXTMUL_LOW_I32X4_S = 0xDC;
+    public static final int VECTOR_I64X2_EXTMUL_HIGH_I32X4_S = 0xDD;
+    public static final int VECTOR_I64X2_EXTMUL_LOW_I32X4_U = 0xDE;
+    public static final int VECTOR_I64X2_EXTMUL_HIGH_I32X4_U = 0xDF;
 
     public static final int VECTOR_F32X4_CEIL = 0x67;
     public static final int VECTOR_F32X4_FLOOR = 0x68;
