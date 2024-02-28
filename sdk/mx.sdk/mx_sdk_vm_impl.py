@@ -3575,8 +3575,18 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     register_main_dist(native_standalone, 'graalvm_standalones')
 
     if needs_java_standalone_jimage:
+        has_lib_graal = _get_libgraal_component() is not None
+        components_with_jimage_jars = GraalVmStandaloneComponent.default_jvm_components()
+        if not has_lib_graal:
+            cmpee = get_component('cmpee', fatalIfMissing=False, stage1=False)
+            if cmpee is not None:
+                components_with_jimage_jars += [cmpee]
+            else:
+                cmp = get_component('cmp', fatalIfMissing=False, stage1=False)
+                if cmp is not None:
+                    components_with_jimage_jars += [cmp]
         java_standalone_jimage_jars = set()
-        for component in GraalVmLayoutDistribution._add_dependencies(GraalVmStandaloneComponent.default_jvm_components()):
+        for component in GraalVmLayoutDistribution._add_dependencies(components_with_jimage_jars):
             java_standalone_jimage_jars.update(component.boot_jars + component.jvmci_parent_jars)
             if isinstance(component, mx_sdk.GraalVmJvmciComponent):
                 java_standalone_jimage_jars.update(component.jvmci_jars)
@@ -3588,7 +3598,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             workingSets=None,
             defaultBuild=False,
             missing_export_target_action='warn',
-            default_to_jvmci='lib' if _get_libgraal_component() is not None else False,
+            default_to_jvmci='lib' if has_lib_graal else False,
         )
         register_project(java_standalone_jimage)
 
