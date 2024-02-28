@@ -29,7 +29,6 @@ import static jdk.graal.compiler.core.common.GraalOptions.TrackNodeSourcePositio
 import static jdk.graal.compiler.debug.DebugOptions.Count;
 import static jdk.graal.compiler.debug.DebugOptions.Dump;
 import static jdk.graal.compiler.debug.DebugOptions.DumpPath;
-import static jdk.graal.compiler.debug.DebugOptions.IsRetryCompilation;
 import static jdk.graal.compiler.debug.DebugOptions.MethodFilter;
 import static jdk.graal.compiler.debug.DebugOptions.PrintBackendCFG;
 import static jdk.graal.compiler.debug.DebugOptions.Time;
@@ -42,6 +41,7 @@ import java.io.PrintStream;
 import java.util.Formatter;
 import java.util.Map;
 
+import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.debug.DiagnosticsOutputDirectory;
@@ -255,6 +255,7 @@ public abstract class CompilationWrapper<T> {
         }
     }
 
+    @SuppressWarnings("try")
     protected T handleFailure(DebugContext initialDebug, Throwable cause) {
         OptionValues initialOptions = initialDebug.getOptions();
 
@@ -344,7 +345,6 @@ public abstract class CompilationWrapper<T> {
             }
 
             OptionValues retryOptions = new OptionValues(initialOptions,
-                            IsRetryCompilation, true,
                             Dump, diagnoseLevel,
                             MethodFilter, null,
                             Count, "",
@@ -355,7 +355,8 @@ public abstract class CompilationWrapper<T> {
 
             ByteArrayOutputStream logBaos = new ByteArrayOutputStream();
             PrintStream ps = new PrintStream(logBaos);
-            try (DebugContext retryDebug = createRetryDebugContext(initialDebug, retryOptions, ps)) {
+            try (DebugContext retryDebug = createRetryDebugContext(initialDebug, retryOptions, ps);
+                            DebugCloseable retryScope = retryDebug.openRetryCompilation()) {
                 dumpOnError(retryDebug, cause);
 
                 T res;

@@ -148,9 +148,6 @@ public class DebugOptions {
     @Option(help = "Specify the dump level if CompilationFailureAction#Diagnose is used." +
                     "See CompilationFailureAction for details. file:doc-files/CompilationFailureActionHelp.txt", type = OptionType.Debug)
     public static final OptionKey<String> DiagnoseDumpLevel = new OptionKey<>(":" + DebugContext.VERBOSE_LEVEL);
-    @Option(help = "Set to true by the compiler during a retry compilation in case of a compilation error." +
-                   "This option is not meant to be set by a user.", type = OptionType.Expert)
-    public static final OptionKey<Boolean> IsRetryCompilation = new OptionKey<>(false);
     @Option(help = "Disable intercepting exceptions in debug scopes.", type = OptionType.Debug)
     public static final OptionKey<Boolean> DisableIntercept = new OptionKey<>(false);
     @Option(help = "Intercept also bailout exceptions", type = OptionType.Debug)
