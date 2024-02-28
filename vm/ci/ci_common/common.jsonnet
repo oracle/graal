@@ -132,8 +132,9 @@ local devkits = graal_common.devkits;
   mx_vm_common: vm.mx_cmd_base_no_env + ['--env', '${VM_ENV}'] + self.mx_vm_cmd_suffix,
   mx_vm_complete: vm.mx_cmd_base_no_env + ['--env', '${VM_ENV}-complete'] + self.mx_vm_cmd_suffix,
 
+  // svm_common includes the dependencies for all platforms besides windows amd64
   svm_common: graal_common.deps.svm,
-  svm_common_windows_amd64(jdk): graal_common.deps.svm + graal_common.devkits["windows-jdk" + jdk],
+  svm_common_windows_amd64(jdk): self.svm_common + graal_common.devkits["windows-jdk" + jdk],
 
   maven_deploy_sdk:                     ['--suite', 'sdk', 'maven-deploy', '--validate', 'none', '--all-distribution-types', '--with-suite-revisions-metadata'],
   deploy_artifacts_sdk(os, base_dist_name=null): (if base_dist_name != null then ['--base-dist-name=' + base_dist_name] else []) + ['--suite', 'sdk', 'deploy-artifacts', '--uploader', if os == 'windows' then 'artifact_uploader.cmd' else 'artifact_uploader'],
@@ -158,20 +159,12 @@ local devkits = graal_common.devkits;
     $.mx_vm_complete + self.artifact_deploy_sdk_components_dry_run(os)
   ],
 
-  ruby_vm_build_linux_amd64:    self.svm_common    + self.sulong          + self.truffleruby    + vm.custom_vm_linux,
-  ruby_vm_build_linux_aarch64:  self.svm_common  + self.sulong          + self.truffleruby  + vm.custom_vm_linux,
-  ruby_vm_build_darwin_amd64:   self.svm_common   + self.sulong   + self.truffleruby   + vm.custom_vm_darwin,
-  ruby_vm_build_darwin_aarch64: self.svm_common + self.sulong + self.truffleruby + vm.custom_vm_darwin,
-
-  ruby_python_vm_build_linux_amd64:    self.ruby_vm_build_linux_amd64    + self.graalpy,
-  ruby_python_vm_build_linux_aarch64:  self.ruby_vm_build_linux_aarch64  + self.graalpy,
-  ruby_python_vm_build_darwin_amd64:   self.ruby_vm_build_darwin_amd64   + self.graalpy,
-  ruby_python_vm_build_darwin_aarch64: self.ruby_vm_build_darwin_aarch64 + self.graalpy,
-
-  full_vm_build_linux_amd64:    self.ruby_python_vm_build_linux_amd64    + graal_common.deps.fastr,
-  full_vm_build_linux_aarch64:  self.ruby_python_vm_build_linux_aarch64,
-  full_vm_build_darwin_amd64:   self.ruby_python_vm_build_darwin_amd64   + graal_common.deps.fastr,
-  full_vm_build_darwin_aarch64: self.ruby_python_vm_build_darwin_aarch64,
+  ruby_vm_build: self.svm_common    + self.sulong          + self.truffleruby    + vm.custom_vm_linux,
+  ruby_python_vm_build: self.ruby_vm_build    + self.graalpy,
+  full_vm_build_linux_amd64:    self.ruby_python_vm_build    + graal_common.deps.fastr,
+  full_vm_build_linux_aarch64:  self.ruby_python_vm_build,
+  full_vm_build_darwin_amd64:   self.ruby_python_vm_build   + graal_common.deps.fastr,
+  full_vm_build_darwin_aarch64: self.ruby_python_vm_build,
 
   graalvm_complete_build_deps(edition, os, arch, java_version):
       local java_deps(edition) = {
