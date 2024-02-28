@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,28 +24,49 @@
  */
 package com.oracle.svm.core.jvmti;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.UnmanagedMemoryUtil;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.jvmti.headers.JvmtiEventCallbacks;
+import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.jvmti.headers.JvmtiPhase;
 
-public final class JvmtiEventCallbacksUtil {
+import jdk.graal.compiler.api.replacements.Fold;
+
+public final class JvmtiSupport {
+    private JvmtiPhase phase = JvmtiPhase.JVMTI_PHASE_LIVE;
+
     @Platforms(Platform.HOSTED_ONLY.class)
-    private JvmtiEventCallbacksUtil() {
+    public JvmtiSupport() {
     }
 
-    public static void setEventCallbacks(JvmtiEventCallbacks envEventCallbacks, JvmtiEventCallbacks newCallbacks, int sizeOfCallbacks) {
-        int internalStructSize = SizeOf.get(JvmtiEventCallbacks.class);
-        UnmanagedMemoryUtil.fill((Pointer) envEventCallbacks, WordFactory.unsigned(internalStructSize), (byte) 0);
+    @Fold
+    public static JvmtiSupport singleton() {
+        return ImageSingletons.lookup(JvmtiSupport.class);
+    }
 
-        if (newCallbacks.isNonNull()) {
-            int bytesToCopy = UninterruptibleUtils.Math.min(internalStructSize, sizeOfCallbacks);
-            UnmanagedMemoryUtil.copy((Pointer) newCallbacks, (Pointer) envEventCallbacks, WordFactory.unsigned(bytesToCopy));
-        }
+    public JvmtiPhase getPhase() {
+        return phase;
+    }
+
+    public void setPhase(JvmtiPhase phase) {
+        this.phase = phase;
+    }
+
+    public static RuntimeSupport.Hook initializationHook() {
+        return (firstIsolate) -> {
+            JvmtiAgents.singleton().load();
+            JvmtiEvents.postVMInit();
+            JvmtiEvents.postVMStart();
+        };
+    }
+
+    public static RuntimeSupport.Hook teardownHook() {
+        return (firstIsolate) -> {
+            JvmtiEvents.postVMDeath();
+            JvmtiSupport.singleton().setPhase(JvmtiPhase.JVMTI_PHASE_DEAD);
+            JvmtiAgents.singleton().unload();
+            JvmtiEnvs.singleton().teardown();
+        };
     }
 }

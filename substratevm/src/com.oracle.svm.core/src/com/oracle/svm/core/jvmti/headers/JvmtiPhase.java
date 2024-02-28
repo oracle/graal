@@ -25,22 +25,22 @@
 package com.oracle.svm.core.jvmti.headers;
 
 import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CConstant;
+import org.graalvm.nativeimage.c.constant.CEnum;
+import org.graalvm.nativeimage.c.constant.CEnumLookup;
+import org.graalvm.nativeimage.c.constant.CEnumValue;
 
+@CEnum("jvmtiPhase")
 @CContext(JvmtiDirectives.class)
-public final class JvmtiPhase {
-    @CConstant
-    public static native int JVMTI_PHASE_ONLOAD();
+public enum JvmtiPhase {
+    JVMTI_PHASE_ONLOAD,
+    JVMTI_PHASE_PRIMORDIAL,
+    JVMTI_PHASE_START,
+    JVMTI_PHASE_LIVE,
+    JVMTI_PHASE_DEAD;
 
-    @CConstant
-    public static native int JVMTI_PHASE_PRIMORDIAL();
+    @CEnumValue
+    public native int getCValue();
 
-    @CConstant
-    public static native int JVMTI_PHASE_START();
-
-    @CConstant
-    public static native int JVMTI_PHASE_LIVE();
-
-    @CConstant
-    public static native int JVMTI_PHASE_DEAD();
+    @CEnumLookup
+    public static native JvmtiPhase fromValue(int value);
 }

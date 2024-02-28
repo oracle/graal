@@ -27,11 +27,7 @@ package com.oracle.svm.core.jni.access;
 import static com.oracle.svm.core.SubstrateOptions.JNIVerboseLookupErrors;
 
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Random;
-import java.util.Set;
 import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
@@ -232,75 +228,6 @@ public final class JNIReflectionDictionary {
             method = clazz.getMethod(descriptor);
         }
         return method;
-    }
-
-    public void printall(){
-        classesByClassObject.getKeys().forEach(System.out::println);
-    }
-    // TODO @dprcci REMOVE!
-    public JNIMethodId getRandomMethodID() {
-        Iterable<JNIAccessibleClass> accessibleClass = classesByClassObject.getValues();
-        ArrayList<JNIAccessibleClass> classList = new ArrayList<>();
-        accessibleClass.forEach(classList::add);
-
-// Get random class
-        Random random = new Random();
-        JNIAccessibleClass randomClass = null;
-        if (!classList.isEmpty()) {
-            int randomIndex = random.nextInt(classList.size());
-            randomClass = classList.get(randomIndex);
-        }
-        if (randomClass == null) {
-            return WordFactory.nullPointer();
-        }
-        MapCursor<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> cursor = randomClass.getMethods();
-        if (cursor.advance()) {
-            return toMethodID(cursor.getValue());
-        } else {
-            return WordFactory.nullPointer();
-        }
-    }
-
-    // TODO @dprcci JVMTI is this correct or should reflection be used? It is assumed the internals
-    // should not be exposed to the user
-    public JNIMethodId toMethodID(Class<?> clazz, String methodName) {
-        //Log.log().string(clazz.getName());
-        JNIAccessibleClass accessibleClass = classesByClassObject.get(clazz);
-        if (accessibleClass == null) {
-            return WordFactory.nullPointer();
-        }
-        boolean found = false;
-        MapCursor<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> cursor = accessibleClass.getMethods();
-        while (!found && cursor.advance()) {
-            found = cursor.getKey().getName().equals(methodName);
-        }
-        return toMethodID(found ? cursor.getValue() : null);
-    }
-
-    // TODO @dprcci
-    @Platforms(HOSTED_ONLY.class)
-    public Set<Class<?>> getRegisteredClasses() {
-        Set<Class<?>> res = new HashSet<>();
-        classesByClassObject.getKeys().forEach(res::add);
-        return res;
-    }
-
-    // TODO @dprcci
-    public static boolean isMethodNative(JNIMethodId methodId) {
-        return getMethodByID(methodId).isNative();
-    }
-
-    public boolean isValidMethodIdSlow(JNIMethodId methodId){
-        Iterable<JNIAccessibleClass> classIterator = classesByClassObject.getValues();
-        for (JNIAccessibleClass c : classIterator){
-            MapCursor<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> cursor = c.getMethods();
-            while(cursor.advance()){
-                if(toMethodID(cursor.getValue()).equal(methodId)){
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     public JNIMethodId getMethodID(Class<?> classObject, CharSequence name, CharSequence signature, boolean isStatic) {

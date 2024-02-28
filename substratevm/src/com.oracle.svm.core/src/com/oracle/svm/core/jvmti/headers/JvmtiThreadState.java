@@ -24,28 +24,31 @@
  */
 package com.oracle.svm.core.jvmti.headers;
 
+import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CEnum;
+import org.graalvm.nativeimage.c.constant.CEnumLookup;
+import org.graalvm.nativeimage.c.constant.CEnumValue;
+
+@CEnum
+@CContext(JvmtiDirectives.class)
 public enum JvmtiThreadState {
-    JVMTI_THREAD_STATE_ALIVE(0x0001),
-    JVMTI_THREAD_STATE_TERMINATED(0x0002),
-    JVMTI_THREAD_STATE_RUNNABLE(0x0004),
-    JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER(0x0400),
-    JVMTI_THREAD_STATE_WAITING(0x0080),
-    JVMTI_THREAD_STATE_WAITING_INDEFINITELY(0x0010),
-    JVMTI_THREAD_STATE_WAITING_WITH_TIMEOUT(0x0020),
-    JVMTI_THREAD_STATE_SLEEPING(0x0040),
-    JVMTI_THREAD_STATE_IN_OBJECT_WAIT(0x0100),
-    JVMTI_THREAD_STATE_PARKED(0x0200),
-    JVMTI_THREAD_STATE_SUSPENDED(0x100000),
-    JVMTI_THREAD_STATE_INTERRUPTED(0x200000),
-    JVMTI_THREAD_STATE_IN_NATIVE(0x400000);
+    JVMTI_THREAD_STATE_ALIVE,
+    JVMTI_THREAD_STATE_TERMINATED,
+    JVMTI_THREAD_STATE_RUNNABLE,
+    JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER,
+    JVMTI_THREAD_STATE_WAITING,
+    JVMTI_THREAD_STATE_WAITING_INDEFINITELY,
+    JVMTI_THREAD_STATE_WAITING_WITH_TIMEOUT,
+    JVMTI_THREAD_STATE_SLEEPING,
+    JVMTI_THREAD_STATE_IN_OBJECT_WAIT,
+    JVMTI_THREAD_STATE_PARKED,
+    JVMTI_THREAD_STATE_SUSPENDED,
+    JVMTI_THREAD_STATE_INTERRUPTED,
+    JVMTI_THREAD_STATE_IN_NATIVE;
 
-    private final int internalValue;
+    @CEnumValue
+    public native int getCValue();
 
-    JvmtiThreadState(int internalValue) {
-        this.internalValue = internalValue;
-    }
-
-    public int getValue() {
-        return this.internalValue;
-    }
+    @CEnumLookup
+    public static native JvmtiThreadState fromValue(int value);
 }

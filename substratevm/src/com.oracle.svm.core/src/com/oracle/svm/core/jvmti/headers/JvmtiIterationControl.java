@@ -29,6 +29,8 @@ import org.graalvm.nativeimage.c.constant.CConstant;
 
 @CContext(JvmtiDirectives.class)
 public final class JvmtiIterationControl {
+    // Checkstyle: stop: MethodName
+
     @CConstant
     public static native int JVMTI_ITERATION_CONTINUE();
 
@@ -37,4 +39,6 @@ public final class JvmtiIterationControl {
 
     @CConstant
     public static native int JVMTI_ITERATION_ABORT();
+
+    // Checkstyle: resume
 }

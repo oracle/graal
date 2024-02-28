@@ -45,10 +45,10 @@ public interface JvmtiStackInfo extends PointerBase {
     int getState();
 
     @CField("frame_buffer")
-    void setFrameInfo(JvmtiFrameInfoPointer frameInfo);
+    void setFrameInfo(JvmtiFrameInfo frameInfo);
 
     @CField("frame_buffer")
-    JvmtiFrameInfoPointer getFrameInfo();
+    JvmtiFrameInfo getFrameInfo();
 
     @CField("frame_count")
     void setFrameCount(int frameCount);

@@ -25,56 +25,57 @@
 package com.oracle.svm.core.jvmti.headers;
 
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.constant.CEnumLookup;
 import org.graalvm.nativeimage.c.constant.CEnumValue;
 
+import com.oracle.svm.core.collections.EnumBitmask;
+
 @CEnum("jvmtiEvent")
 @CContext(JvmtiDirectives.class)
 public enum JvmtiEvent {
-    JVMTI_EVENT_VM_INIT(true, true, 1),
-    JVMTI_EVENT_VM_DEATH(true, true, 0),
-    JVMTI_EVENT_THREAD_START(true, true, 1),
-    JVMTI_EVENT_THREAD_END(false, true, 1),
-    JVMTI_EVENT_CLASS_FILE_LOAD_HOOK(false, false, 8),
-    JVMTI_EVENT_CLASS_LOAD(false, false, 2),
-    JVMTI_EVENT_CLASS_PREPARE(false, false, 2),
-    JVMTI_EVENT_VM_START(true, true, 0),
-    JVMTI_EVENT_EXCEPTION(false, false, 6),
-    JVMTI_EVENT_EXCEPTION_CATCH(false, false, 4),
-    JVMTI_EVENT_SINGLE_STEP(false, false, 3),
-    JVMTI_EVENT_FRAME_POP(false, false, 3),
-    JVMTI_EVENT_BREAKPOINT(false, false, 3),
-    JVMTI_EVENT_FIELD_ACCESS(false, false, 6),
-    JVMTI_EVENT_FIELD_MODIFICATION(false, false, 8),
-    JVMTI_EVENT_METHOD_ENTRY(true, false, 2),
-    JVMTI_EVENT_METHOD_EXIT(false, false, 4),
-    JVMTI_EVENT_NATIVE_METHOD_BIND(false, false, 4),
-    JVMTI_EVENT_COMPILED_METHOD_LOAD(true, false, 6),
-    JVMTI_EVENT_COMPILED_METHOD_UNLOAD(true, false, 3),
-    JVMTI_EVENT_DYNAMIC_CODE_GENERATED(true, false, 3),
-    JVMTI_EVENT_DATA_DUMP_REQUEST(true, false, 0),
-    JVMTI_EVENT_MONITOR_WAIT(false, true, 3),
-    JVMTI_EVENT_MONITOR_WAITED(false, true, 3),
-    JVMTI_EVENT_MONITOR_CONTENDED_ENTER(false, true, 2),
-    JVMTI_EVENT_MONITOR_CONTENDED_ENTERED(false, true, 2),
-    JVMTI_EVENT_RESOURCE_EXHAUSTED(false, false, 3),
-    JVMTI_EVENT_GARBAGE_COLLECTION_START(false, true, 0),
-    JVMTI_EVENT_GARBAGE_COLLECTION_FINISH(false, true, 0),
-    JVMTI_EVENT_OBJECT_FREE(false, false, 1),
-    JVMTI_EVENT_VM_OBJECT_ALLOC(false, false, 4),
-    JVMTI_EVENT_SAMPLED_OBJECT_ALLOC(false, false, 4),
-    JVMTI_EVENT_VIRTUAL_THREAD_START(false, false, 1),
-    JVMTI_EVENT_VIRTUAL_THREAD_END(false, false, 1);
+    JVMTI_EVENT_VM_INIT(true, JvmtiEventFlags.Global),
+    JVMTI_EVENT_VM_DEATH(true, JvmtiEventFlags.Global),
+    JVMTI_EVENT_THREAD_START(false, JvmtiEventFlags.Global),
+    JVMTI_EVENT_THREAD_END(false),
+    JVMTI_EVENT_CLASS_FILE_LOAD_HOOK(false),
+    JVMTI_EVENT_CLASS_LOAD(false),
+    JVMTI_EVENT_CLASS_PREPARE(false),
+    JVMTI_EVENT_VM_START(true, JvmtiEventFlags.Global),
+    JVMTI_EVENT_EXCEPTION(false),
+    JVMTI_EVENT_EXCEPTION_CATCH(false),
+    JVMTI_EVENT_SINGLE_STEP(false),
+    JVMTI_EVENT_FRAME_POP(false),
+    JVMTI_EVENT_BREAKPOINT(false),
+    JVMTI_EVENT_FIELD_ACCESS(false),
+    JVMTI_EVENT_FIELD_MODIFICATION(false),
+    JVMTI_EVENT_METHOD_ENTRY(false),
+    JVMTI_EVENT_METHOD_EXIT(false),
+    JVMTI_EVENT_NATIVE_METHOD_BIND(false),
+    JVMTI_EVENT_COMPILED_METHOD_LOAD(false, JvmtiEventFlags.Global),
+    JVMTI_EVENT_COMPILED_METHOD_UNLOAD(false, JvmtiEventFlags.Global),
+    JVMTI_EVENT_DYNAMIC_CODE_GENERATED(false, JvmtiEventFlags.Global),
+    JVMTI_EVENT_DATA_DUMP_REQUEST(false, JvmtiEventFlags.Global),
+    JVMTI_EVENT_MONITOR_WAIT(false),
+    JVMTI_EVENT_MONITOR_WAITED(false),
+    JVMTI_EVENT_MONITOR_CONTENDED_ENTER(false),
+    JVMTI_EVENT_MONITOR_CONTENDED_ENTERED(false),
+    JVMTI_EVENT_RESOURCE_EXHAUSTED(false),
+    JVMTI_EVENT_GARBAGE_COLLECTION_START(false),
+    JVMTI_EVENT_GARBAGE_COLLECTION_FINISH(false),
+    JVMTI_EVENT_OBJECT_FREE(false),
+    JVMTI_EVENT_VM_OBJECT_ALLOC(false),
+    JVMTI_EVENT_SAMPLED_OBJECT_ALLOC(false),
+    JVMTI_EVENT_VIRTUAL_THREAD_START(false, JvmtiEventFlags.Global),
+    JVMTI_EVENT_VIRTUAL_THREAD_END(false);
 
     private final boolean isSupported;
-    private final boolean isGlobal;
-    private final int nbParameters;
+    private final int flags;
 
-    JvmtiEvent(boolean isGlobal, boolean isSupported, int nbParameters) {
-        this.isGlobal = isGlobal;
+    JvmtiEvent(boolean isSupported, JvmtiEventFlags... flags) {
         this.isSupported = isSupported;
-        this.nbParameters = nbParameters;
+        this.flags = EnumBitmask.computeBitmask(flags);
 
     }
 
@@ -83,16 +84,25 @@ public enum JvmtiEvent {
     }
 
     public boolean isGlobal() {
-        return isGlobal;
+        return EnumBitmask.hasBit(flags, JvmtiEventFlags.Global);
     }
 
-    public int getNbParameters() {
-        return nbParameters;
+    public static int getBit(JvmtiEvent eventType) {
+        int index = eventType.getCValue() - JvmtiEvent.getMinEventType();
+        assert index < 32;
+        return 1 << index;
     }
+
+    @CConstant("JVMTI_MIN_EVENT_TYPE_VAL")
+    public static native int getMinEventType();
 
     @CEnumValue
     public native int getCValue();
 
     @CEnumLookup
     public static native JvmtiEvent fromValue(int value);
+
+    private enum JvmtiEventFlags {
+        Global
+    }
 }

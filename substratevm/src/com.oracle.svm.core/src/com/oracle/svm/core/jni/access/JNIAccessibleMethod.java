@@ -129,11 +129,13 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
         return Modifier.isPublic(modifiers);
     }
 
-    boolean isNative() {
+    public boolean isNative() {
         return Modifier.isNative(modifiers);
     }
 
-    boolean isStatic() {return Modifier.isStatic(modifiers);}
+    boolean isStatic() {
+        return Modifier.isStatic(modifiers);
+    }
 
     @Platforms(HOSTED_ONLY.class)
     public void finishBeforeCompilation(EconomicSet<Class<?>> hidingSubclasses, int vtableEntryOffset, CodePointer nonvirtualEntry, PointerBase newObjectEntry, CodePointer callWrapperEntry,

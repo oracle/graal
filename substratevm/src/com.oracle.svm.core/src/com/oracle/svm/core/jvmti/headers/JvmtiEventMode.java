@@ -29,9 +29,13 @@ import org.graalvm.nativeimage.c.constant.CConstant;
 
 @CContext(JvmtiDirectives.class)
 public final class JvmtiEventMode {
+    // Checkstyle: stop: MethodName
+
     @CConstant
     public static native int JVMTI_ENABLE();
 
     @CConstant
     public static native int JVMTI_DISABLE();
+
+    // Checkstyle: resume
 }

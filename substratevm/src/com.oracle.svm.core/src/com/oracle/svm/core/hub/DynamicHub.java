@@ -1801,7 +1801,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return companion.getGenericInfo(this);
     }
 
-
     ClassRepository computeGenericInfo() {
         String genericSignature = getGenericSignature0();
         if (genericSignature == null) {

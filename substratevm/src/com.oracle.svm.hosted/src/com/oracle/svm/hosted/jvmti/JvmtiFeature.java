@@ -24,17 +24,6 @@
  */
 package com.oracle.svm.hosted.jvmti;
 
-import com.oracle.svm.core.jvmti.JvmtiClassInfoUtil;
-import com.oracle.svm.core.jvmti.JvmtiEnvManager;
-import com.oracle.svm.core.jvmti.JvmtiEnvStorage;
-import com.oracle.svm.core.jvmti.JvmtiManager;
-import com.oracle.svm.core.jvmti.JvmtiMultiStackTracesUtil;
-import com.oracle.svm.core.jvmti.JvmtiRawMonitorUtil;
-import com.oracle.svm.core.jvmti.JvmtiThreadGroupUtil;
-import com.oracle.svm.core.jvmti.JvmtiThreadLocalStorage;
-import com.oracle.svm.core.jvmti.JvmtiThreadStateUtil;
-import com.oracle.svm.core.jvmti.JvmtiGetThreadsUtil;
-import com.oracle.svm.core.jvmti.JvmtiStackTraceUtil;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -46,9 +35,12 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jvmti.JvmtiAgents;
+import com.oracle.svm.core.jvmti.JvmtiEnvs;
 import com.oracle.svm.core.jvmti.JvmtiFunctionTable;
 import com.oracle.svm.core.jvmti.JvmtiFunctions;
+import com.oracle.svm.core.jvmti.JvmtiSupport;
 import com.oracle.svm.core.jvmti.headers.JvmtiInterface;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -78,14 +70,21 @@ public class JvmtiFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        UserError.guarantee(SubstrateOptions.JNI.getValue(), "JVMTI needs JNI, so please enable the option " + SubstrateOptionsParser.commandArgument(SubstrateOptions.JNI, "+"));
+        UserError.guarantee(SubstrateOptions.JNI.getValue(), "JVMTI requires JNI. Please use option '%s' to enable JNI.", SubstrateOptionsParser.commandArgument(SubstrateOptions.JNI, "+"));
+
+        ImageSingletons.add(JvmtiSupport.class, new JvmtiSupport());
+        ImageSingletons.add(JvmtiAgents.class, new JvmtiAgents());
+        ImageSingletons.add(JvmtiEnvs.class, new JvmtiEnvs());
+        ImageSingletons.add(JvmtiFunctionTable.class, new JvmtiFunctionTable());
+
+        RuntimeSupport.getRuntimeSupport().addInitializationHook(JvmtiSupport.initializationHook());
+        RuntimeSupport.getRuntimeSupport().addTearDownHook(JvmtiSupport.teardownHook());
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess arg) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) arg;
         AnalysisMetaAccess metaAccess = access.getMetaAccess();
-        JvmtiManager.registerAllJvmtiClasses();
         registerCEntryPoints(metaAccess);
     }
 

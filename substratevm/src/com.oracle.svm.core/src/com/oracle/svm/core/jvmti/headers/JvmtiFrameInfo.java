@@ -33,7 +33,7 @@ import com.oracle.svm.core.jni.headers.JNIMethodId;
 
 @CContext(JvmtiDirectives.class)
 @CStruct(value = "jvmtiFrameInfo", addStructKeyword = true)
-public interface    JvmtiFrameInfo extends PointerBase {
+public interface JvmtiFrameInfo extends PointerBase {
     @CField("method")
     JNIMethodId getMethod();
 

@@ -24,13 +24,11 @@
  */
 package com.oracle.svm.core.jvmti;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
@@ -39,6 +37,10 @@ import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.jvmti.headers.JvmtiInterface;
+import com.oracle.svm.core.memory.NullableNativeMemory;
+import com.oracle.svm.core.nmt.NmtCategory;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 public final class JvmtiFunctionTable {
     private final CFunctionPointer[] readOnlyFunctionTable;
@@ -73,7 +75,7 @@ public final class JvmtiFunctionTable {
 
     public static JvmtiInterface allocateFunctionTable() {
         UnsignedWord size = SizeOf.unsigned(JvmtiInterface.class);
-        JvmtiInterface result = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(size);
+        JvmtiInterface result = NullableNativeMemory.malloc(size, NmtCategory.JVMTI);
         if (result.isNonNull()) {
             NonmovableArray<?> readOnlyData = NonmovableArrays.fromImageHeap(singleton().readOnlyFunctionTable);
             assert size.equal(NonmovableArrays.lengthOf(readOnlyData) * ConfigurationValues.getTarget().wordSize);
@@ -83,6 +85,6 @@ public final class JvmtiFunctionTable {
     }
 
     public static void freeFunctionTable(JvmtiInterface table) {
-        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(table);
+        NullableNativeMemory.free(table);
     }
 }

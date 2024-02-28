@@ -27,21 +27,12 @@ package com.oracle.svm.core.jvmti;
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_ACCESS_DENIED;
 import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_ILLEGAL_ARGUMENT;
-import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_INTERNAL;
-import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_INVALID_ENVIRONMENT;
 import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_INVALID_EVENT_TYPE;
 import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_MUST_POSSESS_CAPABILITY;
 import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_NONE;
 import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_NULL_POINTER;
 import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_OUT_OF_MEMORY;
-import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_UNATTACHED_THREAD;
 
-import java.nio.charset.StandardCharsets;
-
-import com.oracle.svm.core.jvmti.headers.BooleanPointer;
-import com.oracle.svm.core.jvmti.headers.JThreadGroupPointerPointer;
-import com.oracle.svm.core.jvmti.headers.VoidPointerPointer;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -54,14 +45,12 @@ import org.graalvm.nativeimage.c.type.CDoublePointer;
 import org.graalvm.nativeimage.c.type.CFloatPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.VoidPointer;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
@@ -69,6 +58,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jni.JNIObjectHandles;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.jni.headers.JNIFieldIdPointerPointer;
@@ -78,6 +68,7 @@ import com.oracle.svm.core.jni.headers.JNIMethodIdPointerPointer;
 import com.oracle.svm.core.jni.headers.JNINativeInterface;
 import com.oracle.svm.core.jni.headers.JNINativeInterfacePointer;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
+import com.oracle.svm.core.jvmti.headers.BooleanPointer;
 import com.oracle.svm.core.jvmti.headers.JClass;
 import com.oracle.svm.core.jvmti.headers.JClassPointer;
 import com.oracle.svm.core.jvmti.headers.JClassPointerPointer;
@@ -99,7 +90,7 @@ import com.oracle.svm.core.jvmti.headers.JvmtiEventCallbacks;
 import com.oracle.svm.core.jvmti.headers.JvmtiEventMode;
 import com.oracle.svm.core.jvmti.headers.JvmtiExtensionFunctionInfoPointer;
 import com.oracle.svm.core.jvmti.headers.JvmtiExternalEnv;
-import com.oracle.svm.core.jvmti.headers.JvmtiFrameInfoPointer;
+import com.oracle.svm.core.jvmti.headers.JvmtiFrameInfo;
 import com.oracle.svm.core.jvmti.headers.JvmtiHeapCallbacks;
 import com.oracle.svm.core.jvmti.headers.JvmtiHeapObjectCallback;
 import com.oracle.svm.core.jvmti.headers.JvmtiHeapRootCallback;
@@ -108,42 +99,34 @@ import com.oracle.svm.core.jvmti.headers.JvmtiLocalVariableEntryPointer;
 import com.oracle.svm.core.jvmti.headers.JvmtiMonitorStackDepthInfoPointer;
 import com.oracle.svm.core.jvmti.headers.JvmtiMonitorUsage;
 import com.oracle.svm.core.jvmti.headers.JvmtiObjectReferenceCallback;
-import com.oracle.svm.core.jvmti.headers.JvmtiPhase;
-import com.oracle.svm.core.jvmti.headers.JvmtiStackInfoPointerPointer;
+import com.oracle.svm.core.jvmti.headers.JvmtiStackInfoPointer;
 import com.oracle.svm.core.jvmti.headers.JvmtiStackReferenceCallback;
 import com.oracle.svm.core.jvmti.headers.JvmtiStartFunctionPointer;
 import com.oracle.svm.core.jvmti.headers.JvmtiThreadGroupInfo;
 import com.oracle.svm.core.jvmti.headers.JvmtiThreadInfo;
 import com.oracle.svm.core.jvmti.headers.JvmtiTimerInfo;
 import com.oracle.svm.core.jvmti.headers.JvmtiVersion;
+import com.oracle.svm.core.jvmti.headers.VoidPointerPointer;
+import com.oracle.svm.core.memory.NullableNativeMemory;
+import com.oracle.svm.core.nmt.NmtCategory;
 
 /**
- * Defines all JVMTI functions. This class may only contain methods that are annotated with
+ * Defines all JVMTI entry points. This class may only contain methods that are annotated with
  * {@link CEntryPoint}.
- * <p>
- * JVMTI functions are annotated with {@link RestrictHeapAccess} because they must not execute any
- * code that could trigger JVMTI events (could result in endless recursion).
+ *
+ * Each JVMTI function is annotated with {@link RestrictHeapAccess}, to ensure that it does not
+ * allocate any Java heap memory nor use Java synchronization. This is necessary because:
  * <ul>
- * <li>they must not trigger (potentially recursive) JVMTI events</li>
- * <li>they may be called from certain JVMTI event callbacks where we can't execute normal Java code
- * (e.g., out of Java heap memory)</li>
+ * <li>JVMTI functions may be called from JVMTI event callbacks where we can't execute normal Java
+ * code (e.g., when the VM is out of Java heap memory)</li>
+ * <li>JVMTI functions must not execute any code that could trigger JVMTI events (this could result
+ * in endless recursion otherwise)</li>
  * </ul>
+ *
+ * Depending on the JVMTI events that we want to support, it may be necessary to mark most of the
+ * JVMTI infrastructure as {@link Uninterruptible} in the future to prevent that JVMTI events are
+ * triggered recursively.
  */
-
-// TEMP (chaeubl):
-// - Do we need to be uninterruptible? No, because some operations may cause a safepoint.
-// - Can we allocate Java heap memory? No, because some operations are called from places where
-// allocations are disallowed (e.g., JVMTI_EVENT_RESOURCE_EXHAUSTED).
-// - Is Java synchronization allow? No.
-
-// TEMP (chaeubl): this still doesn't work...
-// - JVMTI_EVENT_EXCEPTION and JVMTI_EVENT_EXCEPTION_CATCH - eventually, this code would have to be
-// uninterruptible so that exceptions don't break uninterruptible code. But we can't trigger events
-// from uninterruptible code... -> we would need to know if uninterruptible code is currently
-// running and only trigger the JVMTI event in certain cases? Or we would need to exclude
-// SVM-internal code?
-// - JVMTI_EVENT_RESOURCE_EXHAUSTED: a lot of JVMTI/JNI code can be triggered, which is problematic
-// because we must not allocate any Java heap memory.
 public final class JvmtiFunctions {
     @Platforms(Platform.HOSTED_ONLY.class)
     private JvmtiFunctions() {
@@ -157,15 +140,15 @@ public final class JvmtiFunctions {
     static int Allocate(JvmtiExternalEnv externalEnv, long size, CCharPointerPointer memPtr) {
         if (memPtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
-        }
-        if (size < 0) {
+        } else if (size < 0) {
             memPtr.write(WordFactory.nullPointer());
             return JVMTI_ERROR_ILLEGAL_ARGUMENT.getCValue();
         }
+
         if (size == 0) {
             memPtr.write(WordFactory.nullPointer());
         } else {
-            CCharPointer mem = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(WordFactory.unsigned(size));
+            CCharPointer mem = NullableNativeMemory.malloc(WordFactory.unsigned(size), NmtCategory.JVMTI);
             memPtr.write(mem);
             if (mem.isNull()) {
                 return JVMTI_ERROR_OUT_OF_MEMORY.getCValue();
@@ -178,47 +161,45 @@ public final class JvmtiFunctions {
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int Deallocate(JvmtiExternalEnv externalEnv, CCharPointer mem) {
-        if (mem.isNonNull()) {
-            ImageSingletons.lookup(UnmanagedMemorySupport.class).free(mem);
-        }
+        NullableNativeMemory.free(mem);
         return JVMTI_ERROR_NONE.getCValue();
     }
 
-    // @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetThreadState(JvmtiExternalEnv externalEnv, JThread thread, CIntPointer threadStatePtr) {
         if (threadStatePtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiThreadStateUtil.getThreadState(thread, threadStatePtr);
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetCurrentThread(JvmtiExternalEnv externalEnv, JThreadPointer threadPtr) {
         if (threadPtr.equal(WordFactory.nullPointer())) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiGetThreadsUtil.getCurrentThread(threadPtr);
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    // @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetAllThreads(JvmtiExternalEnv externalEnv, CIntPointer threadsCountPtr, JThreadPointerPointer threadsPtr) {
         if (threadsCountPtr.isNull() || threadsPtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiGetThreadsUtil.getAllThreads(threadsCountPtr, threadsPtr);
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
-    static int SuspendThread(JvmtiExternalEnv externalEnv, JThreadPointer thread) {
-       return JVMTI_ERROR_ACCESS_DENIED.getCValue();
+    static int SuspendThread(JvmtiExternalEnv externalEnv, JThread thread) {
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
@@ -263,24 +244,21 @@ public final class JvmtiFunctions {
         return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int InterruptThread(JvmtiExternalEnv externalEnv, JThread thread) {
-        if (!JvmtiEnvUtil.hasCapability(externalEnv, JvmtiCapabilitiesEnum.CAN_SIGNAL_THREAD)) {
-            return JVMTI_ERROR_MUST_POSSESS_CAPABILITY.getCValue();
-        }
-        return JvmtiThreadActionsUtil.interruptThread(thread);
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetThreadInfo(JvmtiExternalEnv externalEnv, JThread thread, JvmtiThreadInfo infoPtr) {
         if (infoPtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiThreadActionsUtil.getThreadInfo(thread, infoPtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
@@ -311,107 +289,98 @@ public final class JvmtiFunctions {
         return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int SetThreadLocalStorage(JvmtiExternalEnv externalEnv, JThread thread, @CConst VoidPointer data) {
-        return JvmtiThreadLocalStorage.setThreadLocalStorage(thread, data).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetThreadLocalStorage(JvmtiExternalEnv externalEnv, JThread thread, VoidPointerPointer dataPtr) {
-        if(dataPtr.isNull()){
+        if (dataPtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiThreadLocalStorage.getThreadLocalStorage(thread, dataPtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
-    static int GetTopThreadGroups(JvmtiExternalEnv externalEnv, CIntPointer groupCountPtr, JThreadGroupPointerPointer groupsPtr) {
-        if(groupsPtr.isNull() || groupCountPtr.isNull()){
+    static int GetTopThreadGroups(JvmtiExternalEnv externalEnv, CIntPointer groupCountPtr, JThreadGroupPointer groupsPtr) {
+        if (groupsPtr.isNull() || groupCountPtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiThreadGroupUtil.getTopThreadGroups(groupCountPtr, groupsPtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetThreadGroupInfo(JvmtiExternalEnv externalEnv, JThreadGroup group, JvmtiThreadGroupInfo infoPtr) {
-        if(infoPtr.isNull()){
+        if (infoPtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiThreadGroupUtil.getThreadGroupInfo(group, infoPtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetThreadGroupChildren(JvmtiExternalEnv externalEnv, JThreadGroup group, CIntPointer threadCountPtr, JThreadPointerPointer threadsPtr, CIntPointer groupCountPtr,
                     JThreadGroupPointer groupsPtr) {
-        if (threadCountPtr.isNull() || threadsPtr.isNull() ||groupCountPtr.isNull() || groupsPtr.isNull()){
+        if (threadCountPtr.isNull() || threadsPtr.isNull() || groupCountPtr.isNull() || groupsPtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiThreadGroupUtil.getThreadGroupChildren(group, threadCountPtr, threadsPtr, groupCountPtr, groupsPtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    // @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
-    static int GetStackTrace(JvmtiExternalEnv externalEnv, JThread thread, int startDepth, int maxFrameCount, JvmtiFrameInfoPointer frameBuffer, CIntPointer countPtr) {
+    static int GetStackTrace(JvmtiExternalEnv externalEnv, JThread thread, int startDepth, int maxFrameCount, JvmtiFrameInfo frameBuffer, CIntPointer countPtr) {
         if (maxFrameCount < 0) {
-            return JvmtiError.JVMTI_ERROR_ILLEGAL_ARGUMENT.getCValue();
-        }
-        if (frameBuffer.isNull() || countPtr.isNull()) {
+            return JVMTI_ERROR_ILLEGAL_ARGUMENT.getCValue();
+        } else if (frameBuffer.isNull() || countPtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-
-        if (JvmtiStackTraceUtil.startDepthIsOutOfBound(startDepth, SubstrateOptions.maxJavaStackTraceDepth())) {
-            return JvmtiError.JVMTI_ERROR_ILLEGAL_ARGUMENT.getCValue();
-        }
-        return JvmtiStackTraceUtil.getStackTrace(thread, startDepth, maxFrameCount, frameBuffer, countPtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    // @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
-    static int GetAllStackTraces(JvmtiExternalEnv externalEnv, int maxFrameCount, JvmtiStackInfoPointerPointer stackInfoPtr, CIntPointer threadCountPtr) {
+    static int GetAllStackTraces(JvmtiExternalEnv externalEnv, int maxFrameCount, JvmtiStackInfoPointer stackInfoPtr, CIntPointer threadCountPtr) {
         if (stackInfoPtr.isNull() || threadCountPtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
-        }
-        if (maxFrameCount < 0) {
+        } else if (maxFrameCount < 0) {
             return JVMTI_ERROR_ILLEGAL_ARGUMENT.getCValue();
         }
-
-        return JvmtiMultiStackTracesUtil.getAllStackTraces(maxFrameCount, stackInfoPtr, threadCountPtr);
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
-    static int GetThreadListStackTraces(JvmtiExternalEnv externalEnv, int threadCount, @CConst JThreadPointer threadList, int maxFrameCount, JvmtiStackInfoPointerPointer stackInfoPtr) {
+    static int GetThreadListStackTraces(JvmtiExternalEnv externalEnv, int threadCount, @CConst JThreadPointer threadList, int maxFrameCount, JvmtiStackInfoPointer stackInfoPtr) {
         if (stackInfoPtr.isNull() || threadList.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
-        }
-        if (maxFrameCount < 0 || threadCount < 0) {
+        } else if (maxFrameCount < 0 || threadCount < 0) {
             return JVMTI_ERROR_ILLEGAL_ARGUMENT.getCValue();
         }
-
-        return JvmtiMultiStackTracesUtil.getListStackTraces(threadCount, threadList, maxFrameCount, stackInfoPtr);
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetFrameCount(JvmtiExternalEnv externalEnv, JThread thread, CIntPointer countPtr) {
-        if(countPtr.isNull()){
+        if (countPtr.isNull()) {
             return JvmtiError.JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiStackTraceUtil.getFrameCount(thread, countPtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
@@ -740,11 +709,11 @@ public final class JvmtiFunctions {
         return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    // @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetClassSignature(JvmtiExternalEnv externalEnv, JClass klass, CCharPointerPointer signaturePtr, CCharPointerPointer genericPtr) {
-        return JvmtiClassInfoUtil.getClassSignature(klass, signaturePtr, genericPtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
@@ -754,55 +723,54 @@ public final class JvmtiFunctions {
         return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetSourceFileName(JvmtiExternalEnv externalEnv, JClass klass, CCharPointerPointer sourceNamePtr) {
-        if(sourceNamePtr.isNull()){
+        if (sourceNamePtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiClassInfoUtil.getSourceFileName(klass, sourceNamePtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetClassModifiers(JvmtiExternalEnv externalEnv, JClass klass, CIntPointer modifiersPtr) {
-        if(modifiersPtr.isNull()){
+        if (modifiersPtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiClassInfoUtil.getClassModifiers(klass, modifiersPtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetClassMethods(JvmtiExternalEnv externalEnv, JClass klass, CIntPointer methodCountPtr, JNIMethodIdPointerPointer methodsPtr) {
-        if(methodCountPtr.isNull() || methodsPtr.isNull()){
+        if (methodCountPtr.isNull() || methodsPtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiClassInfoUtil.getClassMethods(klass, methodCountPtr, methodsPtr).getCValue();
-
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetClassFields(JvmtiExternalEnv externalEnv, JClass klass, CIntPointer fieldCountPtr, JNIFieldIdPointerPointer fieldsPtr) {
-        if(fieldCountPtr.isNull() || fieldsPtr.isNull()){
+        if (fieldCountPtr.isNull() || fieldsPtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiClassInfoUtil.getClassFields(klass, fieldCountPtr, fieldsPtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetImplementedInterfaces(JvmtiExternalEnv externalEnv, JClass klass, CIntPointer interfaceCountPtr, JClassPointerPointer interfacesPtr) {
-        if(interfacesPtr.isNull() || interfaceCountPtr.isNull()){
+        if (interfacesPtr.isNull() || interfaceCountPtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiClassInfoUtil.getImplementedInterfaces(klass, interfaceCountPtr, interfacesPtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
@@ -819,34 +787,34 @@ public final class JvmtiFunctions {
         return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int IsInterface(JvmtiExternalEnv externalEnv, JClass klass, BooleanPointer isInterfacePtr) {
-        if(isInterfacePtr.isNull()){
+        if (isInterfacePtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiClassInfoUtil.isInterface(klass, isInterfacePtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int IsArrayClass(JvmtiExternalEnv externalEnv, JClass klass, BooleanPointer isArrayClassPtr) {
-        if(isArrayClassPtr.isNull()){
+        if (isArrayClassPtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiClassInfoUtil.isArrayClass(klass, isArrayClassPtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-   // @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int IsModifiableClass(JvmtiExternalEnv externalEnv, JClass klass, BooleanPointer isModifiableClassPtr) {
-        if(isModifiableClassPtr.isNull()){
+        if (isModifiableClassPtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiClassInfoUtil.isModifiableClass(klass, isModifiableClassPtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
@@ -877,24 +845,24 @@ public final class JvmtiFunctions {
         return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetObjectSize(JvmtiExternalEnv externalEnv, JNIObjectHandle object, CLongPointer sizePtr) {
         if (sizePtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiObjectInfoUttil.getObjectSize(object, sizePtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetObjectHashCode(JvmtiExternalEnv externalEnv, JNIObjectHandle object, CIntPointer hashCodePtr) {
         if (hashCodePtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiObjectInfoUttil.getHashCode(object, hashCodePtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
@@ -904,71 +872,65 @@ public final class JvmtiFunctions {
         return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetFieldName(JvmtiExternalEnv externalEnv, JClass klass, JNIFieldId field, CCharPointerPointer namePtr, CCharPointerPointer signaturePtr, CCharPointerPointer genericPtr) {
-        return JvmtiClassInfoUtil.getFieldName(klass, field, namePtr, signaturePtr, genericPtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetFieldDeclaringClass(JvmtiExternalEnv externalEnv, JClass klass, JNIFieldId field, JClassPointer declaringClassPtr) {
-        if (declaringClassPtr.isNull()){
+        if (declaringClassPtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiClassInfoUtil.getFieldDeclaringClass(klass, field, declaringClassPtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetFieldModifiers(JvmtiExternalEnv externalEnv, JClass klass, JNIFieldId field, CIntPointer modifiersPtr) {
-        if (modifiersPtr.isNull()){
+        if (modifiersPtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiClassInfoUtil.getFieldModifiers(klass, field, modifiersPtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int IsFieldSynthetic(JvmtiExternalEnv externalEnv, JClass klass, JNIFieldId field, BooleanPointer isSyntheticPtr) {
-        if (isSyntheticPtr.isNull()){
-            return JVMTI_ERROR_NULL_POINTER.getCValue();
-        }
-        if(!JvmtiEnvUtil.hasCapability(externalEnv, JvmtiCapabilitiesEnum.CAN_GET_SYNTHETIC_ATTRIBUTE)){
-            return JVMTI_ERROR_MUST_POSSESS_CAPABILITY.getCValue();
-        }
-        return JvmtiClassInfoUtil.isFieldSynthetic(klass, field, isSyntheticPtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetMethodName(JvmtiExternalEnv externalEnv, JNIMethodId method, CCharPointerPointer namePtr, CCharPointerPointer signaturePtr, CCharPointerPointer genericPtr) {
-        return JvmtiClassInfoUtil.getMethodName(method, namePtr, signaturePtr, genericPtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetMethodDeclaringClass(JvmtiExternalEnv externalEnv, JNIMethodId method, JClassPointer declaringClassPtr) {
         if (declaringClassPtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiClassInfoUtil.getMethodDeclaringClass(method, declaringClassPtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetMethodModifiers(JvmtiExternalEnv externalEnv, JNIMethodId method, CIntPointer modifiersPtr) {
-        if(modifiersPtr.isNull()){
+        if (modifiersPtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiClassInfoUtil.getMethodModifiers(method, modifiersPtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
@@ -1013,27 +975,21 @@ public final class JvmtiFunctions {
         return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int IsMethodNative(JvmtiExternalEnv externalEnv, JNIMethodId method, BooleanPointer isNativePtr) {
-        if(isNativePtr.isNull()){
+        if (isNativePtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiClassInfoUtil.isMethodNative(method, isNativePtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int IsMethodSynthetic(JvmtiExternalEnv externalEnv, JNIMethodId method, BooleanPointer isSyntheticPtr) {
-        if(isSyntheticPtr.isNull()){
-            return JVMTI_ERROR_NULL_POINTER.getCValue();
-        }
-        if(!JvmtiEnvUtil.hasCapability(externalEnv, JvmtiCapabilitiesEnum.CAN_GET_SYNTHETIC_ATTRIBUTE)){
-            return JVMTI_ERROR_MUST_POSSESS_CAPABILITY.getCValue();
-        }
-        return JvmtiClassInfoUtil.isMethodSynthetic(method, isSyntheticPtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
@@ -1057,53 +1013,53 @@ public final class JvmtiFunctions {
         return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int CreateRawMonitor(JvmtiExternalEnv externalEnv, @CConst CCharPointer name, JRawMonitorIdPointer monitorPtr) {
-        return JvmtiRawMonitorUtil.createRawMonitor(name, monitorPtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int DestroyRawMonitor(JvmtiExternalEnv externalEnv, JRawMonitorId monitor) {
-        return JvmtiRawMonitorUtil.destroyRawMonitor(monitor).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int RawMonitorEnter(JvmtiExternalEnv externalEnv, JRawMonitorId monitor) {
-        return JvmtiRawMonitorUtil.rawMonitorEnter(monitor).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int RawMonitorExit(JvmtiExternalEnv externalEnv, JRawMonitorId monitor) {
-        return JvmtiRawMonitorUtil.rawMonitorExit(monitor).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int RawMonitorWait(JvmtiExternalEnv externalEnv, JRawMonitorId monitor, long millis) {
-        return JvmtiRawMonitorUtil.rawMonitorWait(monitor, millis).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int RawMonitorNotify(JvmtiExternalEnv externalEnv, JRawMonitorId monitor) {
-        return JvmtiRawMonitorUtil.rawMonitorNotify(monitor).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
-    //@RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int RawMonitorNotifyAll(JvmtiExternalEnv externalEnv, JRawMonitorId monitor) {
-        return JvmtiRawMonitorUtil.rawMonitorNotifyAll(monitor).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
@@ -1130,26 +1086,20 @@ public final class JvmtiFunctions {
 
         JvmtiEnv env = JvmtiEnvUtil.toInternal(externalEnv);
         JvmtiEnvUtil.setEventCallbacks(env, callbacks, sizeOfCallbacks);
-
         return JVMTI_ERROR_NONE.getCValue();
     }
 
-    // TODO dprcci disabled temporarily
-    // @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    /** Note that this method uses varargs (the vararg part is reserved for future expansions). */
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int SetEventNotificationMode(JvmtiExternalEnv externalEnv, int eventMode, JvmtiEvent eventType, JThread eventThread) {
-        // TEMP (chaeubl): this method uses varargs... do we need a native wrapper to deal with
-        // that? seems that this is only reserved for future expansion but may still be tricky.
-
-        if (eventType == null || !JvmtiEnvEventEnabledUtils.isInValidEventRange(eventType)) {
+        if (eventType == null) {
             return JVMTI_ERROR_INVALID_EVENT_TYPE.getCValue();
-        } else if (!eventType.isSupported()) {
-            return JVMTI_ERROR_ACCESS_DENIED.getCValue();
-        }
-
-        if (eventMode != JvmtiEventMode.JVMTI_ENABLE() && eventMode != JvmtiEventMode.JVMTI_DISABLE()) {
+        } else if (eventMode != JvmtiEventMode.JVMTI_ENABLE() && eventMode != JvmtiEventMode.JVMTI_DISABLE()) {
             return JVMTI_ERROR_ILLEGAL_ARGUMENT.getCValue();
+        } else if (!eventType.isSupported() && eventMode == JvmtiEventMode.JVMTI_ENABLE()) {
+            return JVMTI_ERROR_ACCESS_DENIED.getCValue();
         }
 
         /* Check that the needed capabilities are present. */
@@ -1159,8 +1109,7 @@ public final class JvmtiFunctions {
             return JVMTI_ERROR_MUST_POSSESS_CAPABILITY.getCValue();
         }
 
-        Thread javaEventThread = JNIObjectHandles.getObject(eventThread);
-        if (javaEventThread == null) {
+        if (eventThread.equal(JNIObjectHandles.nullHandle())) {
             /* Change global event status. */
             JvmtiEnvUtil.setEventUserEnabled(env, null, eventType, enable);
         } else {
@@ -1169,6 +1118,7 @@ public final class JvmtiFunctions {
                 /* Global events cannot be controlled at thread level. */
                 return JVMTI_ERROR_ILLEGAL_ARGUMENT.getCValue();
             }
+
             /* At the moment, we don't support enabling events for specific threads. */
             return JVMTI_ERROR_ACCESS_DENIED.getCValue();
         }
@@ -1213,12 +1163,8 @@ public final class JvmtiFunctions {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
 
-        JvmtiEnv env = JvmtiEnvUtil.toInternal(externalEnv);
-        JvmtiEnvUtil.getPotentialCapabilities(env, result);
-        /* We don't support any capabilities at the moment. *//*
-                                                               * JvmtiCapabilitiesUtil.clear(result)
-                                                               * ;
-                                                               */
+        /* We don't support any capabilities at the moment. */
+        JvmtiCapabilitiesUtil.clear(result);
         return JVMTI_ERROR_NONE.getCValue();
     }
 
@@ -1242,6 +1188,7 @@ public final class JvmtiFunctions {
         if (capabilities.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
+
         JvmtiEnv env = JvmtiEnvUtil.toInternal(externalEnv);
         return JvmtiEnvUtil.addCapabilities(env, capabilities).getCValue();
     }
@@ -1353,7 +1300,7 @@ public final class JvmtiFunctions {
         if (phasePtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        phasePtr.write(JvmtiPhase.JVMTI_PHASE_LIVE());
+        phasePtr.write(JvmtiSupport.singleton().getPhase().getCValue());
         return JVMTI_ERROR_NONE.getCValue();
     }
 
@@ -1362,8 +1309,7 @@ public final class JvmtiFunctions {
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int DisposeEnvironment(JvmtiExternalEnv externalEnv) {
         JvmtiEnv env = JvmtiEnvUtil.toInternal(externalEnv);
-        JvmtiEnvManager manager = JvmtiEnvManager.singleton();
-        manager.destroyJvmtiEnv(env);
+        JvmtiEnvs.singleton().dispose(env);
         return JVMTI_ERROR_NONE.getCValue();
     }
 
@@ -1371,23 +1317,17 @@ public final class JvmtiFunctions {
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int SetEnvironmentLocalStorage(JvmtiExternalEnv externalEnv, @CConst VoidPointer data) {
-        if(JvmtiEnvUtil.isValid(JvmtiEnvUtil.toInternal(externalEnv))){
-            return JVMTI_ERROR_INVALID_ENVIRONMENT.getCValue();
-        }
-        return JvmtiEnvStorage.setEnvironmentStorage(externalEnv, data).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetEnvironmentLocalStorage(JvmtiExternalEnv externalEnv, VoidPointerPointer dataPtr) {
-        if(JvmtiEnvUtil.isValid(JvmtiEnvUtil.toInternal(externalEnv))){
-            return JVMTI_ERROR_INVALID_ENVIRONMENT.getCValue();
-        }
-        if(dataPtr.isNull()){
+        if (dataPtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
-        return JvmtiEnvStorage.getEnvironmentStorage(externalEnv, dataPtr).getCValue();
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
@@ -1401,29 +1341,28 @@ public final class JvmtiFunctions {
         return JVMTI_ERROR_NONE.getCValue();
     }
 
-    // TODO dprcci disabled temporarily
-    // @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetErrorName(JvmtiExternalEnv externalEnv, JvmtiError jvmtiError, CCharPointerPointer namePtr) {
         if (namePtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
-        }
-
-        if (jvmtiError == null) {
+        } else if (jvmtiError == null) {
+            namePtr.write(WordFactory.nullPointer());
             return JVMTI_ERROR_ILLEGAL_ARGUMENT.getCValue();
         }
 
-        /* Convert name to ASCII. */
         String name = jvmtiError.name();
         UnsignedWord bufferSize = WordFactory.unsigned(name.length() + 1);
-        CCharPointer mem = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(bufferSize);
-        namePtr.write(mem);
+        Pointer mem = NullableNativeMemory.malloc(bufferSize, NmtCategory.JVMTI);
+        namePtr.write((CCharPointer) mem);
         if (mem.isNull()) {
             return JVMTI_ERROR_OUT_OF_MEMORY.getCValue();
         }
 
-        CTypeConversion.toCString(name, StandardCharsets.US_ASCII, mem, bufferSize);
+        /* Errors are ASCII only. */
+        assert bufferSize.equal(UninterruptibleUtils.String.modifiedUTF8Length(name, true));
+        UninterruptibleUtils.String.toModifiedUTF8(name, mem, mem.add(bufferSize), true);
         return JVMTI_ERROR_NONE.getCValue();
     }
 
@@ -1451,28 +1390,29 @@ public final class JvmtiFunctions {
     // Checkstyle: resume
 
     private static class JvmtiEnvEnterPrologue implements CEntryPointOptions.Prologue {
+        /**
+         * In the prologue, we need to be careful that we don't access any image heap data before
+         * the heap base is set up, so we use @CConstant instead of @CEnum.
+         */
         @Uninterruptible(reason = "prologue")
         public static int enter(JvmtiExternalEnv externalEnv) {
-            // TEMP (chaeubl): we might need special logic again to avoid objects in the
-            // reference map before the heap base is set. Or, we make sure that the values are
-            // constant folded (via @Fold).
             if (externalEnv.isNull()) {
-                return JVMTI_ERROR_INVALID_ENVIRONMENT.getCValue();
+                return JvmtiError.invalidEnvironment();
             }
 
             JvmtiEnv env = JvmtiEnvUtil.toInternal(externalEnv);
             if (!JvmtiEnvUtil.isValid(env)) {
-                return JVMTI_ERROR_INVALID_ENVIRONMENT.getCValue();
+                return JvmtiError.invalidEnvironment();
             }
 
             int error = CEntryPointActions.enterByIsolate(JvmtiEnvUtil.getIsolate(env));
             if (error == CEntryPointErrors.UNATTACHED_THREAD) {
-                return JVMTI_ERROR_UNATTACHED_THREAD.getCValue();
+                return JvmtiError.unattachedThread();
             } else if (error != CEntryPointErrors.NO_ERROR) {
-                return JVMTI_ERROR_INTERNAL.getCValue();
+                return JvmtiError.internal();
             }
 
-            return JVMTI_ERROR_NONE.getCValue();
+            return JvmtiError.none();
         }
     }
 
@@ -1483,5 +1423,4 @@ public final class JvmtiFunctions {
     @CPointerTo(CLongPointer.class)
     private interface CLongPointerPointer extends PointerBase {
     }
-
 }

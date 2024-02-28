@@ -27,7 +27,9 @@ package com.oracle.svm.core.jvmti.headers;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.word.PointerBase;
 
-// TEMP (chaeubl): should be uint_8
-@CPointerTo(nameOfCType = "char")
+@CPointerTo(nameOfCType = "unsigned char")
 public interface BooleanPointer extends PointerBase {
+    boolean read();
+
+    void write(boolean value);
 }

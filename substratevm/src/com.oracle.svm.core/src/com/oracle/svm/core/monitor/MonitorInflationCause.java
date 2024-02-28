@@ -35,15 +35,7 @@ public enum MonitorInflationCause {
     WAIT("Monitor Wait"),
     NOTIFY("Monitor Notify"),
     JNI_ENTER("JNI Monitor Enter"),
-    JNI_EXIT("JNI Monitor Exit"),
-    ///TODO @dprcci add??
-    JVMTI_CREATE("JVMTI CreateRawMonitor"),
-    JVMTI_DESTROY("JVMTI DestroyRawMonitor"),
-    JVMTI_ENTER("JVMTI RawMonitorEnter"),
-    JVMTI_EXIT("JVMTI RawMonitorExit"),
-    JVMTI_WAIT("JVMTI RawMonitorWait"),
-    JVMTI_NOTIFY("JVMTI RawMonitorNotify"),
-    JVMTI_NOTIFYALL("JVMTI RawMonitorNotifyAll");
+    JNI_EXIT("JNI Monitor Exit");
 
     private final String text;
 

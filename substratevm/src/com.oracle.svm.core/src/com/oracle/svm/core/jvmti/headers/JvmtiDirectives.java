@@ -34,9 +34,7 @@ import org.graalvm.nativeimage.c.CContext;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 
-// TEMP (chaeubl): copied
 class JvmtiDirectives implements CContext.Directives {
-
     private final Path jdkIncludeDir = Paths.get(System.getProperty("java.home")).resolve("include");
 
     @Override

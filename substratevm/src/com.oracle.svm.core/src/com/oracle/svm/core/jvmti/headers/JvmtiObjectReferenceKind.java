@@ -29,6 +29,8 @@ import org.graalvm.nativeimage.c.constant.CConstant;
 
 @CContext(JvmtiDirectives.class)
 public final class JvmtiObjectReferenceKind {
+    // Checkstyle: stop: MethodName
+
     @CConstant
     public static native int JVMTI_REFERENCE_CLASS();
 
@@ -55,4 +57,6 @@ public final class JvmtiObjectReferenceKind {
 
     @CConstant
     public static native int JVMTI_REFERENCE_CONSTANT_POOL();
+
+    // Checkstyle: resume
 }
