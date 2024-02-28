@@ -73,8 +73,49 @@ public final class Vector128 implements TruffleObject {
         return new Vector128(bytes);
     }
 
-    @ExplodeLoop
     public short[] asShorts() {
+        return bytesAsShorts(bytes);
+    }
+
+    public static Vector128 ofShorts(short[] shorts) {
+        return new Vector128(shortsAsBytes(shorts));
+    }
+
+    public int[] asInts() {
+        return bytesAsInts(bytes);
+    }
+
+    public static Vector128 ofInts(int[] ints) {
+        return new Vector128(intsAsBytes(ints));
+    }
+
+    public long[] asLongs() {
+        return bytesAsLongs(bytes);
+    }
+
+    public static Vector128 ofLongs(long[] longs) {
+        return new Vector128(longsAsBytes(longs));
+    }
+
+    public float[] asFloats() {
+        return bytesAsFloats(bytes);
+    }
+
+    public static Vector128 ofFloats(float[] floats) {
+        return new Vector128(floatsAsBytes(floats));
+    }
+
+    public double[] asDoubles() {
+        return bytesAsDoubles(bytes);
+    }
+
+    public static Vector128 ofDoubles(double[] doubles) {
+        return new Vector128(doublesAsBytes(doubles));
+    }
+
+    @ExplodeLoop
+    public static short[] bytesAsShorts(byte[] bytes) {
+        assert bytes.length == 16;
         short[] shorts = new short[8];
         for (int i = 0; i < 8; i++) {
             shorts[i] = byteArraySupport.getShort(bytes, i * 2);
@@ -83,17 +124,8 @@ public final class Vector128 implements TruffleObject {
     }
 
     @ExplodeLoop
-    public static Vector128 ofShorts(short[] shorts) {
-        assert shorts.length == 8;
-        byte[] bytes = new byte[16];
-        for (int i = 0; i < 8; i++) {
-            byteArraySupport.putShort(bytes, i * 2, shorts[i]);
-        }
-        return new Vector128(bytes);
-    }
-
-    @ExplodeLoop
-    public int[] asInts() {
+    public static int[] bytesAsInts(byte[] bytes) {
+        assert bytes.length == 16;
         int[] ints = new int[4];
         for (int i = 0; i < 4; i++) {
             ints[i] = byteArraySupport.getInt(bytes, i * 4);
@@ -102,17 +134,8 @@ public final class Vector128 implements TruffleObject {
     }
 
     @ExplodeLoop
-    public static Vector128 ofInts(int[] ints) {
-        assert ints.length == 4;
-        byte[] bytes = new byte[16];
-        for (int i = 0; i < 4; i++) {
-            byteArraySupport.putInt(bytes, i * 4, ints[i]);
-        }
-        return new Vector128(bytes);
-    }
-
-    @ExplodeLoop
-    public long[] asLongs() {
+    public static long[] bytesAsLongs(byte[] bytes) {
+        assert bytes.length == 16;
         long[] longs = new long[2];
         for (int i = 0; i < 2; i++) {
             longs[i] = byteArraySupport.getLong(bytes, i * 8);
@@ -121,17 +144,8 @@ public final class Vector128 implements TruffleObject {
     }
 
     @ExplodeLoop
-    public static Vector128 ofLongs(long[] longs) {
-        assert longs.length == 2;
-        byte[] bytes = new byte[16];
-        for (int i = 0; i < 2; i++) {
-            byteArraySupport.putLong(bytes, i * 8, longs[i]);
-        }
-        return new Vector128(bytes);
-    }
-
-    @ExplodeLoop
-    public float[] asFloats() {
+    public static float[] bytesAsFloats(byte[] bytes) {
+        assert bytes.length == 16;
         float[] floats = new float[4];
         for (int i = 0; i < 4; i++) {
             floats[i] = byteArraySupport.getFloat(bytes, i * 4);
@@ -140,17 +154,8 @@ public final class Vector128 implements TruffleObject {
     }
 
     @ExplodeLoop
-    public static Vector128 ofFloats(float[] floats) {
-        assert floats.length == 4;
-        byte[] bytes = new byte[16];
-        for (int i = 0; i < 4; i++) {
-            byteArraySupport.putFloat(bytes, i * 4, floats[i]);
-        }
-        return new Vector128(bytes);
-    }
-
-    @ExplodeLoop
-    public double[] asDoubles() {
+    public static double[] bytesAsDoubles(byte[] bytes) {
+        assert bytes.length == 16;
         double[] doubles = new double[2];
         for (int i = 0; i < 2; i++) {
             doubles[i] = byteArraySupport.getDouble(bytes, i * 8);
@@ -159,13 +164,53 @@ public final class Vector128 implements TruffleObject {
     }
 
     @ExplodeLoop
-    public static Vector128 ofDoubles(double[] doubles) {
+    public static byte[] shortsAsBytes(short[] shorts) {
+        assert shorts.length == 8;
+        byte[] bytes = new byte[16];
+        for (int i = 0; i < 8; i++) {
+            byteArraySupport.putShort(bytes, i * 2, shorts[i]);
+        }
+        return bytes;
+    }
+
+    @ExplodeLoop
+    public static byte[] intsAsBytes(int[] ints) {
+        assert ints.length == 4;
+        byte[] bytes = new byte[16];
+        for (int i = 0; i < 4; i++) {
+            byteArraySupport.putInt(bytes, i * 4, ints[i]);
+        }
+        return bytes;
+    }
+
+    @ExplodeLoop
+    public static byte[] longsAsBytes(long[] longs) {
+        assert longs.length == 2;
+        byte[] bytes = new byte[16];
+        for (int i = 0; i < 2; i++) {
+            byteArraySupport.putLong(bytes, i * 8, longs[i]);
+        }
+        return bytes;
+    }
+
+    @ExplodeLoop
+    public static byte[] floatsAsBytes(float[] floats) {
+        assert floats.length == 4;
+        byte[] bytes = new byte[16];
+        for (int i = 0; i < 4; i++) {
+            byteArraySupport.putFloat(bytes, i * 4, floats[i]);
+        }
+        return bytes;
+    }
+
+    @ExplodeLoop
+    public static byte[] doublesAsBytes(double[] doubles) {
         assert doubles.length == 2;
         byte[] bytes = new byte[16];
         for (int i = 0; i < 2; i++) {
             byteArraySupport.putDouble(bytes, i * 8, doubles[i]);
         }
-        return new Vector128(bytes);
+        return bytes;
     }
 
     @ExportMessage

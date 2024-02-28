@@ -68,7 +68,7 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static int i32x4_all_true(byte[] vec) {
-        int[] ints = Vector128.ofBytes(vec).asInts();
+        int[] ints = Vector128.bytesAsInts(vec);
         CompilerDirectives.ensureVirtualized(ints);
         int result = 1;
         for (int i = 0; i < ints.length; i++) {
@@ -82,7 +82,7 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static int i32x4_bitmask(byte[] vec) {
-        int[] ints = Vector128.ofBytes(vec).asInts();
+        int[] ints = Vector128.bytesAsInts(vec);
         CompilerDirectives.ensureVirtualized(ints);
         int result = 0;
         for (int i = 0; i < ints.length; i++) {
@@ -95,8 +95,8 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] i32x4_relop(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        int[] x = Vector128.ofBytes(vecX).asInts();
-        int[] y = Vector128.ofBytes(vecY).asInts();
+        int[] x = Vector128.bytesAsInts(vecX);
+        int[] y = Vector128.bytesAsInts(vecY);
         int[] result = new int[4];
         CompilerDirectives.ensureVirtualized(x);
         CompilerDirectives.ensureVirtualized(y);
@@ -116,13 +116,13 @@ public class Vector128Ops {
                 default -> throw CompilerDirectives.shouldNotReachHere();
             } ? 0xffff_ffff : 0x0000_0000;
         }
-        return Vector128.ofInts(result).asBytes();
+        return Vector128.intsAsBytes(result);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] i64x2_relop(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        long[] x = Vector128.ofBytes(vecX).asLongs();
-        long[] y = Vector128.ofBytes(vecY).asLongs();
+        long[] x = Vector128.bytesAsLongs(vecX);
+        long[] y = Vector128.bytesAsLongs(vecY);
         long[] result = new long[2];
         CompilerDirectives.ensureVirtualized(x);
         CompilerDirectives.ensureVirtualized(y);
@@ -138,13 +138,13 @@ public class Vector128Ops {
                 default -> throw CompilerDirectives.shouldNotReachHere();
             } ? 0xffff_ffff_ffff_ffffL : 0x0000_0000_0000_0000l;
         }
-        return Vector128.ofLongs(result).asBytes();
+        return Vector128.longsAsBytes(result);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] f32x4_relop(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        float[] x = Vector128.ofBytes(vecX).asFloats();
-        float[] y = Vector128.ofBytes(vecY).asFloats();
+        float[] x = Vector128.bytesAsFloats(vecX);
+        float[] y = Vector128.bytesAsFloats(vecY);
         int[] result = new int[4];
         CompilerDirectives.ensureVirtualized(x);
         CompilerDirectives.ensureVirtualized(y);
@@ -160,13 +160,13 @@ public class Vector128Ops {
                 default -> throw CompilerDirectives.shouldNotReachHere();
             } ? 0xffff_ffff : 0x0000_0000;
         }
-        return Vector128.ofInts(result).asBytes();
+        return Vector128.intsAsBytes(result);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] f64x2_relop(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        double[] x = Vector128.ofBytes(vecX).asDoubles();
-        double[] y = Vector128.ofBytes(vecY).asDoubles();
+        double[] x = Vector128.bytesAsDoubles(vecX);
+        double[] y = Vector128.bytesAsDoubles(vecY);
         long[] result = new long[2];
         CompilerDirectives.ensureVirtualized(x);
         CompilerDirectives.ensureVirtualized(y);
@@ -182,12 +182,12 @@ public class Vector128Ops {
                 default -> throw CompilerDirectives.shouldNotReachHere();
             } ? 0xffff_ffff_ffff_ffffL : 0x0000_0000_0000_0000L;
         }
-        return Vector128.ofLongs(result).asBytes();
+        return Vector128.longsAsBytes(result);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] i32x4_extend_i16x8(byte[] vecX, int vectorOpcode) {
-        short[] x = Vector128.ofBytes(vecX).asShorts();
+        short[] x = Vector128.bytesAsShorts(vecX);
         int[] result = new int[4];
         CompilerDirectives.ensureVirtualized(x);
         CompilerDirectives.ensureVirtualized(result);
@@ -202,12 +202,12 @@ public class Vector128Ops {
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
-        return Vector128.ofInts(result).asBytes();
+        return Vector128.intsAsBytes(result);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] i32x4_unop(byte[] vecX, int vectorOpcode) {
-        int[] x = Vector128.ofBytes(vecX).asInts();
+        int[] x = Vector128.bytesAsInts(vecX);
         int[] result = new int[4];
         CompilerDirectives.ensureVirtualized(x);
         CompilerDirectives.ensureVirtualized(result);
@@ -218,12 +218,12 @@ public class Vector128Ops {
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
-        return Vector128.ofInts(result).asBytes();
+        return Vector128.intsAsBytes(result);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] i32x4_shiftop(byte[] vecX, int shift, int vectorOpcode) {
-        int[] x = Vector128.ofBytes(vecX).asInts();
+        int[] x = Vector128.bytesAsInts(vecX);
         int[] result = new int[4];
         CompilerDirectives.ensureVirtualized(x);
         CompilerDirectives.ensureVirtualized(result);
@@ -235,13 +235,13 @@ public class Vector128Ops {
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
-        return Vector128.ofInts(result).asBytes();
+        return Vector128.intsAsBytes(result);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] i32x4_binop(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        int[] x = Vector128.ofBytes(vecX).asInts();
-        int[] y = Vector128.ofBytes(vecY).asInts();
+        int[] x = Vector128.bytesAsInts(vecX);
+        int[] y = Vector128.bytesAsInts(vecY);
         int[] result = new int[4];
         CompilerDirectives.ensureVirtualized(x);
         CompilerDirectives.ensureVirtualized(y);
@@ -258,13 +258,13 @@ public class Vector128Ops {
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
-        return Vector128.ofInts(result).asBytes();
+        return Vector128.intsAsBytes(result);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] i32x4_binop_extend_i16x8(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        short[] x = Vector128.ofBytes(vecX).asShorts();
-        short[] y = Vector128.ofBytes(vecY).asShorts();
+        short[] x = Vector128.bytesAsShorts(vecX);
+        short[] y = Vector128.bytesAsShorts(vecY);
         int[] result = new int[4];
         CompilerDirectives.ensureVirtualized(x);
         CompilerDirectives.ensureVirtualized(y);
@@ -279,12 +279,12 @@ public class Vector128Ops {
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
-        return Vector128.ofInts(result).asBytes();
+        return Vector128.intsAsBytes(result);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] i64x2_extend_i32x4(byte[] vecX, int vectorOpcode) {
-        int[] x = Vector128.ofBytes(vecX).asInts();
+        int[] x = Vector128.bytesAsInts(vecX);
         long[] result = new long[2];
         CompilerDirectives.ensureVirtualized(x);
         CompilerDirectives.ensureVirtualized(result);
@@ -297,12 +297,12 @@ public class Vector128Ops {
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
-        return Vector128.ofLongs(result).asBytes();
+        return Vector128.longsAsBytes(result);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] i64x2_unop(byte[] vecX, int vectorOpcode) {
-        long[] x = Vector128.ofBytes(vecX).asLongs();
+        long[] x = Vector128.bytesAsLongs(vecX);
         long[] result = new long[2];
         CompilerDirectives.ensureVirtualized(x);
         CompilerDirectives.ensureVirtualized(result);
@@ -313,12 +313,12 @@ public class Vector128Ops {
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
-        return Vector128.ofLongs(result).asBytes();
+        return Vector128.longsAsBytes(result);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static int i64x2_all_true(byte[] vec) {
-        long[] longs = Vector128.ofBytes(vec).asLongs();
+        long[] longs = Vector128.bytesAsLongs(vec);
         CompilerDirectives.ensureVirtualized(longs);
         int result = 1;
         for (int i = 0; i < longs.length; i++) {
@@ -332,7 +332,7 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static int i64x2_bitmask(byte[] vec) {
-        long[] longs = Vector128.ofBytes(vec).asLongs();
+        long[] longs = Vector128.bytesAsLongs(vec);
         CompilerDirectives.ensureVirtualized(longs);
         int result = 0;
         for (int i = 0; i < longs.length; i++) {
@@ -345,7 +345,7 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] i64x2_shiftop(byte[] vecX, int shift, int vectorOpcode) {
-        long[] x = Vector128.ofBytes(vecX).asLongs();
+        long[] x = Vector128.bytesAsLongs(vecX);
         long[] result = new long[2];
         CompilerDirectives.ensureVirtualized(x);
         CompilerDirectives.ensureVirtualized(result);
@@ -357,13 +357,13 @@ public class Vector128Ops {
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
-        return Vector128.ofLongs(result).asBytes();
+        return Vector128.longsAsBytes(result);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] i64x2_binop(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        long[] x = Vector128.ofBytes(vecX).asLongs();
-        long[] y = Vector128.ofBytes(vecY).asLongs();
+        long[] x = Vector128.bytesAsLongs(vecX);
+        long[] y = Vector128.bytesAsLongs(vecY);
         long[] result = new long[2];
         CompilerDirectives.ensureVirtualized(x);
         CompilerDirectives.ensureVirtualized(y);
@@ -376,13 +376,13 @@ public class Vector128Ops {
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
-        return Vector128.ofLongs(result).asBytes();
+        return Vector128.longsAsBytes(result);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] i64x2_binop_extend_i32x4(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        int[] x = Vector128.ofBytes(vecX).asInts();
-        int[] y = Vector128.ofBytes(vecY).asInts();
+        int[] x = Vector128.bytesAsInts(vecX);
+        int[] y = Vector128.bytesAsInts(vecY);
         long[] result = new long[2];
         CompilerDirectives.ensureVirtualized(x);
         CompilerDirectives.ensureVirtualized(y);
@@ -396,12 +396,12 @@ public class Vector128Ops {
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
-        return Vector128.ofLongs(result).asBytes();
+        return Vector128.longsAsBytes(result);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] f32x4_unop(byte[] vecX, int vectorOpcode) {
-        float[] x = Vector128.ofBytes(vecX).asFloats();
+        float[] x = Vector128.bytesAsFloats(vecX);
         float[] result = new float[4];
         CompilerDirectives.ensureVirtualized(x);
         CompilerDirectives.ensureVirtualized(result);
@@ -417,13 +417,13 @@ public class Vector128Ops {
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
-        return Vector128.ofFloats(result).asBytes();
+        return Vector128.floatsAsBytes(result);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] f32x4_binop(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        float[] x = Vector128.ofBytes(vecX).asFloats();
-        float[] y = Vector128.ofBytes(vecY).asFloats();
+        float[] x = Vector128.bytesAsFloats(vecX);
+        float[] y = Vector128.bytesAsFloats(vecY);
         float[] result = new float[4];
         CompilerDirectives.ensureVirtualized(x);
         CompilerDirectives.ensureVirtualized(y);
@@ -441,12 +441,12 @@ public class Vector128Ops {
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
-        return Vector128.ofFloats(result).asBytes();
+        return Vector128.floatsAsBytes(result);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] f64x2_unop(byte[] vecX, int vectorOpcode) {
-        double[] x = Vector128.ofBytes(vecX).asDoubles();
+        double[] x = Vector128.bytesAsDoubles(vecX);
         double[] result = new double[2];
         CompilerDirectives.ensureVirtualized(x);
         CompilerDirectives.ensureVirtualized(result);
@@ -462,13 +462,13 @@ public class Vector128Ops {
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
-        return Vector128.ofDoubles(result).asBytes();
+        return Vector128.doublesAsBytes(result);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] f64x2_binop(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        double[] x = Vector128.ofBytes(vecX).asDoubles();
-        double[] y = Vector128.ofBytes(vecY).asDoubles();
+        double[] x = Vector128.bytesAsDoubles(vecX);
+        double[] y = Vector128.bytesAsDoubles(vecY);
         double[] result = new double[2];
         CompilerDirectives.ensureVirtualized(x);
         CompilerDirectives.ensureVirtualized(y);
@@ -486,7 +486,7 @@ public class Vector128Ops {
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
-        return Vector128.ofDoubles(result).asBytes();
+        return Vector128.doublesAsBytes(result);
     }
 
     private static int trunc_sat_u(double x) {
@@ -501,7 +501,7 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] i32x4_trunc_sat_f32x4(byte[] vecX, int vectorOpcode) {
-        float[] x = Vector128.ofBytes(vecX).asFloats();
+        float[] x = Vector128.bytesAsFloats(vecX);
         int[] result = new int[4];
         CompilerDirectives.ensureVirtualized(x);
         CompilerDirectives.ensureVirtualized(result);
@@ -512,12 +512,12 @@ public class Vector128Ops {
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
-        return Vector128.ofInts(result).asBytes();
+        return Vector128.intsAsBytes(result);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] i32x4_trunc_sat_f64x2(byte[] vecX, int vectorOpcode) {
-        double[] x = Vector128.ofBytes(vecX).asDoubles();
+        double[] x = Vector128.bytesAsDoubles(vecX);
         int[] result = new int[4];
         CompilerDirectives.ensureVirtualized(x);
         CompilerDirectives.ensureVirtualized(result);
@@ -528,7 +528,7 @@ public class Vector128Ops {
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
-        return Vector128.ofInts(result).asBytes();
+        return Vector128.intsAsBytes(result);
     }
 
     // Checkstyle: resume method name check
