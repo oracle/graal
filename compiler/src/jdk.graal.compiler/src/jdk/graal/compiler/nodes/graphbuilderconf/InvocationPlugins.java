@@ -42,6 +42,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Predicate;
 
+import jdk.vm.ci.meta.JavaType;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
@@ -985,6 +986,24 @@ public class InvocationPlugins {
     @NativeImageReinitialize private static Set<String> PrintedIntrinsics = new HashSet<>();
 
     /**
+     * Determines if {@code plugin} is disabled by {@link Options#DisableIntrinsics}.
+     *
+     * @param declaringClassInternalName name of the declaring class for {@code plugin} as returned
+     *            by {@link JavaType#getName()}
+     * @param declaringClassJavaName name of the declaring class for {@code plugin} as returned by
+     *            by {@link JavaType#toJavaName()}
+     */
+    protected boolean isDisabled(InvocationPlugin plugin, String declaringClassInternalName, String declaringClassJavaName, OptionValues options) {
+        initializeDisabledIntrinsicsFilter(options);
+        if (disabledIntrinsicsFilter != null) {
+            if (disabledIntrinsicsFilter.matchesWithArgs(declaringClassJavaName, plugin.name, List.of(plugin.argumentTypes))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Prints the methods for which there are intrinsics in this object if this is the first (or
      * only) isolate in which this method is called and {@link Options#PrintIntrinsics} is true in
      * {@code options}. Intrinsics that have already been printed are skipped.
@@ -1006,9 +1025,15 @@ public class InvocationPlugins {
                     UnmodifiableMapCursor<String, List<InvocationPlugin>> entries = getInvocationPlugins(false, true).getEntries();
                     Set<String> unique = new TreeSet<>();
                     while (entries.advance()) {
-                        String c = MetaUtil.internalNameToJava(entries.getKey(), true, false);
-                        for (InvocationPlugin invocationPlugin : entries.getValue()) {
-                            String method = c + '.' + invocationPlugin.asMethodFilterString();
+                        String declaringClassName = entries.getKey();
+                        String c = MetaUtil.internalNameToJava(declaringClassName, true, false);
+                        for (InvocationPlugin plugin : entries.getValue()) {
+                            String method = c + '.' + plugin.asMethodFilterString();
+                            if (!plugin.canBeDisabled()) {
+                                method += " [cannot be disabled]";
+                            } else if (isDisabled(plugin, declaringClassName, c, options)) {
+                                method += " [disabled]";
+                            }
                             if (PrintedIntrinsics.add(method)) {
                                 unique.add(method);
                             }
