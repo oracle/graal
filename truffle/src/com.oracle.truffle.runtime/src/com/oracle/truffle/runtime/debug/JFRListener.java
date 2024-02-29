@@ -288,7 +288,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
             return false;
         }
 
-        if ("traceThrowable".equals(method.getName()) && "Ljdk/jfr/internal/instrument/ThrowableTracer;".equals(method.getDeclaringClass().getName())) {
+        if (("traceThrowable".equals(method.getName()) || "traceError".equals(method.getName())) && "Ljdk/jfr/internal/instrument/ThrowableTracer;".equals(method.getDeclaringClass().getName())) {
             return true;
         }
 
