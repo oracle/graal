@@ -437,8 +437,8 @@ public class RegexASTPostProcessor {
                     if (innerPositionAssertion >= 0) {
                         Sequence removed = group.getAlternatives().remove(innerPositionAssertion);
                         Group wrapGroup = ast.createGroup();
-                        wrapGroup.setEnclosedCaptureGroupsLow(group.getEnclosedCaptureGroupsLow());
-                        wrapGroup.setEnclosedCaptureGroupsHigh(group.getEnclosedCaptureGroupsHigh());
+                        wrapGroup.setEnclosedCaptureGroupsLow(group.getCaptureGroupsLow());
+                        wrapGroup.setEnclosedCaptureGroupsHigh(group.getCaptureGroupsHigh());
                         wrapGroup.add(removed);
                         Sequence wrapSeq = wrapGroup.addSequence(ast);
                         wrapSeq.add(lookaround);
