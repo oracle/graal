@@ -58,7 +58,6 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -443,8 +442,6 @@ public abstract class ImageHeapScanner {
     private boolean doNotifyAnalysis(AnalysisField field, JavaConstant receiver, JavaConstant fieldValue, ScanReason reason) {
         boolean analysisModified = false;
         if (fieldValue.getJavaKind() == JavaKind.Object && hostVM.isRelocatedPointer(fieldValue)) {
-            /* Ensure the relocatable pointer type is analysed. */
-            ((AnalysisType) ((TypedConstant) fieldValue).getType(metaAccess)).registerAsReachable(reason);
             analysisModified = scanningObserver.forRelocatedPointerFieldValue(receiver, field, fieldValue, reason);
         } else if (fieldValue.isNull()) {
             analysisModified = scanningObserver.forNullFieldValue(receiver, field, reason);

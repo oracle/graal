@@ -89,7 +89,6 @@ import com.oracle.svm.hosted.meta.UniverseBuilder;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
-import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -650,7 +649,7 @@ public final class NativeImageHeap implements ImageHeap {
     private ObjectInfo addToImageHeap(JavaConstant add, HostedClass clazz, long size, int identityHashCode, Object reason) {
         VMError.guarantee(add instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", add);
         VMError.guarantee(!CompressibleConstant.isCompressed(add), "Constants added to the image heap must be uncompressed.");
-        ObjectInfo info = new ObjectInfo(add, size, clazz, identityHashCode, reason);
+        ObjectInfo info = new ObjectInfo((ImageHeapConstant) add, size, clazz, identityHashCode, reason);
         ObjectInfo previous = objects.putIfAbsent(add, info);
         VMError.guarantee(previous == null, "Found an existing object info associated to constant %s", add);
         return info;
@@ -747,7 +746,7 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     public final class ObjectInfo implements ImageHeapObject {
-        private final JavaConstant constant;
+        private final ImageHeapConstant constant;
         private final HostedClass clazz;
         private final long size;
         private final int identityHashCode;
@@ -762,7 +761,7 @@ public final class NativeImageHeap implements ImageHeap {
          */
         private final Object reason;
 
-        ObjectInfo(JavaConstant constant, long size, HostedClass clazz, int identityHashCode, Object reason) {
+        ObjectInfo(ImageHeapConstant constant, long size, HostedClass clazz, int identityHashCode, Object reason) {
             this.constant = constant;
             this.clazz = clazz;
             this.partition = null;
@@ -788,7 +787,7 @@ public final class NativeImageHeap implements ImageHeap {
         }
 
         @Override
-        public JavaConstant getConstant() {
+        public ImageHeapConstant getConstant() {
             return constant;
         }
 
@@ -835,7 +834,7 @@ public final class NativeImageHeap implements ImageHeap {
 
         @Override
         public String toString() {
-            StringBuilder result = new StringBuilder(((TypedConstant) constant).getType(hMetaAccess).toJavaName(true)).append(":").append(identityHashCode).append(" -> ");
+            StringBuilder result = new StringBuilder(constant.getType().toJavaName(true)).append(":").append(identityHashCode).append(" -> ");
             Object cur = getMainReason();
             Object prev = null;
             boolean skipped = false;

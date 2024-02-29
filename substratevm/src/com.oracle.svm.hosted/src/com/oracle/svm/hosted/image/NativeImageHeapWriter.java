@@ -52,7 +52,6 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CEntryPointLiteralFeature;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
@@ -70,7 +69,6 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.Indent;
 import jdk.internal.misc.Unsafe;
-import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -97,7 +95,7 @@ public final class NativeImageHeapWriter {
     public long writeHeap(DebugContext debug, RelocatableBuffer buffer) {
         try (Indent perHeapIndent = debug.logAndIndent("NativeImageHeap.writeHeap:")) {
             for (ObjectInfo info : heap.getObjects()) {
-                assert !(info.getConstant() instanceof HotSpotObjectConstant) || !heap.isBlacklisted(info.getObject());
+                assert !heap.isBlacklisted(info.getObject());
                 writeObject(info, buffer);
             }
 
@@ -343,7 +341,7 @@ public final class NativeImageHeapWriter {
              * If the object is a dynamic hub, then the typeID and vTable (& length) slots will be
              * written.
              */
-            JavaConstant con = info.getConstant();
+            ImageHeapConstant con = info.getConstant();
 
             HostedInstanceClass instanceClazz = (HostedInstanceClass) clazz;
             long idHashOffset;
@@ -419,13 +417,12 @@ public final class NativeImageHeapWriter {
         } else if (clazz.isArray()) {
 
             JavaKind kind = clazz.getComponentType().getStorageKind();
-            JavaConstant constant = info.getConstant();
+            ImageHeapConstant constant = info.getConstant();
 
             int length = heap.hConstantReflection.readArrayLength(constant);
             bufferBytes.putInt(getIndexInBuffer(info, objectLayout.getArrayLengthOffset()), length);
             bufferBytes.putInt(getIndexInBuffer(info, objectLayout.getArrayIdentityHashOffset(kind, length)), info.getIdentityHashCode());
 
-            VMError.guarantee(constant instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", constant);
             if (clazz.getComponentType().isPrimitive()) {
                 ImageHeapPrimitiveArray imageHeapArray = (ImageHeapPrimitiveArray) constant;
                 writePrimitiveArray(info, buffer, objectLayout, kind, imageHeapArray.getArray(), length);
