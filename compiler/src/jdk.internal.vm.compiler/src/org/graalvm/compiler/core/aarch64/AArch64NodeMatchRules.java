@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -909,7 +909,8 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     public ComplexMatchResult normalizedIntegerCompare(ValueNode x, ValueNode y, ConstantNode cm1, ConstantNode c0, ConstantNode c1) {
         if (cm1.getStackKind() == JavaKind.Int && cm1.asJavaConstant().asInt() == -1 && c0.getStackKind() == JavaKind.Int && c0.asJavaConstant().asInt() == 0 && c1.getStackKind() == JavaKind.Int &&
                         c1.asJavaConstant().asInt() == 1) {
-            return builder -> getArithmeticLIRGenerator().emitNormalizedUnsignedCompare(operand(x), operand(y));
+            LIRKind compareKind = gen.getLIRKind(x.stamp(NodeView.DEFAULT));
+            return builder -> getArithmeticLIRGenerator().emitNormalizedUnsignedCompare(compareKind, operand(x), operand(y));
         }
         return null;
     }

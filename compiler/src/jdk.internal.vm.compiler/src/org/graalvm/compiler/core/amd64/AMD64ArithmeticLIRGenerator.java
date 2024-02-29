@@ -1690,9 +1690,9 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     }
 
     @Override
-    public Variable emitNormalizedUnsignedCompare(Value x, Value y) {
+    public Variable emitNormalizedUnsignedCompare(LIRKind compareKind, Value x, Value y) {
         Variable result = getLIRGen().newVariable(LIRKind.value(AMD64Kind.DWORD));
-        getLIRGen().append(new AMD64NormalizedUnsignedCompareOp(result, asAllocatable(x), asAllocatable(y)));
+        getLIRGen().append(new AMD64NormalizedUnsignedCompareOp(result, compareKind, asAllocatable(x), asAllocatable(y)));
         return result;
     }
 }
