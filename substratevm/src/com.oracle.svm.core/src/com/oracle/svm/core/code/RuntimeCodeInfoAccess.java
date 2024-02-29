@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.code;
 
-import java.util.EnumSet;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -46,6 +44,7 @@ import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.VMError;
 
@@ -229,12 +228,23 @@ public final class RuntimeCodeInfoAccess {
         CommittedMemoryProvider.get().freeExecutableMemory(codeStart, codeSize, WordFactory.unsigned(SubstrateOptions.codeAlignment()));
     }
 
-    public static int makeCodeMemoryExecutableReadOnly(CodePointer codeStart, UnsignedWord codeSize) {
-        return CommittedMemoryProvider.get().protect(codeStart, codeSize, EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.EXECUTE));
+    public static void makeCodeMemoryExecutableReadOnly(CodePointer codeStart, UnsignedWord codeSize) {
+        protectCodeMemory(codeStart, codeSize, VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.EXECUTE);
     }
 
-    public static int makeCodeMemoryExecutableWritable(CodePointer start, UnsignedWord size) {
-        return CommittedMemoryProvider.get().protect(start, size, EnumSet.of(CommittedMemoryProvider.Access.READ, CommittedMemoryProvider.Access.WRITE, CommittedMemoryProvider.Access.EXECUTE));
+    public static void makeCodeMemoryExecutableWritable(CodePointer start, UnsignedWord size) {
+        VMError.guarantee(RuntimeCodeCache.Options.WriteableCodeCache.getValue(), "memory must not be writable and executable at the same time unless we have a writable code cache");
+        protectCodeMemory(start, size, VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE | VirtualMemoryProvider.Access.EXECUTE);
+    }
+
+    private static void protectCodeMemory(CodePointer codeStart, UnsignedWord codeSize, int permissions) {
+        int result = VirtualMemoryProvider.get().protect(codeStart, codeSize, permissions);
+        if (result != 0) {
+            throw VMError.shouldNotReachHere("Failed to modify protection of code memory. This may be caused by " +
+                            "a. a too restrictive OS-limit of allowed memory mappings (see vm.max_map_count on Linux), " +
+                            "b. a too strict security policy if you are running on Security-Enhanced Linux (SELinux), or " +
+                            "c. a Native Image internal error.");
+        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
