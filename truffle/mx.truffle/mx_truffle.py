@@ -722,6 +722,8 @@ def truffle_native_unit_tests_gate(use_optimized_runtime=True, quick_build=False
             'com.oracle.truffle.api.test.TruffleSafepointTest'    # GR-44492
         ]
     build_args = build_optimize_args + build_truffle_runtime_args + [
+        '-R:MaxHeapSize=2g',
+        '-H:MaxRuntimeCompileMethods=5000',
         '--enable-url-protocols=http,jar',
         '-H:+AddAllCharsets',
         '--add-exports=org.graalvm.polyglot/org.graalvm.polyglot.impl=ALL-UNNAMED',
