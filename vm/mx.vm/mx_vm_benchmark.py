@@ -929,7 +929,7 @@ class NativeImageVM(GraalVm):
 
     def run_stage_instrument_image(self, out):
         executable_name_args = ['-o', self.config.instrumentation_executable_name]
-        instrument_args = ['--pgo-instrument'] if not self.pgo_sampler_only else ['--pgo-sampling']
+        instrument_args = ['--pgo-sampling'] if self.pgo_sampler_only else ['--pgo-instrument']
         instrument_args += ['-R:ProfilesDumpFile=' + self.config.profile_path]
         if self.jdk_profiles_collect:
             instrument_args += svm_experimental_options(['-H:+AOTPriorityInline', '-H:-SamplingCollect', f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}'])
