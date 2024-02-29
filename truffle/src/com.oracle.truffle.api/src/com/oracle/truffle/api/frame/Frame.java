@@ -300,6 +300,8 @@ public interface Frame {
 
     /**
      * Check whether the given indexed slot is of type object.
+     * <p>
+     * This method should not be used with static slots.
      *
      * @param slot the slot of the local variable
      * @since 22.0
@@ -311,7 +313,9 @@ public interface Frame {
 
     /**
      * Check whether the given indexed slot is of type byte.
-     *
+     * <p>
+     * This method should not be used with static slots.
+     * 
      * @param slot the slot of the local variable
      * @since 22.0
      */
@@ -322,7 +326,9 @@ public interface Frame {
 
     /**
      * Check whether the given indexed slot is of type boolean.
-     *
+     * <p>
+     * This method should not be used with static slots.
+     * 
      * @param slot the slot of the local variable
      * @since 22.0
      */
@@ -333,7 +339,9 @@ public interface Frame {
 
     /**
      * Check whether the given indexed slot is of type int.
-     *
+     * <p>
+     * This method should not be used with static slots.
+     * 
      * @param slot the slot of the local variable
      * @since 22.0
      */
@@ -344,7 +352,9 @@ public interface Frame {
 
     /**
      * Check whether the given indexed slot is of type long.
-     *
+     * <p>
+     * This method should not be used with static slots.
+     * 
      * @param slot the slot of the local variable
      * @since 22.0
      */
@@ -355,7 +365,9 @@ public interface Frame {
 
     /**
      * Check whether the given indexed slot is of type float.
-     *
+     * <p>
+     * This method should not be used with static slots.
+     * 
      * @param slot the slot of the local variable
      * @since 22.0
      */
@@ -366,7 +378,9 @@ public interface Frame {
 
     /**
      * Check whether the given indexed slot is of type double.
-     *
+     * <p>
+     * This method should not be used with static slots.
+     * 
      * @param slot the slot of the local variable
      * @since 22.0
      */
@@ -377,7 +391,9 @@ public interface Frame {
 
     /**
      * Checks whether the given indexed slot is static.
-     *
+     * <p>
+     * This method should not be used with static slots.
+     * 
      * @param slot the slot of the local variable
      * @since 22.2
      */

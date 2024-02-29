@@ -236,7 +236,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private boolean isNonStaticType(int slotIndex, byte tag) {
-        assert tag < STATIC_TAG : tag;
+        assert !isStatic(slotIndex) : "Using isType on static slots is to be avoided.";
         return getIndexedTags()[slotIndex] == tag;
     }
 
@@ -268,7 +268,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public Object getValue(int slot) {
         byte tag = getTag(slot);
-        assert (indexedTags[slot] & STATIC_TAG) == 0 : UNEXPECTED_NON_STATIC_READ;
+        assert !isStatic(slot) : UNEXPECTED_NON_STATIC_READ;
         switch (tag) {
             case BOOLEAN_TAG:
                 return getBoolean(slot);
@@ -441,10 +441,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public boolean isObject(int slot) {
-        return isNonStaticType(slot, OBJECT_TAG) &&
-                        // Uninitialized static slots get OBJECT_TAG before the first set, so we
-                        // explicitly check for non-staticness of the slot.
-                        !isStatic(slot);
+        return isNonStaticType(slot, OBJECT_TAG);
     }
 
     @Override
