@@ -367,21 +367,22 @@ def _native_image(jdk):
     return native_image_path
 
 def _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, use_enterprise=True, force_cp=False, hosted_assertions=True):
+    native_image_args = list(vm_args)
     native_image_path = _native_image(jdk)
     target_path = os.path.join(target_dir, mx.exe_suffix('sl'))
     dist_names = resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)
 
     if hosted_assertions:
-        vm_args += ["-J-ea", "-J-esa"]
+        native_image_args += ["-J-ea", "-J-esa"]
 
-    vm_args += mx.get_runtime_jvm_args(names=dist_names, force_cp=force_cp)
+    native_image_args += mx.get_runtime_jvm_args(names=dist_names, force_cp=force_cp)
     if force_cp:
-        vm_args += ["com.oracle.truffle.sl.launcher.SLMain"]
+        native_image_args += ["com.oracle.truffle.sl.launcher.SLMain"]
     else:
-        vm_args += ["--module", "org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain"]
-    vm_args += [target_path]
-    mx.log("Running {} {}".format(mx.exe_suffix('native-image'), " ".join(vm_args)))
-    mx.run([native_image_path] + vm_args)
+        native_image_args += ["--module", "org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain"]
+    native_image_args += [target_path]
+    mx.log("Running {} {}".format(mx.exe_suffix('native-image'), " ".join(native_image_args)))
+    mx.run([native_image_path] + native_image_args)
     return target_path
 
 def _truffle_gate_runner(args, tasks):
