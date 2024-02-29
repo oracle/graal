@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -688,7 +688,8 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public Variable emitNormalizedUnsignedCompare(Value x, Value y) {
+    public Variable emitNormalizedUnsignedCompare(LIRKind compareKind, Value x, Value y) {
+        GraalError.guarantee(compareKind.getPlatformKind() == AArch64Kind.DWORD || compareKind.getPlatformKind() == AArch64Kind.QWORD, "unsupported subword comparison: %s", compareKind);
         Variable result = getLIRGen().newVariable(LIRKind.value(AArch64Kind.DWORD));
         getLIRGen().append(new AArch64NormalizedUnsignedCompareOp(result, asAllocatable(x), asAllocatable(y)));
         return result;
