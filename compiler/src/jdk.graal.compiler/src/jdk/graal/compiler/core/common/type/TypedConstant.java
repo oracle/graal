@@ -30,6 +30,4 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public interface TypedConstant extends JavaConstant {
     ResolvedJavaType getType(MetaAccessProvider provider);
-
-    int getIdentityHashCode();
 }

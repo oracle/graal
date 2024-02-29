@@ -379,8 +379,8 @@ public final class NativeImageHeap implements ImageHeap {
         }
     }
 
-    private static int computeIdentityHashCode(JavaConstant constant) {
-        return ((TypedConstant) constant).getIdentityHashCode();
+    private int computeIdentityHashCode(JavaConstant constant) {
+        return hConstantReflection.identityHashCode(constant);
     }
 
     @Override

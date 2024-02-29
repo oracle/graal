@@ -371,7 +371,7 @@ public class SubstrateGraphBuilderPlugins {
 
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
-                b.addPush(JavaKind.Int, SubstrateIdentityHashCodeNode.create(object, b.bci()));
+                b.addPush(JavaKind.Int, SubstrateIdentityHashCodeNode.create(object, b.bci(), b));
                 return true;
             }
 
@@ -737,7 +737,7 @@ public class SubstrateGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode object = receiver.get(true);
-                b.addPush(JavaKind.Int, SubstrateIdentityHashCodeNode.create(object, b.bci()));
+                b.addPush(JavaKind.Int, SubstrateIdentityHashCodeNode.create(object, b.bci(), b));
                 return true;
             }
         });

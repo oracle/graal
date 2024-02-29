@@ -119,7 +119,11 @@ public abstract class SharedRuntimeConfigurationBuilder {
 
         LoopsDataProvider loopsDataProvider = originalLoopsDataProvider;
 
-        IdentityHashCodeProvider identityHashCodeProvider = createIdentityHashCodeProvider();
+        /*
+         * To simplify future merging of IdentityHashCodeProvider into ConstantReflectionProvider,
+         * all of our implementation classes are already merged.
+         */
+        IdentityHashCodeProvider identityHashCodeProvider = (IdentityHashCodeProvider) constantReflection;
 
         Providers p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, snippetReflection, platformConfig, metaAccessExtensionProvider,
                         wordTypes, loopsDataProvider, identityHashCodeProvider);
@@ -175,6 +179,4 @@ public abstract class SharedRuntimeConfigurationBuilder {
     protected abstract Replacements createReplacements(Providers p);
 
     protected abstract CodeCacheProvider createCodeCacheProvider(RegisterConfig registerConfig);
-
-    protected abstract IdentityHashCodeProvider createIdentityHashCodeProvider();
 }

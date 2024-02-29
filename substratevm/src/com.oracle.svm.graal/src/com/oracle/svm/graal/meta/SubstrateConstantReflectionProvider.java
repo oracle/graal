@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.graal.meta;
 
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -42,6 +40,8 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -56,6 +56,17 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateConstantReflectionProvider(SubstrateMetaAccess metaAccess) {
         this.metaAccess = metaAccess;
+    }
+
+    @Override
+    public Integer identityHashCode(JavaConstant constant) {
+        if (constant == null || constant.getJavaKind() != JavaKind.Object) {
+            return null;
+        } else if (constant.isNull()) {
+            /* System.identityHashCode is specified to return 0 when passed null. */
+            return 0;
+        }
+        return ((SubstrateObjectConstant) constant).getIdentityHashCode();
     }
 
     @Override

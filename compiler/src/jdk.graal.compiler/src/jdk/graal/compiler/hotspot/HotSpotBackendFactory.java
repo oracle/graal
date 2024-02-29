@@ -28,7 +28,6 @@ import static jdk.vm.ci.common.InitTimer.timer;
 import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.debug.Assertions;
@@ -36,6 +35,7 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.hotspot.meta.HotSpotGraalConstantFieldProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
+import jdk.graal.compiler.hotspot.meta.HotSpotIdentityHashCodeProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotLoweringProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotMetaAccessExtensionProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotPlatformConfigurationProvider;
@@ -192,7 +192,7 @@ public abstract class HotSpotBackendFactory {
             }
             IdentityHashCodeProvider identityHashCodeProvider;
             try (InitTimer rt = timer("create IdentityHashCode provider")) {
-                identityHashCodeProvider = createIdentityHashCodeProvider(snippetReflection);
+                identityHashCodeProvider = createIdentityHashCodeProvider();
             }
             providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, null, registers,
                             snippetReflection, wordTypes, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider, loopsDataProvider, config, identityHashCodeProvider);
@@ -222,8 +222,8 @@ public abstract class HotSpotBackendFactory {
         }
     }
 
-    protected IdentityHashCodeProvider createIdentityHashCodeProvider(SnippetReflectionProvider snippetReflection) {
-        return new IdentityHashCodeProvider(snippetReflection);
+    protected IdentityHashCodeProvider createIdentityHashCodeProvider() {
+        return new HotSpotIdentityHashCodeProvider();
     }
 
     protected abstract HotSpotBackend createBackend(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider graalRuntime, HotSpotProviders providers);
