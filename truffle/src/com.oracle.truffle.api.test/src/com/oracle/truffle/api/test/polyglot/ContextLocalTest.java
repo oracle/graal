@@ -52,6 +52,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -76,6 +77,7 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
@@ -98,6 +100,7 @@ public class ContextLocalTest extends AbstractPolyglotTest {
     static final String VALID_INSTRUMENT = "ContextLocalTest_ValidInstrument";
     static final String INVALID_CONTEXT_LOCAL = "ContextLocalTest_InvalidLanguageContextLocal";
     static final String INVALID_CONTEXT_THREAD_LOCAL = "ContextLocalTest_InvalidLanguageContextThreadLocal";
+    static final String CONTEXT_LOCAL_ACCESS_RACE_INSTRUMENT = "ContextLocalTest_ContextLocalAccessRaceInstrument";
 
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {
@@ -711,6 +714,73 @@ public class ContextLocalTest extends AbstractPolyglotTest {
         }
     }
 
+    private static CountDownLatch contextLocalCreationStartedLatch;
+    private static CountDownLatch contextLocalCreationLatch;
+
+    @Test
+    public void testContextLocalAccessRace() throws ExecutionException, InterruptedException {
+        /*
+         * In this test, context close is called on one of the two contexts before the instrument
+         * created in a third thread initializes context locals for the context at the end of
+         * PolyglotInstrument#ensureCreated. The context local defined by the instrument is accessed
+         * in an onContextClosed event installed by the instrument, and so if the event was called,
+         * we would get an assertion error. However, since the events in the context listener
+         * installed by the instrument are not invoked before context locals for all contexts are
+         * properly initialized, we get no error.
+         */
+        ExecutorService executorService = Executors.newFixedThreadPool(3);
+        CountDownLatch contextCreatedAndEnteredLatch = new CountDownLatch(2);
+        CountDownLatch contextCloseLatch = new CountDownLatch(1);
+        CountDownLatch contextClosedLatch = new CountDownLatch(1);
+        contextLocalCreationStartedLatch = new CountDownLatch(1);
+        contextLocalCreationLatch = new CountDownLatch(1);
+        try (Engine engine = Engine.create()) {
+            List<Future<?>> futures = new ArrayList<>();
+            for (int i = 0; i < 2; i++) {
+                futures.add(executorService.submit(() -> {
+                    try (Context ctx = Context.newBuilder().engine(engine).build()) {
+                        /*
+                         * Context close enters the context in the process and if it is the first
+                         * enter on that thread, it initializes context locals, which would block
+                         * the closing process and cause deadlock because we deliberately block the
+                         * context local creation using the contextLocalCreationLatch. But if we
+                         * enter and leave before creation of the instrument, the context local
+                         * creation relies on the instrument calling it on all contexts, thread
+                         * enter done as the part of context close does not initialize context
+                         * locals because the thread was already entered.
+                         */
+                        ctx.enter();
+                        ctx.leave();
+                        contextCreatedAndEnteredLatch.countDown();
+                        try {
+                            contextCloseLatch.await();
+                        } catch (InterruptedException ie) {
+                            throw new AssertionError(ie);
+                        }
+                    } finally {
+                        contextClosedLatch.countDown();
+                    }
+                }));
+            }
+            contextCreatedAndEnteredLatch.await();
+            futures.add(executorService.submit(() -> {
+                engine.getInstruments().get(CONTEXT_LOCAL_ACCESS_RACE_INSTRUMENT).lookup(ContextLocalAccessRaceInstrument.class);
+            }));
+            contextLocalCreationStartedLatch.await();
+            contextCloseLatch.countDown();
+            contextClosedLatch.await();
+            contextLocalCreationLatch.countDown();
+            for (Future<?> future : futures) {
+                future.get();
+            }
+        } finally {
+            contextLocalCreationLatch = null;
+            contextLocalCreationStartedLatch = null;
+            executorService.shutdownNow();
+            assertTrue(executorService.awaitTermination(1, TimeUnit.MINUTES));
+        }
+    }
+
     @TruffleLanguage.Registration(id = VALID_EXCLUSIVE_LANGUAGE, name = VALID_EXCLUSIVE_LANGUAGE)
     public static class ValidExclusiveLanguage extends TruffleLanguage<TruffleLanguage.Env> {
 
@@ -1012,6 +1082,61 @@ public class ContextLocalTest extends AbstractPolyglotTest {
                 this.thread = new WeakReference<>(thread);
             }
 
+        }
+
+    }
+
+    @TruffleInstrument.Registration(id = CONTEXT_LOCAL_ACCESS_RACE_INSTRUMENT, services = ContextLocalAccessRaceInstrument.class)
+    public static class ContextLocalAccessRaceInstrument extends TruffleInstrument {
+
+        final ContextLocal<CLARIContextLocal> local = locals.createContextLocal(CLARIContextLocal::new);
+
+        @Override
+        protected void onCreate(Env env) {
+            env.getInstrumenter().attachContextsListener(new ContextsListener() {
+                @Override
+                public void onContextCreated(TruffleContext context) {
+
+                }
+
+                @Override
+                public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
+
+                }
+
+                @Override
+                public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
+
+                }
+
+                @Override
+                public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
+
+                }
+
+                @Override
+                public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
+
+                }
+
+                @Override
+                public void onContextClosed(TruffleContext context) {
+                    local.get(context);
+                }
+            }, false);
+            env.registerService(this);
+        }
+
+        static class CLARIContextLocal {
+            @SuppressWarnings("unused")
+            CLARIContextLocal(TruffleContext truffleContext) {
+                contextLocalCreationStartedLatch.countDown();
+                try {
+                    contextLocalCreationLatch.await();
+                } catch (InterruptedException ie) {
+                    throw new AssertionError(ie);
+                }
+            }
         }
 
     }
