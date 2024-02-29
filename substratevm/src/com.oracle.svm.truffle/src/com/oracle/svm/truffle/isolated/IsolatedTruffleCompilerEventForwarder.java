@@ -84,7 +84,7 @@ final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerList
 
     @Override
     public void onCompilationRetry(TruffleCompilable compilable, TruffleCompilationTask task) {
-        onCompilationRetry0(IsolatedCompileContext.get().getClient(), contextHandle, IsolatedCompileClient.get().hand(task));
+        onCompilationRetry0(IsolatedCompileContext.get().getClient(), contextHandle);
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
@@ -117,8 +117,7 @@ final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerList
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
-    private static void onCompilationRetry0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<IsolatedEventContext> contextHandle,
-                    @SuppressWarnings("unused") ClientHandle<TruffleCompilationTask> task) {
+    private static void onCompilationRetry0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<IsolatedEventContext> contextHandle) {
         IsolatedEventContext context = IsolatedCompileClient.get().unhand(contextHandle);
         context.listener.onCompilationRetry(context.compilable, context.task);
     }
