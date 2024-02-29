@@ -105,6 +105,7 @@ class ReflectionProcessor extends AbstractProcessor {
                     configuration.getOrCreateType(condition, type);
                 }
             }
+            return;
         }
         String clazz = (String) entry.get("class");
         if (advisor.shouldIgnore(lazyValue(clazz), lazyValue(callerClass))) {

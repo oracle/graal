@@ -214,7 +214,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle name = getObjectArgument(thread, 0);
         String className = fromJniString(jni, name);
         if (className == null) {
-            return false; /* No point in tracing this. */
+            return true; /* No point in tracing this. */
         }
         traceReflectBreakpoint(jni, bp.clazz, nullHandle(), callerClass, bp.specification.methodName, null, state.getFullStackTraceOrNull(), className);
         return true;
@@ -577,15 +577,16 @@ final class BreakpointInterceptor {
         return true;
     }
 
-    private static boolean handleResourceRegistration(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle callerClass, String function, JNIMethodId[] stackTrace, Object... args) {
-        // Possible args are [resourceName] and [moduleName, resourceName]
-        String resourceName = args.length == 2 ? (String) args[1] : (String) args[0];
-
+    private static boolean handleResourceRegistration(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle callerClass, String function, JNIMethodId[] stackTrace, String resourceName, String moduleName) {
         if (resourceName == null) {
-            return false; /* No point in tracing this: resource path is null */
+            return true; /* No point in tracing this: resource path is null */
         }
 
-        traceReflectBreakpoint(env, clazz, nullHandle(), callerClass, function, true, stackTrace, args);
+        if (moduleName == null) {
+            traceReflectBreakpoint(env, clazz, nullHandle(), callerClass, function, true, stackTrace, resourceName);
+        } else {
+            traceReflectBreakpoint(env, clazz, nullHandle(), callerClass, function, true, stackTrace, moduleName, resourceName);
+        }
 
         return true;
     }
@@ -595,7 +596,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle module = getObjectArgument(thread, 1);
         JNIObjectHandle name = getObjectArgument(thread, 2);
 
-        return handleResourceRegistration(jni, nullHandle(), callerClass, bp.specification.methodName, state.getFullStackTraceOrNull(), fromJniString(jni, module), fromJniString(jni, name));
+        return handleResourceRegistration(jni, nullHandle(), callerClass, bp.specification.methodName, state.getFullStackTraceOrNull(), fromJniString(jni, name), fromJniString(jni, module));
     }
 
     private static boolean getResource(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
@@ -618,7 +619,7 @@ final class BreakpointInterceptor {
             }
         }
 
-        return handleResourceRegistration(jni, selfClazz, callerClass, bp.specification.methodName, state.getFullStackTraceOrNull(), fromJniString(jni, name));
+        return handleResourceRegistration(jni, selfClazz, callerClass, bp.specification.methodName, state.getFullStackTraceOrNull(), fromJniString(jni, name), null);
     }
 
     private static boolean getSystemResource(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
@@ -633,7 +634,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
         JNIObjectHandle name = getObjectArgument(thread, 0);
 
-        return handleResourceRegistration(jni, nullHandle(), callerClass, bp.specification.methodName, state.getFullStackTraceOrNull(), fromJniString(jni, name));
+        return handleResourceRegistration(jni, nullHandle(), callerClass, bp.specification.methodName, state.getFullStackTraceOrNull(), fromJniString(jni, name), null);
     }
 
     private static boolean newProxyInstance(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
