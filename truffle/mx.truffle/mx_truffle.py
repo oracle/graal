@@ -483,7 +483,9 @@ def native_truffle_unittest(args):
     parsed_args.run_args = [_unescape(arg) for arg in parsed_args.run_args]
     parsed_args.unittests_args = [_unescape(arg) for arg in parsed_args.unittests_args]
     parsed_args.exclude_class = [re.compile(fnmatch.translate(c)) for c in parsed_args.exclude_class] if parsed_args.exclude_class else []
-    with mx.TempDir() as tmp:
+    success = False
+    tmp = mx.mkdtemp()
+    try:
         jdk = mx.get_jdk(tag='graalvm')
         unittest_distributions = ['mx:JUNIT-PLATFORM-NATIVE']
         test_classes_file = os.path.join(tmp, 'test_classes.txt')
@@ -558,7 +560,16 @@ def native_truffle_unittest(args):
         mx.run([native_image] + vm_args + native_image_args)
 
         # 4. Execute native unittests
-        mx.run([tests_executable] + parsed_args.run_args)
+        test_results = os.path.join(tmp, 'test-results-native', 'test')
+        os.makedirs(test_results, exist_ok=True)
+        mx.run([tests_executable] + ['--xml-output-dir', test_results] + parsed_args.run_args)
+        success = True
+    finally:
+        if success:
+            # only on success remove the temporary work folder
+            mx.rmtree(tmp, ignore_errors=True)
+        else:
+            mx.warn(f'The native Truffle unit test has failed, preserving the working directory at {tmp} for further investigation.')
 
 
 # Run in VM suite with:
