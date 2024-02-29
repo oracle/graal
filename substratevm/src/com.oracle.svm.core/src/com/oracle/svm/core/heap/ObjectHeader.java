@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -97,9 +96,4 @@ public abstract class ObjectHeader {
 
     @Uninterruptible(reason = "Prevent a GC interfering with the object's identity hash state.", callerMustBe = true)
     public abstract void setIdentityHashFromAddress(Pointer ptr, Word currentHeader);
-
-    @Fold
-    protected static int getCompressionShift() {
-        return ReferenceAccess.singleton().getCompressEncoding().getShift();
-    }
 }

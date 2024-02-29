@@ -66,6 +66,9 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
             dump(sigInfo, uContext);
             throw VMError.shouldNotReachHere();
         }
+
+        /* Attach failed - kill the process because the segfault handler must not return. */
+        LibC.abort();
     }
 
     @Override

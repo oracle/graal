@@ -26,21 +26,27 @@ package com.oracle.svm.core;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
+import java.lang.reflect.Field;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.IsolateListenerSupport.IsolateListener;
@@ -49,18 +55,20 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
+import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
+import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticallyRegisteredFeature
 class SubstrateSegfaultHandlerFeature implements InternalFeature {
@@ -72,14 +80,30 @@ class SubstrateSegfaultHandlerFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (!ImageSingletons.contains(SubstrateSegfaultHandler.class)) {
-            return; /* No segfault handler. */
+            return;
         }
+
+        /* Register the marker as accessed so that we have a field with a well-known value. */
+        access.registerAsUnsafeAccessed(getStaticFieldWithWellKnownValue());
 
         SingleIsolateSegfaultSetup singleIsolateSegfaultSetup = new SingleIsolateSegfaultSetup();
         ImageSingletons.add(SingleIsolateSegfaultSetup.class, singleIsolateSegfaultSetup);
         IsolateListenerSupport.singleton().register(singleIsolateSegfaultSetup);
 
         RuntimeSupport.getRuntimeSupport().addStartupHook(new SubstrateSegfaultHandlerStartupHook());
+    }
+
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        if (!ImageSingletons.contains(SubstrateSegfaultHandler.class)) {
+            return;
+        }
+
+        SubstrateSegfaultHandler.offsetOfStaticFieldWithWellKnownValue = access.objectFieldOffset(getStaticFieldWithWellKnownValue());
+    }
+
+    private static Field getStaticFieldWithWellKnownValue() {
+        return ReflectionUtil.lookupField(SubstrateSegfaultHandler.class, "staticFieldWithWellKnownValue");
     }
 }
 
@@ -100,6 +124,16 @@ public abstract class SubstrateSegfaultHandler {
         @Option(help = "Install segfault handler that prints register contents and full Java stacktrace. Default: enabled for an executable, disabled for a shared library, disabled when EnableSignalHandling is disabled.")//
         static final RuntimeOptionKey<Boolean> InstallSegfaultHandler = new RuntimeOptionKey<>(null);
     }
+
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    static long offsetOfStaticFieldWithWellKnownValue;
+
+    private static final long MARKER_VALUE = 0x0123456789ABCDEFL;
+    private static final CGlobalData<Word> OFFSET_OF_STATIC_FIELD_WITH_WELL_KNOWN_VALUE = CGlobalDataFactory.createBytes(() -> {
+        assert ConfigurationValues.getTarget().wordSize == Long.BYTES;
+        return ByteBuffer.allocate(Long.BYTES).order(ConfigurationValues.getTarget().arch.getByteOrder()).putLong(offsetOfStaticFieldWithWellKnownValue).array();
+    });
+    @SuppressWarnings("unused") private static long staticFieldWithWellKnownValue = MARKER_VALUE;
 
     private boolean installed;
 
@@ -122,37 +156,95 @@ public abstract class SubstrateSegfaultHandler {
 
     protected abstract void printSignalInfo(Log log, PointerBase signalInfo);
 
-    /** Called from the platform dependent segfault handler to enter the isolate. */
+    /**
+     * Called from the platform dependent segfault handler to enter the isolate. Note that this code
+     * may trigger a new segfault, which can lead to recursion. In the worst case, the recursion is
+     * only stopped once we trigger a native stack overflow.
+     */
     @Uninterruptible(reason = "Thread state not set up yet.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.")
     protected static boolean tryEnterIsolate(RegisterDumper.Context context) {
-        // Check if we have sufficient information to enter the correct isolate.
+        /* If there is only a single isolate, we can just enter that isolate. */
         Isolate isolate = SingleIsolateSegfaultSetup.singleton().getIsolate();
         if (isolate.rawValue() != -1) {
-            // There is only a single isolate, so lets attach to that isolate.
             int error = CEntryPointActions.enterAttachThreadFromCrashHandler(isolate);
             return error == CEntryPointErrors.NO_ERROR;
-        } else if (!SubstrateOptions.useLLVMBackend()) {
-            // Try to determine the isolate via the register information. This very likely fails if
-            // the crash happened in native code that was linked into Native Image.
-            if (SubstrateOptions.SpawnIsolates.getValue()) {
-                PointerBase heapBase = RegisterDumper.singleton().getHeapBase(context);
-                CEntryPointSnippets.setHeapBase(heapBase);
-            }
-            if (SubstrateOptions.MultiThreaded.getValue()) {
-                PointerBase threadPointer = RegisterDumper.singleton().getThreadPointer(context);
-                WriteCurrentVMThreadNode.writeCurrentVMThread((IsolateThread) threadPointer);
-            }
+        }
 
-            /*
-             * The following probing is subject to implicit recursion as it may trigger a new
-             * segfault. However, this is fine, as it will eventually result in native stack
-             * overflow.
-             */
-            isolate = VMThreads.IsolateTL.get();
-            return Isolates.checkIsolate(isolate) == CEntryPointErrors.NO_ERROR && (!SubstrateOptions.SpawnIsolates.getValue() || isolate.equal(KnownIntrinsics.heapBase()));
+        /* The LLVM backend doesn't support the register-based approach. */
+        if (SubstrateOptions.useLLVMBackend()) {
+            return false;
+        }
+
+        /* Try to determine the isolate via the thread register. */
+        if (SubstrateOptions.MultiThreaded.getValue() && tryEnterIsolateViaThreadRegister(context)) {
+            return true;
+        }
+
+        /* Try to determine the isolate via the heap base register. */
+        return SubstrateOptions.SpawnIsolates.getValue() && tryEnterIsolateViaHeapBaseRegister(context);
+    }
+
+    @Uninterruptible(reason = "Thread state not set up yet.")
+    @NeverInline("Prevent register writes from floating")
+    private static boolean tryEnterIsolateViaThreadRegister(RegisterDumper.Context context) {
+        /*
+         * Set the thread register to null so that we don't execute this code more than once if we
+         * trigger a recursive segfault.
+         */
+        WriteCurrentVMThreadNode.writeCurrentVMThread(WordFactory.nullPointer());
+
+        IsolateThread isolateThread = (IsolateThread) RegisterDumper.singleton().getThreadPointer(context);
+        if (isolateThread.isNonNull()) {
+            Isolate isolate = VMThreads.IsolateTL.get(isolateThread);
+            if (isValid(isolate)) {
+                if (SubstrateOptions.SpawnIsolates.getValue()) {
+                    CEntryPointSnippets.setHeapBase(isolate);
+                }
+
+                WriteCurrentVMThreadNode.writeCurrentVMThread(isolateThread);
+                return true;
+            }
         }
         return false;
+    }
+
+    @Uninterruptible(reason = "Thread state not set up yet.")
+    @NeverInline("Prevent register writes from floating")
+    private static boolean tryEnterIsolateViaHeapBaseRegister(RegisterDumper.Context context) {
+        /*
+         * Set the heap base register to null so that we don't execute this code more than once if
+         * we trigger a recursive segfault.
+         */
+        CEntryPointSnippets.setHeapBase(WordFactory.nullPointer());
+
+        Isolate isolate = (Isolate) RegisterDumper.singleton().getHeapBase(context);
+        if (isValid(isolate)) {
+            int error = CEntryPointActions.enterAttachThreadFromCrashHandler(isolate);
+            return error == CEntryPointErrors.NO_ERROR;
+        }
+        return false;
+    }
+
+    @Uninterruptible(reason = "Thread state not set up yet.")
+    private static boolean isValid(Isolate isolate) {
+        if (Isolates.checkIsolate(isolate) != CEntryPointErrors.NO_ERROR) {
+            return false;
+        }
+
+        /*
+         * Read a static field in the image heap and compare its value with a well-known marker
+         * value as an extra sanity check. Note that the heap base register still contains an
+         * invalid value when we execute this code, which makes things a bit more complex.
+         */
+        if (SubstrateOptions.SpawnIsolates.getValue()) {
+            UnsignedWord staticFieldsOffsets = ReferenceAccess.singleton().getCompressedRepresentation(StaticFieldsSupport.getStaticPrimitiveFields());
+            UnsignedWord wellKnownFieldOffset = staticFieldsOffsets.shiftLeft(ReferenceAccess.singleton().getCompressionShift()).add(OFFSET_OF_STATIC_FIELD_WITH_WELL_KNOWN_VALUE.get().readWord(0));
+            Pointer wellKnownField = ((Pointer) isolate).add(wellKnownFieldOffset);
+            return wellKnownField.readLong(0) == MARKER_VALUE;
+        }
+
+        return true;
     }
 
     /** Called from the platform dependent segfault handler to print diagnostics. */
@@ -196,7 +288,7 @@ public abstract class SubstrateSegfaultHandler {
         }
     }
 
-    static class SingleIsolateSegfaultSetup implements IsolateListener {
+    public static class SingleIsolateSegfaultSetup implements IsolateListener {
 
         /**
          * Stores the address of the first isolate created. This is meant to attempt to detect the
