@@ -253,11 +253,8 @@ local common_json = import "../common.json";
         }
         else if (self.os == "darwin" && self.arch == "amd64") then {
           'pcre2': '==10.37',
-        } else error "FastR cannot be built on " + self.os + "/" + self.arch,
+        } else {},
       environment+:
-        {
-          FASTR_RELEASE: 'true',
-        } +
         if (self.os == "linux" && self.arch == "amd64") then {
           TZDIR: '/usr/share/zoneinfo',
           PKG_INCLUDE_FLAGS_OVERRIDE : '-I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/pcre2/10.37/include -I/cm/shared/apps/curl/7.50.1/include',
@@ -265,6 +262,7 @@ local common_json = import "../common.json";
           FASTR_FC: '/cm/shared/apps/gcc/4.8.5/bin/gfortran',
           FASTR_CC: '/cm/shared/apps/gcc/4.8.5/bin/gcc',
           GNUR_HOME_BINARY: '/cm/shared/apps/gnur/4.0.3_gcc4.8.5_pcre2-10.37/R-4.0.3',
+          FASTR_RELEASE: 'true',
         }
         else if (self.os == "darwin" && self.arch == "amd64") then {
           FASTR_FC: '/cm/shared/apps/gcc/8.3.0/bin/gfortran',
@@ -272,22 +270,23 @@ local common_json = import "../common.json";
           TZDIR: '/usr/share/zoneinfo',
           PKG_INCLUDE_FLAGS_OVERRIDE : '-I/cm/shared/apps/pcre2/pcre2-10.37/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/curl/7.50.1/include',
           PKG_LDFLAGS_OVERRIDE : '-L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre2/pcre2-10.37/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/10.2.0/lib -L/usr/lib',
-        } else error "FastR cannot be built on " + self.os + "/" + self.arch,
+          FASTR_RELEASE: 'true',
+        } else {},
       downloads+:
-        {
-          F2C_BINARY: { name: 'f2c-binary', version: '7', platformspecific: true },
-          FASTR_RECOMMENDED_BINARY: { name: 'fastr-recommended-pkgs', version: '16', platformspecific: true },
-        } +
         if (self.os == "linux" && self.arch == "amd64") then {
           BLAS_LAPACK_DIR: { name: 'fastr-403-blas-lapack-gcc', version: '4.8.5', platformspecific: true },
+          F2C_BINARY: { name: 'f2c-binary', version: '7', platformspecific: true },
+          FASTR_RECOMMENDED_BINARY: { name: 'fastr-recommended-pkgs', version: '16', platformspecific: true },
         }
         else if (self.os == "darwin" && self.arch == "amd64") then {
           BLAS_LAPACK_DIR: { name: "fastr-403-blas-lapack-gcc", version: "8.3.0", platformspecific: true },
-        } else error "FastR cannot be built on " + self.os + "/" + self.arch,
-      catch_files+: [
+          F2C_BINARY: { name: 'f2c-binary', version: '7', platformspecific: true },
+          FASTR_RECOMMENDED_BINARY: { name: 'fastr-recommended-pkgs', version: '16', platformspecific: true },
+        } else {},
+      catch_files+: if (self.os != "windows" && self.arch == "amd64") then [
         'GNUR_CONFIG_LOG = (?P<filename>.+\\.log)',
         'GNUR_MAKE_LOG = (?P<filename>.+\\.log)',
-      ],
+      ] else [],
     },
 
     svm:: {
