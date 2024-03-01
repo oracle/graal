@@ -48,7 +48,7 @@ public class OracleDBTests extends RegexTestBase {
 
     @Override
     String getEngineOptions() {
-        return "Flavor=OracleDB,DumpAutomata=true";
+        return "Flavor=OracleDB";
     }
 
     @Override
