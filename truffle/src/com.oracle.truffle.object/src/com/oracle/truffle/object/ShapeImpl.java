@@ -212,15 +212,15 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     @SuppressWarnings("this-escape")
     protected ShapeImpl(com.oracle.truffle.api.object.Layout layout, ShapeImpl parent, Object objectType, Object sharedData, PropertyMap propertyMap,
-                    Transition transition, Allocator allocator, int flags) {
-        this(layout, parent, objectType, sharedData, propertyMap, transition, ((BaseAllocator) allocator).objectArraySize, ((BaseAllocator) allocator).objectFieldSize,
-                        ((BaseAllocator) allocator).primitiveFieldSize, ((BaseAllocator) allocator).primitiveArraySize, flags, null);
+                    Transition transition, BaseAllocator allocator, int flags) {
+        this(layout, parent, objectType, sharedData, propertyMap, transition, allocator.objectArraySize, allocator.objectFieldSize,
+                        allocator.primitiveFieldSize, allocator.primitiveArraySize, flags, null);
     }
 
     /** @since 0.17 or earlier */
     @SuppressWarnings("hiding")
     protected abstract ShapeImpl createShape(com.oracle.truffle.api.object.Layout layout, Object sharedData, ShapeImpl parent, Object objectType, PropertyMap propertyMap,
-                    Transition transition, Allocator allocator, int id);
+                    Transition transition, BaseAllocator allocator, int id);
 
     /** @since 0.17 or earlier */
     @SuppressWarnings("this-escape")

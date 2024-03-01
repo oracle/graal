@@ -90,15 +90,6 @@ public abstract class Layout {
         throw new UnsupportedOperationException();
     }
 
-    /**
-     * Create an allocator for static property creation. Reserves all array extension slots.
-     *
-     * @since 0.8 or earlier
-     */
-    @Deprecated(since = "21.1")
-    @SuppressWarnings("deprecation")
-    public abstract Shape.Allocator createAllocator();
-
     /** @since 0.8 or earlier */
     protected static LayoutFactory getFactory() {
         return LAYOUT_FACTORY;
