@@ -38,6 +38,12 @@ import jdk.vm.ci.meta.ProfilingInfo;
  */
 public abstract class ProfileData {
 
+    /**
+     * The smallest possible difference between two numerical probabilities/frequencies. Should be
+     * used as a threshold for floating-point comparisons.
+     */
+    public static final double EPSILON = 1e-9;
+
     protected final ProfileSource profileSource;
 
     protected ProfileData(ProfileSource profileSource) {

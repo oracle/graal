@@ -44,6 +44,15 @@ import static jdk.graal.compiler.nodes.loop.DefaultLoopPolicies.Options.UnrollMa
 
 import java.util.List;
 
+import org.graalvm.collections.EconomicMap;
+
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.core.common.cfg.Loop;
+import jdk.graal.compiler.core.common.util.UnsignedLong;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeBitMap;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.ControlSplitNode;
 import jdk.graal.compiler.nodes.Invoke;
@@ -54,17 +63,9 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
+import jdk.graal.compiler.nodes.debug.ControlFlowAnchorNode;
 import jdk.graal.compiler.nodes.extended.ForeignCall;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
-import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.core.common.cfg.BasicBlock;
-import jdk.graal.compiler.core.common.cfg.Loop;
-import jdk.graal.compiler.core.common.util.UnsignedLong;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.NodeBitMap;
-import jdk.graal.compiler.nodes.debug.ControlFlowAnchorNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
@@ -578,14 +579,14 @@ public class DefaultLoopPolicies implements LoopPolicies {
                         factor *= p;
                     }
                 }
-                assert 0 <= factor && factor <= 1 : "factor should be between 0 and 1, but is : " + factor;
+                assert 0 <= factor && factor <= 1 + ProfileData.EPSILON : "factor should be between 0 and 1, but is : " + factor;
             } else {
                 debug.log("control split %s has an untrusted profile source", split);
                 factor = DefaultUnswitchFactor.getValue(options);
             }
 
             // We cap the factor and we invert it to make guards' range narrow.
-            double cappedFactor = 1 - Math.min(Math.max(factor, LoopUnswitchFrequencyMinFactor.getValue(options)), LoopUnswitchFrequencyMaxFactor.getValue(options));
+            double cappedFactor = 1 - Math.clamp(factor, LoopUnswitchFrequencyMinFactor.getValue(options), LoopUnswitchFrequencyMaxFactor.getValue(options));
 
             if (splitFrequency < cappedFactor * localLoopFrequency) {
                 /*
