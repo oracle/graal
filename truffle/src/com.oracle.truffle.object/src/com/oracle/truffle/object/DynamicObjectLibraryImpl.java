@@ -340,12 +340,12 @@ abstract class DynamicObjectLibraryImpl {
                     return false;
                 } else {
                     LayoutStrategy strategy = oldShape.getLayoutStrategy();
-                    newShape = strategy.defineProperty(oldShape, key, value, newPropertyFlags, null, existingProperty, putFlags);
+                    newShape = strategy.defineProperty(oldShape, key, value, newPropertyFlags, existingProperty, putFlags);
                     property = newShape.getProperty(key);
                 }
             } else if (Flags.isUpdateFlags(putFlags) && newPropertyFlags != existingProperty.getFlags()) {
                 LayoutStrategy strategy = oldShape.getLayoutStrategy();
-                newShape = strategy.defineProperty(oldShape, key, value, newPropertyFlags, null, existingProperty, putFlags);
+                newShape = strategy.defineProperty(oldShape, key, value, newPropertyFlags, existingProperty, putFlags);
                 property = newShape.getProperty(key);
             } else {
                 if (existingProperty.getLocation().canStore(value)) {
@@ -353,7 +353,7 @@ abstract class DynamicObjectLibraryImpl {
                     property = existingProperty;
                 } else {
                     LayoutStrategy strategy = oldShape.getLayoutStrategy();
-                    newShape = strategy.defineProperty(oldShape, key, value, existingProperty.getFlags(), null, existingProperty, putFlags);
+                    newShape = strategy.defineProperty(oldShape, key, value, existingProperty.getFlags(), existingProperty, putFlags);
                     property = newShape.getProperty(key);
                 }
             }
@@ -1474,14 +1474,14 @@ abstract class DynamicObjectLibraryImpl {
                     return oldShape;
                 } else {
                     LayoutStrategy strategy = oldShape.getLayoutStrategy();
-                    return strategy.defineProperty(oldShape, cachedKey, value, newPropertyFlags, null, putFlags);
+                    return strategy.defineProperty(oldShape, cachedKey, value, newPropertyFlags, putFlags);
                 }
             }
 
             if (Flags.isUpdateFlags(putFlags)) {
                 if (newPropertyFlags != property.getFlags()) {
                     LayoutStrategy strategy = oldShape.getLayoutStrategy();
-                    return strategy.defineProperty(oldShape, cachedKey, value, newPropertyFlags, null, putFlags);
+                    return strategy.defineProperty(oldShape, cachedKey, value, newPropertyFlags, putFlags);
                 }
             }
 
@@ -1490,13 +1490,13 @@ abstract class DynamicObjectLibraryImpl {
                 // generalize
                 assert oldShape == ACCESS.getShape(object);
                 LayoutStrategy strategy = oldShape.getLayoutStrategy();
-                ShapeImpl newShape = strategy.definePropertyGeneralize(oldShape, property, value, null, putFlags);
+                ShapeImpl newShape = strategy.definePropertyGeneralize(oldShape, property, value, putFlags);
                 assert newShape != oldShape;
                 return newShape;
             } else if (location.isDeclared()) {
                 // redefine declared
                 LayoutStrategy strategy = oldShape.getLayoutStrategy();
-                return strategy.defineProperty(oldShape, cachedKey, value, property.getFlags(), null, putFlags);
+                return strategy.defineProperty(oldShape, cachedKey, value, property.getFlags(), putFlags);
             } else {
                 // set existing
                 assert location.canStore(value);
