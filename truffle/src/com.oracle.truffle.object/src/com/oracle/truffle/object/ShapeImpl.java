@@ -1233,7 +1233,7 @@ public abstract class ShapeImpl extends Shape {
         }
 
         @SuppressWarnings("unused")
-        protected Location locationForValueUpcast(Object value, Location oldLocation, long putFlags) {
+        protected Location locationForValueUpcast(Object value, Location oldLocation, int putFlags) {
             throw new UnsupportedOperationException();
         }
 
