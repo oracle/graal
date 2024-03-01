@@ -2027,7 +2027,15 @@ fn oracledb_generate_tests() -> Result<()> {
         ("()??\\1", "", "a"),
         ("(a|())*?\\2", "", "a"),
         ("(a*)+", "", "a"),
-        ("(\\1a|){2}", "", "aa")
+        ("(\\1a|){2}", "", "aa"),
+        ("(|[ab]){3,3}b", "", "aab"),
+        ("(|[ab]){3}b", "", "aab"),
+        ("(|a){3}b", "", "aab"),
+        ("(|a){2}b", "", "ab"),
+        ("(|a){1}b", "", "b"),
+        ("(|a)b", "", "b"),
+        ("(|a)(|a)(|a)b", "", "aab"),
+        ("(|a)(|a)b", "", "ab")
     ] {
         let from_index = 1;
         let e_pattern = java_string_escape(pattern);

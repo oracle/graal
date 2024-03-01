@@ -48,7 +48,7 @@ public class OracleDBTests extends RegexTestBase {
 
     @Override
     String getEngineOptions() {
-        return "Flavor=OracleDB";
+        return "Flavor=OracleDB,DumpAutomata=true";
     }
 
     @Override
@@ -918,6 +918,14 @@ public class OracleDBTests extends RegexTestBase {
         test("(a|())*?\\2", "", "a", 0, true, 0, 1, 1, 1, 1, 1);
         test("(a*)+", "", "a", 0, true, 0, 1, 1, 1);
         test("(\\1a|){2}", "", "aa", 0, true, 0, 0, 0, 0);
+        test("(|[ab]){3,3}b", "", "aab", 0, true, 0, 3, 2, 2);
+        test("(|[ab]){3}b", "", "aab", 0, true, 0, 3, 2, 2);
+        test("(|a){3}b", "", "aab", 0, true, 0, 3, 2, 2);
+        test("(|a){2}b", "", "ab", 0, true, 0, 2, 1, 1);
+        test("(|a){1}b", "", "b", 0, true, 0, 1, 0, 0);
+        test("(|a)b", "", "b", 0, true, 0, 1, 0, 0);
+        test("(|a)(|a)(|a)b", "", "aab", 0, true, 0, 3, 0, 0, 0, 1, 1, 2);
+        test("(|a)(|a)b", "", "ab", 0, true, 0, 2, 0, 0, 0, 1);
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
     }
 
@@ -944,5 +952,10 @@ public class OracleDBTests extends RegexTestBase {
 
         test("()?*", "", "c", 0, true, 0, 0, 0, 0);
         test("X(.?){8,8}Y", "", "X1234567Y", 0, true, 0, 9, 8, 8);
+    }
+
+    @Test
+    public void gr52397() {
+        test("(|[ab]){3,3}b", "", "aab", 0, true, 0, 3, 2, 2);
     }
 }
