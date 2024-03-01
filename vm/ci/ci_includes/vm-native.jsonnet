@@ -29,7 +29,7 @@ local vm_common = import '../ci_common/common.jsonnet';
     name: self.targets[0] + '-vm-ce-truffle-unchained-lts-compatibility-check-labs' + self.jdk_name + '-linux-amd64',
   },
 
-  local native_substratevm_truffle = vm_common.svm_common + vm.custom_vm_linux + {
+  local native_substratevm_truffle = vm_common.svm_common + vm.custom_vm + {
     run+: [
       ['export', 'SVM_SUITE=' + vm.svm_suite],
       ['mx', '--dynamicimports', '$SVM_SUITE', '--disable-polyglot', '--disable-libpolyglot', 'gate', '--no-warning-as-error', '--tags', 'build,substratevm' + self.gate_tag_suffix],
@@ -63,7 +63,7 @@ local vm_common = import '../ci_common/common.jsonnet';
   },
 
   local builds = [
-    vm.vm_java_Latest + vm_common.svm_common + vm_common.sulong + vm_common.graalpy + vm.custom_vm_linux + vm_common.vm_base('linux', 'amd64', 'gate') + {
+    vm.vm_java_Latest + vm_common.svm_common + vm_common.sulong + vm_common.graalpy + vm.custom_vm + vm_common.vm_base('linux', 'amd64', 'gate') + {
      run+: [
        ['export', 'SVM_SUITE=' + vm.svm_suite],
        ['mx', '--dynamicimports', '$SVM_SUITE,graalpython', '--disable-polyglot', '--disable-libpolyglot', '--force-bash-launchers=lli,native-image', 'gate', '--no-warning-as-error', '--tags', 'build,python'],

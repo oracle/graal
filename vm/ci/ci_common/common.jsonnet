@@ -159,7 +159,7 @@ local devkits = graal_common.devkits;
     $.mx_vm_complete + self.artifact_deploy_sdk_components_dry_run(os)
   ],
 
-  ruby_vm_build: self.svm_common    + self.sulong          + self.truffleruby    + vm.custom_vm_linux,
+  ruby_vm_build: self.svm_common    + self.sulong          + self.truffleruby    + vm.custom_vm,
   ruby_python_vm_build: self.ruby_vm_build    + self.graalpy,
   full_vm_build_linux_amd64:    self.ruby_python_vm_build    + graal_common.deps.fastr,
   full_vm_build_linux_aarch64:  self.ruby_python_vm_build,
@@ -603,7 +603,7 @@ local devkits = graal_common.devkits;
   deploy_vm_espresso_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.vm_base('darwin', 'aarch64', 'weekly', deploy=true) + self.deploy_graalvm_espresso('darwin', 'aarch64', 'java21') + {name: 'weekly-deploy-vm-espresso-java21-darwin-aarch64', notify_groups:: ["deploy"]},
   deploy_vm_espresso_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.sulong + self.deploy_build + self.vm_base('windows', 'amd64', 'weekly', deploy=true, jdk_hint='21') + self.deploy_graalvm_espresso('windows', 'amd64', 'java21') + {name: 'weekly-deploy-vm-espresso-java21-windows-amd64', notify_groups:: ["deploy"]},
 
-  local sulong_vm_tests = self.svm_common + self.sulong + vm.custom_vm_linux + self.vm_base('linux', 'amd64', 'gate') + {
+  local sulong_vm_tests = self.svm_common + self.sulong + vm.custom_vm + self.vm_base('linux', 'amd64', 'gate') + {
      run: [
        ['export', 'SVM_SUITE=' + vm.svm_suite],
        ['mx', '--dynamicimports', '$SVM_SUITE,/sulong', '--disable-polyglot', '--disable-libpolyglot', 'gate', '--no-warning-as-error', '--tags', 'build,sulong'],

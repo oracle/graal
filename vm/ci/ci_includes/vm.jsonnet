@@ -21,9 +21,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
   vm_dir:: 'vm',
   svm_suite:: '/substratevm',
   libgraal_env: 'libgraal',
-  custom_vm_linux: {},
-  custom_vm_darwin: {},
-  custom_vm_windows: {},
+  custom_vm: {},
   vm_profiles:: [],
   collect_profiles():: [],
 
