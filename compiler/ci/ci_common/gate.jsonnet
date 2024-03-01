@@ -236,10 +236,10 @@
       notify_emails: ["gergo.barany@oracle.com"],
     },
 
-    # "weekly-compiler-test-labsjdk-17-linux-aarch64": {},
+    "weekly-compiler-test-labsjdk-17-linux-aarch64": {},
     "weekly-compiler-test-labsjdk-17-windows-amd64": {},
-    # "weekly-compiler-test-labsjdk-17-darwin-amd64": {},
-    # "weekly-compiler-test-labsjdk-17-darwin-aarch64": {},
+    "weekly-compiler-test-labsjdk-17-darwin-amd64": {},
+    "weekly-compiler-test-labsjdk-17-darwin-aarch64": {},
 
     "weekly-compiler-test_vec16-labsjdk-17-linux-amd64": {},
     "weekly-compiler-test_avx0-labsjdk-17-linux-amd64": {},
@@ -250,7 +250,7 @@
       notify_emails: ["gergo.barany@oracle.com"],
     },
 
-    # "weekly-compiler-bootstrap_lite-labsjdk-17-darwin-amd64": t("1:00:00") + c.mach5_target,
+    "weekly-compiler-bootstrap_lite-labsjdk-17-darwin-amd64": t("1:00:00") + c.mach5_target,
 
     "weekly-compiler-benchmarktest-labsjdk-17Debug-linux-amd64": t("3:00:00"),
 
@@ -288,7 +288,7 @@
     local is_gate = $.manifest_match(gates_manifest, gate_name),
     local is_daily = $.manifest_match(dailies_manifest, daily_name),
     local is_monthly = $.manifest_match(monthlies_manifest, monthly_name),
-    local is_weekly = (!is_gate && !is_daily && !is_monthly) || $.manifest_match(weeklies_manifest, weekly_name), # Default to weekly
+    local is_weekly = !is_gate && !is_daily && !is_monthly, # Default to weekly
     local is_windows = $.contains(os_arch, "windows"),
     local extra = if is_gate then
         $.get(gates_manifest, gate_name, {})

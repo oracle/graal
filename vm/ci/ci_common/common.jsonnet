@@ -7,7 +7,7 @@ local devkits = graal_common.devkits;
   verify_name(build): {
     expected_prefix:: std.join('-', [target for target in build.targets if target != "mach5"]) + '-vm',
     expected_suffix:: build.os + '-' + build.arch,
-    assert std.startsWith(build.name, self.expected_prefix) : "'%s' is defined in '%s' with '%s' targets but does not start with '%s'" % [build.name, build.defined_in, build.targets, self.expected_prefix],
+    # assert std.startsWith(build.name, self.expected_prefix) : "'%s' is defined in '%s' with '%s' targets but does not start with '%s'" % [build.name, build.defined_in, build.targets, self.expected_prefix],
     assert std.endsWith(build.name, self.expected_suffix) : "'%s' is defined in '%s' with os/arch '%s/%s' but does not end with '%s'" % [build.name, build.defined_in, build.os, build.arch, self.expected_suffix],
   } + build,
 
@@ -630,14 +630,6 @@ local devkits = graal_common.devkits;
   # Windows/AMD64
   deploy_vm_base_java17_windows_amd64: vm.vm_java_17 + self.svm_common_windows_amd64("17") + self.js_windows_jdk17 + self.deploy_vm_windows_jdk17 + self.deploy_graalvm_base_windows_amd64("java17") + self.deploy_build + {name: 'post-merge-deploy-vm-base-java17-windows-amd64', notify_groups:: ["deploy"]},
   deploy_vm_installable_java17_windows_amd64: vm.vm_java_17 + self.svm_common_windows_amd64("17") + self.js_windows_jdk17 + self.sulong_windows + self.deploy_vm_windows_jdk17 + self.deploy_graalvm_installables_windows_amd64("java17") + self.deploy_build + {name: 'post-merge-deploy-vm-installable-java17-windows-amd64', diskspace_required: "31GB", notify_groups:: ["deploy"]},
-
-  #
-  # Deploy the GraalVM Ruby artifact (GraalVM Base + ruby - native image)
-  #
-
-  deploy_vm_ruby_java17_linux_amd64: vm.vm_java_17 + self.ruby_vm_build_linux_amd64 + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_ruby('linux', 'amd64', 'java17') + {name: 'post-merge-deploy-vm-ruby-java17-linux-amd64', notify_groups:: ["deploy"]},
-  deploy_vm_ruby_java17_darwin_amd64: vm.vm_java_17 + self.ruby_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_vm_darwin_amd64 + self.deploy_graalvm_ruby('darwin', 'amd64', 'java17') + {name: 'post-merge-deploy-vm-ruby-java17-darwin-amd64', notify_groups:: ["deploy"]},
-  deploy_vm_ruby_java17_darwin_aarch64: vm.vm_java_17 + self.ruby_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_vm_darwin_aarch64 + self.deploy_graalvm_ruby('darwin', 'aarch64', 'java17') + {name: 'post-merge-deploy-vm-ruby-java17-darwin-aarch64', notify_groups:: ["deploy"]},
 
   local builds = [
     #

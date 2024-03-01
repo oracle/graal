@@ -78,9 +78,6 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       {name: 'post-merge-deploy-vm-installable-java17-darwin-aarch64'},
       {name: 'post-merge-deploy-vm-base-java17-windows-amd64'},
       {name: 'post-merge-deploy-vm-installable-java17-windows-amd64'},
-      {name: 'post-merge-deploy-vm-ruby-java17-linux-amd64'},
-      {name: 'post-merge-deploy-vm-ruby-java17-darwin-amd64'},
-      {name: 'post-merge-deploy-vm-ruby-java17-darwin-aarch64'},
     ],
     targets+: ['daily'],
     notify_groups:: ['deploy'],
@@ -195,13 +192,6 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     # Windows/AMD64
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java17_windows_amd64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java17_windows_amd64),
-
-    #
-    # Deploy the GraalVM Ruby image (GraalVM Base + ruby )
-    #
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java17_linux_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java17_darwin_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java17_darwin_aarch64),
 
     # Trigger the releaser service
     self.notify_releaser_build,
