@@ -956,7 +956,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
 
         if (!silent) {
             if (isQuantifierNext) {
-                codepointsBuffer.setLength(codepointsBuffer.length() - 1);
+                codepointsBuffer.removeLast();
             }
 
             if (getLocalFlags().isIgnoreCase()) {

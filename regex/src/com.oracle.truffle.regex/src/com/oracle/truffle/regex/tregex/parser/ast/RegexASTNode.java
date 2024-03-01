@@ -237,7 +237,7 @@ public abstract class RegexASTNode implements JsonConvertible {
     }
 
     /**
-     * Subexpression contains {@link #isCaret() "$"}.
+     * Subexpression contains {@link #isDollar() "$"}.
      */
     public boolean hasDollar() {
         return isFlagSet(FLAG_HAS_DOLLAR);
@@ -507,6 +507,10 @@ public abstract class RegexASTNode implements JsonConvertible {
         return this instanceof QuantifiableTerm;
     }
 
+    public boolean isSubexpressionCall() {
+        return this instanceof SubexpressionCall;
+    }
+
     public boolean isRoot() {
         return this instanceof RegexASTRootNode;
     }
@@ -577,6 +581,10 @@ public abstract class RegexASTNode implements JsonConvertible {
 
     public Sequence asSequence() {
         return (Sequence) this;
+    }
+
+    public SubexpressionCall asSubexpressionCall() {
+        return (SubexpressionCall) this;
     }
 
     protected JsonObject toJson(String typeName) {

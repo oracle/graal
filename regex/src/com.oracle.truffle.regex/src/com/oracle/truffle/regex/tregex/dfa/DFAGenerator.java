@@ -104,6 +104,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.AddToSetVisitor;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.util.MathUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -455,7 +456,12 @@ public final class DFAGenerator implements JsonConvertible {
             if (isGenericCG()) {
                 transition.getTarget().incPredecessors();
             }
-            if (state.isUnAnchoredFinalState() && !successorState.isUnAnchoredFinalState()) {
+            if (state.isUnAnchoredFinalState() && successorState != state) {
+                // final state transition must not overwrite the single capture group result in
+                // simpleCG mode if there are more possible states after the current final state,
+                // mostly due to side effects from zero-width group matches, e.g.:
+                // in expression /a(?:b|())/, the first 'a' has a final state transition with a
+                // zero-width match of capture group 1, and 'b' has another one without.
                 simpleCGMustCopy = true;
             }
         }
@@ -595,15 +601,18 @@ public final class DFAGenerator implements JsonConvertible {
                         (props.hasAlternations() || props.hasLookAroundAssertions());
 
         // inner-literal-optimization
-        if (isForward() && isSearching() && !isGenericCG() && !nfa.getAst().getFlags().isSticky() && props.hasInnerLiteral()) {
+        if (isForward() && isSearching() && !isGenericCG() && !nfa.getAst().getFlags().isSticky() && props.hasInnerLiteral() && getUnanchoredInitialState() != null) {
             int literalEnd = props.getInnerLiteralEnd();
             int literalStart = props.getInnerLiteralStart();
             Sequence rootSeq = nfa.getAst().getRoot().getFirstAlternative();
 
+            boolean prefixHasLookAhead = false;
             // find all parser tree nodes of the prefix
             StateSet<RegexAST, RegexASTNode> prefixAstNodes = StateSet.create(nfa.getAst());
             for (int i = 0; i < literalStart; i++) {
-                AddToSetVisitor.addCharacterClasses(prefixAstNodes, rootSeq.getTerms().get(i));
+                Term t = rootSeq.getTerms().get(i);
+                prefixHasLookAhead |= t.hasLookAheads();
+                AddToSetVisitor.addCharacterClasses(prefixAstNodes, t);
             }
 
             // find NFA states of the prefix and the beginning and end of the literal
@@ -617,7 +626,7 @@ public final class DFAGenerator implements JsonConvertible {
                 if (s == null) {
                     continue;
                 }
-                if (!s.getStateSet().isEmpty() && prefixAstNodes.containsAll(s.getStateSet())) {
+                if (!prefixHasLookAhead && !s.getStateSet().isEmpty() && prefixAstNodes.containsAll(s.getStateSet())) {
                     prefixNFAStates.add(s);
                 }
                 if (s.getStateSet().contains(rootSeq.getTerms().get(literalStart))) {
@@ -633,6 +642,32 @@ public final class DFAGenerator implements JsonConvertible {
                         return;
                     }
                     literalLastState = s;
+                }
+            }
+            if (prefixHasLookAhead) {
+                // If there are look-ahead assertions in the prefix, we cannot decide whether a
+                // given NFA state belongs to the prefix just by its AST nodes alone, since a
+                // look-ahead may be merged with nodes of the postfix as well. Therefore, we instead
+                // mark NFA states belonging to the prefix by traversing the NFA from the initial
+                // state to the literal's first state.
+                ArrayList<NFAState> bfsCur = new ArrayList<>(prefixNFAStates);
+                ArrayList<NFAState> bfsNext = new ArrayList<>();
+                if (nfa.getAnchoredInitialState() != null) {
+                    bfsCur.add(nfa.getAnchoredInitialState());
+                }
+                while (!bfsCur.isEmpty()) {
+                    for (NFAState s : bfsCur) {
+                        for (NFAStateTransition t : s.getSuccessors()) {
+                            NFAState target = t.getTarget();
+                            if (target != literalFirstState && prefixNFAStates.add(target)) {
+                                bfsNext.add(target);
+                            }
+                        }
+                    }
+                    ArrayList<NFAState> tmp = bfsCur;
+                    bfsCur = bfsNext;
+                    bfsNext = tmp;
+                    bfsNext.clear();
                 }
             }
             assert literalFirstState != null;
@@ -749,7 +784,7 @@ public final class DFAGenerator implements JsonConvertible {
                 nfa.getReverseAnchoredEntry().setSource(literalFirstState);
                 nfa.getReverseUnAnchoredEntry().setSource(literalFirstState);
                 assert innerLiteralPrefixMatcher == null;
-                innerLiteralPrefixMatcher = compilationRequest.createDFAExecutor(nfa, new TRegexDFAExecutorProperties(false, false, false, doSimpleCG, getOptions().isRegressionTestMode(),
+                innerLiteralPrefixMatcher = compilationRequest.createDFAExecutor(nfa, new TRegexDFAExecutorProperties(false, false, false, doSimpleCG,
                                 false, rootSeq.getTerms().get(literalStart - 1).getMinPath()), "innerLiteralPrefix");
                 innerLiteralPrefixMatcher.getProperties().setSimpleCGMustCopy(false);
                 doSimpleCG = doSimpleCG && innerLiteralPrefixMatcher.isSimpleCG();
@@ -940,9 +975,9 @@ public final class DFAGenerator implements JsonConvertible {
                 if (successors[i] == id) {
                     loopToSelf = (short) i;
                     CodePointSet loopMB = s.getSuccessors()[i].getCodePointSet();
-                    if (coversCharSpace && !loopMB.matchesEverything(getEncoding())) {
-                        TruffleString.CodePointSet indexOfParam = TruffleString.CodePointSet.fromRanges(
-                                        loopMB.createInverse(getEncoding()).getRanges(), getEncoding().getTStringEncoding());
+                    CodePointSet inverse = loopMB.createInverse(getEncoding());
+                    if (coversCharSpace && !loopMB.matchesEverything(getEncoding()) && !(getEncoding() == Encodings.UTF_16 && inverse.intersects(Constants.SURROGATES))) {
+                        TruffleString.CodePointSet indexOfParam = TruffleString.CodePointSet.fromRanges(inverse.getRanges(), getEncoding().getTStringEncoding());
                         indexOfIsFast = checkIndexOfIsFast(indexOfParam);
                         if (indexOfIsFast != 0) {
                             indexOfParams.add(indexOfParam);

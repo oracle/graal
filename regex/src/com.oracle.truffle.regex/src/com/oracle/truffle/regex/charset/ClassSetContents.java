@@ -141,7 +141,7 @@ public final class ClassSetContents implements JsonConvertible {
     }
 
     public boolean isAllowedInRange() {
-        return kind == Kind.Character || kind == Kind.POSIXCollationElement || kind == Kind.POSIXCollationEquivalenceClass;
+        return kind == Kind.Character || ((kind == Kind.POSIXCollationElement || kind == Kind.POSIXCollationEquivalenceClass) && isCodePointSetOnly());
     }
 
     public int getCodePoint() {

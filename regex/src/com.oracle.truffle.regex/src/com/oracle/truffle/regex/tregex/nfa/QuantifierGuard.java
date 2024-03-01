@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 import com.oracle.truffle.regex.tregex.parser.ast.ConditionalBackReferenceGroup;
+import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 
 import java.util.Objects;
 
@@ -85,15 +85,17 @@ public final class QuantifierGuard {
         enterZeroWidth,
         /**
          * Transition is leaving a quantified expression that may match the empty string. Check if
-         * the current index is greater than the saved index. In the case of Ruby, also check if any
-         * capture groups were modified.
+         * the current index is greater than the saved index. In the case of flavors in which
+         * {@link RegexFlavor#emptyChecksMonitorCaptureGroups()}, also check if any capture groups
+         * were modified.
          */
         exitZeroWidth,
         /**
          * Transition is leaving a quantified expression that may match the empty string and it is
-         * about to continue to what follows the loop. This is only possible in Ruby and only when
-         * the last iteration of the quantiifed expression fails the empty check (the check for the
-         * index and the state of capture groups tested by {@link #exitZeroWidth}).
+         * about to continue to what follows the loop. This is possible in flavors in which
+         * {@link RegexFlavor#failingEmptyChecksDontBacktrack()} and only when the last iteration of
+         * the quantified expression fails the empty check (the check for the index and the state of
+         * capture groups tested by {@link #exitZeroWidth}).
          */
         escapeZeroWidth,
         /**
@@ -102,17 +104,12 @@ public final class QuantifierGuard {
          * quantifier count. This guard is added to all transitions to the special
          * {@link PureNFAState#isEmptyMatch() empty-match} state.
          */
-        enterEmptyMatch,
-        /**
-         * Transition is leaving an {@link PureNFAState#isEmptyMatch() empty-match} state. This
-         * guard doesn't do anything, it just serves as a marker for
-         * {@link QuantifierGuard#getKindReverse()}.
-         */
-        exitEmptyMatch,
+        checkEmptyMatch,
         /**
          * Transition is passing a capture group boundary. We need this information in order to
-         * implement the empty check test in {@link #exitZeroWidth}, which, in the case of Ruby,
-         * also needs to monitor the state of capture groups in between {@link #enterZeroWidth} and
+         * implement the empty check test in {@link #exitZeroWidth}, which, in the case of flavors
+         * in which {@link RegexFlavor#emptyChecksMonitorCaptureGroups()}, where we need to monitor
+         * the state of capture groups in between {@link #enterZeroWidth} and
          * {@link #exitZeroWidth}.
          */
         updateCG,
@@ -184,12 +181,8 @@ public final class QuantifierGuard {
         return new QuantifierGuard(Kind.escapeZeroWidth, quantifier);
     }
 
-    public static QuantifierGuard createEnterEmptyMatch(Quantifier quantifier) {
-        return new QuantifierGuard(Kind.enterEmptyMatch, quantifier);
-    }
-
-    public static QuantifierGuard createExitEmptyMatch(Quantifier quantifier) {
-        return new QuantifierGuard(Kind.exitEmptyMatch, quantifier);
+    public static QuantifierGuard createCheckEmptyMatch(Quantifier quantifier) {
+        return new QuantifierGuard(Kind.checkEmptyMatch, quantifier);
     }
 
     public static QuantifierGuard createUpdateCG(int index) {
@@ -210,39 +203,6 @@ public final class QuantifierGuard {
 
     public Kind getKind() {
         return kind;
-    }
-
-    /**
-     * Get the equivalent of this guard when matching in reverse.
-     */
-    public Kind getKindReverse() {
-        switch (kind) {
-            case enter:
-                return quantifier.getMin() > 0 ? Kind.exit : Kind.exitReset;
-            case loop:
-            case loopInc:
-                return kind;
-            case exit:
-            case exitReset:
-                return Kind.enter;
-            case enterZeroWidth:
-                return Kind.exitZeroWidth;
-            case exitZeroWidth:
-            case escapeZeroWidth:
-                return Kind.enterZeroWidth;
-            case enterEmptyMatch:
-                return Kind.exitEmptyMatch;
-            case exitEmptyMatch:
-                return Kind.enterEmptyMatch;
-            case updateCG:
-                return Kind.updateCG;
-            case checkGroupMatched:
-                return Kind.checkGroupMatched;
-            case checkGroupNotMatched:
-                return Kind.checkGroupNotMatched;
-            default:
-                throw CompilerDirectives.shouldNotReachHere();
-        }
     }
 
     public Quantifier getQuantifier() {

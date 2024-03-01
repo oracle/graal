@@ -125,6 +125,18 @@ public class IntArrayBuffer extends AbstractArrayBuffer implements Iterable<Inte
         System.arraycopy(o.buf, 0, buf, length, o.length);
     }
 
+    public int getLast() {
+        assert !isEmpty();
+        return get(length - 1);
+    }
+
+    public int removeLast() {
+        assert !isEmpty();
+        int last = getLast();
+        setLength(length - 1);
+        return last;
+    }
+
     public int[] toArray() {
         return isEmpty() ? EmptyArrays.INT : Arrays.copyOf(buf, length);
     }
