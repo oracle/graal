@@ -1304,4 +1304,125 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         assert (inliningLog == null) == (newInliningLog == null) : "the new inlining log must be null iff the previous is null";
         inliningLog = newInliningLog;
     }
+
+    @Override
+    public boolean verify() {
+        assert verifyLoopSafepoints();
+        return super.verify();
+    }
+
+    private EconomicMap<Node, SafepointData> safepointVerifiacationData;
+
+    static class SafepointData {
+        /**
+         * Determine if there can be a safepoint on any of the loop ends of this loop, this means
+         * that there was no explicit phase requesting a complete disabling of all safepoints on
+         * this loop. Safepoints can only be removed, but not added afterwards. This means any loop
+         * that is replaced by loop optimizations with other loops must still retain the same
+         * safepoint rules.
+         */
+        boolean canHaveSafepoints;
+        LoopBeginNode lb;
+        NodeSourcePosition nsp;
+        FrameState fs;
+
+        static SafepointData fromLoopBegin(LoopBeginNode lb) {
+            SafepointData sd = new SafepointData();
+            sd.lb = lb;
+            sd.canHaveSafepoints = lb.canEndsSafepoint;
+            sd.fs = lb.stateAfter();
+            sd.nsp = lb.getNodeSourcePosition();
+            return sd;
+        }
+
+        boolean assertNotWeaker(SafepointData other) {
+            if (this.canHaveSafepoints) {
+                // all good, other can do what it wants
+            } else {
+                // this cannot safepoint -> ensure other also cannot safepoint
+                assert !other.canHaveSafepoints : Assertions.errorMessage("Safepoint verification cannot become weaker", lb,
+                                "previously the loop had canHaveSafepoints=false but now it has canHaveSafepoints=true");
+            }
+            return true;
+        }
+
+        public boolean sameStateOrNsp(SafepointData otherData) {
+            if (otherData.fs == fs) {
+                return true;
+            }
+            if (this.nsp != null && otherData.nsp != null && otherData.nsp.equals(nsp)) {
+                return true;
+            }
+            // not the same state or also not the same NSP - check if framestates represent the same
+            // position
+            final FrameState thisState = fs;
+            final FrameState otherState = otherData.fs;
+            if (thisState != null && otherState != null && thisState.valueEquals(otherState)) {
+                return true;
+            }
+            return false;
+        }
+    }
+
+    private boolean verifyLoopSafepoints() {
+        if (!hasLoops()) {
+            return true;
+        }
+        if (safepointVerifiacationData == null) {
+            safepointVerifiacationData = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+            for (LoopBeginNode lb : getNodes(LoopBeginNode.TYPE)) {
+                safepointVerifiacationData.put(lb, SafepointData.fromLoopBegin(lb));
+            }
+        } else {
+
+            ArrayList<LoopBeginNode> loopsToVisit = new ArrayList<>();
+            for (Node lb : safepointVerifiacationData.getKeys()) {
+                loopsToVisit.add((LoopBeginNode) lb);
+            }
+            for (LoopBeginNode lb : getNodes(LoopBeginNode.TYPE)) {
+                final SafepointData newData = SafepointData.fromLoopBegin(lb);
+                if (safepointVerifiacationData.containsKey(lb)) {
+                    assert loopsToVisit.contains(lb);
+                    // all loops that are still in the graph just need verification, no replacement
+                    // verification
+                    loopsToVisit.remove(lb);
+                    assert safepointVerifiacationData.get(lb).assertNotWeaker(newData);
+                }
+                // now overwrite (or propagate new data) to the map, if it was a faulty loop it
+                // would have hit the assertions above
+                safepointVerifiacationData.put(lb, newData);
+            }
+            /*
+             * Now we cleaned up all the loops that are in the graph. What remains is to cleanup the
+             * old loops that are no longer part of the graph. They have been removed in between.
+             * This is where it becomes fuzzy: if a loop optimization removed the original loop with
+             * (a) new one(s) we must verify that/them. We use framestate and node source position
+             * to verify them, which is a poor mans heuristic but we cannot do much better.
+             */
+            for (LoopBeginNode lb : loopsToVisit) {
+                assert lb.isDeleted() : Assertions.errorMessage("Thus loop must be deleted since it was not found during iteration", lb);
+                // lets remove it from the map, either we cant verify and fail or its good and we
+                // verified correctly, both ways the loop should be removed from the map
+                SafepointData sd = safepointVerifiacationData.removeKey(lb);
+                if (sd.canHaveSafepoints) {
+                    // the loop was allowed to safepoint, if the new ones (if there are) are allowed
+                    // to safepoint or not are not of real interesting, thus we are good
+                } else {
+                    // the loop was not allowed to safepoint, any replacement should also not
+                    // safepoint
+                    for (Node n : safepointVerifiacationData.getKeys()) {
+                        LoopBeginNode other = (LoopBeginNode) n;
+                        SafepointData otherData = safepointVerifiacationData.get(other);
+                        assert otherData != null : Assertions.errorMessage("Must be in map as map was propagated previously", other);
+                        assert other != lb : Assertions.errorMessage("Must be different nodes since one was deleted and the other is in the graph", lb, other);
+                        if (sd.sameStateOrNsp(otherData)) {
+                            assert sd.assertNotWeaker(otherData);
+                        }
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
 }
