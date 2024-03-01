@@ -646,8 +646,8 @@ public class TagTest extends AbstractQuickeningTest {
                         "tag.leave",
                         "c.LeaveValue",
                         "return",
-                        "c.LeaveValue",
                         "tag.leave",
+                        "c.LeaveValue",
                         "pop",
                         "branch",
                         "load.local",
@@ -663,8 +663,8 @@ public class TagTest extends AbstractQuickeningTest {
         assertEquals(-1, tl.epilogExceptional);
 
         assertEvents(events,
-                        new Event(1, EventKind.ENTER, 0x0002, 0x0010, null, RootBodyTag.class),
-                        new Event(2, EventKind.RETURN_VALUE, 0x0002, 0x0010, 42, RootBodyTag.class));
+                        new Event(1, EventKind.ENTER, 0x0002, 0x000d, null, RootBodyTag.class),
+                        new Event(2, EventKind.RETURN_VALUE, 0x0002, 0x000d, 42, RootBodyTag.class));
 
     }
 
@@ -701,6 +701,7 @@ public class TagTest extends AbstractQuickeningTest {
         tl.reset();
 
         List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootBodyTag.class, StandardTags.RootTag.class).build());
+        printInstructions(node);
         assertInstructions(node,
                         "tag.enter",
                         "c.EnterMethod",
@@ -710,8 +711,8 @@ public class TagTest extends AbstractQuickeningTest {
                         "c.LeaveValue",
                         "tag.leave",
                         "return",
-                        "c.LeaveValue",
                         "tag.leave",
+                        "c.LeaveValue",
                         "pop",
                         "branch",
                         "load.local",
@@ -731,10 +732,49 @@ public class TagTest extends AbstractQuickeningTest {
 
         assertEvents(events,
                         new Event(0, EventKind.ENTER, 0x0000, 0x0022, null, RootTag.class),
-                        new Event(2, EventKind.ENTER, 0x0004, 0x0015, null, RootBodyTag.class),
-                        new Event(3, EventKind.RETURN_VALUE, 0x0004, 0x0015, 42, RootBodyTag.class),
+                        new Event(2, EventKind.ENTER, 0x0004, 0x0012, null, RootBodyTag.class),
+                        new Event(3, EventKind.RETURN_VALUE, 0x0004, 0x0012, 42, RootBodyTag.class),
                         new Event(5, EventKind.RETURN_VALUE, 0x0000, 0x0022, 42, RootTag.class));
 
+    }
+
+    /*
+     * Tests that return reachability optimization does not eliminate instrutions if there is a
+     * jump.
+     */
+    @Test
+    public void testImplicitJumpAfterReturn() {
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+
+            var l = b.createLabel();
+
+            b.beginTag(ExpressionTag.class);
+            b.emitBranch(l);
+            b.endTag(ExpressionTag.class);
+
+            b.beginReturn();
+            b.emitLoadConstant(42);
+            b.endReturn();
+
+            b.emitLabel(l);
+
+            b.endRoot();
+        });
+
+        List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class, StandardTags.ExpressionTag.class).build());
+        assertFails(() -> node.getCallTarget().call(), AssertionError.class, (e) -> {
+            assertEquals("Control reached past the end of the bytecode.", e.getMessage());
+        });
+
+        // instrumentation events should be correct even if we hit a trap
+        assertEvents(events,
+                        new Event(EventKind.ENTER, 0x0000, 0x0012, null, RootTag.class),
+                        new Event(EventKind.ENTER, 0x0002, 0x0008, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0002, 0x0008, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0012, null, RootTag.class));
+
+        System.out.println(node.dump());
     }
 
     @Test
@@ -1034,7 +1074,7 @@ public class TagTest extends AbstractQuickeningTest {
 
     }
 
-    @TruffleLanguage.Registration(id = NoRootTagTestLanguage.ID)
+    @TruffleLanguage.Registration(id = NoRootBodyTagTestLanguage.ID)
     @ProvidedTags({RootTag.class, ExpressionTag.class})
     public static class NoRootBodyTagTestLanguage extends TruffleLanguage<Object> {
 
