@@ -45,6 +45,7 @@ import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.genscavenge.tenured.CompactingVisitor;
 import com.oracle.svm.core.genscavenge.tenured.FixingVisitor;
+import com.oracle.svm.core.genscavenge.tenured.MarkStack;
 import com.oracle.svm.core.genscavenge.tenured.PlanningVisitor;
 import com.oracle.svm.core.genscavenge.tenured.RefFixupVisitor;
 import com.oracle.svm.core.genscavenge.tenured.RelocationInfo;
@@ -68,7 +69,7 @@ import jdk.graal.compiler.word.Word;
 final class CompactingOldGeneration extends OldGeneration {
 
     private final Space space = new Space("Old", "O", false, HeapParameters.getMaxSurvivorSpaces() + 1);
-    private final MarkQueue markQueue = new MarkQueue();
+    private final MarkStack markStack = new MarkStack();
 
     private final GreyObjectsWalker toGreyObjectsWalker = new GreyObjectsWalker();
     private final PlanningVisitor planningVisitor = new PlanningVisitor();
@@ -117,8 +118,8 @@ final class CompactingOldGeneration extends OldGeneration {
             toGreyObjectsWalker.walkGreyObjects();
         } else {
             GreyToBlackObjectVisitor visitor = GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
-            while (!markQueue.isEmpty()) {
-                visitor.visitObjectInline(markQueue.pop());
+            while (!markStack.isEmpty()) {
+                visitor.visitObjectInline(markStack.pop());
             }
         }
         return true;
@@ -150,7 +151,7 @@ final class CompactingOldGeneration extends OldGeneration {
             assert !ObjectHeaderImpl.hasIdentityHashFromAddressInline(ObjectHeader.readHeaderFromObject(result));
         }
         ObjectHeaderImpl.setMarked(result);
-        markQueue.push(result);
+        markStack.push(result);
         return result;
     }
 
@@ -166,7 +167,7 @@ final class CompactingOldGeneration extends OldGeneration {
         assert originalSpace == space;
         if (!ObjectHeaderImpl.isMarked(original)) {
             ObjectHeaderImpl.setMarked(original);
-            markQueue.push(original);
+            markStack.push(original);
         }
         return original;
     }
@@ -194,7 +195,7 @@ final class CompactingOldGeneration extends OldGeneration {
             ((AlignedHeapChunk.AlignedHeader) originalChunk).setShouldSweepInsteadOfCompact(true);
         }
         ObjectHeaderImpl.setMarked(obj);
-        markQueue.push(obj);
+        markStack.push(obj);
         return true;
     }
 

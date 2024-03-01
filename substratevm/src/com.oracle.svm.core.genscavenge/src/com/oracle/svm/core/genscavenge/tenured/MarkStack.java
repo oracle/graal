@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge;
+package com.oracle.svm.core.genscavenge.tenured;
+
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static jdk.vm.ci.code.CodeUtil.K;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -40,74 +43,59 @@ import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.word.ObjectAccess;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+public final class MarkStack {
+    private static final int SEGMENT_SIZE = 64 * K - /* for any malloc overhead */ 32;
 
-class MarkQueue {
+    @Fold
+    static int entriesPerSegment() {
+        return (SEGMENT_SIZE - SizeOf.get(Segment.class)) / ConfigurationValues.getObjectLayout().getReferenceSize();
+    }
 
-    private static final int ENTRIES_PER_SEGMENT = 10_000;
-
-    private Segment first;
-
-    private Segment last;
-
-    private int pushCursor = 0;
-
-    private int popCursor = 0;
+    private Segment top;
+    private int cursor;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    MarkQueue() {
+    public MarkStack() {
     }
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void push(Object obj) {
+    public void push(Object obj) {
         assert obj != null;
 
-        if (last.isNull()) {
-            last = allocateSegment();
-            first = last;
+        if (top.isNull() || cursor == entriesPerSegment()) {
+            top = allocateSegment(top);
+            cursor = 0;
         }
 
-        if (pushCursor == ENTRIES_PER_SEGMENT) {
-            Segment seg = allocateSegment();
-            last.setNext(seg);
-            last = seg;
-            pushCursor = 0;
-        }
-
-        UnsignedWord offset = SizeOf.unsigned(Segment.class).add(
-                pushCursor * ConfigurationValues.getObjectLayout().getReferenceSize()
-        );
-        ObjectAccess.writeObject(last, offset, obj);
-
-        pushCursor++;
+        UnsignedWord offset = getOffsetAtIndex(cursor);
+        ObjectAccess.writeObject(top, offset, obj);
+        cursor++;
     }
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    Object pop() {
-        if (isEmpty()) {
-            return null;
-        }
+    public Object pop() {
+        assert !isEmpty();
 
-        UnsignedWord offset = SizeOf.unsigned(Segment.class).add(
-                popCursor * ConfigurationValues.getObjectLayout().getReferenceSize()
-        );
-        Object obj = ObjectAccess.readObject(first, offset);
+        cursor--;
+        UnsignedWord offset = getOffsetAtIndex(cursor);
+        Object obj = ObjectAccess.readObject(top, offset);
+
         assert obj != null;
 
-        popCursor++;
-        if (popCursor == ENTRIES_PER_SEGMENT) {
-            Segment next = first.getNext();
-            if (next.isNonNull()) {
-                ImageSingletons.lookup(UnmanagedMemorySupport.class).free(first);
-                first = next;
+        if (cursor == 0) {
+            if (top.getNext().isNonNull()) { // free eagerly, use cursor==0 only if completely empty
+                Segment t = top;
+                top = top.getNext();
+                cursor = entriesPerSegment();
+                ImageSingletons.lookup(UnmanagedMemorySupport.class).free(t);
             } else {
-                pushCursor = 0;
+                // keep a single segment
             }
-            popCursor = 0;
         }
 
         return obj;
@@ -115,8 +103,9 @@ class MarkQueue {
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    boolean isEmpty() {
-        return first.isNull() || first.equal(last) && popCursor == pushCursor;
+    public boolean isEmpty() {
+        assert cursor != 0 || top.getNext().isNull() : "should see cursor == 0 only with a single segment";
+        return top.isNull() || cursor == 0;
     }
 
     @RawStructure
@@ -132,12 +121,17 @@ class MarkQueue {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static Segment allocateSegment() {
-        UnsignedWord size = SizeOf.unsigned(Segment.class).add(
-                ENTRIES_PER_SEGMENT * ConfigurationValues.getObjectLayout().getReferenceSize()
-        );
+    private static Segment allocateSegment(Segment next) {
+        UnsignedWord size = WordFactory.unsigned(SEGMENT_SIZE);
         Segment segment = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(size);
-        segment.setNext(WordFactory.nullPointer());
+        segment.setNext(next);
         return segment;
+    }
+
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static UnsignedWord getOffsetAtIndex(int index) {
+        int refSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+        return WordFactory.unsigned(index).multiply(refSize).add(SizeOf.unsigned(Segment.class));
     }
 }
