@@ -2337,7 +2337,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         throw getMeta().throwExceptionWithMessage(exceptionKlass, String.format(Locale.ENGLISH, messageFormat, (Object[]) args));
     }
 
-    @SuppressWarnings("try")
     private int quickenInvokeDynamic(final VirtualFrame frame, int top, int curBCI, int opcode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert (Bytecodes.INVOKEDYNAMIC == opcode);
