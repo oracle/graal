@@ -544,18 +544,6 @@ public abstract class Shape {
     public abstract Shape defineProperty(Object key, Object value, int flags);
 
     /**
-     * Add or change property in the map, yielding a new or cached Shape object.
-     *
-     * @return the shape after defining the property
-     * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#put(DynamicObject, Object, Object)} or
-     *             {@link DynamicObjectLibrary#putWithFlags(DynamicObject, Object, Object, int)} or
-     *             {@link DynamicObjectLibrary#putConstant(DynamicObject, Object, Object, int)}
-     */
-    @Deprecated(since = "20.2")
-    public abstract Shape defineProperty(Object key, Object value, int flags, @SuppressWarnings("deprecation") LocationFactory locationFactory);
-
-    /**
      * An {@link Iterable} over the shape's properties in insertion order.
      *
      * @since 0.8 or earlier

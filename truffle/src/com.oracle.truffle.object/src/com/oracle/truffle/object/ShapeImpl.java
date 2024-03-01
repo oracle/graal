@@ -592,13 +592,6 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /** @since 0.17 or earlier */
-    @TruffleBoundary
-    @Override
-    public ShapeImpl defineProperty(Object key, Object value, int propertyFlags, com.oracle.truffle.api.object.LocationFactory locationFactory) {
-        return getLayoutStrategy().defineProperty(this, key, value, propertyFlags, locationFactory);
-    }
-
-    /** @since 0.17 or earlier */
     protected ShapeImpl cloneRoot(ShapeImpl from, Object newSharedData) {
         return createShape(from.layout, newSharedData, null, from.objectType, from.propertyMap, null, from.allocator(), from.flags);
     }
