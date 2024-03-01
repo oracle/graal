@@ -4675,10 +4675,7 @@ public class BytecodeParser implements GraphBuilderContext {
         if (typeIsResolved(type)) {
             genNewMultiArray((ResolvedJavaType) type, rank, dims);
         } else {
-            for (int i = rank - 1; i >= 0; i--) {
-                dims[i] = frameState.pop(JavaKind.Int);
-            }
-            handleUnresolvedNewMultiArray(type, dims);
+            handleUnresolvedNewMultiArray(type);
         }
     }
 
@@ -4708,7 +4705,8 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private void genGetField(JavaField field) {
-        if (field instanceof ResolvedJavaField resolvedField) {
+        if (field instanceof ResolvedJavaField) {
+            ResolvedJavaField resolvedField = (ResolvedJavaField) field;
             // Only pop receiver from frame state if we are not going to deopt.
             ValueNode receiver = maybeEmitExplicitNullCheck(frameState.pop(JavaKind.Object));
             genGetField(resolvedField, receiver);
@@ -4814,7 +4812,8 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected void genPutField(JavaField field) {
-        if (field instanceof ResolvedJavaField resolvedField) {
+        if (field instanceof ResolvedJavaField) {
+            ResolvedJavaField resolvedField = (ResolvedJavaField) field;
             // Only pop value from frame state if we are not going to deopt.
             genPutField(resolvedField, frameState.pop(field.getJavaKind()));
         } else {
