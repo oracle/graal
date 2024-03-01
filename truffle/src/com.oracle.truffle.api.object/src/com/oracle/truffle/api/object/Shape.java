@@ -526,22 +526,16 @@ public abstract class Shape {
      * @param property the property to add
      * @return the new Shape
      * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#put} or {@link DynamicObjectLibrary#putWithFlags}
-     *             to add properties to an object.
      */
-    @Deprecated(since = "22.2")
-    public abstract Shape addProperty(Property property);
+    protected abstract Shape addProperty(Property property);
 
     /**
      * Add or change property in the map, yielding a new or cached Shape object.
      *
      * @return the shape after defining the property
      * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#put(DynamicObject, Object, Object)} or
-     *             {@link DynamicObjectLibrary#putWithFlags(DynamicObject, Object, Object, int)}.
      */
-    @Deprecated(since = "22.2")
-    public abstract Shape defineProperty(Object key, Object value, int flags);
+    protected abstract Shape defineProperty(Object key, Object value, int flags);
 
     /**
      * An {@link Iterable} over the shape's properties in insertion order.
@@ -629,19 +623,15 @@ public abstract class Shape {
      * Remove the given property from the shape.
      *
      * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#removeKey} to remove properties from an object.
      */
-    @Deprecated(since = "20.2")
-    public abstract Shape removeProperty(Property property);
+    protected abstract Shape removeProperty(Property property);
 
     /**
      * Replace a property in the shape.
      *
      * @since 0.8 or earlier
-     * @deprecated Use {@link DynamicObjectLibrary#put} to replace properties in an object.
      */
-    @Deprecated(since = "20.2")
-    public abstract Shape replaceProperty(Property oldProperty, Property newProperty);
+    protected abstract Shape replaceProperty(Property oldProperty, Property newProperty);
 
     /**
      * Get the last property.
@@ -687,10 +677,8 @@ public abstract class Shape {
      * Obtain an {@link Allocator} instance for the purpose of allocating locations.
      *
      * @since 0.8 or earlier
-     * @deprecated no replacement.
      */
-    @Deprecated(since = "22.2")
-    public abstract Allocator allocator();
+    protected abstract Allocator allocator();
 
     /**
      * Returns the number of properties in this shape.

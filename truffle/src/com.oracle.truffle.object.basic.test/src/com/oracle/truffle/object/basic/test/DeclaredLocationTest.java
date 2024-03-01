@@ -56,6 +56,7 @@ import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
+import com.oracle.truffle.object.ShapeImpl;
 
 @SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
@@ -68,8 +69,8 @@ public class DeclaredLocationTest extends AbstractParametrizedLibraryTest {
 
     final Shape rootShape = Shape.newBuilder().build();
     final Object value = new Object();
-    final Location declaredLocation = rootShape.allocator().declaredLocation(value);
-    final Shape shapeWithDeclared = rootShape.addProperty(Property.create("declared", declaredLocation, 0));
+    final Location declaredLocation = ((ShapeImpl) rootShape).allocator().declaredLocation(value);
+    final Shape shapeWithDeclared = ((ShapeImpl) rootShape).addProperty(Property.create("declared", declaredLocation, 0));
 
     private DynamicObject newInstance() {
         return new TestDynamicObjectDefault(rootShape);
