@@ -262,6 +262,7 @@ public class SubstrateOptions {
             SubstrateOptions.IncludeNodeSourcePositions.update(values, newLevel == OptimizationLevel.O0);
             SubstrateOptions.SourceLevelDebug.update(values, newLevel == OptimizationLevel.O0);
             SubstrateOptions.AOTTrivialInline.update(values, newLevel != OptimizationLevel.O0);
+            GraalOptions.OptimizeLongJumps.update(values, !newLevel.isOneOf(OptimizationLevel.O0, OptimizationLevel.BUILD_TIME));
             if (optimizeValueUpdateHandler != null) {
                 optimizeValueUpdateHandler.onValueUpdate(values, newLevel);
             }

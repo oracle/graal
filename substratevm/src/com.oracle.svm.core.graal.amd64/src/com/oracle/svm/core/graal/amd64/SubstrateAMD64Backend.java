@@ -107,6 +107,7 @@ import jdk.graal.compiler.core.amd64.AMD64NodeLIRBuilder;
 import jdk.graal.compiler.core.amd64.AMD64NodeMatchRules;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
@@ -1529,7 +1530,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     @Override
     public void emitCode(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, EntryPointDecorator entryPointDecorator) {
         crb.emitLIR();
-        if (AMD64MacroAssembler.Options.OptimizeLongJumps.getValue(crb.getOptions())) {
+        if (GraalOptions.OptimizeLongJumps.getValue(crb.getOptions())) {
             optimizeLongJumps(crb);
         }
     }

@@ -31,7 +31,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
-import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -43,8 +43,8 @@ import jdk.vm.ci.code.InvalidInstalledCodeException;
 
 /**
  * Regression tests for checking that
- * {@link jdk.graal.compiler.asm.amd64.AMD64Assembler.Options#OptimizeLongJumps} replaces
- * {@code jmp/jcc} instructions with {@code jmpb/jccb}.
+ * {@link jdk.graal.compiler.core.common.GraalOptions#OptimizeLongJumps} replaces {@code jmp/jcc}
+ * instructions with {@code jmpb/jccb}.
  */
 public class OptimizeLongJumpsTest extends GraalCompilerTest {
 
@@ -85,11 +85,11 @@ public class OptimizeLongJumpsTest extends GraalCompilerTest {
     }
 
     private void testOptimizeLongJumps(String method, OptionValues opts, Object... params) throws InvalidInstalledCodeException {
-        OptionValues optionsDefault = new OptionValues(opts, AMD64MacroAssembler.Options.OptimizeLongJumps, false);
+        OptionValues optionsDefault = new OptionValues(opts, GraalOptions.OptimizeLongJumps, false);
         StructuredGraph graphDefault = parseEager(method, AllowAssumptions.NO, optionsDefault);
         InstalledCode codeDefault = null;
 
-        OptionValues optionsOptimized = new OptionValues(opts, AMD64MacroAssembler.Options.OptimizeLongJumps, true);
+        OptionValues optionsOptimized = new OptionValues(opts, GraalOptions.OptimizeLongJumps, true);
         StructuredGraph graphOptimized = parseEager(method, AllowAssumptions.NO, optionsOptimized);
         InstalledCode codeOptimized = null;
 

@@ -40,6 +40,7 @@ import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.amd64.AMD64NodeMatchRules;
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
@@ -293,7 +294,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
     @Override
     public void emitCode(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, EntryPointDecorator entryPointDecorator) {
         emitCodeHelper(crb, installedCodeOwner, entryPointDecorator);
-        if (AMD64MacroAssembler.Options.OptimizeLongJumps.getValue(crb.getOptions())) {
+        if (GraalOptions.OptimizeLongJumps.getValue(crb.getOptions())) {
             optimizeLongJumps(crb, installedCodeOwner, entryPointDecorator);
         }
     }

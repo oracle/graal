@@ -85,6 +85,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import jdk.graal.compiler.asm.BranchTargetOutOfBoundsException;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.debug.Assertions;
@@ -114,8 +115,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                 "See https://www.intel.com/content/dam/support/us/en/documents/processors/mitigations-jump-conditional-code-erratum.pdf for more details. " +
                 "If not set explicitly, the default value will be determined according to the CPU model.", type = OptionType.User)
         public static final OptionKey<Boolean> UseBranchesWithin32ByteBoundary = new OptionKey<>(false);
-        @Option(help = "Tries to replace forward jumps with 4byte displacement (jmp, jcc) with equivalent instructions with single byte displacement.", type = OptionType.User)
-        public static final OptionKey<Boolean> OptimizeLongJumps = new OptionKey<>(true);
         // @formatter:on
     }
 
@@ -128,13 +127,13 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     public AMD64Assembler(TargetDescription target) {
         super(target);
         useBranchesWithin32ByteBoundary = false;
-        optimizeLongJumps = Options.OptimizeLongJumps.getDefaultValue();
+        optimizeLongJumps = GraalOptions.OptimizeLongJumps.getDefaultValue();
     }
 
     public AMD64Assembler(TargetDescription target, OptionValues optionValues) {
         super(target);
         useBranchesWithin32ByteBoundary = Options.UseBranchesWithin32ByteBoundary.getValue(optionValues);
-        optimizeLongJumps = Options.OptimizeLongJumps.getValue(optionValues);
+        optimizeLongJumps = GraalOptions.OptimizeLongJumps.getValue(optionValues);
     }
 
     public AMD64Assembler(TargetDescription target, OptionValues optionValues, boolean hasIntelJccErratum) {
@@ -144,7 +143,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         } else {
             useBranchesWithin32ByteBoundary = hasIntelJccErratum;
         }
-        optimizeLongJumps = Options.OptimizeLongJumps.getValue(optionValues);
+        optimizeLongJumps = GraalOptions.OptimizeLongJumps.getValue(optionValues);
     }
 
     /**
