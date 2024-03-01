@@ -52,10 +52,6 @@ public interface LayoutFactory {
 
     /** @since 0.8 or earlier */
     @Deprecated(since = "22.2")
-    Property createProperty(Object id, Location location);
-
-    /** @since 0.8 or earlier */
-    @Deprecated(since = "22.2")
     Property createProperty(Object id, Location location, int flags);
 
     /** @since 22.2 */
