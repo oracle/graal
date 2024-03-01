@@ -1133,24 +1133,26 @@ public final class DebuggerSession implements Closeable {
                 if (!SuspendedEvent.isEvalRootStackFrame(session, frameInstance) && (depth++ == 0)) {
                     return null;
                 }
+
                 Node callNode = frameInstance.getCallNode();
-                boolean callNodeAvailable = callNode != null;
-                while (callNode != null && !SourceSectionFilter.ANY.includes(callNode)) {
-                    callNode = callNode.getParent();
-                }
-                RootNode root = callNode != null ? callNode.getRootNode() : ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
-                if (root == null || !includeInternal && root.isInternal()) {
-                    return null;
-                }
+                RootNode rootNode;
                 if (callNode == null) {
                     // GR-52192 temporary workaround for Espresso, where a meaningful call node
                     // cannot always be set as encapsulated node reference.
-                    if (callNodeAvailable) {
-                        // Call node was available but no instrumentable node in parent node
-                        // hierarchy, so we can't use the root node as the call node.
+                    rootNode = ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
+                    callNode = rootNode;
+                } else {
+                    while (callNode != null && !SourceSectionFilter.ANY.includes(callNode)) {
+                        callNode = callNode.getParent();
+                    }
+                    rootNode = callNode != null ? callNode.getRootNode() : null;
+                    if (rootNode == null) {
+                        // can't handle disconnected call nodes
                         return null;
                     }
-                    callNode = root;
+                }
+                if (!includeInternal && rootNode.isInternal()) {
+                    return null;
                 }
                 return new Caller(frameInstance, callNode);
             }
