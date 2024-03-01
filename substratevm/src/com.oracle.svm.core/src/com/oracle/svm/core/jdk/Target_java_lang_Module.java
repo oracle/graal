@@ -34,8 +34,8 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
  * Substitution class for {@link java.lang.Module}. We need to substitute native methods
  * particularly, because original methods in the JDK contain VM state updates and perform additional
  * bookkeeping. We implement all the data structures we need to answer module system queries in Java
- * (see {@link ModuleNative}. In order to preserve JCK compatibility, we need to perform all
- * the checks performed by original methods and throw the exact same exception types and messages.
+ * (see {@link ModuleNative}. In order to preserve JCK compatibility, we need to perform all the
+ * checks performed by original methods and throw the exact same exception types and messages.
  */
 @SuppressWarnings("unused")
 @TargetClass(value = java.lang.Module.class)
