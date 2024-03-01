@@ -215,6 +215,8 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.enableQuickening = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableQuickening");
         model.specializationDebugListener = types.BytecodeDebugListener == null ? false : ElementUtils.isAssignable(typeElement.asType(), types.BytecodeDebugListener);
         model.enableTagInstrumentation = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableTagInstrumentation");
+        model.enableRootTagging = model.enableTagInstrumentation && ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableRootTagging");
+        model.enableRootBodyTagging = model.enableTagInstrumentation && ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableRootBodyTagging");
 
         model.addDefault();
 
@@ -274,13 +276,35 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             return;
         }
 
-        if (model.enableTagInstrumentation && model.getProvidedTags().isEmpty()) {
-            AnnotationValue value = ElementUtils.getAnnotationValue(generateBytecodeMirror, "enableTagInstrumentation");
-            model.addError(generateBytecodeMirror, value,
-                            String.format("Tag instrumentation cannot be enabled if the specified language class '%s' does not export any tags using @%s. " +
-                                            "Specify at least one provided tag or disable tag instrumentation for this root node.",
-                                            getQualifiedName(model.languageClass),
-                                            getSimpleName(types.ProvidedTags)));
+        // tag instrumentation
+        if (model.enableTagInstrumentation) {
+            AnnotationValue taginstrumentationValue = ElementUtils.getAnnotationValue(generateBytecodeMirror, "enableTagInstrumentation");
+            if (model.getProvidedTags().isEmpty()) {
+                model.addError(generateBytecodeMirror, taginstrumentationValue,
+                                String.format("Tag instrumentation cannot be enabled if the specified language class '%s' does not export any tags using @%s. " +
+                                                "Specify at least one provided tag or disable tag instrumentation for this root node.",
+                                                getQualifiedName(model.languageClass),
+                                                getSimpleName(types.ProvidedTags)));
+            } else if (model.enableRootTagging && model.getProvidedRootTag() == null) {
+                model.addError(generateBytecodeMirror, taginstrumentationValue,
+                                "Tag instrumentation uses implicit root tagging, but the RootTag was not provded by the language class '%s'. " +
+                                                "Specify the tag using @%s(%s.class) on the language class or explicitly disable root tagging using @%s(.., enableRootTagging=false) to resolve this.",
+                                getQualifiedName(model.languageClass),
+                                getSimpleName(types.ProvidedTags),
+                                getSimpleName(types.StandardTags_RootTag),
+                                getSimpleName(types.GenerateBytecode));
+                model.enableRootTagging = false;
+            } else if (model.enableRootBodyTagging && model.getProvidedRootBodyTag() == null) {
+                model.addError(generateBytecodeMirror, taginstrumentationValue,
+                                "Tag instrumentation uses implicit root body tagging, but the RootTag was not provded by the language class '%s'. " +
+                                                "Specify the tag using @%s(%s.class) on the language class or explicitly disable root tagging using @%s(.., enableRootBodyTagging=false) to resolve this.",
+                                getQualifiedName(model.languageClass),
+                                getSimpleName(types.ProvidedTags),
+                                getSimpleName(types.StandardTags_RootBodyTag),
+                                getSimpleName(types.GenerateBytecode));
+                model.enableRootBodyTagging = false;
+            }
+
         }
 
         Map<String, List<ExecutableElement>> constructorsByFDType = viableConstructors.stream().collect(Collectors.groupingBy(ctor -> {

@@ -112,6 +112,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public boolean specializationDebugListener;
     public boolean enableSpecializationIntrospection;
     public boolean enableTagInstrumentation;
+    public boolean enableRootTagging;
+    public boolean enableRootBodyTagging;
 
     public ExecutableElement fdConstructor;
     public ExecutableElement fdBuilderConstructor;
@@ -133,6 +135,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public OperationModel tryCatchOperation;
     public OperationModel loadConstantOperation;
     public OperationModel loadLocalOperation;
+    public OperationModel tagOperation;
     public CustomOperationModel prolog = null;
     public CustomOperationModel epilogReturn = null;
     public CustomOperationModel epilogExceptional = null;
@@ -325,7 +328,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
             tagLeaveValueInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
             tagLeaveVoidInstruction = instruction(InstructionKind.TAG_LEAVE_VOID, "tag.leaveVoid", signature(Object.class));
             tagLeaveVoidInstruction.addImmediate(ImmediateKind.TAG_NODE, "tag");
-            operation(OperationKind.TAG, "Tag") //
+            tagOperation = operation(OperationKind.TAG, "Tag") //
                             .setNumChildren(1) //
                             .setOperationArgumentVarArgs(true) //
                             .setOperationArguments(new OperationArgument(array(context.getDeclaredType(Class.class)), "newTags", "the tags to associate with the enclosed operations"))//

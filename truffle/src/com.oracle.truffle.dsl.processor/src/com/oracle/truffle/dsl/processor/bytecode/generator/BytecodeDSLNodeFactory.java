@@ -2855,12 +2855,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             if (operation.kind == OperationKind.TAG) {
-                b.declaration(tagNode.asType(), "node", "new TagNode(encodedTags, (short)bci)");
+                b.declaration(tagNode.asType(), "node", "new TagNode(encodedTags & this.tags, (short)bci)");
                 b.startIf().string("tagNodes == null").end().startBlock();
                 b.statement("tagNodes = new ArrayList<>()");
                 b.end();
                 b.declaration(type(int.class), "nodeId", "tagNodes.size()");
                 b.statement("tagNodes.add(node)");
+            } else if (operation.kind == OperationKind.RETURN) {
+                if (model.epilogReturn != null) {
+                    b.lineCommentf("For return epilog support, Return(op) is rewritten to Return(%s(op))", model.epilogReturn.operation.name);
+                    buildBegin(b, model.epilogReturn.operation);
+                }
             }
 
             b.startStatement().startCall("beforeChild").end(2);
@@ -2923,10 +2928,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     }
                     break;
                 case RETURN:
-                    if (model.epilogReturn != null) {
-                        b.lineCommentf("For return epilog support, Return(op) is rewritten to Return(%s(op))", model.epilogReturn.operation.name);
-                        buildBegin(b, model.epilogReturn.operation);
-                    }
                     break;
                 case TAG:
                     buildEmitInstruction(b, model.tagEnterInstruction, "nodeId");
@@ -3007,18 +3008,75 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.tree(createOperationData("RootData", "language"));
             b.end(2);
 
-            if (model.epilogExceptional != null) {
-                b.lineComment("For exceptional epilog support, Root(ops...) is rewritten to Root(TryCatch(Block(ops...), <invoke epilog; rethrow>))");
-                buildBegin(b, model.tryCatchOperation, String.format("new %s(%s)", bytecodeLocalImpl.getSimpleName().toString(), EPILOG_EXCEPTION_IDX));
+            if (model.prolog != null || model.epilogExceptional != null) {
+                if (model.enableRootTagging) {
+                    buildBegin(b, model.tagOperation, lookupTagConstant(types.StandardTags_RootTag).getSimpleName().toString());
+                }
+
+                if (model.epilogExceptional != null) {
+                    b.lineComment("For exceptional epilog support, Root(ops...) is rewritten to Root(TryCatch(Block(ops...), <invoke epilog; rethrow>))");
+                    buildBegin(b, model.tryCatchOperation, String.format("new %s(%s)", bytecodeLocalImpl.getSimpleName().toString(), EPILOG_EXCEPTION_IDX));
+                }
+
+                // If prolog defined, emit prolog before Root's child.
+                if (model.prolog != null) {
+                    buildEmitOperationInstruction(b, model.prolog.operation);
+                }
+
+                if (model.enableRootBodyTagging) {
+                    buildBegin(b, model.tagOperation, lookupTagConstant(types.StandardTags_RootBodyTag).getSimpleName().toString());
+                }
+            } else {
+                VariableElement tagConstants = getAllRootTagConstants();
+                if (tagConstants != null) {
+                    buildBegin(b, model.tagOperation, tagConstants.getSimpleName().toString());
+                }
+            }
+
+            if (needsRootBlock()) {
                 buildBegin(b, model.blockOperation);
             }
 
-            if (model.prolog != null) {
-                // If prolog defined, emit prolog before Root's child.
-                buildEmitOperationInstruction(b, model.prolog.operation);
+            return ex;
+        }
+
+        private boolean needsRootBlock() {
+            return model.enableRootTagging || model.enableRootBodyTagging || model.epilogExceptional != null;
+        }
+
+        private VariableElement getAllRootTagConstants() {
+            if (model.enableRootTagging && model.enableRootBodyTagging) {
+                return lookupTagConstant(types.StandardTags_RootTag, types.StandardTags_RootBodyTag);
+            } else if (model.enableRootTagging) {
+                return lookupTagConstant(types.StandardTags_RootTag);
+            } else if (model.enableRootBodyTagging) {
+                return lookupTagConstant(types.StandardTags_RootBodyTag);
+            } else {
+                return null;
+            }
+        }
+
+        private VariableElement lookupTagConstant(TypeMirror... tags) {
+            String name = "TAGS";
+            for (TypeMirror type : tags) {
+                name += "_" + ElementUtils.createConstantName(ElementUtils.getSimpleName(type));
+            }
+            VariableElement existing = builder.findField(name);
+            if (existing != null) {
+                return existing;
             }
 
-            return ex;
+            CodeVariableElement newVariable = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), arrayOf(type(Class.class)), name);
+            CodeTreeBuilder b = newVariable.createInitBuilder();
+            b.string("new Class<?>[]{").startCommaGroup();
+            for (TypeMirror type : tags) {
+                b.typeLiteral(type);
+            }
+            b.end().string("}");
+
+            builder.add(newVariable);
+            return newVariable;
+
         }
 
         private void createSerializeBegin(OperationModel operation, CodeTreeBuilder b) {
@@ -3237,13 +3295,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
             }
 
-            if (operation.kind == OperationKind.RETURN) {
-                if (model.epilogReturn != null) {
-                    b.lineCommentf("For return epilog support, Return(op) is rewritten to Return(%s(op))", model.epilogReturn.operation.name);
-                    buildEnd(b, model.epilogReturn.operation);
-                }
-            }
-
             b.startStatement().startCall("endOperation");
             b.tree(createOperationConstant(operation));
             b.end(2);
@@ -3395,7 +3446,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.end();
                     b.end();
 
-                    b.statement("tagNode.children = operationData.children == null ? TagNode.EMPTY_ARRAY : operationData.children.toArray(TagNode[]::new)");
+                    b.statement("tagNode.children = children");
 
                     b.startFor().string("TagNode child : tagNode.children").end().startBlock();
                     b.statement("tagNode.insert(child)");
@@ -3454,6 +3505,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end(2);
             }
 
+            if (operation.kind == OperationKind.RETURN) {
+                if (model.epilogReturn != null) {
+                    b.lineCommentf("For return epilog support, Return(op) is rewritten to Return(%s(op))", model.epilogReturn.operation.name);
+                    buildEnd(b, model.epilogReturn.operation);
+                }
+            }
+
             return ex;
         }
 
@@ -3493,19 +3551,37 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
             }
 
-            if (model.epilogExceptional != null) {
-                b.lineComment("For exceptional epilog support, Root(ops...) is rewritten to Root(TryCatch(Block(ops...), <invoke epilog; rethrow>))");
+            if (needsRootBlock()) {
                 buildEnd(b, model.blockOperation);
+            }
 
-                buildBegin(b, model.blockOperation);
-                buildBegin(b, model.epilogExceptional.operation);
-                buildEmit(b, model.loadLocalOperation, String.format("new %s(%s)", bytecodeLocalImpl.getSimpleName().toString(), EPILOG_EXCEPTION_IDX));
-                buildEnd(b, model.epilogExceptional.operation);
+            if (model.prolog != null || model.epilogExceptional != null) {
+                if (model.enableRootBodyTagging) {
+                    buildEnd(b, model.tagOperation, lookupTagConstant(types.StandardTags_RootBodyTag).getSimpleName().toString());
+                }
 
-                buildEmitInstruction(b, model.throwInstruction, EPILOG_EXCEPTION_IDX);
+                if (model.epilogExceptional != null) {
+                    b.lineComment("For exceptional epilog support, Root(ops...) is rewritten to Root(TryCatch(Block(ops...), <invoke epilog; rethrow>))");
 
-                buildEnd(b, model.blockOperation);
-                buildEnd(b, model.tryCatchOperation);
+                    buildBegin(b, model.blockOperation);
+                    buildBegin(b, model.epilogExceptional.operation);
+                    buildEmit(b, model.loadLocalOperation, String.format("new %s(%s)", bytecodeLocalImpl.getSimpleName().toString(), EPILOG_EXCEPTION_IDX));
+                    buildEnd(b, model.epilogExceptional.operation);
+
+                    buildEmitInstruction(b, model.throwInstruction, EPILOG_EXCEPTION_IDX);
+
+                    buildEnd(b, model.blockOperation);
+                    buildEnd(b, model.tryCatchOperation);
+                }
+
+                if (model.enableRootTagging) {
+                    buildEnd(b, model.tagOperation, lookupTagConstant(types.StandardTags_RootTag).getSimpleName().toString());
+                }
+            } else {
+                VariableElement tagConstants = getAllRootTagConstants();
+                if (tagConstants != null) {
+                    buildEnd(b, model.tagOperation, tagConstants.getSimpleName().toString());
+                }
             }
 
             b.startStatement().startCall("endOperation");
@@ -3642,8 +3718,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(2);
         }
 
-        private void buildEnd(CodeTreeBuilder b, OperationModel operation) {
-            b.startStatement().startCall("end" + operation.name).end(2);
+        private void buildEnd(CodeTreeBuilder b, OperationModel operation, String... args) {
+            b.startStatement().startCall("end" + operation.name);
+            for (String arg : args) {
+                b.string(arg);
+            }
+            b.end(2);
         }
 
         private void buildEmit(CodeTreeBuilder b, OperationModel operation, String... args) {
@@ -3654,27 +3734,31 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(2);
         }
 
-        private void emitCastOperationData(CodeTreeBuilder b, String dataClassName, String operationSp) {
+        private void emitCastOperationData(CodeTreeBuilder b, String dataClassName, String sp) {
             b.startIf();
-            b.string("!(operationStack[" + operationSp + "].data instanceof ");
+            b.string("!(operationStack[" + sp + "].data instanceof ");
             b.string(dataClassName);
             b.string(" operationData)");
             b.end().startBlock();
-            emitThrowAssertionError(b, "\"Data class " + dataClassName + " expected, but was \" + operationStack[operationSp].data");
+            emitThrowAssertionError(b, "\"Data class " + dataClassName + " expected, but was \" + operationStack[" + sp + "].data");
             b.end();
         }
 
         private void buildEmitOperationInstruction(CodeTreeBuilder b, OperationModel operation) {
+            buildEmitOperationInstruction(b, operation, null, "operationSp");
+        }
+
+        private void buildEmitOperationInstruction(CodeTreeBuilder b, OperationModel operation, String customChildBci, String sp) {
             String[] args = switch (operation.kind) {
                 case LOAD_LOCAL -> new String[]{"((BytecodeLocalImpl) " + operation.getOperationArgumentName(0) + ").index"};
                 case STORE_LOCAL, STORE_LOCAL_MATERIALIZED -> {
                     if (model.usesBoxingElimination()) {
-                        yield new String[]{"((StoreLocalData) operationStack[operationSp].data).local.index", "((StoreLocalData) operationStack[operationSp].data).childBci"};
+                        yield new String[]{"((StoreLocalData) operationStack[" + sp + "].data).local.index", "((StoreLocalData) operationStack[" + sp + "].data).childBci"};
                     } else {
-                        yield new String[]{"((BytecodeLocalImpl) operationStack[operationSp].data).index"};
+                        yield new String[]{"((BytecodeLocalImpl) operationStack[" + sp + "].data).index"};
                     }
                 }
-                case LOAD_LOCAL_MATERIALIZED -> new String[]{"((BytecodeLocalImpl) operationStack[operationSp].data).index"};
+                case LOAD_LOCAL_MATERIALIZED -> new String[]{"((BytecodeLocalImpl) operationStack[" + sp + "].data).index"};
                 case RETURN -> new String[]{};
                 case LOAD_ARGUMENT -> new String[]{operation.getOperationArgumentName(0)};
                 case LOAD_CONSTANT -> new String[]{"constantPool.addConstant(" + operation.getOperationArgumentName(0) + ")"};
@@ -3682,7 +3766,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.startAssign("BytecodeLabelImpl labelImpl").string("(BytecodeLabelImpl) " + operation.getOperationArgumentName(0)).end();
 
                     b.statement("boolean isFound = false");
-                    b.startFor().string("int i = 0; i < operationSp; i++").end().startBlock();
+                    b.startFor().string("int i = 0; i < " + sp + "; i++").end().startBlock();
                     b.startIf().string("operationStack[i].sequenceNumber == labelImpl.declaringOp").end().startBlock();
                     b.statement("isFound = true");
                     b.statement("break");
@@ -3727,7 +3811,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("continuationLocations.add(continuation)");
                     yield new String[]{"constantPool.addConstant(continuation)"};
                 }
-                case CUSTOM, CUSTOM_INSTRUMENTATION -> buildCustomInitializer(b, operation, operation.instruction);
+                case CUSTOM, CUSTOM_INSTRUMENTATION -> buildCustomInitializer(b, operation, operation.instruction, customChildBci, sp);
                 case CUSTOM_SHORT_CIRCUIT -> throw new AssertionError("Tried to emit a short circuit instruction directly. These operations should only be emitted implicitly.");
                 default -> throw new AssertionError("Reached an operation " + operation.name + " that cannot be initialized. This is a bug in the Bytecode DSL processor.");
             };
@@ -3807,20 +3891,24 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private String[] buildCustomInitializer(CodeTreeBuilder b, OperationModel operation, InstructionModel instruction) {
+        private String[] buildCustomInitializer(CodeTreeBuilder b, OperationModel operation, InstructionModel instruction, String customChildBci, String sp) {
             assert operation.kind != OperationKind.CUSTOM_SHORT_CIRCUIT;
 
             if (instruction.signature.isVariadic) {
                 // Before emitting a variadic instruction, we need to emit instructions to merge all
                 // of the operands on the stack into one array.
-                b.statement("doEmitVariadic(operationStack[operationSp].childCount - " + (instruction.signature.valueCount - 1) + ")");
+                b.statement("doEmitVariadic(operationStack[" + sp + "].childCount - " + (instruction.signature.valueCount - 1) + ")");
+            }
+
+            if (customChildBci != null && operation.numChildren > 1) {
+                throw new AssertionError("customChildBci can only be used with a single child.");
             }
 
             boolean inEmit = operation.numChildren == 0;
 
             if (!inEmit) {
                 // make "operationData" available for endX methods.
-                emitCastOperationData(b, "CustomOperationData", "operationSp");
+                emitCastOperationData(b, "CustomOperationData", sp);
             }
 
             List<InstructionImmediate> immediates = instruction.getImmediates();
@@ -3833,13 +3921,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 InstructionImmediate immediate = immediates.get(i);
                 args[i] = switch (immediate.kind()) {
                     case BYTECODE_INDEX -> {
-                        String child = "child" + childNodeIndex;
-                        b.startAssign("int " + child);
-                        b.string("operationData.childBcis[" + childNodeIndex + "]");
-                        b.end();
-                        childNodeIndex++;
+                        if (customChildBci != null) {
+                            yield customChildBci;
+                        } else {
+                            String child = "child" + childNodeIndex;
+                            b.startAssign("int " + child);
+                            b.string("operationData.childBcis[" + childNodeIndex + "]");
+                            b.end();
+                            childNodeIndex++;
 
-                        yield child;
+                            yield child;
+                        }
                     }
                     case LOCAL_SETTER -> {
                         String arg = "localSetter" + localSetterIndex;
@@ -4902,6 +4994,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = ex.createBuilder();
 
             b.declaration(type(int.class), "childBci", "parentBci");
+            if (model.epilogReturn != null && model.enableRootBodyTagging) {
+                b.declaration(type(int.class), "rootBodyLeaveTagSp", "-1");
+            }
 
             b.startFor().string("int i = operationSp -1; i >= 0; i--").end().startBlock();
 
@@ -4915,19 +5010,37 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 OperationModel op = model.findOperation(OperationKind.TAG);
                 b.startCase().tree(createOperationConstant(op)).end();
                 b.startBlock();
-                emitCastOperationData(b, "TagOperationData", "i");
-                b.startIf().string("childBci == -1").end().startBlock();
-                buildEmitInstruction(b, model.tagLeaveVoidInstruction, "operationData.nodeId");
-                b.end().startElseBlock();
-                InstructionImmediate operandIndex = op.instruction.getImmediate(ImmediateKind.BYTECODE_INDEX);
-                if (operandIndex == null) {
-                    buildEmitInstruction(b, op.instruction, "operationData.nodeId");
-                } else {
-                    buildEmitInstruction(b, op.instruction, "operationData.nodeId", "childBci");
+                if (model.epilogReturn != null && model.enableRootBodyTagging) {
+                    b.startIf().string("i == rootBodyLeaveTagSp").end().startBlock();
+                    b.lineComment("already emitted in epilog");
+                    b.statement("continue");
+                    b.end();
                 }
-                b.statement("childBci = bci - " + op.instruction.getInstructionLength());
+                emitCastOperationData(b, "TagOperationData", "i");
+                emitTagLeave(b, op, true);
+                b.statement("break");
                 b.end();
+            }
 
+            if (model.epilogReturn != null) {
+                b.startCase().tree(createOperationConstant(model.epilogReturn.operation)).end();
+                b.startBlock();
+
+                if (model.enableRootBodyTagging) {
+                    int mask = computeTagMask(model.getProvidedRootBodyTag());
+                    b.startIf().string("(this.tags & 0x").string(Integer.toHexString(mask)).string(") != 0").end().startBlock();
+                    b.startAssert().string("rootBodyLeaveTagSp == -1 : ").doubleQuote("There should only be one epilog emitted.").end();
+                    b.startAssign("rootBodyLeaveTagSp").startCall(lookupSearchRootBodyTag().getSimpleName().toString());
+                    b.string("i");
+                    b.end().end();
+
+                    emitCastOperationData(b, "TagOperationData", "rootBodyLeaveTagSp");
+                    emitTagLeave(b, model.tagOperation, false);
+                    b.end();
+                }
+
+                buildEmitOperationInstruction(b, model.epilogReturn.operation, "childBci", "i");
+                b.statement("childBci = bci - " + model.epilogReturn.operation.instruction.getInstructionLength());
                 b.statement("break");
                 b.end();
             }
@@ -4957,6 +5070,58 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
 
             return ex;
+        }
+
+        private int computeTagMask(TypeMirror providedTag) throws AssertionError {
+            int tagIndex = model.getProvidedTags().indexOf(providedTag);
+            if (tagIndex == -1) {
+                throw new AssertionError("Tag index for root body tag not found.");
+            }
+            int mask = 1 << tagIndex;
+            return mask;
+        }
+
+        private CodeExecutableElement searchRootBodyTag;
+
+        private CodeExecutableElement lookupSearchRootBodyTag() {
+            if (searchRootBodyTag != null) {
+                return searchRootBodyTag;
+            }
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(int.class), "searchRootBodyTag");
+            ex.addParameter(new CodeVariableElement(type(int.class), "startSp"));
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startFor().string("int op = 0; op < startSp; op++").end().startBlock();
+            b.startIf().string("operationStack[op].operation == ").tree(createOperationConstant(model.tagOperation)).end().startBlock();
+            emitCastOperationData(b, "TagOperationData", "op");
+            int mask = computeTagMask(model.getProvidedRootBodyTag());
+            b.startIf().string("(operationData.node.tags & 0x", Integer.toHexString(mask), ") != 0").end().startBlock();
+            b.statement("return op");
+            b.end(); // if
+            b.end(); // if
+            b.end(); // for
+            b.startReturn().string("-1").end();
+            builder.add(ex);
+            searchRootBodyTag = ex;
+            return ex;
+        }
+
+        private void emitTagLeave(CodeTreeBuilder b, OperationModel op, boolean allowMissingChildId) {
+            b.startIf().string("childBci == -1").end().startBlock();
+            if (allowMissingChildId) {
+                buildEmitInstruction(b, model.tagLeaveVoidInstruction, "operationData.nodeId");
+            } else {
+                b.tree(GeneratorUtils.createShouldNotReachHere("We should not be able to see leave without childid."));
+            }
+            b.end().startElseBlock();
+            InstructionImmediate operandIndex = op.instruction.getImmediate(ImmediateKind.BYTECODE_INDEX);
+            if (operandIndex == null) {
+                buildEmitInstruction(b, op.instruction, "operationData.nodeId");
+            } else {
+                buildEmitInstruction(b, op.instruction, "operationData.nodeId", "childBci");
+            }
+            b.statement("childBci = bci - " + op.instruction.getInstructionLength());
+            b.end();
         }
 
         private CodeExecutableElement createAllocateNode() {
