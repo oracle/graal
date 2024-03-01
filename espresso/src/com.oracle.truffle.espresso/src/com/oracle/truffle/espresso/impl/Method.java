@@ -1419,11 +1419,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         @Override
-        public KlassRef[] getParameters() {
-            return getMethod().getParameters();
-        }
-
-        @Override
         public LocalVariableTable getLocalVariableTable() {
             if (codeAttribute != null) {
                 return codeAttribute.getLocalvariableTable();
@@ -1442,6 +1437,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         @Override
         public boolean hasVariableTable() {
             return getLocalVariableTable() != LocalVariableTable.EMPTY_LVT;
+        }
+
+        @Override
+        public boolean hasVariabletypeTable() {
+            return getLocalVariableTypeTable() != LocalVariableTable.EMPTY_LVTT;
         }
 
         @Override

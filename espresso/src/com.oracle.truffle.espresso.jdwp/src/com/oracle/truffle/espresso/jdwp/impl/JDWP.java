@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
@@ -1480,23 +1482,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                if (!method.hasVariableTable()) {
-                    reply.errorCode(ErrorCodes.ABSENT_INFORMATION);
-                    return new CommandResult(reply);
-                }
-
-                KlassRef[] params = method.getParameters();
-                int argCnt = 0; // the number of words in the frame used by the arguments
-                for (KlassRef klass : params) {
-                    if (klass.isPrimitive()) {
-                        byte tag = klass.getTagConstant();
-                        if (tag == TagConstants.DOUBLE || tag == TagConstants.LONG) {
-                            argCnt += 2;
-                        } else {
-                            argCnt++;
-                        }
-                    }
-                }
+                int argCnt = getArgCount(method.getSignatureAsString());
                 LocalRef[] locals = method.getLocalVariableTable().getLocals();
 
                 reply.writeInt(argCnt);
@@ -1583,24 +1569,8 @@ public final class JDWP {
                 if (method == null) {
                     return new CommandResult(reply);
                 }
-
-                if (!method.hasVariableTable()) {
-                    reply.errorCode(ErrorCodes.ABSENT_INFORMATION);
-                    return new CommandResult(reply);
-                }
-
-                KlassRef[] params = method.getParameters();
-                int argCnt = 0; // the number of words in the frame used by the arguments
-                for (KlassRef klass : params) {
-                    if (klass.isPrimitive()) {
-                        byte tag = klass.getTagConstant();
-                        if (tag == TagConstants.DOUBLE || tag == TagConstants.LONG) {
-                            argCnt += 2;
-                        } else {
-                            argCnt++;
-                        }
-                    }
-                }
+                // the number of words in the frame used by the arguments
+                int argCnt = getArgCount(method.getSignatureAsString());
                 LocalRef[] locals = method.getLocalVariableTable().getLocals();
                 LocalRef[] genericLocals = method.getLocalVariableTypeTable().getLocals();
 
@@ -3238,6 +3208,70 @@ public final class JDWP {
             mod |= JDWP_SYNTHETIC;
         }
         return mod;
+    }
+
+    private static int getArgCount(String signature) {
+        int startIndex = signature.indexOf('(') + 1;
+        int endIndex = signature.indexOf(')');
+        String parameterSig = signature.substring(startIndex, endIndex);
+        int currentCount = 0;
+        int currentIndex = 0;
+        char[] charArray = parameterSig.toCharArray();
+        while (currentIndex < charArray.length) {
+            switch (charArray[currentIndex]) {
+                case 'D':
+                case 'J': {
+                    currentCount += 2;
+                    currentIndex++;
+                    break;
+                }
+                case 'B':
+                case 'C':
+                case 'F':
+                case 'I':
+                case 'S':
+                case 'Z': {
+                    currentCount++;
+                    currentIndex++;
+                    break;
+                }
+                case 'L':
+                    currentCount++;
+                    currentIndex = parameterSig.indexOf(';', currentIndex) + 1;
+                    break;
+                case 'T':
+                    throw new RuntimeException("unexpected type variable");
+                case '[':
+                    currentCount++;
+                    currentIndex += parseArrayType(parameterSig, charArray, currentIndex + 1);
+                    break;
+                default:
+                    throw new RuntimeException("should not reach here");
+            }
+        }
+        return currentCount;
+    }
+
+    private static int parseArrayType(String signature, char[] charArray, int currentIndex) {
+        switch (charArray[currentIndex]) {
+            case 'D':
+            case 'J':
+            case 'B':
+            case 'C':
+            case 'F':
+            case 'I':
+            case 'S':
+            case 'Z':
+                return 2;
+            case 'L':
+                return 2 + signature.indexOf(';', currentIndex) - currentIndex;
+            case 'T':
+                throw new RuntimeException("unexpected type variable");
+            case '[':
+                return 1 + parseArrayType(signature, charArray, currentIndex + 1);
+            default:
+                throw new RuntimeException("should not reach here");
+        }
     }
 
     private static KlassRef verifyRefType(long refTypeId, PacketStream reply, JDWPContext context) {
