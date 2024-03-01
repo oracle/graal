@@ -274,9 +274,7 @@ public abstract class BytecodeNode extends Node {
 
     private static String formatTagTree(TagTree tree, Predicate<TagTree> highlight) {
         if (tree == null) {
-            return "Not Available";
-        } else if (tree.getTreeChildren().isEmpty()) {
-            return "Empty";
+            return " = Not Available";
         }
         StringBuilder b = new StringBuilder();
         int count = appendTagTree(b, 0, tree, highlight);

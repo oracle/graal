@@ -119,12 +119,16 @@ public class CodeTypeElement extends CodeElement<Element> implements TypeElement
     }
 
     public boolean containsField(String name) {
+        return findField(name) != null;
+    }
+
+    public VariableElement findField(String name) {
         for (VariableElement field : getFields()) {
             if (field.getSimpleName().toString().equals(name)) {
-                return true;
+                return field;
             }
         }
-        return false;
+        return null;
     }
 
     @Override
