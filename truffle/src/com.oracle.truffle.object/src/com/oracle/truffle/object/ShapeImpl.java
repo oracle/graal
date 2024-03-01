@@ -1057,7 +1057,6 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /** @since 0.17 or earlier */
-    @Override
     public Object getMutex() {
         return getRoot();
     }

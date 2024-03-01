@@ -779,15 +779,6 @@ public abstract class Shape {
     public abstract Object getSharedData();
 
     /**
-     * Get mutex object shared by related shapes, i.e. shapes with a common root.
-     *
-     * @since 0.8 or earlier
-     * @deprecated no replacement.
-     */
-    @Deprecated(since = "22.2")
-    public abstract Object getMutex();
-
-    /**
      * Try to merge two related shapes to a more general shape that has the same properties and can
      * store at least the values of both shapes.
      *
