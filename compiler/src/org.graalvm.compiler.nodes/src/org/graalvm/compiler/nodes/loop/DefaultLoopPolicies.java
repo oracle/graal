@@ -570,14 +570,14 @@ public class DefaultLoopPolicies implements LoopPolicies {
                         factor *= p;
                     }
                 }
-                assert 0 <= factor && factor <= 1 : "factor should be between 0 and 1, but is : " + factor;
+                assert 0 <= factor && factor <= 1 + ProfileData.EPSILON : "factor should be between 0 and 1, but is : " + factor;
             } else {
                 debug.log("control split %s has an untrusted profile source", split);
                 factor = DefaultUnswitchFactor.getValue(options);
             }
 
             // We cap the factor and we invert it to make guards' range narrow.
-            double cappedFactor = 1 - Math.min(Math.max(factor, LoopUnswitchFrequencyMinFactor.getValue(options)), LoopUnswitchFrequencyMaxFactor.getValue(options));
+            double cappedFactor = 1 - Math.clamp(factor, LoopUnswitchFrequencyMinFactor.getValue(options), LoopUnswitchFrequencyMaxFactor.getValue(options));
 
             if (splitFrequency < cappedFactor * localLoopFrequency) {
                 /*

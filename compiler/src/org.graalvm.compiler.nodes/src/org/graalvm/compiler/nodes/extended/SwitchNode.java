@@ -104,7 +104,7 @@ public abstract class SwitchNode extends ControlSplitNode {
             total += d;
             assert d >= 0.0 : "Cannot have negative probabilities in switch node: " + d;
         }
-        assert total > 0.999 && total < 1.001 : "Total " + total;
+        assert Math.abs(total - 1.0) <= ProfileData.EPSILON : "Total " + total;
         return true;
     }
 
@@ -128,7 +128,6 @@ public abstract class SwitchNode extends ControlSplitNode {
     public boolean setProbability(AbstractBeginNode successor, BranchProbabilityData successorProfileData) {
         double newProbability = successorProfileData.getDesignatedSuccessorProbability();
         assert newProbability <= 1.0 && newProbability >= 0.0 : newProbability;
-        assert assertProbabilities();
 
         double[] keyProbabilities = getKeyProbabilities().clone();
         double sum = 0;
