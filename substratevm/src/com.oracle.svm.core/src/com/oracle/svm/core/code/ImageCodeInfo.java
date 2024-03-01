@@ -60,6 +60,7 @@ public class ImageCodeInfo {
     @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord dataOffset;
     @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord dataSize;
     @UnknownPrimitiveField(availability = AfterCompilation.class) private UnsignedWord codeAndDataMemorySize;
+    @UnknownPrimitiveField(availability = AfterCompilation.class) private int methodTableFirstId;
 
     private final Object[] objectFields;
     @UnknownObjectField(availability = AfterCompilation.class) byte[] codeInfoIndex;
@@ -70,6 +71,7 @@ public class ImageCodeInfo {
     @UnknownObjectField(availability = AfterCompilation.class) Class<?>[] classes;
     @UnknownObjectField(availability = AfterCompilation.class) String[] memberNames;
     @UnknownObjectField(availability = AfterCompilation.class) String[] otherStrings;
+    @UnknownObjectField(availability = AfterCompilation.class) byte[] methodTable;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     ImageCodeInfo() {
@@ -100,29 +102,20 @@ public class ImageCodeInfo {
         info.setClasses(NonmovableArrays.fromImageHeap(classes));
         info.setMemberNames(NonmovableArrays.fromImageHeap(memberNames));
         info.setOtherStrings(NonmovableArrays.fromImageHeap(otherStrings));
+        info.setMethodTable(NonmovableArrays.fromImageHeap(methodTable));
+        info.setMethodTableFirstId(methodTableFirstId);
         info.setIsAOTImageCode(true);
 
         return info;
     }
 
     /**
-     * Use {@link CodeInfoTable#getFirstImageCodeInfo()} and {@link CodeInfoAccess#getCodeStart}
-     * instead. This method is intended only for the early stages of VM initialization when
-     * {@link #prepareCodeInfo()} has not yet run.
+     * Use {@link CodeInfoTable#getImageCodeInfo} and {@link CodeInfoAccess#getCodeStart} instead.
+     * This method is intended only for VM-internal usage.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public CodePointer getCodeStart() {
         return codeStart;
-    }
-
-    /**
-     * Use {@link CodeInfoTable#getFirstImageCodeInfo()} and
-     * {@link CodeInfoAccess#getStackReferenceMapEncoding} instead. This method is intended only for
-     * the early stages of VM initialization when {@link #prepareCodeInfo()} has not yet run.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public NonmovableArray<Byte> getStackReferenceMapEncoding() {
-        return NonmovableArrays.fromImageHeap(referenceMapEncoding);
     }
 
     public HostedImageCodeInfo getHostedImageCodeInfo() {
@@ -130,7 +123,7 @@ public class ImageCodeInfo {
     }
 
     public List<Integer> getTotalByteArrayLengths() {
-        return List.of(codeInfoIndex.length, codeInfoEncodings.length, referenceMapEncoding.length, frameInfoEncodings.length);
+        return List.of(codeInfoIndex.length, codeInfoEncodings.length, referenceMapEncoding.length, frameInfoEncodings.length, methodTable.length);
     }
 
     /**
@@ -277,6 +270,26 @@ public class ImageCodeInfo {
         @Override
         public void setOtherStrings(NonmovableObjectArray<String> array) {
             otherStrings = NonmovableArrays.getHostedArray(array);
+        }
+
+        @Override
+        public NonmovableArray<Byte> getMethodTable() {
+            return NonmovableArrays.fromImageHeap(methodTable);
+        }
+
+        @Override
+        public void setMethodTable(NonmovableArray<Byte> methods) {
+            methodTable = NonmovableArrays.getHostedArray(methods);
+        }
+
+        @Override
+        public int getMethodTableFirstId() {
+            return methodTableFirstId;
+        }
+
+        @Override
+        public void setMethodTableFirstId(int methodId) {
+            methodTableFirstId = methodId;
         }
 
         @Override

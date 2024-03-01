@@ -341,5 +341,6 @@ class CodeInfoFeature implements InternalFeature {
         config.registerAsImmutable(imageInfo.classes);
         config.registerAsImmutable(imageInfo.memberNames);
         config.registerAsImmutable(imageInfo.otherStrings);
+        config.registerAsImmutable(imageInfo.methodTable);
     }
 }

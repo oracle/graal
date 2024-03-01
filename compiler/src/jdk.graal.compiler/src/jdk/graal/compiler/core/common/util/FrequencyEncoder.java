@@ -76,19 +76,25 @@ public class FrequencyEncoder<T> {
 
     /**
      * Adds an object to the array.
+     *
+     * @return whether the object has been added for the first time.
      */
-    public void addObject(T object) {
+    public boolean addObject(T object) {
+        boolean first = false;
         if (object == null) {
+            first = !containsNull;
             containsNull = true;
-            return;
+            return first;
         }
 
         Entry<T> entry = map.get(object);
         if (entry == null) {
             entry = new Entry<>(object);
             map.put(object, entry);
+            first = true;
         }
         entry.frequency++;
+        return first;
     }
 
     /**
@@ -103,6 +109,15 @@ public class FrequencyEncoder<T> {
         Entry<T> entry = map.get(object);
         assert entry != null && entry.index >= 0 : Assertions.errorMessageContext("entry", entry);
         return entry.index;
+    }
+
+    /** Returns the index of an object in the array or -1 if it has not been added before. */
+    public int findIndex(T object) {
+        if (object == null) {
+            return containsNull ? 0 : -1;
+        }
+        Entry<T> entry = map.get(object);
+        return (entry != null) ? entry.index : -1;
     }
 
     /**

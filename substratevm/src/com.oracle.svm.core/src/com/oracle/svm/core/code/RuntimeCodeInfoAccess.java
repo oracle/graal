@@ -324,6 +324,7 @@ public final class RuntimeCodeInfoAccess {
         action.apply(impl.getDeoptimizationEncodings());
         action.apply(impl.getCodeConstantsReferenceMapEncoding());
         action.apply(impl.getCodeObserverHandles());
+        action.apply(impl.getMethodTable());
         forEachObjectArray(info, action);
     }
 

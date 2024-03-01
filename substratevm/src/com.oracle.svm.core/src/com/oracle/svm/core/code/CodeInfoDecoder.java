@@ -30,9 +30,12 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.FrameInfoDecoder.ConstantAccess;
 import com.oracle.svm.core.heap.ReferenceMapIndex;
@@ -40,6 +43,7 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.util.TypeConversion;
@@ -410,6 +414,37 @@ public final class CodeInfoDecoder {
         return FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, new ReusableTypeReader(CodeInfoAccess.getFrameInfoEncodings(info), frameInfoIndex), info, constantAccess);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    static void fillInSourceClassAndMethodName(FrameInfoQueryResult result) {
+        int methodId = result.sourceMethodId;
+        CodeInfo info = CodeInfoTable.getFirstImageCodeInfo();
+        assert info.isNonNull() && methodId >= CodeInfoAccess.getMethodTableFirstId(info);
+        for (;;) {
+            CodeInfo next = CodeInfoAccess.getNextImageCodeInfo(info);
+            assert next.isNull() || CodeInfoAccess.getMethodTableFirstId(next) >= CodeInfoAccess.getMethodTableFirstId(info);
+            if (next.isNull() || methodId < CodeInfoAccess.getMethodTableFirstId(next)) {
+                break;
+            }
+            info = next;
+        }
+
+        boolean shortClass = NonmovableArrays.lengthOf(CodeInfoAccess.getClasses(info)) <= 0xffff;
+        boolean shortName = NonmovableArrays.lengthOf(CodeInfoAccess.getMemberNames(info)) <= 0xffff;
+        int classBytes = shortClass ? Short.BYTES : Integer.BYTES;
+        int entryBytes = classBytes + (shortName ? Short.BYTES : Integer.BYTES);
+
+        int methodIndex = methodId - CodeInfoAccess.getMethodTableFirstId(info);
+        NonmovableArray<Byte> methodEncodings = CodeInfoAccess.getMethodTable(info);
+        VMError.guarantee(methodIndex >= 0 && methodIndex < NonmovableArrays.lengthOf(methodEncodings) / entryBytes);
+
+        Pointer p = NonmovableArrays.addressOf(methodEncodings, methodIndex * entryBytes);
+        int classIndex = shortClass ? (p.readShort(0) & 0xffff) : p.readInt(0);
+        Class<?> sourceClass = NonmovableArrays.getObject(CodeInfoAccess.getClasses(info), classIndex);
+        int methodNameIndex = shortName ? (p.readShort(classBytes) & 0xffff) : p.readInt(classBytes);
+        String sourceMethodName = NonmovableArrays.getObject(CodeInfoAccess.getMemberNames(info), methodNameIndex);
+        result.setSourceClassAndMethodName(sourceClass, sourceMethodName);
+    }
+
     @AlwaysInline("Make IP-lookup loop call free")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static long advanceIP(CodeInfo info, long entryOffset, long entryIP) {
@@ -471,8 +506,8 @@ public final class CodeInfoDecoder {
     static final int FI_DEOPT_ENTRY_INDEX_S4 = 1;
     static final int FI_INFO_ONLY_INDEX_S4 = 2;
     /*
-     * Frame value for default frame info. A default frame info contains a method name and a class
-     * but without BCI and line number. It is present on each chunk beginning and method starts. See
+     * Frame value for default frame info. A default frame info contains a method id but without BCI
+     * and line number. It is present on each chunk beginning and method starts. See
      * FrameInfoEncoder#addDefaultDebugInfo for more information.
      */
     static final int FI_DEFAULT_INFO_INDEX_S4 = 3;

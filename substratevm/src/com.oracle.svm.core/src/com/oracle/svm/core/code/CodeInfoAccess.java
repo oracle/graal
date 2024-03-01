@@ -227,6 +227,7 @@ public final class CodeInfoAccess {
                             .add(NonmovableArrays.byteSizeOf(impl.getClasses()))
                             .add(NonmovableArrays.byteSizeOf(impl.getMemberNames()))
                             .add(NonmovableArrays.byteSizeOf(impl.getOtherStrings()))
+                            .add(NonmovableArrays.byteSizeOf(impl.getMethodTable()))
                             .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationStartOffsets()))
                             .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationEncodings()))
                             .add(NonmovableArrays.byteSizeOf(impl.getDeoptimizationObjectConstants()))
@@ -311,12 +312,14 @@ public final class CodeInfoAccess {
 
     @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed.")
     public static void setEncodings(CodeInfo info, NonmovableObjectArray<Object> objectConstants, NonmovableObjectArray<Class<?>> classes,
-                    NonmovableObjectArray<String> memberNames, NonmovableObjectArray<String> otherStrings) {
+                    NonmovableObjectArray<String> memberNames, NonmovableObjectArray<String> otherStrings, NonmovableArray<Byte> methodTable, int methodTableFirstId) {
         CodeInfoImpl impl = cast(info);
         impl.setObjectConstants(objectConstants);
         impl.setClasses(classes);
         impl.setMemberNames(memberNames);
         impl.setOtherStrings(otherStrings);
+        impl.setMethodTable(methodTable);
+        impl.setMethodTableFirstId(methodTableFirstId);
         if (!SubstrateUtil.HOSTED) {
             // notify the GC about the frame metadata that is now live
             Heap.getHeap().getRuntimeCodeInfoGCSupport().registerFrameMetadata(impl);
@@ -383,6 +386,16 @@ public final class CodeInfoAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static NonmovableObjectArray<String> getOtherStrings(CodeInfo info) {
         return cast(info).getOtherStrings();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static NonmovableArray<Byte> getMethodTable(CodeInfo info) {
+        return cast(info).getMethodTable();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static int getMethodTableFirstId(CodeInfo info) {
+        return cast(info).getMethodTableFirstId();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

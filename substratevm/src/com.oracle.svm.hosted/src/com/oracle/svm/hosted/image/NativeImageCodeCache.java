@@ -85,6 +85,7 @@ import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.target.EncodedRuntimeMetadataSupplier;
+import com.oracle.svm.core.sampler.CallStackFrameMethodInfo;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.DeadlockWatchdog;
@@ -310,7 +311,7 @@ public abstract class NativeImageCodeCache {
     protected void buildRuntimeMetadata(DebugContext debug, SnippetReflectionProvider snippetReflection, CFunctionPointer firstMethod, UnsignedWord codeSize) {
         // Build run-time metadata.
         HostedFrameInfoCustomization frameInfoCustomization = new HostedFrameInfoCustomization();
-        CodeInfoEncoder.Encoders encoders = new CodeInfoEncoder.Encoders();
+        CodeInfoEncoder.Encoders encoders = new CodeInfoEncoder.Encoders(true);
         HostedConstantAccess hostedConstantAccess = new HostedConstantAccess(snippetReflection);
         CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(frameInfoCustomization, encoders, hostedConstantAccess);
         DeadlockWatchdog watchdog = ImageSingletons.lookup(DeadlockWatchdog.class);
@@ -467,6 +468,10 @@ public abstract class NativeImageCodeCache {
         }
 
         HostedImageCodeInfo imageCodeInfo = installCodeInfo(snippetReflection, firstMethod, codeSize, codeInfoEncoder, runtimeMetadataEncoder);
+
+        if (ImageSingletons.contains(CallStackFrameMethodInfo.class)) {
+            ImageSingletons.lookup(CallStackFrameMethodInfo.class).initialize(encoders, hMetaAccess);
+        }
 
         if (CodeInfoEncoder.Options.CodeInfoEncoderCounters.getValue()) {
             System.out.println("****Start Code Info Encoder Counters****");

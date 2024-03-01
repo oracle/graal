@@ -212,6 +212,18 @@ interface CodeInfoImpl extends CodeInfo {
     void setOtherStrings(NonmovableObjectArray<String> otherStrings);
 
     @RawField
+    NonmovableArray<Byte> getMethodTable();
+
+    @RawField
+    void setMethodTable(NonmovableArray<Byte> methods);
+
+    @RawField
+    int getMethodTableFirstId();
+
+    @RawField
+    void setMethodTableFirstId(int methodId);
+
+    @RawField
     int getState();
 
     @RawField

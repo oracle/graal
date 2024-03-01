@@ -34,10 +34,12 @@ import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.code.CodeInfoEncoder.Encoders;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.internal.loader.BuiltinClassLoader;
 import jdk.vm.ci.code.Register;
@@ -46,6 +48,7 @@ import jdk.vm.ci.code.VirtualObject;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class FrameInfoQueryResult {
 
@@ -167,16 +170,13 @@ public class FrameInfoQueryResult {
     protected int numLocks;
     protected ValueInfo[] valueInfos;
     protected ValueInfo[][] virtualObjects;
-    protected Class<?> sourceClass;
-    protected String sourceMethodName;
+    protected int sourceMethodId;
     protected int sourceLineNumber;
-    protected int methodId;
 
-    // Index of sourceClass in CodeInfoDecoder.classes
-    protected int sourceClassIndex;
-
-    // Index of sourceMethodName in CodeInfoDecoder.memberNames
-    protected int sourceMethodNameIndex;
+    /* These are used only for constructing/encoding the code and frame info, or as cache. */
+    private ResolvedJavaMethod sourceMethod;
+    private Class<?> sourceClass;
+    private String sourceMethodName;
 
     @SuppressWarnings("this-escape")
     public FrameInfoQueryResult() {
@@ -196,12 +196,12 @@ public class FrameInfoQueryResult {
         numLocks = 0;
         valueInfos = null;
         virtualObjects = null;
-        sourceClass = null;
-        sourceMethodName = "";
+        sourceMethodId = 0;
         sourceLineNumber = -1;
-        methodId = -1;
-        sourceClassIndex = -1;
-        sourceMethodNameIndex = -1;
+
+        sourceMethod = null;
+        sourceClass = Encoders.INVALID_CLASS;
+        sourceMethodName = Encoders.INVALID_METHOD_NAME;
     }
 
     /**
@@ -336,29 +336,65 @@ public class FrameInfoQueryResult {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Class<?> getSourceClass() {
+        fillInSourceClassAndMethodNameIfMissing();
         return sourceClass;
     }
 
     public String getSourceClassName() {
-        return sourceClass != null ? sourceClass.getName() : "";
+        return (getSourceClass() != null) ? getSourceClass().getName() : "";
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public String getSourceMethodName() {
+        fillInSourceClassAndMethodNameIfMissing();
         return sourceMethodName;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private void fillInSourceClassAndMethodNameIfMissing() {
+        assert (sourceClass == Encoders.INVALID_CLASS) == isSourceMethodNameMissing();
+        if (sourceMethodId != 0 && sourceClass == Encoders.INVALID_CLASS) {
+            CodeInfoDecoder.fillInSourceClassAndMethodName(this);
+        }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "Identity comparison against sentinel string value")
+    private boolean isSourceMethodNameMissing() {
+        return sourceMethodName == Encoders.INVALID_METHOD_NAME;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    void setSourceClassAndMethodName(Class<?> clazz, String methodName) {
+        assert sourceClass == Encoders.INVALID_CLASS && isSourceMethodNameMissing();
+        this.sourceClass = clazz;
+        this.sourceMethodName = methodName;
+    }
+
+    ResolvedJavaMethod getSourceMethod() {
+        return sourceMethod;
+    }
+
+    void setSourceMethod(ResolvedJavaMethod method) {
+        assert method != null;
+        assert sourceMethod == null : sourceMethod;
+        sourceMethod = method;
+    }
+
     /**
-     * Returns the unique identification number for the method.
+     * Returns a unique identifier for the method which can be used to look it up in
+     * {@linkplain CodeInfoImpl#getMethodTable() method tables} of image code, taking into account a
+     * table's {@linkplain CodeInfoImpl#getMethodTableFirstId() starting id}. The identifier
+     * returned here is <em>different</em> from others, such as from {@code AnalysisMethod.getId()}.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int getMethodId() {
-        return methodId;
+    public int getSourceMethodId() {
+        return sourceMethodId;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public String getSourceFileName() {
-        return sourceClass != null ? DynamicHub.fromClass(sourceClass).getSourceFileName() : null;
+        return getSourceClass() != null ? DynamicHub.fromClass(getSourceClass()).getSourceFileName() : null;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -370,7 +406,7 @@ public class FrameInfoQueryResult {
      * Returns the name and source code location of the method.
      */
     public StackTraceElement getSourceReference() {
-        return getSourceReference(sourceClass, sourceMethodName, sourceLineNumber);
+        return getSourceReference(getSourceClass(), getSourceMethodName(), sourceLineNumber);
     }
 
     public static StackTraceElement getSourceReference(Class<?> sourceClass, String sourceMethodName, int sourceLineNumber) {
@@ -399,8 +435,8 @@ public class FrameInfoQueryResult {
     }
 
     public Log log(Log log) {
-        String className = sourceClass != null ? sourceClass.getName() : "";
-        String methodName = sourceMethodName != null ? sourceMethodName : "";
+        String className = (getSourceClass() != null) ? getSourceClass().getName() : "";
+        String methodName = (getSourceMethodName() != null) ? getSourceMethodName() : "";
         log.string(className);
         if (!(className.isEmpty() || methodName.isEmpty())) {
             log.string(".");
@@ -414,7 +450,7 @@ public class FrameInfoQueryResult {
         if (isNativeMethod()) {
             log.string("Native Method");
         } else {
-            String sourceFileName = sourceClass != null ? DynamicHub.fromClass(sourceClass).getSourceFileName() : null;
+            String sourceFileName = getSourceClass() != null ? DynamicHub.fromClass(getSourceClass()).getSourceFileName() : null;
             if (sourceFileName != null) {
                 if (sourceLineNumber >= 0) {
                     log.string(sourceFileName).string(":").signed(sourceLineNumber);
