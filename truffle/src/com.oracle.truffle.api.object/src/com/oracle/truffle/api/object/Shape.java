@@ -745,11 +745,9 @@ public abstract class Shape {
      *
      * @see Shape.Builder#layout(Class)
      * @since 0.8 or earlier
-     * @deprecated since 21.1. You can get the shape's layout class using {@link #getLayoutClass()}.
      */
-    @Deprecated(since = "21.1")
     @SuppressWarnings("deprecation")
-    public abstract Layout getLayout();
+    protected abstract Layout getLayout();
 
     /**
      * Get the shape's layout class.
