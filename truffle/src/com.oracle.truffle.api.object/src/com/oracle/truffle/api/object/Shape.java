@@ -619,14 +619,6 @@ public abstract class Shape {
     public abstract boolean isLeaf();
 
     /**
-     * @return the parent shape or {@code null} if none.
-     * @since 0.8 or earlier
-     * @deprecated no replacement, do not rely on a specific parent shape
-     */
-    @Deprecated(since = "20.2")
-    public abstract Shape getParent();
-
-    /**
      * Check whether the shape has a property with the given key.
      *
      * @since 0.8 or earlier

@@ -828,7 +828,6 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /** @since 0.17 or earlier */
-    @Override
     public final ShapeImpl getParent() {
         return parent;
     }
