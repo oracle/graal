@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.object;
 
-import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -1144,7 +1142,7 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /** @since 0.17 or earlier */
-    public abstract static class BaseAllocator extends Allocator implements LocationVisitor, Cloneable {
+    public abstract static class BaseAllocator extends Allocator implements LocationVisitor {
         /** @since 0.17 or earlier */
         protected final LayoutImpl layout;
         /** @since 0.17 or earlier */
@@ -1277,22 +1275,6 @@ public abstract class ShapeImpl extends Shape {
         /** @since 0.17 or earlier */
         public void visitPrimitiveField(int index, int count) {
             primitiveFieldSize = Math.max(primitiveFieldSize, index + count);
-        }
-
-        /** @since 0.17 or earlier */
-        @Override
-        public final BaseAllocator copy() {
-            return clone();
-        }
-
-        /** @since 0.17 or earlier */
-        @Override
-        protected final BaseAllocator clone() {
-            try {
-                return (BaseAllocator) super.clone();
-            } catch (CloneNotSupportedException e) {
-                throw shouldNotReachHere(e);
-            }
         }
 
         /** @since 0.17 or earlier */

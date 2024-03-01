@@ -934,13 +934,5 @@ public abstract class Shape {
          */
         @Deprecated(since = "22.2")
         public abstract Allocator addLocation(Location location);
-
-        /**
-         * Creates an copy of this allocator state.
-         *
-         * @since 0.8 or earlier
-         */
-        @Deprecated(since = "22.2")
-        public abstract Allocator copy();
     }
 }
