@@ -1215,11 +1215,24 @@ public abstract class ShapeImpl extends Shape {
             throw new UnsupportedOperationException();
         }
 
-        /** @since 0.17 or earlier */
+        /**
+         * Create a new location compatible with the given initial value.
+         *
+         * @param value the initial value this location is going to be assigned
+         * @param useFinal final location
+         * @param nonNull non-null location
+         * @since 0.17 or earlier
+         */
         @Deprecated
-        @Override
         protected Location locationForValue(Object value, boolean useFinal, boolean nonNull) {
             throw new UnsupportedOperationException();
+        }
+
+        /**
+         * Used by tests.
+         */
+        public Location locationForValue(Object value) {
+            return locationForValue(value, false, value != null);
         }
 
         /** @since 0.17 or earlier */
@@ -1233,10 +1246,23 @@ public abstract class ShapeImpl extends Shape {
             throw new UnsupportedOperationException();
         }
 
-        /** @since 0.17 or earlier */
-        @Override
+        /**
+         * Create a new location for a fixed type. It can only be assigned to values of this type.
+         *
+         * @param type the Java type this location must be compatible with (may be primitive)
+         * @param useFinal final location
+         * @param nonNull non-null location
+         * @since 0.17 or earlier
+         */
         protected Location locationForType(Class<?> type, boolean useFinal, boolean nonNull) {
             throw new UnsupportedOperationException();
+        }
+
+        /**
+         * Used by tests.
+         */
+        public final Location locationForType(Class<?> type) {
+            return locationForType(type, false, false);
         }
 
         /** @since 0.17 or earlier */

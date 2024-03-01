@@ -875,39 +875,6 @@ public abstract class Shape {
         protected Allocator() {
         }
 
-        /** @since 0.8 or earlier */
-        @Deprecated(since = "19.3")
-        protected abstract Location locationForValue(Object value, boolean useFinal, boolean nonNull);
-
-        /**
-         * Create a new location compatible with the given initial value.
-         *
-         * Use {@link #locationForType(Class)} or {@link Shape#defineProperty(Object, Object, int)}
-         * instead.
-         *
-         * @param value the initial value this location is going to be assigned
-         * @since 0.8 or earlier
-         */
-        @Deprecated(since = "20.2")
-        public final Location locationForValue(Object value) {
-            return locationForValue(value, false, value != null);
-        }
-
-        /** @since 0.8 or earlier */
-        @Deprecated(since = "22.2")
-        protected abstract Location locationForType(Class<?> type, boolean useFinal, boolean nonNull);
-
-        /**
-         * Create a new location for a fixed type. It can only be assigned to values of this type.
-         *
-         * @param type the Java type this location must be compatible with (may be primitive)
-         * @since 0.8 or earlier
-         */
-        @Deprecated(since = "22.2")
-        public final Location locationForType(Class<?> type) {
-            return locationForType(type, false, false);
-        }
-
         /**
          * Creates a new location from a constant value. The value is stored in the shape rather
          * than in the object.
