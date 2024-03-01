@@ -73,6 +73,7 @@ Run `native-image --help` for help on build options.
 * `--shared`: build a shared library
 * `--silent`: silence build output
 * `--static`: build a statically-linked executable (requires `libc` and `zlib` static libraries)
+* `--static-nolibc`: build statically linked executable with libc dynamically linked
 * `--target`: select the compilation target for `native-image` (in the `<OS>-<architecture>` format). It defaults to host's OS-architecture pair.
 * `--trace-class-initialization`: provide a comma-separated list of fully-qualified class names that a class initialization is traced for
 * `--trace-object-instantiation`: provide a comma-separated list of fully-qualified class names that an object instantiation is traced for
