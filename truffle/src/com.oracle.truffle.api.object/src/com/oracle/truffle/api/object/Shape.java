@@ -82,6 +82,9 @@ public abstract class Shape {
     static final int OBJECT_SHARED = 1 << 16;
     static final int OBJECT_PROPERTY_ASSUMPTIONS = 1 << 17;
 
+    // keep in sync with Flags.java
+    static final int PUT_CONSTANT = 1 << 5;
+
     /**
      * Creates a new initial shape builder.
      *
@@ -415,7 +418,7 @@ public abstract class Shape {
         private final Shape baseShape;
         private Object dynamicType;
         private int shapeFlags;
-        private EconomicMap<Object, Property> properties;
+        private EconomicMap<Object, Pair<Object, Integer>> properties;
 
         DerivedBuilder(Shape baseShape) {
             this.baseShape = baseShape;
@@ -473,8 +476,7 @@ public abstract class Shape {
             if (baseShape.getProperty(key) != null || properties.containsKey(key)) {
                 throw new IllegalArgumentException(String.format("Property already exists: %s.", key));
             }
-            Location location = baseShape.allocator().constantLocation(value);
-            properties.put(key, Property.create(key, location, flags));
+            properties.put(key, Pair.create(value, flags));
             return this;
         }
 
@@ -495,8 +497,9 @@ public abstract class Shape {
                 derivedShape = derivedShape.setFlags(shapeFlags);
             }
             if (properties != null) {
-                for (Property property : properties.getValues()) {
-                    derivedShape = derivedShape.addProperty(property);
+                var cursor = properties.getEntries();
+                while (cursor.advance()) {
+                    derivedShape = derivedShape.defineConstantProperty(cursor.getKey(), cursor.getValue().getLeft(), cursor.getValue().getRight());
                 }
             }
             return derivedShape;
@@ -535,7 +538,24 @@ public abstract class Shape {
      * @return the shape after defining the property
      * @since 0.8 or earlier
      */
-    protected abstract Shape defineProperty(Object key, Object value, int flags);
+    protected abstract Shape defineProperty(Object key, Object value, int propertyFlags);
+
+    /**
+     * Add or change property in the map, yielding a new or cached Shape object.
+     *
+     * @return the shape after defining the property
+     * @since 24.1
+     */
+    protected abstract Shape defineProperty(Object key, Object value, int propertyFlags, int putFlags);
+
+    /**
+     * Add or replace shape-constant property.
+     *
+     * @return the shape after defining the property
+     */
+    final Shape defineConstantProperty(Object key, Object value, int propertyFlags) {
+        return defineProperty(key, value, propertyFlags, PUT_CONSTANT);
+    }
 
     /**
      * An {@link Iterable} over the shape's properties in insertion order.
@@ -672,13 +692,6 @@ public abstract class Shape {
         CompilerAsserts.neverPartOfCompilation();
         throw CompilerDirectives.shouldNotReachHere();
     }
-
-    /**
-     * Obtain an {@link Allocator} instance for the purpose of allocating locations.
-     *
-     * @since 0.8 or earlier
-     */
-    protected abstract Allocator allocator();
 
     /**
      * Returns the number of properties in this shape.
@@ -857,49 +870,5 @@ public abstract class Shape {
             return null;
         }
         return new PropertyGetter(this, property);
-    }
-
-    /**
-     * Utility class to allocate locations in an object layout.
-     *
-     * @since 0.8 or earlier
-     * @deprecated since 22.1, without replacement. Property locations are automatically allocated
-     *             by {@link DynamicObjectLibrary} methods; there's no need for manual allocation.
-     */
-    @Deprecated(since = "22.2")
-    public abstract static class Allocator {
-        /**
-         * @since 0.8 or earlier
-         */
-        @Deprecated(since = "22.2")
-        protected Allocator() {
-        }
-
-        /**
-         * Creates a new location from a constant value. The value is stored in the shape rather
-         * than in the object.
-         *
-         * @since 0.8 or earlier
-         */
-        @Deprecated(since = "22.2")
-        public abstract Location constantLocation(Object value);
-
-        /**
-         * Creates a new declared location with a default value. A declared location only assumes a
-         * type after the first set (initialization).
-         *
-         * @since 0.8 or earlier
-         */
-        @Deprecated(since = "22.2")
-        public abstract Location declaredLocation(Object value);
-
-        /**
-         * Reserves space for the given location, so that it will not be available to subsequently
-         * allocated locations.
-         *
-         * @since 0.8 or earlier
-         */
-        @Deprecated(since = "22.2")
-        public abstract Allocator addLocation(Location location);
     }
 }

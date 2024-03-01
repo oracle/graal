@@ -589,6 +589,12 @@ public abstract class ShapeImpl extends Shape {
         return getLayoutStrategy().defineProperty(this, key, value, propertyFlags);
     }
 
+    @TruffleBoundary
+    @Override
+    protected ShapeImpl defineProperty(Object key, Object value, int propertyFlags, int putFlags) {
+        return getLayoutStrategy().defineProperty(this, key, value, propertyFlags, putFlags);
+    }
+
     /** @since 0.17 or earlier */
     protected ShapeImpl cloneRoot(ShapeImpl from, Object newSharedData) {
         return createShape(from.layout, newSharedData, null, from.objectType, from.propertyMap, null, from.allocator(), from.flags);
@@ -849,7 +855,6 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /** @since 0.17 or earlier */
-    @Override
     public final BaseAllocator allocator() {
         return getLayoutStrategy().createAllocator(this);
     }
@@ -1142,7 +1147,7 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /** @since 0.17 or earlier */
-    public abstract static class BaseAllocator extends Allocator implements LocationVisitor {
+    public abstract static class BaseAllocator implements LocationVisitor {
         /** @since 0.17 or earlier */
         protected final LayoutImpl layout;
         /** @since 0.17 or earlier */
@@ -1201,16 +1206,26 @@ public abstract class ShapeImpl extends Shape {
         @Deprecated
         protected abstract Location newBooleanLocation(boolean useFinal);
 
-        /** @since 0.17 or earlier */
+        /**
+         * Creates a new location from a constant value. The value is stored in the shape rather
+         * than in the object.
+         *
+         * @param value the constant value
+         * @since 0.17 or earlier
+         */
         @Deprecated
-        @Override
         public Location constantLocation(Object value) {
             throw new UnsupportedOperationException();
         }
 
-        /** @since 0.17 or earlier */
+        /**
+         * Creates a new declared location with a default value. A declared location only assumes a
+         * type after the first set (initialization).
+         *
+         * @param value the default value
+         * @since 0.17 or earlier
+         */
         @Deprecated
-        @Override
         public Location declaredLocation(Object value) {
             throw new UnsupportedOperationException();
         }
@@ -1276,8 +1291,12 @@ public abstract class ShapeImpl extends Shape {
             return location0;
         }
 
-        /** @since 0.17 or earlier */
-        @Override
+        /**
+         * Reserves space for the given location, so that it will not be available to subsequently
+         * allocated locations.
+         *
+         * @since 0.17 or earlier
+         */
         public BaseAllocator addLocation(Location location) {
             advance(location);
             return this;
