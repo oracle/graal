@@ -632,8 +632,7 @@ public abstract class NFATraversalRegexASTVisitor {
                         }
                         insideEmptyGuardGroup.remove(group);
                     }
-                } else if (ast.getOptions().getFlavor().failingEmptyChecksDontBacktrack() && pathIsGroupExit(lastVisited) && group.hasQuantifier() && group.getQuantifier().hasZeroWidthIndex() &&
-                                (group.getFirstAlternative().isExpandedQuantifier() || group.getLastAlternative().isExpandedQuantifier())) {
+                } else if (ast.getOptions().getFlavor().failingEmptyChecksDontBacktrack() && pathIsGroupExit(lastVisited) && isZeroWidthGroup(group)) {
                     // In Ruby, Python and OracleDB, when we finish an iteration of a loop, there is
                     // an empty check. If we pass the empty check, we return to the beginning of the
                     // loop where we get to make a non-deterministic choice whether we want to start
@@ -649,7 +648,10 @@ public abstract class NFATraversalRegexASTVisitor {
                     if (shouldRetreat) {
                         return retreat();
                     }
-                    return advanceTerm(group);
+                    // When we expand quantifiers, we wrap them in a group. This lets us escape past
+                    // the expansion of the quantifier even in cases when we are in the mandatory
+                    // prefix (e.g. empty-check fails in the first A in (AA(A(A|)|))).
+                    return advanceTerm(group.getParent().getParent().asGroup());
                 } else {
                     if (pathIsGroupExit(lastVisited)) {
                         popGroupExit(group);
@@ -818,6 +820,15 @@ public abstract class NFATraversalRegexASTVisitor {
         }
     }
 
+    /**
+     * Tests whether {@code group} is a group that has an empty-check implemented via
+     * enterZeroWidth/exitZeroWidth.
+     */
+    private boolean isZeroWidthGroup(Group group) {
+        return group.hasQuantifier() && group.getQuantifier().hasZeroWidthIndex() && ((ast.getOptions().getFlavor().failingEmptyChecksDontBacktrack() && group.isUnrolledQuantifier()) ||
+                        group.getFirstAlternative().isExpandedQuantifier() || group.getLastAlternative().isExpandedQuantifier());
+    }
+
     /// Pushing and popping group elements to and from the path
     private void pushGroupEnter(Group group, int groupAltIndex) {
         curPath.add(createPathElement(group) | (groupAltIndex << PATH_GROUP_ALT_INDEX_OFFSET) | PATH_GROUP_ACTION_ENTER);
@@ -841,7 +852,7 @@ public abstract class NFATraversalRegexASTVisitor {
                         pushQuantifierGuard(QuantifierGuard.createEnter(quantifier));
                     }
                 }
-                if (quantifier.hasZeroWidthIndex() && (group.getFirstAlternative().isExpandedQuantifier() || group.getLastAlternative().isExpandedQuantifier())) {
+                if (isZeroWidthGroup(group)) {
                     pushQuantifierGuard(QuantifierGuard.createEnterZeroWidth(quantifier));
                 }
             }
@@ -891,9 +902,9 @@ public abstract class NFATraversalRegexASTVisitor {
                 if (quantifier.hasIndex()) {
                     quantifierGuardsLoop[quantifier.getIndex()]++;
                 }
-                if (quantifier.hasZeroWidthIndex() && (group.getFirstAlternative().isExpandedQuantifier() || group.getLastAlternative().isExpandedQuantifier())) {
-                    // exitZeroWidth quantifier guards are only used in flavors which can have empty
-                    // loop iterations. Otherwise, checkEmptyMatch is used.
+                if (isZeroWidthGroup(group)) {
+                    // exitZeroWidth quantifier guards are primarily used in flavors which can have
+                    // empty loop iterations. Otherwise, checkEmptyMatch is used.
                     if (ast.getOptions().getFlavor().canHaveEmptyLoopIterations() || !root.isCharacterClass()) {
                         pushQuantifierGuard(QuantifierGuard.createExitZeroWidth(quantifier));
                     }
@@ -981,6 +992,13 @@ public abstract class NFATraversalRegexASTVisitor {
 
     private void pushGroupEscape(Group group) {
         curPath.add(createPathElement(group) | PATH_GROUP_ACTION_ESCAPE);
+        // Capture groups
+        if (group.isCapturing()) {
+            captureGroupUpdate(forward ? group.getBoundaryIndexEnd() : group.getBoundaryIndexStart());
+            if (ast.getOptions().getFlavor().usesLastGroupResultField() && group.getGroupNumber() != 0) {
+                lastGroupUpdate(group.getGroupNumber());
+            }
+        }
         // Quantifier guards
         if (useQuantifierGuards()) {
             if (group.hasQuantifier()) {
@@ -988,7 +1006,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 if (quantifier.hasIndex()) {
                     quantifierGuardsExited[quantifier.getIndex()]++;
                 }
-                if (quantifier.hasZeroWidthIndex() && (group.getFirstAlternative().isExpandedQuantifier() || group.getLastAlternative().isExpandedQuantifier())) {
+                if (isZeroWidthGroup(group)) {
                     pushQuantifierGuard(QuantifierGuard.createEscapeZeroWidth(quantifier));
                 }
             }
@@ -1010,6 +1028,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 }
             }
         }
+        popCaptureGroupEvents();
     }
 
     /// Capture group data handling
