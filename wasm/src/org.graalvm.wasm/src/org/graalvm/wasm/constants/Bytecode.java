@@ -501,6 +501,12 @@ public class Bytecode {
     public static final int VECTOR_F64X2_LE = 0x4B;
     public static final int VECTOR_F64X2_GE = 0x4C;
 
+    public static final int VECTOR_V128_NOT = 0x4D;
+    public static final int VECTOR_V128_AND = 0x4E;
+    public static final int VECTOR_V128_ANDNOT = 0x4F;
+    public static final int VECTOR_V128_OR = 0x50;
+    public static final int VECTOR_V128_XOR = 0x51;
+    public static final int VECTOR_V128_BITSELECT = 0x52;
     public static final int VECTOR_V128_ANY_TRUE = 0x53;
 
     public static final int VECTOR_I8X16_ABS = 0x60;

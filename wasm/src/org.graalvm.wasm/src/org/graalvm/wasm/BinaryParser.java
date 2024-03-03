@@ -1826,6 +1826,7 @@ public class BinaryParser extends BinaryStreamParser {
                         state.push(I32_TYPE);
                         state.addInstruction(vectorOpcode);
                         break;
+                    case Instructions.VECTOR_V128_NOT:
                     case Instructions.VECTOR_I8X16_ABS:
                     case Instructions.VECTOR_I8X16_NEG:
                     case Instructions.VECTOR_I8X16_POPCNT:
@@ -1921,6 +1922,10 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.VECTOR_F64X2_GT:
                     case Instructions.VECTOR_F64X2_LE:
                     case Instructions.VECTOR_F64X2_GE:
+                    case Instructions.VECTOR_V128_AND:
+                    case Instructions.VECTOR_V128_ANDNOT:
+                    case Instructions.VECTOR_V128_OR:
+                    case Instructions.VECTOR_V128_XOR:
                     case Instructions.VECTOR_I8X16_NARROW_I16X8_S:
                     case Instructions.VECTOR_I8X16_NARROW_I16X8_U:
                     case Instructions.VECTOR_I8X16_ADD:
@@ -2006,6 +2011,13 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.VECTOR_I64X2_SHR_S:
                     case Instructions.VECTOR_I64X2_SHR_U:
                         state.popChecked(I32_TYPE);
+                        state.popChecked(V128_TYPE);
+                        state.push(V128_TYPE);
+                        state.addInstruction(vectorOpcode);
+                        break;
+                    case Instructions.VECTOR_V128_BITSELECT:
+                        state.popChecked(V128_TYPE);
+                        state.popChecked(V128_TYPE);
                         state.popChecked(V128_TYPE);
                         state.push(V128_TYPE);
                         state.addInstruction(vectorOpcode);
