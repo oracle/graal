@@ -1813,6 +1813,28 @@ public class BinaryParser extends BinaryStreamParser {
                         state.push(V128_TYPE);
                         state.addInstruction(Bytecode.VECTOR_V128_CONST, value);
                         break;
+                    case Instructions.VECTOR_I8X16_SPLAT:
+                    case Instructions.VECTOR_I16X8_SPLAT:
+                    case Instructions.VECTOR_I32X4_SPLAT:
+                        state.popChecked(I32_TYPE);
+                        state.push(V128_TYPE);
+                        state.addInstruction(vectorOpcode);
+                        break;
+                    case Instructions.VECTOR_I64X2_SPLAT:
+                        state.popChecked(I64_TYPE);
+                        state.push(V128_TYPE);
+                        state.addInstruction(vectorOpcode);
+                        break;
+                    case Instructions.VECTOR_F32X4_SPLAT:
+                        state.popChecked(F32_TYPE);
+                        state.push(V128_TYPE);
+                        state.addInstruction(vectorOpcode);
+                        break;
+                    case Instructions.VECTOR_F64X2_SPLAT:
+                        state.popChecked(F64_TYPE);
+                        state.push(V128_TYPE);
+                        state.addInstruction(vectorOpcode);
+                        break;
                     case Instructions.VECTOR_V128_ANY_TRUE:
                     case Instructions.VECTOR_I8X16_ALL_TRUE:
                     case Instructions.VECTOR_I8X16_BITMASK:

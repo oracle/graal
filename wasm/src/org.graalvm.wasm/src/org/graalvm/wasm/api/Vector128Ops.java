@@ -46,12 +46,55 @@ import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import org.graalvm.wasm.constants.Bytecode;
 
+import java.util.Arrays;
+
 public class Vector128Ops {
 
     // Checkstyle: stop method name check
 
     public static byte[] v128_const(byte[] vec) {
         return vec;
+    }
+
+    public static byte[] i8x16_splat(byte x) {
+        byte[] result = new byte[16];
+        Arrays.fill(result, x);
+        return result;
+    }
+
+    public static byte[] i16x8_splat(short x) {
+        short[] result = new short[8];
+        CompilerDirectives.ensureVirtualized(result);
+        Arrays.fill(result, x);
+        return Vector128.shortsAsBytes(result);
+    }
+
+    public static byte[] i32x4_splat(int x) {
+        int[] result = new int[4];
+        CompilerDirectives.ensureVirtualized(result);
+        Arrays.fill(result, x);
+        return Vector128.intsAsBytes(result);
+    }
+
+    public static byte[] i64x2_splat(long x) {
+        long[] result = new long[2];
+        CompilerDirectives.ensureVirtualized(result);
+        Arrays.fill(result, x);
+        return Vector128.longsAsBytes(result);
+    }
+
+    public static byte[] f32x4_splat(float x) {
+        float[] result = new float[4];
+        CompilerDirectives.ensureVirtualized(result);
+        Arrays.fill(result, x);
+        return Vector128.floatsAsBytes(result);
+    }
+
+    public static byte[] f64x2_splat(double x) {
+        double[] result = new double[2];
+        CompilerDirectives.ensureVirtualized(result);
+        Arrays.fill(result, x);
+        return Vector128.doublesAsBytes(result);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)

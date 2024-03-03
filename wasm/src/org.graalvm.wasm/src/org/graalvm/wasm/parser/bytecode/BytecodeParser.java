@@ -907,6 +907,12 @@ public abstract class BytecodeParser {
                         case Bytecode.VECTOR_V128_CONST:
                             offset += 16;
                             break;
+                        case Bytecode.VECTOR_I8X16_SPLAT:
+                        case Bytecode.VECTOR_I16X8_SPLAT:
+                        case Bytecode.VECTOR_I32X4_SPLAT:
+                        case Bytecode.VECTOR_I64X2_SPLAT:
+                        case Bytecode.VECTOR_F32X4_SPLAT:
+                        case Bytecode.VECTOR_F64X2_SPLAT:
                         case Bytecode.VECTOR_I8X16_EQ:
                         case Bytecode.VECTOR_I8X16_NE:
                         case Bytecode.VECTOR_I8X16_LT_S:

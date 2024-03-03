@@ -2640,6 +2640,42 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private static int executeVector(VirtualFrame frame, int curStackPointer, int vectorOpcode) {
         int stackPointer = curStackPointer;
         switch (vectorOpcode) {
+            case Bytecode.VECTOR_I8X16_SPLAT: {
+                int x = popInt(frame, --stackPointer);
+                Vector128 result = Vector128.ofBytes(Vector128Ops.i8x16_splat((byte) x));
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_I16X8_SPLAT: {
+                int x = popInt(frame, --stackPointer);
+                Vector128 result = Vector128.ofBytes(Vector128Ops.i16x8_splat((short) x));
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_I32X4_SPLAT: {
+                int x = popInt(frame, --stackPointer);
+                Vector128 result = Vector128.ofBytes(Vector128Ops.i32x4_splat(x));
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_I64X2_SPLAT: {
+                long x = popLong(frame, --stackPointer);
+                Vector128 result = Vector128.ofBytes(Vector128Ops.i64x2_splat(x));
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_F32X4_SPLAT: {
+                float x = popFloat(frame, --stackPointer);
+                Vector128 result = Vector128.ofBytes(Vector128Ops.f32x4_splat(x));
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_F64X2_SPLAT: {
+                double x = popDouble(frame, --stackPointer);
+                Vector128 result = Vector128.ofBytes(Vector128Ops.f64x2_splat(x));
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
             case Bytecode.VECTOR_I8X16_EQ:
             case Bytecode.VECTOR_I8X16_NE:
             case Bytecode.VECTOR_I8X16_LT_S:
