@@ -43,6 +43,9 @@ import java.security.Provider;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.WeakHashMap;
+import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.Platform;
@@ -55,6 +58,7 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -259,13 +263,33 @@ final class ProviderUtil {
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_ProviderVerifier {
 
-    @Substitute
-    static boolean isTrustedCryptoProvider(Provider provider) {
-        /*
-         * This is just used for fast-path checks, so returning false is a safe default. The
-         * original method accesses the Java home directory.
-         */
-        return false;
+    @TargetElement(onlyWith = ProviderVerifierJavaHomeFieldPresent.class) //
+    @Alias @InjectAccessors(ProviderVerifierJavaHomeAccessors.class) //
+    static String javaHome;
+
+}
+
+class ProviderVerifierJavaHomeFieldPresent implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        Class<?> providerVerifier = Objects.requireNonNull(ReflectionUtil.lookupClass(false, "javax.crypto.ProviderVerifier"));
+        return ReflectionUtil.lookupField(true, providerVerifier, "javaHome") != null;
+    }
+}
+
+@SuppressWarnings("unused")
+class ProviderVerifierJavaHomeAccessors {
+    private static String javaHome;
+
+    private static String getJavaHome() {
+        if (javaHome == null) {
+            javaHome = System.getProperty("java.home", "");
+        }
+        return javaHome;
+    }
+
+    private static void setJavaHome(String newJavaHome) {
+        javaHome = newJavaHome;
     }
 }
 
@@ -296,20 +320,12 @@ final class Target_javax_crypto_JceSecurity {
     private static Map<Provider, Object> verifyingProviders;
 
     @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
+    private static Map<Class<?>, URL> codeBaseCacheRef = new WeakHashMap<>();
+
+    @Alias //
     @TargetElement //
     private static ReferenceQueue<Object> queue;
-
-    @Substitute
-    static void verifyProvider(URL codeBase, Provider p) {
-        throw VMError.shouldNotReachHere("javax.crypto.JceSecurity.verifyProviderJar(URL, Provider) is reached at runtime. " +
-                        "This should not happen. The contents of JceSecurity.verificationResults " +
-                        "are computed and cached at image build time.");
-    }
-
-    @Substitute
-    static URL getCodeBase(final Class<?> clazz) {
-        throw VMError.unsupportedFeature("Trying to access the code base of " + clazz + ". ");
-    }
 
     @Substitute
     static Exception getVerificationResult(Provider p) {
