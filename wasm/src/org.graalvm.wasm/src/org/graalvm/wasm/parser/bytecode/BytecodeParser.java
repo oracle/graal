@@ -1090,8 +1090,14 @@ public abstract class BytecodeParser {
                         case Bytecode.VECTOR_F64X2_PMAX:
                         case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S:
                         case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U:
+                        case Bytecode.VECTOR_F32X4_CONVERT_I32X4_S:
+                        case Bytecode.VECTOR_F32X4_CONVERT_I32X4_U:
                         case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO:
                         case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO:
+                        case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_S:
+                        case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_U:
+                        case Bytecode.VECTOR_F32X4_DEMOTE_F64X2_ZERO:
+                        case Bytecode.VECTOR_F64X2_PROMOTE_LOW_F32X4:
                             break;
                         default:
                             throw CompilerDirectives.shouldNotReachHere();

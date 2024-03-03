@@ -3062,10 +3062,36 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 pushVector128(frame, stackPointer++, result);
                 break;
             }
+            case Bytecode.VECTOR_F32X4_CONVERT_I32X4_S:
+            case Bytecode.VECTOR_F32X4_CONVERT_I32X4_U: {
+                Vector128 x = popVector128(frame, --stackPointer);
+                Vector128 result = Vector128.ofBytes(Vector128Ops.f32x4_convert_i32x4(x.asBytes(), vectorOpcode));
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
             case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO:
             case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO: {
                 Vector128 x = popVector128(frame, --stackPointer);
                 Vector128 result = Vector128.ofBytes(Vector128Ops.i32x4_trunc_sat_f64x2(x.asBytes(), vectorOpcode));
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_S:
+            case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_U: {
+                Vector128 x = popVector128(frame, --stackPointer);
+                Vector128 result = Vector128.ofBytes(Vector128Ops.f64x2_convert_low_i32x4(x.asBytes(), vectorOpcode));
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_F32X4_DEMOTE_F64X2_ZERO: {
+                Vector128 x = popVector128(frame, --stackPointer);
+                Vector128 result = Vector128.ofBytes(Vector128Ops.f32x4_demote_f64x2_zero(x.asBytes()));
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_F64X2_PROMOTE_LOW_F32X4: {
+                Vector128 x = popVector128(frame, --stackPointer);
+                Vector128 result = Vector128.ofBytes(Vector128Ops.f64x2_promote_low_f32x4(x.asBytes()));
                 pushVector128(frame, stackPointer++, result);
                 break;
             }
