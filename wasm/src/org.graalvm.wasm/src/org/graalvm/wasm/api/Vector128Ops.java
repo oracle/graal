@@ -823,6 +823,22 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static byte[] f32x4_convert_i32x4(byte[] vecX, int vectorOpcode) {
+        int[] x = Vector128.bytesAsInts(vecX);
+        float[] result = new float[4];
+        CompilerDirectives.ensureVirtualized(x);
+        CompilerDirectives.ensureVirtualized(result);
+        for (int i = 0; i < result.length; i++) {
+            result[i] = switch (vectorOpcode) {
+                case Bytecode.VECTOR_F32X4_CONVERT_I32X4_S -> x[i];
+                case Bytecode.VECTOR_F32X4_CONVERT_I32X4_U -> Integer.toUnsignedLong(x[i]);
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
+        return Vector128.floatsAsBytes(result);
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] i32x4_trunc_sat_f64x2(byte[] vecX, int vectorOpcode) {
         double[] x = Vector128.bytesAsDoubles(vecX);
         int[] result = new int[4];
@@ -836,6 +852,46 @@ public class Vector128Ops {
             };
         }
         return Vector128.intsAsBytes(result);
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static byte[] f64x2_convert_low_i32x4(byte[] vecX, int vectorOpcode) {
+        int[] x = Vector128.bytesAsInts(vecX);
+        double[] result = new double[2];
+        CompilerDirectives.ensureVirtualized(x);
+        CompilerDirectives.ensureVirtualized(result);
+        for (int i = 0; i < result.length; i++) {
+            result[i] = switch (vectorOpcode) {
+                case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_S -> x[i];
+                case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_U -> Integer.toUnsignedLong(x[i]);
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
+        return Vector128.doublesAsBytes(result);
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static byte[] f32x4_demote_f64x2_zero(byte[] vecX) {
+        double[] x = Vector128.bytesAsDoubles(vecX);
+        float[] result = new float[4];
+        CompilerDirectives.ensureVirtualized(x);
+        CompilerDirectives.ensureVirtualized(result);
+        for (int i = 0; i < x.length; i++) {
+            result[i] = (float) x[i];
+        }
+        return Vector128.floatsAsBytes(result);
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static byte[] f64x2_promote_low_f32x4(byte[] vecX) {
+        float[] x = Vector128.bytesAsFloats(vecX);
+        double[] result = new double[2];
+        CompilerDirectives.ensureVirtualized(x);
+        CompilerDirectives.ensureVirtualized(result);
+        for (int i = 0; i < result.length; i++) {
+            result[i] = x[i];
+        }
+        return Vector128.doublesAsBytes(result);
     }
 
     // Checkstyle: resume method name check

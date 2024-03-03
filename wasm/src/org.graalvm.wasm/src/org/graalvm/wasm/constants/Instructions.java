@@ -546,8 +546,14 @@ public final class Instructions {
 
     public static final int VECTOR_I32X4_TRUNC_SAT_F32X4_S = 0xF8;
     public static final int VECTOR_I32X4_TRUNC_SAT_F32X4_U = 0xF9;
+    public static final int VECTOR_F32X4_CONVERT_I32X4_S = 0xFA;
+    public static final int VECTOR_F32X4_CONVERT_I32X4_U = 0xFB;
     public static final int VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO = 0xFC;
     public static final int VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO = 0xFD;
+    public static final int VECTOR_F64X2_CONVERT_LOW_I32X4_S = 0xFE;
+    public static final int VECTOR_F64X2_CONVERT_LOW_I32X4_U = 0xFF;
+    public static final int VECTOR_F32X4_DEMOTE_F64X2_ZERO = 0x5E;
+    public static final int VECTOR_F64X2_PROMOTE_LOW_F32X4 = 0x5F;
 
     private static String[] decodingTable = new String[256];
 
