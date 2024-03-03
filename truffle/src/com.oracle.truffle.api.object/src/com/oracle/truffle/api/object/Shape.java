@@ -537,8 +537,11 @@ public abstract class Shape {
      *
      * @return the shape after defining the property
      * @since 0.8 or earlier
+     * @deprecated Use {@link DynamicObjectLibrary#put(DynamicObject, Object, Object)} or
+     *             {@link DynamicObjectLibrary#putWithFlags(DynamicObject, Object, Object, int)}.
      */
-    protected abstract Shape defineProperty(Object key, Object value, int propertyFlags);
+    @Deprecated(since = "22.2")
+    public abstract Shape defineProperty(Object key, Object value, int propertyFlags);
 
     /**
      * Add or change property in the map, yielding a new or cached Shape object.
