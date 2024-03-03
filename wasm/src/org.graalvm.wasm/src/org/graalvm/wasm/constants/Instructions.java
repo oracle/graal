@@ -350,6 +350,13 @@ public final class Instructions {
     public static final int VECTOR_V128_LOAD = 0x00;
     public static final int VECTOR_V128_CONST = 0x0C;
 
+    public static final int VECTOR_I8X16_SPLAT = 0x0F;
+    public static final int VECTOR_I16X8_SPLAT = 0x10;
+    public static final int VECTOR_I32X4_SPLAT = 0x11;
+    public static final int VECTOR_I64X2_SPLAT = 0x12;
+    public static final int VECTOR_F32X4_SPLAT = 0x13;
+    public static final int VECTOR_F64X2_SPLAT = 0x14;
+
     public static final int VECTOR_I8X16_EQ = 0x23;
     public static final int VECTOR_I8X16_NE = 0x24;
     public static final int VECTOR_I8X16_LT_S = 0x25;
