@@ -302,7 +302,7 @@ public class Vector128Ops {
             result[i] = (byte) switch (vectorOpcode) {
                 case Bytecode.VECTOR_I8X16_SHL -> x[i] << shiftMod;
                 case Bytecode.VECTOR_I8X16_SHR_S -> x[i] >> shiftMod;
-                case Bytecode.VECTOR_I8X16_SHR_U -> x[i] >>> shiftMod;
+                case Bytecode.VECTOR_I8X16_SHR_U -> Byte.toUnsignedInt(x[i]) >>> shiftMod;
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
@@ -423,7 +423,7 @@ public class Vector128Ops {
             result[i] = (short) switch (vectorOpcode) {
                 case Bytecode.VECTOR_I16X8_SHL -> x[i] << shiftMod;
                 case Bytecode.VECTOR_I16X8_SHR_S -> x[i] >> shiftMod;
-                case Bytecode.VECTOR_I16X8_SHR_U -> x[i] >>> shiftMod;
+                case Bytecode.VECTOR_I16X8_SHR_U -> Short.toUnsignedInt(x[i]) >>> shiftMod;
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
