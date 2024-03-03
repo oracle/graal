@@ -2248,15 +2248,6 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     break;
                 }
-                case Instructions.VECTOR_V128_CONST: {
-                    final Vector128 value = readUnsignedInt128();
-                    state.push(V128_TYPE);
-                    state.addInstruction(Bytecode.VECTOR_V128_CONST, value);
-                    if (calculable) {
-                        stack.add(value);
-                    }
-                    break;
-                }
                 case Instructions.REF_NULL:
                     checkBulkMemoryAndRefTypesSupport(opcode);
                     final byte type = readRefType();
@@ -2330,6 +2321,25 @@ public class BinaryParser extends BinaryStreamParser {
                         });
                     }
                     break;
+                case Instructions.VECTOR:
+                    checkSIMDSupport();
+                    int vectorOpcode = read1() & 0xFF;
+                    state.addVectorFlag();
+                    switch (vectorOpcode) {
+                        case Instructions.VECTOR_V128_CONST: {
+                            final Vector128 value = readUnsignedInt128();
+                            state.push(V128_TYPE);
+                            state.addInstruction(Bytecode.VECTOR_V128_CONST, value);
+                            if (calculable) {
+                                stack.add(value);
+                            }
+                            break;
+                        }
+                        default:
+                            fail(Failure.TYPE_MISMATCH, "Invalid instruction for constant expression: 0x%02X 0x%02X", opcode, vectorOpcode);
+                            break;
+                    }
+                    break;
                 default:
                     fail(Failure.TYPE_MISMATCH, "Invalid instruction for constant expression: 0x%02X", opcode);
                     break;
@@ -2374,8 +2384,6 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.I64_CONST:
                 case Instructions.F32_CONST:
                 case Instructions.F64_CONST:
-                case Instructions.VECTOR_V128_CONST:
-                    throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid constant expression for table elem expression: 0x%02X", opcode);
                 case Instructions.I32_ADD:
                 case Instructions.I32_SUB:
                 case Instructions.I32_MUL:
@@ -2409,6 +2417,15 @@ public class BinaryParser extends BinaryStreamParser {
                     assertByteEqual(valueType, elemType, Failure.TYPE_MISMATCH);
                     functionIndices[index] = ((long) I32_TYPE << 32) | globalIndex;
                     break;
+                case Instructions.VECTOR:
+                    checkSIMDSupport();
+                    int vectorOpcode = read1() & 0xFF;
+                    switch (vectorOpcode) {
+                        case Instructions.VECTOR_V128_CONST:
+                            throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid constant expression for table elem expression: 0x%02X 0x%02X", opcode, vectorOpcode);
+                        default:
+                            throw WasmException.format(Failure.ILLEGAL_OPCODE, "Illegal opcode for constant expression: 0x%02X 0x%02X", opcode, vectorOpcode);
+                    }
                 default:
                     throw WasmException.format(Failure.ILLEGAL_OPCODE, "Illegal opcode for constant expression: 0x%02X", opcode);
             }
