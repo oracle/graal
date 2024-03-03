@@ -67,6 +67,27 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static byte[] i8x16_relop(byte[] x, byte[] y, int vectorOpcode) {
+        byte[] result = new byte[16];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I8X16_EQ -> x[i] == y[i];
+                case Bytecode.VECTOR_I8X16_NE -> x[i] != y[i];
+                case Bytecode.VECTOR_I8X16_LT_S -> x[i] < y[i];
+                case Bytecode.VECTOR_I8X16_LT_U -> Byte.compareUnsigned(x[i], y[i]) < 0;
+                case Bytecode.VECTOR_I8X16_GT_S -> x[i] > y[i];
+                case Bytecode.VECTOR_I8X16_GT_U -> Byte.compareUnsigned(x[i], y[i]) > 0;
+                case Bytecode.VECTOR_I8X16_LE_S -> x[i] <= y[i];
+                case Bytecode.VECTOR_I8X16_LE_U -> Byte.compareUnsigned(x[i], y[i]) <= 0;
+                case Bytecode.VECTOR_I8X16_GE_S -> x[i] >= y[i];
+                case Bytecode.VECTOR_I8X16_GE_U -> Byte.compareUnsigned(x[i], y[i]) >= 0;
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            } ? (byte) 0xff : (byte) 0x00;
+        }
+        return result;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static byte[] i16x8_relop(byte[] vecX, byte[] vecY, int vectorOpcode) {
         short[] x = Vector128.bytesAsShorts(vecX);
         short[] y = Vector128.bytesAsShorts(vecY);
@@ -182,6 +203,99 @@ public class Vector128Ops {
             } ? 0xffff_ffff_ffff_ffffL : 0x0000_0000_0000_0000L;
         }
         return Vector128.longsAsBytes(result);
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static byte[] i8x16_unop(byte[] x, int vectorOpcode) {
+        byte[] result = new byte[16];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = (byte) switch (vectorOpcode) {
+                case Bytecode.VECTOR_I8X16_ABS -> Math.abs(x[i]);
+                case Bytecode.VECTOR_I8X16_NEG -> -x[i];
+                case Bytecode.VECTOR_I8X16_POPCNT -> Integer.bitCount(Byte.toUnsignedInt(x[i]));
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
+        return result;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static int i8x16_all_true(byte[] bytes) {
+        int result = 1;
+        for (int i = 0; i < bytes.length; i++) {
+            if (bytes[i] == 0) {
+                result = 0;
+                break;
+            }
+        }
+        return result;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static int i8x16_bitmask(byte[] bytes) {
+        int result = 0;
+        for (int i = 0; i < bytes.length; i++) {
+            if (bytes[i] < 0) {
+                result |= 1 << i;
+            }
+        }
+        return result;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static byte[] i8x16_narrow_i16x8(byte[] vecX, byte[] vecY, int vectorOpcode) {
+        short[] x = Vector128.bytesAsShorts(vecX);
+        short[] y = Vector128.bytesAsShorts(vecY);
+        byte[] result = new byte[16];
+        CompilerDirectives.ensureVirtualized(x);
+        CompilerDirectives.ensureVirtualized(y);
+        for (int i = 0; i < result.length; i++) {
+            short[] src = i < 8 ? x : y;
+            int index = i < 8 ? i : i - 8;
+            result[i] = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I8X16_NARROW_I16X8_S -> satS8(src[index]);
+                case Bytecode.VECTOR_I8X16_NARROW_I16X8_U -> satU8(src[index]);
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
+        return result;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static byte[] i8x16_shiftop(byte[] x, int shift, int vectorOpcode) {
+        byte[] result = new byte[16];
+        int shiftMod = shift % 8;
+        for (int i = 0; i < result.length; i++) {
+            result[i] = (byte) switch (vectorOpcode) {
+                case Bytecode.VECTOR_I8X16_SHL -> x[i] << shiftMod;
+                case Bytecode.VECTOR_I8X16_SHR_S -> x[i] >> shiftMod;
+                case Bytecode.VECTOR_I8X16_SHR_U -> x[i] >>> shiftMod;
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
+        return result;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static byte[] i8x16_binop(byte[] x, byte[] y, int vectorOpcode) {
+        byte[] result = new byte[16];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = (byte) switch (vectorOpcode) {
+                case Bytecode.VECTOR_I8X16_ADD -> x[i] + y[i];
+                case Bytecode.VECTOR_I8X16_ADD_SAT_S -> satS8(x[i] + y[i]);
+                case Bytecode.VECTOR_I8X16_ADD_SAT_U -> satU8(Byte.toUnsignedInt(x[i]) + Byte.toUnsignedInt(y[i]));
+                case Bytecode.VECTOR_I8X16_SUB -> x[i] - y[i];
+                case Bytecode.VECTOR_I8X16_SUB_SAT_S -> satS8(x[i] - y[i]);
+                case Bytecode.VECTOR_I8X16_SUB_SAT_U -> satU8(Byte.toUnsignedInt(x[i]) - Byte.toUnsignedInt(y[i]));
+                case Bytecode.VECTOR_I8X16_MIN_S -> Math.min(x[i], y[i]);
+                case Bytecode.VECTOR_I8X16_MIN_U -> Byte.compareUnsigned(x[i], y[i]) <= 0 ? x[i] : y[i];
+                case Bytecode.VECTOR_I8X16_MAX_S -> Math.max(x[i], y[i]);
+                case Bytecode.VECTOR_I8X16_MAX_U -> Byte.compareUnsigned(x[i], y[i]) >= 0 ? x[i] : y[i];
+                case Bytecode.VECTOR_I8X16_AVGR_U -> (Byte.toUnsignedInt(x[i]) + Byte.toUnsignedInt(y[i]) + 1) / 2;
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
+        return result;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
@@ -692,6 +806,26 @@ public class Vector128Ops {
     }
 
     // Checkstyle: resume method name check
+
+    private static byte satS8(int x) {
+        if (x > Byte.MAX_VALUE) {
+            return Byte.MAX_VALUE;
+        } else if (x < Byte.MIN_VALUE) {
+            return Byte.MIN_VALUE;
+        } else {
+            return (byte) x;
+        }
+    }
+
+    private static byte satU8(int x) {
+        if (x > 0xff) {
+            return (byte) 0xff;
+        } else if (x < 0) {
+            return 0;
+        } else {
+            return (byte) x;
+        }
+    }
 
     private static short satS16(int x) {
         if (x > Short.MAX_VALUE) {

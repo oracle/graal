@@ -1814,6 +1814,8 @@ public class BinaryParser extends BinaryStreamParser {
                         state.addInstruction(Bytecode.VECTOR_V128_CONST, value);
                         break;
                     case Instructions.VECTOR_V128_ANY_TRUE:
+                    case Instructions.VECTOR_I8X16_ALL_TRUE:
+                    case Instructions.VECTOR_I8X16_BITMASK:
                     case Instructions.VECTOR_I16X8_ALL_TRUE:
                     case Instructions.VECTOR_I16X8_BITMASK:
                     case Instructions.VECTOR_I32X4_ALL_TRUE:
@@ -1824,6 +1826,9 @@ public class BinaryParser extends BinaryStreamParser {
                         state.push(I32_TYPE);
                         state.addInstruction(vectorOpcode);
                         break;
+                    case Instructions.VECTOR_I8X16_ABS:
+                    case Instructions.VECTOR_I8X16_NEG:
+                    case Instructions.VECTOR_I8X16_POPCNT:
                     case Instructions.VECTOR_I16X8_EXTADD_PAIRWISE_I8x16_S:
                     case Instructions.VECTOR_I16X8_EXTADD_PAIRWISE_I8x16_U:
                     case Instructions.VECTOR_I16X8_ABS:
@@ -1868,6 +1873,16 @@ public class BinaryParser extends BinaryStreamParser {
                         state.push(V128_TYPE);
                         state.addInstruction(vectorOpcode);
                         break;
+                    case Instructions.VECTOR_I8X16_EQ:
+                    case Instructions.VECTOR_I8X16_NE:
+                    case Instructions.VECTOR_I8X16_LT_S:
+                    case Instructions.VECTOR_I8X16_LT_U:
+                    case Instructions.VECTOR_I8X16_GT_S:
+                    case Instructions.VECTOR_I8X16_GT_U:
+                    case Instructions.VECTOR_I8X16_LE_S:
+                    case Instructions.VECTOR_I8X16_LE_U:
+                    case Instructions.VECTOR_I8X16_GE_S:
+                    case Instructions.VECTOR_I8X16_GE_U:
                     case Instructions.VECTOR_I16X8_EQ:
                     case Instructions.VECTOR_I16X8_NE:
                     case Instructions.VECTOR_I16X8_LT_S:
@@ -1906,6 +1921,19 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.VECTOR_F64X2_GT:
                     case Instructions.VECTOR_F64X2_LE:
                     case Instructions.VECTOR_F64X2_GE:
+                    case Instructions.VECTOR_I8X16_NARROW_I16X8_S:
+                    case Instructions.VECTOR_I8X16_NARROW_I16X8_U:
+                    case Instructions.VECTOR_I8X16_ADD:
+                    case Instructions.VECTOR_I8X16_ADD_SAT_S:
+                    case Instructions.VECTOR_I8X16_ADD_SAT_U:
+                    case Instructions.VECTOR_I8X16_SUB:
+                    case Instructions.VECTOR_I8X16_SUB_SAT_S:
+                    case Instructions.VECTOR_I8X16_SUB_SAT_U:
+                    case Instructions.VECTOR_I8X16_MIN_S:
+                    case Instructions.VECTOR_I8X16_MIN_U:
+                    case Instructions.VECTOR_I8X16_MAX_S:
+                    case Instructions.VECTOR_I8X16_MAX_U:
+                    case Instructions.VECTOR_I8X16_AVGR_U:
                     case Instructions.VECTOR_I16X8_Q15MULR_SAT_S:
                     case Instructions.VECTOR_I16X8_NARROW_I32X4_S:
                     case Instructions.VECTOR_I16X8_NARROW_I32X4_U:
@@ -1965,6 +1993,9 @@ public class BinaryParser extends BinaryStreamParser {
                         state.push(V128_TYPE);
                         state.addInstruction(vectorOpcode);
                         break;
+                    case Instructions.VECTOR_I8X16_SHL:
+                    case Instructions.VECTOR_I8X16_SHR_S:
+                    case Instructions.VECTOR_I8X16_SHR_U:
                     case Instructions.VECTOR_I16X8_SHL:
                     case Instructions.VECTOR_I16X8_SHR_S:
                     case Instructions.VECTOR_I16X8_SHR_U:
