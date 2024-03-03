@@ -955,6 +955,12 @@ public abstract class BytecodeParser {
                         case Bytecode.VECTOR_F64X2_GT:
                         case Bytecode.VECTOR_F64X2_LE:
                         case Bytecode.VECTOR_F64X2_GE:
+                        case Bytecode.VECTOR_V128_NOT:
+                        case Bytecode.VECTOR_V128_AND:
+                        case Bytecode.VECTOR_V128_ANDNOT:
+                        case Bytecode.VECTOR_V128_OR:
+                        case Bytecode.VECTOR_V128_XOR:
+                        case Bytecode.VECTOR_V128_BITSELECT:
                         case Bytecode.VECTOR_V128_ANY_TRUE:
                         case Bytecode.VECTOR_I8X16_ABS:
                         case Bytecode.VECTOR_I8X16_NEG:

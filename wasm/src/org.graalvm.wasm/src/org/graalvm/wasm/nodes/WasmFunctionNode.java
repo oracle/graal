@@ -2724,6 +2724,30 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 pushVector128(frame, stackPointer++, result);
                 break;
             }
+            case Bytecode.VECTOR_V128_NOT: {
+                Vector128 vec = popVector128(frame, --stackPointer);
+                Vector128 result = Vector128.ofBytes(Vector128Ops.v128_not(vec.asBytes()));
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_V128_AND:
+            case Bytecode.VECTOR_V128_ANDNOT:
+            case Bytecode.VECTOR_V128_OR:
+            case Bytecode.VECTOR_V128_XOR: {
+                Vector128 y = popVector128(frame, --stackPointer);
+                Vector128 x = popVector128(frame, --stackPointer);
+                Vector128 result = Vector128.ofBytes(Vector128Ops.v128_binop(x.asBytes(), y.asBytes(), vectorOpcode));
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_V128_BITSELECT: {
+                Vector128 mask = popVector128(frame, --stackPointer);
+                Vector128 y = popVector128(frame, --stackPointer);
+                Vector128 x = popVector128(frame, --stackPointer);
+                Vector128 result = Vector128.ofBytes(Vector128Ops.v128_bitselect(x.asBytes(), y.asBytes(), mask.asBytes()));
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
             case Bytecode.VECTOR_V128_ANY_TRUE: {
                 Vector128 vec = popVector128(frame, --stackPointer);
                 int result = Vector128Ops.v128_any_true(vec.asBytes());

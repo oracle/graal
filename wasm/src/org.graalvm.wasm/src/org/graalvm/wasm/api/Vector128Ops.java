@@ -55,6 +55,39 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static byte[] v128_not(byte[] x) {
+        byte[] result = new byte[16];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = (byte) ~x[i];
+        }
+        return result;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static byte[] v128_binop(byte[] x, byte[] y, int vectorOpcode) {
+        byte[] result = new byte[16];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = (byte) switch (vectorOpcode) {
+                case Bytecode.VECTOR_V128_AND -> x[i] & y[i];
+                case Bytecode.VECTOR_V128_ANDNOT -> x[i] & ~y[i];
+                case Bytecode.VECTOR_V128_OR -> x[i] | y[i];
+                case Bytecode.VECTOR_V128_XOR -> x[i] ^ y[i];
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+        }
+        return result;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static byte[] v128_bitselect(byte[] x, byte[] y, byte[] mask) {
+        byte[] result = new byte[16];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = (byte) (x[i] & mask[i] | (y[i] & ~mask[i]));
+        }
+        return result;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public static int v128_any_true(byte[] vec) {
         int result = 0;
         for (int i = 0; i < vec.length; i++) {
