@@ -2640,6 +2640,22 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private static int executeVector(VirtualFrame frame, int curStackPointer, int vectorOpcode) {
         int stackPointer = curStackPointer;
         switch (vectorOpcode) {
+            case Bytecode.VECTOR_I8X16_EQ:
+            case Bytecode.VECTOR_I8X16_NE:
+            case Bytecode.VECTOR_I8X16_LT_S:
+            case Bytecode.VECTOR_I8X16_LT_U:
+            case Bytecode.VECTOR_I8X16_GT_S:
+            case Bytecode.VECTOR_I8X16_GT_U:
+            case Bytecode.VECTOR_I8X16_LE_S:
+            case Bytecode.VECTOR_I8X16_LE_U:
+            case Bytecode.VECTOR_I8X16_GE_S:
+            case Bytecode.VECTOR_I8X16_GE_U: {
+                Vector128 y = popVector128(frame, --stackPointer);
+                Vector128 x = popVector128(frame, --stackPointer);
+                Vector128 result = Vector128.ofBytes(Vector128Ops.i8x16_relop(x.asBytes(), y.asBytes(), vectorOpcode));
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
             case Bytecode.VECTOR_I16X8_EQ:
             case Bytecode.VECTOR_I16X8_NE:
             case Bytecode.VECTOR_I16X8_LT_S:
@@ -2712,6 +2728,60 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 Vector128 vec = popVector128(frame, --stackPointer);
                 int result = Vector128Ops.v128_any_true(vec.asBytes());
                 pushInt(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_I8X16_ABS:
+            case Bytecode.VECTOR_I8X16_NEG:
+            case Bytecode.VECTOR_I8X16_POPCNT: {
+                Vector128 vec = popVector128(frame, --stackPointer);
+                Vector128 result = Vector128.ofBytes(Vector128Ops.i8x16_unop(vec.asBytes(), vectorOpcode));
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_I8X16_ALL_TRUE: {
+                Vector128 vec = popVector128(frame, --stackPointer);
+                int result = Vector128Ops.i8x16_all_true(vec.asBytes());
+                pushInt(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_I8X16_BITMASK: {
+                Vector128 vec = popVector128(frame, --stackPointer);
+                int result = Vector128Ops.i8x16_bitmask(vec.asBytes());
+                pushInt(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_I8X16_NARROW_I16X8_S:
+            case Bytecode.VECTOR_I8X16_NARROW_I16X8_U: {
+                Vector128 y = popVector128(frame, --stackPointer);
+                Vector128 x = popVector128(frame, --stackPointer);
+                Vector128 result = Vector128.ofBytes(Vector128Ops.i8x16_narrow_i16x8(x.asBytes(), y.asBytes(), vectorOpcode));
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_I8X16_SHL:
+            case Bytecode.VECTOR_I8X16_SHR_S:
+            case Bytecode.VECTOR_I8X16_SHR_U: {
+                int shift = popInt(frame, --stackPointer);
+                Vector128 x = popVector128(frame, --stackPointer);
+                Vector128 result = Vector128.ofBytes(Vector128Ops.i8x16_shiftop(x.asBytes(), shift, vectorOpcode));
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_I8X16_ADD:
+            case Bytecode.VECTOR_I8X16_ADD_SAT_S:
+            case Bytecode.VECTOR_I8X16_ADD_SAT_U:
+            case Bytecode.VECTOR_I8X16_SUB:
+            case Bytecode.VECTOR_I8X16_SUB_SAT_S:
+            case Bytecode.VECTOR_I8X16_SUB_SAT_U:
+            case Bytecode.VECTOR_I8X16_MIN_S:
+            case Bytecode.VECTOR_I8X16_MIN_U:
+            case Bytecode.VECTOR_I8X16_MAX_S:
+            case Bytecode.VECTOR_I8X16_MAX_U:
+            case Bytecode.VECTOR_I8X16_AVGR_U: {
+                Vector128 y = popVector128(frame, --stackPointer);
+                Vector128 x = popVector128(frame, --stackPointer);
+                Vector128 result = Vector128.ofBytes(Vector128Ops.i8x16_binop(x.asBytes(), y.asBytes(), vectorOpcode));
+                pushVector128(frame, stackPointer++, result);
                 break;
             }
             case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8x16_S:
