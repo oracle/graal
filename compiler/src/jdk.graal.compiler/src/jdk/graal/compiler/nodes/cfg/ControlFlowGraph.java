@@ -85,9 +85,9 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
         //@formatter:off
         @Option(help = "Derive loop frequencies only from backedge frequencies instead of from loop exit frequencies.", type = OptionType.Debug)
         public static final OptionKey<Boolean> UseLoopEndFrequencies = new OptionKey<>(false);
-        @Option(help = "Debug flag to dump loop frequency differences computed based on loop end or exit nodes."
-                        + "If the frequencies diverge a lot, this may indicate missing profiles on control flow"
-                        + "inside the loop body.", type = OptionType.Debug)
+        @Option(help = "Debug flag to dump loop frequency differences computed based on loop end or exit nodes." +
+                       "If the frequencies diverge a lot, this may indicate missing profiles on control flow" +
+                       "inside the loop body.", type = OptionType.Debug)
         public static final OptionKey<Boolean> DumpEndVersusExitLoopFrequencies = new OptionKey<>(false);
         @Option(help = "Scaling factor of frequency difference computed based on loop ends or exits", type = OptionType.Debug)
         public static final OptionKey<Double> LoopExitVsLoopEndFrequencyDiff = new OptionKey<>(1000D);

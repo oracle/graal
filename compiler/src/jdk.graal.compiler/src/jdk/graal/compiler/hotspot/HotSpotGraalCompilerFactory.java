@@ -156,12 +156,12 @@ public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
     static class Options {
 
         // @formatter:off
-        @Option(help = "In tiered mode compile Graal and JVMCI using optimized first tier code.", type = OptionType.Expert)
+        @Option(help = "If in tiered mode, compiles Graal and JVMCI using optimized first-tier code.", type = OptionType.Expert)
         public static final OptionKey<Boolean> CompileGraalWithC1Only = new OptionKey<>(true);
 
         @Option(help = "A filter applied to a method the VM has selected for compilation by Graal. " +
                        "A method not matching the filter is redirected to a lower tier compiler. " +
-                       "The filter format is the same as for the MethodFilter option.", type = OptionType.Expert)
+                       "The filter format is the same as for the MethodFilter option.", type = OptionType.Debug)
         public static final OptionKey<String> GraalCompileOnly = new OptionKey<>(null);
         @Option(help = "Make JVMCIPrintProperties show all Graal options, including debug and internal options.", type = OptionType.Debug)
         public static final OptionKey<Boolean> PrintPropertiesAll = new OptionKey<>(false);

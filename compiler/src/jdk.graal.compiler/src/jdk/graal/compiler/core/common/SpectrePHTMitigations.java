@@ -64,7 +64,7 @@ public enum SpectrePHTMitigations {
             }
         };
 
-        @Option(help = "file:doc-files/MitigateSpeculativeExecutionAttacksHelp.txt")
+        @Option(help = "file:doc-files/MitigateSpeculativeExecutionAttacksHelp.txt", type = OptionType.Expert)
         public static final EnumOptionKey<SpectrePHTMitigations> SpectrePHTBarriers = new EnumOptionKey<>(None) {
             private boolean isSpeculativeExecutionBarriersEnabled(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
                 Object value = values.get(SpeculativeExecutionBarriers);
@@ -90,7 +90,7 @@ public enum SpectrePHTMitigations {
             }
         };
 
-        @Option(help = "Mask indices to scope access to allocation size after bounds check.", type = OptionType.User, stability = OptionStability.STABLE)
+        @Option(help = "Masks indices to scope access to allocation size after bounds check.", type = OptionType.User, stability = OptionStability.STABLE)
         public static final OptionKey<Boolean> SpectrePHTIndexMasking = new OptionKey<>(false);
         // @formatter:on
     }
