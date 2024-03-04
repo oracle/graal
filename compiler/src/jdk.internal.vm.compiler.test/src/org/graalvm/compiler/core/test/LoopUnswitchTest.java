@@ -27,7 +27,6 @@ package org.graalvm.compiler.core.test;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
-<<<<<<< HEAD:compiler/src/jdk.internal.vm.compiler.test/src/org/graalvm/compiler/core/test/LoopUnswitchTest.java
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
@@ -44,25 +43,6 @@ import org.graalvm.compiler.nodes.loop.LoopPolicies;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.junit.Assert;
 import org.junit.Test;
-=======
-import org.junit.Assert;
-import org.junit.Test;
-
-import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.DebugDumpScope;
-import jdk.graal.compiler.loop.phases.LoopUnswitchingPhase;
-import jdk.graal.compiler.nodes.ControlSplitNode;
-import jdk.graal.compiler.nodes.IfNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.extended.SwitchNode;
-import jdk.graal.compiler.nodes.loop.DefaultLoopPolicies;
-import jdk.graal.compiler.nodes.loop.LoopEx;
-import jdk.graal.compiler.nodes.loop.LoopPolicies;
-import jdk.graal.compiler.phases.common.CanonicalizerPhase;
->>>>>>> c5586894366 (Add epsilon to more floating-point probability comparisons):compiler/src/jdk.graal.compiler.test/src/jdk/graal/compiler/core/test/LoopUnswitchTest.java
 
 public class LoopUnswitchTest extends GraalCompilerTest {
 
