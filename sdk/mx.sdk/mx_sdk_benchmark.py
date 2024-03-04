@@ -519,7 +519,7 @@ class NativeImageBenchmarkMixin(object):
         # Apply command mapper hooks (e.g. trackers) for all stages that run benchmark workloads
         # We cannot apply them for the image stages because the datapoints are indistinguishable from datapoints
         # produced in the corresponding run stages.
-        if self.stages_info.should_produce_datapoints([Stage.AGENT, Stage.INSTRUMENT_RUN, Stage.RUN]):
+        if stage in [Stage.AGENT, Stage.INSTRUMENT_RUN, Stage.RUN] and self.stages_info.should_produce_datapoints(stage):
             final_command = self.apply_command_mapper_hooks(command, vm)
         return mx.run(final_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
 
