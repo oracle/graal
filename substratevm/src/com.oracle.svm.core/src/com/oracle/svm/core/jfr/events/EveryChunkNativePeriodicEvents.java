@@ -51,7 +51,7 @@ public class EveryChunkNativePeriodicEvents extends Event {
 
     public static void emit() {
         emitJavaThreadStats();
-        emitPhysicalMemory();
+        emitPhysicalMemory(PhysicalMemory.usedSize());
         emitClassLoadingStatistics();
         emitPerThreadEvents();
     }
@@ -75,7 +75,7 @@ public class EveryChunkNativePeriodicEvents extends Event {
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static void emitPhysicalMemory() {
+    private static void emitPhysicalMemory(long usedSize) {
         if (JfrEvent.PhysicalMemory.shouldEmit()) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
@@ -83,7 +83,7 @@ public class EveryChunkNativePeriodicEvents extends Event {
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.PhysicalMemory);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
             JfrNativeEventWriter.putLong(data, PhysicalMemory.getCachedSize().rawValue());
-            JfrNativeEventWriter.putLong(data, 0); /* used size */
+            JfrNativeEventWriter.putLong(data, usedSize); /* used size */
             JfrNativeEventWriter.endSmallEvent(data);
         }
     }
