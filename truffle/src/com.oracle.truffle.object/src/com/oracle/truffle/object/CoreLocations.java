@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.object;
 
-import static com.oracle.truffle.object.LayoutImpl.ACCESS;
 import static com.oracle.truffle.object.UnsafeAccess.ARRAY_INT_BASE_OFFSET;
 import static com.oracle.truffle.object.UnsafeAccess.ARRAY_INT_INDEX_SCALE;
 import static com.oracle.truffle.object.UnsafeAccess.unsafeGetLong;
@@ -110,13 +109,6 @@ abstract class CoreLocations {
         default void setInt(DynamicObject store, int value) {
             setInt(store, value, false, false);
         }
-
-        @Override
-        default void setInt(DynamicObject store, int value, Shape oldShape, Shape newShape) {
-            ACCESS.grow(store, oldShape, newShape);
-            setInt(store, value, false, false);
-            ACCESS.setShapeWithStoreFence(store, newShape);
-        }
     }
 
     public interface LongLocation extends TypedLocation, com.oracle.truffle.api.object.LongLocation {
@@ -145,13 +137,6 @@ abstract class CoreLocations {
         @Override
         default void setLong(DynamicObject store, long value) {
             setLong(store, value, false, false);
-        }
-
-        @Override
-        default void setLong(DynamicObject store, long value, Shape oldShape, Shape newShape) {
-            ACCESS.grow(store, oldShape, newShape);
-            setLong(store, value, false, false);
-            ACCESS.setShapeWithStoreFence(store, newShape);
         }
     }
 
@@ -182,13 +167,6 @@ abstract class CoreLocations {
         default void setDouble(DynamicObject store, double value) {
             setDouble(store, value, false, false);
         }
-
-        @Override
-        default void setDouble(DynamicObject store, double value, Shape oldShape, Shape newShape) {
-            ACCESS.grow(store, oldShape, newShape);
-            setDouble(store, value, false, false);
-            ACCESS.setShapeWithStoreFence(store, newShape);
-        }
     }
 
     public interface BooleanLocation extends TypedLocation, com.oracle.truffle.api.object.BooleanLocation {
@@ -215,13 +193,6 @@ abstract class CoreLocations {
         @Override
         default void setBoolean(DynamicObject store, boolean value) {
             setBoolean(store, value, false, false);
-        }
-
-        @Override
-        default void setBoolean(DynamicObject store, boolean value, Shape oldShape, Shape newShape) {
-            ACCESS.grow(store, oldShape, newShape);
-            setBoolean(store, value, false, false);
-            ACCESS.setShapeWithStoreFence(store, newShape);
         }
     }
 
