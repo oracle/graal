@@ -92,10 +92,10 @@ import com.oracle.truffle.regex.util.TBitSet;
  * For every successor, the visitor will find the full path of AST nodes that have been traversed
  * from the initial node to the successor node, where {@link Group} nodes are treated specially: The
  * path will contain separate entries for <em>entering</em> and <em>leaving</em> a {@link Group},
- * and a special <em>pass-through</em> node for empty sequences of {@link Group}s marked with
- * {@link Group#isExpandedQuantifier()}. Furthermore, the visitor will not descend into lookaround
- * assertions, it will jump over them and just add their corresponding {@link LookAheadAssertion} or
- * {@link LookBehindAssertion} node to the path.
+ * and a special <em>pass-through</em> node for empty sequences marked with
+ * {@link Sequence#isExpandedQuantifierEmptySequence()}. Furthermore, the visitor will not descend
+ * into lookaround assertions, it will jump over them and just add their corresponding
+ * {@link LookAheadAssertion} or {@link LookBehindAssertion} node to the path.
  *
  * <pre>
  * {@code
@@ -429,7 +429,7 @@ public abstract class NFATraversalRegexASTVisitor {
             final Sequence sequence = (Sequence) cur;
             if (sequence.isEmpty()) {
                 Group parent = sequence.getParent();
-                if (sequence.isExpandedQuantifier()) {
+                if (sequence.isExpandedQuantifierEmptySequence()) {
                     // this empty sequence was inserted during quantifier expansion, so it is
                     // allowed to pass through the parent quantified group.
                     assert pathGetNode(curPath.peek()) == parent && pathIsGroupEnter(curPath.peek());
@@ -826,7 +826,7 @@ public abstract class NFATraversalRegexASTVisitor {
      */
     private boolean isZeroWidthGroup(Group group) {
         return group.hasQuantifier() && group.getQuantifier().hasZeroWidthIndex() && ((ast.getOptions().getFlavor().failingEmptyChecksDontBacktrack() && group.isUnrolledQuantifier()) ||
-                        group.getFirstAlternative().isExpandedQuantifier() || group.getLastAlternative().isExpandedQuantifier());
+                        group.getFirstAlternative().isExpandedQuantifierEmptySequence() || group.getLastAlternative().isExpandedQuantifierEmptySequence());
     }
 
     /// Pushing and popping group elements to and from the path
