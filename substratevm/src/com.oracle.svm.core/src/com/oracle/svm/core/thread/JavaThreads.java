@@ -440,4 +440,10 @@ public final class JavaThreads {
         Target_java_lang_Thread tjlt = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
         return (tjlt.vthread != null) ? tjlt.vthread : thread;
     }
+
+    //TODO @dprcci might be illegal (check for inline value)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isAlive(Thread thread){
+        return PlatformThreads.isAlive(thread);
+    }
 }

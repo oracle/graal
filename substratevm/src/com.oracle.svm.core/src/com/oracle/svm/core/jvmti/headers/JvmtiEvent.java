@@ -32,47 +32,50 @@ import org.graalvm.nativeimage.c.constant.CEnumValue;
 @CEnum("jvmtiEvent")
 @CContext(JvmtiDirectives.class)
 public enum JvmtiEvent {
-    JVMTI_EVENT_VM_INIT(true, true),
-    JVMTI_EVENT_VM_DEATH(true, true),
-    JVMTI_EVENT_THREAD_START(true, false),
-    JVMTI_EVENT_THREAD_END(false, false),
-    JVMTI_EVENT_CLASS_FILE_LOAD_HOOK(false, false),
-    JVMTI_EVENT_CLASS_LOAD(false, false),
-    JVMTI_EVENT_CLASS_PREPARE(false, false),
-    JVMTI_EVENT_VM_START(true, true),
-    JVMTI_EVENT_EXCEPTION(false, false),
-    JVMTI_EVENT_EXCEPTION_CATCH(false, false),
-    JVMTI_EVENT_SINGLE_STEP(false, false),
-    JVMTI_EVENT_FRAME_POP(false, false),
-    JVMTI_EVENT_BREAKPOINT(false, false),
-    JVMTI_EVENT_FIELD_ACCESS(false, false),
-    JVMTI_EVENT_FIELD_MODIFICATION(false, false),
-    JVMTI_EVENT_METHOD_ENTRY(false, false),
-    JVMTI_EVENT_METHOD_EXIT(false, false),
-    JVMTI_EVENT_NATIVE_METHOD_BIND(false, false),
-    JVMTI_EVENT_COMPILED_METHOD_LOAD(true, false),
-    JVMTI_EVENT_COMPILED_METHOD_UNLOAD(true, false),
-    JVMTI_EVENT_DYNAMIC_CODE_GENERATED(true, false),
-    JVMTI_EVENT_DATA_DUMP_REQUEST(true, false),
-    JVMTI_EVENT_MONITOR_WAIT(false, false),
-    JVMTI_EVENT_MONITOR_WAITED(false, false),
-    JVMTI_EVENT_MONITOR_CONTENDED_ENTER(false, false),
-    JVMTI_EVENT_MONITOR_CONTENDED_ENTERED(false, false),
-    JVMTI_EVENT_RESOURCE_EXHAUSTED(false, false),
-    JVMTI_EVENT_GARBAGE_COLLECTION_START(false, false),
-    JVMTI_EVENT_GARBAGE_COLLECTION_FINISH(false, false),
-    JVMTI_EVENT_OBJECT_FREE(false, false),
-    JVMTI_EVENT_VM_OBJECT_ALLOC(false, false),
-    JVMTI_EVENT_SAMPLED_OBJECT_ALLOC(false, false),
-    JVMTI_EVENT_VIRTUAL_THREAD_START(false, false),
-    JVMTI_EVENT_VIRTUAL_THREAD_END(false, false);
+    JVMTI_EVENT_VM_INIT(true, true, 1),
+    JVMTI_EVENT_VM_DEATH(true, true, 0),
+    JVMTI_EVENT_THREAD_START(true, true, 1),
+    JVMTI_EVENT_THREAD_END(false, true, 1),
+    JVMTI_EVENT_CLASS_FILE_LOAD_HOOK(false, false, 8),
+    JVMTI_EVENT_CLASS_LOAD(false, false, 2),
+    JVMTI_EVENT_CLASS_PREPARE(false, false, 2),
+    JVMTI_EVENT_VM_START(true, true, 0),
+    JVMTI_EVENT_EXCEPTION(false, false, 6),
+    JVMTI_EVENT_EXCEPTION_CATCH(false, false, 4),
+    JVMTI_EVENT_SINGLE_STEP(false, false, 3),
+    JVMTI_EVENT_FRAME_POP(false, false, 3),
+    JVMTI_EVENT_BREAKPOINT(false, false, 3),
+    JVMTI_EVENT_FIELD_ACCESS(false, false, 6),
+    JVMTI_EVENT_FIELD_MODIFICATION(false, false, 8),
+    JVMTI_EVENT_METHOD_ENTRY(true, false, 2),
+    JVMTI_EVENT_METHOD_EXIT(false, false, 4),
+    JVMTI_EVENT_NATIVE_METHOD_BIND(false, false, 4),
+    JVMTI_EVENT_COMPILED_METHOD_LOAD(true, false, 6),
+    JVMTI_EVENT_COMPILED_METHOD_UNLOAD(true, false, 3),
+    JVMTI_EVENT_DYNAMIC_CODE_GENERATED(true, false, 3),
+    JVMTI_EVENT_DATA_DUMP_REQUEST(true, false, 0),
+    JVMTI_EVENT_MONITOR_WAIT(false, true, 3),
+    JVMTI_EVENT_MONITOR_WAITED(false, true, 3),
+    JVMTI_EVENT_MONITOR_CONTENDED_ENTER(false, true, 2),
+    JVMTI_EVENT_MONITOR_CONTENDED_ENTERED(false, true, 2),
+    JVMTI_EVENT_RESOURCE_EXHAUSTED(false, false, 3),
+    JVMTI_EVENT_GARBAGE_COLLECTION_START(false, true, 0),
+    JVMTI_EVENT_GARBAGE_COLLECTION_FINISH(false, true, 0),
+    JVMTI_EVENT_OBJECT_FREE(false, false, 1),
+    JVMTI_EVENT_VM_OBJECT_ALLOC(false, false, 4),
+    JVMTI_EVENT_SAMPLED_OBJECT_ALLOC(false, false, 4),
+    JVMTI_EVENT_VIRTUAL_THREAD_START(false, false, 1),
+    JVMTI_EVENT_VIRTUAL_THREAD_END(false, false, 1);
 
     private final boolean isSupported;
     private final boolean isGlobal;
+    private final int nbParameters;
 
-    JvmtiEvent(boolean isGlobal, boolean isSupported) {
+    JvmtiEvent(boolean isGlobal, boolean isSupported, int nbParameters) {
         this.isGlobal = isGlobal;
         this.isSupported = isSupported;
+        this.nbParameters = nbParameters;
+
     }
 
     public boolean isSupported() {
@@ -81,6 +84,10 @@ public enum JvmtiEvent {
 
     public boolean isGlobal() {
         return isGlobal;
+    }
+
+    public int getNbParameters() {
+        return nbParameters;
     }
 
     @CEnumValue

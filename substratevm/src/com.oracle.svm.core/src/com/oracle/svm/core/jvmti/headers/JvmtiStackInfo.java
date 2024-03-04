@@ -25,10 +25,35 @@
 package com.oracle.svm.core.jvmti.headers;
 
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.PointerBase;
 
 @CContext(JvmtiDirectives.class)
 @CStruct(value = "jvmtiStackInfo", addStructKeyword = true)
 public interface JvmtiStackInfo extends PointerBase {
+    @CField("thread")
+    void setThread(JThread thread);
+
+    @CField("thread")
+    JThread getThread();
+
+    @CField("state")
+    void setState(int state);
+
+    @CField("state")
+    int getState();
+
+    @CField("frame_buffer")
+    void setFrameInfo(JvmtiFrameInfoPointer frameInfo);
+
+    @CField("frame_buffer")
+    JvmtiFrameInfoPointer getFrameInfo();
+
+    @CField("frame_count")
+    void setFrameCount(int frameCount);
+
+    @CField("frame_count")
+    int getFrameCount();
+
 }

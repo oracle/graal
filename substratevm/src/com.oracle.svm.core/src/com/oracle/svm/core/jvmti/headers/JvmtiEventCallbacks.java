@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jvmti.headers;
 
+import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
@@ -47,10 +48,10 @@ public interface JvmtiEventCallbacks extends PointerBase {
     JvmtiEventVMDeathFunctionPointer getVMDeath();
 
     @CField
-    CFunctionPointer getThreadStart();
+    JvmtiEventThreadStartFunctionPointer getThreadStart();
 
     @CField
-    CFunctionPointer getThreadEnd();
+    JvmtiEventThreadEndFunctionPointer getThreadEnd();
 
     @CField
     CFunctionPointer getClassFileLoadHook();
@@ -110,16 +111,16 @@ public interface JvmtiEventCallbacks extends PointerBase {
     CFunctionPointer getReserved72();
 
     @CField
-    CFunctionPointer getMonitorWait();
+    JvmtiEventMonitorWaitFunctionPointer getMonitorWait();
 
     @CField
-    CFunctionPointer getMonitorWaited();
+    JvmtiEventMonitorWaitedFunctionPointer getMonitorWaited();
 
     @CField
-    CFunctionPointer getMonitorContendedEnter();
+    JvmtiEventMonitorContendedEnterFunctionPointer getMonitorContendedEnter();
 
     @CField
-    CFunctionPointer getMonitorContendedEntered();
+    JvmtiEventMonitorContendedEnteredFunctionPointer getMonitorContendedEntered();
 
     @CField("reserved77")
     CFunctionPointer getReserved77();
@@ -134,10 +135,10 @@ public interface JvmtiEventCallbacks extends PointerBase {
     CFunctionPointer getResourceExhausted();
 
     @CField
-    CFunctionPointer getGarbageCollectionStart();
+    JvmtiEventGarbageCollectionStartFunctionPointer getGarbageCollectionStart();
 
     @CField
-    CFunctionPointer getGarbageCollectionFinish();
+    JvmtiEventGarbageCollectionFinishFunctionPointer getGarbageCollectionFinish();
 
     @CField
     CFunctionPointer getObjectFree();
@@ -170,5 +171,45 @@ public interface JvmtiEventCallbacks extends PointerBase {
     interface JvmtiEventVMStartFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         int invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv);
+    }
+
+    interface JvmtiEventGarbageCollectionFinishFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int invoke(JvmtiExternalEnv jvmtiEnv);
+    }
+
+    interface JvmtiEventGarbageCollectionStartFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int invoke(JvmtiExternalEnv jvmtiEnv);
+    }
+
+    interface JvmtiEventThreadStartFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv, JThread jthread);
+    }
+
+    interface JvmtiEventThreadEndFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv, JThread jthread);
+    }
+
+    interface JvmtiEventMonitorWaitFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv, JThread jthread, JNIObjectHandle obj, long timeout);
+    }
+
+    interface JvmtiEventMonitorWaitedFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv, JThread jthread, JNIObjectHandle obj, boolean timedOut);
+    }
+
+    interface JvmtiEventMonitorContendedEnterFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv, JThread thread, JNIObjectHandle obj);
+    }
+
+    interface JvmtiEventMonitorContendedEnteredFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int invoke(JvmtiExternalEnv jvmtiEnv, JNIEnvironment jniEnv, JThread thread, JNIObjectHandle obj);
     }
 }

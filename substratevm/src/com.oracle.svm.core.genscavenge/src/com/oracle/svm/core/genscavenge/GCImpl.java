@@ -29,6 +29,7 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.ref.Reference;
 
+import com.oracle.svm.core.jvmti.JvmtiPostEvents;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -169,6 +170,8 @@ public final class GCImpl implements GC {
 
     private void collect(GCCause cause, boolean forceFullGC) {
         if (!hasNeverCollectPolicy()) {
+            JvmtiPostEvents.postGarbageCollectionStart();
+            JvmtiPostEvents.postGarbageCollectionFinish();
             boolean outOfMemory = collectWithoutAllocating(cause, forceFullGC);
             if (outOfMemory) {
                 throw OutOfMemoryUtil.heapSizeExceeded();

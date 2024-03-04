@@ -24,10 +24,17 @@
  */
 package com.oracle.svm.hosted.ameta;
 
+import java.util.List;
+
+import org.graalvm.nativeimage.hosted.Feature;
+
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.jvmti.JvmtiClassInfoUtil;
+import com.oracle.svm.core.jvmti.JvmtiGenericInfoMapFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
 
@@ -45,10 +52,21 @@ public class HostedDynamicHubFeature implements InternalFeature {
         access.registerObjectReplacer(this::replace);
     }
 
+    @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return List.of(JvmtiGenericInfoMapFeature.class);
+    }
+
     private Object replace(Object source) {
         if (source instanceof Class) {
             Class<?> clazz = (Class<?>) source;
             DynamicHub dynamicHub = hostVM.dynamicHub(metaAccess.lookupJavaType(clazz));
+            if (SubstrateOptions.JVMTI.getValue()) {
+                String signature = dynamicHub.getSignature();
+                if (signature != null && clazz.getTypeParameters().length > 0) {
+                    JvmtiClassInfoUtil.JVMTIGenericInfoMap.singleton().addSignature(clazz, signature);
+                }
+            }
             return dynamicHub;
         }
         return source;

@@ -25,10 +25,24 @@
 package com.oracle.svm.core.jvmti.headers;
 
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.svm.core.jni.headers.JNIMethodId;
+
 @CContext(JvmtiDirectives.class)
-@CStruct("jvmtiFrameInfo")
-public interface JvmtiFrameInfo extends PointerBase {
+@CStruct(value = "jvmtiFrameInfo", addStructKeyword = true)
+public interface    JvmtiFrameInfo extends PointerBase {
+    @CField("method")
+    JNIMethodId getMethod();
+
+    @CField("method")
+    void setMethod(JNIMethodId method);
+
+    @CField("location")
+    long getLocation();
+
+    @CField("location")
+    void setLocation(long location);
 }

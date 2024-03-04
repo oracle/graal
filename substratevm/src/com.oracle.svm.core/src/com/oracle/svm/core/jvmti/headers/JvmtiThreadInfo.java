@@ -25,10 +25,44 @@
 package com.oracle.svm.core.jvmti.headers;
 
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
+
+import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 
 @CContext(JvmtiDirectives.class)
 @CStruct("jvmtiThreadInfo")
 public interface JvmtiThreadInfo extends PointerBase {
+    @CField("name")
+    CCharPointer getName();
+
+    @CField("name")
+    void setName(CCharPointer name);
+
+    @CField("priority")
+    int getPriority();
+
+    @CField("priority")
+    void setPriority(int priority);
+
+    @CField("is_daemon")
+    boolean getIsDaemon();
+
+    @CField("is_daemon")
+    void setIsDaemon(boolean isDaemon);
+
+    @CField("thread_group")
+    JThreadGroup getThreadGroup();
+
+    @CField("thread_group")
+    void setThreadGroup(JThreadGroup jThreadGroup);
+
+    @CField("context_class_loader")
+    JNIObjectHandle getContextClassLoader();
+
+    @CField("context_class_loader")
+    void setContextClassLoader(JNIObjectHandle contextClassLoader);
+
 }

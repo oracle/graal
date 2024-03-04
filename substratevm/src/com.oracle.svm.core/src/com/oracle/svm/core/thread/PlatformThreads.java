@@ -47,6 +47,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.oracle.svm.core.jvmti.JvmtiPostEvents;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -676,6 +677,7 @@ public abstract class PlatformThreads {
 
     @SuppressFBWarnings(value = "NN", justification = "notifyAll is necessary for Java semantics, no shared state needs to be modified beforehand")
     public static void exit(Thread thread) {
+        JvmtiPostEvents.postThreadEnd(thread);
         ThreadListenerSupport.get().afterThreadRun();
 
         /*
@@ -789,6 +791,7 @@ public abstract class PlatformThreads {
     }
 
     void startThread(Thread thread, long stackSize) {
+        JvmtiPostEvents.postThreadStart(thread);
         boolean started = doStartThread(thread, stackSize);
         if (!started) {
             throw new OutOfMemoryError("Unable to create native thread: possibly out of memory or process/resource limits reached");
@@ -896,7 +899,9 @@ public abstract class PlatformThreads {
         return StackTraceUtils.getThreadStackTraceAtSafepoint(isolateThread, WordFactory.nullPointer());
     }
 
-    static Pointer getCarrierSPOrElse(Thread carrier, Pointer other) {
+
+    //TODO @dprcci JVMTI
+    public static Pointer getCarrierSPOrElse(Thread carrier, Pointer other) {
         Target_jdk_internal_vm_Continuation cont = toTarget(carrier).cont;
         while (cont != null) {
             if (cont.getScope() == Target_java_lang_VirtualThread.VTHREAD_SCOPE) {

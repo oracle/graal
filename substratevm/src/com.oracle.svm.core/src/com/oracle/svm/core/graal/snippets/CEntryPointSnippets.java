@@ -33,6 +33,9 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 
 import java.util.Map;
 
+import com.oracle.svm.core.jvmti.JvmtiEnvManager;
+import com.oracle.svm.core.jvmti.JvmtiManager;
+import com.oracle.svm.core.jvmti.JvmtiPostEvents;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -401,6 +404,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
         if (SubstrateOptions.JVMTI.getValue()) {
             JvmtiAgents.singleton().load();
+
+            //JvmtiPostEvents.postVMInit();
+            JvmtiPostEvents.postVMStart();
         }
 
         assert !isolateInitialized;
@@ -639,8 +645,11 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         VMThreads.singleton().threadExit();
 
         if (SubstrateOptions.JVMTI.getValue()) {
+            JvmtiPostEvents.postVMDeath();
+            JvmtiManager.freeAllJvmtiClassesUnmanagedMemory();
             JvmtiAgents.singleton().unload();
         }
+
 
         return true;
     }

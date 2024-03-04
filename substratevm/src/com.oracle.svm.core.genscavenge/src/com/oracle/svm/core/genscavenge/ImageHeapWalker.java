@@ -126,7 +126,7 @@ public final class ImageHeapWalker {
 
     @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
     private static boolean visitObject(ObjectVisitor visitor, Object currentObject) {
-        return visitor.visitObject(currentObject);
+        return visitor. visitObject(currentObject);
     }
 
     @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)

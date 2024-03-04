@@ -43,6 +43,27 @@ public interface JvmtiEnv extends PointerBase {
     @RawField
     void setMagic(int value);
 
+    // TODO @dprcci is there a way to use type of enum? Also might become global
+    @RawField
+    int getPhase();
+
+    @RawField
+    void setPhase(int phase);
+
+    //TODO change to global pointer to shared struct or keep per field accesses?
+    @RawField
+    JvmtiEnvShared getEnvShared();
+
+    @RawField
+    void setEnvShared(JvmtiEnvShared envShared);
+
+    @RawField
+    JvmtiEnv getNextEnv();
+
+    @RawField
+    void setNextEnv(JvmtiEnv env);
+
+
     // The annotation-based fields above are incomplete because we directly embed other structures
     // into this raw struct, see below:
     //

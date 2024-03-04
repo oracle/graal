@@ -44,7 +44,7 @@ import jdk.vm.ci.meta.JavaKind;
 /**
  * Information on a field that can be looked up and accessed via JNI.
  */
-public final class JNIAccessibleField extends JNIAccessibleMember {
+public final class  JNIAccessibleField extends JNIAccessibleMember {
     /* 10000000...0 */
     private static final UnsignedWord ID_STATIC_FLAG = WordFactory.unsigned(-1L).unsignedShiftRight(1).add(1);
     /* 01000000...0 */

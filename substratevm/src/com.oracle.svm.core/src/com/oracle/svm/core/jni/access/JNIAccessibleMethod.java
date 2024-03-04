@@ -27,8 +27,6 @@ package com.oracle.svm.core.jni.access;
 import java.lang.reflect.Modifier;
 
 import org.graalvm.collections.EconomicSet;
-import jdk.graal.compiler.nodes.NamedLocationIdentity;
-import jdk.graal.compiler.word.BarrieredAccess;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -42,6 +40,8 @@ import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
+import jdk.graal.compiler.word.BarrieredAccess;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -129,9 +129,11 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
         return Modifier.isPublic(modifiers);
     }
 
-    boolean isStatic() {
-        return Modifier.isStatic(modifiers);
+    boolean isNative() {
+        return Modifier.isNative(modifiers);
     }
+
+    boolean isStatic() {return Modifier.isStatic(modifiers);}
 
     @Platforms(HOSTED_ONLY.class)
     public void finishBeforeCompilation(EconomicSet<Class<?>> hidingSubclasses, int vtableEntryOffset, CodePointer nonvirtualEntry, PointerBase newObjectEntry, CodePointer callWrapperEntry,
