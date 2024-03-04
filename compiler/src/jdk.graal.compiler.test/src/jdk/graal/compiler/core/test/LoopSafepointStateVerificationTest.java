@@ -62,6 +62,7 @@ public class LoopSafepointStateVerificationTest extends GraalCompilerTest {
     }
 
     @Test
+    @SuppressWarnings("try")
     public void test01() {
         try (AutoCloseable c = new TTY.Filter()) {
             OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.FullUnroll, false);
