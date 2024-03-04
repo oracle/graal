@@ -327,6 +327,15 @@ final class ByteArrayWasmMemory extends WasmMemory {
         }
     }
 
+    @Override
+    public void store_i128(Node node, long address, Vector128 value) {
+        if (ByteArraySupport.littleEndian().inBounds(byteArrayBuffer.buffer(), address, 16)) {
+            System.arraycopy(value.asBytes(), 0, byteArrayBuffer.buffer(), (int) address, 16);
+        } else {
+            throw trapOutOfBounds(node, address, 16);
+        }
+    }
+
     private static void validateAtomicAddress(Node node, long address, int length) {
         if ((address & (length - 1)) != 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
