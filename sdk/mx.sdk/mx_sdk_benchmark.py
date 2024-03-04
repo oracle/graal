@@ -387,7 +387,7 @@ class NativeImageBenchmarkMixin(object):
     benchmark output or by writing some Native Image specific logic (with :meth:`is_native_mode`)
     An example for such a workaround are :class:`mx_benchmark.JMHBenchmarkSuiteBase` and its subclasses (see
     ``get_jmh_result_file``, its usages and its Native Image specific implementation in
-    :class:`mx_java_benchmark.JMHNativeImageBenchmarkMixin`)
+    :class:`mx_graal_benchmark.JMHNativeImageBenchmarkMixin`)
 
     If the benchmark suite itself dispatches into the VM multiple times (in addition to the mixin doing it once per
     stage), care must be taken in which order this happens.
@@ -399,6 +399,7 @@ class NativeImageBenchmarkMixin(object):
 
     If these limitations cannot be worked around, using the fallback mode may be required, with the caveat that it
     provides limited functionality.
+    This was done for example in :meth:`mx_graal_benchmark.JMHNativeImageBenchmarkMixin.fallback_mode_reason`.
 
     Fallback Mode
     -------------
@@ -413,7 +414,12 @@ class NativeImageBenchmarkMixin(object):
     Because of that, only the output of the ``image`` and ``run`` stages is returned from the VM (the remainder is still
     printed, but not used for regex matching when creating datapoints).
 
-    Additionally, the user cannot select only a subset of stages to run (using ``-Dnative-image.benchmark.stages``).
+    In addition, the ``NativeImageVM`` will not produce any rules to generate extra datapoints (e.g. for image build
+    metrics). If the benchmark suite dispatches into the VM multiple times (like for JMH with
+    ``--jmh-run-individually``), those rules cannot work correctly since they cannot know for which individual benchmark
+    to produce datapoint(s).
+
+    Finally, the user cannot select only a subset of stages to run (using ``-Dnative-image.benchmark.stages``).
     All stages required for that benchmark are always run together.
     """
 
@@ -512,7 +518,7 @@ class NativeImageBenchmarkMixin(object):
         final_command = command
         # Apply command mapper hooks (e.g. trackers) for all stages that run benchmark workloads
         # We cannot apply them for the image stages because the datapoints are indistinguishable from datapoints
-        # produced in the the corresponding run stages.
+        # produced in the corresponding run stages.
         if self.stages_info.should_produce_datapoints([Stage.AGENT, Stage.INSTRUMENT_RUN, Stage.RUN]):
             final_command = self.apply_command_mapper_hooks(command, vm)
         return mx.run(final_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)

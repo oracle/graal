@@ -947,8 +947,10 @@ class NativeImageVM(GraalVm):
     def rules(self, output, benchmarks, bmSuiteArgs):
         rules = super().rules(output, benchmarks, bmSuiteArgs)
 
-        if self.stages_info.should_produce_datapoints([Stage.INSTRUMENT_IMAGE, Stage.IMAGE]):
+        if not self.stages_info.fallback_mode and self.stages_info.should_produce_datapoints([Stage.INSTRUMENT_IMAGE, Stage.IMAGE]):
             # Only apply image build rules for the image build stages
+            # In fallback mode, we don't produce any rules for the build stages,
+            # see NativeImageBenchmarkMixin for more details.
             rules += self.image_build_rules(benchmarks)
 
         return rules
