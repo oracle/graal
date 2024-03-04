@@ -31,6 +31,7 @@ import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
@@ -62,7 +63,7 @@ public class LoopSafepointStateVerificationTest extends GraalCompilerTest {
 
     @Test
     public void test01() {
-        try {
+        try (AutoCloseable c = new TTY.Filter()) {
             OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.FullUnroll, false);
             test(opt, "snippet01");
             Assert.fail("Should have detected that the phase in this class does not retain the mustNotSafepoint flag of a loop begin");
