@@ -24,9 +24,15 @@
  */
 package com.oracle.svm.core.heap;
 
+import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -38,6 +44,8 @@ import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
+
+import com.sun.management.OperatingSystemMXBean;
 
 /**
  * Contains static methods to get configuration of physical memory.
@@ -55,6 +63,8 @@ public class PhysicalMemory {
         /** Get the size of physical memory from the OS. */
         UnsignedWord size();
     }
+
+    private static final long K = 1024;
 
     private static final ReentrantLock LOCK = new ReentrantLock();
     private static final UnsignedWord UNSET_SENTINEL = UnsignedUtils.MAX_VALUE;
@@ -111,6 +121,36 @@ public class PhysicalMemory {
         }
 
         return cachedSize;
+    }
+
+    /**
+     * Returns the amount of used physical memory in bytes, or -1 if not supported yet.
+     */
+    public static long usedSize() {
+        // Containerized Linux, Windows and Mac OS X use the OS bean
+        if ((Containers.isContainerized() && Containers.memoryLimitInBytes() > 0) ||
+                        Platform.includedIn(Platform.WINDOWS.class) ||
+                        Platform.includedIn(Platform.MACOS.class)) {
+            OperatingSystemMXBean osBean = (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+            return osBean.getTotalMemorySize() - osBean.getFreeMemorySize();
+        }
+        // Non-containerized Linux uses MemAvailable from /proc/meminfo
+        if (Platform.includedIn(Platform.LINUX.class)) {
+            try {
+                List<String> lines = Files.readAllLines(Paths.get("/proc/meminfo"));
+                for (String line : lines) {
+                    if (!line.contains("MemAvailable")) {
+                        continue;
+                    }
+                    String memAvailable = line.replaceAll("\\D", "");
+                    if (!memAvailable.isEmpty()) {
+                        return size().rawValue() - Long.parseLong(memAvailable) * K;
+                    }
+                }
+            } catch (IOException e) {
+            }
+        }
+        return -1;
     }
 
     /**
