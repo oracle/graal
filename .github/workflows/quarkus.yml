@@ -95,7 +95,7 @@ jobs:
           ${{ runner.os }}-maven-
     - name: Tar GraalVM
       shell: bash
-      run: tar -czvf graalvm.tgz -C $(dirname ${GRAALVM_HOME}) $(basename ${GRAALVM_HOME})
+      run: tar -czvhf graalvm.tgz -C $(dirname ${GRAALVM_HOME}) $(basename ${GRAALVM_HOME})
     - name: Persist GraalVM build
       uses: actions/upload-artifact@v4
       with:
