@@ -30,6 +30,7 @@ import java.lang.management.ThreadMXBean;
 import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
@@ -49,7 +50,7 @@ public class EveryChunkNativePeriodicEvents extends Event {
         emitJavaThreadStats(threadMXBean.getThreadCount(), threadMXBean.getDaemonThreadCount(),
                         threadMXBean.getTotalStartedThreadCount(), threadMXBean.getPeakThreadCount());
 
-        emitPhysicalMemory(com.oracle.svm.core.heap.PhysicalMemory.size().rawValue(), 0);
+        emitPhysicalMemory(PhysicalMemory.size().rawValue(), PhysicalMemory.usedSize());
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
