@@ -33,8 +33,8 @@ import com.oracle.svm.core.annotate.TargetClass;
 import jdk.internal.foreign.abi.ABIDescriptor;
 import jdk.internal.foreign.abi.VMStorage;
 
-@TargetClass(className = "jdk.internal.foreign.abi.UpcallLinker")
-public final class Target_jdk_internal_foreign_abi_UpcallLinker {
+@TargetClass(className = "jdk.internal.foreign.abi.UpcallLinker", onlyWith = ForeignFunctionsEnabled.class)
+final class Target_jdk_internal_foreign_abi_UpcallLinker {
 
     @Substitute
     static long makeUpcallStub(MethodHandle mh, ABIDescriptor abi, Target_jdk_internal_foreign_abi_UpcallLinker_CallRegs conv,
@@ -48,7 +48,7 @@ public final class Target_jdk_internal_foreign_abi_UpcallLinker {
     }
 }
 
-@TargetClass(className = "jdk.internal.foreign.abi.UpcallLinker", innerClass = "CallRegs")
+@TargetClass(className = "jdk.internal.foreign.abi.UpcallLinker", innerClass = "CallRegs", onlyWith = ForeignFunctionsEnabled.class)
 final class Target_jdk_internal_foreign_abi_UpcallLinker_CallRegs {
     @Alias private VMStorage[] argRegs;
     @Alias private VMStorage[] retRegs;

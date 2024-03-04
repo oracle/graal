@@ -32,8 +32,8 @@ import com.oracle.svm.core.annotate.TargetClass;
 
 import jdk.internal.foreign.MemorySessionImpl;
 
-@TargetClass(className = "jdk.internal.foreign.abi.UpcallStubs")
-public final class Target_jdk_internal_foreign_abi_UpcallStubs {
+@TargetClass(className = "jdk.internal.foreign.abi.UpcallStubs", onlyWith = ForeignFunctionsEnabled.class)
+final class Target_jdk_internal_foreign_abi_UpcallStubs {
     @Substitute
     @SuppressWarnings("restricted")
     static MemorySegment makeUpcall(long entry, Arena arena) {

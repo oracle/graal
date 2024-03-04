@@ -25,6 +25,7 @@
 package com.oracle.svm.core.jdk;
 
 import java.io.IOException;
+import java.lang.invoke.MethodHandle;
 import java.lang.invoke.VarHandle;
 import java.nio.channels.FileChannel;
 import java.util.List;
@@ -65,6 +66,19 @@ final class Target_java_lang_foreign_Arena {
 final class Target_java_lang_foreign_Linker {
 }
 
+@TargetClass(className = "java.lang.foreign.Linker", innerClass = "Option", onlyWith = ForeignDisabled.class)
+final class Target_java_lang_foreign_Linker_Option {
+}
+
+@TargetClass(className = "jdk.internal.foreign.abi.AbstractLinker", onlyWith = ForeignDisabled.class)
+final class Target_jdk_internal_foreign_abi_AbstractLinker {
+    @Substitute
+    Target_java_lang_foreign_MemorySegment upcallStub(MethodHandle target, Target_java_lang_foreign_FunctionDescriptor function,
+                    Target_java_lang_foreign_Arena arena, Target_java_lang_foreign_Linker_Option... options) {
+        throw ForeignDisabledSubstitutions.fail();
+    }
+}
+
 @TargetClass(className = "jdk.internal.foreign.abi.SharedUtils", onlyWith = ForeignDisabled.class)
 final class Target_jdk_internal_foreign_abi_SharedUtils {
     @Substitute
@@ -95,6 +109,10 @@ final class Target_jdk_internal_foreign_FunctionDescriptorImpl {
     Target_jdk_internal_foreign_FunctionDescriptorImpl(Target_java_lang_foreign_MemoryLayout resLayout, List<Target_java_lang_foreign_MemoryLayout> argLayouts) {
         throw ForeignDisabledSubstitutions.fail();
     }
+}
+
+@TargetClass(className = "java.lang.foreign.FunctionDescriptor", onlyWith = ForeignDisabled.class)
+final class Target_java_lang_foreign_FunctionDescriptor {
 }
 
 @TargetClass(className = "jdk.internal.foreign.SegmentFactories", onlyWith = {ForeignDisabled.class, JDK22OrLater.class})
