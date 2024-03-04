@@ -526,6 +526,17 @@ public class ParserState {
     }
 
     /**
+     * Adds a lane-indexed vector instruction (extract_lane or replace_lane).
+     * 
+     * @param instruction The vector instruction
+     * @param laneIndex The index of the lane to be acted upon
+     */
+    public void addVectorLaneInstruction(int instruction, byte laneIndex) {
+        bytecode.add(instruction);
+        bytecode.add(laneIndex);
+    }
+
+    /**
      * Finishes the current control frame and removes it from the control frame stack.
      *
      * @param multiValue If multiple return values are supported.

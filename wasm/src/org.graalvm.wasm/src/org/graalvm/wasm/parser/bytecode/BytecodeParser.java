@@ -905,8 +905,26 @@ public abstract class BytecodeParser {
                             break;
                         }
                         case Bytecode.VECTOR_V128_CONST:
+                        case Bytecode.VECTOR_I8X16_SHUFFLE:
                             offset += 16;
                             break;
+                        case Bytecode.VECTOR_I8X16_EXTRACT_LANE_S:
+                        case Bytecode.VECTOR_I8X16_EXTRACT_LANE_U:
+                        case Bytecode.VECTOR_I8X16_REPLACE_LANE:
+                        case Bytecode.VECTOR_I16X8_EXTRACT_LANE_S:
+                        case Bytecode.VECTOR_I16X8_EXTRACT_LANE_U:
+                        case Bytecode.VECTOR_I16X8_REPLACE_LANE:
+                        case Bytecode.VECTOR_I32X4_EXTRACT_LANE:
+                        case Bytecode.VECTOR_I32X4_REPLACE_LANE:
+                        case Bytecode.VECTOR_I64X2_EXTRACT_LANE:
+                        case Bytecode.VECTOR_I64X2_REPLACE_LANE:
+                        case Bytecode.VECTOR_F32X4_EXTRACT_LANE:
+                        case Bytecode.VECTOR_F32X4_REPLACE_LANE:
+                        case Bytecode.VECTOR_F64X2_EXTRACT_LANE:
+                        case Bytecode.VECTOR_F64X2_REPLACE_LANE:
+                            offset++;
+                            break;
+                        case Bytecode.VECTOR_I8X16_SWIZZLE:
                         case Bytecode.VECTOR_I8X16_SPLAT:
                         case Bytecode.VECTOR_I16X8_SPLAT:
                         case Bytecode.VECTOR_I32X4_SPLAT:

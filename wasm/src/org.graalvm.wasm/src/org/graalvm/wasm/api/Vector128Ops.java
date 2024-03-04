@@ -56,6 +56,108 @@ public class Vector128Ops {
         return vec;
     }
 
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static byte[] i8x16_shuffle(byte[] x, byte[] y, byte[] indices) {
+        byte[] result = new byte[16];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = indices[i] < 16 ? x[indices[i]] : y[indices[i] - 16];
+        }
+        return result;
+    }
+
+    public static int i8x16_extract_lane(byte[] bytes, int laneIndex, int vectorOpcode) {
+        return switch (vectorOpcode) {
+            case Bytecode.VECTOR_I8X16_EXTRACT_LANE_S -> bytes[laneIndex];
+            case Bytecode.VECTOR_I8X16_EXTRACT_LANE_U -> Byte.toUnsignedInt(bytes[laneIndex]);
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        };
+    }
+
+    public static byte[] i8x16_replace_lane(byte[] bytes, int laneIndex, byte value) {
+        byte[] result = Arrays.copyOf(bytes, 16);
+        result[laneIndex] = value;
+        return result;
+    }
+
+    public static int i16x8_extract_lane(byte[] vec, int laneIndex, int vectorOpcode) {
+        short[] shorts = Vector128.bytesAsShorts(vec);
+        CompilerDirectives.ensureVirtualized(shorts);
+        return switch (vectorOpcode) {
+            case Bytecode.VECTOR_I16X8_EXTRACT_LANE_S -> shorts[laneIndex];
+            case Bytecode.VECTOR_I16X8_EXTRACT_LANE_U -> Short.toUnsignedInt(shorts[laneIndex]);
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        };
+    }
+
+    public static byte[] i16x8_replace_lane(byte[] vec, int laneIndex, short value) {
+        short[] result = Vector128.bytesAsShorts(vec);
+        CompilerDirectives.ensureVirtualized(result);
+        result[laneIndex] = value;
+        return Vector128.shortsAsBytes(result);
+    }
+
+    public static int i32x4_extract_lane(byte[] vec, int laneIndex) {
+        int[] ints = Vector128.bytesAsInts(vec);
+        CompilerDirectives.ensureVirtualized(ints);
+        return ints[laneIndex];
+    }
+
+    public static byte[] i32x4_replace_lane(byte[] vec, int laneIndex, int value) {
+        int[] result = Vector128.bytesAsInts(vec);
+        CompilerDirectives.ensureVirtualized(result);
+        result[laneIndex] = value;
+        return Vector128.intsAsBytes(result);
+    }
+
+    public static long i64x2_extract_lane(byte[] vec, int laneIndex) {
+        long[] longs = Vector128.bytesAsLongs(vec);
+        CompilerDirectives.ensureVirtualized(longs);
+        return longs[laneIndex];
+    }
+
+    public static byte[] i64x2_replace_lane(byte[] vec, int laneIndex, long value) {
+        long[] result = Vector128.bytesAsLongs(vec);
+        CompilerDirectives.ensureVirtualized(result);
+        result[laneIndex] = value;
+        return Vector128.longsAsBytes(result);
+    }
+
+    public static float f32x4_extract_lane(byte[] vec, int laneIndex) {
+        float[] floats = Vector128.bytesAsFloats(vec);
+        CompilerDirectives.ensureVirtualized(floats);
+        return floats[laneIndex];
+    }
+
+    public static byte[] f32x4_replace_lane(byte[] vec, int laneIndex, float value) {
+        float[] result = Vector128.bytesAsFloats(vec);
+        CompilerDirectives.ensureVirtualized(result);
+        result[laneIndex] = value;
+        return Vector128.floatsAsBytes(result);
+    }
+
+    public static double f64x2_extract_lane(byte[] vec, int laneIndex) {
+        double[] doubles = Vector128.bytesAsDoubles(vec);
+        CompilerDirectives.ensureVirtualized(doubles);
+        return doubles[laneIndex];
+    }
+
+    public static byte[] f64x2_replace_lane(byte[] vec, int laneIndex, double value) {
+        double[] result = Vector128.bytesAsDoubles(vec);
+        CompilerDirectives.ensureVirtualized(result);
+        result[laneIndex] = value;
+        return Vector128.doublesAsBytes(result);
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    public static byte[] i8x16_swizzle(byte[] values, byte[] indices) {
+        byte[] result = new byte[16];
+        for (int i = 0; i < result.length; i++) {
+            int index = Byte.toUnsignedInt(indices[i]);
+            result[i] = index < 16 ? values[index] : 0;
+        }
+        return result;
+    }
+
     public static byte[] i8x16_splat(byte x) {
         byte[] result = new byte[16];
         Arrays.fill(result, x);
