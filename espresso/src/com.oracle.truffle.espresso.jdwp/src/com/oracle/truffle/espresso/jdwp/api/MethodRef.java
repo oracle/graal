@@ -218,18 +218,4 @@ public interface MethodRef {
      * @return last bci
      */
     long getLastBCI();
-
-    /**
-     * Determines if the method was compiled with a variable table.
-     *
-     * @return true if the method has a variable table
-     */
-    boolean hasVariableTable();
-
-    /**
-     * Determines if the method was compiled with a variable type table.
-     *
-     * @return true if the method has a variable table
-     */
-    boolean hasVariabletypeTable();
 }
