@@ -1323,7 +1323,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
          */
         boolean canHaveSafepoints;
         LoopBeginNode lb;
-        NodeSourcePosition nsp;
         FrameState fs;
 
         static SafepointData fromLoopBegin(LoopBeginNode lb) {
@@ -1331,7 +1330,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             sd.lb = lb;
             sd.canHaveSafepoints = lb.canEndsSafepoint;
             sd.fs = lb.stateAfter();
-            sd.nsp = lb.getNodeSourcePosition();
             return sd;
         }
 
@@ -1348,9 +1346,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
         public boolean sameStateOrNsp(SafepointData otherData) {
             if (otherData.fs == fs) {
-                return true;
-            }
-            if (this.nsp != null && otherData.nsp != null && otherData.nsp.equals(nsp)) {
                 return true;
             }
             // not the same state or also not the same NSP - check if framestates represent the same
