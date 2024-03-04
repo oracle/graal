@@ -106,7 +106,8 @@ public abstract class SwitchNode extends ControlSplitNode {
             total += d;
             GraalError.guarantee(d >= 0.0, "Cannot have negative probabilities in switch node: %s", d);
         }
-        GraalError.guarantee(Math.abs(total - 1.0) <= ProfileData.EPSILON, "Total probability across branches not equal to one: %.10f", total);
+        GraalError.guarantee(ProfileData.isApproximatelyEqual(total, 1.0),
+                        "Total probability across branches not equal to one: %.10f", total);
         return true;
     }
 
