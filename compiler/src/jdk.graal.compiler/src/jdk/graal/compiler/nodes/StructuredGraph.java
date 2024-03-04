@@ -1311,6 +1311,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return super.verify(verifyInputs);
     }
 
+    public static final boolean PRINT_SAFEPOINT_NOT_FOUND = false;
+
     private EconomicMap<Node, SafepointData> safepointVerifiacationData;
 
     static class SafepointData {
@@ -1323,6 +1325,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
          */
         boolean canHaveSafepoints;
         LoopBeginNode lb;
+        NodeSourcePosition nsp;
         FrameState fs;
 
         static SafepointData fromLoopBegin(LoopBeginNode lb) {
@@ -1330,6 +1333,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             sd.lb = lb;
             sd.canHaveSafepoints = lb.canEndsSafepoint;
             sd.fs = lb.stateAfter();
+            sd.nsp = lb.getNodeSourcePosition();
             return sd;
         }
 
@@ -1348,14 +1352,53 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             if (otherData.fs == fs) {
                 return true;
             }
+            // not source position must match
+            if (this.nsp != null && otherData.nsp != null && !otherData.nsp.equals(nsp)) {
+                return false;
+            }
             // not the same state or also not the same NSP - check if framestates represent the same
             // position
             final FrameState thisState = fs;
             final FrameState otherState = otherData.fs;
-            if (thisState != null && otherState != null && thisState.valueEquals(otherState)) {
-                return true;
+            if (thisState != null && otherState != null && !thisState.valueEquals(otherState)) {
+                return false;
             }
-            return false;
+            if (!sameLoopType(this.lb, otherData.lb)) {
+                return false;
+            }
+            return true;
+        }
+
+        /**
+         * This method is a heuristic approxmation for loop safepoint verification. When we remove a
+         * loop from a graph and replace it by something else we try to find the replacement
+         * loop(s). Which is not always trivial, thus we need to have a "best" guess as in - the new
+         * loop has the same node source position, framestate based on properties and loop general
+         * properties.
+         */
+        private static boolean sameLoopType(LoopBeginNode lb1, LoopBeginNode lb2) {
+            if (lb1.compilerInverted != lb2.compilerInverted) {
+                return false;
+            }
+            // we skip loop type to verify partial unrolling
+
+            /*
+             * Only if this loop was touched by strip mining already verify the properties, else we
+             * might be verifying during a replace. Note that strip mining is special in that in
+             * creates a second loop with the same state and the same node source position with an
+             * inner/outer mapping. Any other loop optimization is sequential in that it does only
+             * copy a loop but never creates new loop nests.
+             */
+            boolean isTouchedByStripMining = lb1.stripMinedInner || lb1.isStripMinedOuter();
+            if (isTouchedByStripMining) {
+                if (lb1.isStripMinedInner() != lb2.isStripMinedInner()) {
+                    return false;
+                }
+                if (lb2.isStripMinedOuter() != lb2.isStripMinedOuter()) {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 
@@ -1418,7 +1461,9 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                         if (sd.sameStateOrNsp(otherData)) {
                             assert sd.assertNotWeaker(otherData);
                         } else {
-                            TTY.printf("Could not find replacement loop for %s in %s%n", sd.lb, this);
+                            if (PRINT_SAFEPOINT_NOT_FOUND) {
+                                TTY.printf("Could not find replacement loop for %s in %s%n", sd.lb, this);
+                            }
                         }
                     }
                 }
