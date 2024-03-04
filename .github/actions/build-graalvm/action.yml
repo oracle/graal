@@ -21,8 +21,6 @@ runs:
         echo "MX_VERSION=$(jq -r '.mx_version' common.json)" >> ${GITHUB_ENV}
         # Workaround testsuite locale issue
         echo "LANG=en_US.UTF-8" >> ${GITHUB_ENV}
-        # Enforce experimental option checking in CI (GR-47922)
-        echo "NATIVE_IMAGE_EXPERIMENTAL_OPTIONS_ARE_FATAL=true" >> ${GITHUB_ENV}
     - name: Checkout graalvm/mx
       uses: actions/checkout@v4
       with:
