@@ -189,7 +189,7 @@ public final class Sequence extends RegexASTNode implements RegexASTVisitorItera
             return false;
         }
         for (Term t : terms) {
-            if (!(t.isCharacterClass()) || t.asCharacterClass().hasNotUnrolledQuantifier()) {
+            if (!(t.isCharacterClass()) || t.asCharacterClass().hasNotExpandedQuantifier()) {
                 return false;
             }
         }

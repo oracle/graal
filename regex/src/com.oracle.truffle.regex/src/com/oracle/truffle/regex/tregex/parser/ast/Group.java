@@ -287,7 +287,7 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
 
     @Override
     public boolean isUnrollingCandidate() {
-        return hasQuantifier() && getQuantifier().isWithinThreshold(TRegexOptions.TRegexQuantifierUnrollThresholdGroup);
+        return hasNotUnrolledQuantifier() && getQuantifier().isWithinThreshold(TRegexOptions.TRegexQuantifierUnrollThresholdGroup);
     }
 
     /**

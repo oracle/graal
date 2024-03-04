@@ -581,7 +581,7 @@ public abstract class NFATraversalRegexASTVisitor {
         // transitions to the empty-match state unconditionally. This ensures that we do not try to
         // generate NFA transitions that span multiple repetitions of the same quantified group,
         // potentially leading to non-terminating NFA generation.
-        if (ast.getOptions().getFlavor().canHaveEmptyLoopIterations() || (parent.hasNotUnrolledQuantifier() && parent.getQuantifier().getMin() > 0)) {
+        if (ast.getOptions().getFlavor().canHaveEmptyLoopIterations() || (parent.hasNotExpandedQuantifier() && parent.getQuantifier().getMin() > 0)) {
             assert curTerm.isGroup();
             // By returning the quantified group itself, we map the transition target to the special
             // empty-match state.

@@ -177,7 +177,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
             // TODO: maybe check if the referenced group can produce a zero-width match
             setZeroWidthQuantifierIndex(backReference);
         }
-        if (backReference.hasNotUnrolledQuantifier()) {
+        if (backReference.hasNotExpandedQuantifier()) {
             backReference.getParent().setHasQuantifiers();
             setQuantifierIndex(backReference);
         }
@@ -490,7 +490,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                 ast.getProperties().setLoneSurrogates();
             }
         }
-        if (characterClass.hasNotUnrolledQuantifier()) {
+        if (characterClass.hasNotExpandedQuantifier()) {
             characterClass.getParent().setHasQuantifiers();
             setQuantifierIndex(characterClass);
             characterClass.getParent().incMinPath(characterClass.getQuantifier().getMin());
