@@ -37,13 +37,6 @@ import jdk.vm.ci.meta.ProfilingInfo;
  * {@link LoopFrequencyData}, {@link SwitchProbabilityData}
  */
 public abstract class ProfileData {
-
-    /**
-     * The smallest possible difference between two numerical probabilities/frequencies. Should be
-     * used as a threshold for floating-point comparisons.
-     */
-    public static final double EPSILON = 1e-9;
-
     protected final ProfileSource profileSource;
 
     protected ProfileData(ProfileSource profileSource) {
@@ -127,6 +120,32 @@ public abstract class ProfileData {
 
     public ProfileSource getProfileSource() {
         return profileSource;
+    }
+
+    /**
+     * The smallest possible difference between two numerical probabilities/frequencies. Should be
+     * used as a threshold for floating-point comparisons.
+     */
+    public static final double EPSILON = 1e-9;
+
+    /**
+     * Compares two probabilities for approximate equality with a threshold of {@link #EPSILON}.
+     *
+     * @return {@code true} iff the absolute difference between the two probabilities is smaller or
+     *         equal to {@link #EPSILON}.
+     */
+    public static boolean isApproximatelyEqual(double probability, double expected) {
+        return Math.abs(probability - expected) <= EPSILON;
+    }
+
+    /**
+     * Determines whether a probability lies in a given allowed range, allowing for a threshold of
+     * {@link #EPSILON}.
+     *
+     * @return {@code true} iff {@code (min - EPSILON) <= probability <= (max + EPSILON)}.
+     */
+    public static boolean isApproximatelyInRange(double probability, double min, double max) {
+        return min - EPSILON <= probability && probability <= max + EPSILON;
     }
 
     /**

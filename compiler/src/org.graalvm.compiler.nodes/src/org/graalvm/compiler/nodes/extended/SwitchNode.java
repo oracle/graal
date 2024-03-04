@@ -104,7 +104,7 @@ public abstract class SwitchNode extends ControlSplitNode {
             total += d;
             assert d >= 0.0 : "Cannot have negative probabilities in switch node: " + d;
         }
-        assert Math.abs(total - 1.0) <= ProfileData.EPSILON : "Total " + total;
+        assert ProfileData.isApproximatelyEqual(total, 1.0) : "Total " + total;
         return true;
     }
 
