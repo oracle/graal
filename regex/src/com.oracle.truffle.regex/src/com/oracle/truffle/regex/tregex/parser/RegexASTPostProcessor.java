@@ -160,7 +160,7 @@ public class RegexASTPostProcessor {
 
         @Override
         protected void leave(Group group) {
-            if (group.hasNotUnrolledQuantifier() && !group.getFirstAlternative().isExpandedQuantifier() && !group.getLastAlternative().isExpandedQuantifier()) {
+            if (group.hasNotUnrolledQuantifier() && !group.getFirstAlternative().isExpandedQuantifierEmptySequence() && !group.getLastAlternative().isExpandedQuantifierEmptySequence()) {
                 quantifierExpander.expandQuantifier(group, shouldUnroll(group) && shouldUnrollVisitor.shouldUnroll(group));
             }
         }
@@ -263,9 +263,9 @@ public class RegexASTPostProcessor {
                 if (quantifier.isGreedy()) {
                     createOptionalBranch(term, quantifier, unroll, recurse);
                     nextSequence();
-                    curSequence.setExpandedQuantifier(true);
+                    curSequence.setExpandedQuantifierEmptySequence(true);
                 } else {
-                    curSequence.setExpandedQuantifier(true);
+                    curSequence.setExpandedQuantifierEmptySequence(true);
                     nextSequence();
                     createOptionalBranch(term, quantifier, unroll, recurse);
                 }

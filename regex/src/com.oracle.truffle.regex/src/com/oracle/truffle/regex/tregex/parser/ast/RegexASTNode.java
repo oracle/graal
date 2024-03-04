@@ -64,16 +64,17 @@ public abstract class RegexASTNode implements JsonConvertible {
     static final int FLAG_GROUP_LOOP = 1 << 10;
     static final int FLAG_GROUP_EXPANDED_QUANTIFIER = 1 << 11;
     static final int FLAG_GROUP_UNROLLED_QUANTIFIER = 1 << 12;
-    static final int FLAG_GROUP_LOCAL_FLAGS = 1 << 13;
-    static final int FLAG_EMPTY_GUARD = 1 << 14;
-    static final int FLAG_LOOK_AROUND_NEGATED = 1 << 15;
-    static final int FLAG_HAS_LOOPS = 1 << 16;
-    static final int FLAG_HAS_CAPTURE_GROUPS = 1 << 17;
-    static final int FLAG_HAS_QUANTIFIERS = 1 << 18;
-    static final int FLAG_HAS_LOOK_BEHINDS = 1 << 19;
-    static final int FLAG_HAS_LOOK_AHEADS = 1 << 20;
-    static final int FLAG_HAS_BACK_REFERENCES = 1 << 21;
-    static final int FLAG_CHARACTER_CLASS_WAS_SINGLE_CHAR = 1 << 22;
+    static final int FLAG_GROUP_EXPANDED_QUANTIFIER_EMPTY_SEQUENCE = 1 << 13;
+    static final int FLAG_GROUP_LOCAL_FLAGS = 1 << 14;
+    static final int FLAG_EMPTY_GUARD = 1 << 15;
+    static final int FLAG_LOOK_AROUND_NEGATED = 1 << 16;
+    static final int FLAG_HAS_LOOPS = 1 << 17;
+    static final int FLAG_HAS_CAPTURE_GROUPS = 1 << 18;
+    static final int FLAG_HAS_QUANTIFIERS = 1 << 19;
+    static final int FLAG_HAS_LOOK_BEHINDS = 1 << 20;
+    static final int FLAG_HAS_LOOK_AHEADS = 1 << 21;
+    static final int FLAG_HAS_BACK_REFERENCES = 1 << 22;
+    static final int FLAG_CHARACTER_CLASS_WAS_SINGLE_CHAR = 1 << 23;
 
     private int id = -1;
     private RegexASTNode parent;
@@ -405,6 +406,14 @@ public abstract class RegexASTNode implements JsonConvertible {
      */
     public void setUnrolledQuantifer(boolean unrolledQuantifer) {
         setFlag(FLAG_GROUP_UNROLLED_QUANTIFIER, unrolledQuantifer);
+    }
+
+    public boolean isExpandedQuantifierEmptySequence() {
+        return isFlagSet(FLAG_GROUP_EXPANDED_QUANTIFIER_EMPTY_SEQUENCE);
+    }
+
+    public void setExpandedQuantifierEmptySequence(boolean expandedQuantifierEmptySequence) {
+        setFlag(FLAG_GROUP_EXPANDED_QUANTIFIER_EMPTY_SEQUENCE, expandedQuantifierEmptySequence);
     }
 
     public int getMinPath() {
