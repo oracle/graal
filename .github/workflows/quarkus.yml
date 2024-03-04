@@ -124,6 +124,8 @@ jobs:
     name: Native Tests - ${{matrix.category}}
     needs: build-quarkus-and-graalvm
     runs-on: ubuntu-latest
+    env:
+      GRAALVM_HOME: ${{ github.workspace }}/graalvm # identical to the one in ./.github/actions/build-graalvm
     # Ignore the following YAML Schema error
     timeout-minutes: ${{matrix.timeout}}
     strategy:
@@ -171,7 +173,6 @@ jobs:
         env:
           TEST_MODULES: ${{matrix.test-modules}}
         run: |
-          export GRAALVM_HOME=${{ github.workspace }}/graalvm
           cd ${QUARKUS_PATH}
           ${GRAALVM_HOME}/bin/native-image --version
           ./mvnw $COMMON_MAVEN_ARGS -f integration-tests -pl "$TEST_MODULES" $NATIVE_TEST_MAVEN_ARGS
