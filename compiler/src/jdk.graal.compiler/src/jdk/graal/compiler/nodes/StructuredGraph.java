@@ -1315,6 +1315,37 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     private EconomicMap<Node, SafepointData> safepointVerifiacationData;
 
+    private int getDepth(LoopBeginNode lb) {
+        int enterSeen = 0;
+        int exitSeen = 0;
+
+        FixedNode cur = lb.forwardEnd();
+        while (cur != null) {
+            if (cur instanceof LoopExitNode) {
+                exitSeen++;
+            }
+            if (cur instanceof LoopBeginNode) {
+                enterSeen++;
+            }
+
+            if (cur.predecessor() != null) {
+                cur = (FixedNode) cur.predecessor();
+                continue;
+            } else {
+                if (cur instanceof AbstractMergeNode am) {
+                    cur = am.forwardEndAt(0);
+                    continue;
+                } else if (cur == start) {
+                    break;
+                }
+            }
+        }
+
+        GraalError.guarantee(cur == start, "Must visit start but stuck at " + cur);
+        GraalError.guarantee(enterSeen >= exitSeen, "Must see >= enters than exits, enters=" + enterSeen + " exitSeen=" + exitSeen);
+        return enterSeen - exitSeen;
+    }
+
     static class SafepointData {
         /**
          * Determine if there can be a safepoint on any of the loop ends of this loop, this means
@@ -1327,6 +1358,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         LoopBeginNode lb;
         NodeSourcePosition nsp;
         FrameState fs;
+        int depth;
 
         static SafepointData fromLoopBegin(LoopBeginNode lb) {
             SafepointData sd = new SafepointData();
@@ -1334,6 +1366,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             sd.canHaveSafepoints = lb.canEndsSafepoint;
             sd.fs = lb.stateAfter();
             sd.nsp = lb.getNodeSourcePosition();
+            sd.depth = lb.graph().getDepth(lb);
             return sd;
         }
 
@@ -1361,6 +1394,9 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             final FrameState thisState = fs;
             final FrameState otherState = otherData.fs;
             if (thisState != null && otherState != null && !thisState.valueEquals(otherState)) {
+                return false;
+            }
+            if (this.depth != otherData.depth) {
                 return false;
             }
             if (!sameLoopType(this.lb, otherData.lb)) {
