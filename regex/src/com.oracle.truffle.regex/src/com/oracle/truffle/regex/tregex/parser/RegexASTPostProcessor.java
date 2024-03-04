@@ -146,21 +146,21 @@ public class RegexASTPostProcessor {
 
         @Override
         protected void visit(BackReference backReference) {
-            if (backReference.hasNotUnrolledQuantifier()) {
+            if (backReference.hasNotFinishedExpandingQuantifier()) {
                 quantifierExpander.expandQuantifier(backReference, shouldUnroll(backReference));
             }
         }
 
         @Override
         protected void visit(CharacterClass characterClass) {
-            if (characterClass.hasNotUnrolledQuantifier()) {
+            if (characterClass.hasNotFinishedExpandingQuantifier()) {
                 quantifierExpander.expandQuantifier(characterClass, shouldUnroll(characterClass));
             }
         }
 
         @Override
         protected void leave(Group group) {
-            if (group.hasNotUnrolledQuantifier() && !group.getFirstAlternative().isExpandedQuantifierEmptySequence() && !group.getLastAlternative().isExpandedQuantifierEmptySequence()) {
+            if (group.hasNotFinishedExpandingQuantifier() && !group.getFirstAlternative().isExpandedQuantifierEmptySequence() && !group.getLastAlternative().isExpandedQuantifierEmptySequence()) {
                 quantifierExpander.expandQuantifier(group, shouldUnroll(group) && shouldUnrollVisitor.shouldUnroll(group));
             }
         }
@@ -194,7 +194,7 @@ public class RegexASTPostProcessor {
 
             @Override
             protected void visit(Group group) {
-                if (group != root && group.hasNotUnrolledQuantifier()) {
+                if (group != root && group.hasNotExpandedQuantifier()) {
                     result = false;
                 }
             }
@@ -242,9 +242,18 @@ public class RegexASTPostProcessor {
             }
 
             private void createOptionalBranch(QuantifiableTerm term, Token.Quantifier quantifier, boolean unroll, int recurse) {
+                pushGroup();
                 addTerm(copySupplier.get());
-                curTerm.setUnrolledQuantifer(false);
-                ((QuantifiableTerm) curTerm).setQuantifier(null);
+                curTerm.asQuantifiableTerm().setQuantifier(null);
+                popGroup();
+                curTerm.asQuantifiableTerm().setQuantifier(quantifier);
+                curTerm.setExpandedQuantifier(unroll);
+                curTerm.setUnrolledQuantifer(unroll);
+                curTerm.setQuantifierExpansionDone(true);
+                if (term.isGroup()) {
+                    curTerm.asGroup().setEnclosedCaptureGroupsLow(term.asGroup().getCaptureGroupsLow());
+                    curTerm.asGroup().setEnclosedCaptureGroupsHigh(term.asGroup().getCaptureGroupsHigh());
+                }
                 curTerm.setEmptyGuard(true);
                 createOptional(term, quantifier, unroll, recurse - 1);
             }
@@ -254,8 +263,10 @@ public class RegexASTPostProcessor {
                     return;
                 }
                 pushGroup();
-                curGroup.setExpandedQuantifier(unroll);
                 curGroup.setQuantifier(quantifier);
+                curGroup.setExpandedQuantifier(unroll);
+                curGroup.setUnrolledQuantifer(unroll);
+                curGroup.setQuantifierExpansionDone(true);
                 if (term.isGroup()) {
                     curGroup.setEnclosedCaptureGroupsLow(term.asGroup().getCaptureGroupsLow());
                     curGroup.setEnclosedCaptureGroupsHigh(term.asGroup().getCaptureGroupsHigh());
@@ -273,7 +284,7 @@ public class RegexASTPostProcessor {
             }
 
             private void expandQuantifier(QuantifiableTerm toExpand, boolean unroll) {
-                assert toExpand.hasNotUnrolledQuantifier();
+                assert toExpand.hasNotFinishedExpandingQuantifier();
                 Token.Quantifier quantifier = toExpand.getQuantifier();
                 assert !unroll || toExpand.isUnrollingCandidate();
 
@@ -290,6 +301,7 @@ public class RegexASTPostProcessor {
                     // unroll non-optional part ( x{3} -> xxx )
                     for (int i = 0; i < quantifier.getMin(); i++) {
                         Term term = copySupplier.get();
+                        term.setQuantifierExpansionDone(true);
                         term.setExpandedQuantifier(true);
                         term.setUnrolledQuantifer(true);
                         addTerm(term);

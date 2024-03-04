@@ -183,7 +183,7 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
 
     @Override
     protected void visit(CharacterClass characterClass) {
-        assert !characterClass.hasQuantifier() || characterClass.getQuantifier().getMin() == characterClass.getQuantifier().getMax();
+        assert !characterClass.hasNotUnrolledQuantifier() || characterClass.getQuantifier().getMin() == characterClass.getQuantifier().getMax();
         for (int i = 0; i < (characterClass.hasNotUnrolledQuantifier() ? characterClass.getQuantifier().getMin() : 1); i++) {
             int cp = characterClass.getCharSet().getMin();
             if (extractLiteral) {

@@ -84,7 +84,7 @@ public class SubexpressionCall extends QuantifiableTerm {
 
     @Override
     public boolean isUnrollingCandidate() {
-        return hasQuantifier() && getQuantifier().isWithinThreshold(TRegexOptions.TRegexQuantifierUnrollThresholdGroup);
+        return hasNotUnrolledQuantifier() && getQuantifier().isWithinThreshold(TRegexOptions.TRegexQuantifierUnrollThresholdGroup);
     }
 
     @Override

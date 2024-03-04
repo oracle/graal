@@ -73,6 +73,14 @@ public abstract class QuantifiableTerm extends Term {
      * Returns {@code true} iff this term has a quantifier that was not unrolled by the parser.
      */
     public boolean hasNotUnrolledQuantifier() {
+        return hasQuantifier() && !isUnrolledQuantifier();
+    }
+
+    public boolean hasNotFinishedExpandingQuantifier() {
+        return hasQuantifier() && !isQuantifierExpansionDone();
+    }
+
+    public boolean hasNotExpandedQuantifier() {
         return hasQuantifier() && !isExpandedQuantifier();
     }
 
@@ -108,7 +116,7 @@ public abstract class QuantifiableTerm extends Term {
 
     @TruffleBoundary
     protected String quantifierToString() {
-        return hasNotUnrolledQuantifier() ? quantifier.toString() : "";
+        return hasNotExpandedQuantifier() ? quantifier.toString() : "";
     }
 
     @Override
