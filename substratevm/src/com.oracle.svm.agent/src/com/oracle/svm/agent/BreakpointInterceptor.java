@@ -577,7 +577,8 @@ final class BreakpointInterceptor {
         return true;
     }
 
-    private static boolean handleResourceRegistration(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle callerClass, String function, JNIMethodId[] stackTrace, String resourceName, String moduleName) {
+    private static boolean handleResourceRegistration(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle callerClass, String function, JNIMethodId[] stackTrace, String resourceName,
+                    String moduleName) {
         if (resourceName == null) {
             return true; /* No point in tracing this: resource path is null */
         }
