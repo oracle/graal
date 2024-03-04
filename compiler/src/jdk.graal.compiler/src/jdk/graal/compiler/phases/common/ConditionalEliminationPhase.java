@@ -279,10 +279,14 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
              * dedicated block) and we cannot leave it out. All the logic explained above under
              * "REASONING" is only correct if we visit all blocks in dominance order. Thus, when we
              * move guards we must ensure we are safe proxy wise.
+             *
+             * In order to do so we verify that the location of the anchor block can be used by the
+             * current block without the need of any proxies.
              */
-            final boolean canMoveGuardsTo = b.getCfg().graph.isAfterStage(StageFlag.VALUE_PROXY_REMOVAL) || LoopUtility.canUseWithoutProxy(b.getCfg(), anchorBlock.getBeginNode(), b.getBeginNode());
+            final boolean canMoveGuardsToAnchorBlock = b.getCfg().graph.isAfterStage(StageFlag.VALUE_PROXY_REMOVAL) ||
+                            LoopUtility.canUseWithoutProxy(b.getCfg(), anchorBlock.getBeginNode(), b.getBeginNode());
 
-            if (canMoveGuardsTo) {
+            if (canMoveGuardsToAnchorBlock) {
                 if (anchorBlock != b) {
                     AbstractBeginNode abstractBegin = beginNode;
                     abstractBegin.replaceAtUsages(anchorBlock.getBeginNode(), InputType.Anchor, InputType.Guard);
