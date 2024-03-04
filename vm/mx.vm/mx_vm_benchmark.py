@@ -140,8 +140,8 @@ class NativeImageBenchmarkConfig:
         for option in self.extra_agentlib_options:
             if option.startswith('config-output-dir'):
                 mx.abort("config-output-dir must not be set in the extra_agentlib_options.")
-        # Do not strip the run arguments if safepoint-sampler configuration is active.
-        self.extra_profile_run_args = bm_suite.extra_profile_run_arg(self.benchmark_name, args, list(image_run_args), not vm.safepoint_sampler)
+        # Do not strip the run arguments if safepoint-sampler or pgo_sampler_only configuration is active
+        self.extra_profile_run_args = bm_suite.extra_profile_run_arg(self.benchmark_name, args, list(image_run_args), not (vm.safepoint_sampler or vm.pgo_sampler_only))
         self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args, list(image_run_args))
         self.benchmark_output_dir = bm_suite.benchmark_output_dir(self.benchmark_name, args)
         self.params = ['extra-image-build-argument', 'extra-jvm-arg', 'extra-run-arg', 'extra-agent-run-arg', 'extra-profile-run-arg',
@@ -421,6 +421,7 @@ class NativeImageVM(GraalVm):
         super().__init__(name, config_name, extra_java_args, extra_launcher_args)
         self.vm_args = None
         self.pgo_instrumentation = False
+        self.pgo_sampler_only = False
         self.pgo_context_sensitive = True
         self.is_gate = False
         self.is_quickbuild = False
@@ -458,7 +459,7 @@ class NativeImageVM(GraalVm):
             return
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
-        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-)?(?P<inliner>inline-)?' \
+        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-|pgo-sampler-)?(?P<inliner>inline-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
                r'(?P<profile_inference>profile-inference-feature-extraction-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-)?(?P<edition>ce-|ee-)?$'
 
@@ -509,6 +510,9 @@ class NativeImageVM(GraalVm):
                 mx.logv(f"'pgo-ctx-insens' is enabled for {config_name}")
                 self.pgo_instrumentation = True
                 self.pgo_context_sensitive = False
+            elif pgo_mode == "pgo-sampler":
+                self.pgo_instrumentation = True
+                self.pgo_sampler_only = True
             else:
                 mx.abort(f"Unknown pgo mode: {pgo_mode}")
 
@@ -925,7 +929,8 @@ class NativeImageVM(GraalVm):
 
     def run_stage_instrument_image(self, out):
         executable_name_args = ['-o', self.config.instrumentation_executable_name]
-        instrument_args = ['--pgo-instrument', '-R:ProfilesDumpFile=' + self.config.profile_path]
+        instrument_args = ['--pgo-sampling'] if self.pgo_sampler_only else ['--pgo-instrument']
+        instrument_args += ['-R:ProfilesDumpFile=' + self.config.profile_path]
         if self.jdk_profiles_collect:
             instrument_args += svm_experimental_options(['-H:+AOTPriorityInline', '-H:-SamplingCollect', f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}'])
 
