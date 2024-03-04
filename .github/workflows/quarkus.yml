@@ -49,6 +49,7 @@ on:
       - '.github/workflows/quarkus.yml'
   schedule:
   - cron: '0 3 * * *'
+  workflow_dispatch:
 
 env:
   COMMON_MAVEN_ARGS: "-e -B --settings .github/mvn-settings.xml --fail-at-end"
