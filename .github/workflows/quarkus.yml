@@ -72,6 +72,10 @@ jobs:
     outputs:
       matrix: ${{ steps.read.outputs.matrix }}
     steps:
+    - name: Checkout oracle/graal
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
     - name: Build GraalVM JDK
       uses: ./.github/actions/build-graalvm
       with:

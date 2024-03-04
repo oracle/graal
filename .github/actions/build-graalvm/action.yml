@@ -10,10 +10,6 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Checkout oracle/graal
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
     - name: Set up environment variables
       run: |
         echo "GRAALVM_HOME=${{ github.workspace }}/graalvm" >> ${GITHUB_ENV}

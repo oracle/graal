@@ -64,6 +64,10 @@ jobs:
     runs-on: ubuntu-20.04
     if: (github.event_name == 'schedule' && github.repository == 'oracle/graal') || (github.event_name != 'schedule')
     steps:
+    - name: Checkout oracle/graal
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
     - name: Build GraalVM JDK
       uses: ./.github/actions/build-graalvm
       with:
