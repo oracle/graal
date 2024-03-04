@@ -2810,6 +2810,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         return slotCount;
     }
 
+    @SuppressWarnings("try")
     private StaticObject initializeAndGetStatics(Field field) {
         ObjectKlass declaringKlass = field.getDeclaringKlass();
         if (!declaringKlass.isInitialized()) {
