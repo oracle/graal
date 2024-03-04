@@ -1306,9 +1306,9 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     @Override
-    public boolean verify() {
+    public boolean verify(boolean verifyInputs) {
         assert verifyLoopSafepoints();
-        return super.verify();
+        return super.verify(verifyInputs);
     }
 
     private EconomicMap<Node, SafepointData> safepointVerifiacationData;
@@ -1341,7 +1341,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             } else {
                 // this cannot safepoint -> ensure other also cannot safepoint
                 assert !other.canHaveSafepoints : Assertions.errorMessage("Safepoint verification cannot become weaker", lb,
-                                "previously the loop had canHaveSafepoints=false but now it has canHaveSafepoints=true");
+                                "previously the loop had canHaveSafepoints=false but now it has canHaveSafepoints=true", other.lb);
             }
             return true;
         }
@@ -1374,10 +1374,11 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                 safepointVerifiacationData.put(lb, SafepointData.fromLoopBegin(lb));
             }
         } else {
-
             ArrayList<LoopBeginNode> loopsToVisit = new ArrayList<>();
+            ArrayList<LoopBeginNode> originalLoopsInTheGraph = new ArrayList<>();
             for (Node lb : safepointVerifiacationData.getKeys()) {
                 loopsToVisit.add((LoopBeginNode) lb);
+                originalLoopsInTheGraph.add((LoopBeginNode) lb);
             }
             for (LoopBeginNode lb : getNodes(LoopBeginNode.TYPE)) {
                 final SafepointData newData = SafepointData.fromLoopBegin(lb);
@@ -1410,13 +1411,19 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                 } else {
                     // the loop was not allowed to safepoint, any replacement should also not
                     // safepoint
-                    for (Node n : safepointVerifiacationData.getKeys()) {
+                    inner: for (Node n : safepointVerifiacationData.getKeys()) {
                         LoopBeginNode other = (LoopBeginNode) n;
+                        if (originalLoopsInTheGraph.contains(other)) {
+                            // only compare old deleted loops with newly added ones
+                            continue inner;
+                        }
                         SafepointData otherData = safepointVerifiacationData.get(other);
                         assert otherData != null : Assertions.errorMessage("Must be in map as map was propagated previously", other);
                         assert other != lb : Assertions.errorMessage("Must be different nodes since one was deleted and the other is in the graph", lb, other);
                         if (sd.sameStateOrNsp(otherData)) {
                             assert sd.assertNotWeaker(otherData);
+                        } else {
+                            TTY.printf("Could not find replacement loop for %s in %s%n", sd.lb, this);
                         }
                     }
                 }
