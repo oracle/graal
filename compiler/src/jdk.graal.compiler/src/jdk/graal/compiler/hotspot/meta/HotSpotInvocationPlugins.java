@@ -149,6 +149,24 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
     }
 
     @Override
+    protected boolean isDisabled(InvocationPlugin plugin, String declaringClassInternalName, String declaringClassJavaName, OptionValues options) {
+        if (super.isDisabled(plugin, declaringClassInternalName, declaringClassJavaName, options)) {
+            return true;
+        }
+        EconomicSet<MethodKey> disabledIntrinsicsSet = disabledIntrinsics.get(declaringClassInternalName);
+        if (disabledIntrinsicsSet != null) {
+            for (MethodKey mk : disabledIntrinsicsSet) {
+                if (mk.name.equals(plugin.name)) {
+                    if (mk.descriptor.startsWith(plugin.argumentsDescriptor)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    @Override
     public InvocationPlugin lookupInvocation(ResolvedJavaMethod method, boolean allowDecorators, boolean allowDisable, OptionValues options) {
         InvocationPlugin invocationPlugin = super.lookupInvocation(method, allowDecorators, allowDisable, options);
         if (invocationPlugin != null && allowDisable && !disabledIntrinsics.isEmpty()) {

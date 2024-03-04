@@ -13,7 +13,7 @@ You can install GraalVM on Linux from an archive (_.tar.gz_) for the current use
 
 Follow these steps to install GraalVM: 
 
-1. Navigate to the [GraalVM Downloads page](https://www.graalvm.org/downloads/). Select **21** for the Java version, **Linux** for the operating system, **x64** or **aarch64** for the architecture, and download.
+1. Navigate to the [GraalVM Downloads page](https://www.graalvm.org/downloads/). Select **22** for the Java version, **Linux** for the operating system, **x64** or **aarch64** for the architecture, and download.
 
 2. Change to directory where you want to install GraalVM, then move the _.tar.gz_ file to that directory.
 

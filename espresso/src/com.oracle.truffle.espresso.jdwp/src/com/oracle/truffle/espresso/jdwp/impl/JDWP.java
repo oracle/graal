@@ -1505,7 +1505,7 @@ public final class JDWP {
                     reply.writeLong(local.getStartBCI());
                     reply.writeString(local.getNameAsString());
                     reply.writeString(local.getTypeAsString());
-                    reply.writeInt(local.getEndBCI() - local.getStartBCI());
+                    reply.writeInt(local.getEndBCI() - local.getStartBCI() + 1);
                     reply.writeInt(local.getSlot());
                 }
                 return new CommandResult(reply);
@@ -1618,7 +1618,7 @@ public final class JDWP {
                         }
                     }
                     reply.writeString(genericSignature);
-                    reply.writeInt(local.getEndBCI() - local.getStartBCI());
+                    reply.writeInt(local.getEndBCI() - local.getStartBCI() + 1);
                     reply.writeInt(local.getSlot());
                 }
                 return new CommandResult(reply);

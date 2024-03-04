@@ -13,7 +13,7 @@ Note that on macOS the JDK installation path is: <em>/Library/Java/JavaVirtualMa
 
 Follow these steps to install GraalVM: 
 
-1. Navigate to the [GraalVM Downloads page](https://www.graalvm.org/downloads/). Select **21** for the Java version, **macOS** for the operating system, **x64** or **aarch64** for the architecture, and download.
+1. Navigate to the [GraalVM Downloads page](https://www.graalvm.org/downloads/). Select **22** for the Java version, **macOS** for the operating system, **x64** or **aarch64** for the architecture, and download.
   
 2. Remove the quarantine attribute (required for macOS Catalina and later):
     ```shell
@@ -50,6 +50,6 @@ Optionally, you can specify GraalVM as the default JRE or JDK installation in yo
 
 ### On JAVA_HOME Command
 The information property file, _Info.plist_, is in the top level _Contents_ directory.
-This means that GraalVM participates in the macOS-specific `/usr/libexec/java_home` mechanism. Depending on other JDK installation(s) available, it is now possible that `/usr/libexec/java_home -v21` returns `/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home`.
-You can run `/usr/libexec/java_home -v21 -V` to see the complete list of JVMs available to the `java_home` command. This command sorts the JVMs in decreasing version order and chooses the top one as the default for the specified version.
+This means that GraalVM participates in the macOS-specific `/usr/libexec/java_home` mechanism. Depending on other JDK installation(s) available, it is now possible that `/usr/libexec/java_home -v22` returns `/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home`.
+You can run `/usr/libexec/java_home -v22 -V` to see the complete list of JVMs available to the `java_home` command. This command sorts the JVMs in decreasing version order and chooses the top one as the default for the specified version.
 Within a specific version, the sort order appears to be stable but is unspecified.

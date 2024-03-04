@@ -30,8 +30,7 @@ The GraalVM Polyglot API lets you embed and run code from guest languages in JVM
 Throughout this section, you will learn how to create a host application in Java that runs on GraalVM and directly calls a guest language.
 You can use the tabs beneath each code example to choose between JavaScript, R, Ruby, and Python.
 
-> Note: The usage description for polyglot embeddings was revised with the GraalVM for JDK 21 (23.1.1) release. If you are still using an older GraalVM version, ensure the correct version of the documentation is displayed. More information on the change can be found in the [release notes](https://www.graalvm.org/release-notes/JDK_21/).
-
+> Note: The usage description for polyglot embeddings was revised with the GraalVM for JDK 22 (24.0.0) release. If you are still using a GraalVM version older than 23.1.x, ensure the correct version of the documentation is displayed. More information on the change can be found in the [release notes](https://www.graalvm.org/release-notes/JDK_21/#graalvm-for-jdk-21).
 
 ## Dependency Setup
 
@@ -45,13 +44,13 @@ Here is an example Maven dependency setup that you can put into your project:
 <dependency> 
 	<groupId>org.graalvm.polyglot</groupId> 
 	<artifactId>polyglot</artifactId> 
-	<version>23.1.1</version> 
+	<version>24.0.0</version> 
 </dependency>
 <dependency> 
 	<groupId>org.graalvm.polyglot</groupId> 
 	<!-- Select language: js, ruby, python, java, llvm, wasm, languages-->
 	<artifactId>js</artifactId> 
-	<version>23.1.1</version> 
+	<version>24.0.0</version> 
 	<type>pom</type>
 </dependency>
 <!-- add additional languages if needed -->
@@ -59,13 +58,13 @@ Here is an example Maven dependency setup that you can put into your project:
 	<groupId>org.graalvm.polyglot</groupId> 
 	<!-- Select tools: profiler, inspect, coverage, dap, tools -->
 	<artifactId>tools</artifactId> 
-	<version>23.1.1</version> 
+	<version>24.0.0</version> 
 	<type>pom</type>
 </dependency>
 <!-- add specific tools if needed -->
 ```
 
-Language and tool dependencies use the [GraalVM Free Terms and Conditions (GFTC)](https://www.oracle.com/downloads/licenses/graal-free-license.html) license
+Language and tool dependencies use the [GraalVM Free Terms and Conditions (GFTC)](https://www.oracle.com/downloads/licenses/graal-free-license.html) license.
 To use community-licensed versions instead, add the `-community` suffix to each artifact (e.g., `js-community`).
 To access [polyglot isolate](#polyglot-isolates) artifacts, use the `-isolate` suffix instead (e.g. `js-isolate`).
 
@@ -99,7 +98,6 @@ If you are using [native-image](https://www.graalvm.org/latest/reference-manual/
 While we do support creating single uber Jars from polyglot libraries, e.g. using the Maven Assembly plugin, we do not recommend it.
 Also note that uber jars are not supported in combination with creating native-images.
 
-
 ## Compile and Run a Polyglot Application
 
 GraalVM can run polyglot applications written in any language implemented with the [Truffle language implementation framework](../../../truffle/docs/README.md).
@@ -125,7 +123,6 @@ Complete the steps in this section to create a sample polyglot application that 
 You now have a polyglot application that consists of a Java host application and guest language code, running on GraalVM.
 You can use this application with other code examples to demonstrate more advanced capabilities of the Polyglot API.
 
-
 ## Define Guest Language Functions as Java Values
 
 Polyglot applications let you take values from one programming language and use them with other languages.
@@ -147,7 +144,6 @@ tab4type="java" tab4id="Function_Python" tab4name="Python" tab4path="embed/funct
 - The `execute` call executes the function with the argument `41`.
 - The `asInt` call converts the result to a Java `int`.
 - The second assertion verifies that the result was incremented by one as expected.
-
 
 ## Access Guest Languages Directly from Java
 
@@ -467,7 +463,6 @@ In addition, the `compiler.jar` and its dependencies must be downloaded from [Ma
 Note that the compiler jar must *not* be put on the module or class path. 
 Refer to the [polyglot embedding demonstration](https://github.com/graalvm/polyglot-embedding-demo) for an example configuration using Maven or Gradle.
 
-
 ### Switching to the Fallback Engine
 
 If the need arises, for example, running only trivial scripts or in the resource-constrained systems, you may want to switch to the fallback engine without run-time optimizations.
@@ -513,10 +508,9 @@ You can disable this message using the indicated options as an additional step.
 
 Removing these dependencies also automatically switches to the fallback engine in Native Image builds.
 
-
 ## Build Native Executables from Polyglot Applications
 
-With Polyglot version 23.1 on GraalVM for JDK 21, no special configuration is required to use [Native Image](../native-image/README.md) to build images with embedded polyglot language runtimes.
+With Polyglot version 23.1 on GraalVM for JDK 21 and later, no special configuration is required to use [Native Image](../native-image/README.md) to build images with embedded polyglot language runtimes.
 Like any other Java dependency, the polyglot language JAR files must be on the class or module path when building a native executable.
 We recommend to use the [Maven](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html) or [Gradle](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html) Native Image plugins to configure your `native-image` builds.
 A sample Maven and Gradle configuration for Native Image can be found in the [polyglot embedding demonstration repository](https://github.com/graalvm/polyglot-embedding-demo).
@@ -531,7 +525,7 @@ Here is a Maven profile configuration example:
                 <plugin>
                     <groupId>org.graalvm.buildtools</groupId>
                     <artifactId>native-maven-plugin</artifactId>
-                    <version>0.9.25</version>
+                    <version>0.10.1</version>
                     <extensions>true</extensions>
                     <executions>
                         <execution>
@@ -570,7 +564,6 @@ Note that some languages may not support running without a resources folder.
 
 With Polyglot version 23.1 the language home options like `-Dorg.graalvm.home` should no longer be used and were replaced with the resource folder option.
 The language home options remain functional for compatibility reasons but may be removed in future releases.
-
 
 ### Configuring Native Host Reflection
 
@@ -687,7 +680,6 @@ We recommend, therefore, keeping a strong reference to the `Source` object as lo
 
 To summarize, the code cache can be controlled by keeping and maintaining strong references to the `Engine` and `Source` objects.
 
-
 ## Polyglot Isolates
 
 On Oracle GraalVM, a Polyglot engine can be configured to run in a dedicated Native Image isolate.
@@ -702,13 +694,13 @@ For example, a dependency on isolated JavaScript can be configured by adding a M
 <dependency>
     <groupId>org.graalvm.polyglot</groupId>
     <artifactId>polyglot</artifactId>
-    <version>23.1.0</version>
+    <version>24.0.0</version>
     <type>jar</type>
 </dependency>
 <dependency>
     <groupId>org.graalvm.polyglot</groupId>
     <artifactId>js-isolate</artifactId>
-    <version>23.1.0</version>
+    <version>24.0.0</version>
     <type>pom</type>
 </dependency>
 ```
@@ -718,7 +710,6 @@ We plan to support downloading polyglot isolate native images for individual pla
 
 To enable isolate usage with the Polyglot API, the `--engine.SpawnIsolate=true` option must be passed to `Engine` or `Context` when constructed.
 The option `engine.SpawnIsolate` may not be available if used on any other JDK than Oracle GraalVM.
-
 
 ```java
 import org.graalvm.polyglot.*;
@@ -738,12 +729,11 @@ public class PolyglotIsolate {
 }
 ```
 
-Currently, we support the following languages as polyglot isolates:
+Currently, the following languages are available as polyglot isolates:
 
-| Language.                                     | Polyglot Isolate Support                         |
-|-----------------------------------------------|--------------------------------------------------|
-| JavaScript (`js-isolate`)                     | Supported with version 23.1                      |
-
+| Language                      | Available from |
+|-------------------------------|----------------|
+| JavaScript (`js-isolate`)     | 23.1           |
 
 We plan to add support for more languages in future versions.
 
@@ -775,7 +765,6 @@ public class PolyglotIsolateMultipleContexts {
     }
 }
 ```
-
 
 ### Passing Native Image Runtime Options
 
@@ -813,7 +802,6 @@ The host callback fails if the available stack size drops below the specified th
 In Linux environments that support Memory Protection Keys, the `--engine.MemoryProtection=true` option can be used to isolate the heaps of Polyglot Isolates at the hardware level.
 If an engine is created with this option, a dedicated protection key will be allocated for the isolated engine's heap.
 GraalVM only enables access to the engine's heap when executing code of the Polyglot Isolate.
-
 
 ## Embed Guest Languages in Java
 
@@ -923,7 +911,6 @@ In this code:
 - The `statements(true)` filters execution listeners to statements only.
 - The `context.eval()` call evaluates a specified snippet of guest language code.
 - The `listener.close()` closes a listener earlier, however execution listeners are automatically closed with the engine.
-
 
 ## Compatibility with JSR-223 ScriptEngine
 

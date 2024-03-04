@@ -35,53 +35,53 @@ import jdk.graal.compiler.options.OptionType;
 // @formatter:off
 public final class GraalOptions {
 
-    @Option(help = "Use compiler intrinsifications.", type = OptionType.Debug)
+    @Option(help = "Uses compiler intrinsifications.", type = OptionType.Expert)
     public static final OptionKey<Boolean> Intrinsify = new OptionKey<>(true);
 
     @Option(help = "Rewrite signed comparisons to unsigned ones if the result is equal.", type = OptionType.Debug)
     public static final OptionKey<Boolean> PreferUnsignedComparison = new OptionKey<>(true);
 
-    @Option(help = "Perform early global value numbering.", type = OptionType.Debug)
+    @Option(help = "Performs early global value numbering on statements and expressions directly after parsing. " +
+                   "This can clean up the intermediate representation and simplify later optimizations. ", type = OptionType.Expert)
     public static final OptionKey<Boolean> EarlyGVN = new OptionKey<>(true);
 
-    @Option(help = "Perform early loop invariant code motion.", type = OptionType.Debug)
+    @Option(help = "Performs early loop-invariant code motion.", type = OptionType.Expert)
     public static final OptionKey<Boolean> EarlyLICM = new OptionKey<>(true);
 
-    @Option(help = "Inline calls with monomorphic type profile.", type = OptionType.Expert)
+    @Option(help = "Inline calls with monomorphic type profile.", type = OptionType.Debug)
     public static final OptionKey<Boolean> InlineMonomorphicCalls = new OptionKey<>(true);
 
-    @Option(help = "Inline calls with polymorphic type profile.", type = OptionType.Expert)
+    @Option(help = "Inline calls with polymorphic type profile.", type = OptionType.Debug)
     public static final OptionKey<Boolean> InlinePolymorphicCalls = new OptionKey<>(true);
 
-    @Option(help = "Inline calls with megamorphic type profile (i.e., not all types could be recorded).", type = OptionType.Expert)
+    @Option(help = "Inline calls with megamorphic type profile (i.e., not all types could be recorded).", type = OptionType.Debug)
     public static final OptionKey<Boolean> InlineMegamorphicCalls = new OptionKey<>(true);
 
-    @Option(help = "Maximum desired size of the compiler graph in nodes.", type = OptionType.User)
+    @Option(help = "Maximum desired size of the compiler graph in nodes.", type = OptionType.Debug)
     public static final OptionKey<Integer> MaximumDesiredSize = new OptionKey<>(20000);
 
-    @Option(help = "Minimum probability for methods to be inlined for megamorphic type profiles.", type = OptionType.Expert)
+    @Option(help = "Minimum probability for methods to be inlined for megamorphic type profiles.", type = OptionType.Debug)
     public static final OptionKey<Double> MegamorphicInliningMinMethodProbability = new OptionKey<>(0.33D);
 
-    @Option(help = "Maximum level of recursive inlining.", type = OptionType.Expert)
+    @Option(help = "Specifies the maximum level of recursive inlining.", type = OptionType.Expert)
     public static final OptionKey<Integer> MaximumRecursiveInlining = new OptionKey<>(5);
 
-    @Option(help = "Graphs with less than this number of nodes are trivial and therefore always inlined.", type = OptionType.Expert)
+    @Option(help = "Specifies the size of a graph (counted in nodes) that is considered trivial. Graphs with fewer than this number of nodes are therefore always inlined.", type = OptionType.Expert)
     public static final OptionKey<Integer> TrivialInliningSize = new OptionKey<>(10);
 
-    @Option(help = "Inlining is explored up to this number of nodes in the graph for each call site.", type = OptionType.Expert)
+    @Option(help = "Specifies the maximum graph size (measured in nodes) for which inlining is explored for each call site.", type = OptionType.Expert)
     public static final OptionKey<Integer> MaximumInliningSize = new OptionKey<>(300);
 
-    @Option(help = "If the previous low-level graph size of the method exceeds the threshold, it is not inlined.", type = OptionType.Expert)
+    @Option(help = "If the previous low-level graph size of the method exceeds the threshold, it is not inlined.", type = OptionType.Debug)
     public static final OptionKey<Integer> SmallCompiledLowLevelGraphSize = new OptionKey<>(330);
 
-    @Option(help = "", type = OptionType.Expert)
+    @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Double> LimitInlinedInvokes = new OptionKey<>(5.0);
 
-    @Option(help = "", type = OptionType.Expert)
+    @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> InlineEverything = new OptionKey<>(false);
 
-    // escape analysis settings
-    @Option(help = "", type = OptionType.Debug)
+    @Option(help = "Performs partial escape analysis and scalar replacement optimization.", type = OptionType.Expert)
     public static final OptionKey<Boolean> PartialEscapeAnalysis = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
@@ -96,38 +96,41 @@ public final class GraalOptions {
     @Option(help = "Try to float non-constant division operations to expose global value numbering of divisions.", type = OptionType.Debug)
     public static final OptionKey<Boolean> FloatingDivNodes = new OptionKey<>(true);
 
-    @Option(help = "The maximum length of an array that will be escape analyzed.", type = OptionType.Expert)
+    @Option(help = "Specifies the maximum length of an array that will be escape analyzed.", type = OptionType.Expert)
     public static final OptionKey<Integer> MaximumEscapeAnalysisArrayLength = new OptionKey<>(128);
 
-    @Option(help = "", type = OptionType.Expert)
+    @Option(help = "Specifies the number of deoptimizations allowed per compilation unit until optimistic optimizations are disabled.", type = OptionType.Expert)
     public static final OptionKey<Integer> DeoptsToDisableOptimisticOptimization = new OptionKey<>(40);
 
-    @Option(help = "", type = OptionType.Debug)
+    @Option(help = "Performs loop peeling optimization.", type = OptionType.Expert)
     public static final OptionKey<Boolean> LoopPeeling = new OptionKey<>(true);
 
-    @Option(help = "Re-associate loop invariants and constants.", type = OptionType.Debug)
+    @Option(help = "Reassociates loop invariants and constants.", type = OptionType.Expert)
     public static final OptionKey<Boolean> ReassociateExpressions = new OptionKey<>(true);
 
-    @Option(help = "", type = OptionType.Debug)
+    @Option(help = "Performs loop unrolling optimization. ", type = OptionType.Expert)
     public static final OptionKey<Boolean> FullUnroll = new OptionKey<>(true);
 
-    @Option(help = "", type = OptionType.Debug)
+    @Option(help = "Performs loop unswitching optimization.", type = OptionType.Expert)
     public static final OptionKey<Boolean> LoopUnswitch = new OptionKey<>(true);
 
-    @Option(help = "", type = OptionType.Debug)
+    @Option(help = "Performs partial loop unrolling optimizations. This is a special form of loop unrolling " +
+                   "that splits a loop into a main and a post loop. The main loop can then be unrolled by a " +
+                   "fixed amount of iterations. The post-loop performs any necessary fixup iterations. This " +
+                   "can improve performance because the loop control overhead is reduced in the unrolled version.", type = OptionType.Expert)
     public static final OptionKey<Boolean> PartialUnroll = new OptionKey<>(true);
 
-    @Option(help = "", type = OptionType.Expert)
+    @Option(help = "Minimum frequency a loop must have to be considered for loop peeling.", type = OptionType.Debug)
     public static final OptionKey<Float> MinimumPeelFrequency = new OptionKey<>(0.35f);
 
-    @Option(help = "", type = OptionType.Expert)
+    @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Integer> LoopMaxUnswitch = new OptionKey<>(3);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> UseLoopLimitChecks = new OptionKey<>(true);
 
     @Option(help = "Hoists array bounds checks out of simple loops. This is ignored if " +
-                   "SpeculativeGuardMovement is enabled.", type = OptionType.Debug)
+                   "SpeculativeGuardMovement is enabled.", type = OptionType.Expert)
     public static final OptionKey<Boolean> LoopPredication = new OptionKey<>(true);
 
     @Option(help = "Restricts LoopPredication to only focus on array bounds checks that " +
@@ -175,7 +178,8 @@ public final class GraalOptions {
     @Option(help = "Comma separated list of registers that register allocation is limited to.", type = OptionType.Debug)
     public static final OptionKey<String> RegisterPressure = new OptionKey<>(null);
 
-    @Option(help = "", type = OptionType.Debug)
+    @Option(help = "Eliminates redundant conditional expressions and statements where possible. " +
+                   "This can improve performance because fewer logic instructions have to be executed.", type = OptionType.Expert)
     public static final OptionKey<Boolean> ConditionalElimination = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
@@ -187,7 +191,8 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> ReplaceInputsWithConstantsBasedOnStamps = new OptionKey<>(true);
 
-    @Option(help = "", type = OptionType.Debug)
+    @Option(help = "Uses deoptimization to prune branches of code in the generated code that have never " +
+                   "been executed by the interpreter.", type = OptionType.Expert)
     public static final OptionKey<Boolean> RemoveNeverExecutedCode = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
@@ -202,23 +207,24 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> UseTypeCheckHints = new OptionKey<>(true);
 
-    @Option(help = "", type = OptionType.Expert)
+    @Option(help = "Inlines the vtable stub for method dispatch during inlining.", type = OptionType.Expert)
     public static final OptionKey<Boolean> InlineVTableStubs = new OptionKey<>(true);
 
-    @Option(help = "", type = OptionType.Expert)
+    @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> AlwaysInlineVTableStubs = new OptionKey<>(false);
 
     // Runtime settings
-    @Option(help = "", type = OptionType.Expert)
+    @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> SupportJsrBytecodes = new OptionKey<>(true);
 
-    @Option(help = "", type = OptionType.Expert)
+    @Option(help = "Uses assumptions during compilation that may later be invalidated and cause code to be deoptimized.", type = OptionType.Expert)
     public static final OptionKey<Boolean> OptAssumptions = new OptionKey<>(true);
 
-    @Option(help = "", type = OptionType.Debug)
+    @Option(help = "Replaces deoptimization points with movable guards where possible. " +
+                   "This can help the optimizer to apply better code movement optimizations.", type = OptionType.Expert)
     public static final OptionKey<Boolean> OptConvertDeoptsToGuards = new OptionKey<>(true);
 
-    @Option(help = "", type = OptionType.Debug)
+    @Option(help = "Tries to remove redundant memory accesses (for example, successive reads of a non-volatile Java field).", type = OptionType.Expert)
     public static final OptionKey<Boolean> OptReadElimination = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
@@ -236,16 +242,19 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> OptEliminateGuards = new OptionKey<>(true);
 
-    @Option(help = "", type = OptionType.Debug)
+    @Option(help = "Uses trapping null checks where possible to reduce explicit control flow for null checks. " +
+                   "This can improve performance because explicit null checks do not have to be performed.", type = OptionType.Expert)
     public static final OptionKey<Boolean> OptImplicitNullChecks = new OptionKey<>(true);
 
-    @Option(help = "", type = OptionType.Debug)
+    @Option(help = "Performs floating-read optimization. " +
+                   "This enables memory read operations to freely move in control-flow while respecting memory (anti)-dependencies. " +
+                   "This helps to reduce memory accesses and can improve performance. ", type = OptionType.Expert)
     public static final OptionKey<Boolean> OptFloatingReads = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> OptDevirtualizeInvokesOptimistically = new OptionKey<>(true);
 
-    @Option(help = "Move loop invariant guards (e.g., array bounds checks) out of loops.", type = OptionType.Debug)
+    @Option(help = "Moves loop invariant guards (for example, array bounds checks) out of loops.", type = OptionType.Expert)
     public static final OptionKey<Boolean> SpeculativeGuardMovement = new OptionKey<>(true);
 
     @Option(help = "Track the NodeSourcePosition.", type = OptionType.Debug)
@@ -272,25 +281,26 @@ public final class GraalOptions {
     @Option(help = "Enable inlining decision tracing in stubs and snippets.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TraceInliningForStubsAndSnippets = new OptionKey<>(false);
 
-    @Option(help = "Embed all the emitted code for Graal-generated stubs.", type = OptionType.Expert)
+    @Option(help = "Embeds all the emitted code for Graal-generated stubs.", type = OptionType.Expert)
     public static final OptionKey<Boolean> InlineGraalStubs = new OptionKey<>(false);
 
-    @Option(help = "If applicable, use bulk zeroing instructions when the zeroing size in bytes exceeds this threshold.", type = OptionType.Expert)
+    @Option(help = "If applicable, uses bulk zeroing instructions when the zeroing size in bytes exceeds this threshold.", type = OptionType.Expert)
     public static final OptionKey<Integer> MinimalBulkZeroingSize = new OptionKey<>(2048);
 
-    @Option(help = "Alignment in bytes for loop header blocks.", type = OptionType.Expert)
+    @Option(help = "Specifies the alignment in bytes for loop header blocks.", type = OptionType.Expert)
     public static final OptionKey<Integer> LoopHeaderAlignment = new OptionKey<>(16);
 
-    @Option(help = "Alignment in bytes for loop header blocks that have no fall through paths.", type = OptionType.Expert)
+    @Option(help = "Alignment in bytes for loop header blocks that have no fall through paths.", type = OptionType.Debug)
     public static final OptionKey<Integer> IsolatedLoopHeaderAlignment = new OptionKey<>(32);
 
-    @Option(help = "Array region equality checks will be evaluated at compile time if the receiver is a constant and its length is smaller than this value.", type = OptionType.Expert)
+    @Option(help = "Evaluates array region equality checks at compile time if the receiver is a constant and the length of the array is less than this value.", type = OptionType.Expert)
     public static final OptionKey<Integer> ArrayRegionEqualsConstantLimit = new OptionKey<>(4096);
 
-    @Option(help = "String.indexOf invocations will be evaluated at compile time if the receiver is a constant and its length is smaller than this value.", type = OptionType.Expert)
+    @Option(help = "Invocations of String.indexOf are evaluated at compile time if the receiver is a constant and its length is less than this value.", type = OptionType.Expert)
     public static final OptionKey<Integer> StringIndexOfConstantLimit = new OptionKey<>(4096);
 
-    @Option(help = "Emit substitutions for String methods", type = OptionType.Debug)
+    @Option(help = "Emits substitutions for String methods. " +
+                   "This can improve performance because the compiler can use optimized intrinsics for certain string operations.", type = OptionType.Expert)
     public static final OptionKey<Boolean> EmitStringSubstitutions = new OptionKey<>(true);
 
     @Option(help = "Perform checks that guards and deopts aren't introduced in graphs that should handle exceptions explicitly", type = OptionType.Debug)

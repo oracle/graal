@@ -175,7 +175,7 @@ public class VMThreadFeature implements InternalFeature {
     }
 
     private boolean handleGet(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode threadNode, boolean isVolatile) {
-        VMThreadLocalInfo threadLocalInfo = threadLocalCollector.findInfo(b, receiver.get());
+        VMThreadLocalInfo threadLocalInfo = threadLocalCollector.findInfo(b, receiver.get(true));
 
         LoadVMThreadLocalNode node = new LoadVMThreadLocalNode(b.getMetaAccess(), threadLocalInfo, threadNode, BarrierType.NONE, isVolatile ? MemoryOrderMode.VOLATILE : MemoryOrderMode.PLAIN);
         b.addPush(targetMethod.getSignature().getReturnKind(), node);
@@ -184,7 +184,7 @@ public class VMThreadFeature implements InternalFeature {
     }
 
     private boolean handleSet(GraphBuilderContext b, Receiver receiver, ValueNode threadNode, ValueNode valueNode, boolean isVolatile) {
-        VMThreadLocalInfo threadLocalInfo = threadLocalCollector.findInfo(b, receiver.get());
+        VMThreadLocalInfo threadLocalInfo = threadLocalCollector.findInfo(b, receiver.get(true));
 
         StoreVMThreadLocalNode store = b.add(new StoreVMThreadLocalNode(threadLocalInfo, threadNode, valueNode, BarrierType.NONE, isVolatile ? MemoryOrderMode.VOLATILE : MemoryOrderMode.PLAIN));
         assert store.stateAfter() != null : store + " has no state after with graph builder context " + b;
@@ -193,7 +193,7 @@ public class VMThreadFeature implements InternalFeature {
 
     private boolean handleCompareAndSet(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode threadNode, ValueNode expect,
                     ValueNode update) {
-        VMThreadLocalInfo threadLocalInfo = threadLocalCollector.findInfo(b, receiver.get());
+        VMThreadLocalInfo threadLocalInfo = threadLocalCollector.findInfo(b, receiver.get(true));
         CompareAndSetVMThreadLocalNode cas = new CompareAndSetVMThreadLocalNode(threadLocalInfo, threadNode, expect, update);
         b.addPush(targetMethod.getSignature().getReturnKind(), cas);
         assert cas.stateAfter() != null : cas + " has no state after with graph builder context " + b;
@@ -201,7 +201,7 @@ public class VMThreadFeature implements InternalFeature {
     }
 
     private boolean handleGetAddress(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode threadNode) {
-        VMThreadLocalInfo threadLocalInfo = threadLocalCollector.findInfo(b, receiver.get());
+        VMThreadLocalInfo threadLocalInfo = threadLocalCollector.findInfo(b, receiver.get(true));
         b.addPush(targetMethod.getSignature().getReturnKind(), new AddressOfVMThreadLocalNode(threadLocalInfo, threadNode));
         return true;
     }

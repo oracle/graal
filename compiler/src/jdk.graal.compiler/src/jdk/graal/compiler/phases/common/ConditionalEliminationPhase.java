@@ -150,8 +150,8 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Move guard nodes to earlier places in the dominator tree if "
-                     + "all successors of basic block share a common guard condition.", type = OptionType.Expert)
+        @Option(help = "Moves guard nodes to earlier places in the dominator tree if " +
+                       "all successors of a basic block share a common guard condition.", type = OptionType.Expert)
         public static final OptionKey<Boolean> MoveGuardsUpwards = new OptionKey<>(true);
         // @formatter:on
     }

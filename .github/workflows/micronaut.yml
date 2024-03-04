@@ -70,6 +70,7 @@ jobs:
   build-graalvm-and-micronaut:
     name: Native Tests
     runs-on: ubuntu-20.04
+    if: (github.event_name == 'schedule' && github.repository == 'oracle/graal') || (github.event_name != 'schedule')
     steps:
     - name: Checkout oracle/graal
       uses: actions/checkout@v4
@@ -89,7 +90,7 @@ jobs:
       with:
         python-version: '3.8'
     - name: Update mx cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.mx
         key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}

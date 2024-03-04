@@ -42,6 +42,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Predicate;
 
+import jdk.vm.ci.meta.JavaType;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
@@ -101,11 +102,6 @@ public class InvocationPlugins {
     public static class InvocationPluginReceiver implements InvocationPlugin.Receiver {
         private final GraphBuilderContext parser;
         private ValueNode[] args;
-        /**
-         * Caches the null checked receiver value. If still {@code null} after application of a
-         * plugin, then the plugin never called {@link #get(boolean)} with {@code true}.
-         */
-        private ValueNode value;
 
         public InvocationPluginReceiver(GraphBuilderContext parser) {
             this.parser = parser;
@@ -114,25 +110,13 @@ public class InvocationPlugins {
         @Override
         public ValueNode get(boolean performNullCheck) {
             assert args != null : "Cannot get the receiver of a static method";
-            if (!performNullCheck) {
-                return args[0];
+            if (performNullCheck) {
+                args[0] = parser.nullCheckedValue(args[0]);
             }
-            if (value == null) {
-                value = parser.nullCheckedValue(args[0]);
-                if (value != args[0]) {
-                    args[0] = value;
-                }
-            }
-            return value;
-        }
-
-        @Override
-        public boolean isConstant() {
-            return args[0].isConstant();
+            return args[0];
         }
 
         public InvocationPluginReceiver init(ResolvedJavaMethod targetMethod, ValueNode[] newArgs) {
-            this.value = null;
             if (!targetMethod.isStatic()) {
                 this.args = newArgs;
                 return this;
@@ -141,23 +125,11 @@ public class InvocationPlugins {
             return null;
         }
 
-        @Override
-        public ValueNode requireNonNull() {
-            if (value == null) {
-                GraalError.guarantee(args != null, "target method is static");
-                if (!StampTool.isPointerNonNull(args[0])) {
-                    throw new GraalError("receiver might be null: %s", value);
-                }
-                value = args[0];
-            }
-            return value;
-        }
-
         /**
          * Determines if {@link #get(boolean)} was called with {@code true}.
          */
         public boolean nullCheckPerformed() {
-            return value != null;
+            return StampTool.isPointerNonNull(args[0]);
         }
     }
 
@@ -1014,6 +986,24 @@ public class InvocationPlugins {
     @NativeImageReinitialize private static Set<String> PrintedIntrinsics = new HashSet<>();
 
     /**
+     * Determines if {@code plugin} is disabled by {@link Options#DisableIntrinsics}.
+     *
+     * @param declaringClassInternalName name of the declaring class for {@code plugin} as returned
+     *            by {@link JavaType#getName()}
+     * @param declaringClassJavaName name of the declaring class for {@code plugin} as returned by
+     *            by {@link JavaType#toJavaName()}
+     */
+    protected boolean isDisabled(InvocationPlugin plugin, String declaringClassInternalName, String declaringClassJavaName, OptionValues options) {
+        initializeDisabledIntrinsicsFilter(options);
+        if (disabledIntrinsicsFilter != null) {
+            if (disabledIntrinsicsFilter.matchesWithArgs(declaringClassJavaName, plugin.name, List.of(plugin.argumentTypes))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Prints the methods for which there are intrinsics in this object if this is the first (or
      * only) isolate in which this method is called and {@link Options#PrintIntrinsics} is true in
      * {@code options}. Intrinsics that have already been printed are skipped.
@@ -1035,9 +1025,15 @@ public class InvocationPlugins {
                     UnmodifiableMapCursor<String, List<InvocationPlugin>> entries = getInvocationPlugins(false, true).getEntries();
                     Set<String> unique = new TreeSet<>();
                     while (entries.advance()) {
-                        String c = MetaUtil.internalNameToJava(entries.getKey(), true, false);
-                        for (InvocationPlugin invocationPlugin : entries.getValue()) {
-                            String method = c + '.' + invocationPlugin.asMethodFilterString();
+                        String declaringClassName = entries.getKey();
+                        String c = MetaUtil.internalNameToJava(declaringClassName, true, false);
+                        for (InvocationPlugin plugin : entries.getValue()) {
+                            String method = c + '.' + plugin.asMethodFilterString();
+                            if (!plugin.canBeDisabled()) {
+                                method += " [cannot be disabled]";
+                            } else if (isDisabled(plugin, declaringClassName, c, options)) {
+                                method += " [disabled]";
+                            }
                             if (PrintedIntrinsics.add(method)) {
                                 unique.add(method);
                             }

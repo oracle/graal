@@ -118,7 +118,7 @@ public abstract class SubprocessTest extends GraalCompilerTest {
                 vmArgs = filter(vmArgs, vmArgsFilter);
             }
 
-            String verboseProperty = testClass.getName() + ".verbose";
+            String verboseProperty = "debug." + testClass.getName() + ".verbose";
             boolean verbose = Boolean.getBoolean(verboseProperty);
             if (verbose) {
                 System.err.println(String.join(" ", vmArgs));

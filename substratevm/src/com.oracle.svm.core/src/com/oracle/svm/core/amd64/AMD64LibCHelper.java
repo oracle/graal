@@ -43,7 +43,7 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
  *  - substratevm/src/com.oracle.svm.native.libchelper/include/amd64hotspotcpuinfo.h
  *  - substratevm/src/com.oracle.svm.native.libchelper/src/cpuid.c
  */
-@BasedOnJDKFile("src/hotspot/cpu/x86/vm_version_x86.hpp#L40-L304")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/cpu/x86/vm_version_x86.hpp#L40-L304")
 @CLibrary(value = "libchelper", requireStatic = true)
 public class AMD64LibCHelper {
     @Platforms(Platform.AMD64.class)

@@ -102,9 +102,4 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
     protected CodeCacheProvider createCodeCacheProvider(RegisterConfig registerConfig) {
         return new HostedCodeCacheProvider(ConfigurationValues.getTarget(), registerConfig);
     }
-
-    @Override
-    protected IdentityHashCodeProvider createIdentityHashCodeProvider() {
-        return analysisProviders.getIdentityHashCodeProvider();
-    }
 }

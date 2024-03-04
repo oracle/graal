@@ -55,7 +55,7 @@ final class WindowsThreadCpuTimeSupport implements ThreadCpuTimeSupport {
         return getThreadCpuTime(hThread, includeSystemTime);
     }
 
-    @BasedOnJDKFile("src/hotspot/os/windows/os_windows.cpp#L4709-L4725")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/os/windows/os_windows.cpp#L4722-L4738")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static long getThreadCpuTime(HANDLE hThread, boolean includeSystemTime) {
         FILETIME create = StackValue.get(FILETIME.class);

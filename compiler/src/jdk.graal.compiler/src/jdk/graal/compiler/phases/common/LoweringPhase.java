@@ -115,9 +115,9 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
 
     public static class Options {
         //@formatter:off
-        @Option(help = "Print schedule result pre lowering to TTY.", type = OptionType.Expert)
+        @Option(help = "Print schedule result pre lowering to TTY.", type = OptionType.Debug)
         public static final OptionKey<Boolean> PrintLoweringScheduleToTTY = new OptionKey<>(false);
-        @Option(help = "Dump lowering after every node to igv.", type = OptionType.Expert)
+        @Option(help = "Dump lowering after every node to igv.", type = OptionType.Debug)
         public static final OptionKey<Boolean> DumpAfterEveryLowering = new OptionKey<>(false);
         //@formatter:on
     }

@@ -74,32 +74,32 @@ public class DefaultLoopPolicies implements LoopPolicies {
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Maximum loop unswitching code size increase in nodes.", type = OptionType.Expert)
+        @Option(help = "Maximum loop unswitching code size increase in nodes.", type = OptionType.Debug)
         public static final OptionKey<Integer> LoopUnswitchMaxIncrease = new OptionKey<>(2000);
-        @Option(help = "Number of nodes allowed for a loop unswitching regardless of the loop frequency.", type = OptionType.Expert)
+        @Option(help = "Number of nodes allowed for a loop unswitching regardless of the loop frequency.", type = OptionType.Debug)
         public static final OptionKey<Integer> LoopUnswitchTrivial = new OptionKey<>(20);
-        @Option(help = "Number of nodes allowed for a loop unswitching per loop frequency. The number of nodes allowed for the unswitching is proportional to the relative frequency of the loop by this constant.", type = OptionType.Expert)
+        @Option(help = "Specifies the number of nodes allowed for a loop unswitching per loop frequency. The number of nodes allowed for an unswitching is proportional to the relative frequency of the loop by this value.", type = OptionType.Debug)
         public static final OptionKey<Double> LoopUnswitchFrequencyBoost = new OptionKey<>(20.0);
-        @Option(help = "Minimum value for the frequency factor of an invariant.", type = OptionType.Expert)
+        @Option(help = "Minimum value for the frequency factor of an invariant.", type = OptionType.Debug)
         public static final OptionKey<Double> LoopUnswitchFrequencyMinFactor = new OptionKey<>(0.05);
-        @Option(help = "Maximun value for the frequency factor of an invariant.", type = OptionType.Expert)
+        @Option(help = "Maximun value for the frequency factor of an invariant.", type = OptionType.Debug)
         public static final OptionKey<Double> LoopUnswitchFrequencyMaxFactor = new OptionKey<>(0.95);
-        @Option(help = "Lower bound for the minimun frequency of an invariant condition to be unswitched.", type = OptionType.Expert)
+        @Option(help = "Lower bound for the minimun frequency of an invariant condition to be unswitched.", type = OptionType.Debug)
         public static final OptionKey<Double> LoopUnswitchMinSplitFrequency = new OptionKey<>(1.0);
-        @Option(help = "Default frequency for loops with unknown local frequency.", type = OptionType.Expert)
+        @Option(help = "Default frequency for loops with unknown local frequency.", type = OptionType.Debug)
         public static final OptionKey<Double> DefaultLoopFrequency = new OptionKey<>(100.0);
-        @Option(help = "Default unswitching factor for control split node with unkown profile data.", type = OptionType.Expert)
+        @Option(help = "Default unswitching factor for control split node with unknown profile data.", type = OptionType.Debug)
         public static final OptionKey<Double> DefaultUnswitchFactor = new OptionKey<>(0.7);
-        @Option(help = "Maximum number of split successors before aborting unswitching.", type = OptionType.Expert)
+        @Option(help = "Maximum number of split successors before aborting unswitching.", type = OptionType.Debug)
         public static final OptionKey<Integer> MaxUnswitchSuccessors = new OptionKey<>(64);
 
-        @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollMaxNodes = new OptionKey<>(700);
-        @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollConstantCompareBoost = new OptionKey<>(15);
-        @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollMaxIterations = new OptionKey<>(600);
-        @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> ExactFullUnrollMaxNodes = new OptionKey<>(800);
-        @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> ExactPartialUnrollMaxNodes = new OptionKey<>(200);
+        @Option(help = "", type = OptionType.Debug) public static final OptionKey<Integer> FullUnrollMaxNodes = new OptionKey<>(700);
+        @Option(help = "", type = OptionType.Debug) public static final OptionKey<Integer> FullUnrollConstantCompareBoost = new OptionKey<>(15);
+        @Option(help = "", type = OptionType.Debug) public static final OptionKey<Integer> FullUnrollMaxIterations = new OptionKey<>(600);
+        @Option(help = "", type = OptionType.Debug) public static final OptionKey<Integer> ExactFullUnrollMaxNodes = new OptionKey<>(800);
+        @Option(help = "", type = OptionType.Debug) public static final OptionKey<Integer> ExactPartialUnrollMaxNodes = new OptionKey<>(200);
 
-        @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> UnrollMaxIterations = new OptionKey<>(16);
+        @Option(help = "", type = OptionType.Debug) public static final OptionKey<Integer> UnrollMaxIterations = new OptionKey<>(16);
         // @formatter:on
     }
 

@@ -85,9 +85,9 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
         //@formatter:off
         @Option(help = "Derive loop frequencies only from backedge frequencies instead of from loop exit frequencies.", type = OptionType.Debug)
         public static final OptionKey<Boolean> UseLoopEndFrequencies = new OptionKey<>(false);
-        @Option(help = "Debug flag to dump loop frequency differences computed based on loop end or exit nodes."
-                        + "If the frequencies diverge a lot, this may indicate missing profiles on control flow"
-                        + "inside the loop body.", type = OptionType.Debug)
+        @Option(help = "Debug flag to dump loop frequency differences computed based on loop end or exit nodes." +
+                       "If the frequencies diverge a lot, this may indicate missing profiles on control flow" +
+                       "inside the loop body.", type = OptionType.Debug)
         public static final OptionKey<Boolean> DumpEndVersusExitLoopFrequencies = new OptionKey<>(false);
         @Option(help = "Scaling factor of frequency difference computed based on loop ends or exits", type = OptionType.Debug)
         public static final OptionKey<Double> LoopExitVsLoopEndFrequencyDiff = new OptionKey<>(1000D);
@@ -322,6 +322,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
         Object[] values = null;
         int valuesTOS = 0;
         stack[0] = getStartBlock();
+        List<HIRBlock> dominated = new ArrayList<>(3);
 
         while (tos >= 0) {
             HIRBlock cur = stack[tos];
@@ -364,8 +365,20 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
                     }
                 }
 
+                dominated.clear();
+
                 HIRBlock b = cur.getFirstDominated();
                 while (b != null) {
+                    dominated.add(b);
+                    b = b.getDominatedSibling();
+                }
+
+                /*
+                 * Push dominated blocks to stack in reverse order, to make sure that branches are
+                 * handled before merges. This facilitates phi optimizations.
+                 */
+                while (!dominated.isEmpty()) {
+                    b = dominated.removeLast();
                     if (b != alwaysReached) {
                         if (isDominatorTreeLoopExit(b)) {
                             addDeferredExit(deferredExits, b);
@@ -373,7 +386,6 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
                             stack[++tos] = b;
                         }
                     }
-                    b = b.getDominatedSibling();
                 }
             }
         }

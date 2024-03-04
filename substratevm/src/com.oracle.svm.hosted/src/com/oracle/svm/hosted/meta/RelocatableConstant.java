@@ -96,11 +96,6 @@ public class RelocatableConstant implements JavaConstant, TypedConstant {
     }
 
     @Override
-    public int getIdentityHashCode() {
-        return 0;
-    }
-
-    @Override
     public int hashCode() {
         return pointer.hashCode();
     }

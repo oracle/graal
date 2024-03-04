@@ -208,7 +208,7 @@ class WindowsParker extends Parker {
     }
 
     @Override
-    @BasedOnJDKFile("src/hotspot/os/windows/os_windows.cpp#L5457-L5499")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/os/windows/os_windows.cpp#L5457-L5499")
     protected void park(boolean isAbsolute, long time) {
         assert time >= 0 && !(isAbsolute && time == 0) : "must not be called otherwise";
 
@@ -256,7 +256,7 @@ class WindowsParker extends Parker {
     }
 
     @Override
-    @BasedOnJDKFile("src/hotspot/os/windows/os_windows.cpp#L5501-L5504")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+10/src/hotspot/os/windows/os_windows.cpp#L5501-L5504")
     protected void unpark() {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {

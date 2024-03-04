@@ -30,14 +30,13 @@ import jdk.vm.ci.meta.JavaConstant;
 
 public abstract class ImageHeapArray extends ImageHeapConstant {
 
-    public static ImageHeapArray create(AnalysisType type, int length, int identityHashCode) {
+    public static ImageHeapArray create(AnalysisType type, int length) {
         assert type.isArray() : type;
-        return type.getComponentType().getStorageKind().isPrimitive() ? new ImageHeapPrimitiveArray(type, length, identityHashCode) : new ImageHeapObjectArray(type, length, identityHashCode);
+        return type.getComponentType().getStorageKind().isPrimitive() ? new ImageHeapPrimitiveArray(type, length) : new ImageHeapObjectArray(type, length);
     }
 
-    protected ImageHeapArray(ConstantData constantData, boolean compressed) {
+    ImageHeapArray(ConstantData constantData, boolean compressed) {
         super(constantData, compressed);
-        assert constantData.type.isArray() : constantData.type;
     }
 
     public abstract Object getElement(int idx);

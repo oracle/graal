@@ -24,18 +24,24 @@
  */
 package jdk.graal.compiler.nodes.spi;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 
-public class IdentityHashCodeProvider {
+/**
+ * GR-52365: This interface can be removed when {@link jdk.vm.ci.meta.ConstantReflectionProvider}
+ * offers an {@code identityHashCode} method too.
+ */
+public interface IdentityHashCodeProvider {
 
-    protected final SnippetReflectionProvider snippetReflection;
-
-    public IdentityHashCodeProvider(SnippetReflectionProvider snippetReflection) {
-        this.snippetReflection = snippetReflection;
-    }
-
-    public int identityHashCode(JavaConstant constant) {
-        return System.identityHashCode(snippetReflection.asObject(Object.class, constant));
-    }
+    /**
+     * Reads the identity hash code of the given object. Returns {@code null} if the constant is not
+     * an object, or if the value is not available at this point.
+     * <p>
+     * This method usually computes and stores the identity hash code if it was not computed for the
+     * object beforehand, but it is not required to do so - it can also return {@code null} if the
+     * computation is not possible or desired at the current time.
+     * <p>
+     * For the {@link JavaConstant#isNull() null constant}, this method returns zero as specified by
+     * {@link System#identityHashCode(Object)}.
+     */
+    Integer identityHashCode(JavaConstant constant);
 }

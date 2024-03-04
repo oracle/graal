@@ -44,27 +44,21 @@ import org.graalvm.nativeimage.Platforms;
 public @interface BasedOnJDKFile {
 
     /**
-     * Path to the source file relative to the repository root (usually
-     * <a href="https://github.com/openjdk/jdk">openjdk</a>). The path elements must be separated by
-     * slashes ({@code /}) and since it is a relative path, it must not start with a slash.
+     * Link to the source file.
+     *
+     * Currently, only GitHub links to the <a href="https://github.com/openjdk/jdk">openjdk</a> are
+     * supported. The format is as follows:
+     *
+     * <pre>
+     *     https://github.com/openjdk/jdk/blob/(tag or revision)/(path/to/the/source/file)(#L(line_start)-L(line_end))?
+     * </pre>
      *
      * To specify a line range, a suffix of the form {@code #L[0-9]+-L[0-9]+} might be added. Full
      * example:
      *
      * <pre>
-     *     &#64;BasedOnJDKFile("src/hotspot/cpu/x86/vm_version_x86.hpp#L40-L304")
+     *     &#64;BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/cpu/x86/vm_version_x86.hpp#L40-L304")
      * </pre>
-     *
-     * The path and line numbers always apply to the latest supported JDK version. That version can
-     * be retrieved from the {@code jdks.oraclejdk-latest} entry from {@code common.json} in the
-     * root of this repository, or by looking up the latest version in the
-     * {@code JVMCI_MIN_VERSIONS} map in {@link jdk.graal.compiler.hotspot.JVMCIVersionCheck}. At
-     * the time of writing this is {@code jdk-23+8} (formatted as a git tag as used by the openjdk).
-     * That information can also be used to view the respective line range on GitHub via
-     * {@code https://github.com/openjdk/jdk/blob/<version-tag>/<value>}. For the example above, it
-     * would translate to <a href=
-     * "https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/cpu/x86/vm_version_x86.hpp#L40-L304">
-     * {@code https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/cpu/x86/vm_version_x86.hpp#L40-L304}</a>
      */
     String value();
 

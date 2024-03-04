@@ -162,6 +162,8 @@ public abstract class SubstrateObjectConstant implements JavaConstant, TypedCons
         return getIdentityHashCode();
     }
 
+    public abstract int getIdentityHashCode();
+
     protected static int computeIdentityHashCode(Object object) {
         return System.identityHashCode(object);
     }

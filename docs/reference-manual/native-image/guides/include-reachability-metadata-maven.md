@@ -132,7 +132,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
             <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
             <h2.version>2.2.220</h2.version>
             <!-- Replace with your Java version -->
-            <java.version>21</java.version>
+            <java.version>22</java.version>
             <imageName>h2example</imageName>
             <mainClass>org.graalvm.example.H2Example</mainClass>
         </properties>
@@ -154,7 +154,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
                         <plugin>
                             <groupId>org.graalvm.buildtools</groupId>
                             <artifactId>native-maven-plugin</artifactId>
-                            <version>0.9.28</version>
+                            <version>0.10.1</version>
                             <extensions>true</extensions>
                             <executions>
                                 <execution>
@@ -191,7 +191,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
                     <version>3.11.0</version>
                     <configuration>
                         <source>${java.version}</source>
-                        <target>21</target>
+                        <target>22</target>
                     </configuration>
                 </plugin>
 

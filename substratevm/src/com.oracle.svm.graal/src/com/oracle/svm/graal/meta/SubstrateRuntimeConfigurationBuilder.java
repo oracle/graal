@@ -110,9 +110,4 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
         }
         return new SubstrateCodeCacheProvider(ConfigurationValues.getTarget(), registerConfig);
     }
-
-    @Override
-    protected IdentityHashCodeProvider createIdentityHashCodeProvider() {
-        return new IdentityHashCodeProvider(snippetReflection);
-    }
 }
