@@ -305,6 +305,12 @@ class NativeWasmMemory extends WasmMemory {
     }
 
     @Override
+    public void store_i128(Node node, long address, Vector128 value) {
+        validateAddress(node, address, 16);
+        unsafe.copyMemory(value.asBytes(), Unsafe.ARRAY_BYTE_BASE_OFFSET, null, startAddress + address, 16);
+    }
+
+    @Override
     public int atomic_load_i32(Node node, long address) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);

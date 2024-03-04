@@ -1748,6 +1748,32 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             pushVector128(frame, stackPointer++, value);
                             break;
                         }
+                        case Bytecode.VECTOR_V128_STORE: {
+                            final int encoding = rawPeekU8(bytecode, offset);
+                            offset++;
+                            final int indexType64 = encoding & BytecodeBitEncoding.MEMORY_64_FLAG;
+                            final int memoryIndex = rawPeekI32(bytecode, offset);
+                            offset += 4;
+                            final long memOffset;
+                            if (indexType64 == 0) {
+                                memOffset = rawPeekU32(bytecode, offset);
+                                offset += 4;
+                            } else {
+                                memOffset = rawPeekI64(bytecode, offset);
+                                offset += 8;
+                            }
+                            final Vector128 value = popVector128(frame, --stackPointer);
+                            final long baseAddress;
+                            if (indexType64 == 0) {
+                                baseAddress = Integer.toUnsignedLong(popInt(frame, --stackPointer));
+                            } else {
+                                baseAddress = popLong(frame, --stackPointer);
+                            }
+                            final long address = effectiveMemoryAddress64(memOffset, baseAddress);
+                            final WasmMemory memory = memory(instance, memoryIndex);
+                            memory.store_i128(this, address, value);
+                            break;
+                        }
                         case Bytecode.VECTOR_V128_CONST: {
                             final Vector128 value = Vector128.ofBytes(Vector128Ops.v128_const(rawPeekI128(bytecode, offset)));
                             offset += 16;
