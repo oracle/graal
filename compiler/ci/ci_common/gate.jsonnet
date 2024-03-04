@@ -273,37 +273,36 @@
   # weeklies_manifest: specification of weekly builds (e.g. see `weeklies` local variable)
   # monthlies_manifest: specification of monthly builds (e.g. see `monthlies` local variable)
   # returns: an object with a single "build" field
-  make_build(jdk, os_arch, task, suite="compiler", extra_tasks={},
+  make_build(gate_type, jdk, os_arch, task, suite="compiler", extra_tasks={},
              include_common_os_arch=true,
              gates_manifest=gates,
              dailies_manifest=dailies,
              weeklies_manifest=weeklies,
              monthlies_manifest=monthlies):: {
-    local base_name = "%s-%s-labsjdk-%s-%s" % [suite, task, jdk, os_arch],
-    local gate_name = "gate-" + base_name,
-    local daily_name = "daily-" + base_name,
-    local weekly_name = "weekly-" + base_name,
-    local monthly_name = "monthly-" + base_name,
+    local base_name = "%s-%s-%s-labsjdk-%s-%s" % [gate_type, suite, task, jdk, os_arch],
 
-    local is_gate = $.manifest_match(gates_manifest, gate_name),
-    local is_daily = $.manifest_match(dailies_manifest, daily_name),
-    local is_monthly = $.manifest_match(monthlies_manifest, monthly_name),
+    local is_gate = $.manifest_match(gates_manifest, base_name),
+    local is_daily = $.manifest_match(dailies_manifest, base_name),
+    local is_monthly = $.manifest_match(monthlies_manifest, base_name),
     local is_weekly = !is_gate && !is_daily && !is_monthly, # Default to weekly
+
+    local base_name = if is_weekly then
+        "%s-%s-%s-labsjdk-%s-%s" % ["weekly", suite, task, jdk, os_arch]
+        else
+            base_name,
+
     local is_windows = $.contains(os_arch, "windows"),
     local extra = if is_gate then
-        $.get(gates_manifest, gate_name, {})
+        $.get(gates_manifest, base_name, {})
       else if is_daily then
-        $.get(dailies_manifest, daily_name, {})
+        $.get(dailies_manifest, base_name, {})
       else if is_weekly then
-        $.get(weeklies_manifest, weekly_name, {})
+        $.get(weeklies_manifest, base_name, {})
       else if is_monthly then
-        $.get(monthlies_manifest, monthly_name, {}),
+        $.get(monthlies_manifest, base_name, {}),
 
     build: {
-      name: if is_gate   then gate_name
-       else if is_daily  then daily_name
-       else if is_weekly then weekly_name
-       else                   monthly_name
+      name: base_name
     } +
       (s + extra_tasks)[task] +
       c["labsjdk%s" % jdk] +
@@ -345,7 +344,12 @@
   },
 
   # Builds run on all platforms (platform = JDK + OS + ARCH)
-  local all_platforms_builds = [self.make_build(jdk, os_arch, task).build
+  local all_platforms_builds = [self.make_build(gate_type, jdk, os_arch, task).build
+    for gate_type in [
+        "gate",
+        "daily",
+        "weekly"
+    ]
     for jdk in [
       "17"
     ]
@@ -371,7 +375,12 @@
 
     # Test ZGC on support platforms.  Windows requires version 1083 or later which will
     # probably require adding some capabilities.
-    local all_zgc_builds = [self.make_build(jdk, os_arch, task).build
+    local all_zgc_builds = [self.make_build(gate_type, jdk, os_arch, task).build
+      for gate_type in [
+        "gate",
+        "daily",
+        "weekly"
+      ]
       for jdk in [
         "17"
       ]
@@ -391,7 +400,12 @@
     ],
 
   # Builds run on only on linux-amd64-jdk17
-  local linux_amd64_jdk17_builds = [self.make_build("17", "linux-amd64", task).build
+  local linux_amd64_jdk17_builds = [self.make_build(gate_type, "17", "linux-amd64", task).build
+    for gate_type in [
+      "gate",
+      "daily",
+      "weekly"
+    ]
     for task in [
       "ctw_phaseplan_fuzzing",
       "coverage_avx3",
@@ -405,7 +419,12 @@
   ],
 
   # Builds run on only on linux-amd64-jdk20Debug
-  local linux_amd64_jdk17Debug_builds = [self.make_build("17Debug", "linux-amd64", task).build
+  local linux_amd64_jdk17Debug_builds = [self.make_build(gate_type, "17Debug", "linux-amd64", task).build
+    for gate_type in [
+      "gate",
+      "daily",
+      "weekly"
+    ]
     for task in [
       "benchmarktest",
       "test"
@@ -413,11 +432,11 @@
   ],
 
   # Complete set of builds defined in this file
-  local all_builds =
+  local all_builds = std.set(
     all_platforms_builds +
     all_zgc_builds +
     linux_amd64_jdk17_builds +
-    linux_amd64_jdk17Debug_builds,
+    linux_amd64_jdk17Debug_builds, function(o) o.name),
 
   builds: if
       self.check_manifest(gates,     all_builds, std.thisFile, "gates").result &&

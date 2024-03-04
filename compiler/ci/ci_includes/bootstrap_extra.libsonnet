@@ -10,7 +10,10 @@
   },
 
   # Builds run on only on linux-amd64-[jdk17]
-  local linux_amd64_builds = [g.make_build(jdk, "linux-amd64", task, gates_manifest=gates).build
+  local linux_amd64_builds = [g.make_build(gate_type, jdk, "linux-amd64", task, gates_manifest=gates).build
+    for gate_type in [
+        "gate"
+    ]
     for jdk in ["17"]
     for task in ["bootstrap", "bootstrap_economy"]
   ],

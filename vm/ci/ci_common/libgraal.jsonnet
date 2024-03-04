@@ -101,13 +101,17 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     c["gate_vm_" + underscore(os_arch)] +
     svm_common(os_arch, jdk) +
     vm["custom_vm_" + os(os_arch)] +
-    g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
+    g.make_build(gate_type, jdk, os_arch, task, extra_tasks=self, suite="vm",
                  include_common_os_arch=false,
                  gates_manifest=gates,
                  dailies_manifest=dailies,
                  weeklies_manifest=weeklies,
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
+    for gate_type in [
+        "gate",
+        "daily"
+    ]
     for jdk in [
       "17"
     ]
@@ -133,13 +137,17 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     c["gate_vm_" + underscore(os_arch)] +
     svm_common(os_arch, jdk) +
     vm["custom_vm_" + os(os_arch)] +
-    g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
+    g.make_build(gate_type, jdk, os_arch, task, extra_tasks=self, suite="vm",
                  include_common_os_arch=false,
                  gates_manifest=gates,
                  dailies_manifest=dailies,
                  weeklies_manifest=weeklies,
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
+    for gate_type in [
+        "gate",
+        "daily"
+    ]
     for jdk in [
       "17"
     ]
@@ -154,9 +162,10 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   ],
 
   # Complete set of builds defined in this file
-  local all_builds =
+  local all_builds = std.set(
     all_platforms_builds +
     linux_amd64_jdk17_builds,
+  function(o) o.name),
 
   builds: if
       g.check_manifest(gates, all_builds, std.thisFile, "gates").result

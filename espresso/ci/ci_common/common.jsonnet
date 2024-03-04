@@ -47,7 +47,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   windows: self.common + graal_common.windows_amd64 + {
   },
   windows_17: self.windows + devkits["windows-jdk17"],
-  windows_20: self.windows + devkits["windows-jdk20"],
 
   // generic targets
   gate:            {targets+: ['gate'], timelimit: "1:00:00"},
