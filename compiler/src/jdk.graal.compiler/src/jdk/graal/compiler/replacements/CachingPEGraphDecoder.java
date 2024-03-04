@@ -24,8 +24,6 @@
  */
 package jdk.graal.compiler.replacements;
 
-import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
-
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
@@ -118,14 +116,9 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     }
 
     @SuppressWarnings("try")
-    private EncodedGraph createGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
+    private EncodedGraph createGraph(ResolvedJavaMethod method) {
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
-        StructuredGraph graphToEncode;
-        if (graph.isSubstitution() && inRuntimeCode()) {
-            throw GraalError.shouldNotReachHere("dead path"); // ExcludeFromJacocoGeneratedReport
-        } else {
-            graphToEncode = buildGraph(method, intrinsicBytecodeProvider, canonicalizer);
-        }
+        StructuredGraph graphToEncode = buildGraph(method, canonicalizer);
 
         /*
          * ConvertDeoptimizeToGuardPhase reduces the number of merges in the graph, so that fewer
@@ -145,7 +138,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     }
 
     @SuppressWarnings("try")
-    private StructuredGraph buildGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, CanonicalizerPhase canonicalizer) {
+    private StructuredGraph buildGraph(ResolvedJavaMethod method, CanonicalizerPhase canonicalizer) {
         StructuredGraph graphToEncode;
         /*
          * Always parse graphs without assumptions, this is required when graphs are cached across
@@ -163,9 +156,6 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
                 build();
         // @formatter:on
         try (DebugContext.Scope scope = debug.scope("buildGraph", graphToEncode); DebugCloseable a = BuildGraphTimer.start(debug)) {
-            if (intrinsicBytecodeProvider != null) {
-                throw GraalError.shouldNotReachHere("isn't this dead?"); // ExcludeFromJacocoGeneratedReport
-            }
             graphBuilderPhaseInstance.apply(graphToEncode);
             canonicalizer.apply(graphToEncode, graphCacheProviders);
             if (postParsingPhase != null) {
@@ -177,14 +167,14 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         return graphToEncode;
     }
 
-    @SuppressWarnings({"unused", "try"})
-    private EncodedGraph lookupOrCreatePersistentEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
+    @SuppressWarnings("try")
+    private EncodedGraph lookupOrCreatePersistentEncodedGraph(ResolvedJavaMethod method) {
         EncodedGraph result = persistentGraphCache.get(method);
         if (result == null && method.hasBytecodes()) {
             try (AutoCloseable scope = createPersistentCachedGraphScope.get()) {
                 // Encoded graphs creation must be wrapped by "scopes" provided by
                 // createCachedGraphScope.
-                result = createGraph(method, intrinsicBytecodeProvider);
+                result = createGraph(method);
             } catch (Throwable ex) {
                 throw debug.handle(ex);
             }
@@ -195,17 +185,22 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
 
     @Override
     protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
+        if (intrinsicBytecodeProvider != null) {
+            // intrinsicBytecodeProvider is read from InlineInvokePlugin.InlineInfo#getIntrinsicBytecodeProvider which is always null because the only source is PartialEvaluator#asInlineInfo
+            throw GraalError.shouldNotReachHere("dead path"); // ExcludeFromJacocoGeneratedReport
+        }
+
         EncodedGraph result = localGraphCache.get(method);
         if (result != null) {
             return result;
         }
 
-        result = lookupOrCreatePersistentEncodedGraph(method, intrinsicBytecodeProvider);
+        result = lookupOrCreatePersistentEncodedGraph(method);
         // Cached graph from previous compilation may not have source positions, re-parse and
         // store in compilation-local cache.
         if (result != null && !result.trackNodeSourcePosition() && graph.trackNodeSourcePosition()) {
             assert method.hasBytecodes();
-            result = createGraph(method, intrinsicBytecodeProvider);
+            result = createGraph(method);
             assert result.trackNodeSourcePosition();
         }
 
