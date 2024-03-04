@@ -32,6 +32,7 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.oracle.svm.core.jvmti.JvmtiPostEvents;
 import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -70,7 +71,7 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
     public void monitorEnter(Object obj) {
         if (!tryLock()) {
             long startTicks = JfrTicks.elapsedTicks();
-            acquire(1);
+            acquire(1, obj);
             JavaMonitorEnterEvent.emit(obj, latestJfrTid, startTicks);
         }
 

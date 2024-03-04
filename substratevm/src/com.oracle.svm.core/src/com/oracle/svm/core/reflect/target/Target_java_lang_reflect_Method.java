@@ -73,6 +73,9 @@ public final class Target_java_lang_reflect_Method {
     Target_jdk_internal_reflect_MethodAccessor methodAccessorFromMetadata;
 
     @Alias
+    public transient String signature;
+
+    @Alias
     @TargetElement(name = CONSTRUCTOR_NAME)
     @SuppressWarnings("hiding")
     native void constructor(Class<?> declaringClass, String name, Class<?>[] parameterTypes, Class<?> returnType, Class<?>[] checkedExceptions, int modifiers, int slot, String signature,

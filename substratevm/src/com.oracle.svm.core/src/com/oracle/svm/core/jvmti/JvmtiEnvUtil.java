@@ -24,11 +24,8 @@
  */
 package com.oracle.svm.core.jvmti;
 
-import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_NONE;
-import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_NOT_AVAILABLE;
-
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.NumUtil;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -72,8 +69,11 @@ public final class JvmtiEnvUtil {
         env.setIsolate(CurrentIsolate.getIsolate());
         env.setMagic(VALID_ENV_MAGIC);
 
+        JvmtiEnvEventEnabledUtils.initialize(getEnvEventEnabled(env));
+
         JvmtiExternalEnv externalEnv = toExternal(env);
         externalEnv.setFunctions(functionTable);
+
         return externalEnv;
     }
 
@@ -83,16 +83,24 @@ public final class JvmtiEnvUtil {
      * we might need the same approach.
      */
     public static void free(JvmtiEnv env) {
-        env.setMagic(DISPOSED_ENV_MAGIC);
 
         JvmtiCapabilities capabilities = getCapabilities(env);
         relinquishCapabilities(env, capabilities);
 
+        env.setMagic(DISPOSED_ENV_MAGIC);
         JvmtiExternalEnv externalEnv = toExternal(env);
         JvmtiFunctionTable.freeFunctionTable(externalEnv.getFunctions());
         externalEnv.setFunctions(WordFactory.nullPointer());
 
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(env);
+    }
+
+    public static void initialize(JvmtiEnv env, JvmtiEnvShared envShared) {
+        assert isValid(env);
+        assert envShared.isNonNull();
+
+        env.setEnvShared(envShared);
+        env.setNextEnv(WordFactory.nullPointer());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -101,7 +109,7 @@ public final class JvmtiEnvUtil {
         return (JvmtiEnv) ((Pointer) externalEnv).subtract(externalEnvOffset());
     }
 
-    private static JvmtiExternalEnv toExternal(JvmtiEnv env) {
+    public static JvmtiExternalEnv toExternal(JvmtiEnv env) {
         assert env.isNonNull();
         return (JvmtiExternalEnv) ((Pointer) env).add(externalEnvOffset());
     }
@@ -118,6 +126,24 @@ public final class JvmtiEnvUtil {
         return env.getIsolate();
     }
 
+    public static void setNextEnvironment(JvmtiEnv env, JvmtiEnv next) {
+        assert isValid(env);
+        assert isValid(next);
+        env.setNextEnv(next);
+    }
+
+    public static JvmtiEnv getNextEnvironment(JvmtiEnv env) {
+        assert isValid(env);
+        return env.getNextEnv();
+    }
+
+    // ------------------ Capabilities API ------------------ //
+    // TODO @dprcci add to the jvmti api (jvmtifunctions)
+    public static JvmtiError getPotentialCapabilities(JvmtiEnv env, JvmtiCapabilities result) {
+        assert isValid(env);
+        return JvmtiCapabilitiesUtil.getPotentialCapabilities(env.getPhase(), getCapabilities(env), getProhibitedCapabilities(env), env.getEnvShared(), result);
+    }
+
     public static JvmtiCapabilities getCapabilities(JvmtiEnv env) {
         assert isValid(env);
         return addOffset(env, capabilitiesOffset());
@@ -125,17 +151,24 @@ public final class JvmtiEnvUtil {
 
     public static JvmtiError addCapabilities(JvmtiEnv env, JvmtiCapabilities capabilities) {
         assert capabilities.isNonNull();
-        /* We don't support any capabilities at the moment. */
-        if (JvmtiCapabilitiesUtil.hasAny(capabilities)) {
-            return JVMTI_ERROR_NOT_AVAILABLE;
-        }
-        return JVMTI_ERROR_NONE;
+        return JvmtiCapabilitiesUtil.addCapabilities(env.getPhase(), getEnvShared(env), getCapabilities(env), getProhibitedCapabilities(env), capabilities);
     }
 
-    public static JvmtiError relinquishCapabilities(JvmtiEnv env, JvmtiCapabilities capabilities) {
-        assert capabilities.isNonNull();
-        /* Nothing to do because we don't support any capabilities at the moment. */
-        return JVMTI_ERROR_NONE;
+    public static JvmtiError relinquishCapabilities(JvmtiEnv env, JvmtiCapabilities unwanted) {
+        assert unwanted.isNonNull();
+        return JvmtiCapabilitiesUtil.relinquishCapabilities(getEnvShared(env), getCapabilities(env), unwanted);
+    }
+
+    // ------------------------------------------------------ //
+
+    public static JvmtiCapabilities getProhibitedCapabilities(JvmtiEnv env) {
+        assert isValid(env);
+        return addOffset(env, prohibitedCapabilitiesOffset());
+    }
+
+    public static JvmtiEnvEventEnabled getEnvEventEnabled(JvmtiEnv env) {
+        assert isValid(env);
+        return addOffset(env, envEventEnabledOffset());
     }
 
     public static JvmtiEventCallbacks getEventCallbacks(JvmtiEnv env) {
@@ -144,24 +177,16 @@ public final class JvmtiEnvUtil {
     }
 
     public static void setEventCallbacks(JvmtiEnv env, JvmtiEventCallbacks newCallbacks, int sizeOfCallbacks) {
-        /*
-         * int internalStructSize = SizeOf.get(JvmtiEventCallbacks.class); // Clear the whole struct
-         * (including gaps). JvmtiEventCallbacks envEventCallbacks = getEventCallbacks(env);
-         * UnmanagedMemoryUtil.fill((Pointer) envEventCallbacks,
-         * WordFactory.unsigned(internalStructSize), (byte) 0);
-         * 
-         * if (newCallbacks.isNonNull()) { int bytesToCopy =
-         * UninterruptibleUtils.Math.min(internalStructSize, sizeOfCallbacks);
-         * UnmanagedMemoryUtil.copy((Pointer) newCallbacks, (Pointer) envEventCallbacks,
-         * WordFactory.unsigned(bytesToCopy)); }
-         * 
-         * jlong enabled_bits = env->env_event_enable()->_event_callback_enabled.get_bits(); for
-         * (int ei = JVMTI_MIN_EVENT_TYPE_VAL; ei <= JVMTI_MAX_EVENT_TYPE_VAL; ++ei) { jvmtiEvent
-         * evt_t = (jvmtiEvent)ei; jlong bit_for = JvmtiEventEnabled::bit_for(evt_t); if
-         * (env->has_callback(evt_t)) { enabled_bits |= bit_for; } else { enabled_bits &= ~bit_for;
-         * } } env->env_event_enable()->_event_callback_enabled.set_bits(enabled_bits);
-         * recomputeEnabled();
-         */
+
+        flushObjectFreeEvent(env);
+
+        JvmtiEventCallbacks eventCallbacks = getEventCallbacks(env);
+
+        JvmtiEventCallbacksUtil.setEventCallbacks(eventCallbacks, newCallbacks, sizeOfCallbacks);
+        JvmtiEnvEventEnabledUtils.setEventCallbacksEnabled(getEnvEventEnabled(env), eventCallbacks);
+
+        JvmtiEnvEventEnabledUtils.recomputeEnabled();
+
     }
 
     /*
@@ -179,8 +204,15 @@ public final class JvmtiEnvUtil {
      *
      * All states transitions dependent on these transitions are also handled here.
      */
-    private static void recomputeEnabled() {
 
+    public static JvmtiEnvShared getEnvShared(JvmtiEnv env) {
+        assert isValid(env);
+        return env.getEnvShared();
+    }
+
+    public static void setEnvShared(JvmtiEnv env, JvmtiEnvShared envShared) {
+        assert isValid(env);
+        env.setEnvShared(envShared);
     }
 
     @SuppressWarnings("unchecked")
@@ -188,6 +220,13 @@ public final class JvmtiEnvUtil {
         return (T) ((Pointer) env).add(offset);
     }
 
+    public static boolean hasCapability(JvmtiExternalEnv envExt, JvmtiCapabilitiesEnum cap){
+        JvmtiEnv internal = toInternal(envExt);
+        assert isValid(internal);
+        return JvmtiCapabilitiesUtil.hasCapability(getCapabilities(internal), cap);
+    }
+
+    // TODO @dprcci implement
     public static boolean hasEventCapability(JvmtiEnv env, JvmtiEvent eventInfo) {
         /* At the moment, we only support events that don't need any specific capabilities. */
         return true;
@@ -199,8 +238,18 @@ public final class JvmtiEnvUtil {
     }
 
     @Fold
-    static int eventCallbacksOffset() {
+    static int prohibitedCapabilitiesOffset() {
         return NumUtil.roundUp(capabilitiesOffset() + SizeOf.get(JvmtiCapabilities.class), ConfigurationValues.getTarget().wordSize);
+    }
+
+    @Fold
+    static int envEventEnabledOffset() {
+        return NumUtil.roundUp(prohibitedCapabilitiesOffset() + SizeOf.get(JvmtiCapabilities.class), ConfigurationValues.getTarget().wordSize);
+    }
+
+    @Fold
+    static int eventCallbacksOffset() {
+        return NumUtil.roundUp(envEventEnabledOffset() + SizeOf.get(JvmtiEnvEventEnabled.class), ConfigurationValues.getTarget().wordSize);
     }
 
     @Fold
@@ -213,6 +262,7 @@ public final class JvmtiEnvUtil {
         return externalEnvOffset() + SizeOf.get(JvmtiExternalEnv.class);
     }
 
+    // TODO @dprcci complete
     public static void setEventUserEnabled(JvmtiEnv env, Thread javaEventThread, JvmtiEvent eventType, boolean value) {
         // TEMP (chaeubl): implement
         /*
@@ -225,5 +275,16 @@ public final class JvmtiEnvUtil {
          * state->env_thread_state(env)->event_enable()->set_user_enabled(event_type, enabled); } }
          * recompute_enabled();
          */
+        if (eventType == JvmtiEvent.JVMTI_EVENT_OBJECT_FREE) {
+            flushObjectFreeEvent(env);
+        }
+
+        if (javaEventThread == null) {
+            JvmtiEnvEventEnabledUtils.setUserEventEnabled(getEnvEventEnabled(env), eventType, value);
+        }
+    }
+
+    // TODO dprcci implement? Would need TagMap (or equivalent) first
+    private static void flushObjectFreeEvent(JvmtiEnv env) {
     }
 }

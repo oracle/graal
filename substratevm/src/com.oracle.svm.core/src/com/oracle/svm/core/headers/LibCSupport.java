@@ -34,7 +34,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.memory.NativeMemory;
 
 /** Platform-independent LibC support. Don't use this class directly, use {@link LibC} instead. */
-public interface LibCSupport {
+public  interface LibCSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     int errno();
 

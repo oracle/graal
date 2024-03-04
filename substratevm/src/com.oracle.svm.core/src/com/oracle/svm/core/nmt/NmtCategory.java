@@ -43,6 +43,8 @@ public enum NmtCategory {
     JNI("JNI"),
     /** JVM stat / perf data. */
     JvmStat("jvmstat"),
+    /** Java Virtual Machine Tool Interface. */
+    JVMTI("JVMTI"),
     /** NMT itself. */
     NMT("Native Memory Tracking"),
     /** Profile-guided optimizations. */

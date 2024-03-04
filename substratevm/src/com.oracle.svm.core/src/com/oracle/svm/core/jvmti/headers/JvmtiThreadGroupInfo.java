@@ -25,10 +25,36 @@
 package com.oracle.svm.core.jvmti.headers;
 
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 
 @CContext(JvmtiDirectives.class)
 @CStruct("jvmtiThreadGroupInfo")
 public interface JvmtiThreadGroupInfo extends PointerBase {
+    @CField("parent")
+    JThreadGroup getParent();
+
+    @CField("parent")
+    void setParent(JThreadGroup parent);
+
+    @CField("name")
+    CCharPointer getName();
+
+    @CField("name")
+    void setName(CCharPointer name);
+
+    @CField("max_priority")
+    int getMaxPriority();
+
+    @CField("max_priority")
+    void setMaxPriority(int maxPriority);
+
+    @CField("is_daemon")
+    boolean getIsDaemon();
+
+    @CField("is_daemon")
+    void setIsDaemon(boolean isDaemon);
+
 }

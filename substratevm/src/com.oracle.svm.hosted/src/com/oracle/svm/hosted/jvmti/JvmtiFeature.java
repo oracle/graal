@@ -24,6 +24,17 @@
  */
 package com.oracle.svm.hosted.jvmti;
 
+import com.oracle.svm.core.jvmti.JvmtiClassInfoUtil;
+import com.oracle.svm.core.jvmti.JvmtiEnvManager;
+import com.oracle.svm.core.jvmti.JvmtiEnvStorage;
+import com.oracle.svm.core.jvmti.JvmtiManager;
+import com.oracle.svm.core.jvmti.JvmtiMultiStackTracesUtil;
+import com.oracle.svm.core.jvmti.JvmtiRawMonitorUtil;
+import com.oracle.svm.core.jvmti.JvmtiThreadGroupUtil;
+import com.oracle.svm.core.jvmti.JvmtiThreadLocalStorage;
+import com.oracle.svm.core.jvmti.JvmtiThreadStateUtil;
+import com.oracle.svm.core.jvmti.JvmtiGetThreadsUtil;
+import com.oracle.svm.core.jvmti.JvmtiStackTraceUtil;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -74,10 +85,7 @@ public class JvmtiFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess arg) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) arg;
         AnalysisMetaAccess metaAccess = access.getMetaAccess();
-
-        ImageSingletons.add(JvmtiAgents.class, new JvmtiAgents());
-
-        ImageSingletons.add(JvmtiFunctionTable.class, new JvmtiFunctionTable());
+        JvmtiManager.registerAllJvmtiClasses();
         registerCEntryPoints(metaAccess);
     }
 
