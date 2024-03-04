@@ -74,6 +74,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
 import org.graalvm.wasm.api.Vector128;
+import org.graalvm.wasm.api.Vector128Shape;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.ExportIdentifier;
@@ -1808,33 +1809,72 @@ public class BinaryParser extends BinaryStreamParser {
                         load(state, V128_TYPE, 128, longMultiResult);
                         state.addExtendedMemoryInstruction(Bytecode.VECTOR_V128_LOAD, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                         break;
-                    case Instructions.VECTOR_V128_CONST:
+                    case Instructions.VECTOR_V128_CONST: {
                         final Vector128 value = readUnsignedInt128();
                         state.push(V128_TYPE);
                         state.addInstruction(Bytecode.VECTOR_V128_CONST, value);
                         break;
+                    }
+                    case Instructions.VECTOR_I8X16_SHUFFLE: {
+                        final Vector128 indices = readUnsignedInt128();
+                        for (byte index : indices.asBytes()) {
+                            if (Byte.toUnsignedInt(index) >= 32) {
+                                fail(Failure.INVALID_LANE_INDEX, "i8x16.shuffle lane index %d out of bounds", Byte.toUnsignedInt(index));
+                            }
+                        }
+                        state.popChecked(V128_TYPE);
+                        state.popChecked(V128_TYPE);
+                        state.push(V128_TYPE);
+                        state.addInstruction(vectorOpcode, indices);
+                        break;
+                    }
+                    case Instructions.VECTOR_I8X16_EXTRACT_LANE_S:
+                    case Instructions.VECTOR_I8X16_EXTRACT_LANE_U:
+                    case Instructions.VECTOR_I16X8_EXTRACT_LANE_S:
+                    case Instructions.VECTOR_I16X8_EXTRACT_LANE_U:
+                    case Instructions.VECTOR_I32X4_EXTRACT_LANE:
+                    case Instructions.VECTOR_I64X2_EXTRACT_LANE:
+                    case Instructions.VECTOR_F32X4_EXTRACT_LANE:
+                    case Instructions.VECTOR_F64X2_EXTRACT_LANE: {
+                        final byte laneIndex = read1();
+                        Vector128Shape shape = Vector128Shape.ofInstruction(vectorOpcode);
+                        if (Byte.toUnsignedInt(laneIndex) >= shape.getDimension()) {
+                            fail(Failure.INVALID_LANE_INDEX, "Lane index %d out of bounds for shape %s", Byte.toUnsignedInt(laneIndex), shape.toString());
+                        }
+                        state.popChecked(V128_TYPE);
+                        state.push(shape.getUnpackedType());
+                        state.addVectorLaneInstruction(vectorOpcode, laneIndex);
+                        break;
+                    }
+                    case Instructions.VECTOR_I8X16_REPLACE_LANE:
+                    case Instructions.VECTOR_I16X8_REPLACE_LANE:
+                    case Instructions.VECTOR_I32X4_REPLACE_LANE:
+                    case Instructions.VECTOR_I64X2_REPLACE_LANE:
+                    case Instructions.VECTOR_F32X4_REPLACE_LANE:
+                    case Instructions.VECTOR_F64X2_REPLACE_LANE: {
+                        final byte laneIndex = read1();
+                        Vector128Shape shape = Vector128Shape.ofInstruction(vectorOpcode);
+                        if (Byte.toUnsignedInt(laneIndex) >= shape.getDimension()) {
+                            fail(Failure.INVALID_LANE_INDEX, "Lane index %d out of bounds for shape %s", Byte.toUnsignedInt(laneIndex), shape.toString());
+                        }
+                        state.popChecked(shape.getUnpackedType());
+                        state.popChecked(V128_TYPE);
+                        state.push(V128_TYPE);
+                        state.addVectorLaneInstruction(vectorOpcode, laneIndex);
+                        break;
+                    }
                     case Instructions.VECTOR_I8X16_SPLAT:
                     case Instructions.VECTOR_I16X8_SPLAT:
                     case Instructions.VECTOR_I32X4_SPLAT:
-                        state.popChecked(I32_TYPE);
-                        state.push(V128_TYPE);
-                        state.addInstruction(vectorOpcode);
-                        break;
                     case Instructions.VECTOR_I64X2_SPLAT:
-                        state.popChecked(I64_TYPE);
-                        state.push(V128_TYPE);
-                        state.addInstruction(vectorOpcode);
-                        break;
                     case Instructions.VECTOR_F32X4_SPLAT:
-                        state.popChecked(F32_TYPE);
+                    case Instructions.VECTOR_F64X2_SPLAT: {
+                        Vector128Shape shape = Vector128Shape.ofInstruction(vectorOpcode);
+                        state.popChecked(shape.getUnpackedType());
                         state.push(V128_TYPE);
                         state.addInstruction(vectorOpcode);
                         break;
-                    case Instructions.VECTOR_F64X2_SPLAT:
-                        state.popChecked(F64_TYPE);
-                        state.push(V128_TYPE);
-                        state.addInstruction(vectorOpcode);
-                        break;
+                    }
                     case Instructions.VECTOR_V128_ANY_TRUE:
                     case Instructions.VECTOR_I8X16_ALL_TRUE:
                     case Instructions.VECTOR_I8X16_BITMASK:
@@ -1902,6 +1942,7 @@ public class BinaryParser extends BinaryStreamParser {
                         state.push(V128_TYPE);
                         state.addInstruction(vectorOpcode);
                         break;
+                    case Instructions.VECTOR_I8X16_SWIZZLE:
                     case Instructions.VECTOR_I8X16_EQ:
                     case Instructions.VECTOR_I8X16_NE:
                     case Instructions.VECTOR_I8X16_LT_S:

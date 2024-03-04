@@ -447,6 +447,24 @@ public class Bytecode {
     public static final int VECTOR_V128_LOAD = 0x00;
     public static final int VECTOR_V128_CONST = 0x0C;
 
+    public static final int VECTOR_I8X16_SHUFFLE = 0x0D;
+
+    public static final int VECTOR_I8X16_EXTRACT_LANE_S = 0x15;
+    public static final int VECTOR_I8X16_EXTRACT_LANE_U = 0x16;
+    public static final int VECTOR_I8X16_REPLACE_LANE = 0x17;
+    public static final int VECTOR_I16X8_EXTRACT_LANE_S = 0x18;
+    public static final int VECTOR_I16X8_EXTRACT_LANE_U = 0x19;
+    public static final int VECTOR_I16X8_REPLACE_LANE = 0x1A;
+    public static final int VECTOR_I32X4_EXTRACT_LANE = 0x1B;
+    public static final int VECTOR_I32X4_REPLACE_LANE = 0x1C;
+    public static final int VECTOR_I64X2_EXTRACT_LANE = 0x1D;
+    public static final int VECTOR_I64X2_REPLACE_LANE = 0x1E;
+    public static final int VECTOR_F32X4_EXTRACT_LANE = 0x1F;
+    public static final int VECTOR_F32X4_REPLACE_LANE = 0x20;
+    public static final int VECTOR_F64X2_EXTRACT_LANE = 0x21;
+    public static final int VECTOR_F64X2_REPLACE_LANE = 0x22;
+
+    public static final int VECTOR_I8X16_SWIZZLE = 0x0E;
     public static final int VECTOR_I8X16_SPLAT = 0x0F;
     public static final int VECTOR_I16X8_SPLAT = 0x10;
     public static final int VECTOR_I32X4_SPLAT = 0x11;

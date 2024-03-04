@@ -155,7 +155,9 @@ public enum Failure {
     UNSPECIFIED_INTERNAL(Type.INTERNAL, "unspecified"),
     INCOMPATIBLE_OPTIONS(Type.INTERNAL, "some of the provided options are incompatible"),
 
-    NON_REPRESENTABLE_EXTRA_DATA_VALUE(Type.MALFORMED, "value cannot be represented in extra data");
+    NON_REPRESENTABLE_EXTRA_DATA_VALUE(Type.MALFORMED, "value cannot be represented in extra data"),
+
+    INVALID_LANE_INDEX(Type.INVALID, "invalid lane index");
 
     public enum Type {
         TRAP("trap"),
