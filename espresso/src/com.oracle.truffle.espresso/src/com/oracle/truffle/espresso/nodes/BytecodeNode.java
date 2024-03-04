@@ -2641,7 +2641,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         int slot = top - slotCount - 1; // -receiver
         StaticObject receiver;
         if (opcode == PUTSTATIC) {
-            receiver = getStaticsBoundary(field);
+            receiver = initializeAndGetStatics(field);
         } else {
             // Do not release the object, it might be read again in PutFieldNode
             receiver = nullCheck(popObject(frame, slot));
@@ -2727,14 +2727,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         return -slotCount;
     }
 
-    @TruffleBoundary
-    @SuppressWarnings("try")
-    private StaticObject getStaticsBoundary(Field field) {
-        try (EspressoLanguage.DisableSingleStepping ignored = getLanguage().disableStepping()) {
-            return field.getDeclaringKlass().tryInitializeAndGetStatics();
-        }
-    }
-
     /**
      * Returns the stack effect (slot delta) that cannot be inferred solely from the bytecode. e.g.
      * PUTFIELD always pops the receiver, but the result size (1 or 2) is unknown.
@@ -2771,7 +2763,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         int slot = top - 1;
         StaticObject receiver;
         if (opcode == GETSTATIC) {
-            receiver = getStaticsBoundary(field);
+            receiver = initializeAndGetStatics(field);
         } else {
             // Do not release the object, it might be read again in GetFieldNode
             receiver = nullCheck(peekObject(frame, slot));
@@ -2816,6 +2808,17 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         int slotCount = (typeHeader == 'J' || typeHeader == 'D') ? 2 : 1;
         assert slotCount == field.getKind().getSlotCount();
         return slotCount;
+    }
+
+    private StaticObject initializeAndGetStatics(Field field) {
+        ObjectKlass declaringKlass = field.getDeclaringKlass();
+        if (!declaringKlass.isInitialized()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            try (EspressoLanguage.DisableSingleStepping ignored = getLanguage().disableStepping()) {
+                declaringKlass.safeInitialize();
+            }
+        }
+        return declaringKlass.getStatics();
     }
 
     // endregion Field read/write
