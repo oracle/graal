@@ -86,10 +86,4 @@ public interface DoubleLocation {
      */
     @Deprecated(since = "22.2")
     void setDouble(DynamicObject store, double value, Shape oldShape, Shape newShape);
-
-    /**
-     * @since 0.8 or earlier
-     */
-    @Deprecated(since = "22.2")
-    Class<Double> getType();
 }

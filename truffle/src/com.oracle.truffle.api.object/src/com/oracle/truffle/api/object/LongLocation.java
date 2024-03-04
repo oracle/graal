@@ -86,8 +86,4 @@ public interface LongLocation {
      */
     @Deprecated(since = "22.2")
     void setLong(DynamicObject store, long value, Shape oldShape, Shape newShape);
-
-    /** @since 0.8 or earlier */
-    @Deprecated(since = "22.2")
-    Class<Long> getType();
 }

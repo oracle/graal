@@ -76,7 +76,7 @@ abstract class CoreLocations {
         Class<?> getType();
     }
 
-    public interface ObjectLocation extends TypedLocation, com.oracle.truffle.api.object.ObjectLocation {
+    public interface ObjectLocation extends TypedLocation {
         Class<? extends Object> getType();
 
         /**

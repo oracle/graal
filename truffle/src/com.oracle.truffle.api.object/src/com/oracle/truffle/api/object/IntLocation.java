@@ -86,8 +86,4 @@ public interface IntLocation {
      */
     @Deprecated(since = "22.2")
     void setInt(DynamicObject store, int value, Shape oldShape, Shape newShape);
-
-    /** @since 0.8 or earlier */
-    @Deprecated(since = "22.2")
-    Class<Integer> getType();
 }

@@ -86,8 +86,4 @@ public interface BooleanLocation {
      */
     @Deprecated(since = "22.2")
     void setBoolean(DynamicObject store, boolean value, Shape oldShape, Shape newShape);
-
-    /** @since 0.8 or earlier */
-    @Deprecated(since = "22.2")
-    Class<Boolean> getType();
 }
