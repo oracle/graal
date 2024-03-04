@@ -119,7 +119,7 @@ jobs:
         export JAVA_HOME=${LABSJDK_HOME}
         cd substratevm
         ${MX_PATH}/mx --native=native-image,lib:jvmcicompiler --components="Native Image,LibGraal" build
-        mv $(${MX_PATH}/mx --native=native-image,lib:jvmcicompiler --components="Native Image,LibGraal" graalvm-home) ${GRAALVM_HOME}
+        ln -s $(${MX_PATH}/mx --native=native-image,lib:jvmcicompiler --components="Native Image,LibGraal" graalvm-home) ${GRAALVM_HOME}
         ${GRAALVM_HOME}/bin/native-image --version
     - name: Tar GraalVM
       shell: bash

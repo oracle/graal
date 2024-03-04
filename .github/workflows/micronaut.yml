@@ -103,7 +103,7 @@ jobs:
       run: |
         cd substratevm
         ${MX_PATH}/mx --native=native-image --components="Native Image" build
-        mv $(${MX_PATH}/mx --native=native-image --components="Native Image" graalvm-home) ${GRAALVM_HOME}
+        ln -s $(${MX_PATH}/mx --native=native-image --components="Native Image" graalvm-home) ${GRAALVM_HOME}
         ${GRAALVM_HOME}/bin/native-image --version
     - name: Reconfigure JAVA_HOME for Micronaut
       uses: actions/setup-java@v4
