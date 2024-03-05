@@ -42,6 +42,7 @@ import jdk.graal.compiler.phases.common.LowTierLoweringPhase;
 import jdk.graal.compiler.phases.common.OptimizeExtendsPhase;
 import jdk.graal.compiler.phases.common.ProfileCompiledMethodsPhase;
 import jdk.graal.compiler.phases.common.PropagateDeoptimizeProbabilityPhase;
+import jdk.graal.compiler.phases.common.RemoveOpaqueValuePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
@@ -92,6 +93,8 @@ public class LowTier extends BaseTier<LowTierContext> {
         appendPhase(new PropagateDeoptimizeProbabilityPhase());
 
         appendPhase(new OptimizeExtendsPhase());
+
+        appendPhase(new RemoveOpaqueValuePhase());
 
         appendPhase(new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS));
     }

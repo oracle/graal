@@ -37,22 +37,21 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicSet;
-import jdk.graal.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 
+import jdk.graal.compiler.java.LambdaUtils;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -61,7 +60,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * The core class for deciding whether a class should be initialized during image building or class
  * initialization should be delayed to runtime.
  */
-public abstract class ClassInitializationSupport implements RuntimeClassInitializationSupport {
+public class ClassInitializationSupport implements RuntimeClassInitializationSupport {
 
     /**
      * Setup for class initialization: configured through features and command line input. It
@@ -87,18 +86,11 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
      */
     final MetaAccessProvider metaAccess;
 
-    public static ClassInitializationSupport create(MetaAccessProvider metaAccess, ImageClassLoader loader) {
-        if (!ClassInitializationOptions.StrictImageHeap.getValue()) {
-            return new ProvenSafeClassInitializationSupport(metaAccess, loader);
-        }
-        return new AllowAllHostedUsagesClassInitializationSupport(metaAccess, loader);
-    }
-
     public static ClassInitializationSupport singleton() {
         return (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
     }
 
-    ClassInitializationSupport(MetaAccessProvider metaAccess, ImageClassLoader loader) {
+    public ClassInitializationSupport(MetaAccessProvider metaAccess, ImageClassLoader loader) {
         this.metaAccess = metaAccess;
         this.loader = loader;
     }
@@ -203,6 +195,12 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
     }
 
     @Override
+    public void initializeAtRunTime(Class<?> clazz, String reason) {
+        UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
+        classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.RUN_TIME, reason, true);
+    }
+
+    @Override
     public void initializeAtRunTime(String name, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
         Class<?> clazz = loader.findClass(name).get();
@@ -215,6 +213,12 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
     }
 
     @Override
+    public void initializeAtBuildTime(Class<?> aClass, String reason) {
+        UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
+        forceInitializeHosted(aClass, reason, false);
+    }
+
+    @Override
     public void initializeAtBuildTime(String name, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
 
@@ -224,18 +228,6 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
             initializeAtBuildTime(clazz, reason);
         } else {
             classInitializationConfiguration.insert(name, InitKind.BUILD_TIME, reason, false);
-        }
-    }
-
-    @Override
-    public void rerunInitialization(String name, String reason) {
-        UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
-        Class<?> clazz = loader.findClass(name).get();
-        if (clazz != null) {
-            classInitializationConfiguration.insert(name, InitKind.RERUN, reason, true);
-            rerunInitialization(clazz, reason);
-        } else {
-            classInitializationConfiguration.insert(name, InitKind.RERUN, reason, false);
         }
     }
 
@@ -298,20 +290,152 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
      * Initializes the class during image building, and reports an error if the user requested to
      * delay initialization to runtime.
      */
-    public abstract void forceInitializeHosted(Class<?> clazz, String reason, boolean allowInitializationErrors);
+    public void forceInitializeHosted(Class<?> clazz, String reason, boolean allowInitializationErrors) {
+        if (clazz == null) {
+            return;
+        }
+        classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.BUILD_TIME, reason, true);
+        InitKind initKind = ensureClassInitialized(clazz, allowInitializationErrors);
+        classInitKinds.put(clazz, initKind);
 
-    abstract InitKind computeInitKindAndMaybeInitializeClass(Class<?> clazz);
+        forceInitializeHosted(clazz.getSuperclass(), "super type of " + clazz.getTypeName(), allowInitializationErrors);
+        if (!clazz.isInterface()) {
+            /*
+             * Initialization of an interface does not trigger initialization of superinterfaces.
+             * Regardless whether any of the involved interfaces declare default methods.
+             */
+            forceInitializeInterfaces(clazz.getInterfaces(), "super type of " + clazz.getTypeName());
+        }
+    }
 
-    abstract String reasonForClass(Class<?> clazz);
+    private void forceInitializeInterfaces(Class<?>[] interfaces, String reason) {
+        for (Class<?> iface : interfaces) {
+            if (metaAccess.lookupJavaType(iface).declaresDefaultMethods()) {
+                classInitializationConfiguration.insert(iface.getTypeName(), InitKind.BUILD_TIME, reason, true);
+
+                ensureClassInitialized(iface, false);
+                classInitKinds.put(iface, InitKind.BUILD_TIME);
+            }
+            forceInitializeInterfaces(iface.getInterfaces(), "super type of " + iface.getTypeName());
+        }
+    }
+
+    InitKind computeInitKindAndMaybeInitializeClass(Class<?> clazz) {
+        return computeInitKindAndMaybeInitializeClass(clazz, true);
+    }
 
     /**
-     * Check that all registered classes are here, regardless if the AnalysisType got actually
-     * marked as used. Class initialization can have side effects on other classes without the class
-     * being used itself, e.g., a class initializer can write a static field in another class.
+     * Computes the class initialization kind of the provided class, all superclasses, and all
+     * interfaces that the provided class depends on (i.e., interfaces implemented by the provided
+     * class that declare default methods).
+     *
+     * Also defines class initialization based on a policy of the subclass.
      */
-    abstract boolean checkDelayedInitialization();
+    InitKind computeInitKindAndMaybeInitializeClass(Class<?> clazz, boolean memoize) {
+        InitKind existing = classInitKinds.get(clazz);
+        if (existing != null) {
+            return existing;
+        }
 
-    abstract void doLateInitialization(AnalysisUniverse universe, AnalysisMetaAccess aMetaAccess);
+        if (clazz.isPrimitive()) {
+            forceInitializeHosted(clazz, "primitive types are initialized at build time", false);
+            return InitKind.BUILD_TIME;
+        }
+
+        if (clazz.isArray()) {
+            forceInitializeHosted(clazz, "arrays are initialized at build time", false);
+            return InitKind.BUILD_TIME;
+        }
+
+        InitKind specifiedInitKind = specifiedInitKindFor(clazz);
+        InitKind clazzResult = specifiedInitKind != null ? specifiedInitKind : InitKind.RUN_TIME;
+
+        InitKind superResult = InitKind.BUILD_TIME;
+        if (clazz.getSuperclass() != null) {
+            superResult = superResult.max(computeInitKindAndMaybeInitializeClass(clazz.getSuperclass(), memoize));
+        }
+        superResult = superResult.max(processInterfaces(clazz, memoize));
+
+        if (superResult == InitKind.BUILD_TIME && (Proxy.isProxyClass(clazz) || LambdaUtils.isLambdaType(metaAccess.lookupJavaType(clazz)))) {
+            /*
+             * To simplify class initialization configuration for proxy and lambda types,
+             * registering all of their implemented interfaces as "initialize at build time" is
+             * equivalent to registering the proxy/lambda type itself. This is safe because we know
+             * that proxy/lambda types themselves have no problematic code in the class initializer
+             * (they are generated classes).
+             *
+             * Note that we must look at all interfaces, including transitive dependencies.
+             */
+            boolean allInterfacesSpecifiedAsBuildTime = true;
+            for (Class<?> iface : allInterfaces(clazz)) {
+                if (specifiedInitKindFor(iface) != InitKind.BUILD_TIME) {
+                    allInterfacesSpecifiedAsBuildTime = false;
+                    break;
+                }
+            }
+            if (allInterfacesSpecifiedAsBuildTime) {
+                forceInitializeHosted(clazz, "proxy/lambda classes with all interfaces explicitly marked as --initialize-at-build-time are also initialized at build time", false);
+                return InitKind.BUILD_TIME;
+            }
+        }
+
+        InitKind result = superResult.max(clazzResult);
+
+        if (memoize) {
+            if (!(result == InitKind.RUN_TIME)) {
+                result = result.max(ensureClassInitialized(clazz, false));
+            }
+
+            InitKind previous = classInitKinds.putIfAbsent(clazz, result);
+            if (previous != null && previous != result) {
+                throw VMError.shouldNotReachHere("Conflicting class initialization kind: " + previous + " != " + result + " for " + clazz);
+            }
+        }
+        return result;
+    }
+
+    private InitKind processInterfaces(Class<?> clazz, boolean memoizeEager) {
+        /*
+         * Note that we do not call computeInitKindForClass(clazz) on purpose: if clazz is the root
+         * class or an interface declaring default methods, then
+         * computeInitKindAndMaybeInitializeClass() already calls computeInitKindForClass. If the
+         * interface does not declare default methods, than we must not take the InitKind of that
+         * interface into account, because interfaces without default methods are independent from a
+         * class initialization point of view.
+         */
+        InitKind result = InitKind.BUILD_TIME;
+
+        for (Class<?> iface : clazz.getInterfaces()) {
+            if (metaAccess.lookupJavaType(iface).declaresDefaultMethods()) {
+                /*
+                 * An interface that declares default methods is initialized when a class
+                 * implementing it is initialized. So we need to inherit the InitKind from such an
+                 * interface.
+                 */
+                result = result.max(computeInitKindAndMaybeInitializeClass(iface, memoizeEager));
+            } else {
+                /*
+                 * An interface that does not declare default methods is independent from a class
+                 * that implements it, i.e., the interface can still be uninitialized even when the
+                 * class is initialized.
+                 */
+                result = result.max(processInterfaces(iface, memoizeEager));
+            }
+        }
+        return result;
+    }
+
+    String reasonForClass(Class<?> clazz) {
+        InitKind initKind = classInitKinds.get(clazz);
+        String reason = classInitializationConfiguration.lookupReason(clazz.getTypeName());
+        if (initKind == InitKind.RUN_TIME) {
+            return "classes are initialized at run time by default";
+        } else if (reason != null) {
+            return reason;
+        } else {
+            throw VMError.shouldNotReachHere("Must be either proven or specified");
+        }
+    }
 
     public static EconomicSet<Class<?>> allInterfaces(Class<?> clazz) {
         EconomicSet<Class<?>> result = EconomicSet.create();

@@ -41,30 +41,15 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.fieldfolding.IsStaticFinalFieldInitializedNode;
 
 import jdk.internal.misc.Unsafe;
 
 /*
  * The suffix of class names indicates the time when the class initializer is determined to be safe
- * for execution/simulation at image build time. The tests are run in two configurations: 1) with
- * the "old" class initialization strategy, which uses the "early" and "late" class initializer
- * analysis to initialize classes at image build time, and 2) with the "new" class initialization
- * strategy where all classes can be used at image build time, but class initializer are simulated
- * to avoid explicit initialization at image build time. This leads to the following 4 suffixes:
+ * for simulation at image build time.
  *
- * - MustBeSafeEarly: The early class initializer analysis (before static analysis) finds this class
- * as safe for initialization at image build time. The simulation of class initializer also must
- * succeed, because it is more powerful than the early analysis.
- *
- * - MustBeSafeLate: The late class initializer analysis (ater static analysis) finds this class as
- * safe for initialization at image build time. The * simulation of class initializer also must
- * succeed, because it is more powerful than the late analysis.
- *
- * - MustBeSimulated: Neither the early nor the late analysis finds this class as safe for
- * initialization. But the simulation of class initializer succeeded, i.e., with the "new" class
- * initialization strategy the class starts out as initialized at run time.
+ * - MustBeSimulated: The simulation of class initializer succeeded, i.e., the class starts out as initialized at run time.
  *
  * - MustBeDelayed: The class initializer has side effects, it must be executed at run time.
  *
@@ -73,7 +58,7 @@ import jdk.internal.misc.Unsafe;
  * log output (code in mx_substratevm.py).
  */
 
-class PureMustBeSafeEarly {
+class PureMustBeSimulated {
     static int v;
     static {
         v = 1;
@@ -84,7 +69,7 @@ class PureMustBeSafeEarly {
 class InitializesPureMustBeDelayed {
     static int v;
     static {
-        v = PureMustBeSafeEarly.v;
+        v = PureMustBeSimulated.v;
     }
 }
 
@@ -106,7 +91,7 @@ class NonPureAccessedFinal {
     }
 }
 
-class PureCallMustBeSafeEarly {
+class PureCallMustBeSimulated {
     static int v;
     static {
         v = TestClassInitialization.pure();
@@ -155,20 +140,20 @@ class CreatesAnExceptionMustBeDelayed {
 class ThrowsAnExceptionUninitializedMustBeDelayed {
     static int v = 1;
     static {
-        if (PureMustBeSafeEarly.v == 42) {
+        if (PureMustBeSimulated.v == 42) {
             throw new RuntimeException("should fire at runtime");
         }
     }
 }
 
-interface PureInterfaceMustBeSafeEarly {
+interface PureInterfaceMustBeSimulated {
 }
 
 class PureSubclassMustBeDelayed extends SuperClassMustBeDelayed {
     static int v = 1;
 }
 
-class SuperClassMustBeDelayed implements PureInterfaceMustBeSafeEarly {
+class SuperClassMustBeDelayed implements PureInterfaceMustBeSimulated {
     static {
         System.out.println("Delaying SuperClassMustBeDelayed");
     }
@@ -200,7 +185,7 @@ interface InterfaceNonPureDefaultMustBeDelayed {
     }
 }
 
-class PureSubclassInheritsDelayedInterfaceMustBeSafeEarly implements InterfaceNonPureMustBeDelayed {
+class PureSubclassInheritsDelayedInterfaceMustBeSimulated implements InterfaceNonPureMustBeDelayed {
     static int v = 1;
 }
 
@@ -228,7 +213,7 @@ class PureDependsOnImplicitExceptionUninitializedMustBeDelayed {
     }
 }
 
-class StaticFieldHolderMustBeSafeEarly {
+class StaticFieldHolderMustBeSimulated {
     /**
      * Other class initializers that modify {@link #a} must not run at image build time so that the
      * initial value 111 assigned here can be read at run time.
@@ -242,7 +227,7 @@ class StaticFieldHolderMustBeSafeEarly {
 
 class StaticFieldModifer1MustBeDelayed {
     static {
-        StaticFieldHolderMustBeSafeEarly.a = 222;
+        StaticFieldHolderMustBeSimulated.a = 222;
     }
 
     static void triggerInitialization() {
@@ -251,14 +236,14 @@ class StaticFieldModifer1MustBeDelayed {
 
 class StaticFieldModifer2MustBeDelayed {
     static {
-        StaticFieldHolderMustBeSafeEarly.setA(333);
+        StaticFieldHolderMustBeSimulated.setA(333);
     }
 
     static void triggerInitialization() {
     }
 }
 
-class RecursionInInitializerMustBeSafeLate {
+class RecursionInInitializerMustBeSimulated {
     static int i = compute(200);
 
     static int compute(int n) {
@@ -270,8 +255,8 @@ class RecursionInInitializerMustBeSafeLate {
     }
 }
 
-class UnsafeAccessMustBeSafeLate {
-    static UnsafeAccessMustBeSafeLate value = compute();
+class UnsafeAccessMustBeSimulated {
+    static UnsafeAccessMustBeSimulated value = compute();
 
     int f01;
     int f02;
@@ -290,8 +275,8 @@ class UnsafeAccessMustBeSafeLate {
     int f15;
     int f16;
 
-    static UnsafeAccessMustBeSafeLate compute() {
-        UnsafeAccessMustBeSafeLate result = new UnsafeAccessMustBeSafeLate();
+    static UnsafeAccessMustBeSimulated compute() {
+        UnsafeAccessMustBeSimulated result = new UnsafeAccessMustBeSimulated();
         /*
          * We are writing a random instance field, depending on the header size. But the object is
          * big enough so that the write is one of the fields. The unsafe write is converted to a
@@ -303,14 +288,14 @@ class UnsafeAccessMustBeSafeLate {
     }
 }
 
-enum EnumMustBeSafeEarly {
+enum EnumMustBeSimulated {
     V1(null),
     V2("Hello"),
     V3(new Object());
 
     final Object value;
 
-    EnumMustBeSafeEarly(Object value) {
+    EnumMustBeSimulated(Object value) {
         this.value = value;
     }
 
@@ -359,40 +344,20 @@ class AssertionOnlyClassMustBeUnreachable {
 }
 
 /**
- * Class initializer references a helper class that can be initialized early. Since the early class
- * initializer analysis recursviely processes dependent classes, this class is also safe for early
- * initialization.
+ * Cycle between this class and a helper class.
  */
-class ReferencesOtherPureClassMustBeSafeEarly {
+class CycleMustBeSimulated {
     static {
-        HelperClassMustBeSafeEarly.foo();
+        HelperClassMustBeSimulated.foo();
     }
 
     static void foo() {
     }
 }
 
-class HelperClassMustBeSafeEarly {
-    static void foo() {
-    }
-}
-
-/**
- * Cycle between this class and a helper class. Even though both classes could be initialized early,
- * the early analysis bails out because analyzing cycles would be too complicated.
- */
-class CycleMustBeSafeLate {
+class HelperClassMustBeSimulated {
     static {
-        HelperClassMustBeSafeLate.foo();
-    }
-
-    static void foo() {
-    }
-}
-
-class HelperClassMustBeSafeLate {
-    static {
-        CycleMustBeSafeLate.foo();
+        CycleMustBeSimulated.foo();
     }
 
     static void foo() {
@@ -400,7 +365,7 @@ class HelperClassMustBeSafeLate {
 }
 
 /** Various reflection lookup methods are safe for execution at image build time. */
-class ReflectionMustBeSafeEarly {
+class ReflectionMustBeSimulated {
     static Class<?> c1;
     static Class<?> c2;
     static Method m1;
@@ -408,20 +373,20 @@ class ReflectionMustBeSafeEarly {
 
     static {
         try {
-            Class<?> c1Local = Class.forName("com.oracle.svm.test.clinit.ForNameMustBeSafeEarly", true, ReflectionMustBeSafeEarly.class.getClassLoader());
+            Class<?> c1Local = Class.forName("com.oracle.svm.test.clinit.ForNameMustBeSimulated", true, ReflectionMustBeSimulated.class.getClassLoader());
             c1 = c1Local;
 
             /**
              * Looking up a class that cannot be initialized at build time is allowed, as long as
              * `initialize` is `false`.
              */
-            Class<?> c2Local = Class.forName("com.oracle.svm.test.clinit.ForNameUninitializedMustBeDelayed", false, ReflectionMustBeSafeEarly.class.getClassLoader());
+            Class<?> c2Local = Class.forName("com.oracle.svm.test.clinit.ForNameUninitializedMustBeDelayed", false, ReflectionMustBeSimulated.class.getClassLoader());
             c2 = c2Local;
 
             /*
-             * Calling getDeclaredMethod on the field c1 instead of the variable c1Local would not
-             * work, because the field load cannot be constant folded by the
-             * EarlyClassInitializerAnalysis.
+             * GR-51519: Calling getDeclaredMethod on the field c1 instead of the variable c1Local
+             * would not work, the ReflectionPlugins do not see through simulated image heap
+             * constants for the parameterTypes array yet.
              */
             m1 = c1Local.getDeclaredMethod("foo", int.class);
             f2 = c2Local.getDeclaredField("field");
@@ -430,7 +395,7 @@ class ReflectionMustBeSafeEarly {
              * Check that reflective class lookup and the elimination of the class initialization
              * check also works when the class name is not constant yet during bytecode parsing.
              */
-            if (c1Local != Class.forName(forNameMustBeSafeEarly(), true, ReflectionMustBeSafeEarly.class.getClassLoader())) {
+            if (c1Local != Class.forName(forNameMustBeSimulated(), true, ReflectionMustBeSimulated.class.getClassLoader())) {
                 throw new Error("wrong class");
             }
 
@@ -439,13 +404,13 @@ class ReflectionMustBeSafeEarly {
         }
     }
 
-    private static String forNameMustBeSafeEarly() {
-        return "com.oracle.svm.test.clinit.ForNameMustBeSafeEarly";
+    private static String forNameMustBeSimulated() {
+        return "com.oracle.svm.test.clinit.ForNameMustBeSimulated";
     }
 }
 
 @SuppressWarnings("unused")
-class ForNameMustBeSafeEarly {
+class ForNameMustBeSimulated {
     static void foo(int arg) {
     }
 }
@@ -466,13 +431,13 @@ class DevirtualizedCallMustBeDelayed {
     static final Object value = 42;
 }
 
-class DevirtualizedCallSuperMustBeSafeEarly {
+class DevirtualizedCallSuperMustBeSimulated {
     Object foo() {
         return -1;
     }
 }
 
-class DevirtualizedCallSubMustBeSafeEarly extends DevirtualizedCallSuperMustBeSafeEarly {
+class DevirtualizedCallSubMustBeSimulated extends DevirtualizedCallSuperMustBeSimulated {
     @Override
     Object foo() {
         return DevirtualizedCallMustBeDelayed.value;
@@ -483,7 +448,7 @@ class DevirtualizedCallUsageMustBeDelayed {
     static final Object value = computeValue();
 
     private static Object computeValue() {
-        DevirtualizedCallSuperMustBeSafeEarly provider = createProvider();
+        DevirtualizedCallSuperMustBeSimulated provider = createProvider();
 
         /*
          * The static analysis can prove that DevirtualizedCallSubMustBeDelayed.foo is the only
@@ -494,8 +459,8 @@ class DevirtualizedCallUsageMustBeDelayed {
         return provider.foo();
     }
 
-    private static DevirtualizedCallSuperMustBeSafeEarly createProvider() {
-        return new DevirtualizedCallSubMustBeSafeEarly();
+    private static DevirtualizedCallSuperMustBeSimulated createProvider() {
+        return new DevirtualizedCallSubMustBeSimulated();
     }
 }
 
@@ -541,19 +506,19 @@ enum ComplexEnumMustBeSimulated {
     }
 }
 
-class StaticFinalFieldFoldingMustBeSafeEarly {
+class StaticFinalFieldFoldingMustBeSimulated {
 
     Object f1;
     Object f2;
     Object f3;
 
-    StaticFinalFieldFoldingMustBeSafeEarly() {
+    StaticFinalFieldFoldingMustBeSimulated() {
         this.f1 = F1;
         this.f2 = F2;
         this.f3 = F3;
     }
 
-    static final StaticFinalFieldFoldingMustBeSafeEarly before = new StaticFinalFieldFoldingMustBeSafeEarly();
+    static final StaticFinalFieldFoldingMustBeSimulated before = new StaticFinalFieldFoldingMustBeSimulated();
 
     /**
      * Field value is stored in the class file attribute, so it is available even before this
@@ -568,10 +533,10 @@ class StaticFinalFieldFoldingMustBeSafeEarly {
     /** Just a regular field. */
     static final Object F3 = new String[]{"abc"};
 
-    static final StaticFinalFieldFoldingMustBeSafeEarly after = new StaticFinalFieldFoldingMustBeSafeEarly();
+    static final StaticFinalFieldFoldingMustBeSimulated after = new StaticFinalFieldFoldingMustBeSimulated();
 }
 
-class LambdaMustBeSafeLate {
+class LambdaMustBeSimulated {
     private static final Predicate<String> IS_AUTOMATIC = s -> s.equals("Hello");
 
     static boolean matches(List<String> l) {
@@ -619,13 +584,13 @@ class BoxingMustBeSimulated {
     }
 }
 
-class SingleByteFieldMustBeSafeEarly {
-    static SingleByteFieldMustBeSafeEarly instance1 = new SingleByteFieldMustBeSafeEarly((byte) 42);
-    static SingleByteFieldMustBeSafeEarly instance2 = new SingleByteFieldMustBeSafeEarly((byte) -42);
+class SingleByteFieldMustBeSimulated {
+    static SingleByteFieldMustBeSimulated instance1 = new SingleByteFieldMustBeSimulated((byte) 42);
+    static SingleByteFieldMustBeSimulated instance2 = new SingleByteFieldMustBeSimulated((byte) -42);
 
     byte b;
 
-    SingleByteFieldMustBeSafeEarly(byte b) {
+    SingleByteFieldMustBeSimulated(byte b) {
         this.b = b;
     }
 }
@@ -758,23 +723,20 @@ interface Test2_I4 extends Test2_I3 {
     }
 }
 
-abstract class TestClassInitializationFeature implements Feature {
+class TestClassInitializationFeature implements Feature {
 
-    private void checkClasses(boolean checkSafeEarly, boolean checkSafeLate) {
-        System.out.println("=== Checking initialization state of classes: checkSafeEarly=" + checkSafeEarly + ", checkSafeLate=" + checkSafeLate);
+    private static void checkClasses() {
+        System.out.println("=== Checking initialization state of classes");
 
         List<String> errors = new ArrayList<>();
         for (Class<?> checkedClass : TestClassInitialization.checkedClasses) {
-            boolean nameHasSafeEarly = checkedClass.getName().contains("MustBeSafeEarly");
-            boolean nameHasSafeLate = checkedClass.getName().contains("MustBeSafeLate");
             boolean nameHasSimulated = checkedClass.getName().contains("MustBeSimulated");
             boolean nameHasDelayed = checkedClass.getName().contains("MustBeDelayed");
 
-            if ((nameHasSafeEarly ? 1 : 0) + (nameHasSafeLate ? 1 : 0) + (nameHasSimulated ? 1 : 0) + (nameHasDelayed ? 1 : 0) != 1) {
-                errors.add(checkedClass.getName() + ": Wrongly named class: nameHasSafeEarly=" + nameHasSafeEarly + ", nameHasSafeLate=" + nameHasSafeLate +
-                                ", nameHasSimulated=" + nameHasSimulated + ", nameHasDelayed=" + nameHasDelayed);
-            } else {
-                checkClass(checkedClass, checkSafeEarly, checkSafeLate, errors, nameHasSafeEarly, nameHasSafeLate, nameHasSimulated, nameHasDelayed);
+            if ((nameHasSimulated ? 1 : 0) + (nameHasDelayed ? 1 : 0) != 1) {
+                errors.add(checkedClass.getName() + ": Wrongly named class: nameHasSimulated=" + nameHasSimulated + ", nameHasDelayed=" + nameHasDelayed);
+            } else if (!Unsafe.getUnsafe().shouldBeInitialized(checkedClass)) {
+                errors.add(checkedClass.getName() + ": Class already initialized at image build time");
             }
         }
 
@@ -782,9 +744,6 @@ abstract class TestClassInitializationFeature implements Feature {
             throw new Error(errors.stream().collect(Collectors.joining(System.lineSeparator())));
         }
     }
-
-    abstract void checkClass(Class<?> checkedClass, boolean checkSafeEarly, boolean checkSafeLate, List<String> errors,
-                    boolean nameHasSafeEarly, boolean nameHasSafeLate, boolean nameHasSimulated, boolean nameHasDelayed);
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
@@ -803,30 +762,23 @@ abstract class TestClassInitializationFeature implements Feature {
         assertArraysEqual(new Object[]{Test1_I1.class, Test1_I3.class, Test1_A.class}, InitializationOrder.initializationOrder.toArray());
 
         /*
-         * The old class initialization policy is wrong regarding interfaces, but we do not want to
-         * change that now because it will be deleted soon.
+         * Initialization of an interface does not trigger initialization of superinterfaces.
+         * Regardless whether any of the involved interfaces declare default methods.
          */
-        if (TestClassInitialization.simulationEnabled) {
-
-            /*
-             * Initialization of an interface does not trigger initialization of superinterfaces.
-             * Regardless whether any of the involved interfaces declare default methods.
-             */
-            InitializationOrder.initializationOrder.clear();
-            assertNotInitialized(Test2_I1.class, Test2_I2.class, Test2_I3.class, Test2_I4.class);
-            RuntimeClassInitialization.initializeAtBuildTime(Test2_I4.class);
-            assertNotInitialized(Test2_I1.class, Test2_I2.class, Test2_I3.class);
-            assertInitialized(Test2_I4.class);
-            assertArraysEqual(new Object[]{Test2_I4.class}, InitializationOrder.initializationOrder.toArray());
-            RuntimeClassInitialization.initializeAtBuildTime(Test2_I3.class);
-            assertNotInitialized(Test2_I1.class, Test2_I2.class);
-            assertInitialized(Test2_I3.class, Test2_I4.class);
-            assertArraysEqual(new Object[]{Test2_I4.class, Test2_I3.class}, InitializationOrder.initializationOrder.toArray());
-            RuntimeClassInitialization.initializeAtBuildTime(Test2_I2.class);
-            assertNotInitialized(Test2_I1.class);
-            assertInitialized(Test2_I2.class, Test2_I3.class, Test2_I4.class);
-            assertArraysEqual(new Object[]{Test2_I4.class, Test2_I3.class, Test2_I2.class}, InitializationOrder.initializationOrder.toArray());
-        }
+        InitializationOrder.initializationOrder.clear();
+        assertNotInitialized(Test2_I1.class, Test2_I2.class, Test2_I3.class, Test2_I4.class);
+        RuntimeClassInitialization.initializeAtBuildTime(Test2_I4.class);
+        assertNotInitialized(Test2_I1.class, Test2_I2.class, Test2_I3.class);
+        assertInitialized(Test2_I4.class);
+        assertArraysEqual(new Object[]{Test2_I4.class}, InitializationOrder.initializationOrder.toArray());
+        RuntimeClassInitialization.initializeAtBuildTime(Test2_I3.class);
+        assertNotInitialized(Test2_I1.class, Test2_I2.class);
+        assertInitialized(Test2_I3.class, Test2_I4.class);
+        assertArraysEqual(new Object[]{Test2_I4.class, Test2_I3.class}, InitializationOrder.initializationOrder.toArray());
+        RuntimeClassInitialization.initializeAtBuildTime(Test2_I2.class);
+        assertNotInitialized(Test2_I1.class);
+        assertInitialized(Test2_I2.class, Test2_I3.class, Test2_I4.class);
+        assertArraysEqual(new Object[]{Test2_I4.class, Test2_I3.class, Test2_I2.class}, InitializationOrder.initializationOrder.toArray());
     }
 
     private static void assertNotInitialized(Class<?>... classes) {
@@ -853,12 +805,12 @@ abstract class TestClassInitializationFeature implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        checkClasses(false, false);
+        checkClasses();
     }
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
-        checkClasses(true, false);
+        checkClasses();
     }
 
     @Override
@@ -871,114 +823,52 @@ abstract class TestClassInitializationFeature implements Feature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
-        checkClasses(true, true);
+        checkClasses();
     }
 
     @Override
     public void afterImageWrite(AfterImageWriteAccess access) {
-        checkClasses(true, true);
-    }
-}
-
-/**
- * For testing with {@link ClassInitializationOptions#StrictImageHeap} set to false and simulation
- * of class initializer disabled.
- */
-class TestClassInitializationFeatureOldPolicyFeature extends TestClassInitializationFeature {
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        super.afterRegistration(access);
-
-        TestClassInitialization.simulationEnabled = false;
-    }
-
-    @Override
-    void checkClass(Class<?> checkedClass, boolean checkSafeEarly, boolean checkSafeLate, List<String> errors,
-                    boolean nameHasSafeEarly, boolean nameHasSafeLate, boolean nameHasSimulated, boolean nameHasDelayed) {
-
-        boolean initialized = !Unsafe.getUnsafe().shouldBeInitialized(checkedClass);
-
-        if (nameHasSafeEarly && initialized != checkSafeEarly) {
-            errors.add(checkedClass.getName() + ": Check for MustBeSafeEarly failed");
-        }
-        if (nameHasSafeLate && initialized != checkSafeLate) {
-            errors.add(checkedClass.getName() + ": Check for MustBeSafeLate failed");
-        }
-        if (nameHasSimulated && initialized) {
-            /*
-             * Class initializer simulation is disabled in this configuration, so these classes must
-             * be initialized at run time.
-             */
-            errors.add(checkedClass.getName() + ": Check for MustBeSimulated failed");
-        }
-        if (nameHasDelayed && initialized) {
-            errors.add(checkedClass.getName() + ": Check for MustBeDelayed failed");
-        }
-    }
-}
-
-/**
- * For testing with {@link ClassInitializationOptions#StrictImageHeap} set to true and simulation of
- * class initializer enabled.
- */
-class TestClassInitializationFeatureNewPolicyFeature extends TestClassInitializationFeature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        super.afterRegistration(access);
-
-        TestClassInitialization.simulationEnabled = true;
-    }
-
-    @Override
-    void checkClass(Class<?> checkedClass, boolean checkSafeEarly, boolean checkSafeLate, List<String> errors,
-                    boolean nameHasSafeEarly, boolean nameHasSafeLate, boolean nameHasSimulated, boolean nameHasDelayed) {
-        if (!Unsafe.getUnsafe().shouldBeInitialized(checkedClass)) {
-            errors.add(checkedClass.getName() + ": Class already initialized at image build time");
-        }
+        checkClasses();
     }
 }
 
 public class TestClassInitialization {
 
-    static boolean simulationEnabled;
-
     static final Class<?>[] checkedClasses = new Class<?>[]{
-                    PureMustBeSafeEarly.class,
+                    PureMustBeSimulated.class,
                     NonPureMustBeDelayed.class,
-                    PureCallMustBeSafeEarly.class,
+                    PureCallMustBeSimulated.class,
                     InitializesNonPureMustBeDelayed.class,
                     SystemPropReadMustBeDelayed.class,
                     SystemPropWriteMustBeDelayed.class,
                     StartsAThreadMustBeDelayed.class,
                     CreatesAnExceptionMustBeDelayed.class,
                     ThrowsAnExceptionUninitializedMustBeDelayed.class,
-                    PureInterfaceMustBeSafeEarly.class,
+                    PureInterfaceMustBeSimulated.class,
                     PureSubclassMustBeDelayed.class,
                     SuperClassMustBeDelayed.class,
                     InterfaceNonPureMustBeDelayed.class,
                     InterfaceNonPureDefaultMustBeDelayed.class,
-                    PureSubclassInheritsDelayedInterfaceMustBeSafeEarly.class,
+                    PureSubclassInheritsDelayedInterfaceMustBeSimulated.class,
                     PureSubclassInheritsDelayedDefaultInterfaceMustBeDelayed.class,
                     ImplicitExceptionInInitializerUninitializedMustBeDelayed.class,
                     PureDependsOnImplicitExceptionUninitializedMustBeDelayed.class,
-                    StaticFieldHolderMustBeSafeEarly.class,
+                    StaticFieldHolderMustBeSimulated.class,
                     StaticFieldModifer1MustBeDelayed.class,
                     StaticFieldModifer2MustBeDelayed.class,
-                    RecursionInInitializerMustBeSafeLate.class,
-                    UnsafeAccessMustBeSafeLate.class,
-                    EnumMustBeSafeEarly.class,
+                    RecursionInInitializerMustBeSimulated.class,
+                    UnsafeAccessMustBeSimulated.class,
+                    EnumMustBeSimulated.class,
                     NativeMethodMustBeDelayed.class,
-                    ReferencesOtherPureClassMustBeSafeEarly.class, HelperClassMustBeSafeEarly.class,
-                    CycleMustBeSafeLate.class, HelperClassMustBeSafeLate.class,
-                    ReflectionMustBeSafeEarly.class, ForNameMustBeSafeEarly.class, ForNameUninitializedMustBeDelayed.class,
-                    DevirtualizedCallMustBeDelayed.class, DevirtualizedCallSuperMustBeSafeEarly.class, DevirtualizedCallSubMustBeSafeEarly.class, DevirtualizedCallUsageMustBeDelayed.class,
+                    CycleMustBeSimulated.class, HelperClassMustBeSimulated.class,
+                    ReflectionMustBeSimulated.class, ForNameMustBeSimulated.class, ForNameUninitializedMustBeDelayed.class,
+                    DevirtualizedCallMustBeDelayed.class, DevirtualizedCallSuperMustBeSimulated.class, DevirtualizedCallSubMustBeSimulated.class, DevirtualizedCallUsageMustBeDelayed.class,
                     LargeAllocation1MustBeDelayed.class, LargeAllocation2MustBeDelayed.class,
                     ComplexEnumMustBeSimulated.class,
-                    StaticFinalFieldFoldingMustBeSafeEarly.class,
-                    LambdaMustBeSafeLate.class,
+                    StaticFinalFieldFoldingMustBeSimulated.class,
+                    LambdaMustBeSimulated.class,
                     BoxingMustBeSimulated.class,
-                    SingleByteFieldMustBeSafeEarly.class,
+                    SingleByteFieldMustBeSimulated.class,
                     SynchronizedMustBeSimulated.class, SynchronizedMustBeDelayed.class,
     };
 
@@ -1005,15 +895,15 @@ public class TestClassInitialization {
             boolean nameHasSimulated = checkedClass.getName().contains("MustBeSimulated");
             boolean nameHasDelayed = checkedClass.getName().contains("MustBeDelayed");
             boolean initialized = !Unsafe.getUnsafe().shouldBeInitialized(checkedClass);
-            if ((nameHasDelayed || (!simulationEnabled && nameHasSimulated)) == initialized) {
+            if (nameHasDelayed == initialized) {
                 throw new RuntimeException("Class " + checkedClass.getName() + ": nameHasSimulated=" + nameHasSimulated + ", nameHasDelayed=" + nameHasDelayed + ", initialized=" + initialized);
             }
         }
 
         assertTrue("123123".equals(buildTimeLambda.apply("123")));
 
-        assertSame(42, PureMustBeSafeEarly.v);
-        assertSame(84, PureCallMustBeSafeEarly.v);
+        assertSame(42, PureMustBeSimulated.v);
+        assertSame(84, PureCallMustBeSimulated.v);
         assertSame(42, InitializesPureMustBeDelayed.v);
         assertSame(1, NonPureMustBeDelayed.v);
         assertSame(1, NonPureAccessedFinal.v);
@@ -1022,7 +912,7 @@ public class TestClassInitialization {
         assertSame(1, SystemPropWriteMustBeDelayed.v);
         assertSame(1, StartsAThreadMustBeDelayed.v);
         assertSame(1, PureSubclassMustBeDelayed.v);
-        assertSame(1, PureSubclassInheritsDelayedInterfaceMustBeSafeEarly.v);
+        assertSame(1, PureSubclassInheritsDelayedInterfaceMustBeSimulated.v);
         assertSame(1, PureSubclassInheritsDelayedDefaultInterfaceMustBeDelayed.v);
         assertSame(1, InterfaceNonPureMustBeDelayed.v);
         try {
@@ -1045,33 +935,32 @@ public class TestClassInitialization {
             /* Expected. */
         }
 
-        assertSame(111, StaticFieldHolderMustBeSafeEarly.a);
+        assertSame(111, StaticFieldHolderMustBeSimulated.a);
         StaticFieldModifer1MustBeDelayed.triggerInitialization();
-        assertSame(222, StaticFieldHolderMustBeSafeEarly.a);
+        assertSame(222, StaticFieldHolderMustBeSimulated.a);
         StaticFieldModifer2MustBeDelayed.triggerInitialization();
-        assertSame(333, StaticFieldHolderMustBeSafeEarly.a);
+        assertSame(333, StaticFieldHolderMustBeSimulated.a);
 
-        assertSame(20100, RecursionInInitializerMustBeSafeLate.i);
+        assertSame(20100, RecursionInInitializerMustBeSimulated.i);
 
-        UnsafeAccessMustBeSafeLate value = UnsafeAccessMustBeSafeLate.value;
+        UnsafeAccessMustBeSimulated value = UnsafeAccessMustBeSimulated.value;
         assertSame(1234, value.f01 + value.f02 + value.f03 + value.f04 + value.f05 + value.f06 + value.f07 + value.f08 +
                         value.f09 + value.f10 + value.f11 + value.f12 + value.f13 + value.f14 + value.f15 + value.f16);
 
-        EnumMustBeSafeEarly[] values = EnumMustBeSafeEarly.values();
+        EnumMustBeSimulated[] values = EnumMustBeSimulated.values();
         assertSame(null, values[0].getValue());
         assertSame("Hello", values[1].getValue());
         assertSame(Object.class, values[2].getValue().getClass());
-        assertSame(EnumMustBeSafeEarly.V1, stringToEnum("v1"));
+        assertSame(EnumMustBeSimulated.V1, stringToEnum("v1"));
 
         assertSame(42, NativeMethodMustBeDelayed.i);
         NativeMethodMustBeDelayed.foo();
-        ReferencesOtherPureClassMustBeSafeEarly.foo();
-        CycleMustBeSafeLate.foo();
+        CycleMustBeSimulated.foo();
 
-        assertSame(ForNameMustBeSafeEarly.class, ReflectionMustBeSafeEarly.c1);
-        assertSame(ForNameUninitializedMustBeDelayed.class, ReflectionMustBeSafeEarly.c2);
-        assertSame("foo", ReflectionMustBeSafeEarly.m1.getName());
-        assertSame("field", ReflectionMustBeSafeEarly.f2.getName());
+        assertSame(ForNameMustBeSimulated.class, ReflectionMustBeSimulated.c1);
+        assertSame(ForNameUninitializedMustBeDelayed.class, ReflectionMustBeSimulated.c2);
+        assertSame("foo", ReflectionMustBeSimulated.m1.getName());
+        assertSame("field", ReflectionMustBeSimulated.f2.getName());
 
         assertSame(42, DevirtualizedCallUsageMustBeDelayed.value);
 
@@ -1082,15 +971,15 @@ public class TestClassInitialization {
         assertSame(ComplexEnumMustBeSimulated.V1, ComplexEnumMustBeSimulated.lookup.get("V1"));
         assertSame(42, ComplexEnumMustBeSimulated.lookup.get("V2").virtualMethod());
 
-        assertSame("abc", StaticFinalFieldFoldingMustBeSafeEarly.before.f1);
-        assertSame(null, StaticFinalFieldFoldingMustBeSafeEarly.before.f2);
-        assertSame(null, StaticFinalFieldFoldingMustBeSafeEarly.before.f3);
-        assertSame("abc", StaticFinalFieldFoldingMustBeSafeEarly.after.f1);
-        assertSame("abc", StaticFinalFieldFoldingMustBeSafeEarly.after.f2);
-        assertSame(1, ((Object[]) StaticFinalFieldFoldingMustBeSafeEarly.after.f3).length);
+        assertSame("abc", StaticFinalFieldFoldingMustBeSimulated.before.f1);
+        assertSame(null, StaticFinalFieldFoldingMustBeSimulated.before.f2);
+        assertSame(null, StaticFinalFieldFoldingMustBeSimulated.before.f3);
+        assertSame("abc", StaticFinalFieldFoldingMustBeSimulated.after.f1);
+        assertSame("abc", StaticFinalFieldFoldingMustBeSimulated.after.f2);
+        assertSame(1, ((Object[]) StaticFinalFieldFoldingMustBeSimulated.after.f3).length);
 
-        assertSame(true, LambdaMustBeSafeLate.matches(List.of("1", "2", "3", "Hello", "4")));
-        assertSame(false, LambdaMustBeSafeLate.matches(List.of("1", "2", "3", "4")));
+        assertSame(true, LambdaMustBeSimulated.matches(List.of("1", "2", "3", "Hello", "4")));
+        assertSame(false, LambdaMustBeSimulated.matches(List.of("1", "2", "3", "4")));
 
         assertSame(83, BoxingMustBeSimulated.sum);
         assertSame(Character.class, BoxingMustBeSimulated.defaultValue(char.class).getClass());
@@ -1104,20 +993,20 @@ public class TestClassInitialization {
          * The unsafe field offset lookup is constant folded at image build time, which also
          * registers the field as unsafe accessed.
          */
-        long bOffset = Unsafe.getUnsafe().objectFieldOffset(SingleByteFieldMustBeSafeEarly.class, "b");
+        long bOffset = Unsafe.getUnsafe().objectFieldOffset(SingleByteFieldMustBeSimulated.class, "b");
         assertTrue(bOffset % 4 == 0);
         /*
          * Check that for sub-int values, the padding after the value is not touched by the image
          * heap writer.
          */
-        assertSame(42, readRawByte(SingleByteFieldMustBeSafeEarly.instance1, bOffset + 0));
-        assertSame(0, readRawByte(SingleByteFieldMustBeSafeEarly.instance1, bOffset + 1));
-        assertSame(0, readRawByte(SingleByteFieldMustBeSafeEarly.instance1, bOffset + 2));
-        assertSame(0, readRawByte(SingleByteFieldMustBeSafeEarly.instance1, bOffset + 3));
-        assertSame(-42, readRawByte(SingleByteFieldMustBeSafeEarly.instance2, bOffset + 0));
-        assertSame(0, readRawByte(SingleByteFieldMustBeSafeEarly.instance2, bOffset + 1));
-        assertSame(0, readRawByte(SingleByteFieldMustBeSafeEarly.instance2, bOffset + 2));
-        assertSame(0, readRawByte(SingleByteFieldMustBeSafeEarly.instance2, bOffset + 3));
+        assertSame(42, readRawByte(SingleByteFieldMustBeSimulated.instance1, bOffset + 0));
+        assertSame(0, readRawByte(SingleByteFieldMustBeSimulated.instance1, bOffset + 1));
+        assertSame(0, readRawByte(SingleByteFieldMustBeSimulated.instance1, bOffset + 2));
+        assertSame(0, readRawByte(SingleByteFieldMustBeSimulated.instance1, bOffset + 3));
+        assertSame(-42, readRawByte(SingleByteFieldMustBeSimulated.instance2, bOffset + 0));
+        assertSame(0, readRawByte(SingleByteFieldMustBeSimulated.instance2, bOffset + 1));
+        assertSame(0, readRawByte(SingleByteFieldMustBeSimulated.instance2, bOffset + 2));
+        assertSame(0, readRawByte(SingleByteFieldMustBeSimulated.instance2, bOffset + 3));
 
         assertSame(42, SynchronizedMustBeSimulated.vector.size());
         assertSame(42, SynchronizedMustBeDelayed.synchronizedMethod());
@@ -1136,11 +1025,11 @@ public class TestClassInitialization {
         return Unsafe.getUnsafe().getByte(o, offset);
     }
 
-    private static EnumMustBeSafeEarly stringToEnum(String name) {
-        if (EnumMustBeSafeEarly.V1.name().equalsIgnoreCase(name)) {
-            return EnumMustBeSafeEarly.V1;
+    private static EnumMustBeSimulated stringToEnum(String name) {
+        if (EnumMustBeSimulated.V1.name().equalsIgnoreCase(name)) {
+            return EnumMustBeSimulated.V1;
         } else {
-            return EnumMustBeSafeEarly.V2;
+            return EnumMustBeSimulated.V2;
         }
     }
 

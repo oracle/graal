@@ -25,12 +25,10 @@
 package com.oracle.svm.hosted.classinitialization;
 
 import static com.oracle.svm.hosted.classinitialization.InitKind.BUILD_TIME;
-import static com.oracle.svm.hosted.classinitialization.InitKind.RERUN;
 import static com.oracle.svm.hosted.classinitialization.InitKind.RUN_TIME;
 
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -38,14 +36,11 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
@@ -63,6 +58,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.java.LambdaUtils;
@@ -74,24 +70,54 @@ public class ClassInitializationFeature implements InternalFeature {
     private static final String NATIVE_IMAGE_CLASS_REASON = "Native Image classes are always initialized at build time";
 
     private ClassInitializationSupport classInitializationSupport;
-    private AnalysisUniverse universe;
-    private AnalysisMetaAccess metaAccess;
 
     public static void processClassInitializationOptions(ClassInitializationSupport initializationSupport) {
         initializeNativeImagePackagesAtBuildTime(initializationSupport);
         ClassInitializationOptions.ClassInitialization.getValue().getValuesWithOrigins().forEach(entry -> {
-            for (String info : entry.getLeft().split(",")) {
-                boolean noMatches = Arrays.stream(InitKind.values()).noneMatch(v -> info.endsWith(v.suffix()));
-                OptionOrigin origin = entry.getRight();
-                if (noMatches) {
-                    throw UserError.abort("Element in class initialization configuration must end in %s, %s, or %s. Found: %s (from %s)",
-                                    RUN_TIME.suffix(), RERUN.suffix(), BUILD_TIME.suffix(), info, origin);
-                }
-
-                Pair<String, InitKind> elementType = InitKind.strip(info);
-                elementType.getRight().stringConsumer(initializationSupport, origin).accept(elementType.getLeft());
+            for (String optionValue : entry.getLeft().split(",")) {
+                processClassInitializationOption(initializationSupport, optionValue, entry.getRight());
             }
         });
+    }
+
+    private static void processClassInitializationOption(ClassInitializationSupport initializationSupport, String optionValue, OptionOrigin origin) {
+        boolean initializeAtRunTime;
+        if (optionValue.endsWith(ClassInitializationOptions.SUFFIX_BUILD_TIME)) {
+            initializeAtRunTime = false;
+        } else if (optionValue.endsWith(ClassInitializationOptions.SUFFIX_RUN_TIME)) {
+            initializeAtRunTime = true;
+        } else if (optionValue.endsWith(ClassInitializationOptions.SEPARATOR + "rerun")) {
+            /*
+             * There is no more difference between initializing a class at run-time and re-running
+             * the class initializer at run time. But we still want to support it on the command
+             * line, in order to not break backward compatibility.
+             */
+            LogUtils.warning("Re-running class initializer is deprecated. It is equivalent with registering the class for initialization at run time. Found: %s (from %s)", optionValue, origin);
+            initializeAtRunTime = true;
+        } else {
+            throw UserError.abort("Element in class initialization configuration must end in %s, or %s. Found: %s (from %s)",
+                            ClassInitializationOptions.SUFFIX_BUILD_TIME, ClassInitializationOptions.SUFFIX_RUN_TIME, optionValue, origin);
+        }
+
+        String name = optionValue.substring(0, optionValue.lastIndexOf(ClassInitializationOptions.SEPARATOR));
+        String reason = "from " + origin + " with '" + name + "'";
+        if (initializeAtRunTime) {
+            initializationSupport.initializeAtRunTime(name, reason);
+        } else {
+            if (name.equals("") && !origin.commandLineLike()) {
+                String msg = "--initialize-at-build-time without arguments is not allowed." + System.lineSeparator() +
+                                "Origin of the option: " + origin + System.lineSeparator() +
+                                "The reason for deprecation is that --initalize-at-build-time does not compose, i.e., a single library can make assumptions that the whole classpath can be safely initialized at build time;" +
+                                " that assumption is often incorrect.";
+                if (ClassInitializationOptions.AllowDeprecatedInitializeAllClassesAtBuildTime.getValue()) {
+                    LogUtils.warning(msg);
+                } else {
+                    throw UserError.abort("%s%nAs a workaround, %s allows turning this error into a warning. Note that this option is deprecated and will be removed in a future version.",
+                                    msg, SubstrateOptionsParser.commandArgument(ClassInitializationOptions.AllowDeprecatedInitializeAllClassesAtBuildTime, "+"));
+                }
+            }
+            initializationSupport.initializeAtBuildTime(name, reason);
+        }
     }
 
     private static void initializeNativeImagePackagesAtBuildTime(ClassInitializationSupport initializationSupport) {
@@ -115,8 +141,6 @@ public class ClassInitializationFeature implements InternalFeature {
         FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
         classInitializationSupport = access.getHostVM().getClassInitializationSupport();
         access.registerObjectReplacer(this::checkImageHeapInstance);
-        universe = ((FeatureImpl.DuringSetupAccessImpl) a).getBigBang().getUniverse();
-        metaAccess = ((FeatureImpl.DuringSetupAccessImpl) a).getBigBang().getMetaAccess();
     }
 
     private Object checkImageHeapInstance(Object obj) {
@@ -167,16 +191,14 @@ public class ClassInitializationFeature implements InternalFeature {
                 }
             });
 
-            if (ClassInitializationOptions.StrictImageHeap.getValue()) {
-                msg += System.lineSeparator();
-                msg += """
-                                If you are seeing this message after upgrading to a new GraalVM release, this means that some objects ended up in the image heap without their type being marked with --initialize-at-build-time.
-                                To fix this, include %s in your configuration. If the classes do not originate from your code, it is advised to update all library or framework dependencies to the latest version before addressing this error.
-                                """
-                                .replaceAll("\n", System.lineSeparator())
-                                .formatted(SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, proxyOrLambda ? proxyLambdaInterfaceCSV : typeName,
-                                                "initialize-at-build-time", true, false));
-            }
+            msg += System.lineSeparator();
+            msg += """
+                            If you are seeing this message after upgrading to a new GraalVM release, this means that some objects ended up in the image heap without their type being marked with --initialize-at-build-time.
+                            To fix this, include %s in your configuration. If the classes do not originate from your code, it is advised to update all library or framework dependencies to the latest version before addressing this error.
+                            """
+                            .replaceAll("\n", System.lineSeparator())
+                            .formatted(SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, proxyOrLambda ? proxyLambdaInterfaceCSV : typeName,
+                                            "initialize-at-build-time", true, false));
 
             msg += System.lineSeparator() + "The following detailed trace displays from which field in the code the object was reached.";
             throw new UnsupportedFeatureException(msg);
@@ -205,16 +227,6 @@ public class ClassInitializationFeature implements InternalFeature {
         EnsureClassInitializedSnippets.registerLowerings(options, providers, lowerings);
     }
 
-    @Override
-    public void duringAnalysis(DuringAnalysisAccess access) {
-        /*
-         * Check early and often during static analysis if any class that must not have been
-         * initialized during image building got initialized. We want to fail as early as possible,
-         * even though we cannot pinpoint the exact time and reason why initialization happened.
-         */
-        classInitializationSupport.checkDelayedInitialization();
-    }
-
     /**
      * Initializes classes that can be proven safe and prints class initialization statistics.
      */
@@ -223,13 +235,6 @@ public class ClassInitializationFeature implements InternalFeature {
     public void afterAnalysis(AfterAnalysisAccess a) {
         AfterAnalysisAccessImpl access = (AfterAnalysisAccessImpl) a;
         try (Timer.StopTimer ignored = TimerCollection.createTimerAndStart(TimerCollection.Registry.CLINIT)) {
-            assert classInitializationSupport.checkDelayedInitialization();
-
-            if (SimulateClassInitializerSupport.singleton().isEnabled()) {
-                /* Simulation of class initializer replaces the "late initialization". */
-            } else {
-                classInitializationSupport.doLateInitialization(universe, metaAccess);
-            }
 
             if (ClassInitializationOptions.PrintClassInitialization.getValue()) {
                 reportClassInitializationInfo(access, SubstrateOptions.reportsPath());
@@ -272,7 +277,6 @@ public class ClassInitializationFeature implements InternalFeature {
         ReportUtils.report("class initialization report", path, "class_initialization_report", "csv", writer -> {
             writer.println("Class Name, Initialization Kind, Reason for Initialization");
             reportKind(access, writer, BUILD_TIME);
-            reportKind(access, writer, RERUN);
             reportKind(access, writer, RUN_TIME);
         });
     }
@@ -306,18 +310,9 @@ public class ClassInitializationFeature implements InternalFeature {
                             writer -> initializedClasses.forEach((k, v) -> {
                                 writer.println(k.getName());
                                 writer.println("---------------------------------------------");
-                                writer.println(ProvenSafeClassInitializationSupport.getTraceString(v));
+                                writer.println(ClassInitializationSupport.getTraceString(v));
                                 writer.println();
                             }));
         }
-    }
-
-    @Override
-    public void afterImageWrite(AfterImageWriteAccess a) {
-        /*
-         * This is the final time to check if any class that must not have been initialized during
-         * image building got initialized.
-         */
-        classInitializationSupport.checkDelayedInitialization();
     }
 }
