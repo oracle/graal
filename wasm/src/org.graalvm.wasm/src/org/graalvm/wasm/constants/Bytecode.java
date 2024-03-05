@@ -446,6 +446,14 @@ public class Bytecode {
     // Vector opcodes
     public static final int VECTOR_V128_LOAD = 0x00;
     public static final int VECTOR_V128_STORE = 0x0B;
+    public static final int VECTOR_V128_LOAD8_LANE = 0x54;
+    public static final int VECTOR_V128_LOAD16_LANE = 0x55;
+    public static final int VECTOR_V128_LOAD32_LANE = 0x56;
+    public static final int VECTOR_V128_LOAD64_LANE = 0x57;
+    public static final int VECTOR_V128_STORE8_LANE = 0x58;
+    public static final int VECTOR_V128_STORE16_LANE = 0x59;
+    public static final int VECTOR_V128_STORE32_LANE = 0x5A;
+    public static final int VECTOR_V128_STORE64_LANE = 0x5B;
 
     public static final int VECTOR_V128_CONST = 0x0C;
 

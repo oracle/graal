@@ -102,6 +102,8 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 
+import java.util.Arrays;
+
 /**
  * This node represents the function body of a WebAssembly function. It executes the instruction
  * sequence contained in a function and represents the main interpreter loop. This node also
@@ -1774,6 +1776,68 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             memory.store_i128(this, address, value);
                             break;
                         }
+                        case Bytecode.VECTOR_V128_LOAD8_LANE:
+                        case Bytecode.VECTOR_V128_LOAD16_LANE:
+                        case Bytecode.VECTOR_V128_LOAD32_LANE:
+                        case Bytecode.VECTOR_V128_LOAD64_LANE: {
+                            final int encoding = rawPeekU8(bytecode, offset);
+                            offset++;
+                            final int indexType64 = encoding & BytecodeBitEncoding.MEMORY_64_FLAG;
+                            final int memoryIndex = rawPeekI32(bytecode, offset);
+                            offset += 4;
+                            final long memOffset;
+                            if (indexType64 == 0) {
+                                memOffset = rawPeekU32(bytecode, offset);
+                                offset += 4;
+                            } else {
+                                memOffset = rawPeekI64(bytecode, offset);
+                                offset += 8;
+                            }
+                            final int laneIndex = rawPeekU8(bytecode, offset);
+                            offset++;
+                            final Vector128 vec = popVector128(frame, --stackPointer);
+                            final long baseAddress;
+                            if (indexType64 == 0) {
+                                baseAddress = Integer.toUnsignedLong(popInt(frame, --stackPointer));
+                            } else {
+                                baseAddress = popLong(frame, --stackPointer);
+                            }
+                            final long address = effectiveMemoryAddress64(memOffset, baseAddress);
+                            final WasmMemory memory = memory(instance, memoryIndex);
+                            loadLane(memory, frame, stackPointer++, vectorOpcode, address, laneIndex, vec);
+                            break;
+                        }
+                        case Bytecode.VECTOR_V128_STORE8_LANE:
+                        case Bytecode.VECTOR_V128_STORE16_LANE:
+                        case Bytecode.VECTOR_V128_STORE32_LANE:
+                        case Bytecode.VECTOR_V128_STORE64_LANE: {
+                            final int encoding = rawPeekU8(bytecode, offset);
+                            offset++;
+                            final int indexType64 = encoding & BytecodeBitEncoding.MEMORY_64_FLAG;
+                            final int memoryIndex = rawPeekI32(bytecode, offset);
+                            offset += 4;
+                            final long memOffset;
+                            if (indexType64 == 0) {
+                                memOffset = rawPeekU32(bytecode, offset);
+                                offset += 4;
+                            } else {
+                                memOffset = rawPeekI64(bytecode, offset);
+                                offset += 8;
+                            }
+                            final int laneIndex = rawPeekU8(bytecode, offset);
+                            offset++;
+                            final Vector128 vec = popVector128(frame, --stackPointer);
+                            final long baseAddress;
+                            if (indexType64 == 0) {
+                                baseAddress = Integer.toUnsignedLong(popInt(frame, --stackPointer));
+                            } else {
+                                baseAddress = popLong(frame, --stackPointer);
+                            }
+                            final long address = effectiveMemoryAddress64(memOffset, baseAddress);
+                            final WasmMemory memory = memory(instance, memoryIndex);
+                            storeLane(memory, vectorOpcode, address, laneIndex, vec);
+                            break;
+                        }
                         case Bytecode.VECTOR_V128_CONST: {
                             final Vector128 value = Vector128.ofBytes(Vector128Ops.v128_const(rawPeekI128(bytecode, offset)));
                             offset += 16;
@@ -2108,6 +2172,60 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 pushLong(frame, stackPointer, value);
                 break;
             }
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+    }
+
+    private void loadLane(WasmMemory memory, VirtualFrame frame, int stackPointer, int vectorOpcode, long address, int laneIndex, Vector128 vec) {
+        switch (vectorOpcode) {
+            case Bytecode.VECTOR_V128_LOAD8_LANE: {
+                final byte value = (byte) memory.load_i32_8s(this, address);
+                byte[] bytes = Arrays.copyOf(vec.asBytes(), 16);
+                bytes[laneIndex] = value;
+                pushVector128(frame, stackPointer, Vector128.ofBytes(bytes));
+                break;
+            }
+            case Bytecode.VECTOR_V128_LOAD16_LANE: {
+                final short value = (short) memory.load_i32_16s(this, address);
+                short[] shorts = vec.asShorts();
+                shorts[laneIndex] = value;
+                pushVector128(frame, stackPointer, Vector128.ofShorts(shorts));
+                break;
+            }
+            case Bytecode.VECTOR_V128_LOAD32_LANE: {
+                final int value = memory.load_i32(this, address);
+                int[] ints = vec.asInts();
+                ints[laneIndex] = value;
+                pushVector128(frame, stackPointer, Vector128.ofInts(ints));
+                break;
+            }
+            case Bytecode.VECTOR_V128_LOAD64_LANE: {
+                final long value = memory.load_i64(this, address);
+                long[] longs = vec.asLongs();
+                longs[laneIndex] = value;
+                pushVector128(frame, stackPointer, Vector128.ofLongs(longs));
+                break;
+            }
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+    }
+
+    private void storeLane(WasmMemory memory, int vectorOpcode, long address, int laneIndex, Vector128 vec) {
+        switch (vectorOpcode) {
+            case Bytecode.VECTOR_V128_STORE8_LANE:
+                memory.store_i32_8(this, address, vec.asBytes()[laneIndex]);
+                break;
+            case Bytecode.VECTOR_V128_STORE16_LANE:
+                memory.store_i32_16(this, address, vec.asShorts()[laneIndex]);
+                break;
+            case Bytecode.VECTOR_V128_STORE32_LANE:
+                memory.store_i32(this, address, vec.asInts()[laneIndex]);
+                break;
+            case Bytecode.VECTOR_V128_STORE64_LANE:
+                memory.store_i64(this, address, vec.asLongs()[laneIndex]);
+                break;
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }

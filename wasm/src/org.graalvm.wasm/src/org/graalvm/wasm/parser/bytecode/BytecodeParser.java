@@ -905,6 +905,26 @@ public abstract class BytecodeParser {
                             }
                             break;
                         }
+                        case Bytecode.VECTOR_V128_LOAD8_LANE:
+                        case Bytecode.VECTOR_V128_LOAD16_LANE:
+                        case Bytecode.VECTOR_V128_LOAD32_LANE:
+                        case Bytecode.VECTOR_V128_LOAD64_LANE:
+                        case Bytecode.VECTOR_V128_STORE8_LANE:
+                        case Bytecode.VECTOR_V128_STORE16_LANE:
+                        case Bytecode.VECTOR_V128_STORE32_LANE:
+                        case Bytecode.VECTOR_V128_STORE64_LANE: {
+                            final int encoding = rawPeekU8(bytecode, offset);
+                            offset++;
+                            final int indexType64 = encoding & BytecodeBitEncoding.MEMORY_64_FLAG;
+                            offset += 4;
+                            if (indexType64 == 0) {
+                                offset += 4;
+                            } else {
+                                offset += 8;
+                            }
+                            offset++;
+                            break;
+                        }
                         case Bytecode.VECTOR_V128_CONST:
                         case Bytecode.VECTOR_I8X16_SHUFFLE:
                             offset += 16;
