@@ -28,6 +28,7 @@ package com.oracle.svm.core.jfr.throttling;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.headers.LibM;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
@@ -65,6 +66,7 @@ abstract class JfrAdaptiveSampler {
         activeWindow = window0;
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/share/jfr/support/jfrAdaptiveSampler.cpp#L79-L89")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     protected boolean sample(long timestampNs) {
         boolean expired = activeWindow.isExpired(timestampNs);
@@ -100,6 +102,7 @@ abstract class JfrAdaptiveSampler {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     protected abstract JfrSamplerParams nextWindowParams();
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/share/jfr/support/jfrAdaptiveSampler.cpp#L145-L156")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void configure(JfrSamplerParams params, JfrSamplerWindow expired, JfrSamplerWindow next) {
         if (params.reconfigure) {
@@ -116,11 +119,13 @@ abstract class JfrAdaptiveSampler {
         next.initialize(params.windowDurationMs);
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/share/jfr/support/jfrAdaptiveSampler.cpp#L173-L175")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static double computeEwmaAlphaCoefficient(long lookbackCount) {
         return lookbackCount <= 1 ? 1d : 1d / lookbackCount;
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/share/jfr/support/jfrAdaptiveSampler.cpp#L177-L182")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long computeAccumulatedDebtCarryLimit(long windowDurationMs) {
         if (windowDurationMs == 0 || windowDurationMs >= TimeUtils.millisPerSecond) {
@@ -129,6 +134,7 @@ abstract class JfrAdaptiveSampler {
         return TimeUtils.millisPerSecond / windowDurationMs;
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/share/jfr/support/jfrAdaptiveSampler.cpp#L217-L229")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void setRate(JfrSamplerParams params, JfrSamplerWindow expired, JfrSamplerWindow next) {
         long sampleSize = projectSampleSize(params, expired);
@@ -141,11 +147,13 @@ abstract class JfrAdaptiveSampler {
         next.setProjectedPopulationSize(sampleSize * next.getSamplingInterval());
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/share/jfr/support/jfrAdaptiveSampler.cpp#L236-L238")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private long projectSampleSize(JfrSamplerParams params, JfrSamplerWindow expired) {
         return params.samplePointsPerWindow + amortizeDebt(expired);
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/share/jfr/support/jfrAdaptiveSampler.cpp#L259-L269")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     protected long amortizeDebt(JfrSamplerWindow expired) {
         long accumulatedDebt = expired.getAccumulatedDebt();
@@ -158,6 +166,7 @@ abstract class JfrAdaptiveSampler {
         return -accumulatedDebt;
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/share/jfr/support/jfrAdaptiveSampler.cpp#L316-L325")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private long deriveSamplingInterval(double sampleSize, JfrSamplerWindow expired) {
         assert sampleSize > 0;
@@ -176,11 +185,13 @@ abstract class JfrAdaptiveSampler {
         return avgPopulationSize;
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/share/jfr/support/jfrAdaptiveSampler.cpp#L169-L171")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static double exponentiallyWeightedMovingAverage(double currentMeasurement, double alpha, double prevEwma) {
         return alpha * currentMeasurement + (1 - alpha) * prevEwma;
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/share/jfr/support/jfrAdaptiveSampler.cpp#L304-L314")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private long nextGeometric(double p) {
         double u = prng.nextUniform();
