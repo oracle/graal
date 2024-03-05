@@ -893,6 +893,8 @@ public abstract class BytecodeParser {
                     offset++;
                     switch (vectorOpcode) {
                         case Bytecode.VECTOR_V128_LOAD:
+                        case Bytecode.VECTOR_V128_LOAD32_ZERO:
+                        case Bytecode.VECTOR_V128_LOAD64_ZERO:
                         case Bytecode.VECTOR_V128_STORE: {
                             final int encoding = rawPeekU8(bytecode, offset);
                             offset++;
