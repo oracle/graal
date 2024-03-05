@@ -1577,6 +1577,9 @@ suite = {
           "java.management",
           "static jdk.internal.vm.ci",  # JVMCI module is not on the boot layer if not enabled
           "static jdk.jfr", # JFR is not included in the J9 JVM
+          "org.graalvm.collections",
+          "org.graalvm.nativeimage",
+          "org.graalvm.polyglot",
         ],
         "exports" : [
           # Qualified exports
@@ -1778,6 +1781,10 @@ suite = {
           "com.oracle.truffle.nfi.backend.spi.types",
           "com.oracle.truffle.nfi.backend.spi.util",
         ],
+        "requires": [
+          "org.graalvm.collections",
+          "org.graalvm.polyglot",
+        ],
       },
       "subDir" : "src",
       "javaCompliance" : "17+",
@@ -1801,6 +1808,9 @@ suite = {
         "name" : "com.oracle.truffle.truffle_nfi_libffi",
         "opens" : [
           "com.oracle.truffle.nfi.backend.libffi to org.graalvm.truffle.runtime.svm",
+        ],
+        "requires": [
+          "org.graalvm.truffle",
         ],
       },
       "subDir" : "src",
@@ -2010,6 +2020,9 @@ suite = {
       "subDir" : "src",
       "moduleInfo" : {
         "name" : "org.graalvm.sl",
+        "requires": [
+          "org.graalvm.polyglot",
+        ],
       },
       "javaCompliance" : "17+",
       "dependencies" : [
@@ -2268,6 +2281,9 @@ suite = {
         "name" : "org.graalvm.locator",
         "exports" : [
           "com.oracle.graalvm.locator to jdk.graal.compiler.management",
+        ],
+        "requires": [
+          "org.graalvm.polyglot",
         ],
       },
       "dependencies": ["com.oracle.graalvm.locator"],
