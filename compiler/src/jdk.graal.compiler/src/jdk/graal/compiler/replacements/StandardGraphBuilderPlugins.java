@@ -49,6 +49,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
+import jdk.graal.compiler.nodes.spi.TrackedUnsafeAccess;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -1445,7 +1446,7 @@ public class StandardGraphBuilderPlugins {
             }
         }
 
-        protected final void createUnsafeAccess(ValueNode value, GraphBuilderContext b, UnsafeNodeConstructor nodeConstructor, Class<?> constructorClass) {
+        protected final void createUnsafeAccess(ValueNode value, GraphBuilderContext b, UnsafeNodeConstructor nodeConstructor, Class<? extends TrackedUnsafeAccess> constructorClass) {
             StructuredGraph graph = b.getGraph();
             graph.markUnsafeAccess(constructorClass);
             /* For unsafe access object pointers can only be stored in the heap */

@@ -60,9 +60,9 @@ import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
-import jdk.graal.compiler.nodes.spi.TrackedUnsafeAccess;
 import jdk.graal.compiler.nodes.spi.ProfileProvider;
 import jdk.graal.compiler.nodes.spi.ResolvedJavaMethodProfileProvider;
+import jdk.graal.compiler.nodes.spi.TrackedUnsafeAccess;
 import jdk.graal.compiler.nodes.spi.VirtualizableAllocation;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.OptionValues;
@@ -1120,15 +1120,14 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     /**
-     * HotSpot requires compilations with unsafe accesses to set a flag and uses that information to
-     * modify the behavior of its signal handling. In Graal we label nodes which require this flag
-     * with the marker interface {@link TrackedUnsafeAccess}.
+     * Records that this graph encodes a memory access via the {@code Unsafe} class.
      *
-     * @param nodeClass The class from which a node is created that requires unsafe access to be
-     *            set.
+     * HotSpot requires this information to modify the behavior of its signal handling for compiled
+     * code that contains an unsafe memory access.
+     *
+     * @param nodeClass the type of the node encoding the unsafe access
      */
-    public void markUnsafeAccess(Class<?> nodeClass) {
-        assert TrackedUnsafeAccess.class.isAssignableFrom(nodeClass) : Assertions.errorMessage("%s does not implement MarkedUnsafeAccess", nodeClass);
+    public void markUnsafeAccess(Class<? extends TrackedUnsafeAccess> nodeClass) {
         markUnsafeAccess();
     }
 

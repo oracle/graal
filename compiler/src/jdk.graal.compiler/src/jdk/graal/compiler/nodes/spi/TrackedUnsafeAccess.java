@@ -27,8 +27,8 @@ package jdk.graal.compiler.nodes.spi;
 import jdk.graal.compiler.nodes.StructuredGraph;
 
 /**
- * Marker interface to denote a node requires {@link StructuredGraph#markUnsafeAccess(Class)} to be
- * set.
+ * Marker interface for a node that requires {@link StructuredGraph#markUnsafeAccess(Class)} to be
+ * called prior to being added to a graph.
  */
 public interface TrackedUnsafeAccess {
 }
