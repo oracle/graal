@@ -1726,90 +1726,17 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     offset++;
                     CompilerAsserts.partialEvaluationConstant(vectorOpcode);
                     switch (vectorOpcode) {
-                        case Bytecode.VECTOR_V128_LOAD: {
-                            final int encoding = rawPeekU8(bytecode, offset);
-                            offset++;
-                            final int indexType64 = encoding & BytecodeBitEncoding.MEMORY_64_FLAG;
-                            final int memoryIndex = rawPeekI32(bytecode, offset);
-                            offset += 4;
-                            final long memOffset;
-                            if (indexType64 == 0) {
-                                memOffset = rawPeekU32(bytecode, offset);
-                                offset += 4;
-                            } else {
-                                memOffset = rawPeekI64(bytecode, offset);
-                                offset += 8;
-                            }
-                            final long baseAddress;
-                            if (indexType64 == 0) {
-                                baseAddress = Integer.toUnsignedLong(popInt(frame, --stackPointer));
-                            } else {
-                                baseAddress = popLong(frame, --stackPointer);
-                            }
-                            final long address = effectiveMemoryAddress64(memOffset, baseAddress);
-                            final WasmMemory memory = memory(instance, memoryIndex);
-                            final Vector128 value = memory.load_i128(this, address);
-                            pushVector128(frame, stackPointer++, value);
-                            break;
-                        }
+                        case Bytecode.VECTOR_V128_LOAD:
                         case Bytecode.VECTOR_V128_LOAD8X8_S:
                         case Bytecode.VECTOR_V128_LOAD8X8_U:
                         case Bytecode.VECTOR_V128_LOAD16X4_S:
                         case Bytecode.VECTOR_V128_LOAD16X4_U:
                         case Bytecode.VECTOR_V128_LOAD32X2_S:
-                        case Bytecode.VECTOR_V128_LOAD32X2_U: {
-                            final int encoding = rawPeekU8(bytecode, offset);
-                            offset++;
-                            final int indexType64 = encoding & BytecodeBitEncoding.MEMORY_64_FLAG;
-                            final int memoryIndex = rawPeekI32(bytecode, offset);
-                            offset += 4;
-                            final long memOffset;
-                            if (indexType64 == 0) {
-                                memOffset = rawPeekU32(bytecode, offset);
-                                offset += 4;
-                            } else {
-                                memOffset = rawPeekI64(bytecode, offset);
-                                offset += 8;
-                            }
-                            final long baseAddress;
-                            if (indexType64 == 0) {
-                                baseAddress = Integer.toUnsignedLong(popInt(frame, --stackPointer));
-                            } else {
-                                baseAddress = popLong(frame, --stackPointer);
-                            }
-                            final long address = effectiveMemoryAddress64(memOffset, baseAddress);
-                            final WasmMemory memory = memory(instance, memoryIndex);
-                            loadExtend(memory, frame, stackPointer++, vectorOpcode, address);
-                            break;
-                        }
+                        case Bytecode.VECTOR_V128_LOAD32X2_U:
                         case Bytecode.VECTOR_V128_LOAD8_SPLAT:
                         case Bytecode.VECTOR_V128_LOAD16_SPLAT:
                         case Bytecode.VECTOR_V128_LOAD32_SPLAT:
-                        case Bytecode.VECTOR_V128_LOAD64_SPLAT: {
-                            final int encoding = rawPeekU8(bytecode, offset);
-                            offset++;
-                            final int indexType64 = encoding & BytecodeBitEncoding.MEMORY_64_FLAG;
-                            final int memoryIndex = rawPeekI32(bytecode, offset);
-                            offset += 4;
-                            final long memOffset;
-                            if (indexType64 == 0) {
-                                memOffset = rawPeekU32(bytecode, offset);
-                                offset += 4;
-                            } else {
-                                memOffset = rawPeekI64(bytecode, offset);
-                                offset += 8;
-                            }
-                            final long baseAddress;
-                            if (indexType64 == 0) {
-                                baseAddress = Integer.toUnsignedLong(popInt(frame, --stackPointer));
-                            } else {
-                                baseAddress = popLong(frame, --stackPointer);
-                            }
-                            final long address = effectiveMemoryAddress64(memOffset, baseAddress);
-                            final WasmMemory memory = memory(instance, memoryIndex);
-                            loadSplat(memory, frame, stackPointer++, vectorOpcode, address);
-                            break;
-                        }
+                        case Bytecode.VECTOR_V128_LOAD64_SPLAT:
                         case Bytecode.VECTOR_V128_LOAD32_ZERO:
                         case Bytecode.VECTOR_V128_LOAD64_ZERO: {
                             final int encoding = rawPeekU8(bytecode, offset);
@@ -1833,7 +1760,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             }
                             final long address = effectiveMemoryAddress64(memOffset, baseAddress);
                             final WasmMemory memory = memory(instance, memoryIndex);
-                            loadZero(memory, frame, stackPointer++, vectorOpcode, address);
+                            loadVector(memory, frame, stackPointer++, vectorOpcode, address);
                             break;
                         }
                         case Bytecode.VECTOR_V128_STORE: {
@@ -1859,7 +1786,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             }
                             final long address = effectiveMemoryAddress64(memOffset, baseAddress);
                             final WasmMemory memory = memory(instance, memoryIndex);
-                            memory.store_i128(this, address, value);
+                            storeVector(memory, address, value);
                             break;
                         }
                         case Bytecode.VECTOR_V128_LOAD8_LANE:
@@ -1890,7 +1817,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             }
                             final long address = effectiveMemoryAddress64(memOffset, baseAddress);
                             final WasmMemory memory = memory(instance, memoryIndex);
-                            loadLane(memory, frame, stackPointer++, vectorOpcode, address, laneIndex, vec);
+                            loadVectorLane(memory, frame, stackPointer++, vectorOpcode, address, laneIndex, vec);
                             break;
                         }
                         case Bytecode.VECTOR_V128_STORE8_LANE:
@@ -1921,7 +1848,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             }
                             final long address = effectiveMemoryAddress64(memOffset, baseAddress);
                             final WasmMemory memory = memory(instance, memoryIndex);
-                            storeLane(memory, vectorOpcode, address, laneIndex, vec);
+                            storeVectorLane(memory, vectorOpcode, address, laneIndex, vec);
                             break;
                         }
                         case Bytecode.VECTOR_V128_CONST: {
@@ -2542,7 +2469,130 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private void loadLane(WasmMemory memory, VirtualFrame frame, int stackPointer, int vectorOpcode, long address, int laneIndex, Vector128 vec) {
+    private void loadVector(WasmMemory memory, VirtualFrame frame, int stackPointer, int vectorOpcode, long address) {
+        switch (vectorOpcode) {
+            case Bytecode.VECTOR_V128_LOAD: {
+                final Vector128 value = memory.load_i128(this, address);
+                pushVector128(frame, stackPointer, value);
+                break;
+            }
+            case Bytecode.VECTOR_V128_LOAD8X8_S:
+            case Bytecode.VECTOR_V128_LOAD8X8_U: {
+                final long value = memory.load_i64(this, address);
+                byte[] bytes = new byte[8];
+                CompilerDirectives.ensureVirtualized(bytes);
+                ByteArraySupport.littleEndian().putLong(bytes, 0, value);
+                short[] result = new short[8];
+                CompilerDirectives.ensureVirtualized(result);
+                for (int i = 0; i < result.length; i++) {
+                    result[i] = (short) switch (vectorOpcode) {
+                        case Bytecode.VECTOR_V128_LOAD8X8_S -> bytes[i];
+                        case Bytecode.VECTOR_V128_LOAD8X8_U -> Byte.toUnsignedInt(bytes[i]);
+                        default -> throw CompilerDirectives.shouldNotReachHere();
+                    };
+                }
+                final Vector128 vec = Vector128.ofShorts(result);
+                pushVector128(frame, stackPointer, vec);
+                break;
+            }
+            case Bytecode.VECTOR_V128_LOAD16X4_S:
+            case Bytecode.VECTOR_V128_LOAD16X4_U: {
+                final long value = memory.load_i64(this, address);
+                byte[] bytes = new byte[8];
+                CompilerDirectives.ensureVirtualized(bytes);
+                ByteArraySupport.littleEndian().putLong(bytes, 0, value);
+                int[] result = new int[4];
+                CompilerDirectives.ensureVirtualized(result);
+                for (int i = 0; i < result.length; i++) {
+                    short x = ByteArraySupport.littleEndian().getShort(bytes, i * 2);
+                    result[i] = switch (vectorOpcode) {
+                        case Bytecode.VECTOR_V128_LOAD16X4_S -> x;
+                        case Bytecode.VECTOR_V128_LOAD16X4_U -> Short.toUnsignedInt(x);
+                        default -> throw CompilerDirectives.shouldNotReachHere();
+                    };
+                }
+                final Vector128 vec = Vector128.ofInts(result);
+                pushVector128(frame, stackPointer, vec);
+                break;
+            }
+            case Bytecode.VECTOR_V128_LOAD32X2_S:
+            case Bytecode.VECTOR_V128_LOAD32X2_U: {
+                final long value = memory.load_i64(this, address);
+                byte[] bytes = new byte[8];
+                CompilerDirectives.ensureVirtualized(bytes);
+                ByteArraySupport.littleEndian().putLong(bytes, 0, value);
+                long[] result = new long[2];
+                CompilerDirectives.ensureVirtualized(result);
+                for (int i = 0; i < result.length; i++) {
+                    int x = ByteArraySupport.littleEndian().getInt(bytes, i * 4);
+                    result[i] = switch (vectorOpcode) {
+                        case Bytecode.VECTOR_V128_LOAD32X2_S -> x;
+                        case Bytecode.VECTOR_V128_LOAD32X2_U -> Integer.toUnsignedLong(x);
+                        default -> throw CompilerDirectives.shouldNotReachHere();
+                    };
+                }
+                final Vector128 vec = Vector128.ofLongs(result);
+                pushVector128(frame, stackPointer, vec);
+                break;
+            }
+            case Bytecode.VECTOR_V128_LOAD8_SPLAT: {
+                final byte value = (byte) memory.load_i32_8s(this, address);
+                byte[] bytes = new byte[16];
+                Arrays.fill(bytes, value);
+                final Vector128 vec = Vector128.ofBytes(bytes);
+                pushVector128(frame, stackPointer, vec);
+                break;
+            }
+            case Bytecode.VECTOR_V128_LOAD16_SPLAT: {
+                final short value = (short) memory.load_i32_16s(this, address);
+                short[] shorts = new short[8];
+                Arrays.fill(shorts, value);
+                final Vector128 vec = Vector128.ofShorts(shorts);
+                pushVector128(frame, stackPointer, vec);
+                break;
+            }
+            case Bytecode.VECTOR_V128_LOAD32_SPLAT: {
+                final int value = memory.load_i32(this, address);
+                int[] ints = new int[4];
+                Arrays.fill(ints, value);
+                final Vector128 vec = Vector128.ofInts(ints);
+                pushVector128(frame, stackPointer, vec);
+                break;
+            }
+            case Bytecode.VECTOR_V128_LOAD64_SPLAT: {
+                final long value = memory.load_i64(this, address);
+                long[] longs = new long[2];
+                Arrays.fill(longs, value);
+                final Vector128 vec = Vector128.ofLongs(longs);
+                pushVector128(frame, stackPointer, vec);
+                break;
+            }
+            case Bytecode.VECTOR_V128_LOAD32_ZERO: {
+                final int value = memory.load_i32(this, address);
+                int[] ints = new int[4];
+                ints[0] = value;
+                final Vector128 vec = Vector128.ofInts(ints);
+                pushVector128(frame, stackPointer, vec);
+                break;
+            }
+            case Bytecode.VECTOR_V128_LOAD64_ZERO: {
+                final long value = memory.load_i64(this, address);
+                long[] longs = new long[2];
+                longs[0] = value;
+                final Vector128 vec = Vector128.ofLongs(longs);
+                pushVector128(frame, stackPointer, vec);
+                break;
+            }
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+    }
+
+    private void storeVector(WasmMemory memory, long address, Vector128 value) {
+        memory.store_i128(this, address, value);
+    }
+
+    private void loadVectorLane(WasmMemory memory, VirtualFrame frame, int stackPointer, int vectorOpcode, long address, int laneIndex, Vector128 vec) {
         switch (vectorOpcode) {
             case Bytecode.VECTOR_V128_LOAD8_LANE: {
                 final byte value = (byte) memory.load_i32_8s(this, address);
@@ -2577,7 +2627,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private void storeLane(WasmMemory memory, int vectorOpcode, long address, int laneIndex, Vector128 vec) {
+    private void storeVectorLane(WasmMemory memory, int vectorOpcode, long address, int laneIndex, Vector128 vec) {
         switch (vectorOpcode) {
             case Bytecode.VECTOR_V128_STORE8_LANE:
                 memory.store_i32_8(this, address, vec.asBytes()[laneIndex]);
@@ -2591,126 +2641,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             case Bytecode.VECTOR_V128_STORE64_LANE:
                 memory.store_i64(this, address, vec.asLongs()[laneIndex]);
                 break;
-            default:
-                throw CompilerDirectives.shouldNotReachHere();
-        }
-    }
-
-    private void loadZero(WasmMemory memory, VirtualFrame frame, int stackPointer, int vectorOpcode, long address) {
-        switch (vectorOpcode) {
-            case Bytecode.VECTOR_V128_LOAD32_ZERO: {
-                final int value = memory.load_i32(this, address);
-                int[] ints = new int[4];
-                ints[0] = value;
-                final Vector128 vec = Vector128.ofInts(ints);
-                pushVector128(frame, stackPointer, vec);
-                break;
-            }
-            case Bytecode.VECTOR_V128_LOAD64_ZERO: {
-                final long value = memory.load_i64(this, address);
-                long[] longs = new long[2];
-                longs[0] = value;
-                final Vector128 vec = Vector128.ofLongs(longs);
-                pushVector128(frame, stackPointer, vec);
-                break;
-            }
-            default:
-                throw CompilerDirectives.shouldNotReachHere();
-        }
-    }
-
-    private void loadSplat(WasmMemory memory, VirtualFrame frame, int stackPointer, int vectorOpcode, long address) {
-        switch (vectorOpcode) {
-            case Bytecode.VECTOR_V128_LOAD8_SPLAT: {
-                final byte value = (byte) memory.load_i32_8s(this, address);
-                byte[] bytes = new byte[16];
-                Arrays.fill(bytes, value);
-                final Vector128 vec = Vector128.ofBytes(bytes);
-                pushVector128(frame, stackPointer, vec);
-                break;
-            }
-            case Bytecode.VECTOR_V128_LOAD16_SPLAT: {
-                final short value = (short) memory.load_i32_16s(this, address);
-                short[] shorts = new short[8];
-                Arrays.fill(shorts, value);
-                final Vector128 vec = Vector128.ofShorts(shorts);
-                pushVector128(frame, stackPointer, vec);
-                break;
-            }
-            case Bytecode.VECTOR_V128_LOAD32_SPLAT: {
-                final int value = memory.load_i32(this, address);
-                int[] ints = new int[4];
-                Arrays.fill(ints, value);
-                final Vector128 vec = Vector128.ofInts(ints);
-                pushVector128(frame, stackPointer, vec);
-                break;
-            }
-            case Bytecode.VECTOR_V128_LOAD64_SPLAT: {
-                final long value = memory.load_i64(this, address);
-                long[] longs = new long[2];
-                Arrays.fill(longs, value);
-                final Vector128 vec = Vector128.ofLongs(longs);
-                pushVector128(frame, stackPointer, vec);
-                break;
-            }
-            default:
-                throw CompilerDirectives.shouldNotReachHere();
-        }
-    }
-
-    private void loadExtend(WasmMemory memory, VirtualFrame frame, int stackPointer, int vectorOpcode, long address) {
-        final long value = memory.load_i64(this, address);
-        byte[] bytes = new byte[8];
-        CompilerDirectives.ensureVirtualized(bytes);
-        ByteArraySupport.littleEndian().putLong(bytes, 0, value);
-        switch (vectorOpcode) {
-            case Bytecode.VECTOR_V128_LOAD8X8_S:
-            case Bytecode.VECTOR_V128_LOAD8X8_U: {
-                short[] result = new short[8];
-                CompilerDirectives.ensureVirtualized(result);
-                for (int i = 0; i < result.length; i++) {
-                    result[i] = (short) switch (vectorOpcode) {
-                        case Bytecode.VECTOR_V128_LOAD8X8_S -> bytes[i];
-                        case Bytecode.VECTOR_V128_LOAD8X8_U -> Byte.toUnsignedInt(bytes[i]);
-                        default -> throw CompilerDirectives.shouldNotReachHere();
-                    };
-                }
-                final Vector128 vec = Vector128.ofShorts(result);
-                pushVector128(frame, stackPointer, vec);
-                break;
-            }
-            case Bytecode.VECTOR_V128_LOAD16X4_S:
-            case Bytecode.VECTOR_V128_LOAD16X4_U: {
-                int[] result = new int[4];
-                CompilerDirectives.ensureVirtualized(result);
-                for (int i = 0; i < result.length; i++) {
-                    short x = ByteArraySupport.littleEndian().getShort(bytes, i * 2);
-                    result[i] = switch (vectorOpcode) {
-                        case Bytecode.VECTOR_V128_LOAD16X4_S -> x;
-                        case Bytecode.VECTOR_V128_LOAD16X4_U -> Short.toUnsignedInt(x);
-                        default -> throw CompilerDirectives.shouldNotReachHere();
-                    };
-                }
-                final Vector128 vec = Vector128.ofInts(result);
-                pushVector128(frame, stackPointer, vec);
-                break;
-            }
-            case Bytecode.VECTOR_V128_LOAD32X2_S:
-            case Bytecode.VECTOR_V128_LOAD32X2_U: {
-                long[] result = new long[2];
-                CompilerDirectives.ensureVirtualized(result);
-                for (int i = 0; i < result.length; i++) {
-                    int x = ByteArraySupport.littleEndian().getInt(bytes, i * 4);
-                    result[i] = switch (vectorOpcode) {
-                        case Bytecode.VECTOR_V128_LOAD32X2_S -> x;
-                        case Bytecode.VECTOR_V128_LOAD32X2_U -> Integer.toUnsignedLong(x);
-                        default -> throw CompilerDirectives.shouldNotReachHere();
-                    };
-                }
-                final Vector128 vec = Vector128.ofLongs(result);
-                pushVector128(frame, stackPointer, vec);
-                break;
-            }
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
