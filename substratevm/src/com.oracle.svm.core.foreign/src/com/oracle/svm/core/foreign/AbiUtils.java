@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -133,7 +133,8 @@ public abstract class AbiUtils {
             List<Node> nodesToAppendToGraph = new ArrayList<>();
 
             int i = 0;
-            for (Adaptation adaptation : adaptations) {
+            for (Adaptation a : adaptations) {
+                Adaptation adaptation = a;
                 if (adaptation == null) {
                     adaptation = NOOP;
                 }
@@ -166,7 +167,8 @@ public abstract class AbiUtils {
             List<Class<?>> argumentTypes = new ArrayList<>();
 
             int i = 0;
-            for (Adaptation adaptation : adaptations) {
+            for (Adaptation a : adaptations) {
+                Adaptation adaptation = a;
                 if (adaptation == null) {
                     adaptation = NOOP;
                 }
@@ -297,7 +299,7 @@ public abstract class AbiUtils {
         /**
          * This adaptation is used when a downcall uses Linker.Option.critical(true). <br>
          * When an argument whose layout is an AddressLayout is passed in a downcall, it must be
-         * passed as a MemorySegment from the java side. From these, the downcall stub extracts a
+         * passed as a MemorySegment from the Java side. From these, the downcall stub extracts a
          * raw pointer to the data and calls the downcall with it. <br>
          * Usually, only {@link jdk.internal.foreign.NativeMemorySegmentImpl} can be passed
          * (segments allocated using an Arena), and these have a method `unsafeGetOffset` which
@@ -313,10 +315,10 @@ public abstract class AbiUtils {
          * Then, in the JVM, somewhere in the native implementation of
          * {@link NativeEntryPoint#makeDowncallStub(MethodType, ABIDescriptor, VMStorage[], VMStorage[], boolean, int, boolean)},
          * some code is generated which adds together the two values. Hence, when generating the
-         * stub graph in SVM, we must make sure that the downcall performs the sum as well. <br>
+         * stub graph in SVM, make sure that the downcall performs the sum as well. <br>
          * <br>
-         * As an added note, it seems that the only moment where a VMStorage (such as in
-         * nep.parameterAssignments()) is null is when Linker.Option.critical(true) is passed, see
+         * Note that the only time when a VMStorage (such as in nep.parameterAssignments()) is
+         * {@code null} is when Linker.Option.critical(true) is passed. See
          * {@link CallArranger.UnboxBindingCalculator#getBindings(Class, MemoryLayout)}.
          */
         private static final class ComputeAddressFromSegmentPair extends Adaptation {

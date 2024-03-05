@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -112,7 +112,7 @@ public abstract class UpcallStub extends NonBytecodeMethod {
 
 /**
  * In charge of low-level stuff: receiving arguments, preserving/restoring registers, set thread
- * status...
+ * status, etc.
  * <p>
  * Unlike downcalls where methods could have varargs, which are not supported by the backend, this
  * cannot happen for upcalls. As such, setting the method's calling convention to
@@ -277,9 +277,7 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
 
 }
 
-/**
- * In charge of high-level stuff, mainly invoking the method handle
- */
+/** In charge of high-level stuff, mainly invoking the method handle. */
 class HighLevelUpcallStub extends UpcallStub {
     private static final Method INVOKE = ReflectionUtil.lookupMethod(
                     MethodHandle.class,
@@ -308,7 +306,7 @@ class HighLevelUpcallStub extends UpcallStub {
         List<ValueNode> allArguments = new ArrayList<>(kit.getInitialArguments());
 
         ValueNode mh = allArguments.remove(0);
-        /* If adaptations are ever needed for upcall, they should most likely be applied here */
+        /* If adaptations are ever needed for upcalls, they should most likely be applied here */
         allArguments = kit.boxArguments(allArguments, jep.handleType());
         ValueNode arguments = kit.packArguments(allArguments);
 

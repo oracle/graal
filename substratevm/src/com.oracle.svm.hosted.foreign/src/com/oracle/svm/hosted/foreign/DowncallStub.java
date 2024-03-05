@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,10 +26,6 @@ package com.oracle.svm.hosted.foreign;
 
 import java.util.List;
 
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.hosted.annotation.AnnotationValue;
-import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
-import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -38,6 +34,7 @@ import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.foreign.AbiUtils;
 import com.oracle.svm.core.foreign.DowncallStubsHolder;
 import com.oracle.svm.core.foreign.ForeignFunctionsRuntime;
@@ -48,6 +45,9 @@ import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.hosted.annotation.AnnotationValue;
+import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
+import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -115,10 +115,10 @@ class DowncallStub extends NonBytecodeMethod {
     @Override
     public AnnotationValue[] getInjectedAnnotations() {
         /*
-         * When allowHeapAccess, a HeapMemorySegmentImpl may be passed to the downcall. In that
-         * case, the downcall stub will have to generate a native pointer to the backing object.
-         * Thus we need to ensure that no safepoint is generated in the stub, so that the GC cannot
-         * move the backing object while we still have a native pointer to it.
+         * When allowHeapAccess is enabled, a HeapMemorySegmentImpl may be passed to a downcall. In
+         * that case, the downcall stub will generate a native pointer to the backing object. Thus,
+         * ensure that no safepoint is generated in the stub, so that a GC cannot move the backing
+         * object while the native pointer to it still exists.
          */
         if (nep.allowHeapAccess()) {
             return INJECTED_ANNOTATIONS;

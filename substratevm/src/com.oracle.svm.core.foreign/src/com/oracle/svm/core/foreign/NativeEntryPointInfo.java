@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -89,10 +89,10 @@ public final class NativeEntryPointInfo {
              * hasNull is only true if this entry point's FunctionDescriptor contains an
              * AddressLayout and allowHeapAccess is true. (see
              * jdk.internal.foreign.abi.x64.sysv.CallArranger.UnboxBindingCalculator.getBindings).
-             * Additionally, if no AddressLayout is passed, then allowHeapAccess's value doesn't
-             * matter (since then no heap access may occur anyways). Hence, we set allowHeapAccess
-             * to false if no AddressLayout is found: indeed, sometimes we need to find whether
-             * allowHeapAccess should be true or not, (see
+             * Additionally, if no AddressLayout is passed, then the value of allowHeapAccess
+             * doesn't matter (since then no heap access may occur anyway). Hence, we set
+             * allowHeapAccess to false if no AddressLayout is found: indeed, sometimes we need to
+             * find whether allowHeapAccess should be true or not, (see
              * com.oracle.svm.core.foreign.Target_jdk_internal_foreign_abi_NativeEntryPoint.make),
              * and we rely on the presence of null VMStorages as an indicator of whether to set
              * allowHeapAccess to true.
