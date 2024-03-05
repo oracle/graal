@@ -445,6 +445,10 @@ public class Bytecode {
 
     // Vector opcodes
     public static final int VECTOR_V128_LOAD = 0x00;
+    public static final int VECTOR_V128_LOAD8_SPLAT = 0x07;
+    public static final int VECTOR_V128_LOAD16_SPLAT = 0x08;
+    public static final int VECTOR_V128_LOAD32_SPLAT = 0x09;
+    public static final int VECTOR_V128_LOAD64_SPLAT = 0x0A;
     public static final int VECTOR_V128_LOAD32_ZERO = 0x5C;
     public static final int VECTOR_V128_LOAD64_ZERO = 0x5D;
     public static final int VECTOR_V128_STORE = 0x0B;
