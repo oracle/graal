@@ -104,8 +104,8 @@ public class WasmOptions {
     public static final OptionKey<Boolean> ExtendedConstExpressions = new OptionKey<>(false);
 
     @Option(help = "Enable support for the v128 type and vector instructions", //
-                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
-    public static final OptionKey<Boolean> SIMD = new OptionKey<>(false);
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "true|false") //
+    public static final OptionKey<Boolean> SIMD = new OptionKey<>(true);
 
     @Option(help = "In this mode memories and tables are not initialized.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> MemoryOverheadMode = new OptionKey<>(false);
