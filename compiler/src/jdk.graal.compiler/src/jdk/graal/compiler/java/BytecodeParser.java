@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1214,7 +1214,10 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
      * Returns a speculation object if it's possible to speculate on an unresolved type or field at
      * the current bytecode location.
      */
-    private SpeculationLog.Speculation mayUseUnresolved(int bci) {
+    protected SpeculationLog.Speculation mayUseUnresolved(int bci) {
+        if (graphBuilderConfig.usePreciseUnresolvedDeopts()) {
+            return null;
+        }
         return mayUseSpeculation(bci, UNRESOLVED, unresolvedSpeculationTaken, unresolvedSpeculationNotTaken);
     }
 
@@ -1241,6 +1244,9 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             stateSplit.setStateAfter(createFrameState(bci(), stateSplit));
         }
         DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved, speculation));
+        if (graphBuilderConfig.usePreciseUnresolvedDeopts()) {
+            deopt.mayConvertToGuard(false);
+        }
         /*
          * Track source position for deopt nodes even if
          * GraphBuilderConfiguration.trackNodeSourcePosition is not set.
