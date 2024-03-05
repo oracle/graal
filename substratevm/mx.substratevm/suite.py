@@ -1475,6 +1475,10 @@ suite = {
                 "requires": [
                     "java.management",
                     "jdk.management",
+                    "transitive org.graalvm.nativeimage",
+                    "transitive org.graalvm.nativeimage.base",
+                    "transitive org.graalvm.nativeimage.objectfile",
+                    "transitive org.graalvm.nativeimage.pointsto",
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
