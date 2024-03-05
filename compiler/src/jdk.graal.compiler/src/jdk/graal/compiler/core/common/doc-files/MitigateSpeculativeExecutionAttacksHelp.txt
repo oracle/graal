@@ -1,5 +1,4 @@
 Selects a strategy to mitigate speculative bounds check bypass (also known as Spectre-PHT or Spectre V1). 
-This is an experimental option -- execution of untrusted code is not supported by GraalVM CE.
 The accepted values are:
                   None - No mitigations are used in JIT compiled code.
             AllTargets - Speculative execution on all branch targets is
