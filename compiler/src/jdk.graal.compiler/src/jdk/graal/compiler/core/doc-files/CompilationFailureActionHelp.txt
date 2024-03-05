@@ -7,5 +7,5 @@ The accepted values are:
     ExitVM  - Same as Diagnose except that the VM process exits after retrying.
     
 * If the value is "Diagnose", compilation is retried with extra diagnostics enabled including dumping.
-  In such a scenario, the DiagnoseDumpLevel option specifies the dump level (DebugContext dump levels) accordingly.
+  In such a scenario, the DiagnoseDumpLevel option specifies the dump level accordingly.
       
