@@ -79,7 +79,6 @@ import org.graalvm.wasm.WasmMath;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmType;
-import org.graalvm.wasm.api.ByteArrayBuffer;
 import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.api.Vector128Ops;
 import org.graalvm.wasm.constants.Bytecode;
@@ -3047,10 +3046,224 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private static int executeVector(VirtualFrame frame, int curStackPointer, int vectorOpcode) {
         int stackPointer = curStackPointer;
         switch (vectorOpcode) {
-            case Bytecode.VECTOR_I8X16_SWIZZLE: {
-                Vector128 indices = popVector128(frame, --stackPointer);
-                Vector128 values = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i8x16_swizzle(values.asBytes(), indices.asBytes()));
+            case Bytecode.VECTOR_V128_NOT:
+            case Bytecode.VECTOR_I8X16_ABS:
+            case Bytecode.VECTOR_I8X16_NEG:
+            case Bytecode.VECTOR_I8X16_POPCNT:
+            case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8x16_S:
+            case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8x16_U:
+            case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8x16_S:
+            case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8x16_S:
+            case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8x16_U:
+            case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8x16_U:
+            case Bytecode.VECTOR_I16X8_ABS:
+            case Bytecode.VECTOR_I16X8_NEG:
+            case Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_S:
+            case Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_U:
+            case Bytecode.VECTOR_I32X4_EXTEND_LOW_I16X8_S:
+            case Bytecode.VECTOR_I32X4_EXTEND_HIGH_I16X8_S:
+            case Bytecode.VECTOR_I32X4_EXTEND_LOW_I16X8_U:
+            case Bytecode.VECTOR_I32X4_EXTEND_HIGH_I16X8_U:
+            case Bytecode.VECTOR_I32X4_ABS:
+            case Bytecode.VECTOR_I32X4_NEG:
+            case Bytecode.VECTOR_I64X2_EXTEND_LOW_I32X4_S:
+            case Bytecode.VECTOR_I64X2_EXTEND_HIGH_I32X4_S:
+            case Bytecode.VECTOR_I64X2_EXTEND_LOW_I32X4_U:
+            case Bytecode.VECTOR_I64X2_EXTEND_HIGH_I32X4_U:
+            case Bytecode.VECTOR_I64X2_ABS:
+            case Bytecode.VECTOR_I64X2_NEG:
+            case Bytecode.VECTOR_F32X4_CEIL:
+            case Bytecode.VECTOR_F32X4_FLOOR:
+            case Bytecode.VECTOR_F32X4_TRUNC:
+            case Bytecode.VECTOR_F32X4_NEAREST:
+            case Bytecode.VECTOR_F32X4_ABS:
+            case Bytecode.VECTOR_F32X4_NEG:
+            case Bytecode.VECTOR_F32X4_SQRT:
+            case Bytecode.VECTOR_F64X2_CEIL:
+            case Bytecode.VECTOR_F64X2_FLOOR:
+            case Bytecode.VECTOR_F64X2_TRUNC:
+            case Bytecode.VECTOR_F64X2_NEAREST:
+            case Bytecode.VECTOR_F64X2_ABS:
+            case Bytecode.VECTOR_F64X2_NEG:
+            case Bytecode.VECTOR_F64X2_SQRT:
+            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S:
+            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U:
+            case Bytecode.VECTOR_F32X4_CONVERT_I32X4_S:
+            case Bytecode.VECTOR_F32X4_CONVERT_I32X4_U:
+            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO:
+            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO:
+            case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_S:
+            case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_U:
+            case Bytecode.VECTOR_F32X4_DEMOTE_F64X2_ZERO:
+            case Bytecode.VECTOR_F64X2_PROMOTE_LOW_F32X4: {
+                Vector128 x = popVector128(frame, --stackPointer);
+                Vector128 result = Vector128.ofBytes(Vector128Ops.unary(x.asBytes(), vectorOpcode));
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_I8X16_SWIZZLE:
+            case Bytecode.VECTOR_I8X16_EQ:
+            case Bytecode.VECTOR_I8X16_NE:
+            case Bytecode.VECTOR_I8X16_LT_S:
+            case Bytecode.VECTOR_I8X16_LT_U:
+            case Bytecode.VECTOR_I8X16_GT_S:
+            case Bytecode.VECTOR_I8X16_GT_U:
+            case Bytecode.VECTOR_I8X16_LE_S:
+            case Bytecode.VECTOR_I8X16_LE_U:
+            case Bytecode.VECTOR_I8X16_GE_S:
+            case Bytecode.VECTOR_I8X16_GE_U:
+            case Bytecode.VECTOR_I16X8_EQ:
+            case Bytecode.VECTOR_I16X8_NE:
+            case Bytecode.VECTOR_I16X8_LT_S:
+            case Bytecode.VECTOR_I16X8_LT_U:
+            case Bytecode.VECTOR_I16X8_GT_S:
+            case Bytecode.VECTOR_I16X8_GT_U:
+            case Bytecode.VECTOR_I16X8_LE_S:
+            case Bytecode.VECTOR_I16X8_LE_U:
+            case Bytecode.VECTOR_I16X8_GE_S:
+            case Bytecode.VECTOR_I16X8_GE_U:
+            case Bytecode.VECTOR_I32X4_EQ:
+            case Bytecode.VECTOR_I32X4_NE:
+            case Bytecode.VECTOR_I32X4_LT_S:
+            case Bytecode.VECTOR_I32X4_LT_U:
+            case Bytecode.VECTOR_I32X4_GT_S:
+            case Bytecode.VECTOR_I32X4_GT_U:
+            case Bytecode.VECTOR_I32X4_LE_S:
+            case Bytecode.VECTOR_I32X4_LE_U:
+            case Bytecode.VECTOR_I32X4_GE_S:
+            case Bytecode.VECTOR_I32X4_GE_U:
+            case Bytecode.VECTOR_I64X2_EQ:
+            case Bytecode.VECTOR_I64X2_NE:
+            case Bytecode.VECTOR_I64X2_LT_S:
+            case Bytecode.VECTOR_I64X2_GT_S:
+            case Bytecode.VECTOR_I64X2_LE_S:
+            case Bytecode.VECTOR_I64X2_GE_S:
+            case Bytecode.VECTOR_F32X4_EQ:
+            case Bytecode.VECTOR_F32X4_NE:
+            case Bytecode.VECTOR_F32X4_LT:
+            case Bytecode.VECTOR_F32X4_GT:
+            case Bytecode.VECTOR_F32X4_LE:
+            case Bytecode.VECTOR_F32X4_GE:
+            case Bytecode.VECTOR_F64X2_EQ:
+            case Bytecode.VECTOR_F64X2_NE:
+            case Bytecode.VECTOR_F64X2_LT:
+            case Bytecode.VECTOR_F64X2_GT:
+            case Bytecode.VECTOR_F64X2_LE:
+            case Bytecode.VECTOR_F64X2_GE:
+            case Bytecode.VECTOR_V128_AND:
+            case Bytecode.VECTOR_V128_ANDNOT:
+            case Bytecode.VECTOR_V128_OR:
+            case Bytecode.VECTOR_V128_XOR:
+            case Bytecode.VECTOR_I8X16_NARROW_I16X8_S:
+            case Bytecode.VECTOR_I8X16_NARROW_I16X8_U:
+            case Bytecode.VECTOR_I8X16_ADD:
+            case Bytecode.VECTOR_I8X16_ADD_SAT_S:
+            case Bytecode.VECTOR_I8X16_ADD_SAT_U:
+            case Bytecode.VECTOR_I8X16_SUB:
+            case Bytecode.VECTOR_I8X16_SUB_SAT_S:
+            case Bytecode.VECTOR_I8X16_SUB_SAT_U:
+            case Bytecode.VECTOR_I8X16_MIN_S:
+            case Bytecode.VECTOR_I8X16_MIN_U:
+            case Bytecode.VECTOR_I8X16_MAX_S:
+            case Bytecode.VECTOR_I8X16_MAX_U:
+            case Bytecode.VECTOR_I8X16_AVGR_U:
+            case Bytecode.VECTOR_I16X8_NARROW_I32X4_S:
+            case Bytecode.VECTOR_I16X8_NARROW_I32X4_U:
+            case Bytecode.VECTOR_I16X8_Q15MULR_SAT_S:
+            case Bytecode.VECTOR_I16X8_ADD:
+            case Bytecode.VECTOR_I16X8_ADD_SAT_S:
+            case Bytecode.VECTOR_I16X8_ADD_SAT_U:
+            case Bytecode.VECTOR_I16X8_SUB:
+            case Bytecode.VECTOR_I16X8_SUB_SAT_S:
+            case Bytecode.VECTOR_I16X8_SUB_SAT_U:
+            case Bytecode.VECTOR_I16X8_MUL:
+            case Bytecode.VECTOR_I16X8_MIN_S:
+            case Bytecode.VECTOR_I16X8_MIN_U:
+            case Bytecode.VECTOR_I16X8_MAX_S:
+            case Bytecode.VECTOR_I16X8_MAX_U:
+            case Bytecode.VECTOR_I16X8_AVGR_U:
+            case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8x16_S:
+            case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8x16_S:
+            case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8x16_U:
+            case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8x16_U:
+            case Bytecode.VECTOR_I32X4_ADD:
+            case Bytecode.VECTOR_I32X4_SUB:
+            case Bytecode.VECTOR_I32X4_MUL:
+            case Bytecode.VECTOR_I32X4_MIN_S:
+            case Bytecode.VECTOR_I32X4_MIN_U:
+            case Bytecode.VECTOR_I32X4_MAX_S:
+            case Bytecode.VECTOR_I32X4_MAX_U:
+            case Bytecode.VECTOR_I32X4_DOT_I16X8_S:
+            case Bytecode.VECTOR_I32X4_EXTMUL_LOW_I16X8_S:
+            case Bytecode.VECTOR_I32X4_EXTMUL_HIGH_I16X8_S:
+            case Bytecode.VECTOR_I32X4_EXTMUL_LOW_I16X8_U:
+            case Bytecode.VECTOR_I32X4_EXTMUL_HIGH_I16X8_U:
+            case Bytecode.VECTOR_I64X2_ADD:
+            case Bytecode.VECTOR_I64X2_SUB:
+            case Bytecode.VECTOR_I64X2_MUL:
+            case Bytecode.VECTOR_I64X2_EXTMUL_LOW_I32X4_S:
+            case Bytecode.VECTOR_I64X2_EXTMUL_HIGH_I32X4_S:
+            case Bytecode.VECTOR_I64X2_EXTMUL_LOW_I32X4_U:
+            case Bytecode.VECTOR_I64X2_EXTMUL_HIGH_I32X4_U:
+            case Bytecode.VECTOR_F32X4_ADD:
+            case Bytecode.VECTOR_F32X4_SUB:
+            case Bytecode.VECTOR_F32X4_MUL:
+            case Bytecode.VECTOR_F32X4_DIV:
+            case Bytecode.VECTOR_F32X4_MIN:
+            case Bytecode.VECTOR_F32X4_MAX:
+            case Bytecode.VECTOR_F32X4_PMIN:
+            case Bytecode.VECTOR_F32X4_PMAX:
+            case Bytecode.VECTOR_F64X2_ADD:
+            case Bytecode.VECTOR_F64X2_SUB:
+            case Bytecode.VECTOR_F64X2_MUL:
+            case Bytecode.VECTOR_F64X2_DIV:
+            case Bytecode.VECTOR_F64X2_MIN:
+            case Bytecode.VECTOR_F64X2_MAX:
+            case Bytecode.VECTOR_F64X2_PMIN:
+            case Bytecode.VECTOR_F64X2_PMAX: {
+                Vector128 y = popVector128(frame, --stackPointer);
+                Vector128 x = popVector128(frame, --stackPointer);
+                Vector128 result = Vector128.ofBytes(Vector128Ops.binary(x.asBytes(), y.asBytes(), vectorOpcode));
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_V128_BITSELECT: {
+                Vector128 z = popVector128(frame, --stackPointer);
+                Vector128 y = popVector128(frame, --stackPointer);
+                Vector128 x = popVector128(frame, --stackPointer);
+                Vector128 result = Vector128.ofBytes(Vector128Ops.ternary(x.asBytes(), y.asBytes(), z.asBytes(), vectorOpcode));
+                pushVector128(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_V128_ANY_TRUE:
+            case Bytecode.VECTOR_I8X16_ALL_TRUE:
+            case Bytecode.VECTOR_I8X16_BITMASK:
+            case Bytecode.VECTOR_I16X8_ALL_TRUE:
+            case Bytecode.VECTOR_I16X8_BITMASK:
+            case Bytecode.VECTOR_I32X4_ALL_TRUE:
+            case Bytecode.VECTOR_I32X4_BITMASK:
+            case Bytecode.VECTOR_I64X2_ALL_TRUE:
+            case Bytecode.VECTOR_I64X2_BITMASK: {
+                Vector128 x = popVector128(frame, --stackPointer);
+                int result = Vector128Ops.vectorToInt(x.asBytes(), vectorOpcode);
+                pushInt(frame, stackPointer++, result);
+                break;
+            }
+            case Bytecode.VECTOR_I8X16_SHL:
+            case Bytecode.VECTOR_I8X16_SHR_S:
+            case Bytecode.VECTOR_I8X16_SHR_U:
+            case Bytecode.VECTOR_I16X8_SHL:
+            case Bytecode.VECTOR_I16X8_SHR_S:
+            case Bytecode.VECTOR_I16X8_SHR_U:
+            case Bytecode.VECTOR_I32X4_SHL:
+            case Bytecode.VECTOR_I32X4_SHR_S:
+            case Bytecode.VECTOR_I32X4_SHR_U:
+            case Bytecode.VECTOR_I64X2_SHL:
+            case Bytecode.VECTOR_I64X2_SHR_S:
+            case Bytecode.VECTOR_I64X2_SHR_U: {
+                int shift = popInt(frame, --stackPointer);
+                Vector128 x = popVector128(frame, --stackPointer);
+                Vector128 result = Vector128.ofBytes(Vector128Ops.shift(x.asBytes(), shift, vectorOpcode));
                 pushVector128(frame, stackPointer++, result);
                 break;
             }
@@ -3087,461 +3300,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             case Bytecode.VECTOR_F64X2_SPLAT: {
                 double x = popDouble(frame, --stackPointer);
                 Vector128 result = Vector128.ofBytes(Vector128Ops.f64x2_splat(x));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I8X16_EQ:
-            case Bytecode.VECTOR_I8X16_NE:
-            case Bytecode.VECTOR_I8X16_LT_S:
-            case Bytecode.VECTOR_I8X16_LT_U:
-            case Bytecode.VECTOR_I8X16_GT_S:
-            case Bytecode.VECTOR_I8X16_GT_U:
-            case Bytecode.VECTOR_I8X16_LE_S:
-            case Bytecode.VECTOR_I8X16_LE_U:
-            case Bytecode.VECTOR_I8X16_GE_S:
-            case Bytecode.VECTOR_I8X16_GE_U: {
-                Vector128 y = popVector128(frame, --stackPointer);
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i8x16_relop(x.asBytes(), y.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I16X8_EQ:
-            case Bytecode.VECTOR_I16X8_NE:
-            case Bytecode.VECTOR_I16X8_LT_S:
-            case Bytecode.VECTOR_I16X8_LT_U:
-            case Bytecode.VECTOR_I16X8_GT_S:
-            case Bytecode.VECTOR_I16X8_GT_U:
-            case Bytecode.VECTOR_I16X8_LE_S:
-            case Bytecode.VECTOR_I16X8_LE_U:
-            case Bytecode.VECTOR_I16X8_GE_S:
-            case Bytecode.VECTOR_I16X8_GE_U: {
-                Vector128 y = popVector128(frame, --stackPointer);
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i16x8_relop(x.asBytes(), y.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I32X4_EQ:
-            case Bytecode.VECTOR_I32X4_NE:
-            case Bytecode.VECTOR_I32X4_LT_S:
-            case Bytecode.VECTOR_I32X4_LT_U:
-            case Bytecode.VECTOR_I32X4_GT_S:
-            case Bytecode.VECTOR_I32X4_GT_U:
-            case Bytecode.VECTOR_I32X4_LE_S:
-            case Bytecode.VECTOR_I32X4_LE_U:
-            case Bytecode.VECTOR_I32X4_GE_S:
-            case Bytecode.VECTOR_I32X4_GE_U: {
-                Vector128 y = popVector128(frame, --stackPointer);
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i32x4_relop(x.asBytes(), y.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I64X2_EQ:
-            case Bytecode.VECTOR_I64X2_NE:
-            case Bytecode.VECTOR_I64X2_LT_S:
-            case Bytecode.VECTOR_I64X2_GT_S:
-            case Bytecode.VECTOR_I64X2_LE_S:
-            case Bytecode.VECTOR_I64X2_GE_S: {
-                Vector128 y = popVector128(frame, --stackPointer);
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i64x2_relop(x.asBytes(), y.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_F32X4_EQ:
-            case Bytecode.VECTOR_F32X4_NE:
-            case Bytecode.VECTOR_F32X4_LT:
-            case Bytecode.VECTOR_F32X4_GT:
-            case Bytecode.VECTOR_F32X4_LE:
-            case Bytecode.VECTOR_F32X4_GE: {
-                Vector128 y = popVector128(frame, --stackPointer);
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.f32x4_relop(x.asBytes(), y.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_F64X2_EQ:
-            case Bytecode.VECTOR_F64X2_NE:
-            case Bytecode.VECTOR_F64X2_LT:
-            case Bytecode.VECTOR_F64X2_GT:
-            case Bytecode.VECTOR_F64X2_LE:
-            case Bytecode.VECTOR_F64X2_GE: {
-                Vector128 y = popVector128(frame, --stackPointer);
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.f64x2_relop(x.asBytes(), y.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_V128_NOT: {
-                Vector128 vec = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.v128_not(vec.asBytes()));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_V128_AND:
-            case Bytecode.VECTOR_V128_ANDNOT:
-            case Bytecode.VECTOR_V128_OR:
-            case Bytecode.VECTOR_V128_XOR: {
-                Vector128 y = popVector128(frame, --stackPointer);
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.v128_binop(x.asBytes(), y.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_V128_BITSELECT: {
-                Vector128 mask = popVector128(frame, --stackPointer);
-                Vector128 y = popVector128(frame, --stackPointer);
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.v128_bitselect(x.asBytes(), y.asBytes(), mask.asBytes()));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_V128_ANY_TRUE: {
-                Vector128 vec = popVector128(frame, --stackPointer);
-                int result = Vector128Ops.v128_any_true(vec.asBytes());
-                pushInt(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I8X16_ABS:
-            case Bytecode.VECTOR_I8X16_NEG:
-            case Bytecode.VECTOR_I8X16_POPCNT: {
-                Vector128 vec = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i8x16_unop(vec.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I8X16_ALL_TRUE: {
-                Vector128 vec = popVector128(frame, --stackPointer);
-                int result = Vector128Ops.i8x16_all_true(vec.asBytes());
-                pushInt(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I8X16_BITMASK: {
-                Vector128 vec = popVector128(frame, --stackPointer);
-                int result = Vector128Ops.i8x16_bitmask(vec.asBytes());
-                pushInt(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I8X16_NARROW_I16X8_S:
-            case Bytecode.VECTOR_I8X16_NARROW_I16X8_U: {
-                Vector128 y = popVector128(frame, --stackPointer);
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i8x16_narrow_i16x8(x.asBytes(), y.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I8X16_SHL:
-            case Bytecode.VECTOR_I8X16_SHR_S:
-            case Bytecode.VECTOR_I8X16_SHR_U: {
-                int shift = popInt(frame, --stackPointer);
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i8x16_shiftop(x.asBytes(), shift, vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I8X16_ADD:
-            case Bytecode.VECTOR_I8X16_ADD_SAT_S:
-            case Bytecode.VECTOR_I8X16_ADD_SAT_U:
-            case Bytecode.VECTOR_I8X16_SUB:
-            case Bytecode.VECTOR_I8X16_SUB_SAT_S:
-            case Bytecode.VECTOR_I8X16_SUB_SAT_U:
-            case Bytecode.VECTOR_I8X16_MIN_S:
-            case Bytecode.VECTOR_I8X16_MIN_U:
-            case Bytecode.VECTOR_I8X16_MAX_S:
-            case Bytecode.VECTOR_I8X16_MAX_U:
-            case Bytecode.VECTOR_I8X16_AVGR_U: {
-                Vector128 y = popVector128(frame, --stackPointer);
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i8x16_binop(x.asBytes(), y.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8x16_S:
-            case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8x16_U:
-            case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8x16_S:
-            case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8x16_S:
-            case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8x16_U:
-            case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8x16_U: {
-                Vector128 vec = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i16x8_extend_i8x16(vec.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I16X8_ABS:
-            case Bytecode.VECTOR_I16X8_NEG: {
-                Vector128 vec = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i16x8_unop(vec.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I16X8_ALL_TRUE: {
-                Vector128 vec = popVector128(frame, --stackPointer);
-                int result = Vector128Ops.i16x8_all_true(vec.asBytes());
-                pushInt(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I16X8_BITMASK: {
-                Vector128 vec = popVector128(frame, --stackPointer);
-                int result = Vector128Ops.i16x8_bitmask(vec.asBytes());
-                pushInt(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I16X8_NARROW_I32X4_S:
-            case Bytecode.VECTOR_I16X8_NARROW_I32X4_U: {
-                Vector128 y = popVector128(frame, --stackPointer);
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i16x8_narrow_i32x4(x.asBytes(), y.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I16X8_SHL:
-            case Bytecode.VECTOR_I16X8_SHR_S:
-            case Bytecode.VECTOR_I16X8_SHR_U: {
-                int shift = popInt(frame, --stackPointer);
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i16x8_shiftop(x.asBytes(), shift, vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I16X8_Q15MULR_SAT_S:
-            case Bytecode.VECTOR_I16X8_ADD:
-            case Bytecode.VECTOR_I16X8_ADD_SAT_S:
-            case Bytecode.VECTOR_I16X8_ADD_SAT_U:
-            case Bytecode.VECTOR_I16X8_SUB:
-            case Bytecode.VECTOR_I16X8_SUB_SAT_S:
-            case Bytecode.VECTOR_I16X8_SUB_SAT_U:
-            case Bytecode.VECTOR_I16X8_MUL:
-            case Bytecode.VECTOR_I16X8_MIN_S:
-            case Bytecode.VECTOR_I16X8_MIN_U:
-            case Bytecode.VECTOR_I16X8_MAX_S:
-            case Bytecode.VECTOR_I16X8_MAX_U:
-            case Bytecode.VECTOR_I16X8_AVGR_U: {
-                Vector128 y = popVector128(frame, --stackPointer);
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i16x8_binop(x.asBytes(), y.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8x16_S:
-            case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8x16_S:
-            case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8x16_U:
-            case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8x16_U: {
-                Vector128 y = popVector128(frame, --stackPointer);
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i16x8_binop_extend_i8x16(x.asBytes(), y.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_S:
-            case Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_U:
-            case Bytecode.VECTOR_I32X4_EXTEND_LOW_I16X8_S:
-            case Bytecode.VECTOR_I32X4_EXTEND_HIGH_I16X8_S:
-            case Bytecode.VECTOR_I32X4_EXTEND_LOW_I16X8_U:
-            case Bytecode.VECTOR_I32X4_EXTEND_HIGH_I16X8_U: {
-                Vector128 vec = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i32x4_extend_i16x8(vec.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I32X4_ABS:
-            case Bytecode.VECTOR_I32X4_NEG: {
-                Vector128 vec = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i32x4_unop(vec.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I32X4_ALL_TRUE: {
-                Vector128 vec = popVector128(frame, --stackPointer);
-                int result = Vector128Ops.i32x4_all_true(vec.asBytes());
-                pushInt(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I32X4_BITMASK: {
-                Vector128 vec = popVector128(frame, --stackPointer);
-                int result = Vector128Ops.i32x4_bitmask(vec.asBytes());
-                pushInt(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I32X4_SHL:
-            case Bytecode.VECTOR_I32X4_SHR_S:
-            case Bytecode.VECTOR_I32X4_SHR_U: {
-                int shift = popInt(frame, --stackPointer);
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i32x4_shiftop(x.asBytes(), shift, vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I32X4_ADD:
-            case Bytecode.VECTOR_I32X4_SUB:
-            case Bytecode.VECTOR_I32X4_MUL:
-            case Bytecode.VECTOR_I32X4_MIN_S:
-            case Bytecode.VECTOR_I32X4_MIN_U:
-            case Bytecode.VECTOR_I32X4_MAX_S:
-            case Bytecode.VECTOR_I32X4_MAX_U: {
-                Vector128 y = popVector128(frame, --stackPointer);
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i32x4_binop(x.asBytes(), y.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I32X4_DOT_I16X8_S:
-            case Bytecode.VECTOR_I32X4_EXTMUL_LOW_I16X8_S:
-            case Bytecode.VECTOR_I32X4_EXTMUL_HIGH_I16X8_S:
-            case Bytecode.VECTOR_I32X4_EXTMUL_LOW_I16X8_U:
-            case Bytecode.VECTOR_I32X4_EXTMUL_HIGH_I16X8_U: {
-                Vector128 y = popVector128(frame, --stackPointer);
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i32x4_binop_extend_i16x8(x.asBytes(), y.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I64X2_EXTEND_LOW_I32X4_S:
-            case Bytecode.VECTOR_I64X2_EXTEND_HIGH_I32X4_S:
-            case Bytecode.VECTOR_I64X2_EXTEND_LOW_I32X4_U:
-            case Bytecode.VECTOR_I64X2_EXTEND_HIGH_I32X4_U: {
-                Vector128 vec = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i64x2_extend_i32x4(vec.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I64X2_ABS:
-            case Bytecode.VECTOR_I64X2_NEG: {
-                Vector128 vec = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i64x2_unop(vec.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I64X2_ALL_TRUE: {
-                Vector128 vec = popVector128(frame, --stackPointer);
-                int result = Vector128Ops.i64x2_all_true(vec.asBytes());
-                pushInt(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I64X2_BITMASK: {
-                Vector128 vec = popVector128(frame, --stackPointer);
-                int result = Vector128Ops.i64x2_bitmask(vec.asBytes());
-                pushInt(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I64X2_SHL:
-            case Bytecode.VECTOR_I64X2_SHR_S:
-            case Bytecode.VECTOR_I64X2_SHR_U: {
-                int shift = popInt(frame, --stackPointer);
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i64x2_shiftop(x.asBytes(), shift, vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I64X2_ADD:
-            case Bytecode.VECTOR_I64X2_SUB:
-            case Bytecode.VECTOR_I64X2_MUL: {
-                Vector128 y = popVector128(frame, --stackPointer);
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i64x2_binop(x.asBytes(), y.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I64X2_EXTMUL_LOW_I32X4_S:
-            case Bytecode.VECTOR_I64X2_EXTMUL_HIGH_I32X4_S:
-            case Bytecode.VECTOR_I64X2_EXTMUL_LOW_I32X4_U:
-            case Bytecode.VECTOR_I64X2_EXTMUL_HIGH_I32X4_U: {
-                Vector128 y = popVector128(frame, --stackPointer);
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i64x2_binop_extend_i32x4(x.asBytes(), y.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_F32X4_CEIL:
-            case Bytecode.VECTOR_F32X4_FLOOR:
-            case Bytecode.VECTOR_F32X4_TRUNC:
-            case Bytecode.VECTOR_F32X4_NEAREST:
-            case Bytecode.VECTOR_F32X4_ABS:
-            case Bytecode.VECTOR_F32X4_NEG:
-            case Bytecode.VECTOR_F32X4_SQRT: {
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.f32x4_unop(x.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_F32X4_ADD:
-            case Bytecode.VECTOR_F32X4_SUB:
-            case Bytecode.VECTOR_F32X4_MUL:
-            case Bytecode.VECTOR_F32X4_DIV:
-            case Bytecode.VECTOR_F32X4_MIN:
-            case Bytecode.VECTOR_F32X4_MAX:
-            case Bytecode.VECTOR_F32X4_PMIN:
-            case Bytecode.VECTOR_F32X4_PMAX: {
-                Vector128 y = popVector128(frame, --stackPointer);
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.f32x4_binop(x.asBytes(), y.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_F64X2_CEIL:
-            case Bytecode.VECTOR_F64X2_FLOOR:
-            case Bytecode.VECTOR_F64X2_TRUNC:
-            case Bytecode.VECTOR_F64X2_NEAREST:
-            case Bytecode.VECTOR_F64X2_ABS:
-            case Bytecode.VECTOR_F64X2_NEG:
-            case Bytecode.VECTOR_F64X2_SQRT: {
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.f64x2_unop(x.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_F64X2_ADD:
-            case Bytecode.VECTOR_F64X2_SUB:
-            case Bytecode.VECTOR_F64X2_MUL:
-            case Bytecode.VECTOR_F64X2_DIV:
-            case Bytecode.VECTOR_F64X2_MIN:
-            case Bytecode.VECTOR_F64X2_MAX:
-            case Bytecode.VECTOR_F64X2_PMIN:
-            case Bytecode.VECTOR_F64X2_PMAX: {
-                Vector128 y = popVector128(frame, --stackPointer);
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.f64x2_binop(x.asBytes(), y.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S:
-            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U: {
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i32x4_trunc_sat_f32x4(x.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_F32X4_CONVERT_I32X4_S:
-            case Bytecode.VECTOR_F32X4_CONVERT_I32X4_U: {
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.f32x4_convert_i32x4(x.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO:
-            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO: {
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.i32x4_trunc_sat_f64x2(x.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_S:
-            case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_U: {
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.f64x2_convert_low_i32x4(x.asBytes(), vectorOpcode));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_F32X4_DEMOTE_F64X2_ZERO: {
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.f32x4_demote_f64x2_zero(x.asBytes()));
-                pushVector128(frame, stackPointer++, result);
-                break;
-            }
-            case Bytecode.VECTOR_F64X2_PROMOTE_LOW_F32X4: {
-                Vector128 x = popVector128(frame, --stackPointer);
-                Vector128 result = Vector128.ofBytes(Vector128Ops.f64x2_promote_low_f32x4(x.asBytes()));
                 pushVector128(frame, stackPointer++, result);
                 break;
             }
