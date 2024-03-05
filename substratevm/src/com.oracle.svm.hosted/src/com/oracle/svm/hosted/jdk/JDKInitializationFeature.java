@@ -57,7 +57,7 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("java.text", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("java.time", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("java.util", JDK_CLASS_REASON);
-        rci.rerunInitialization("java.util.concurrent.SubmissionPublisher", "Executor service must be recomputed");
+        rci.initializeAtRunTime("java.util.concurrent.SubmissionPublisher", "Executor service must be recomputed");
 
         rci.initializeAtBuildTime("javax.annotation.processing", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("javax.lang.model", JDK_CLASS_REASON);
@@ -90,25 +90,25 @@ public class JDKInitializationFeature implements InternalFeature {
 
         rci.initializeAtBuildTime("sun.nio", JDK_CLASS_REASON);
         if (Platform.includedIn(Platform.WINDOWS.class)) {
-            rci.rerunInitialization("sun.nio.ch.PipeImpl", "Contains SecureRandom reference, therefore can't be included in the image heap");
+            rci.initializeAtRunTime("sun.nio.ch.PipeImpl", "Contains SecureRandom reference, therefore can't be included in the image heap");
         }
 
-        rci.rerunInitialization("sun.net.PortConfig", "Calls PortConfig.getLower0() and PortConfig.getUpper0()");
+        rci.initializeAtRunTime("sun.net.PortConfig", "Calls PortConfig.getLower0() and PortConfig.getUpper0()");
 
         /*
          * In the cases that java.io.ObjectInputFilter$Config#serialFilter field is needed, this
-         * class needs to be reinitialized. Field is initialized in the static block of the Config
-         * class in runtime, so we need to reinitialize class in runtime. This change also makes us
+         * class needs to be initialized. Field is initialized in the static block of the Config
+         * class in runtime, so we need to initialize class at run time. This change also makes us
          * create substitution for jdkSerialFilterFactory in the
          * com.oracle.svm.core.jdk.Target_jdk_internal_util_StaticProperty.
          */
-        rci.rerunInitialization("java.io.ObjectInputFilter$Config", "Field filter have to be initialized at runtime");
+        rci.initializeAtRunTime("java.io.ObjectInputFilter$Config", "Field filter have to be initialized at runtime");
 
-        rci.rerunInitialization("sun.nio.ch.DevPollArrayWrapper", "Calls IOUtil.fdLimit()");
-        rci.rerunInitialization("sun.nio.ch.EPoll", "Calls EPoll.eventSize(), EPoll.eventsOffset() and EPoll.dataOffset()");
-        rci.rerunInitialization("sun.nio.ch.EPollSelectorImpl", "Calls IOUtil.fdLimit()");
-        rci.rerunInitialization("sun.nio.ch.EventPortSelectorImpl", "Calls IOUtil.fdLimit()");
-        rci.rerunInitialization("sun.nio.fs.LinuxWatchService$Poller", "LinuxWatchService.eventSize() and LinuxWatchService.eventOffsets()");
+        rci.initializeAtRunTime("sun.nio.ch.DevPollArrayWrapper", "Calls IOUtil.fdLimit()");
+        rci.initializeAtRunTime("sun.nio.ch.EPoll", "Calls EPoll.eventSize(), EPoll.eventsOffset() and EPoll.dataOffset()");
+        rci.initializeAtRunTime("sun.nio.ch.EPollSelectorImpl", "Calls IOUtil.fdLimit()");
+        rci.initializeAtRunTime("sun.nio.ch.EventPortSelectorImpl", "Calls IOUtil.fdLimit()");
+        rci.initializeAtRunTime("sun.nio.fs.LinuxWatchService$Poller", "LinuxWatchService.eventSize() and LinuxWatchService.eventOffsets()");
 
         rci.initializeAtBuildTime("sun.reflect", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.security.mscapi", JDK_CLASS_REASON);
@@ -172,24 +172,26 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("sun.rmi.transport.GC", "Loaded an unneeded library (rmi) in static initializer.");
         rci.initializeAtBuildTime("sun.rmi.transport.GC$LatencyLock", "Loaded an unneeded library (rmi) in static initializer.");
 
-        rci.rerunInitialization("com.sun.jndi.dns.DnsClient", "Contains Random references, therefore can't be included in the image heap.");
-        rci.rerunInitialization("sun.net.www.protocol.http.DigestAuthentication$Parameters", "Contains Random references, therefore can't be included in the image heap.");
-        rci.rerunInitialization("sun.security.krb5.KrbServiceLocator", "Contains Random references, therefore can't be included in the image heap.");
-        rci.rerunInitialization("com.sun.jndi.ldap.ServiceLocator", "Contains Random references, therefore can't be included in the image heap.");
+        rci.initializeAtRunTime("com.sun.jndi.dns.DnsClient", "Contains Random references, therefore can't be included in the image heap.");
+        rci.initializeAtRunTime("sun.net.www.protocol.http.DigestAuthentication$Parameters", "Contains Random references, therefore can't be included in the image heap.");
+        rci.initializeAtRunTime("sun.security.krb5.KrbServiceLocator", "Contains Random references, therefore can't be included in the image heap.");
+        rci.initializeAtRunTime("com.sun.jndi.ldap.ServiceLocator", "Contains Random references, therefore can't be included in the image heap.");
 
-        // The random number provider classes should be reinitialized at runtime to reset their
-        // values properly. Otherwise the numbers generated will be fixed for each generated image.
-        rci.rerunInitialization("java.lang.Math$RandomNumberGeneratorHolder", "Contains random seeds");
-        rci.rerunInitialization("java.lang.StrictMath$RandomNumberGeneratorHolder", "Contains random seeds");
+        /*
+         * The random number provider classes should be initialized at run time to reset their
+         * values properly. Otherwise the numbers generated will be fixed for each generated image.
+         */
+        rci.initializeAtRunTime("java.lang.Math$RandomNumberGeneratorHolder", "Contains random seeds");
+        rci.initializeAtRunTime("java.lang.StrictMath$RandomNumberGeneratorHolder", "Contains random seeds");
 
-        rci.rerunInitialization("jdk.internal.misc.InnocuousThread", "Contains a thread group INNOCUOUSTHREADGROUP.");
+        rci.initializeAtRunTime("jdk.internal.misc.InnocuousThread", "Contains a thread group INNOCUOUSTHREADGROUP.");
 
-        rci.rerunInitialization("sun.nio.ch.Poller", "Contains an InnocuousThread.");
-        rci.rerunInitialization("jdk.internal.jimage", "Pulls in direct byte buffers");
+        rci.initializeAtRunTime("sun.nio.ch.Poller", "Contains an InnocuousThread.");
+        rci.initializeAtRunTime("jdk.internal.jimage", "Pulls in direct byte buffers");
 
-        rci.rerunInitialization("sun.net.www.protocol.jrt.JavaRuntimeURLConnection", "Pulls in jimage reader");
+        rci.initializeAtRunTime("sun.net.www.protocol.jrt.JavaRuntimeURLConnection", "Pulls in jimage reader");
 
-        rci.rerunInitialization("sun.launcher.LauncherHelper", "Pulls in jimage reader");
+        rci.initializeAtRunTime("sun.launcher.LauncherHelper", "Pulls in jimage reader");
 
         rci.initializeAtRunTime("jdk.internal.foreign.abi.fallback.LibFallback$NativeConstants", "Fails build-time initialization");
         rci.initializeAtRunTime("jdk.internal.foreign.abi.fallback.FFIType", "Fails build-time initialization");
@@ -198,13 +200,13 @@ public class JDKInitializationFeature implements InternalFeature {
 
         rci.initializeAtRunTime("com.sun.org.apache.xml.internal.serialize.HTMLdtd", "Fails build-time initialization");
 
-        rci.rerunInitialization("sun.security.ssl.SSLContextImpl$DefaultSSLContextHolder", "Stores secure random");
-        rci.rerunInitialization("sun.security.ssl.SSLSocketFactoryImpl", "Stores secure random");
-        rci.rerunInitialization("sun.security.provider.certpath.ssl.SSLServerCertStore", "Stores secure random");
+        rci.initializeAtRunTime("sun.security.ssl.SSLContextImpl$DefaultSSLContextHolder", "Stores secure random");
+        rci.initializeAtRunTime("sun.security.ssl.SSLSocketFactoryImpl", "Stores secure random");
+        rci.initializeAtRunTime("sun.security.provider.certpath.ssl.SSLServerCertStore", "Stores secure random");
 
-        rci.rerunInitialization("jdk.internal.foreign.SystemLookup$WindowsFallbackSymbols", "Does not work on non-Windows modular images");
+        rci.initializeAtRunTime("jdk.internal.foreign.SystemLookup$WindowsFallbackSymbols", "Does not work on non-Windows modular images");
 
-        rci.rerunInitialization("jdk.internal.logger.LoggerFinderLoader", "Contains a static field with a FilePermission value");
+        rci.initializeAtRunTime("jdk.internal.logger.LoggerFinderLoader", "Contains a static field with a FilePermission value");
 
         /*
          * The local class Holder in FallbackLinker#getInstance fails the build time initialization

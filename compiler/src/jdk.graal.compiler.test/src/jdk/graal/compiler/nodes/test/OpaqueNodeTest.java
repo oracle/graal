@@ -82,4 +82,20 @@ public class OpaqueNodeTest extends GraalCompilerTest {
         test("writeNegSnippet");
         assertTrue(arr[0] == (byte) -300);
     }
+
+    public static void opaqueClassSnippet() {
+        /*
+         * GR-51558: This would cause an assertion failure in LIR constant load optimization if the
+         * opaque is not removed.
+         */
+        Class<?> c = GraalDirectives.opaque(Object.class);
+        if (c.getResource("resource.txt") == null) {
+            GraalDirectives.deoptimize();
+        }
+    }
+
+    @Test
+    public void testOpaqueClass() {
+        test("opaqueClassSnippet");
+    }
 }

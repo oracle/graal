@@ -56,7 +56,7 @@ public class JavaNetHttpFeature extends JNIRegistrationUtil implements InternalF
     public void duringSetup(DuringSetupAccess access) {
         RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
         rci.initializeAtRunTime("jdk.internal.net.http", "for reading properties at run time");
-        rci.rerunInitialization("jdk.internal.net.http.websocket.OpeningHandshake", "contains a SecureRandom reference");
+        rci.initializeAtRunTime("jdk.internal.net.http.websocket.OpeningHandshake", "contains a SecureRandom reference");
     }
 
     @Override

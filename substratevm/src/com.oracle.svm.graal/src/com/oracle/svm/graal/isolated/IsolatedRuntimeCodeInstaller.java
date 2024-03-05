@@ -164,8 +164,8 @@ public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
-    private static int makeCodeMemoryExecutableReadOnly0(@SuppressWarnings("unused") IsolateThread targetIsolate, Pointer start, UnsignedWord size) {
-        return RuntimeCodeInfoAccess.makeCodeMemoryExecutableReadOnly((CodePointer) start, size);
+    private static void makeCodeMemoryExecutableReadOnly0(@SuppressWarnings("unused") IsolateThread targetIsolate, Pointer start, UnsignedWord size) {
+        RuntimeCodeInfoAccess.makeCodeMemoryExecutableReadOnly((CodePointer) start, size);
     }
 
     @Override
@@ -174,7 +174,7 @@ public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
-    private static int makeCodeMemoryExecutableWritable0(@SuppressWarnings("unused") IsolateThread targetIsolate, Pointer start, UnsignedWord size) {
-        return RuntimeCodeInfoAccess.makeCodeMemoryExecutableWritable((CodePointer) start, size);
+    private static void makeCodeMemoryExecutableWritable0(@SuppressWarnings("unused") IsolateThread targetIsolate, Pointer start, UnsignedWord size) {
+        RuntimeCodeInfoAccess.makeCodeMemoryExecutableWritable((CodePointer) start, size);
     }
 }

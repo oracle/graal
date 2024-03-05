@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.classinitialization;
+package jdk.graal.compiler.phases.common;
+
+import java.util.Optional;
+
+import jdk.graal.compiler.nodes.GraphState;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.OpaqueValueNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.phases.BasePhase;
 
 /**
- * The initialization kind for a class. The order of the enum values matters, {@link #max} depends
- * on it.
+ * Removes all {@link jdk.graal.compiler.nodes.extended.OpaqueValueNode}s from the graph.
  */
-enum InitKind {
-    /** Class is initialized during image building, so it is already initialized at runtime. */
-    BUILD_TIME,
-    /** Class should be initialized at runtime and not during image building. */
-    RUN_TIME;
+public class RemoveOpaqueValuePhase extends BasePhase<CoreProviders> {
+    @Override
+    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+        return ALWAYS_APPLICABLE;
+    }
 
-    InitKind max(InitKind other) {
-        return this.ordinal() > other.ordinal() ? this : other;
+    @Override
+    public boolean shouldApply(StructuredGraph graph) {
+        return graph.hasNode(OpaqueValueNode.TYPE);
+    }
+
+    @Override
+    protected void run(StructuredGraph graph, CoreProviders context) {
+        for (OpaqueValueNode opaque : graph.getNodes(OpaqueValueNode.TYPE)) {
+            opaque.replaceAtUsagesAndDelete(opaque.getValue());
+        }
     }
 }

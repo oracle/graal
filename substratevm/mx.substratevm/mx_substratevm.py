@@ -1549,11 +1549,7 @@ def cinterfacetutorial(args):
 
 @mx.command(suite.name, 'clinittest', 'Runs the ')
 def clinittest(args):
-    def build_and_test_clinittest_images(native_image, args=None):
-        build_and_test_clinittest_image(native_image, args, True)
-        build_and_test_clinittest_image(native_image, args, False)
-
-    def build_and_test_clinittest_image(native_image, args, new_class_init_policy):
+    def build_and_test_clinittest_image(native_image, args):
         args = [] if args is None else args
         test_cp = classpath('com.oracle.svm.test')
         build_dir = join(svmbuild_dir(), 'clinittest')
@@ -1562,11 +1558,6 @@ def clinittest(args):
         if exists(build_dir):
             mx.rmtree(build_dir)
         mx.ensure_dir_exists(build_dir)
-
-        if new_class_init_policy:
-            policy_args = svm_experimental_options(['-H:+SimulateClassInitializer']) + ['--features=com.oracle.svm.test.clinit.TestClassInitializationFeatureNewPolicyFeature']
-        else:
-            policy_args = svm_experimental_options(['-H:-StrictImageHeap', '-H:-SimulateClassInitializer']) + ['--features=com.oracle.svm.test.clinit.TestClassInitializationFeatureOldPolicyFeature']
 
         # Build and run the example
         binary_path = join(build_dir, 'clinittest')
@@ -1577,9 +1568,10 @@ def clinittest(args):
                 '-o', binary_path,
                 '-H:+ReportExceptionStackTraces',
                 '-H:Class=com.oracle.svm.test.clinit.TestClassInitialization',
+                '--features=com.oracle.svm.test.clinit.TestClassInitializationFeature',
             ] + svm_experimental_options([
                 '-H:+PrintClassInitialization',
-            ]) + policy_args + args)
+            ]) + args)
         mx.run([binary_path])
 
         # Check the reports for initialized classes
@@ -1593,16 +1585,8 @@ def clinittest(args):
                                                    "Classes marked with " + marker + " must have init kind " + init_kind + " and message " + msg)]
             with open(classes_file) as f:
                 for line in f:
-                    if new_class_init_policy:
-                        checkLine(line, "MustBeSafeEarly", "SIMULATED", "classes are initialized at run time by default", wrongly_initialized_lines)
-                        checkLine(line, "MustBeSafeLate", "SIMULATED", "classes are initialized at run time by default", wrongly_initialized_lines)
-                        checkLine(line, "MustBeSimulated", "SIMULATED", "classes are initialized at run time by default", wrongly_initialized_lines)
-                        checkLine(line, "MustBeDelayed", "RUN_TIME", "classes are initialized at run time by default", wrongly_initialized_lines)
-                    else:
-                        checkLine(line, "MustBeSafeEarly", "BUILD_TIME", "class proven as side-effect free before analysis", wrongly_initialized_lines)
-                        checkLine(line, "MustBeSafeLate", "BUILD_TIME", "class proven as side-effect free after analysis", wrongly_initialized_lines)
-                        checkLine(line, "MustBeSimulated", "RUN_TIME", "classes are initialized at run time by default", wrongly_initialized_lines)
-                        checkLine(line, "MustBeDelayed", "RUN_TIME", "classes are initialized at run time by default", wrongly_initialized_lines)
+                    checkLine(line, "MustBeSimulated", "SIMULATED", "classes are initialized at run time by default", wrongly_initialized_lines)
+                    checkLine(line, "MustBeDelayed", "RUN_TIME", "classes are initialized at run time by default", wrongly_initialized_lines)
 
                 if len(wrongly_initialized_lines) > 0:
                     msg = ""
@@ -1615,7 +1599,7 @@ def clinittest(args):
 
         check_class_initialization(all_classes_file)
 
-    native_image_context_run(build_and_test_clinittest_images, args)
+    native_image_context_run(build_and_test_clinittest_image, args)
 
 
 class SubstrateJvmFuncsFallbacksBuilder(mx.Project):

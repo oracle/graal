@@ -65,25 +65,25 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
-        rerunClassInit(a, "sun.nio.ch.IOUtil", "sun.nio.ch.ServerSocketChannelImpl", "sun.nio.ch.DatagramChannelImpl", "sun.nio.ch.FileChannelImpl", "sun.nio.ch.FileKey");
-        rerunClassInit(a, "java.nio.file.Files$FileTypeDetectors");
-        rerunClassInit(a, "sun.nio.ch.Net", "sun.nio.ch.SocketOptionRegistry$LazyInitialization");
-        rerunClassInit(a, "sun.nio.ch.AsynchronousSocketChannelImpl$DefaultOptionsHolder", "sun.nio.ch.AsynchronousServerSocketChannelImpl$DefaultOptionsHolder",
+        initializeAtRunTime(a, "sun.nio.ch.IOUtil", "sun.nio.ch.ServerSocketChannelImpl", "sun.nio.ch.DatagramChannelImpl", "sun.nio.ch.FileChannelImpl", "sun.nio.ch.FileKey");
+        initializeAtRunTime(a, "java.nio.file.Files$FileTypeDetectors");
+        initializeAtRunTime(a, "sun.nio.ch.Net", "sun.nio.ch.SocketOptionRegistry$LazyInitialization");
+        initializeAtRunTime(a, "sun.nio.ch.AsynchronousSocketChannelImpl$DefaultOptionsHolder", "sun.nio.ch.AsynchronousServerSocketChannelImpl$DefaultOptionsHolder",
                         "sun.nio.ch.DatagramChannelImpl$DefaultOptionsHolder", "sun.nio.ch.ServerSocketChannelImpl$DefaultOptionsHolder", "sun.nio.ch.SocketChannelImpl$DefaultOptionsHolder");
         /* Ensure that the interrupt signal handler is initialized at runtime. */
-        rerunClassInit(a, "sun.nio.ch.NativeThread");
-        rerunClassInit(a, "sun.nio.ch.FileDispatcherImpl", "sun.nio.ch.FileChannelImpl$Unmapper");
+        initializeAtRunTime(a, "sun.nio.ch.NativeThread");
+        initializeAtRunTime(a, "sun.nio.ch.FileDispatcherImpl", "sun.nio.ch.FileChannelImpl$Unmapper");
 
         if (isPosix()) {
-            rerunClassInit(a, "sun.nio.ch.SimpleAsynchronousFileChannelImpl", "sun.nio.ch.SimpleAsynchronousFileChannelImpl$DefaultExecutorHolder",
+            initializeAtRunTime(a, "sun.nio.ch.SimpleAsynchronousFileChannelImpl", "sun.nio.ch.SimpleAsynchronousFileChannelImpl$DefaultExecutorHolder",
                             "sun.nio.ch.SinkChannelImpl", "sun.nio.ch.SourceChannelImpl");
-            rerunClassInit(a, "sun.nio.fs.UnixNativeDispatcher", "sun.nio.ch.UnixAsynchronousServerSocketChannelImpl");
+            initializeAtRunTime(a, "sun.nio.fs.UnixNativeDispatcher", "sun.nio.ch.UnixAsynchronousServerSocketChannelImpl");
             if (isLinux() && isJdkSctpModulePresent) {
-                rerunClassInit(a, "sun.nio.ch.sctp.SctpChannelImpl");
+                initializeAtRunTime(a, "sun.nio.ch.sctp.SctpChannelImpl");
             }
         } else if (isWindows()) {
-            rerunClassInit(a, "sun.nio.ch.WindowsAsynchronousFileChannelImpl", "sun.nio.ch.WindowsAsynchronousFileChannelImpl$DefaultIocpHolder");
-            rerunClassInit(a, "sun.nio.fs.WindowsNativeDispatcher", "sun.nio.fs.WindowsSecurity", "sun.nio.ch.Iocp",
+            initializeAtRunTime(a, "sun.nio.ch.WindowsAsynchronousFileChannelImpl", "sun.nio.ch.WindowsAsynchronousFileChannelImpl$DefaultIocpHolder");
+            initializeAtRunTime(a, "sun.nio.fs.WindowsNativeDispatcher", "sun.nio.fs.WindowsSecurity", "sun.nio.ch.Iocp",
                             "sun.nio.ch.WindowsAsynchronousServerSocketChannelImpl", "sun.nio.ch.WindowsAsynchronousSocketChannelImpl");
         }
     }
