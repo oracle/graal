@@ -348,6 +348,12 @@ public final class Instructions {
     public static final int VECTOR = 0xFD;
 
     public static final int VECTOR_V128_LOAD = 0x00;
+    public static final int VECTOR_V128_LOAD8X8_S = 0x01;
+    public static final int VECTOR_V128_LOAD8X8_U = 0x02;
+    public static final int VECTOR_V128_LOAD16X4_S = 0x03;
+    public static final int VECTOR_V128_LOAD16X4_U = 0x04;
+    public static final int VECTOR_V128_LOAD32X2_S = 0x05;
+    public static final int VECTOR_V128_LOAD32X2_U = 0x06;
     public static final int VECTOR_V128_LOAD8_SPLAT = 0x07;
     public static final int VECTOR_V128_LOAD16_SPLAT = 0x08;
     public static final int VECTOR_V128_LOAD32_SPLAT = 0x09;
