@@ -15,7 +15,7 @@ redirect_from: /reference-manual/native-image/BuildOutput/
 Here you will find information about the build output of GraalVM Native Image.
 Below is the example output when building a native executable of the `HelloWorld` class:
 
-```shell
+```
 ================================================================================
 GraalVM Native Image: Generating 'helloworld' (executable)...
 ================================================================================
@@ -107,7 +107,7 @@ The C compiler executable, vendor, target architecture, and version info used by
 #### <a name="glossary-gc"></a>Garbage Collector
 The garbage collector used within the generated executable:
 - The *Serial GC* is the default GC and optimized for low memory footprint and small Java heap sizes.
-- The *G1 GC* (not available in GraalVM Community Edition) is a multi-threaded GC that is optimized to reduce stop-the-world pauses and therefore improve latency while achieving high throughput.
+- The *G1 GC* (not available in GraalVM Community Edition) is a multithreaded GC that is optimized to reduce stop-the-world pauses and therefore improve latency while achieving high throughput.
 - The *Epsilon GC* does not perform any garbage collection and is designed for very short-running applications that only allocate a small amount of memory.
 
 For more information see the [docs on Memory Management](MemoryManagement.md).
@@ -116,7 +116,7 @@ For more information see the [docs on Memory Management](MemoryManagement.md).
 By default, the heap size is limited to a certain percentage of your system memory, allowing the garbage collector to freely allocate memory according to its policy.
 Use the `-Xmx` option when invoking your native executable (for example `./myapp -Xmx64m` for 64MB) to limit the maximum heap size for a lower and more predictable memory footprint.
 This can also improve latency in some cases.
-Use the `-R:MaxHeapSize` option when building with Native Image to pre-configure the maximum heap size.
+Use the `-R:MaxHeapSize` option when building with Native Image to preconfigure the maximum heap size.
 
 #### <a name="glossary-user-specific-features"></a>User-Specific Features
 All [`Features`](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html) that are either provided or specifically enabled by the user, or implicitly registered for the user, for example, by a framework.
@@ -130,7 +130,7 @@ If you rely on experimental features and would like an option to be considered s
 
 #### <a name="glossary-picked-up-ni-options"></a>Picked up `NATIVE_IMAGE_OPTIONS`
 Additional build options picked up via the `NATIVE_IMAGE_OPTIONS` environment variable.
-Similar to `JAVA_TOOL_OPTIONS`, the value of the environment variable is prepended to the options supplied to `native-image`.
+Similar to `JAVA_TOOL_OPTIONS`, the value of the environment variable is prefixed to the options supplied to `native-image`.
 Argument files are not allowed to be passed via `NATIVE_IMAGE_OPTIONS`.
 The `NATIVE_IMAGE_OPTIONS` environment variable is designed to be used by users, build environments, or tools to inject additional build options.
 
@@ -188,8 +188,8 @@ The progress indicator visualizes the number of inlining iterations.
 In this stage, the Graal compiler compiles all reachable methods to machine code.
 The progress indicator is printed periodically at an increasing interval.
 
-### <a name="stage-layouting"></a>Layouting Methods
-In this stage, compiled methods are layouted.
+### <a name="stage-layouting"></a>Laying Out Methods
+In this stage, compiled methods are laid out.
 The progress indicator is printed periodically at an increasing interval.
 
 ### <a name="stage-creating"></a>Creating Image

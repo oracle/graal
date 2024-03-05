@@ -46,7 +46,7 @@ A change in the values of these two metrics between builds (that use the same pr
 
 To calculate and print the profile-quality metrics, pass the `-H:+PGOPrintProfileQuality` option when building an optimized native executable. (This option is experimental.)
 
-Let's consider the Game Of Life example application which was introduced in [Basic Usage of Profile-Guided Optimizationthe](PGO-Basic-Usage.md):
+Let's consider the Game Of Life example application which was introduced in [Basic Usage of Profile-Guided Optimization](PGO-Basic-Usage.md):
 ```bash
 native-image -cp . GameOfLife -o gameoflife-pgo --pgo=gameoflife.iprof -H:+PGOPrintProfileQuality
 ```

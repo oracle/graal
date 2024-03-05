@@ -7,7 +7,7 @@ permalink: /reference-manual/native-image/
 
 # Native Image
 
-Native Image is a technology to compile Java code ahead-of-time to a binary -- a **native executable**. 
+Native Image is a technology to compile Java code ahead-of-time to a binary&mdash;a **native executable**. 
 A native executable includes only the code required at run time, that is the application classes, standard-library classes, the language runtime, and statically-linked native code from the JDK. 
 
 An executable file produced by Native Image has several important advantages, in that it

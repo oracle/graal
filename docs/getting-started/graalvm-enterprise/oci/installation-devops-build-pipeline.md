@@ -27,11 +27,11 @@ The DevOps CI/CD platform reads the file and runs the commands one by one.
 You do not need to run a YUM package manager command manually.
 
 RPMs for Oracle GraalVM are available with the package names `graalvm-17-native-image`, `graalvm-21-native-image`, and `graalvm-22-native-image`. 
-Each package includes the JDK and Native Image.
+Each package includes the JDK and the Native Image tool.
 
 To install and use Oracle GraalVM in your DevOps Build Pipeline, update your build specification file as shown in the following example.
 
-1. Add the command to install Oracle GraalVM for JDK 22 with Native Image and Java Development Kit (JDK):
+1. Add a command to install Oracle GraalVM for JDK 22 with Native Image and Java Development Kit (JDK):
 
     ```yml
     steps:
@@ -41,7 +41,7 @@ To install and use Oracle GraalVM in your DevOps Build Pipeline, update your bui
         yum -y install graalvm-22-native-image
     ```
 
-2. Add the command to set the `JAVA_HOME` environment variable for Oracle GraalVM for JDK 22:
+2. Add a command to set the value of the `JAVA_HOME` environment variable for Oracle GraalVM for JDK 22:
 
     ```yml
     env:
@@ -49,7 +49,7 @@ To install and use Oracle GraalVM in your DevOps Build Pipeline, update your bui
         "JAVA_HOME" : "/usr/lib64/graalvm/graalvm-java22"
     ```
 
-3. Add the command to set the `PATH` environment variable:
+3. Add the command to set the value of the `PATH` environment variable:
 
     ```yml
     env:

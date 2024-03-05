@@ -177,6 +177,6 @@ The server prints to the console detailed information while handling the request
 This completes the guide how to enhance a plain Node.js application with tracing.
 The traces remain separated in its own `agent.js` file and can be applied at start time (demonstrated here) or [dynamically](Insight-Embedding.md) when needed.
 
-### What to Read Rext
+### What to Read Next
 
 To learn more about Insight and find some challenging tasks, go to the [Insight Manual](Insight-Manual.md).

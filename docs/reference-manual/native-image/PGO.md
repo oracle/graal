@@ -24,7 +24,7 @@ Profile-Guided Optimization (PGO) is a technique that brings profile information
 
 ### What Is a _Profile_?
 
-A profile is a summarised log of how many times certain events occurred during an application's run time.
+A profile is a summarized log of how many times certain events occurred during an application's run time.
 The events are chosen according to which information can be useful for the compiler to make better decisions.
 Examples include:
 - How many times was this method called?
@@ -79,7 +79,7 @@ This is the essence of PGO - using information from the profile to give the comp
 The actual decisions and the actual events the profile records vary from phase to phase, but the preceding example illustrates the general idea.
 
 Notice that PGO expects a representative workload to be run on the instrumented binary of the application.
-Providing a counter-productive profile (a profile that records the exact opposite of the actual runtime behaviour of the application) will be counter-productive.
+Providing a counter-productive profile (a profile that records the exact opposite of the actual runtime behavior of the application) will be counter-productive.
 For the above example, this would be running the instrumented binary with a workload that invokes the `run()` method with too few arguments, while the actual application does not.
 This would lead to the inlining phase choosing to inline `handleNotEnoughArguments` reducing the performance of the optimized binary.
 
