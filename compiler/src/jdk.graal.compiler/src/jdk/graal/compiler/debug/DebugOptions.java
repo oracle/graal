@@ -155,7 +155,7 @@ public class DebugOptions {
     @Option(help = "Enable more verbose log output when available", type = OptionType.Debug)
     public static final OptionKey<Boolean> LogVerbose = new OptionKey<>(false);
 
-    @Option(help = "The directory where various Graal dump files are written.")
+    @Option(help = "The directory where various Graal dump files are written.", type = OptionType.User)
     public static final OptionKey<String> DumpPath = new OptionKey<>("graal_dumps");
     @Option(help = "Print the name of each dump file path as it's created.")
     public static final OptionKey<Boolean> ShowDumpFiles = new OptionKey<>(false);
