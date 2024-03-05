@@ -1809,6 +1809,15 @@ public class BinaryParser extends BinaryStreamParser {
                         load(state, V128_TYPE, 128, longMultiResult);
                         state.addExtendedMemoryInstruction(Bytecode.VECTOR_V128_LOAD, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                         break;
+                    case Instructions.VECTOR_V128_LOAD8X8_S:
+                    case Instructions.VECTOR_V128_LOAD8X8_U:
+                    case Instructions.VECTOR_V128_LOAD16X4_S:
+                    case Instructions.VECTOR_V128_LOAD16X4_U:
+                    case Instructions.VECTOR_V128_LOAD32X2_S:
+                    case Instructions.VECTOR_V128_LOAD32X2_U:
+                        load(state, V128_TYPE, 64, longMultiResult);
+                        state.addExtendedMemoryInstruction(vectorOpcode, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
                     case Instructions.VECTOR_V128_LOAD8_SPLAT:
                         load(state, V128_TYPE, 8, longMultiResult);
                         state.addExtendedMemoryInstruction(Bytecode.VECTOR_V128_LOAD8_SPLAT, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
