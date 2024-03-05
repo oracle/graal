@@ -893,6 +893,10 @@ public abstract class BytecodeParser {
                     offset++;
                     switch (vectorOpcode) {
                         case Bytecode.VECTOR_V128_LOAD:
+                        case Bytecode.VECTOR_V128_LOAD8_SPLAT:
+                        case Bytecode.VECTOR_V128_LOAD16_SPLAT:
+                        case Bytecode.VECTOR_V128_LOAD32_SPLAT:
+                        case Bytecode.VECTOR_V128_LOAD64_SPLAT:
                         case Bytecode.VECTOR_V128_LOAD32_ZERO:
                         case Bytecode.VECTOR_V128_LOAD64_ZERO:
                         case Bytecode.VECTOR_V128_STORE: {

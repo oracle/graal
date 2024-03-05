@@ -1750,6 +1750,34 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             pushVector128(frame, stackPointer++, value);
                             break;
                         }
+                        case Bytecode.VECTOR_V128_LOAD8_SPLAT:
+                        case Bytecode.VECTOR_V128_LOAD16_SPLAT:
+                        case Bytecode.VECTOR_V128_LOAD32_SPLAT:
+                        case Bytecode.VECTOR_V128_LOAD64_SPLAT: {
+                            final int encoding = rawPeekU8(bytecode, offset);
+                            offset++;
+                            final int indexType64 = encoding & BytecodeBitEncoding.MEMORY_64_FLAG;
+                            final int memoryIndex = rawPeekI32(bytecode, offset);
+                            offset += 4;
+                            final long memOffset;
+                            if (indexType64 == 0) {
+                                memOffset = rawPeekU32(bytecode, offset);
+                                offset += 4;
+                            } else {
+                                memOffset = rawPeekI64(bytecode, offset);
+                                offset += 8;
+                            }
+                            final long baseAddress;
+                            if (indexType64 == 0) {
+                                baseAddress = Integer.toUnsignedLong(popInt(frame, --stackPointer));
+                            } else {
+                                baseAddress = popLong(frame, --stackPointer);
+                            }
+                            final long address = effectiveMemoryAddress64(memOffset, baseAddress);
+                            final WasmMemory memory = memory(instance, memoryIndex);
+                            loadSplat(memory, frame, stackPointer++, vectorOpcode, address);
+                            break;
+                        }
                         case Bytecode.VECTOR_V128_LOAD32_ZERO:
                         case Bytecode.VECTOR_V128_LOAD64_ZERO: {
                             final int encoding = rawPeekU8(bytecode, offset);
@@ -2550,6 +2578,45 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 final long value = memory.load_i64(this, address);
                 long[] longs = new long[2];
                 longs[0] = value;
+                final Vector128 vec = Vector128.ofLongs(longs);
+                pushVector128(frame, stackPointer, vec);
+                break;
+            }
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+    }
+
+    private void loadSplat(WasmMemory memory, VirtualFrame frame, int stackPointer, int vectorOpcode, long address) {
+        switch (vectorOpcode) {
+            case Bytecode.VECTOR_V128_LOAD8_SPLAT: {
+                final byte value = (byte) memory.load_i32_8s(this, address);
+                byte[] bytes = new byte[16];
+                Arrays.fill(bytes, value);
+                final Vector128 vec = Vector128.ofBytes(bytes);
+                pushVector128(frame, stackPointer, vec);
+                break;
+            }
+            case Bytecode.VECTOR_V128_LOAD16_SPLAT: {
+                final short value = (short) memory.load_i32_16s(this, address);
+                short[] shorts = new short[8];
+                Arrays.fill(shorts, value);
+                final Vector128 vec = Vector128.ofShorts(shorts);
+                pushVector128(frame, stackPointer, vec);
+                break;
+            }
+            case Bytecode.VECTOR_V128_LOAD32_SPLAT: {
+                final int value = memory.load_i32(this, address);
+                int[] ints = new int[4];
+                Arrays.fill(ints, value);
+                final Vector128 vec = Vector128.ofInts(ints);
+                pushVector128(frame, stackPointer, vec);
+                break;
+            }
+            case Bytecode.VECTOR_V128_LOAD64_SPLAT: {
+                final long value = memory.load_i64(this, address);
+                long[] longs = new long[2];
+                Arrays.fill(longs, value);
                 final Vector128 vec = Vector128.ofLongs(longs);
                 pushVector128(frame, stackPointer, vec);
                 break;
