@@ -40,6 +40,7 @@ import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.LoopEndNode;
 import jdk.graal.compiler.nodes.PhiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.loop.LoopEx;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.OptionValues;
@@ -149,6 +150,43 @@ public class LoopSafepointStateVerificationTest extends GraalCompilerTest {
 
         });
         return s;
+    }
+
+    public static void snippet02() {
+        for (int i9 = 0; i9 < 100; i9++) {
+            GraalDirectives.sideEffect();
+            for (int i8 = 0; i8 < 100; i8++) {
+                GraalDirectives.sideEffect();
+            }
+            for (int i7 = 0; i7 < 100; i7++) {
+                GraalDirectives.sideEffect();
+            }
+            for (int i6 = 0; i6 < 100; i6++) {
+                GraalDirectives.sideEffect();
+            }
+            for (int i5 = 0; i5 < 100; i5++) {
+                GraalDirectives.sideEffect();
+                for (int i4 = 0; i4 < 100; i4++) {
+                    GraalDirectives.sideEffect();
+                }
+                for (int i3 = 0; i3 < 100; i3++) {
+                    GraalDirectives.sideEffect();
+                }
+                for (int i2 = 0; i2 < 100; i2++) {
+                    GraalDirectives.sideEffect();
+                }
+                for (int i1 = 0; i1 < 100; i1++) {
+                    GraalDirectives.sideEffect();
+                }
+            }
+        }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testLoopDataStructure() {
+        StructuredGraph g = parseEager(getResolvedJavaMethod("snippet02"), AllowAssumptions.NO);
+        assert g.verify();
     }
 
 }
