@@ -39,6 +39,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.graalvm.collections.UnmodifiableMapCursor;
@@ -48,6 +49,7 @@ import com.oracle.truffle.runtime.hotspot.libgraal.LibGraalIsolate;
 import com.oracle.truffle.runtime.hotspot.libgraal.LibGraalScope;
 
 import jdk.graal.compiler.api.test.ModuleSupport;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.hotspot.CompilationTask;
 import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
@@ -60,6 +62,7 @@ import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.GraalUnsafeAccess;
 import jdk.graal.compiler.util.OptionsEncoder;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
@@ -104,6 +107,11 @@ public class LibGraalCompilationDriver {
     private final boolean eagerResolving;
 
     /**
+     * If true, will not exit with an error in case of errors during compilation.
+     */
+    private final boolean ignoreFailures;
+
+    /**
      * Whether to use multiple threads for compilation.
      */
     private final boolean multiThreaded;
@@ -129,12 +137,13 @@ public class LibGraalCompilationDriver {
      * @param statsInterval Interval between compilation progress reports, in seconds.
      */
     public LibGraalCompilationDriver(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalCompiler compiler,
-                    boolean invalidateInstalledCode, boolean eagerResolving,
+                    boolean invalidateInstalledCode, boolean eagerResolving, boolean ignoreFailures,
                     boolean multiThreaded, int threadCount, int statsInterval) {
         this.jvmciRuntime = jvmciRuntime;
         this.compiler = compiler;
         this.invalidateInstalledCode = invalidateInstalledCode;
         this.eagerResolving = eagerResolving;
+        this.ignoreFailures = ignoreFailures;
         this.multiThreaded = multiThreaded;
         this.numThreads = threadCount;
         this.statsInterval = statsInterval;
@@ -591,15 +600,18 @@ public class LibGraalCompilationDriver {
         long allocatedAtStart = getCurrentThreadAllocatedBytes();
 
         CompilationTask task = createCompilationTask(method, useProfilingInfo, installAsDefault);
-        task.runCompilation(compileOptions);
-        HotSpotInstalledCode installedCode = task.getInstalledCode();
-        if (installedCode == null) {
-            return null;
+        HotSpotCompilationRequestResult result = task.runCompilation(compileOptions);
+        if (result.getFailure() != null) {
+            throw new GraalError("Compilation request failed: %s", result.getFailureMessage());
         }
+        HotSpotInstalledCode installedCode = task.getInstalledCode();
+        assert installedCode != null : "installed code is null yet no failure detected";
         long duration = System.nanoTime() - start;
         long memoryUsed = getCurrentThreadAllocatedBytes() - allocatedAtStart;
         return new CompilationResult(installedCode, duration, memoryUsed);
     }
+
+    private final AtomicInteger failedCompilations = new AtomicInteger(0);
 
     /**
      * Compiles all the given methods, using libgraal if available.
@@ -612,6 +624,7 @@ public class LibGraalCompilationDriver {
     }
 
     private void compileAll(LibGraalParams libgraal, List<? extends Compilation> compilations, OptionValues options) {
+        failedCompilations.set(0);
         int threadCount = getThreadCount();
 
         AtomicLong compileTime = new AtomicLong();
@@ -629,6 +642,9 @@ public class LibGraalCompilationDriver {
             results = compileAllSingleThreaded(libgraal, compilations, options, compileTime, memoryUsed, codeSize);
         } else {
             results = compileAllMultiThreaded(libgraal, compilations, options, threadCount, compileTime, memoryUsed, codeSize);
+        }
+        if (!ignoreFailures && failedCompilations.get() > 0) {
+            throw new GraalError("%d failures occurred during compilation", failedCompilations.get());
         }
 
         long elapsedTime = System.nanoTime() - start;
@@ -664,7 +680,7 @@ public class LibGraalCompilationDriver {
                     Map<ResolvedJavaMethod, CompilationResult> results) {
         CompilationResult result = compile(task, libgraal, options);
         if (result == null) {
-            TTY.println("Compilation of %s failed", task);
+            failedCompilations.getAndAdd(1);
             return;
         }
         compileTime.getAndAdd(result.compileTime());
@@ -748,7 +764,7 @@ public class LibGraalCompilationDriver {
         TTY.println("%s : Using %d threads", testName(), threadCount);
 
         Map<ResolvedJavaMethod, CompilationResult> results = new ConcurrentHashMap<>();
-        try (ThreadPoolExecutor threadPool = new ThreadPoolExecutor(numThreads, threadCount, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(),
+        try (ThreadPoolExecutor threadPool = new ThreadPoolExecutor(threadCount, threadCount, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(),
                         new GraalCompileThreadFactory(libgraal))) {
             for (Compilation task : compilations) {
                 threadPool.submit(() -> compileAndRecord(task, libgraal, options, compileTime, memoryUsed, codeSize, results));
