@@ -73,7 +73,7 @@ public class Vector128Ops {
                 f64x2_unop(x, vectorOpcode);
             case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S, Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U -> i32x4_trunc_sat_f32x4(x, vectorOpcode);
             case Bytecode.VECTOR_F32X4_CONVERT_I32X4_S, Bytecode.VECTOR_F32X4_CONVERT_I32X4_U -> f32x4_convert_i32x4(x, vectorOpcode);
-            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO, Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO -> i32x4_trunc_sat_f64x2(x, vectorOpcode);
+            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO, Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO -> i32x4_trunc_sat_f64x2_zero(x, vectorOpcode);
             case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_S, Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_U -> f64x2_convert_low_i32x4(x, vectorOpcode);
             case Bytecode.VECTOR_F32X4_DEMOTE_F64X2_ZERO -> f32x4_demote_f64x2_zero(x);
             case Bytecode.VECTOR_F64X2_PROMOTE_LOW_F32X4 -> f64x2_promote_low_f32x4(x);
@@ -1097,12 +1097,12 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static byte[] i32x4_trunc_sat_f64x2(byte[] vecX, int vectorOpcode) {
+    private static byte[] i32x4_trunc_sat_f64x2_zero(byte[] vecX, int vectorOpcode) {
         double[] x = Vector128.bytesAsDoubles(vecX);
         int[] result = new int[4];
         CompilerDirectives.ensureVirtualized(x);
         CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
+        for (int i = 0; i < x.length; i++) {
             result[i] = switch (vectorOpcode) {
                 case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO -> (int) x[i];
                 case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO -> truncSatU32(x[i]);
