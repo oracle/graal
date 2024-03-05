@@ -2574,6 +2574,7 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.I64_CONST:
                 case Instructions.F32_CONST:
                 case Instructions.F64_CONST:
+                    throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid constant expression for table elem expression: 0x%02X", opcode);
                 case Instructions.I32_ADD:
                 case Instructions.I32_SUB:
                 case Instructions.I32_MUL:
