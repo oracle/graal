@@ -33,11 +33,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -77,11 +75,9 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
-import com.oracle.svm.core.graal.thread.VMThreadLocalAccess;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.core.heap.UnknownClass;
@@ -131,11 +127,8 @@ import jdk.graal.compiler.java.GraphBuilderPhase.Instance;
 import jdk.graal.compiler.nodes.StaticDeoptimizingNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.extended.UnsafeAccessNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import jdk.graal.compiler.nodes.java.AccessFieldNode;
-import jdk.graal.compiler.nodes.java.AccessMonitorNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
@@ -171,8 +164,6 @@ public class SVMHost extends HostVM {
      * need to keep the whole graphs alive.
      */
     private final ConcurrentMap<AnalysisMethod, Boolean> containsStackValueNode = new ConcurrentHashMap<>();
-    private final ConcurrentMap<AnalysisMethod, Boolean> classInitializerSideEffect = new ConcurrentHashMap<>();
-    private final ConcurrentMap<AnalysisMethod, Set<AnalysisType>> initializedClasses = new ConcurrentHashMap<>();
     private final ConcurrentMap<AnalysisMethod, Boolean> analysisTrivialMethods = new ConcurrentHashMap<>();
 
     private final Set<AnalysisField> finalFieldsInitializedOutsideOfConstructor = ConcurrentHashMap.newKeySet();
@@ -649,53 +640,6 @@ public class SVMHost extends HostVM {
             } else if (n instanceof ReachabilityRegistrationNode node) {
                 bb.postTask(debug -> node.getRegistrationTask().ensureDone());
             }
-            checkClassInitializerSideEffect(method, n);
-        }
-    }
-
-    /**
-     * Classes are only safe for automatic initialization if the class initializer has no side
-     * effect on other classes and cannot be influenced by other classes. Otherwise there would be
-     * observable side effects. For example, if a class initializer of class A writes a static field
-     * B.f in class B, then someone could rely on reading the old value of B.f before triggering
-     * initialization of A. Similarly, if a class initializer of class A reads a static field B.f,
-     * then an early automatic initialization of class A could read a non-yet-set value of B.f.
-     *
-     * Note that it is not necessary to disallow instance field accesses: Objects allocated by the
-     * class initializer itself can always be accessed because they are independent from other
-     * initializers; all other objects must be loaded transitively from a static field.
-     *
-     * Currently, we are conservative and mark all methods that access static fields as unsafe for
-     * automatic class initialization (unless the class initializer itself accesses a static field
-     * of its own class - the common way of initializing static fields). The check could be relaxed
-     * by tracking the call chain, i.e., allowing static field accesses when the root method of the
-     * call chain is the class initializer. But this does not fit well into the current approach
-     * where each method has a `Safety` flag.
-     */
-    private void checkClassInitializerSideEffect(AnalysisMethod method, Node n) {
-        if (n instanceof AccessFieldNode) {
-            ResolvedJavaField field = ((AccessFieldNode) n).field();
-            if (field.isStatic() && (!method.isClassInitializer() || !field.getDeclaringClass().equals(method.getDeclaringClass()))) {
-                classInitializerSideEffect.put(method, true);
-            }
-        } else if (n instanceof UnsafeAccessNode || n instanceof VMThreadLocalAccess) {
-            /*
-             * Unsafe memory access nodes are rare, so it does not pay off to check what kind of
-             * field they are accessing.
-             *
-             * Methods that access a thread-local value cannot be initialized at image build time
-             * because such values are not available yet.
-             */
-            classInitializerSideEffect.put(method, true);
-        } else if (n instanceof EnsureClassInitializedNode) {
-            ResolvedJavaType type = ((EnsureClassInitializedNode) n).constantTypeOrNull(getProviders(method.getMultiMethodKey()).getConstantReflection());
-            if (type != null) {
-                initializedClasses.computeIfAbsent(method, k -> new HashSet<>()).add((AnalysisType) type);
-            } else {
-                classInitializerSideEffect.put(method, true);
-            }
-        } else if (n instanceof AccessMonitorNode) {
-            classInitializerSideEffect.put(method, true);
         }
     }
 
@@ -712,19 +656,6 @@ public class SVMHost extends HostVM {
 
     public boolean containsStackValueNode(AnalysisMethod method) {
         return containsStackValueNode.containsKey(method);
-    }
-
-    public boolean hasClassInitializerSideEffect(AnalysisMethod method) {
-        return classInitializerSideEffect.containsKey(method);
-    }
-
-    public Set<AnalysisType> getInitializedClasses(AnalysisMethod method) {
-        Set<AnalysisType> result = initializedClasses.get(method);
-        if (result != null) {
-            return result;
-        } else {
-            return Collections.emptySet();
-        }
     }
 
     public boolean isAnalysisTrivialMethod(AnalysisMethod method) {
