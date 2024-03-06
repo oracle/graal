@@ -178,7 +178,7 @@ class NativeImageBenchmarkConfig:
 
         base_image_build_args += self.system_properties
         self.bundle_path = self.get_bundle_path_if_present()
-        bundle_create_path = self.get_bundle_create_path_if_present()
+        self.bundle_create_path = self.get_bundle_create_path_if_present()
         if not self.bundle_path:
             base_image_build_args += self.classpath_arguments
             base_image_build_args += self.modulepath_arguments
@@ -192,14 +192,14 @@ class NativeImageBenchmarkConfig:
             '-H:+CollectImageBuildStatistics',
         ]
         self.image_build_reports_directory: Path = self.output_dir / "reports"
-        if bundle_create_path is not None:
-            self.image_build_reports_directory = self.output_dir / bundle_create_path
+        if self.bundle_create_path is not None:
+            self.image_build_reports_directory = self.output_dir / self.bundle_create_path / "default" / "reports"
 
         # Path of the final executable
         self.image_path = self.output_dir / self.final_image_name
         self.instrumented_image_path = self.output_dir / instrumentation_executable_name
-        if bundle_create_path is not None:
-            self.image_path = self.output_dir / bundle_create_path.parent / str(bundle_create_path).split(".")[0]
+        if self.bundle_create_path is not None:
+            self.image_path = self.output_dir / self.bundle_create_path / "default" / str(self.bundle_create_path).split(".")[0]
 
         if vm.is_quickbuild:
             base_image_build_args += ['-Ob']
@@ -239,6 +239,9 @@ class NativeImageBenchmarkConfig:
         # the bundle might also inject experimental options, but they will be appropriately locked/unlocked.
         self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')] + svm_experimental_options(base_image_build_args) + bundle_args
 
+        if self.bundle_create_path and Stage.INSTRUMENT_IMAGE in bm_suite.stages_info.effective_stages:
+            mx.warn("Building instrumented benchmarks with --bundle-create is untested and may behave in unexpected ways")
+
     def get_build_output_json_file(self, stage: Stage) -> Path:
         """
         Path to the build output statistics JSON file (see also ``-H:BuildOutputJSONFile``).
@@ -255,7 +258,12 @@ class NativeImageBenchmarkConfig:
         else:
             raise AssertionError(f"There is no build output file for the {stage} stage")
 
-        return self.image_build_reports_directory / f"build-output-{suffix}.json"
+        filename = f"build-output-{suffix}.json"
+
+        if self.bundle_create_path:
+            return self.output_dir / self.bundle_create_path / "other" / filename
+        else:
+            return self.image_build_reports_directory / filename
 
     def get_image_build_stats_file(self, stage: Stage) -> Path:
         """
@@ -294,7 +302,7 @@ class NativeImageBenchmarkConfig:
         if len(bundle_arg_idx) == 1:
             # This only works by convention, but not in general. For this to work, the argument after --bundle-create
             # has to be the image name (without -o or -H:Name).
-            return Path(self.extra_image_build_arguments[bundle_arg_idx[0] + 1] + ".output") / "default" / "reports"
+            return Path(self.extra_image_build_arguments[bundle_arg_idx[0] + 1] + ".output")
 
         return None
 
@@ -1242,6 +1250,10 @@ class FileSizeRule(mx_benchmark.FixedRule):
 class AnalysisReportJsonFileRule(mx_benchmark.JsonStdOutFileRule):
     """
     Rule that looks for JSON file names in the output of the benchmark and looks up the files in the report directory
+
+    The path printed in the output may not be the final path where the file was placed (e.g. with ``--bundle-create``).
+    To account for that, only the file name is looked up in :attr:`report_directory`, which is guaranteed to be the
+    final path of the ``reports`` directory, instead.
     """
 
     def __init__(self, report_directory, is_diagnostics_mode, replacement, keys):
