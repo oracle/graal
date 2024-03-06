@@ -27,23 +27,17 @@ package com.oracle.svm.core.foreign;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 
 import java.lang.invoke.MethodHandle;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.PointerBase;
-import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FunctionPointerHolder;
@@ -51,14 +45,11 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.headers.WindowsAPIs;
-import com.oracle.svm.core.heap.OutOfMemoryUtil;
-import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.NumUtil;
 import jdk.internal.foreign.abi.CapturableState;
 
 public class ForeignFunctionsRuntime {
@@ -71,140 +62,11 @@ public class ForeignFunctionsRuntime {
     private final EconomicMap<NativeEntryPointInfo, FunctionPointerHolder> downcallStubs = EconomicMap.create();
     private final EconomicMap<JavaEntryPointInfo, FunctionPointerHolder> upcallStubs = EconomicMap.create();
 
-    public static final class PointerHolder {
-        public final Pointer pointer;
-
-        public PointerHolder(Pointer pointer) {
-            this.pointer = pointer;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-            PointerHolder that = (PointerHolder) o;
-            return pointer.equal(that.pointer);
-        }
-
-        @Override
-        public int hashCode() {
-            return Long.hashCode(pointer.rawValue());
-        }
-    }
-
-    private final Map<PointerHolder, TrampolineSet> trampolineMap = new ConcurrentHashMap<>();
+    private final Map<Long, TrampolineSet> trampolines = new HashMap<>();
     private TrampolineSet currentTrampolineSet;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public ForeignFunctionsRuntime() {
-    }
-
-    private static final class TrampolineSet {
-        private static UnsignedWord allocationSize() {
-            return VirtualMemoryProvider.get().getGranularity();
-        }
-
-        private static int maxTrampolineCount() {
-            long result = allocationSize().rawValue() / AbiUtils.singleton().trampolineSize();
-            return NumUtil.safeToInt(result);
-        }
-
-        public static Pointer getAllocationBase(Pointer ptr) {
-            var offset = ptr.unsignedRemainder(allocationSize());
-            assert offset.belowOrEqual(allocationSize());
-            assert offset.belowOrEqual(Integer.MAX_VALUE);
-            assert offset.unsignedRemainder(AbiUtils.singleton().trampolineSize()).equal(0);
-            return ptr.subtract(offset);
-        }
-
-        private static final int FREED = -1;
-
-        private final List<PinnedObject> pins = new ArrayList<>();
-        /*
-         * Invariant: {@code freed <= assigned <= trampolineCount}
-         */
-        private int assigned = 0; // Contains FREED after being freed
-        private int freed = 0;
-        private final int trampolineCount = maxTrampolineCount();
-        private final PointerBase[] methodHandles = new PointerBase[trampolineCount];
-        private final CFunctionPointer[] stubs = new CFunctionPointer[trampolineCount];
-        private final Pointer trampolines;
-
-        private PinnedObject pin(Object object) {
-            PinnedObject pinned = PinnedObject.create(object);
-            pins.add(pinned);
-            return pinned;
-        }
-
-        TrampolineSet(AbiUtils.TrampolineTemplate template) {
-            assert allocationSize().rawValue() % AbiUtils.singleton().trampolineSize() == 0;
-
-            assert trampolineCount <= maxTrampolineCount();
-            trampolines = prepareTrampolines(pin(methodHandles), pin(stubs), template);
-        }
-
-        public Pointer base() {
-            return trampolines;
-        }
-
-        public boolean hasFreeTrampolines() {
-            assert (0 <= assigned && assigned <= trampolineCount) || assigned == FREED;
-            return assigned != FREED && assigned != trampolineCount;
-        }
-
-        public Pointer assignTrampoline(MethodHandle methodHandle, CFunctionPointer upcallStubPointer) {
-            assert hasFreeTrampolines();
-
-            PinnedObject pinned = pin(methodHandle);
-            int id = assigned++;
-
-            methodHandles[id] = pinned.addressOfObject();
-            stubs[id] = upcallStubPointer;
-
-            return trampolines.add(id * AbiUtils.singleton().trampolineSize());
-        }
-
-        private Pointer prepareTrampolines(PinnedObject mhsArray, PinnedObject stubsArray, AbiUtils.TrampolineTemplate template) {
-            VirtualMemoryProvider memoryProvider = VirtualMemoryProvider.get();
-            UnsignedWord pageSize = allocationSize();
-            /* We request a specific alignment to guarantee correctness of getAllocationBase */
-            Pointer page = memoryProvider.commit(WordFactory.nullPointer(), pageSize, VirtualMemoryProvider.Access.WRITE | VirtualMemoryProvider.Access.FUTURE_EXECUTE);
-            if (page.isNull()) {
-                throw OutOfMemoryUtil.reportOutOfMemoryError(new OutOfMemoryError("Could not allocate memory for trampolines."));
-            }
-            VMError.guarantee(page.unsignedRemainder(pageSize).equal(0), "Trampoline allocation must be aligned to allocationSize().");
-
-            Pointer it = page;
-            Pointer end = page.add(pageSize);
-            for (int i = 0; i < trampolineCount; ++i) {
-                VMError.guarantee(getAllocationBase(it).equal(page));
-                it = template.write(it, CurrentIsolate.getIsolate(), mhsArray.addressOfArrayElement(i), stubsArray.addressOfArrayElement(i));
-                VMError.guarantee(it.belowOrEqual(end), "Not enough memory was allocated to hold trampolines");
-            }
-
-            VMError.guarantee(memoryProvider.protect(page, pageSize, VirtualMemoryProvider.Access.EXECUTE) == 0,
-                            "Error when making the trampoline allocation executable");
-
-            return page;
-        }
-
-        private boolean tryFree() {
-            freed++;
-            assert freed <= trampolineCount;
-            if (freed < trampolineCount) {
-                return false;
-            }
-            for (PinnedObject pinned : pins) {
-                pinned.close();
-            }
-            VirtualMemoryProvider.get().free(trampolines, allocationSize());
-            assigned = FREED;
-            return true;
-        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -225,39 +87,39 @@ public class ForeignFunctionsRuntime {
      * {@link jdk.internal.foreign.abi.DowncallLinker#getBoundMethodHandle} and add information
      * about the descriptor there.
      */
-    public CFunctionPointer getDowncallStubPointer(NativeEntryPointInfo nep) {
-        FunctionPointerHolder pointer = downcallStubs.get(nep);
-        if (pointer == null) {
+    CFunctionPointer getDowncallStubPointer(NativeEntryPointInfo nep) {
+        FunctionPointerHolder holder = downcallStubs.get(nep);
+        if (holder == null) {
             throw new UnregisteredForeignStubException(nep);
-        } else {
-            return pointer.functionPointer;
         }
+        return holder.functionPointer;
     }
 
-    public CFunctionPointer getUpcallStubPointer(JavaEntryPointInfo jep) {
-        FunctionPointerHolder pointer = upcallStubs.get(jep);
-        if (pointer == null) {
+    CFunctionPointer getUpcallStubPointer(JavaEntryPointInfo jep) {
+        FunctionPointerHolder holder = upcallStubs.get(jep);
+        if (holder == null) {
             throw new UnregisteredForeignStubException(jep);
-        } else {
-            return pointer.functionPointer;
+        }
+        return holder.functionPointer;
+    }
+
+    Pointer registerForUpcall(MethodHandle methodHandle, JavaEntryPointInfo jep) {
+        synchronized (trampolines) {
+            if (currentTrampolineSet == null || !currentTrampolineSet.hasFreeTrampolines()) {
+                currentTrampolineSet = new TrampolineSet(trampolineTemplate);
+                trampolines.put(currentTrampolineSet.base().rawValue(), currentTrampolineSet);
+            }
+            return currentTrampolineSet.assignTrampoline(methodHandle, getUpcallStubPointer(jep));
         }
     }
 
-    public Pointer registerForUpcall(MethodHandle methodHandle, JavaEntryPointInfo jep) {
-        if (currentTrampolineSet == null || !currentTrampolineSet.hasFreeTrampolines()) {
-            currentTrampolineSet = new TrampolineSet(trampolineTemplate);
-            trampolineMap.put(new PointerHolder(currentTrampolineSet.base()), currentTrampolineSet);
-        }
-        return currentTrampolineSet.assignTrampoline(methodHandle, getUpcallStubPointer(jep));
-    }
-
-    public void freeTrampoline(long addr) {
-        Pointer ptr = TrampolineSet.getAllocationBase(WordFactory.pointer(addr));
-        PointerHolder key = new PointerHolder(ptr);
-        TrampolineSet trampolineSet = trampolineMap.get(key);
-        VMError.guarantee(trampolineSet != null);
-        if (trampolineSet.tryFree()) {
-            trampolineMap.remove(key);
+    void freeTrampoline(long addr) {
+        synchronized (trampolines) {
+            long base = TrampolineSet.getAllocationBase(WordFactory.pointer(addr)).rawValue();
+            TrampolineSet trampolineSet = trampolines.get(base);
+            if (trampolineSet.tryFree()) {
+                trampolines.remove(base);
+            }
         }
     }
 
@@ -285,12 +147,12 @@ public class ForeignFunctionsRuntime {
      * Workaround for CapturableState.mask() being interruptible.
      */
     @Fold
-    public static int getMask(CapturableState state) {
+    static int getMask(CapturableState state) {
         return state.mask();
     }
 
     @Fold
-    public static boolean isWindows() {
+    static boolean isWindows() {
         return OS.WINDOWS.isCurrent();
     }
 
