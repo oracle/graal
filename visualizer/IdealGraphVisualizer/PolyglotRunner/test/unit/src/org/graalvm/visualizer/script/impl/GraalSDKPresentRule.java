@@ -23,6 +23,9 @@
 package org.graalvm.visualizer.script.impl;
 
 import javax.script.ScriptEngine;
+import javax.script.ScriptEngineFactory;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
 import static org.junit.Assert.assertNotNull;
 import org.junit.AssumptionViolatedException;
 import org.junit.rules.TestRule;
@@ -39,10 +42,18 @@ public class GraalSDKPresentRule implements TestRule {
     private boolean checkGraal() {
         try {
             Class.forName("org.graalvm.polyglot.Engine");
+
+            final ScriptEngineManager manager = Scripting.createManager();
+            for (ScriptEngineFactory factory : manager.getEngineFactories()) {
+                final String name = factory.getEngineName();
+                System.err.println("Found " + name);
+            }
+
             ScriptEngine js = Scripting.createManager().getEngineByName("GraalVM:js");
-            assertNotNull("Need GraalVM", js);
+            assertNotNull("Need GraalVM:js", js);
             return true;
         } catch (ClassNotFoundException ex) {
+            System.err.println(ex);
             return false;
         }
     }

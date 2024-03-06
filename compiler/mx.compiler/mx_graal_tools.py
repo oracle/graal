@@ -76,7 +76,13 @@ def run_netbeans_app(app_name, jdkhome, args=None, dist=None):
 def igv(args):
     """run the Ideal Graph Visualizer"""
     dist = 'IDEALGRAPHVISUALIZER-0_31-0A82D7A0D60_DIST'
-    run_netbeans_app('IdealGraphVisualizer', mx_compiler.jdk.home, args=args, dist=dist)
+    v11 = mx.VersionSpec("11")
+    v22 = mx.VersionSpec("22")
+    def _c1vJdkVersionCheck(version):
+        return v17 <= version <= v22
+    # Netbeans 20 officially supports 11, 17 and 20
+    jdkhome = mx.get_jdk(_c1vJdkVersionCheck, versionDescription='(JDK that is at least 11 and at most 21.  This can be configured through EXTRA_JAVA_HOMES)', purpose="running IGV").home
+    run_netbeans_app('IdealGraphVisualizer', jdkhome, args=args, dist=dist)
 
 def c1visualizer(args):
     """run the C1 Compiler Visualizer"""
