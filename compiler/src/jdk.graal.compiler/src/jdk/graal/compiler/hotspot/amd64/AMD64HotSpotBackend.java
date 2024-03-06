@@ -31,6 +31,7 @@ import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
+import jdk.graal.compiler.asm.BranchTargetOutOfBoundsException;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
@@ -39,6 +40,7 @@ import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.amd64.AMD64NodeMatchRules;
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
@@ -290,6 +292,13 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
 
     @Override
     public void emitCode(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, EntryPointDecorator entryPointDecorator) {
+        emitCodeHelper(crb, installedCodeOwner, entryPointDecorator);
+        if (GraalOptions.OptimizeLongJumps.getValue(crb.getOptions())) {
+            optimizeLongJumps(crb, installedCodeOwner, entryPointDecorator);
+        }
+    }
+
+    private void emitCodeHelper(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, EntryPointDecorator entryPointDecorator) {
         AMD64MacroAssembler asm = (AMD64MacroAssembler) crb.asm;
         FrameMap frameMap = crb.frameMap;
         RegisterConfig regConfig = frameMap.getRegisterConfig();
@@ -440,5 +449,28 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
     public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
         return new AMD64HotSpotRegisterAllocationConfig(registerConfigNonNull, allocationRestrictedTo, config.preserveFramePointer);
+    }
+
+    /**
+     * Performs a code emit from LIR and replaces jumps with 4byte displacement by equivalent
+     * instructions with single byte displacement, where possible. If any of these optimizations
+     * unexpectedly results in a {@link BranchTargetOutOfBoundsException}, code without any
+     * optimized jumps will be emitted.
+     */
+    private void optimizeLongJumps(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, EntryPointDecorator entryPointDecorator) {
+        // triggers a reset of the assembler during which replaceable jumps are identified
+        crb.resetForEmittingCode();
+        try {
+            emitCodeHelper(crb, installedCodeOwner, entryPointDecorator);
+        } catch (BranchTargetOutOfBoundsException e) {
+            /*
+             * Alignments have invalidated the assumptions regarding short jumps. Trigger fail-safe
+             * mode and emit unoptimized code.
+             */
+            AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
+            masm.disableOptimizeLongJumpsAfterException();
+            crb.resetForEmittingCode();
+            emitCodeHelper(crb, installedCodeOwner, entryPointDecorator);
+        }
     }
 }

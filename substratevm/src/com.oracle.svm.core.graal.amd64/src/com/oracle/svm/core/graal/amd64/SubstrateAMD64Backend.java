@@ -91,6 +91,7 @@ import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.asm.BranchTargetOutOfBoundsException;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
@@ -106,6 +107,7 @@ import jdk.graal.compiler.core.amd64.AMD64NodeLIRBuilder;
 import jdk.graal.compiler.core.amd64.AMD64NodeMatchRules;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.alloc.RegisterAllocationConfig;
@@ -1528,11 +1530,18 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     @Override
     public void emitCode(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, EntryPointDecorator entryPointDecorator) {
         crb.emitLIR();
+        if (GraalOptions.OptimizeLongJumps.getValue(crb.getOptions())) {
+            optimizeLongJumps(crb);
+        }
     }
 
     private AMD64Assembler createAssemblerNoOptions() {
         OptionValues o = new OptionValues(EconomicMap.create());
         return createAssembler(o);
+    }
+
+    protected void resetForEmittingCode(CompilationResultBuilder crb) {
+        crb.resetForEmittingCode();
     }
 
     @Override
@@ -1575,5 +1584,29 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         result.setTargetCode(instructions, instructions.length);
         result.setTotalFrameSize(getTarget().wordSize); // not really, but 0 not allowed
         return result;
+    }
+
+    /**
+     * Performs a code emit from LIR and replaces jumps with 4byte displacement by equivalent
+     * instructions with single byte displacement, where possible. If any of these optimizations
+     * unexpectedly results in a {@link BranchTargetOutOfBoundsException}, code without any
+     * optimized jumps will be emitted.
+     */
+    @SuppressWarnings("static-method")
+    private void optimizeLongJumps(CompilationResultBuilder crb) {
+        // Triggers a reset of the assembler during which replaceable jumps are identified.
+        resetForEmittingCode(crb);
+        try {
+            crb.emitLIR();
+        } catch (BranchTargetOutOfBoundsException e) {
+            /*
+             * Alignments have invalidated the assumptions regarding short jumps. Trigger fail-safe
+             * mode and emit unoptimized code.
+             */
+            AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;
+            masm.disableOptimizeLongJumpsAfterException();
+            crb.resetForEmittingCode();
+            crb.emitLIR();
+        }
     }
 }
