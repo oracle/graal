@@ -1699,7 +1699,6 @@ suite = {
         "truffle:TRUFFLE_RUNTIME",
       ],
       "maven": {
-        "groupId": "org.graalvm.polyglot",
         "artifactId": "llvm-native-community",
         "tag": ["default", "public"],
       },
@@ -1713,7 +1712,6 @@ suite = {
         "LLVM_NATIVE_COMMUNITY",
       ],
       "maven": {
-        "groupId": "org.graalvm.polyglot",
         "artifactId": "llvm-community",
         "tag": ["default", "public"],
       },
