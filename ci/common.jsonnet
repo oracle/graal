@@ -4,6 +4,10 @@
 # Note that using a os-arch mixin like linux_amd64 mixin is required for using common.deps.
 
 local common_json = import "../common.json";
+local run_spec   = import "ci_common/run-spec.libsonnet";
+local task_spec = run_spec.task_spec;
+local platform_spec = run_spec.platform_spec;
+local evaluate_late = run_spec.evaluate_late;
 
 {
   # JDK definitions
@@ -209,15 +213,15 @@ local common_json = import "../common.json";
     # GR-49566: SpotBugs does not yet run on JDK 22
     spotbugs: code_tools,
 
-    sulong:: {
+    sulong:: task_spec( evaluate_late({'_9_': {
       packages+: {
         cmake: "==3.22.2",
       } + if self.os == "windows" then {
         msvc_source: "==14.0",
       } else {},
-    },
+    }})),
 
-    truffleruby:: {
+    truffleruby:: task_spec( evaluate_late({'_10_': {
       packages+: (if self.os == "linux" && self.arch == "amd64" then {
         ruby: "==3.2.2", # Newer version, also used for benchmarking
       } else {
@@ -225,23 +229,23 @@ local common_json = import "../common.json";
       }) + (if self.os == "linux" then {
         libyaml: "==0.2.5",
       } else {}),
-    },
+    }})),
 
-    graalnodejs:: {
+    graalnodejs:: task_spec( evaluate_late({'_11_': {
       packages+: if self.os == "linux" then {
         cmake: "==3.22.2",
       } else {},
-    },
+    }})),
 
-    graalpy:: {
+    graalpy:: task_spec( evaluate_late({'_12_': {
       packages+: if (self.os == "linux") then {
         libffi: '>=3.2.1',
         bzip2: '>=1.0.6',
         maven: ">=3.3.9",
       } else {},
-    },
+    }})),
 
-    fastr:: {
+    fastr:: task_spec( evaluate_late({'_13_': {
       # Note: On both Linux and MacOS, FastR depends on the gnur module and on gfortran
       # of a specific version (4.8.5 on Linux, 10.2.0 on MacOS)
       # However, we do not need to load those modules, we only configure specific environment variables to
@@ -290,9 +294,9 @@ local common_json = import "../common.json";
         'GNUR_CONFIG_LOG = (?P<filename>.+\\.log)',
         'GNUR_MAKE_LOG = (?P<filename>.+\\.log)',
       ] else [],
-    },
+    }})),
 
-    svm:: {
+    svm:: task_spec(evaluate_late({'_14_': {
       packages+: {
         cmake: "==3.22.2",
       },
@@ -309,7 +313,7 @@ local common_json = import "../common.json";
         "*/callgrind.*",
         "*.log",
       ],
-    },
+    }})),
   },
 
   # Job frequencies

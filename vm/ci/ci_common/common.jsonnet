@@ -4,6 +4,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
 local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 local repo_config = import '../../../repo-configuration.libsonnet';
 local devkits = graal_common.devkits;
+local run_spec   = import "../../../ci/ci_common/run-spec.libsonnet";
 
 {
   verify_name(build): {
@@ -158,7 +159,7 @@ local devkits = graal_common.devkits;
     $.mx_vm_complete + self.artifact_deploy_sdk_components_dry_run(os)
   ],
 
-  ruby_vm_build: self.svm_common + self.sulong + self.truffleruby + vm.custom_vm,
+  ruby_vm_build: self.svm_common + self.sulong + self.truffleruby + run_spec.task_spec(vm.custom_vm),
   ruby_python_vm_build: self.ruby_vm_build + self.graalpy,
   full_vm_build: self.ruby_python_vm_build + graal_common.deps.fastr,
 
@@ -448,15 +449,15 @@ local devkits = graal_common.devkits;
     },
   },
 
-  deploy_build: {
+  deploy_build: run_spec.task_spec({
     deploysArtifacts: true
-  },
+  }),
 
-  linux_deploy: self.deploy_build + {
+  linux_deploy: self.deploy_build + run_spec.task_spec({
     packages+: {
       maven: '>=3.3.9',
     },
-  },
+  }),
 
   darwin_deploy: self.deploy_build + self.maven_download_unix + {
     environment+: {
@@ -505,11 +506,11 @@ local devkits = graal_common.devkits;
       else error "arch not found: " + arch
     else error "os not found: " + os,
 
-  deploy_graalvm_base(java_version): vm.check_structure + {
-    run: $.patch_env(self.os, self.arch, java_version) + vm.collect_profiles() + $.build_base_graalvm_image + [
+  deploy_graalvm_base: vm.check_structure + {
+    run: $.patch_env(self.os, self.arch, 'jdk21') + vm.collect_profiles() + $.build_base_graalvm_image + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
-    ] + $.deploy_sdk_base(self.os) + $.check_base_graalvm_image(self.os, self.arch, java_version),
+    ] + $.deploy_sdk_base(self.os) + $.check_base_graalvm_image(self.os, self.arch, 'jdk21'),
     notify_groups:: ['deploy'],
     timelimit: "1:00:00"
   },
