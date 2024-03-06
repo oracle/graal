@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/config-type-schema-v1.0.0.json",
+  "type": "string",
+  "title": "JSON schema for the type descriptors GraalVM Native Image configuration files use"
+}

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,7 @@ public class ConfigurationMethod implements JsonPrintable {
     public static String toInternalParamsSignature(List<ConfigurationType> types) {
         StringBuilder sb = new StringBuilder("(");
         for (ConfigurationType type : types) {
-            sb.append(MetaUtil.toInternalName(type.getQualifiedJavaName()));
+            sb.append(MetaUtil.toInternalName(((NamedConfigurationTypeDescriptor) type.getTypeDescriptor()).name()));
         }
         sb.append(')');
         // we are missing the return type, so this is only a partial signature

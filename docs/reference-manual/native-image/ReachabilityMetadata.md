@@ -72,7 +72,7 @@ The JSON file consists of entries that tell Native Image the elements to include
 For example, Java reflection metadata is specified in `reflect-config.json`, and a sample entry looks like:
 ```json
 {
-  "name": "Foo"
+  "type": "Foo"
 }
 ```
 
@@ -147,7 +147,7 @@ Integer.class.getMethod("parseInt", params2);
 ### Specifying Reflection Metadata in JSON
 
 Reflection metadata should be specified in a _reflect-config.json_ file and conform to the JSON schema defined in 
-[reflect-config-schema-v1.0.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reflect-config-schema-v1.0.0.json).
+[reflect-config-schema-v1.1.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reflect-config-schema-v1.1.0.json).
 The schema also includes further details and explanations how this configuration works. Here is the example of the reflect-config.json:
 ```json
 [
@@ -155,7 +155,7 @@ The schema also includes further details and explanations how this configuration
         "condition": {
             "typeReachable": "<condition-class>"
         },
-        "name": "<class>",
+        "type": "<class>",
         "methods": [
             {"name": "<methodName>", "parameterTypes": ["<param-one-type>"]}
         ],
@@ -199,7 +199,7 @@ looks up the `java.lang.String` class, which can then be used, for example, to i
 The generated metadata entry for the above call would look like:
 ```json
 {
-  "name": "java.lang.String"
+  "type": "java.lang.String"
 }
 ```
 
@@ -209,7 +209,7 @@ It is not possible to specify JNI metadata in code.
 ### JNI Metadata in JSON
 
 JNI metadata should be specified in a _jni-config.json_ file and conform to the JSON schema defined in
-[jni-config-schema-v1.0.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/jni-config-schema-v1.0.0.json).
+[jni-config-schema-v1.1.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/jni-config-schema-v1.1.0.json).
 The schema also includes further details and explanations how this configuration works. The example of jni-config.json is the same
 as the example of reflect-config.json described above.
 
@@ -377,7 +377,7 @@ Proxy classes can only be registered for serialization via the JSON files.
 ### Serialization Metadata in JSON
 
 Serialization metadata should be specified in a _serialization-config.json_ file and conform to the JSON schema defined in
-[serialization-config-schema-v1.0.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/serialization-config-schema-v1.0.0.json).
+[serialization-config-schema-v1.1.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/serialization-config-schema-v1.1.0.json).
 The schema also includes further details and explanations how this configuration works. Here is the example of the serialization-config.json:
 ```json
 {
@@ -386,7 +386,7 @@ The schema also includes further details and explanations how this configuration
       "condition": {
         "typeReachable": "<condition-class>"
       },
-      "name": "<fully-qualified-class-name>",
+      "type": "<fully-qualified-class-name>",
       "customTargetConstructorClass": "<custom-target-constructor-class>"
     }
   ],
