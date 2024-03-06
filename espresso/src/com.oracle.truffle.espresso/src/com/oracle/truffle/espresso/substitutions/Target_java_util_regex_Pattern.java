@@ -31,6 +31,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -69,7 +70,7 @@ public final class Target_java_util_regex_Pattern {
         void doDefault(StaticObject self, StaticObject p, int f,
                         @Bind("getContext()") EspressoContext context,
                         @CachedLibrary(limit = "3") InteropLibrary regexInterop,
-                        @Cached.Shared("original") @Cached("create(getMeta().java_util_regex_Pattern_init.getCallTargetNoSubstitution())") DirectCallNode original,
+                        @Shared("original") @Cached("create(getMeta().java_util_regex_Pattern_init.getCallTargetNoSubstitution())") DirectCallNode original,
                         @Cached InlinedBranchProfile parseErrorProfile, @Cached InlinedBranchProfile argErrorProfile) {
             Meta meta = context.getMeta();
             if (StaticObject.isNull(p)) {
@@ -119,7 +120,7 @@ public final class Target_java_util_regex_Pattern {
         @Specialization(guards = "!context.regexSubstitutionsEnabled()")
         static void doDisabled(StaticObject self, StaticObject p, int f,
                         @Bind("getContext()") EspressoContext context,
-                        @Cached.Shared("original") @Cached("create(getMeta().java_util_regex_Pattern_init.getCallTargetNoSubstitution())") DirectCallNode original) {
+                        @Shared("original") @Cached("create(getMeta().java_util_regex_Pattern_init.getCallTargetNoSubstitution())") DirectCallNode original) {
             original.call(self, p, f);
         }
 
@@ -139,7 +140,7 @@ public final class Target_java_util_regex_Pattern {
         @JavaType(Map.class)
         static StaticObject doDefault(StaticObject self,
                         @Bind("getContext()") EspressoContext context,
-                        @Cached.Shared("original") @Cached("create(getMeta().java_util_regex_Pattern_namedGroups.getCallTargetNoSubstitution())") DirectCallNode original,
+                        @Shared("original") @Cached("create(getMeta().java_util_regex_Pattern_namedGroups.getCallTargetNoSubstitution())") DirectCallNode original,
                         @Cached("create(context.getMeta().java_util_regex_Pattern_init.getCallTargetNoSubstitution())") DirectCallNode initOriginal) {
             if (context.getMeta().java_util_regex_Pattern_namedGroups_field.getObject(self) == StaticObject.NULL) {
                 StaticObject pattern = context.getMeta().java_util_regex_Pattern_pattern.getObject(self);
@@ -152,7 +153,7 @@ public final class Target_java_util_regex_Pattern {
         @Specialization(guards = "!context.regexSubstitutionsEnabled()")
         static StaticObject doDisabled(StaticObject self,
                         @Bind("getContext()") EspressoContext context,
-                        @Cached.Shared("original") @Cached("create(getMeta().java_util_regex_Pattern_namedGroups.getCallTargetNoSubstitution())") DirectCallNode original) {
+                        @Shared("original") @Cached("create(getMeta().java_util_regex_Pattern_namedGroups.getCallTargetNoSubstitution())") DirectCallNode original) {
             return (StaticObject) original.call(self);
         }
     }
