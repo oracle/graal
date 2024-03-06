@@ -22,7 +22,7 @@ The flame graph is color-coded to show how the inliner made the inlining decisio
 
 To generate a comprehensive report with the visualization, pass the `-H:+BuildReport` and `-H:+BuildReportSamplerFlamegraph` options at the step when you build a PGO-optimized native executable.
 For example:
-``` bash
+```bash
 native-image -cp . GameOfLife -o gameoflife-pgo --pgo=gameoflife.iprof -H:+BuildReport -H:+BuildReportSamplerFlamegraph
 ```
 > Refer to [Basic Usage of Profile-Guided Optimization](PGO-Basic-Usage.md) for the step-by-step guide.
