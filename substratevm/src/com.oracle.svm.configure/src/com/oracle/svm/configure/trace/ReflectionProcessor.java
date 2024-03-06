@@ -258,7 +258,6 @@ class ReflectionProcessor extends AbstractProcessor {
                 break;
             }
 
-            case "putBundleInCache":
             case "getBundleImpl": {
                 expectSize(args, 5);
                 String baseName = (String) args.get(2);
