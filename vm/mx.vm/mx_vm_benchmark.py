@@ -147,7 +147,7 @@ class NativeImageBenchmarkConfig:
         # Do not strip the run arguments if safepoint-sampler or pgo_sampler_only configuration is active
         self.extra_profile_run_args = bm_suite.extra_profile_run_arg(self.benchmark_name, args, list(image_run_args), not (vm.safepoint_sampler or vm.pgo_sampler_only))
         self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args, list(image_run_args))
-        self.benchmark_output_dir = bm_suite.benchmark_output_dir(self.benchmark_name, args)
+        benchmark_output_dir = bm_suite.benchmark_output_dir(self.benchmark_name, args)
         self.params = ['extra-image-build-argument', 'extra-jvm-arg', 'extra-run-arg', 'extra-agent-run-arg', 'extra-profile-run-arg',
                        'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages', 'skip-agent-assertions']
 
@@ -162,15 +162,15 @@ class NativeImageBenchmarkConfig:
             # do not run the image in the profile inference feature extraction mode
             removed_stages.add(Stage.RUN)
         self.skip_agent_assertions = bm_suite.skip_agent_assertions(self.benchmark_name, args)
-        self.root_dir = self.benchmark_output_dir if self.benchmark_output_dir else mx.suite('vm').get_output_root(platformDependent=False, jdkDependent=False)
+        root_dir = Path(benchmark_output_dir if benchmark_output_dir else mx.suite('vm').get_output_root(platformDependent=False, jdkDependent=False)).absolute()
         unique_suite_name = f"{self.bm_suite.benchSuiteName()}-{self.bm_suite.version().replace('.', '-')}" if self.bm_suite.version() != 'unknown' else self.bm_suite.benchSuiteName()
         self.executable_name = (unique_suite_name + '-' + self.benchmark_name).lower() if self.benchmark_name else unique_suite_name.lower()
         instrumentation_executable_name = self.executable_name + "-instrument"
         self.final_image_name = self.executable_name + '-' + vm.config_name()
-        self.output_dir = os.path.join(os.path.abspath(self.root_dir), 'native-image-benchmarks', self.executable_name + '-' + vm.config_name())
-        self.profile_path = os.path.join(self.output_dir, self.executable_name) + ".iprof"
-        self.config_dir = os.path.join(self.output_dir, 'config')
-        self.log_dir = self.output_dir
+        self.output_dir: Path = root_dir / "native-image-benchmarks" / f"{self.executable_name}-{vm.config_name()}"
+        self.profile_path: Path = self.output_dir / f"{self.executable_name}.iprof"
+        self.config_dir: Path = self.output_dir / "config"
+        self.log_dir: Path = self.output_dir
         base_image_build_args = ['--no-fallback', '-g']
         base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode'] if vm.is_gate else []
         base_image_build_args += ['-H:+ReportExceptionStackTraces']
@@ -183,23 +183,23 @@ class NativeImageBenchmarkConfig:
             base_image_build_args += self.classpath_arguments
             base_image_build_args += self.modulepath_arguments
             base_image_build_args += self.executable
-            base_image_build_args += ['-H:Path=' + self.output_dir]
+            base_image_build_args += [f"-H:Path={self.output_dir}"]
         base_image_build_args += [
-            '-H:ConfigurationFileDirectories=' + self.config_dir,
+            f"-H:ConfigurationFileDirectories={self.config_dir}",
             '-H:+PrintAnalysisStatistics',
             '-H:+PrintCallEdges',
             # Produces the image_build_statistics.json file
             '-H:+CollectImageBuildStatistics',
         ]
-        self.image_build_reports_directory: Path = Path(self.output_dir) / "reports"
+        self.image_build_reports_directory: Path = self.output_dir / "reports"
         if bundle_create_path is not None:
-            self.image_build_reports_directory = Path(self.output_dir) / bundle_create_path
+            self.image_build_reports_directory = self.output_dir / bundle_create_path
 
         # Path of the final executable
-        self.image_path = Path(self.output_dir) / self.final_image_name
-        self.instrumented_image_path = Path(self.output_dir) / instrumentation_executable_name
+        self.image_path = self.output_dir / self.final_image_name
+        self.instrumented_image_path = self.output_dir / instrumentation_executable_name
         if bundle_create_path is not None:
-            self.image_path = Path(self.output_dir) / bundle_create_path.parent / str(bundle_create_path).split(".")[0]
+            self.image_path = self.output_dir / bundle_create_path.parent / str(bundle_create_path).split(".")[0]
 
         if vm.is_quickbuild:
             base_image_build_args += ['-Ob']
@@ -278,10 +278,10 @@ class NativeImageBenchmarkConfig:
             return False
         return True
 
-    def get_bundle_path_if_present(self):
+    def get_bundle_path_if_present(self) -> Optional[Path]:
         if isinstance(self.bm_suite, NativeImageBundleBasedBenchmarkMixin):
             cached_bundle_path = self.bm_suite.get_bundle_path()
-            bundle_copy_path = os.path.join(self.output_dir, basename(cached_bundle_path))
+            bundle_copy_path = self.output_dir / basename(cached_bundle_path)
             mx_util.ensure_dirname_exists(bundle_copy_path)
             mx.copyfile(cached_bundle_path, bundle_copy_path)
             return bundle_copy_path
@@ -343,8 +343,8 @@ class StageRunner:
         self.stderr_file: Optional[TextIO] = None
 
     def __enter__(self):
-        self.stdout_path = os.path.abspath(os.path.join(self.config.log_dir, f"{self.final_image_name}-{self.stages_info.requested_stage}-stdout.log"))
-        self.stderr_path = os.path.abspath(os.path.join(self.config.log_dir, f"{self.final_image_name}-{self.stages_info.requested_stage}-stderr.log"))
+        self.stdout_path = (self.config.log_dir / f"{self.final_image_name}-{self.stages_info.requested_stage}-stdout.log").absolute()
+        self.stderr_path = (self.config.log_dir / f"{self.final_image_name}-{self.stages_info.requested_stage}-stderr.log").absolute()
         self.stdout_file = open(self.stdout_path, 'w')
         self.stderr_file = open(self.stderr_path, 'w')
 
@@ -792,7 +792,7 @@ class NativeImageVM(GraalVm):
             image_path = self.config.image_path
 
             for config_type in ['jni', 'proxy', 'predefined-classes', 'reflect', 'resource', 'serialization']:
-                config_path = Path(self.config.config_dir) / f"{config_type}-config.json"
+                config_path = self.config.config_dir / f"{config_type}-config.json"
                 if config_path.exists():
                     rules.append(FileSizeRule(config_path, self.config.benchmark_suite_name, self.config.benchmark_name, "config-size", config_type))
         else:
@@ -956,22 +956,23 @@ class NativeImageVM(GraalVm):
         return rules
 
     @staticmethod
-    def copy_bundle_output(config, image_name):
+    def copy_bundle_output(config: NativeImageBenchmarkConfig, image_path: Path):
         """
         Copies all files from the bundle build into the benchmark build location.
         By default, the bundle output is produced next to the bundle file.
         """
-        bundle_dir = os.path.dirname(config.bundle_path)
-        bundle_name = os.path.basename(config.bundle_path)
+        bundle_dir = config.bundle_path.parent
+        bundle_name = config.bundle_path.name
         assert bundle_name.endswith(".nib"), bundle_name
-        bundle_output = os.path.join(bundle_dir, bundle_name[:-len(".nib")] + ".output", "default")
+        bundle_output = bundle_dir / f"{bundle_name[:-len('.nib')]}.output" / "default"
         shutil.copytree(bundle_output, config.output_dir, dirs_exist_ok=True)
 
         # Quarkus NI bundle builds do not respect the -o flag. We work around this by manually renaming the executable.
-        if not os.path.exists(os.path.join(config.output_dir, image_name)) and ("quarkus" in config.benchmark_suite_name or "tika" in config.benchmark_suite_name):
-            executables = glob.glob(os.path.join(config.output_dir, "*-runner"))
+        if not image_path.exists() and ("quarkus" in config.benchmark_suite_name or "tika" in config.benchmark_suite_name):
+            executables = list(config.output_dir.glob("*-runner"))
             assert len(executables) == 1, f"expected one Quarkus executable, found {len(executables)}: {executables}"
-            os.rename(executables[0], os.path.join(config.output_dir, image_name))
+            executables[0].rename(image_path)
+
         mx.rmtree(bundle_output)
 
     @staticmethod
@@ -982,7 +983,7 @@ class NativeImageVM(GraalVm):
     def run_stage_agent(self):
         hotspot_vm_args = ['-ea', '-esa'] if self.is_gate and not self.config.skip_agent_assertions else []
         hotspot_vm_args += self.config.extra_jvm_args
-        agentlib_options = ['native-image-agent=config-output-dir=' + str(self.config.config_dir)] + self.config.extra_agentlib_options
+        agentlib_options = [f"native-image-agent=config-output-dir={self.config.config_dir}"] + self.config.extra_agentlib_options
         hotspot_vm_args += ['-agentlib:' + ','.join(agentlib_options)]
 
         # Native Image has the following option enabled by default. In order to create lambda classes in the same way
@@ -1003,7 +1004,7 @@ class NativeImageVM(GraalVm):
         with self.get_stage_runner() as s:
             s.execute_command(self, self.generate_java_command(hotspot_args))
 
-        path = os.path.join(self.config.config_dir, "config.zip")
+        path = self.config.config_dir / "config.zip"
         with zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED) as zipf:
             for root, _, files in os.walk(self.config.config_dir):
                 for file in files:
@@ -1013,7 +1014,7 @@ class NativeImageVM(GraalVm):
     def run_stage_instrument_image(self):
         executable_name_args = ['-o', str(self.config.instrumented_image_path)]
         instrument_args = ['--pgo-sampling'] if self.pgo_sampler_only else ['--pgo-instrument']
-        instrument_args += ['-R:ProfilesDumpFile=' + self.config.profile_path]
+        instrument_args += [f"-R:ProfilesDumpFile={self.config.profile_path}"]
         if self.jdk_profiles_collect:
             instrument_args += svm_experimental_options(['-H:+AOTPriorityInline', '-H:-SamplingCollect', f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}'])
 
@@ -1023,7 +1024,7 @@ class NativeImageVM(GraalVm):
         with self.get_stage_runner() as s:
             exit_code = s.execute_command(self, self.config.base_image_build_args + executable_name_args + instrument_args + collection_args)
             if self.config.bundle_path is not None:
-                NativeImageVM.copy_bundle_output(self.config, self.config.instrumentation_executable_name)
+                NativeImageVM.copy_bundle_output(self.config, self.config.instrumented_image_path)
 
             if exit_code == 0:
                 self._move_image_build_stats_file()
@@ -1042,7 +1043,7 @@ class NativeImageVM(GraalVm):
             self.config.get_image_build_stats_file(self.stages_info.effective_stage)
         )
 
-    def _ensureSamplesAreInProfile(self, profile_path):
+    def _ensureSamplesAreInProfile(self, profile_path: PathLike):
         # If your benchmark suite fails this assertion and the suite does not expect PGO Sampling profiles (e.g. Truffle workloads)
         # Override checkSamplesInPgo in your suite and have it return False.
         if not self.bmSuite.checkSamplesInPgo():
@@ -1052,11 +1053,11 @@ class NativeImageVM(GraalVm):
             with open(profile_path) as profile_file:
                 parsed = json.load(profile_file)
                 samples = parsed["samplingProfiles"]
-                assert len(samples) != 0, "No sampling profiles in iprof file " + profile_path
+                assert len(samples) != 0, f"No sampling profiles in iprof file {profile_path}"
                 for sample in samples:
-                    assert ":" in sample["ctx"], "Sampling profiles seem malformed in file " + profile_path
-                    assert len(sample["records"]) == 1, "Sampling profiles seem to be missing records in file " + profile_path
-                    assert sample["records"][0] > 0, "Sampling profiles seem to have a 0 in records in file " + profile_path
+                    assert ":" in sample["ctx"], f"Sampling profiles seem malformed in file {profile_path}"
+                    assert len(sample["records"]) == 1, f"Sampling profiles seem to be missing records in file {profile_path}"
+                    assert sample["records"][0] > 0, f"Sampling profiles seem to have a 0 in records in file {profile_path}"
 
     def run_stage_instrument_run(self):
         image_run_cmd = [str(self.config.instrumented_image_path)]
@@ -1072,7 +1073,7 @@ class NativeImageVM(GraalVm):
 
     def run_stage_image(self):
         executable_name_args = ['-o', self.config.final_image_name]
-        pgo_args = ['--pgo=' + self.config.profile_path]
+        pgo_args = [f"--pgo={self.config.profile_path}"]
         pgo_args += svm_experimental_options(['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled'])
         if self.adopted_jdk_pgo:
             # choose appropriate profiles
@@ -1101,7 +1102,7 @@ class NativeImageVM(GraalVm):
         with self.get_stage_runner() as s:
             exit_code = s.execute_command(self, final_image_command)
             if self.config.bundle_path is not None:
-                NativeImageVM.copy_bundle_output(self.config, self.config.final_image_name)
+                NativeImageVM.copy_bundle_output(self.config, self.config.image_path)
 
             if exit_code == 0:
                 self._move_image_build_stats_file()
@@ -1144,8 +1145,8 @@ class NativeImageVM(GraalVm):
         self.config = NativeImageBenchmarkConfig(self, self.bmSuite, args)
         self.stages = StagesContext(self, out, err, True if self.is_gate else nonZeroIsFatal, os.path.abspath(cwd if cwd else os.getcwd()))
 
-        os.makedirs(self.config.output_dir, exist_ok=True)
-        os.makedirs(self.config.config_dir, exist_ok=True)
+        self.config.output_dir.mkdir(parents=True, exist_ok=True)
+        self.config.config_dir.mkdir(parents=True, exist_ok=True)
 
         if self.stages_info.fallback_mode:
             # In fallback mode, we have to run all requested stages in the same `run_java` invocation.
