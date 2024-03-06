@@ -33,7 +33,6 @@ from os.path import join, exists
 from argparse import ArgumentParser, REMAINDER
 
 import mx
-import mx_compiler
 
 if sys.version_info[0] < 3:
     _long = long # pylint: disable=undefined-variable
