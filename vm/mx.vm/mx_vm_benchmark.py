@@ -777,7 +777,10 @@ class NativeImageVM(GraalVm):
                 return f"O{value}"
 
             if self.pgo_instrumentation:
-                pgo_value = "pgo"
+                if self.pgo_sampler_only:
+                    pgo_value = "sampler-only"
+                else:
+                    pgo_value = "pgo"
             elif self.adopted_jdk_pgo:
                 pgo_value = "adopted"
             else:
