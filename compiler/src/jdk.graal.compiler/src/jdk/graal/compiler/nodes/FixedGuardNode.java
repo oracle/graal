@@ -165,39 +165,59 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
 
                         if (usagePiObject instanceof PiNode inputPi && inputPi.getClass() == PiNode.class) {
                             /*
-                             * We have a pi node with a pi node input: we want to find out if the
-                             * input pi can be skipped because this PI's guard and pi stamp prove
-                             * enough knowledge to actually skip the input pi completely. This can
-                             * be relevant for complex type check patterns and interconnected pis:
-                             * conditional elimination cannot enumerate all values thus we try to
-                             * free up local patterns early by skipping unnecessary pis.
+                             * Ensure that the pi actually "belongs" to this guard in the sense that
+                             * the succeeding stamp for the guard is actually the pi stamp.
                              */
-                            Stamp inputPiPiStamp = inputPi.piStamp();
-                            Stamp inputPiObjectFinalStamp = inputPi.object().stamp(NodeView.DEFAULT);
+                            boolean piProvenByCondition = false;
+                            Stamp succeedingStamp = null;
+                            if (usagePiCondition instanceof UnaryOpLogicNode uol) {
+                                succeedingStamp = uol.getSucceedingStampForValue(isNegated());
+                            } else if (usagePiCondition instanceof BinaryOpLogicNode bol) {
+                                if (bol.getX() == inputPi) {
+                                    succeedingStamp = bol.getSucceedingStampForX(isNegated(), bol.getX().stamp(NodeView.DEFAULT), bol.getY().stamp(NodeView.DEFAULT).unrestricted());
+                                } else if (bol.getY() == inputPi) {
+                                    succeedingStamp = bol.getSucceedingStampForY(isNegated(), bol.getX().stamp(NodeView.DEFAULT).unrestricted(), bol.getY().stamp(NodeView.DEFAULT));
+                                }
+                            }
+                            piProvenByCondition = succeedingStamp != null && usagePiPiStamp.equals(succeedingStamp);
 
-                            /*
-                             * Determine if the stamp from piInput.input & usagePi.piStamp is
-                             * equally strong than the current piStamp, then we can build a new pi
-                             * that skips the input pi.
-                             */
-                            Stamp resultStampWithInputPiObjectOnly = usagePiPiStamp.improveWith(inputPiObjectFinalStamp);
-                            boolean thisPiEquallyStrongWithoutInputPi = resultStampWithInputPiObjectOnly.tryImproveWith(inputPiPiStamp) == null;
-                            if (thisPiEquallyStrongWithoutInputPi) {
-                                assert resultStampWithInputPiObjectOnly.tryImproveWith(inputPiPiStamp) == null : Assertions.errorMessage(
-                                                "Dropping input pi assumes that input pi stamp does not contribute to knowledge but it does", inputPi, inputPi.object(), usagePiPiStamp,
-                                                usagePiFinalStamp);
+                            if (piProvenByCondition) {
+                                /*
+                                 * We have a pi node with a pi node input: we want to find out if
+                                 * the input pi can be skipped because this PI's guard and pi stamp
+                                 * prove enough knowledge to actually skip the input pi completely.
+                                 * This can be relevant for complex type check patterns and
+                                 * interconnected pis: conditional elimination cannot enumerate all
+                                 * values thus we try to free up local patterns early by skipping
+                                 * unnecessary pis.
+                                 */
+                                Stamp inputPiPiStamp = inputPi.piStamp();
+                                Stamp inputPiObjectFinalStamp = inputPi.object().stamp(NodeView.DEFAULT);
 
-                                // the input pi's object stamp was strong enough so we can skip the
-                                // input pi
-                                final ValueNode newPi = usagePiCondition.graph().addOrUnique(PiNode.create(inputPi.object(), usagePiPiStamp, usagePi.getGuard().asNode()));
-                                final LogicNode newCondition = (LogicNode) usagePiCondition.copyWithInputs(true);
-                                newCondition.replaceAllInputs(usagePiObject, inputPi.object());
-                                this.setCondition(newCondition, negated);
-                                usagePi.replaceAndDelete(newPi);
-                                return;
+                                /*
+                                 * Determine if the stamp from piInput.input & usagePi.piStamp is
+                                 * equally strong than the current piStamp, then we can build a new
+                                 * pi that skips the input pi.
+                                 */
+                                Stamp resultStampWithInputPiObjectOnly = usagePiPiStamp.improveWith(inputPiObjectFinalStamp);
+                                boolean thisPiEquallyStrongWithoutInputPi = resultStampWithInputPiObjectOnly.tryImproveWith(inputPiPiStamp) == null;
+                                if (thisPiEquallyStrongWithoutInputPi) {
+                                    assert resultStampWithInputPiObjectOnly.tryImproveWith(inputPiPiStamp) == null : Assertions.errorMessage(
+                                                    "Dropping input pi assumes that input pi stamp does not contribute to knowledge but it does", inputPi, inputPi.object(), usagePiPiStamp,
+                                                    usagePiFinalStamp);
+
+                                    // the input pi's object stamp was strong enough so we can skip
+                                    // the
+                                    // input pi
+                                    final ValueNode newPi = usagePiCondition.graph().addOrUnique(PiNode.create(inputPi.object(), usagePiPiStamp, usagePi.getGuard().asNode()));
+                                    final LogicNode newCondition = (LogicNode) usagePiCondition.copyWithInputs(true);
+                                    newCondition.replaceAllInputs(usagePiObject, inputPi.object());
+                                    this.setCondition(newCondition, negated);
+                                    usagePi.replaceAndDelete(newPi);
+                                    return;
+                                }
                             }
                         }
-
                     }
                 }
             }
