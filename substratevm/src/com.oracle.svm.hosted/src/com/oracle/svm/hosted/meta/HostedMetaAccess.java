@@ -33,7 +33,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.deopt.Deoptimizer;
@@ -57,10 +56,7 @@ public class HostedMetaAccess extends UniverseMetaAccess {
 
     @Override
     public HostedType lookupJavaType(JavaConstant constant) {
-        if (constant instanceof ImageHeapConstant ihc) {
-            return (HostedType) universe.lookup(ihc.getType());
-        }
-        return (HostedType) super.lookupJavaType(constant);
+        return getUniverse().lookup(getWrapped().lookupJavaType(constant));
     }
 
     public Optional<HostedType> optionalLookupJavaType(Class<?> clazz) {
