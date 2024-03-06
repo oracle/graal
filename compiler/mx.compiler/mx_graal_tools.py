@@ -82,13 +82,12 @@ def igv(args):
     Extra NetBeans specific options can be passed as well.  mx igv --help will show the
     help for NetBeans itself.
     """
-    dist = 'IDEALGRAPHVISUALIZER-0_31-0A82D7A0D60_DIST'
     v11 = mx.VersionSpec("11")
     v12 = mx.VersionSpec("12")
     def _igvJdkVersionCheck(version):
         return v11 <= version < v12
     jdkhome = mx.get_jdk(_igvJdkVersionCheck, versionDescription='(Netbeans should run with JDK 11 configured with EXTRA_JAVA_HOMES or --extra-java-homes)', purpose="running IGV").home
-    run_netbeans_app('IdealGraphVisualizer', jdkhome, args=args, dist=dist)
+    run_netbeans_app('IdealGraphVisualizer', jdkhome, args=args, dist='IDEALGRAPHVISUALIZER_DIST')
 
 def c1visualizer(args):
     """run the C1 Compiler Visualizer"""
