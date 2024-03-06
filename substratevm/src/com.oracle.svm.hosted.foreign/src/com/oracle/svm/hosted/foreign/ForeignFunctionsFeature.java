@@ -140,7 +140,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess a) {
         ImageSingletons.add(AbiUtils.class, AbiUtils.create());
-        ImageSingletons.add(ForeignFunctionsRuntime.class, new ForeignFunctionsRuntime(AbiUtils.singleton().generateTrampolineTemplate()));
+        ImageSingletons.add(ForeignFunctionsRuntime.class, new ForeignFunctionsRuntime());
         ImageSingletons.add(RuntimeForeignAccessSupport.class, accessSupport);
         ImageSingletons.add(LinkToNativeSupport.class, new LinkToNativeSupportImpl());
 
@@ -166,7 +166,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
                         access,
                         true,
                         AbiUtils.singleton()::makeJavaEntryPoint,
-                        j -> UpcallStub.create(j, access.getUniverse(), access.getMetaAccess().getWrapped()),
+                        jepi -> LowLevelUpcallStub.make(jepi, access.getUniverse(), access.getMetaAccess().getWrapped()),
                         ForeignFunctionsRuntime.singleton()::addUpcallStubPointer);
     }
 

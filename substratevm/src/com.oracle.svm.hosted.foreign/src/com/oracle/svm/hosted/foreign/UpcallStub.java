@@ -95,18 +95,13 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public abstract class UpcallStub extends NonBytecodeMethod {
     protected final JavaEntryPointInfo jep;
 
-    protected UpcallStub(JavaEntryPointInfo jep, MethodType methodType, MetaAccessProvider metaAccess, boolean high) {
-        super(
-                        UpcallStubsHolder.stubName(jep, high),
+    protected UpcallStub(JavaEntryPointInfo jep, MethodType methodType, MetaAccessProvider metaAccess, boolean highLevel) {
+        super(UpcallStubsHolder.stubName(jep, highLevel),
                         true,
                         metaAccess.lookupJavaType(UpcallStubsHolder.class),
                         fromMethodType(methodType, metaAccess),
                         UpcallStubsHolder.getConstantPool(metaAccess));
         this.jep = jep;
-    }
-
-    public static UpcallStub create(JavaEntryPointInfo jep, AnalysisUniverse universe, MetaAccessProvider metaAccess) {
-        return LowLevelUpcallStub.make(jep, universe, metaAccess);
     }
 }
 
@@ -170,7 +165,7 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
          * Read all relevant values, i.e. the MH to call, the current Isolate, the
          * function-preserved registers and function's arguments
          *
-         * The special arguments read from specific registers were set up by the trampoline
+         * The special arguments read from specific registers were set up by the trampoline.
          */
         AbiUtils.Registers registers = AbiUtils.singleton().upcallSpecialArgumentsRegisters();
         ValueNode mh = kit.bindRegister(registers.methodHandle(), JavaKind.Object);
@@ -179,22 +174,17 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
 
         /*
          * Prologue: save function-preserved registers, allocate return space if needed, transition
-         * from native to Java
+         * from native to Java.
          */
         assert !savedRegisters.asList().contains(registers.methodHandle());
         assert !savedRegisters.asList().contains(registers.isolate());
         var save = kit.saveRegisters(savedRegisters);
-        // ensureJavaThread = true to ensure that later calls to
-        // com.oracle.svm.core.thread.PlatformThreads.currentThread return the current thread and
-        // not null.
         ValueNode enterResult = kit.append(CEntryPointEnterNode.attachThread(isolate, false, true));
 
         kit.startIf(IntegerEqualsNode.create(enterResult, ConstantNode.forInt(CEntryPointErrors.NO_ERROR, kit.getGraph()), NodeView.DEFAULT),
                         ProfileData.BranchProbabilityData.create(VERY_FAST_PATH_PROBABILITY, ProfileData.ProfileSource.UNKNOWN));
         kit.thenPart();
-        // Fast path: isolate successfully entered
         kit.elsePart();
-        // Slow path: stop execution
         CStringConstant cst = new CStringConstant("Could not enter isolate.");
         ValueNode msg = ConstantNode.forConstant(StampFactory.pointer(), cst, kit.getMetaAccess());
         kit.append(new CEntryPointUtilityNode(CEntryPointUtilityNode.UtilityAction.FailFatally, enterResult, msg));
@@ -211,10 +201,7 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
             arguments.add(0, returnBuffer);
         }
 
-        /*
-         * Transfers to the java-side stub; note that exceptions should be handled in the Java stub
-         * (if they are handled...)
-         */
+        /* Transfers to the Java-side stub; note that exceptions should be handled there. */
         arguments.add(0, mh);
         InvokeWithExceptionNode returnValue = kit.createJavaCallWithException(CallTargetNode.InvokeKind.Static, highLevelStub, arguments.toArray(ValueNode.EMPTY_ARRAY));
         kit.exceptionPart();
@@ -223,7 +210,7 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
 
         /*
          * Epilogue: transition from Java to native, setup return registers, restore
-         * function-preserved registers, return
+         * function-preserved registers, return.
          */
         if (jep.buffersReturn()) {
             assert returnBuffer != null;

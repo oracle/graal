@@ -95,8 +95,7 @@ class DowncallStub extends NonBytecodeMethod {
     private final NativeEntryPointInfo nep;
 
     DowncallStub(NativeEntryPointInfo nep, MetaAccessProvider metaAccess) {
-        super(
-                        DowncallStubsHolder.stubName(nep),
+        super(DowncallStubsHolder.stubName(nep),
                         true,
                         metaAccess.lookupJavaType(DowncallStubsHolder.class),
                         createSignature(metaAccess),
@@ -104,13 +103,13 @@ class DowncallStub extends NonBytecodeMethod {
         this.nep = nep;
     }
 
-    @Uninterruptible(reason = "See `DowncallStub.getInjectedAnnotations`.", calleeMustBe = false)
+    @Uninterruptible(reason = "See DowncallStub.getInjectedAnnotations.", calleeMustBe = false)
     @SuppressWarnings("unused")
-    private static void uninterruptibleAnnotationHolder() {
+    private static void uninterruptibleAnnotationForAllowHeapAccessHolder() {
     }
 
-    private static final AnnotationValue[] INJECTED_ANNOTATIONS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(
-                    Uninterruptible.Utils.getAnnotation(ReflectionUtil.lookupMethod(DowncallStub.class, "uninterruptibleAnnotationHolder")));
+    private static final AnnotationValue[] INJECTED_ANNOTATIONS_FOR_ALLOW_HEAP_ACCESS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(
+                    Uninterruptible.Utils.getAnnotation(ReflectionUtil.lookupMethod(DowncallStub.class, "uninterruptibleAnnotationForAllowHeapAccessHolder")));
 
     @Override
     public AnnotationValue[] getInjectedAnnotations() {
@@ -121,10 +120,9 @@ class DowncallStub extends NonBytecodeMethod {
          * object while the native pointer to it still exists.
          */
         if (nep.allowHeapAccess()) {
-            return INJECTED_ANNOTATIONS;
-        } else {
-            return new AnnotationValue[]{};
+            return INJECTED_ANNOTATIONS_FOR_ALLOW_HEAP_ACCESS;
         }
+        return null;
     }
 
     /**

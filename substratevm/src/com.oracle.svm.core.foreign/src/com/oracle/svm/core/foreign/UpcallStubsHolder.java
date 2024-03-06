@@ -54,11 +54,11 @@ public final class UpcallStubsHolder {
      * </pre>
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static String stubName(JavaEntryPointInfo jep, boolean high) {
+    public static String stubName(JavaEntryPointInfo jep, boolean highLevel) {
         MethodType type = jep.handleType();
 
         StringBuilder builder = new StringBuilder("upcall");
-        builder.append(high ? "High" : "Low");
+        builder.append(highLevel ? "High" : "Low");
         builder.append("_");
         for (var param : type.parameterArray()) {
             builder.append(JavaKind.fromJavaClass(param).getTypeChar());
@@ -81,8 +81,7 @@ public final class UpcallStubsHolder {
         }
 
         builder.append('_');
-        builder.append(SubstrateUtil.digest(
-                        assignmentsBuilder.toString()));
+        builder.append(SubstrateUtil.digest(assignmentsBuilder.toString()));
 
         return builder.toString();
     }
