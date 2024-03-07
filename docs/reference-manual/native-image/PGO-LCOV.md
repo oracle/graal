@@ -14,12 +14,12 @@ The same profile can additionally be used for extracting the coverage informatio
 Native Image supports creating coverage reports in the [LCOV format](https://github.com/linux-test-project/lcov),
 so-called *trace files*.
 
-To create a coverage report, you first need to pass the `-H:+ProfilingLCOV` option along with the
-`--pgo-instrument` when building an instrumented binary.
+To create a coverage report, you first need to pass the `-H:+ProfilingLCOV` experimental option along
+with the `--pgo-instrument` option when building an instrumented binary.
 For example:
 
 ```bash
-native-image -cp . GameOfLife -o gameoflife-instrumented --pgo-instrument -H:+ProfilingLCOV
+native-image -cp . GameOfLife -o gameoflife-instrumented --pgo-instrument -H:+UnlockExperimentalVMOptions -H:+ProfilingLCOV -H:-UnlockExperimentalVMOptions
 ```
 
 The report, in the form of a `.info` trace file, is then generated along with the profile after
