@@ -76,9 +76,9 @@ public final class PosixVMThreads extends VMThreads {
             int result = LinuxLibCHelper.getThreadId();
             VMError.guarantee(result != -1, "SYS_gettid failed");
             return WordFactory.signed(result);
+        } else {
+            throw VMError.unsupportedFeature("PosixVMThreads.getCurrentOSThreadId() on unexpected OS: " + ImageSingletons.lookup(Platform.class).getOS());
         }
-
-        throw VMError.unsupportedFeature("PosixVMThreads.getCurrentOSThreadId() on unknown OS");
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
