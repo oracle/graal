@@ -1308,7 +1308,9 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     @Override
     public boolean verify(boolean verifyInputs) {
-        assert verifyLoopSafepoints();
+        if (verifyGraphEdges) {
+            assert verifyLoopSafepoints();
+        }
         return super.verify(verifyInputs);
     }
 
