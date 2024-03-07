@@ -36,6 +36,7 @@ import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.ClassInclusionPolicy;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
+import com.oracle.graal.pointsto.heap.TypedConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -49,7 +50,6 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
@@ -226,7 +226,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
             BytecodePosition position = new BytecodePosition(null, method, 0);
             getUniverse().registerEmbeddedRoot(constant, position);
 
-            AnalysisType type = (AnalysisType) ((TypedConstant) constant).getType(getMetaAccess());
+            AnalysisType type = ((TypedConstant) constant).getType();
             registerTypeAsInHeap(type, reason);
         }
     }

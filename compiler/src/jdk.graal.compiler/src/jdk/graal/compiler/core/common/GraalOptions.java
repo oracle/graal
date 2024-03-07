@@ -305,4 +305,7 @@ public final class GraalOptions {
 
     @Option(help = "Perform checks that guards and deopts aren't introduced in graphs that should handle exceptions explicitly", type = OptionType.Debug)
     public static final OptionKey<Boolean> StrictDeoptInsertionChecks = new OptionKey<>(false);
+
+    @Option(help = "AMD64 only: Replace forward jumps (jmp, jcc) with equivalent but smaller instructions if the actual jump displacement fits in one byte.", type = OptionType.Expert)
+    public static final OptionKey<Boolean> OptimizeLongJumps = new OptionKey<>(false);
 }

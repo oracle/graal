@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/serialization-config-schema-v1.1.0.json",
+  "default": {
+    "types": [],
+    "lambdaCapturingTypes": [],
+    "proxies": []
+  },
+  "properties": {
+    "types": {
+      "default": [],
+      "items": {
+        "properties": {
+          "condition": {
+            "$ref": "config-condition-schema-v1.0.0.json",
+            "title": "Condition under which the class should be registered for serialization"
+          },
+          "name": {
+            "deprecated": true,
+            "type": "string",
+            "title": "Fully qualified class name of the class that should be serialized"
+          },
+          "type": {
+            "$ref": "config-type-schema-v1.0.0.json",
+            "title": "Type descriptor of the class that should be registered for serialization"
+          },
+          "customTargetConstructorClass": {
+            "type": "string",
+            "title": "Fully qualified class name of the class whose constructor should be used to serialize the class"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "title": "Each entry in <types> enables serializing and deserializing objects of the class given by <name>",
+      "type": "array"
+    },
+    "lambdaCapturingTypes": {
+      "default": [],
+      "items": {
+        "properties": {
+          "condition": {
+            "properties": {
+              "typeReachable": {
+                "type": "string",
+                "title": "Fully qualified class name of the class that must be reachable in order to serialize lambda classes that are captured by the class referred in <name>"
+              }
+            },
+            "required": [
+              "typeReachable"
+            ],
+            "additionalProperties": false,
+            "type": "object"
+          },
+          "name": {
+            "type": "string",
+            "title": "Fully qualified class name of the class that captures lambda classes that should be either serialized or deserialized"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "title": "Each entry in <lambdaCapturingTypes> enables lambda serialization. All lambdas declared in the methods of the class given by <name> can be serialized and deserialized.",
+      "type": "array"
+    },
+    "proxies": {
+      "default": [],
+      "items": {
+        "properties": {
+          "condition": {
+            "properties": {
+              "typeReachable": {
+                "type": "string",
+                "title": "Fully qualified class name of the class that must be reachable in order to serialize proxy classes that implements interfaces from <interfaces>"
+              }
+            },
+            "required": [
+              "typeReachable"
+            ],
+            "additionalProperties": false,
+            "type": "object"
+          },
+          "interfaces": {
+            "items": {
+              "type": "string",
+              "title": "Fully qualified name of an interface that is implemented by the proxy that should be serialized"
+            },
+            "type": "array",
+            "title": "List of interfaces that are implemented by the proxy class that should be serialized"
+          }
+        },
+        "required": [
+          "interfaces"
+        ],
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Proxy that should be registered for serialization"
+      },
+      "title": "Each entry in <proxies> enables the proxy serialization by providing an interface list that a proxy implements.",
+      "type": "array"
+    }
+  },
+  "required": [
+    "types",
+    "lambdaCapturingTypes",
+    "proxies"
+  ],
+  "additionalProperties": false,
+  "type": "object",
+  "title": "JSON schema for the serialization-config that GraalVM Native Image uses"
+}

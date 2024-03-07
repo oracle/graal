@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -260,11 +260,11 @@ class TypeMethodsWithFlagsTest {
     }
 
     void populateConfig() {
-        ConfigurationType oldType = new ConfigurationType(UnresolvedConfigurationCondition.alwaysTrue(), getTypeName());
+        ConfigurationType oldType = new ConfigurationType(UnresolvedConfigurationCondition.alwaysTrue(), getTypeName(), true);
         setFlags(oldType);
         previousConfig.add(oldType);
 
-        ConfigurationType newType = new ConfigurationType(UnresolvedConfigurationCondition.alwaysTrue(), getTypeName());
+        ConfigurationType newType = new ConfigurationType(UnresolvedConfigurationCondition.alwaysTrue(), getTypeName(), true);
         for (Map.Entry<ConfigurationMethod, ConfigurationMemberDeclaration> methodEntry : methodsThatMustExist.entrySet()) {
             newType.addMethod(methodEntry.getKey().getName(), methodEntry.getKey().getInternalSignature(), methodEntry.getValue());
         }

@@ -27,14 +27,14 @@ package com.oracle.svm.core.meta;
 import com.oracle.svm.util.ClassUtil;
 
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
-import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.VMConstant;
 
-public abstract class SubstrateObjectConstant implements JavaConstant, TypedConstant, CompressibleConstant, VMConstant {
+public abstract class SubstrateObjectConstant implements JavaConstant, CompressibleConstant, VMConstant {
     public static JavaConstant forObject(Object object) {
         return forObject(object, false, 0);
     }
@@ -161,6 +161,8 @@ public abstract class SubstrateObjectConstant implements JavaConstant, TypedCons
     public final int hashCode() {
         return getIdentityHashCode();
     }
+
+    public abstract ResolvedJavaType getType(MetaAccessProvider provider);
 
     public abstract int getIdentityHashCode();
 

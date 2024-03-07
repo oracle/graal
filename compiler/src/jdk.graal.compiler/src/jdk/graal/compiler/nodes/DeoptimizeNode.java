@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,6 @@ import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -48,6 +47,7 @@ public final class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowe
     protected DeoptimizationReason reason;
     protected int debugId;
     protected final Speculation speculation;
+    protected boolean mayConvertToGuard;
 
     public DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason) {
         this(action, reason, DEFAULT_DEBUG_ID, SpeculationLog.NO_SPECULATION, null);
@@ -66,6 +66,7 @@ public final class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowe
         this.debugId = debugId;
         assert speculation != null;
         this.speculation = speculation;
+        this.mayConvertToGuard = true;
     }
 
     @Override
@@ -140,6 +141,22 @@ public final class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowe
     public static boolean canFloat(DeoptimizationReason reason, DeoptimizationAction action) {
         return action != DeoptimizationAction.None && reason != DeoptimizationReason.Unresolved && reason != DeoptimizationReason.NotCompiledExceptionHandler &&
                         reason != DeoptimizationReason.UnreachedCode;
+    }
+
+    /**
+     * Determine whether this deopt may be converted to a guard. Conversion of a deopt in a branch
+     * to a fixed guard can eliminate other nodes, including side effects, in the branch. Even if
+     * the resulting guard {@linkplain #canFloat() is not allowed to float}, it can therefore end up
+     * with an imprecise frame state. Preventing the conversion to a guard ensures that we don't
+     * lose precise states, and this is necessary in some contexts.
+     */
+    public boolean mayConvertToGuard() {
+        return mayConvertToGuard;
+    }
+
+    /** Set a new value for the {@link #mayConvertToGuard()} flag. */
+    public void mayConvertToGuard(boolean newMayConvertToGuard) {
+        this.mayConvertToGuard = newMayConvertToGuard;
     }
 
     @NodeIntrinsic

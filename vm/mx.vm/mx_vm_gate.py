@@ -451,6 +451,7 @@ def _test_libgraal_ctw(extra_vm_arguments):
                 '-Djdk.graal.InlineDuringParsing=false',
                 '-Djdk.graal.TrackNodeSourcePosition=true',
                 '-Djdk.graal.LogFile=' + compiler_log_file,
+                '-DCompileTheWorld.IgnoreCompilationFailures=true',
                 '-DCompileTheWorld.Verbose=true',
                 '-DCompileTheWorld.MethodFilter=StackOverflowError.*,String.*',
                 '-Djvmci.ForceTranslateFailure=nmethod/StackOverflowError:hotspot,method/String.hashCode:native,valueOf',

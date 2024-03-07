@@ -820,15 +820,24 @@ public class CompilationResult {
      */
     public void resetForEmittingCode() {
         checkOpen();
+        // reset collections
         infopoints.clear();
         sourceMapping.clear();
         dataPatches.clear();
         exceptionHandlers.clear();
         marks.clear();
         dataSection.clear();
+        invalidCallDeoptimizationStates.clear();
         if (annotations != null) {
             annotations.clear();
         }
+        // reset fields
+        targetCode = null;
+        targetCodeSize = 0;
+        assumptions = null;
+        speculationLog = null;
+        methods = null;
+        bytecodeSize = 0;
     }
 
     public void clearInfopoints() {

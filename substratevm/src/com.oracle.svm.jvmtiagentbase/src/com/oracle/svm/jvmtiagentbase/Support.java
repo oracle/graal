@@ -384,6 +384,12 @@ public final class Support {
         return jniFunctions().getCallBooleanMethodA().invoke(env, obj, method, nullPointer());
     }
 
+    public static boolean callBooleanMethodL(JNIEnvironment env, JNIObjectHandle obj, JNIMethodId method, JNIObjectHandle l0) {
+        JNIValue args = StackValue.get(1, JNIValue.class);
+        args.addressOf(0).setObject(l0);
+        return jniFunctions().getCallBooleanMethodA().invoke(env, obj, method, args);
+    }
+
     public static long callLongMethodL(JNIEnvironment env, JNIObjectHandle obj, JNIMethodId method, JNIObjectHandle l0) {
         JNIValue args = StackValue.get(1, JNIValue.class);
         args.addressOf(0).setObject(l0);

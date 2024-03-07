@@ -33,6 +33,7 @@ import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -50,8 +51,8 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
 
     private final FieldValueInterceptionSupport fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
 
-    public SVMHostedValueProvider(AnalysisUniverse universe) {
-        super(universe);
+    public SVMHostedValueProvider(AnalysisMetaAccess metaAccess, AnalysisUniverse universe) {
+        super(metaAccess, universe);
     }
 
     /**
@@ -164,9 +165,9 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
      * {@link PrimitiveConstant}.</li>
      * </ul>
      */
-    private static Optional<JavaConstant> interceptWordType(Object object) {
+    private Optional<JavaConstant> interceptWordType(Object object) {
         if (object instanceof RelocatedPointer pointer) {
-            return Optional.of(new RelocatableConstant(pointer));
+            return Optional.of(new RelocatableConstant(pointer, metaAccess.lookupJavaType(object.getClass())));
         }
         if (object instanceof WordBase word) {
             return Optional.of(JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), word.rawValue()));

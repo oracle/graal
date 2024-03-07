@@ -39,6 +39,7 @@ import jdk.graal.compiler.util.json.JSONParserException;
 public class SerializationConfigurationParser<C> extends ConfigurationParser {
 
     public static final String NAME_KEY = "name";
+    public static final String TYPE_KEY = "type";
     public static final String CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY = "customTargetConstructorClass";
     private static final String SERIALIZATION_TYPES_KEY = "types";
     private static final String LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY = "lambdaCapturingTypes";
@@ -96,7 +97,8 @@ public class SerializationConfigurationParser<C> extends ConfigurationParser {
         if (lambdaCapturingType) {
             checkAttributes(data, "serialization descriptor object", Collections.singleton(NAME_KEY), Collections.singleton(CONDITIONAL_KEY));
         } else {
-            checkAttributes(data, "serialization descriptor object", Collections.singleton(NAME_KEY), Arrays.asList(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY, CONDITIONAL_KEY));
+            checkAttributes(data, "serialization descriptor object", Collections.emptySet(), Arrays.asList(TYPE_KEY, NAME_KEY, CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY, CONDITIONAL_KEY));
+            checkHasExactlyOneAttribute(data, "serialization descriptor object", List.of(TYPE_KEY, NAME_KEY));
         }
 
         UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data);
@@ -104,7 +106,23 @@ public class SerializationConfigurationParser<C> extends ConfigurationParser {
         if (!condition.isPresent()) {
             return;
         }
-        String targetSerializationClass = asString(data.get(NAME_KEY));
+
+        String targetSerializationClass;
+        Object typeObject = data.get(TYPE_KEY);
+        if (typeObject != null) {
+            if (typeObject instanceof String stringValue) {
+                targetSerializationClass = stringValue;
+            } else {
+                /*
+                 * We return if we find a future version of a type descriptor (as a JSON object)
+                 * instead of failing parsing.
+                 */
+                asMap(typeObject, "type descriptor should be a string or object");
+                return;
+            }
+        } else {
+            targetSerializationClass = asString(data.get(NAME_KEY));
+        }
 
         if (lambdaCapturingType) {
             serializationSupport.registerLambdaCapturingClass(condition.get(), targetSerializationClass);

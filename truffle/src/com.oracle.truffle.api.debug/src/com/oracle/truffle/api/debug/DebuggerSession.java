@@ -1137,15 +1137,25 @@ public final class DebuggerSession implements Closeable {
                 if (!SuspendedEvent.isEvalRootStackFrame(session, frameInstance) && (depth++ == 0)) {
                     return null;
                 }
+
                 Node callNode = frameInstance.getCallNode();
-                while (callNode != null && !SourceSectionFilter.ANY.includes(callNode)) {
-                    callNode = callNode.getParent();
-                }
+                RootNode rootNode;
                 if (callNode == null) {
-                    return null;
+                    // GR-52192 temporary workaround for Espresso, where a meaningful call node
+                    // cannot always be set as encapsulated node reference.
+                    rootNode = ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
+                    callNode = rootNode;
+                } else {
+                    while (callNode != null && !SourceSectionFilter.ANY.includes(callNode)) {
+                        callNode = callNode.getParent();
+                    }
+                    rootNode = callNode != null ? callNode.getRootNode() : null;
+                    if (rootNode == null) {
+                        // can't handle disconnected call nodes
+                        return null;
+                    }
                 }
-                RootNode root = callNode.getRootNode();
-                if (root == null || !includeInternal && root.isInternal()) {
+                if (!includeInternal && rootNode.isInternal()) {
                     return null;
                 }
                 return new Caller(frameInstance, callNode);

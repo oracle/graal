@@ -3,7 +3,7 @@ Use a serialization-config.json in your META-INF/native-image/<groupID>/<artifac
 
 The structure is described in the following schema:
 
-  https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/serialization-config-schema-v1.0.0.json
+  https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/serialization-config-schema-v1.1.0.json
 
 Example:
 

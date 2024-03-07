@@ -21,9 +21,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
   vm_dir:: 'vm',
   svm_suite:: '/substratevm',
   libgraal_env: 'libgraal',
-  custom_vm_linux: {},
-  custom_vm_darwin: {},
-  custom_vm_windows: {},
+  custom_vm: {},
   vm_profiles:: [],
   collect_profiles():: [],
 
@@ -104,7 +102,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
      ],
      name: 'gate-vm-unittest-windows-amd64',
     }, ["sdk", "truffle", "vm"]),
-    self.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate') + vm_common.sulong_linux + {
+    self.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate') + vm_common.sulong + {
      environment+: {
        DYNAMIC_IMPORTS: '/tools,/substratevm,/sulong',
        NATIVE_IMAGES: 'polyglot',

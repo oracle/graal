@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,7 @@ import java.util.Collections;
 import java.util.List;
 
 import jdk.graal.compiler.core.common.type.StampPair;
-
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -169,6 +169,7 @@ public final class GraphBuilderConfiguration {
     private final boolean retainLocalVariables;
     private final Plugins plugins;
     private final boolean replaceLocalsWithConstants;
+    private final boolean usePreciseUnresolvedDeopts;
 
     public enum BytecodeExceptionMode {
         /**
@@ -198,6 +199,7 @@ public final class GraphBuilderConfiguration {
                     boolean trackNodeSourcePosition,
                     boolean retainLocalVariables,
                     boolean replaceLocalsWithConstants,
+                    boolean usePreciseUnresolvedDeopts,
                     List<ResolvedJavaType> skippedExceptionTypes,
                     Plugins plugins) {
         this.eagerResolving = eagerResolving;
@@ -208,6 +210,7 @@ public final class GraphBuilderConfiguration {
         this.trackNodeSourcePosition = trackNodeSourcePosition;
         this.retainLocalVariables = retainLocalVariables;
         this.replaceLocalsWithConstants = replaceLocalsWithConstants;
+        this.usePreciseUnresolvedDeopts = usePreciseUnresolvedDeopts;
         this.skippedExceptionTypes = skippedExceptionTypes;
         this.plugins = plugins;
     }
@@ -227,6 +230,7 @@ public final class GraphBuilderConfiguration {
                         trackNodeSourcePosition,
                         retainLocalVariables,
                         replaceLocalsWithConstants,
+                        usePreciseUnresolvedDeopts,
                         skippedExceptionTypes,
                         newPlugins);
         return result;
@@ -248,6 +252,7 @@ public final class GraphBuilderConfiguration {
                         trackNodeSourcePosition,
                         retainLocalVariables,
                         replaceLocalsWithConstants,
+                        usePreciseUnresolvedDeopts,
                         skippedExceptionTypes,
                         plugins);
     }
@@ -262,6 +267,7 @@ public final class GraphBuilderConfiguration {
                         trackNodeSourcePosition,
                         retainLocalVariables,
                         replaceLocalsWithConstants,
+                        usePreciseUnresolvedDeopts,
                         skippedExceptionTypes,
                         plugins);
     }
@@ -276,6 +282,7 @@ public final class GraphBuilderConfiguration {
                         trackNodeSourcePosition,
                         retainLocalVariables,
                         replaceLocalsWithConstants,
+                        usePreciseUnresolvedDeopts,
                         Collections.unmodifiableList(Arrays.asList(newSkippedExceptionTypes)),
                         plugins);
     }
@@ -289,6 +296,7 @@ public final class GraphBuilderConfiguration {
                         trackNodeSourcePosition,
                         retainLocalVariables,
                         replaceLocalsWithConstants,
+                        usePreciseUnresolvedDeopts,
                         skippedExceptionTypes,
                         plugins);
     }
@@ -303,6 +311,7 @@ public final class GraphBuilderConfiguration {
                         trackNodeSourcePosition,
                         retainLocalVariables,
                         replaceLocalsWithConstants,
+                        usePreciseUnresolvedDeopts,
                         skippedExceptionTypes,
                         plugins);
     }
@@ -317,6 +326,7 @@ public final class GraphBuilderConfiguration {
                         trackNodeSourcePosition,
                         retainLocalVariables,
                         replaceLocalsWithConstants,
+                        usePreciseUnresolvedDeopts,
                         skippedExceptionTypes,
                         plugins);
     }
@@ -331,6 +341,7 @@ public final class GraphBuilderConfiguration {
                         newTrackNodeSourcePosition,
                         retainLocalVariables,
                         replaceLocalsWithConstants,
+                        usePreciseUnresolvedDeopts,
                         skippedExceptionTypes,
                         plugins);
     }
@@ -345,6 +356,22 @@ public final class GraphBuilderConfiguration {
                         trackNodeSourcePosition,
                         newRetainLocalVariables,
                         replaceLocalsWithConstants,
+                        usePreciseUnresolvedDeopts,
+                        skippedExceptionTypes,
+                        plugins);
+    }
+
+    public GraphBuilderConfiguration withUsePreciseUnresolvedDeopts(boolean newUsePreciseUnresolvedDeopts) {
+        return new GraphBuilderConfiguration(
+                        eagerResolving,
+                        unresolvedIsError,
+                        bytecodeExceptionMode,
+                        omitAssertions,
+                        insertFullInfopoints,
+                        trackNodeSourcePosition,
+                        retainLocalVariables,
+                        replaceLocalsWithConstants,
+                        newUsePreciseUnresolvedDeopts,
                         skippedExceptionTypes,
                         plugins);
     }
@@ -381,6 +408,14 @@ public final class GraphBuilderConfiguration {
         return this.replaceLocalsWithConstants;
     }
 
+    /**
+     * Returns {@code true} if a graph must not contain {@link DeoptimizationReason#Unresolved}
+     * deopts that can float or may otherwise have an imprecise frame state.
+     */
+    public boolean usePreciseUnresolvedDeopts() {
+        return this.usePreciseUnresolvedDeopts;
+    }
+
     public static GraphBuilderConfiguration getDefault(Plugins plugins) {
         return new GraphBuilderConfiguration(
                         /* eagerResolving: */ false,
@@ -391,6 +426,7 @@ public final class GraphBuilderConfiguration {
                         /* trackNodeSourcePosition: */ false,
                         /* retainLocalVariables */ false,
                         /* replaceLocalsWithConstants */ false,
+                        /* usePreciseUnresolvedDeopts */ false,
                         Collections.emptyList(),
                         plugins);
     }
@@ -405,6 +441,7 @@ public final class GraphBuilderConfiguration {
                         /* trackNodeSourcePosition: */ false,
                         /* retainLocalVariables */ false,
                         /* replaceLocalsWithConstants */ false,
+                        /* usePreciseUnresolvedDeopts */ false,
                         Collections.emptyList(),
                         plugins);
     }

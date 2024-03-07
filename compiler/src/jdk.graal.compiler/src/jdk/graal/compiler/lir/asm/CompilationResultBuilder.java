@@ -638,6 +638,14 @@ public class CompilationResultBuilder extends CoreProvidersDelegate {
         currentBlockIndex = 0;
         lastImplicitExceptionOffset = Integer.MIN_VALUE;
         lir.resetLabels();
+        needsMHDeoptHandler = false;
+        conservativeLabelOffsets = false;
+        if (labelBindLirPositions != null) {
+            labelBindLirPositions.clear();
+        }
+        if (lirPositions != null) {
+            lirPositions.clear();
+        }
     }
 
     public OptionValues getOptions() {

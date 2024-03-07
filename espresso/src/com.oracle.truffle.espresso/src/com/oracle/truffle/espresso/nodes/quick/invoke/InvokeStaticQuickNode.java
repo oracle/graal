@@ -56,4 +56,8 @@ public final class InvokeStaticQuickNode extends InvokeQuickNode {
         Object[] args = getArguments(frame);
         return pushResult(frame, invokeStatic.execute(args));
     }
+
+    public void initializeResolvedKlass() {
+        invokeStatic.getStaticMethod().getDeclaringKlass().safeInitialize();
+    }
 }

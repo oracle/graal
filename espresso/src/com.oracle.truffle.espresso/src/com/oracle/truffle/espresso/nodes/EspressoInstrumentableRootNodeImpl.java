@@ -23,12 +23,14 @@
 package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.vm.VM;
 
 /**
  * Base node for all implementations of Java methods.
@@ -95,5 +97,10 @@ abstract class EspressoInstrumentableRootNodeImpl extends EspressoInstrumentable
             return true;
         }
         return false;
+    }
+
+    @Override
+    public int getBci(Frame frame) {
+        return VM.EspressoStackElement.NATIVE_BCI;
     }
 }
