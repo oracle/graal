@@ -111,8 +111,8 @@ public final class LeftShiftNode extends ShiftNode<Shl> {
                     long i = ((PrimitiveConstant) c).asLong();
                     /*
                      * If i == 63, this will give Long.MIN_VALUE, which is negative but still
-                     * correct as the multiplier. Computing (long) Math.pow(2, 63) would round to
-                     * the wrong value.
+                     * correct as the multiplier. We have to do a shift here, computing this as
+                     * (long) Math.pow(2, 63) would round to the wrong value.
                      */
                     long multiplier = 1L << i;
                     return new MulNode(getX(), ConstantNode.forIntegerStamp(xStamp, multiplier));
