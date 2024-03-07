@@ -85,7 +85,7 @@ def igv(args):
     v12 = mx.VersionSpec("12")
     def _igvJdkVersionCheck(version):
         return v11 <= version < v12
-    jdkhome = mx.get_jdk(_igvJdkVersionCheck, versionDescription='(Netbeans should run with JDK 11 configured with EXTRA_JAVA_HOMES or --extra-java-homes)', purpose="running IGV").home
+    jdkhome = mx.get_jdk(_igvJdkVersionCheck, versionDescription='(Netbeans requires JDK 11 which can be specified via EXTRA_JAVA_HOMES or --extra-java-homes)', purpose="running IGV").home
     run_netbeans_app('IdealGraphVisualizer', jdkhome, args=args, dist='IDEALGRAPHVISUALIZER_DIST')
 
 def c1visualizer(args):
@@ -94,7 +94,7 @@ def c1visualizer(args):
     v12 = mx.VersionSpec("12")
     def _c1vJdkVersionCheck(version):
         return v8u40 <= version < v12
-    jdkhome = mx.get_jdk(_c1vJdkVersionCheck, versionDescription='(JDK that is >= 1.8.0u40 and <= 11 configured with EXTRA_JAVA_HOMES or --extra-java-homes)', purpose="running C1 Visualizer").home
+    jdkhome = mx.get_jdk(_c1vJdkVersionCheck, versionDescription='(JDK that is >= 1.8.0u40 and <= 11 which can be specified via EXTRA_JAVA_HOMES or --extra-java-homes)', purpose="running C1 Visualizer").home
     run_netbeans_app('C1Visualizer', jdkhome, args() if callable(args) else args)
 
 def hsdis(args, copyToDir=None):
