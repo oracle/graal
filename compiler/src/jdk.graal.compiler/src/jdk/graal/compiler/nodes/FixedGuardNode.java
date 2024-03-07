@@ -123,17 +123,15 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
         }
 
         if (this.isAlive()) {
-            // Optimize a FixedGuard-condition-pi pattern as a whole: note that is is different than
-            // what conditional elimination does because here we detect exhaustive patterns and
-            // optimize
-            // them as a whole. This is hard to express in CE as we optimize both a pi and its
-            // condition
-            // in one go. There is no dedicated optimization phase in graal that does this,
-            // therefore we
-            // build on simplification as a more non-local transform.
-            //
-            // We are looking for the following pattern
-            //
+            /*
+             * Optimize a FixedGuard-condition-pi pattern as a whole: note that is is different than
+             * what conditional elimination does because here we detect exhaustive patterns and
+             * optimize them as a whole. This is hard to express in CE as we optimize both a pi and
+             * its condition in one go. There is no dedicated optimization phase in graal that does
+             * this, therefore we build on simplification as a more non-local transform.
+             *
+             * We are looking for the following pattern
+             */
             // @formatter:off
             //               inputPiObject
             //               |
@@ -146,14 +144,15 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
             //               |          |
             //               usagePi----
             //@formatter:on
-            //
-            // and we optimize the condition and the pi together to use inputPi's input if inputPi
-            // does not contribute any knowledge to usagePi. This means that inputPi is totally
-            // skipped. If both inputPi and usagePi ultimately work on the same input (un-pi-ed)
-            // then later conditional elimination can cleanup inputPi's guard if applicable.
-            //
-            // Note: this optimization does not work for subtypes of PiNode like DynamicPi as their
-            // stamps are not yet known
+            /*
+             * and we optimize the condition and the pi together to use inputPi's input if inputPi
+             * does not contribute any knowledge to usagePi. This means that inputPi is totally
+             * skipped. If both inputPi and usagePi ultimately work on the same input (un-pi-ed)
+             * then later conditional elimination can cleanup inputPi's guard if applicable.
+             *
+             * Note: this optimization does not work for subtypes of PiNode like DynamicPi as their
+             * stamps are not yet known.
+             */
             final LogicNode usagePiCondition = getCondition();
             // look for the pattern above
             if (usagePiCondition.inputs().filter(PiNode.class).isNotEmpty()) {
@@ -183,32 +182,30 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
 
                             if (piProvenByCondition) {
                                 /*
-                                 * We have a pi node with a pi node input: we want to find out if
-                                 * the input pi can be skipped because this PI's guard and pi stamp
-                                 * prove enough knowledge to actually skip the input pi completely.
-                                 * This can be relevant for complex type check patterns and
-                                 * interconnected pis: conditional elimination cannot enumerate all
-                                 * values thus we try to free up local patterns early by skipping
-                                 * unnecessary pis.
+                                 * We want to find out if the inputPi can be skipped because
+                                 * usagePi's guard and pi stamp prove enough knowledge to actually
+                                 * skip inputPi completely. This can be relevant for complex type
+                                 * check patterns and interconnected pis: conditional elimination
+                                 * cannot enumerate all values thus we try to free up local patterns
+                                 * early by skipping unnecessary pis.
                                  */
-                                Stamp inputPiPiStamp = inputPi.piStamp();
-                                Stamp inputPiObjectFinalStamp = inputPi.object().stamp(NodeView.DEFAULT);
-
+                                final Stamp inputPiPiStamp = inputPi.piStamp();
+                                final Stamp inputPiObjectFinalStamp = inputPi.object().stamp(NodeView.DEFAULT);
                                 /*
                                  * Determine if the stamp from piInput.input & usagePi.piStamp is
                                  * equally strong than the current piStamp, then we can build a new
                                  * pi that skips the input pi.
                                  */
-                                Stamp resultStampWithInputPiObjectOnly = usagePiPiStamp.improveWith(inputPiObjectFinalStamp);
-                                boolean thisPiEquallyStrongWithoutInputPi = resultStampWithInputPiObjectOnly.tryImproveWith(inputPiPiStamp) == null;
+                                final Stamp resultStampWithInputPiObjectOnly = usagePiPiStamp.improveWith(inputPiObjectFinalStamp);
+                                final boolean thisPiEquallyStrongWithoutInputPi = resultStampWithInputPiObjectOnly.tryImproveWith(inputPiPiStamp) == null;
                                 if (thisPiEquallyStrongWithoutInputPi) {
                                     assert resultStampWithInputPiObjectOnly.tryImproveWith(inputPiPiStamp) == null : Assertions.errorMessage(
                                                     "Dropping input pi assumes that input pi stamp does not contribute to knowledge but it does", inputPi, inputPi.object(), usagePiPiStamp,
                                                     usagePiFinalStamp);
-
-                                    // the input pi's object stamp was strong enough so we can skip
-                                    // the
-                                    // input pi
+                                    /*
+                                     * The input pi's object stamp was strong enough so we can skip
+                                     * the input pi.
+                                     */
                                     final ValueNode newPi = usagePiCondition.graph().addOrUnique(PiNode.create(inputPi.object(), usagePiPiStamp, usagePi.getGuard().asNode()));
                                     final LogicNode newCondition = (LogicNode) usagePiCondition.copyWithInputs(true);
                                     newCondition.replaceAllInputs(usagePiObject, inputPi.object());
