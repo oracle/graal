@@ -157,6 +157,16 @@ final class Target_java_lang_Enum {
 @TargetClass(java.lang.String.class)
 final class Target_java_lang_String {
 
+    // Checkstyle: stop
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.None, isFinal = true) //
+    public static boolean COMPACT_STRINGS;
+    // Checkstyle: resume
+
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.None, isFinal = true) //
+    public static byte LATIN1;
+
     @Substitute
     public String intern() {
         String thisStr = SubstrateUtil.cast(this, String.class);
@@ -180,7 +190,7 @@ final class Target_java_lang_String {
     native byte coder();
 
     @Alias @RecomputeFieldValue(kind = Kind.None, isFinal = true) //
-    byte[] value;
+    public byte[] value;
 
     @Alias //
     int hash;
@@ -688,26 +698,6 @@ final class ClassLoaderValueMapFieldValueTransformer implements FieldValueTransf
 
 /** Dummy class to have a class with the file's name. */
 public final class JavaLangSubstitutions {
-
-    public static final class StringUtil {
-        /**
-         * Returns a character from a string at {@code index} position based on the encoding format.
-         */
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static char charAt(String string, int index) {
-            Target_java_lang_String str = SubstrateUtil.cast(string, Target_java_lang_String.class);
-            byte[] value = str.value;
-            if (str.isLatin1()) {
-                return Target_java_lang_StringLatin1.getChar(value, index);
-            } else {
-                return Target_java_lang_StringUTF16.getChar(value, index);
-            }
-        }
-
-        public static byte coder(String string) {
-            return SubstrateUtil.cast(string, Target_java_lang_String.class).coder();
-        }
-    }
 
     public static final class ClassValueSupport {
 

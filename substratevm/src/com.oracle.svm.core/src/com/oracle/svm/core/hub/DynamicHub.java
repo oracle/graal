@@ -25,6 +25,7 @@
 package com.oracle.svm.core.hub;
 
 import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.annotate.TargetElement.CONSTRUCTOR_NAME;
 import static com.oracle.svm.core.reflect.ReflectionMetadataDecoder.NO_DATA;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_CLASSES_FLAG;
@@ -976,10 +977,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return isFlagSet(flags, IS_SEALED_FLAG_BIT);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isVMInternal() {
         return isFlagSet(flags, IS_VM_INTERNAL_FLAG_BIT);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isLambdaFormHidden() {
         return isFlagSet(flags, IS_LAMBDA_FORM_HIDDEN_BIT);
     }

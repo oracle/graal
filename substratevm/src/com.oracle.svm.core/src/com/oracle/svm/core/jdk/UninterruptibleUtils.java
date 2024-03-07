@@ -24,16 +24,19 @@
  */
 package com.oracle.svm.core.jdk;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.jdk.JavaLangSubstitutions.StringUtil;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -592,7 +595,7 @@ public class UninterruptibleUtils {
         public static int modifiedUTF8Length(java.lang.String string, boolean addNullTerminator, CharReplacer replacer) {
             int result = 0;
             for (int index = 0; index < string.length(); index++) {
-                char ch = StringUtil.charAt(string, index);
+                char ch = charAt(string, index);
                 if (replacer != null) {
                     ch = replacer.replace(ch);
                 }
@@ -623,7 +626,7 @@ public class UninterruptibleUtils {
         public static Pointer toModifiedUTF8(java.lang.String string, int stringLength, Pointer buffer, Pointer bufferEnd, boolean addNullTerminator, CharReplacer replacer) {
             Pointer pos = buffer;
             for (int index = 0; index < stringLength; index++) {
-                char ch = StringUtil.charAt(string, index);
+                char ch = charAt(string, index);
                 if (replacer != null) {
                     ch = replacer.replace(ch);
                 }
@@ -636,6 +639,72 @@ public class UninterruptibleUtils {
             }
             VMError.guarantee(pos.belowOrEqual(bufferEnd), "Must not write out of bounds.");
             return pos;
+        }
+
+        /**
+         * Returns a character from a string at {@code index} position based on the encoding format.
+         */
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static char charAt(java.lang.String string, int index) {
+            Target_java_lang_String str = SubstrateUtil.cast(string, Target_java_lang_String.class);
+            byte[] value = str.value;
+            if (str.isLatin1()) {
+                return Target_java_lang_StringLatin1.getChar(value, index);
+            } else {
+                return Target_java_lang_StringUTF16.getChar(value, index);
+            }
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static byte coder(java.lang.String string) {
+            return SubstrateUtil.cast(string, Target_java_lang_String.class).coder();
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static byte[] value(java.lang.String string) {
+            return SubstrateUtil.cast(string, Target_java_lang_String.class).value;
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static boolean startsWith(java.lang.String string, java.lang.String prefix) {
+            if (prefix.length() > string.length()) {
+                return false;
+            }
+            byte coder = coder(string);
+            if (coder != coder(prefix) && coder == Target_java_lang_String.LATIN1) {
+                /* string.coder == LATIN1 && prefix.coder == UTF16 */
+                return false;
+            }
+            return compare(string, prefix, prefix.length());
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        @SuppressFBWarnings(value = "", justification = "The string comparison by reference is fine in this case.")
+        public static boolean equals(java.lang.String a, java.lang.String b) {
+            return a == b || (!Target_java_lang_String.COMPACT_STRINGS || coder(a) == coder(b)) && equals0(value(a), value(b));
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        private static boolean equals0(byte[] value, byte[] other) {
+            if (value.length == other.length) {
+                for (int i = 0; i < value.length; i++) {
+                    if (value[i] != other[i]) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            return false;
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        private static boolean compare(java.lang.String a, java.lang.String b, int length) {
+            for (int index = 0; index < length; index++) {
+                if (charAt(a, index) != charAt(b, index)) {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 

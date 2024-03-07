@@ -43,7 +43,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.jdk.JavaLangSubstitutions;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.BufferedFileOperationSupport.BufferedFileOperationSupportHolder;
@@ -354,7 +354,7 @@ public class BufferedFileOperationSupport {
     public boolean writeUTF8(BufferedFile f, String string) {
         boolean success = true;
         for (int index = 0; index < string.length() && success; index++) {
-            success &= writeUTF8(f, JavaLangSubstitutions.StringUtil.charAt(string, index));
+            success &= writeUTF8(f, UninterruptibleUtils.String.charAt(string, index));
         }
         return success;
     }
