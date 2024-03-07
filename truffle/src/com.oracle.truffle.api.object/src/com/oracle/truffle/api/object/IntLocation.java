@@ -65,14 +65,6 @@ public interface IntLocation {
     int getInt(DynamicObject store, boolean condition);
 
     /**
-     * @see Location#set(DynamicObject, Object)
-     * @since 0.8 or earlier
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated(since = "22.2")
-    void setInt(DynamicObject store, int value) throws FinalLocationException;
-
-    /**
      * @see Location#set(DynamicObject, Object, Shape)
      * @since 0.8 or earlier
      */

@@ -104,11 +104,6 @@ abstract class CoreLocations {
         default void setInt(DynamicObject store, int value, Shape shape) {
             setInt(store, value, store.getShape() == shape, false);
         }
-
-        @Override
-        default void setInt(DynamicObject store, int value) {
-            setInt(store, value, false, false);
-        }
     }
 
     public interface LongLocation extends TypedLocation, com.oracle.truffle.api.object.LongLocation {
@@ -132,11 +127,6 @@ abstract class CoreLocations {
         @Override
         default void setLong(DynamicObject store, long value, Shape shape) {
             setLong(store, value, store.getShape() == shape, false);
-        }
-
-        @Override
-        default void setLong(DynamicObject store, long value) {
-            setLong(store, value, false, false);
         }
     }
 
@@ -162,11 +152,6 @@ abstract class CoreLocations {
         default void setDouble(DynamicObject store, double value, Shape shape) {
             setDouble(store, value, store.getShape() == shape, false);
         }
-
-        @Override
-        default void setDouble(DynamicObject store, double value) {
-            setDouble(store, value, false, false);
-        }
     }
 
     public interface BooleanLocation extends TypedLocation, com.oracle.truffle.api.object.BooleanLocation {
@@ -188,11 +173,6 @@ abstract class CoreLocations {
         @Override
         default void setBoolean(DynamicObject store, boolean value, Shape shape) {
             setBoolean(store, value, store.getShape() == shape, false);
-        }
-
-        @Override
-        default void setBoolean(DynamicObject store, boolean value) {
-            setBoolean(store, value, false, false);
         }
     }
 

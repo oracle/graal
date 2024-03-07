@@ -181,19 +181,6 @@ public abstract class Location {
     }
 
     /**
-     * Set object value at this location in store.
-     *
-     * @throws IncompatibleLocationException for storage type invalidations
-     * @throws FinalLocationException for effectively final fields
-     * @since 0.8 or earlier
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated(since = "22.2")
-    public final void set(DynamicObject store, Object value) throws IncompatibleLocationException, FinalLocationException {
-        set(store, value, null);
-    }
-
-    /**
      * Returns {@code true} if the location can be set to the value.
      *
      * @param value the value in question
