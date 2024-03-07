@@ -40,6 +40,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
@@ -48,7 +49,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.invoke.MethodHandleIntrinsic;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
@@ -157,7 +158,9 @@ public class MethodHandleFeature implements InternalFeature {
     }
 
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
+    public void beforeAnalysis(BeforeAnalysisAccess a) {
+        var access = (BeforeAnalysisAccessImpl) a;
+
         /* java.lang.invoke functions called through reflection */
         Class<?> mhImplClazz = access.findClassByName("java.lang.invoke.MethodHandleImpl");
 
@@ -200,7 +203,9 @@ public class MethodHandleFeature implements InternalFeature {
         access.registerSubtypeReachabilityHandler(MethodHandleFeature::scanBoundMethodHandle,
                         access.findClassByName("java.lang.invoke.BoundMethodHandle"));
 
-        AnalysisMetaAccess metaAccess = ((FeatureImpl.BeforeAnalysisAccessImpl) access).getMetaAccess();
+        AnalysisMetaAccess metaAccess = access.getMetaAccess();
+        ImageHeapScanner heapScanner = access.getUniverse().getHeapScanner();
+
         access.registerFieldValueTransformer(
                         ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.invoke.ClassSpecializer"), "cache"),
                         new FieldValueTransformerWithAvailability() {
@@ -241,6 +246,37 @@ public class MethodHandleFeature implements InternalFeature {
         access.registerFieldValueTransformer(
                         ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.invoke.MethodType"), "internTable"),
                         (receiver, originalValue) -> runtimeMethodTypeInternTable);
+
+        /*
+         * SpeciesData.transformHelpers is a lazily initialized cache of MethodHandle objects. We do
+         * not want to make a MethodHandle reachable just because the image builder initialized the
+         * cache, so we filter out unreachable objects. This also solves the problem when late image
+         * heap re-scanning after static analysis would see a method handle that was not yet cached
+         * during static analysis, in which case image building would fail because new types would
+         * be made reachable after analysis.
+         */
+        access.registerFieldValueTransformer(
+                        ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.invoke.ClassSpecializer$SpeciesData"), "transformHelpers"),
+                        new FieldValueTransformerWithAvailability() {
+                            @Override
+                            public FieldValueTransformerWithAvailability.ValueAvailability valueAvailability() {
+                                return FieldValueTransformerWithAvailability.ValueAvailability.AfterAnalysis;
+                            }
+
+                            @Override
+                            @SuppressWarnings("unchecked")
+                            public Object transform(Object receiver, Object originalValue) {
+                                MethodHandle[] originalArray = (MethodHandle[]) originalValue;
+                                MethodHandle[] filteredArray = new MethodHandle[originalArray.length];
+                                for (int i = 0; i < originalArray.length; i++) {
+                                    MethodHandle handle = originalArray[i];
+                                    if (handle != null && heapScanner.isObjectReachable(handle)) {
+                                        filteredArray[i] = handle;
+                                    }
+                                }
+                                return filteredArray;
+                            }
+                        });
     }
 
     private static void registerMHImplFunctionsForReflection(DuringAnalysisAccess access) {
