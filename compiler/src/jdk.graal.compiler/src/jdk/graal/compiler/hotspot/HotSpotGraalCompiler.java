@@ -182,6 +182,17 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
 
     private boolean shouldUsePreciseUnresolvedDeopts() {
         GraalHotSpotVMConfig config = graalRuntime.getVMConfig();
+        /*
+         * When running with -Xcomp, use precise deopts for unresolved elements. This is necessary
+         * to avoid deopt loops: An imprecise deopt could cause us to deoptimize even if the path
+         * using the unresolved element is not executed. As -Xcomp forces compilations, this would
+         * cause us to recompile the method in the same way, so we would trigger the same imprecise
+         * deopt again.
+         *
+         * Without -Xcomp we rely on normal warmup in the interpreter to resolve unresolved items
+         * and prune never executed paths, and we use speculations for additional protection against
+         * deopt loops.
+         */
         return config.xcompMode;
     }
 

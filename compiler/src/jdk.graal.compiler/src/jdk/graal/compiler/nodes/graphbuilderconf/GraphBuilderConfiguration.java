@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.List;
 
 import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -407,6 +408,10 @@ public final class GraphBuilderConfiguration {
         return this.replaceLocalsWithConstants;
     }
 
+    /**
+     * Returns {@code true} if a graph must not contain {@link DeoptimizationReason#Unresolved}
+     * deopts that can float or may otherwise have an imprecise frame state.
+     */
     public boolean usePreciseUnresolvedDeopts() {
         return this.usePreciseUnresolvedDeopts;
     }
