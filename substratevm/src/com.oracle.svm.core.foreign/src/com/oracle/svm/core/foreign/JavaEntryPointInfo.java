@@ -33,6 +33,7 @@ import jdk.graal.compiler.core.common.NumUtil;
 import jdk.internal.foreign.abi.ABIDescriptor;
 import jdk.internal.foreign.abi.VMStorage;
 
+/** A descriptor for an entry point from foreign into Java code via an upcall. */
 public final class JavaEntryPointInfo {
     private final MethodType methodType;
     private final VMStorage[] argumentsAssignment;

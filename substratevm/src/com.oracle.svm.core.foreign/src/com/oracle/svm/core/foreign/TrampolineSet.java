@@ -42,6 +42,9 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;
 
+/**
+ * A set of trampolines that can be assigned to specific upcall stubs with specific method handles.
+ */
 final class TrampolineSet {
     private static UnsignedWord allocationSize() {
         return VirtualMemoryProvider.get().getGranularity();
