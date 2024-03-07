@@ -1474,7 +1474,6 @@ suite = {
         "windows" : {
           "cmakeConfig" : {
             "CMAKE_C_FLAGS" : "-Wno-everything -include stdio.h",
-            "CMAKE_CXX_FLAGS" : "-Wno-everything -include stdio.h",
           },
         },
         "<others>": {
@@ -1503,13 +1502,12 @@ suite = {
       "os" : {
         "windows" : {
           "cmakeConfig" : {
-            "CMAKE_C_FLAGS" : "-Wno-everything -include stdio.h",
             "CMAKE_CXX_FLAGS" : "-Wno-everything -include stdio.h",
           },
         },
         "<others>": {
           "cmakeConfig" : {
-            "CMAKE_C_FLAGS" : "-Wno-everything",
+            "CMAKE_CXX_FLAGS" : "-Wno-everything",
           },
         },
       },
