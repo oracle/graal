@@ -1409,6 +1409,19 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                     return false;
                 }
             }
+
+            if (lb1.getClonedFrom() != -1) {
+                if (lb2.getClonedFrom() != -1) {
+                    if (lb1.getClonedFrom() != lb2.getClonedFrom()) {
+                        // both cloned but from different loops
+                        return false;
+                    }
+                } else {
+                    // one ones cloned the other not, abort
+                    return false;
+                }
+            }
+
             return true;
         }
     }

@@ -41,6 +41,7 @@ import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
+import jdk.graal.compiler.nodes.loop.LoopFragment;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
@@ -150,6 +151,12 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
 
     public static final SpeculationReasonGroup LOOP_OVERFLOW_DEOPT = new SpeculationReasonGroup("LoopOverflowDeopt", ResolvedJavaMethod.class, int.class);
 
+    /**
+     * Debug only pointer to a previous loop header this loop was cloned from, this is relevant for
+     * loop optimizations calling {@link LoopFragment#duplicate()}.
+     */
+    private int clonedFrom = -1;
+
     public LoopBeginNode() {
         super(TYPE);
         loopOrigFrequency = 1;
@@ -159,6 +166,19 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         this.canEndsGuestSafepoint = true;
         loopType = LoopType.SIMPLE_LOOP;
         unrollFactor = 1;
+    }
+
+    @Override
+    protected void afterClone(Node other) {
+        super.afterClone(other);
+        assert other instanceof LoopBeginNode : Assertions.errorMessage("Must be cloned from a previous loop begin", this, other);
+        // ideally we would want to verify that cloneFrom==-1 but when we copy a node manually with
+        // (addDuplicates) and call afterClone on it we have to override this value
+        this.clonedFrom = other.hashCode();
+    }
+
+    public int getClonedFrom() {
+        return clonedFrom;
     }
 
     public void checkDisableCountedBySpeculation(int bci, StructuredGraph graph) {
