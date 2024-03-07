@@ -39,7 +39,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -51,8 +50,8 @@ public class StandaloneImageHeapScanner extends ImageHeapScanner {
     private Predicate<AnalysisField> shouldScanField;
 
     public StandaloneImageHeapScanner(BigBang bb, ImageHeap heap, AnalysisMetaAccess aMetaAccess, SnippetReflectionProvider aSnippetReflection, ConstantReflectionProvider aConstantReflection,
-                    ObjectScanningObserver aScanningObserver, ClassLoader classLoader, HostedValuesProvider hostedValuesProvider, IdentityHashCodeProvider identityHashCodeProvider) {
-        super(bb, heap, aMetaAccess, aSnippetReflection, aConstantReflection, aScanningObserver, hostedValuesProvider, identityHashCodeProvider);
+                    ObjectScanningObserver aScanningObserver, ClassLoader classLoader, HostedValuesProvider hostedValuesProvider) {
+        super(bb, heap, aMetaAccess, aSnippetReflection, aConstantReflection, aScanningObserver, hostedValuesProvider);
         this.classLoader = classLoader;
         shouldScanConstant = constant -> isClassLoaderAllowed(metaAccess.lookupJavaType(constant).getJavaClass().getClassLoader());
         shouldScanField = field -> isClassLoaderAllowed(field.getDeclaringClass().getJavaClass().getClassLoader());

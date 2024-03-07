@@ -650,7 +650,12 @@ public class RealLog extends Log {
         }
 
         Throwable cur = t;
-        do {
+        int maxCauses = 25;
+        for (int i = 0; i < maxCauses && cur != null; i++) {
+            if (i > 0) {
+                newline().string("Caused by: ");
+            }
+
             /*
              * We do not want to call getMessage(), since it can be overridden by subclasses of
              * Throwable. So we access the raw detailMessage directly from the field in Throwable.
@@ -670,23 +675,20 @@ public class RealLog extends Log {
             } else {
                 StackTraceElement[] stackTrace = JDKUtils.getRawStackTrace(cur);
                 if (stackTrace != null) {
-                    int i;
-                    for (i = 0; i < stackTrace.length && i < maxFrames; i++) {
-                        StackTraceElement element = stackTrace[i];
+                    int j;
+                    for (j = 0; j < stackTrace.length && j < maxFrames; j++) {
+                        StackTraceElement element = stackTrace[j];
                         if (element != null) {
                             printJavaFrame(element.getClassName(), element.getMethodName(), element.getFileName(), element.getLineNumber());
                         }
                     }
-                    int remaining = stackTrace.length - i;
+                    int remaining = stackTrace.length - j;
                     printRemainingFramesCount(remaining);
                 }
             }
 
             cur = JDKUtils.getRawCause(cur);
-            if (cur != null) {
-                newline().string("Caused by: ");
-            }
-        } while (cur != null);
+        }
 
         return this;
     }

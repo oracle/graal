@@ -2431,7 +2431,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                 int cpi = Bytes.beU2(bytecode, 2);
                 JavaField field = targetMethod.getConstantPool().lookupField(cpi, targetMethod, GETFIELD);
                 if (field instanceof ResolvedJavaField) {
-                    ValueNode receiver = invocationPluginReceiver.init(targetMethod, args).get();
+                    ValueNode receiver = invocationPluginReceiver.init(targetMethod, args).get(true);
                     ResolvedJavaField resolvedField = (ResolvedJavaField) field;
                     try (DebugCloseable context = openNodeContext(targetMethod, 1)) {
                         genGetField(resolvedField, receiver);

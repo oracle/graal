@@ -48,7 +48,7 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
 
-import jdk.graal.compiler.core.common.type.TypedConstant;
+import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -59,7 +59,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-public class AnalysisConstantReflectionProvider implements ConstantReflectionProvider {
+public class AnalysisConstantReflectionProvider implements ConstantReflectionProvider, IdentityHashCodeProvider {
     private final AnalysisUniverse universe;
     protected final UniverseMetaAccess metaAccess;
     private final AnalysisMethodHandleAccessProvider methodHandleAccess;
@@ -81,6 +81,39 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
         } else {
             return x.equals(y);
         }
+    }
+
+    @Override
+    public Integer identityHashCode(JavaConstant constant) {
+        if (constant == null || constant.getJavaKind() != JavaKind.Object) {
+            return null;
+        } else if (constant.isNull()) {
+            /* System.identityHashCode is specified to return 0 when passed null. */
+            return 0;
+        } else if (constant instanceof RelocatableConstant) {
+            /* Kind of a primitive constant, so it does not have an identity hash code. */
+            return null;
+        }
+
+        ImageHeapConstant imageHeapConstant = (ImageHeapConstant) constant;
+        if (imageHeapConstant.hasIdentityHashCode()) {
+            /*
+             * If the ImageHeapConstant already has a hash code, that value has precedence over the
+             * hosted object.
+             */
+            return imageHeapConstant.getIdentityHashCode();
+        }
+
+        Object hostedObject = Objects.requireNonNull(universe.getSnippetReflection().asObject(Object.class, constant));
+        if (hostedObject instanceof DynamicHub hub) {
+            /*
+             * We need to use the identity hash code of the original java.lang.Class object and not
+             * of the DynamicHub, so that hash maps that are filled during image generation and use
+             * Class keys still work at run time.
+             */
+            hostedObject = hub.getHostedJavaClass();
+        }
+        return System.identityHashCode(hostedObject);
     }
 
     @Override
@@ -177,7 +210,7 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
 
     public JavaConstant readValue(AnalysisField field, JavaConstant receiver, boolean returnSimulatedValues) {
         if (!field.isStatic()) {
-            if (receiver.isNull() || !field.getDeclaringClass().isAssignableFrom(((TypedConstant) receiver).getType(metaAccess))) {
+            if (!(receiver instanceof ImageHeapInstance imageHeapInstance) || !field.getDeclaringClass().isAssignableFrom(imageHeapInstance.getType())) {
                 /*
                  * During compiler optimizations, it is possible to see field loads with a constant
                  * receiver of a wrong type. The code will later be removed as dead code, and in

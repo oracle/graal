@@ -307,9 +307,11 @@ import jdk.vm.ci.meta.JavaMethod;
  */
 public class BciBlockMapping implements JavaMethodContext {
     public static class Options {
-        @Option(help = "Max amount of extra effort to expend handling irreducible loops. " +
-                        "A value <= 1 disables support for irreducible loops.", type = OptionType.Expert)//
+        //@formatter:off
+        @Option(help = "Specifies the maximum amount of extra effort to expend handling irreducible loops. " +
+                       "A value <= 1 disables support for irreducible loops.", type = OptionType.Expert)//
         public static final OptionKey<Double> MaxDuplicationFactor = new OptionKey<>(2.0);
+        //@formatter:on
     }
 
     protected static final int UNASSIGNED_ID = -1;

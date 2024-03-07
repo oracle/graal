@@ -92,7 +92,9 @@ public class StackMoveOptimizationPhase extends PostAllocationOptimizationPhase 
                 if (isStackMove(inst)) {
                     AMD64Move.AMD64StackMove move = asStackMove(inst);
 
-                    if (reg != null && !reg.equals(move.getScratchRegister())) {
+                    if (reg != null && !reg.equals(move.getScratchRegister()) ||
+                                    // can't use own output as an input (GR-52445)
+                                    dst != null && dst.contains(move.getInput())) {
                         // end of trace & start of new
                         replaceStackMoves(debug, instructions);
                     }

@@ -263,7 +263,6 @@ suite = {
         "truffle:TRUFFLE_RUNTIME",
       ],
       "maven": {
-        "groupId": "org.graalvm.polyglot",
         "artifactId": "wasm-community",
         "tag": ["default", "public"],
       },

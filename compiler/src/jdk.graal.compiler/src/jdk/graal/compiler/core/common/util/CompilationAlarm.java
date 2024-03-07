@@ -46,8 +46,8 @@ public final class CompilationAlarm implements AutoCloseable {
                        "A non-zero value for this option is doubled if assertions are enabled and quadrupled if DetailedAsserts is true.",
                 type = OptionType.Debug)
         public static final OptionKey<Double> CompilationExpirationPeriod = new OptionKey<>(300d);
-        @Option(help = "Time limit in seconds before a compilation expires (0 to disable the limit) because no progress was "
-                        + "made in the compiler.",
+        @Option(help = "Time limit in seconds before a compilation expires (0 to disable the limit) because no progress was " +
+                       "made in the compiler.",
                  type = OptionType.Debug)
         public static final OptionKey<Double> CompilationNoProgressPeriod = new OptionKey<>(30d);
         @Option(help = "Delay in seconds before compilation progress detection starts.",

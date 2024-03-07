@@ -17,17 +17,16 @@ To replicate the steps in this guide, [create a Compute instance and connect to 
 ## Install Oracle GraalVM
 
 For convenience, Oracle GraalVM RPMs are available in the Oracle YUM repository.
-RPMs for Oracle GraalVM for JDK 17, Oracle GraalVM for JDK 20, and Oracle GraalVM for JDK 21 are available with the package names `graalvm-17-native-image`, `graalvm-20-native-image`, and `graalvm-21-native-image`, respectively.
+RPMs for Oracle GraalVM for JDK 17, JDK 21, and JDK 22 are available with the package names `graalvm-17-native-image`, `graalvm-21-native-image`, and `graalvm-22-native-image`, respectively.
 These Oracle GraalVM distributions include a JDK and Natime Image.
 Each Oracle GraalVM RPM is self-contained and all required dependencies will be automatically resolved during the installation.
 
 That means that OCI customers can use Oracle GraalVM in their compute instances, just like any other Java Development Kit, by installing it with `yum`, `dnf`, or `microdnf` default package managers, depending on the Oracle Linux version.
 
 Use the following command to connect to the OCI Compute Instance from a Unix-style system:
-
-   ```shell
-   ssh -i .ssh/id_rsa opc@INSTANCE_PUBLIC_IP
-   ```
+```shell
+ssh -i .ssh/id_rsa opc@INSTANCE_PUBLIC_IP
+```
 
 Where `.ssh/id_rsa` is the full path and name of the file containing your private SSH key; `opc` is the default name for the Oracle Linux image; and `INSTANCE_PUBLIC_IP` is the instance IP address provisioned from the console.
 For more details, refer to the [Connecting to Your Linux Instance Using SSH](https://docs.cloud.oracle.com/iaas/Content/GSG/Tasks/testingconnection.htm) tutorial.
@@ -53,7 +52,7 @@ The installation steps may differ per Oracle Linux version or package manager.
    ```
 4. Install the latest Oracle GraalVM:
    ```
-   sudo yum install graalvm-21-native-image
+   sudo yum install graalvm-22-native-image
    ```
    Confirm that the installed package size is correct by entering `yes` at the prompt.
 
@@ -67,7 +66,7 @@ sudo yum update -y oraclelinux-release-el8
 sudo yum config-manager --set-enabled ol8_codeready_builder
 ```
 ```shell
-sudo yum install graalvm-21-native-image
+sudo yum install graalvm-22-native-image
 ```
 Confirm that the installed package size is correct by entering `yes` at the prompt.
 
@@ -79,7 +78,7 @@ sudo dnf update -y oraclelinux-release-el8
 sudo dnf config-manager --set-enabled ol8_codeready_builder
 ```
 ```shell
-sudo dnf install graalvm-21-native-image
+sudo dnf install graalvm-22-native-image
 ```
 
 ### Oracle Linux 9
@@ -92,7 +91,7 @@ sudo yum update -y oraclelinux-release-el9
 sudo yum config-manager --set-enabled ol9_codeready_builder
 ```
 ```shell
-sudo yum install graalvm-21-native-image
+sudo yum install graalvm-22-native-image
 ```
 Confirm that the installed package size is correct by entering `yes` at the prompt.
 
@@ -104,7 +103,7 @@ sudo dnf update -y oraclelinux-release-el9
 sudo dnf config-manager --set-enabled ol9_codeready_builder
 ```
 ```shell
-sudo dnf install graalvm-21-native-image
+sudo dnf install graalvm-22-native-image
 ```
 
 ### Configure Environment Variables
@@ -114,7 +113,7 @@ After installation, the package files are placed in the _/usr/lib64/graalvm_ dir
 
 1. Set the `PATH` and `JAVA_HOME` environment variables in the bash configuration to point to Oracle GraalVM with the following commands:
    ```shell
-   echo "export JAVA_HOME=/usr/lib64/graalvm/graalvm-java21" >> ~/.bashrc
+   echo "export JAVA_HOME=/usr/lib64/graalvm/graalvm-java22" >> ~/.bashrc
    ```
    ```shell
    echo 'export PATH=$JAVA_HOME/bin:$PATH' >> ~/.bashrc

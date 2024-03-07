@@ -27,19 +27,17 @@ package jdk.graal.compiler.core.test;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Comparator;
+import java.util.stream.Stream;
 
-import jdk.graal.compiler.debug.DebugOptions;
-import jdk.graal.compiler.debug.PathUtilities;
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.test.AddExports;
 import org.junit.Assume;
 import org.junit.Test;
+
+import jdk.graal.compiler.debug.PathUtilities;
+import jdk.graal.compiler.test.AddExports;
 
 @AddExports("jdk.graal.compiler/jdk.graal.compiler.printer")
 public class GraalDebugHandlersFactoryTest extends GraalCompilerTest {
@@ -53,21 +51,18 @@ public class GraalDebugHandlersFactoryTest extends GraalCompilerTest {
             Assume.assumeFalse("If InaccessibleObjectException is thrown, skip the test, we are on JDK9", ex.getClass().getSimpleName().equals("InaccessibleObjectException"));
         }
         int maxFileNameLength = maxFileNameLengthField.getInt(null);
-        Method createUniqueMethod = PathUtilities.class.getDeclaredMethod("createUnique", OptionValues.class, OptionKey.class, String.class, String.class, String.class, boolean.class);
-        createUniqueMethod.setAccessible(true);
         Path tmpDir = Files.createTempDirectory(Paths.get("."), "createUniqueTest");
-        OptionValues options = new OptionValues(OptionValues.asMap(DebugOptions.DumpPath, tmpDir.toString()));
         try {
             for (boolean createDirectory : new boolean[]{true, false}) {
                 for (String ext : new String[]{"", ".bgv", ".graph-strings"}) {
                     for (int i = 0; i < maxFileNameLength + 5; i++) {
                         String id = new String(new char[i]).replace('\0', 'i');
                         String label = "";
-                        createUniqueMethod.invoke(null, options, null, id, label, ext, createDirectory);
+                        PathUtilities.createUnique(tmpDir.toString(), id, label, ext, createDirectory);
 
                         id = "";
                         label = new String(new char[i]).replace('\0', 'l');
-                        createUniqueMethod.invoke(null, options, null, id, label, ext, createDirectory);
+                        PathUtilities.createUnique(tmpDir.toString(), id, label, ext, createDirectory);
                     }
                 }
             }
@@ -77,6 +72,8 @@ public class GraalDebugHandlersFactoryTest extends GraalCompilerTest {
     }
 
     private static void deleteTree(Path root) throws IOException {
-        Files.walk(root).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
+        try (Stream<Path> elems = Files.walk(root)) {
+            elems.sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
+        }
     }
 }

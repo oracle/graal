@@ -31,7 +31,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -46,13 +45,10 @@ public class SubstrateTruffleGraphBuilderPlugins {
         r.register(new RequiredInvocationPlugin("get", InvocationPlugin.Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                if (!canDelayIntrinsification && receiver.isConstant()) {
-                    JavaConstant reference = (JavaConstant) receiver.get().asConstant();
-                    if (reference.isNonNull()) {
-                        JavaConstant referent = b.getConstantReflection().readFieldValue(types.Reference_referent, reference);
-                        b.addPush(JavaKind.Object, ConstantNode.forConstant(referent, b.getMetaAccess()));
-                        return true;
-                    }
+                if (!canDelayIntrinsification && receiver.get(false).asConstant() instanceof JavaConstant reference && reference.isNonNull()) {
+                    JavaConstant referent = b.getConstantReflection().readFieldValue(types.Reference_referent, reference);
+                    b.addPush(JavaKind.Object, ConstantNode.forConstant(referent, b.getMetaAccess()));
+                    return true;
                 }
                 return false;
             }

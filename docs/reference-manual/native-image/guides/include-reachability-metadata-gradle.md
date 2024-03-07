@@ -127,7 +127,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
     plugins {
         id 'application'
         // 1. Native Image Gradle plugin
-        id 'org.graalvm.buildtools.native' version '0.9.28'
+        id 'org.graalvm.buildtools.native' version '0.10.1'
     }
 
     repositories {

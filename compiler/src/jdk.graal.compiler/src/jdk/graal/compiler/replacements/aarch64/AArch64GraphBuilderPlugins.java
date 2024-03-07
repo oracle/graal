@@ -489,7 +489,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                     ResolvedJavaField stateField = helper.getField(receiverType, "state");
                     ResolvedJavaField blockSizeField = helper.getField(receiverType, "blockSize");
 
-                    ValueNode nonNullReceiver = receiver.get();
+                    ValueNode nonNullReceiver = receiver.get(true);
                     ValueNode bufStart = helper.arrayElementPointer(buf, JavaKind.Byte, ofs);
                     ValueNode state = helper.loadField(nonNullReceiver, stateField);
                     ValueNode stateStart = helper.arrayStart(state, JavaKind.Byte);

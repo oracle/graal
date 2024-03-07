@@ -234,63 +234,50 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
         /*
          * The SecureRandom implementations open the /dev/random and /dev/urandom files which are
-         * used as sources for entropy. These files are opened in the static initializers. That's
-         * why we rerun the static initializers at runtime. We cannot completely delay the static
-         * initializers execution to runtime because the SecureRandom classes are needed by the
-         * native image generator too, e.g., by Files.createTempDirectory().
+         * used as sources for entropy. These files are opened in the static initializers.
          */
-        rci.rerunInitialization(NativePRNG.class, "for substitutions");
-        rci.rerunInitialization(NativePRNG.Blocking.class, "for substitutions");
-        rci.rerunInitialization(NativePRNG.NonBlocking.class, "for substitutions");
+        rci.initializeAtRunTime(NativePRNG.class, "for substitutions");
+        rci.initializeAtRunTime(NativePRNG.Blocking.class, "for substitutions");
+        rci.initializeAtRunTime(NativePRNG.NonBlocking.class, "for substitutions");
 
-        rci.rerunInitialization(clazz(access, "sun.security.provider.SeedGenerator"), "for substitutions");
-        rci.rerunInitialization(clazz(access, "sun.security.provider.SecureRandom$SeederHolder"), "for substitutions");
+        rci.initializeAtRunTime(clazz(access, "sun.security.provider.SeedGenerator"), "for substitutions");
+        rci.initializeAtRunTime(clazz(access, "sun.security.provider.SecureRandom$SeederHolder"), "for substitutions");
 
         /*
          * sun.security.provider.AbstractDrbg$SeederHolder has a static final EntropySource seeder
-         * field that needs to be re-initialized at run time because it captures the result of
+         * field that needs to be initialized at run time because it captures the result of
          * SeedGenerator.getSystemEntropy().
          */
-        rci.rerunInitialization(clazz(access, "sun.security.provider.AbstractDrbg$SeederHolder"), "for substitutions");
+        rci.initializeAtRunTime(clazz(access, "sun.security.provider.AbstractDrbg$SeederHolder"), "for substitutions");
         if (isMscapiModulePresent) {
             /* PRNG.<clinit> creates a Cleaner (see JDK-8210476), which starts its thread. */
-            rci.rerunInitialization(clazz(access, "sun.security.mscapi.PRNG"), "for substitutions");
+            rci.initializeAtRunTime(clazz(access, "sun.security.mscapi.PRNG"), "for substitutions");
         }
-        rci.rerunInitialization(clazz(access, "sun.security.provider.FileInputStreamPool"), "for substitutions");
+        rci.initializeAtRunTime(clazz(access, "sun.security.provider.FileInputStreamPool"), "for substitutions");
         /* java.util.UUID$Holder has a static final SecureRandom field. */
-        rci.rerunInitialization(clazz(access, "java.util.UUID$Holder"), "for substitutions");
+        rci.initializeAtRunTime(clazz(access, "java.util.UUID$Holder"), "for substitutions");
 
-        /*
-         * The classes below have a static final SecureRandom field. Note that if the classes are
-         * not found as reachable by the analysis registering them for class initialization rerun
-         * doesn't have any effect.
-         */
-        rci.rerunInitialization(clazz(access, "sun.security.jca.JCAUtil$CachedSecureRandomHolder"), "for substitutions");
-        rci.rerunInitialization(clazz(access, "com.sun.crypto.provider.SunJCE$SecureRandomHolder"), "for substitutions");
-        optionalClazz(access, "sun.security.krb5.Confounder").ifPresent(clazz -> rci.rerunInitialization(clazz, "for substitutions"));
-        optionalClazz(access, "sun.security.krb5.Config").ifPresent(clazz -> rci.rerunInitialization(clazz, "Reset the value of lazily initialized field sun.security.krb5.Config#singleton"));
+        /* The classes below have a static final SecureRandom field. */
+        rci.initializeAtRunTime(clazz(access, "sun.security.jca.JCAUtil$CachedSecureRandomHolder"), "for substitutions");
+        rci.initializeAtRunTime(clazz(access, "com.sun.crypto.provider.SunJCE$SecureRandomHolder"), "for substitutions");
+        optionalClazz(access, "sun.security.krb5.Confounder").ifPresent(clazz -> rci.initializeAtRunTime(clazz, "for substitutions"));
+        optionalClazz(access, "sun.security.krb5.Config").ifPresent(clazz -> rci.initializeAtRunTime(clazz, "Reset the value of lazily initialized field sun.security.krb5.Config#singleton"));
 
-        rci.rerunInitialization(clazz(access, "sun.security.jca.JCAUtil"), "JCAUtil.def holds a SecureRandom.");
+        rci.initializeAtRunTime(clazz(access, "sun.security.jca.JCAUtil"), "JCAUtil.def holds a SecureRandom.");
 
         /*
          * When SSLContextImpl$DefaultManagersHolder sets-up the TrustManager in its initializer it
          * gets the value of the -Djavax.net.ssl.trustStore and -Djavax.net.ssl.trustStorePassword
-         * properties from the build machine. Re-runing its initialization at run time is required
-         * to use the run time provided values.
+         * properties from the build machine. Running its initialization at run time is required to
+         * use the run time provided values.
          */
-        rci.rerunInitialization(clazz(access, "sun.security.ssl.SSLContextImpl$DefaultManagersHolder"), "for reading properties at run time");
+        rci.initializeAtRunTime(clazz(access, "sun.security.ssl.SSLContextImpl$DefaultManagersHolder"), "for reading properties at run time");
 
         /*
          * SSL debug logging enabled by javax.net.debug system property is setup during the class
-         * initialization of either sun.security.ssl.Debug or sun.security.ssl.SSLLogger. (In JDK 8
-         * this was implemented in sun.security.ssl.Debug, the logic was moved to
-         * sun.security.ssl.SSLLogger in JDK11 but not yet backported to all JDKs. See JDK-8196584
-         * for details.) We cannot prevent these classes from being initialized at image build time,
-         * so we have to reinitialize them at run time to honour the run time passed value for the
-         * javax.net.debug system property.
+         * initialization.
          */
-        optionalClazz(access, "sun.security.ssl.Debug").ifPresent(c -> rci.rerunInitialization(c, "for reading properties at run time"));
-        optionalClazz(access, "sun.security.ssl.SSLLogger").ifPresent(c -> rci.rerunInitialization(c, "for reading properties at run time"));
+        rci.initializeAtRunTime(clazz(access, "sun.security.ssl.SSLLogger"), "for reading properties at run time");
     }
 
     @Override

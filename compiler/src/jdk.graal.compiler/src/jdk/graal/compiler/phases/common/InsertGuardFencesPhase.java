@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import jdk.graal.compiler.core.common.SpectrePHTMitigations;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
@@ -68,6 +69,10 @@ public class InsertGuardFencesPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
+        SpectrePHTMitigations mitigations = SpectrePHTBarriers.getValue(graph.getOptions());
+        if (mitigations == SpectrePHTMitigations.None || mitigations == SpectrePHTMitigations.AllTargets) {
+            return;
+        }
         ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeFrequency(true).build();
         for (AbstractBeginNode beginNode : graph.getNodes(AbstractBeginNode.TYPE)) {
             if (hasPotentialUnsafeAccess(cfg, beginNode)) {
@@ -76,7 +81,7 @@ public class InsertGuardFencesPhase extends Phase {
                 continue;
             }
             if (hasGuardUsages(beginNode)) {
-                if (SpectrePHTBarriers.getValue(graph.getOptions()) == NonDeoptGuardTargets) {
+                if (mitigations == NonDeoptGuardTargets) {
                     if (isDeoptGuard(beginNode)) {
                         graph.getDebug().log(DebugContext.VERBOSE_LEVEL, "Skipping deoptimizing guard speculation fence at %s", beginNode);
                         continue;

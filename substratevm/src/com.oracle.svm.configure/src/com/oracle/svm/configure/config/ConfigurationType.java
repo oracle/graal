@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,8 +60,7 @@ public class ConfigurationType implements JsonPrintable {
             return copy;
         }
 
-        assert type.getCondition().equals(subtractType.getCondition());
-        assert type.getQualifiedJavaName().equals(subtractType.getQualifiedJavaName());
+        assert type.sameTypeAndCondition(subtractType);
 
         copy.removeAll(subtractType);
         return copy.isEmpty() ? null : copy;
@@ -73,8 +72,7 @@ public class ConfigurationType implements JsonPrintable {
             return copy;
         }
 
-        assert type.getCondition().equals(toIntersect.getCondition());
-        assert type.getQualifiedJavaName().equals(toIntersect.getQualifiedJavaName());
+        assert type.sameTypeAndCondition(toIntersect);
         copy.intersectWith(toIntersect);
         return copy;
     }
@@ -86,7 +84,7 @@ public class ConfigurationType implements JsonPrintable {
     }
 
     private final UnresolvedConfigurationCondition condition;
-    private final String qualifiedJavaName;
+    private final ConfigurationTypeDescriptor typeDescriptor;
 
     private Map<String, FieldInfo> fields;
     private Map<ConfigurationMethod, ConfigurationMemberInfo> methods;
@@ -105,17 +103,23 @@ public class ConfigurationType implements JsonPrintable {
     private ConfigurationMemberAccessibility allDeclaredConstructorsAccess = ConfigurationMemberAccessibility.NONE;
     private ConfigurationMemberAccessibility allPublicConstructorsAccess = ConfigurationMemberAccessibility.NONE;
 
-    public ConfigurationType(UnresolvedConfigurationCondition condition, String qualifiedJavaName) {
-        assert qualifiedJavaName.indexOf('/') == -1 : "Requires qualified Java name, not internal representation";
-        assert !qualifiedJavaName.startsWith("[") : "Requires Java source array syntax, for example java.lang.String[]";
+    public ConfigurationType(UnresolvedConfigurationCondition condition, String qualifiedJavaName, boolean includeAllElements) {
+        this(condition, new NamedConfigurationTypeDescriptor(qualifiedJavaName), includeAllElements);
+    }
+
+    public ConfigurationType(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean includeAllElements) {
         this.condition = condition;
-        this.qualifiedJavaName = qualifiedJavaName;
+        this.typeDescriptor = typeDescriptor;
+        allDeclaredClasses = allPublicClasses = allDeclaredFields = allPublicFields = allRecordComponents = allPermittedSubclasses = allNestMembers = allSigners = includeAllElements;
+        allDeclaredMethodsAccess = allPublicMethodsAccess = allDeclaredConstructorsAccess = allPublicConstructorsAccess = includeAllElements
+                        ? ConfigurationMemberAccessibility.QUERIED
+                        : ConfigurationMemberAccessibility.NONE;
     }
 
     ConfigurationType(ConfigurationType other, UnresolvedConfigurationCondition condition) {
         // Our object is not yet published, so it is sufficient to take only the other object's lock
         synchronized (other) {
-            qualifiedJavaName = other.qualifiedJavaName;
+            typeDescriptor = other.typeDescriptor;
             this.condition = condition;
             mergeFrom(other);
         }
@@ -126,11 +130,14 @@ public class ConfigurationType implements JsonPrintable {
     }
 
     void mergeFrom(ConfigurationType other) {
-        assert condition.equals(other.condition);
-        assert qualifiedJavaName.equals(other.qualifiedJavaName);
+        assert sameTypeAndCondition(other);
         mergeFlagsFrom(other);
         mergeFieldsFrom(other);
         mergeMethodsFrom(other);
+    }
+
+    private boolean sameTypeAndCondition(ConfigurationType otherType) {
+        return condition.equals(otherType.condition) && typeDescriptor.equals(otherType.typeDescriptor);
     }
 
     private void mergeFlagsFrom(ConfigurationType other) {
@@ -232,8 +239,7 @@ public class ConfigurationType implements JsonPrintable {
     }
 
     private void removeAll(ConfigurationType other) {
-        assert condition.equals(other.condition);
-        assert qualifiedJavaName.equals(other.qualifiedJavaName);
+        assert sameTypeAndCondition(other);
         removeFlags(other);
         removeFields(other);
         removeMethods(other);
@@ -293,8 +299,8 @@ public class ConfigurationType implements JsonPrintable {
                         allDeclaredConstructorsAccess != ConfigurationMemberAccessibility.NONE || allPublicConstructorsAccess != ConfigurationMemberAccessibility.NONE);
     }
 
-    public String getQualifiedJavaName() {
-        return qualifiedJavaName;
+    public ConfigurationTypeDescriptor getTypeDescriptor() {
+        return typeDescriptor;
     }
 
     public synchronized void addField(String name, ConfigurationMemberDeclaration declaration, boolean finalButWritable) {
@@ -439,7 +445,9 @@ public class ConfigurationType implements JsonPrintable {
     public synchronized void printJson(JsonWriter writer) throws IOException {
         writer.append('{').indent().newline();
         ConfigurationConditionPrintable.printConditionAttribute(condition, writer);
-        writer.quote("name").append(':').quote(qualifiedJavaName);
+        /* GR-50385: Replace with "type" (and flip boolean entries below) */
+        writer.quote("name").append(":");
+        typeDescriptor.printJson(writer);
 
         optionallyPrintJsonBoolean(writer, allDeclaredFields, "allDeclaredFields");
         optionallyPrintJsonBoolean(writer, allPublicFields, "allPublicFields");

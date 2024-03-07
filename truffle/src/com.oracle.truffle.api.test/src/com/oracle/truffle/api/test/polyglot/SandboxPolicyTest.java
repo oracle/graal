@@ -85,7 +85,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 public class SandboxPolicyTest {
 
     private static final String MISSING_ISOLATE_LIBRARY_MESSAGE = "No native isolate library found for language";
-    private static final String UNSUPPORTED_ISOLATE_POLICY_MESSAGE = "the GraalVM community edition supports only sandbox policy TRUSTED or CONSTRAINED.";
+    private static final String UNSUPPORTED_ISOLATE_POLICY_MESSAGE = "but the current Truffle runtime only supports the TRUSTED or CONSTRAINED sandbox policies.";
 
     private final Configuration configuration;
 

@@ -26,12 +26,9 @@ If you call the HTTP endpoint `/jibber`, it will return some nonsense verse gene
 
 ## Prerequisites
 
-1. Download and install the latest Oracle GraalVM from [Downloads](https://www.graalvm.org/downloads/).
-The easiest option is to use [SDKMAN!](https://sdkman.io). Run the following command to install Oracle GraalVM for JDK 17:
-
-    ```bash
-    sdk install java 17.0.8-graal 
-    ```
+1. Make sure you have installed a GraalVM JDK.
+The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
+For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
 2. Install and run a Docker-API compatible container runtime such as [Rancher Desktop](https://docs.rancherdesktop.io/getting-started/installation/), [Docker](https://www.docker.io/gettingstarted/), or [Podman](https://podman.io/docs/installation). 
 

@@ -214,7 +214,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle name = getObjectArgument(thread, 0);
         String className = fromJniString(jni, name);
         if (className == null) {
-            return false; /* No point in tracing this. */
+            return true; /* No point in tracing this. */
         }
         traceReflectBreakpoint(jni, bp.clazz, nullHandle(), callerClass, bp.specification.methodName, null, state.getFullStackTraceOrNull(), className);
         return true;
@@ -577,13 +577,27 @@ final class BreakpointInterceptor {
         return true;
     }
 
+    private static boolean handleResourceRegistration(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle callerClass, String function, JNIMethodId[] stackTrace, String resourceName,
+                    String moduleName) {
+        if (resourceName == null) {
+            return true; /* No point in tracing this: resource path is null */
+        }
+
+        if (moduleName == null) {
+            traceReflectBreakpoint(env, clazz, nullHandle(), callerClass, function, true, stackTrace, resourceName);
+        } else {
+            traceReflectBreakpoint(env, clazz, nullHandle(), callerClass, function, true, stackTrace, moduleName, resourceName);
+        }
+
+        return true;
+    }
+
     private static boolean findResource(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
         JNIObjectHandle module = getObjectArgument(thread, 1);
         JNIObjectHandle name = getObjectArgument(thread, 2);
-        traceReflectBreakpoint(jni, nullHandle(), nullHandle(), callerClass, bp.specification.methodName, true, state.getFullStackTraceOrNull(),
-                        fromJniString(jni, module), fromJniString(jni, name));
-        return true;
+
+        return handleResourceRegistration(jni, nullHandle(), callerClass, bp.specification.methodName, state.getFullStackTraceOrNull(), fromJniString(jni, name), fromJniString(jni, module));
     }
 
     private static boolean getResource(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
@@ -605,8 +619,8 @@ final class BreakpointInterceptor {
                 selfClazz = nullHandle();
             }
         }
-        traceReflectBreakpoint(jni, selfClazz, nullHandle(), callerClass, bp.specification.methodName, true, state.getFullStackTraceOrNull(), fromJniString(jni, name));
-        return true;
+
+        return handleResourceRegistration(jni, selfClazz, callerClass, bp.specification.methodName, state.getFullStackTraceOrNull(), fromJniString(jni, name), null);
     }
 
     private static boolean getSystemResource(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
@@ -619,9 +633,9 @@ final class BreakpointInterceptor {
 
     private static boolean handleGetSystemResources(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle name = getReceiver(thread);
-        traceReflectBreakpoint(jni, nullHandle(), nullHandle(), callerClass, bp.specification.methodName, true, state.getFullStackTraceOrNull(), fromJniString(jni, name));
-        return true;
+        JNIObjectHandle name = getObjectArgument(thread, 0);
+
+        return handleResourceRegistration(jni, nullHandle(), callerClass, bp.specification.methodName, state.getFullStackTraceOrNull(), fromJniString(jni, name), null);
     }
 
     private static boolean newProxyInstance(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
@@ -690,33 +704,39 @@ final class BreakpointInterceptor {
         return true;
     }
 
-    /*
-     * Bundles.putBundleInCache is the single point through which all bundles queried through
-     * sun.util.resources.Bundles go
-     */
-    private static boolean putBundleInCache(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
-        JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle cacheKey = getObjectArgument(thread, 0);
-        JNIObjectHandle baseName = Support.callObjectMethod(jni, cacheKey, agent.handles().sunUtilResourcesBundlesCacheKeyGetName);
-        if (clearException(jni)) {
-            baseName = nullHandle();
-        }
-        JNIObjectHandle locale = Support.callObjectMethod(jni, cacheKey, agent.handles().sunUtilResourcesBundlesCacheKeyGetLocale);
-        if (clearException(jni)) {
-            locale = nullHandle();
-        }
-        traceReflectBreakpoint(jni, nullHandle(), nullHandle(), callerClass, bp.specification.methodName, true, state.getFullStackTraceOrNull(),
-                        Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, fromJniString(jni, baseName), readLocaleTag(jni, locale), Tracer.UNKNOWN_VALUE);
-        return true;
-    }
-
     private static String readLocaleTag(JNIEnvironment jni, JNIObjectHandle locale) {
-        JNIObjectHandle languageTag = Support.callObjectMethod(jni, locale, agent.handles().getJavaUtilLocaleToLanguageTag(jni));
+        JNIObjectHandle languageTag = Support.callObjectMethod(jni, locale, agent.handles().javaUtilLocaleToLanguageTag);
         if (clearException(jni)) {
             /*- return root locale */
             return "";
         }
-        return fromJniString(jni, languageTag);
+
+        JNIObjectHandle reconstructedLocale = Support.callStaticObjectMethodL(jni, agent.handles().javaUtilLocale, agent.handles().javaUtilLocaleForLanguageTag, languageTag);
+        if (clearException(jni)) {
+            reconstructedLocale = nullHandle();
+        }
+        if (Support.callBooleanMethodL(jni, locale, agent.handles().javaUtilLocaleEquals, reconstructedLocale)) {
+            return fromJniString(jni, languageTag);
+        } else {
+            /*
+             * Ill-formed locale, we do our best to return a unique description of the locale.
+             * Locale.toLanguageTag simply ignores ill-formed locale elements, which creates
+             * confusion when trying to determine whether a specific locale was registered.
+             */
+            String language = getElementString(jni, locale, agent.handles().javaUtilLocaleGetLanguage);
+            String country = getElementString(jni, locale, agent.handles().javaUtilLocaleGetCountry);
+            String variant = getElementString(jni, locale, agent.handles().javaUtilLocaleGetVariant);
+
+            return String.join("-", language, country, variant);
+        }
+    }
+
+    private static String getElementString(JNIEnvironment jni, JNIObjectHandle object, JNIMethodId getter) {
+        JNIObjectHandle valueHandle = Support.callObjectMethod(jni, object, getter);
+        if (clearException(jni)) {
+            valueHandle = nullHandle();
+        }
+        return valueHandle.notEqual(nullHandle()) ? fromJniString(jni, valueHandle) : "";
     }
 
     private static boolean loadClass(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
@@ -1626,8 +1646,6 @@ final class BreakpointInterceptor {
                                     "getBundleImpl",
                                     "(Ljava/lang/Module;Ljava/lang/Module;Ljava/lang/String;Ljava/util/Locale;Ljava/util/ResourceBundle$Control;)Ljava/util/ResourceBundle;",
                                     BreakpointInterceptor::getBundleImpl),
-                    brk("sun/util/resources/Bundles", "putBundleInCache", "(Lsun/util/resources/Bundles$CacheKey;Ljava/util/ResourceBundle;)Ljava/util/ResourceBundle;",
-                                    BreakpointInterceptor::putBundleInCache),
 
                     // In Java 9+, these are Java methods that call private methods
                     optionalBrk("jdk/internal/misc/Unsafe", "objectFieldOffset", "(Ljava/lang/Class;Ljava/lang/String;)J", BreakpointInterceptor::objectFieldOffsetByName),

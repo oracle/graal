@@ -111,6 +111,19 @@ public final class MissingReflectionRegistrationUtils {
         return exception;
     }
 
+    public static MissingReflectionRegistrationError errorForArray(Class<?> elementClass, int dimension) {
+        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("instantiate the array class",
+                        elementClass.getTypeName() + "[]".repeat(dimension),
+                        "Add \"unsafeAllocated\" to the array class registration to enable runtime instantiation.", "reflection"),
+                        null, null, null, null);
+        report(exception);
+        /*
+         * If report doesn't throw, we throw the exception anyway since this is a Native
+         * Image-specific error that is unrecoverable in any case.
+         */
+        return exception;
+    }
+
     private static String errorMessage(String failedAction, String elementDescriptor) {
         return errorMessage(failedAction, elementDescriptor, null, "reflection");
     }

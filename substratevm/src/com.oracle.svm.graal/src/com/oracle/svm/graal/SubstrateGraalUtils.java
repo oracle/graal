@@ -60,12 +60,14 @@ import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 
 public class SubstrateGraalUtils {
@@ -197,9 +199,9 @@ public class SubstrateGraalUtils {
     }
 
     /** Prepares a hosted {@link JavaConstant} for runtime compilation. */
-    public static JavaConstant hostedToRuntime(JavaConstant constant) {
+    public static JavaConstant hostedToRuntime(JavaConstant constant, ConstantReflectionProvider constantReflection) {
         if (constant instanceof ImageHeapConstant heapConstant) {
-            return hostedToRuntime(heapConstant);
+            return hostedToRuntime(heapConstant, constantReflection);
         }
         return constant;
     }
@@ -209,11 +211,11 @@ public class SubstrateGraalUtils {
      * {@link HotSpotObjectConstant} and wraps the hosted object into a
      * {@link SubstrateObjectConstant}. We reuse the identity hash code of the heap constant.
      */
-    public static JavaConstant hostedToRuntime(ImageHeapConstant heapConstant) {
+    public static JavaConstant hostedToRuntime(ImageHeapConstant heapConstant, ConstantReflectionProvider constantReflection) {
         JavaConstant hostedConstant = heapConstant.getHostedObject();
         VMError.guarantee(hostedConstant instanceof HotSpotObjectConstant, "Expected to find HotSpotObjectConstant, found %s", hostedConstant);
         Object hostedObject = GraalAccess.getOriginalSnippetReflection().asObject(Object.class, hostedConstant);
-        return SubstrateObjectConstant.forObject(hostedObject, heapConstant.getIdentityHashCode());
+        return SubstrateObjectConstant.forObject(hostedObject, ((IdentityHashCodeProvider) constantReflection).identityHashCode(heapConstant));
     }
 
     /**

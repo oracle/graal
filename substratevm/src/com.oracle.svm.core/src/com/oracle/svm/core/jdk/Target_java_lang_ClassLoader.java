@@ -36,8 +36,6 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
-import jdk.graal.compiler.java.LambdaUtils;
-
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -51,6 +49,7 @@ import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.java.LambdaUtils;
 import jdk.internal.loader.ClassLoaderValue;
 import jdk.internal.loader.NativeLibrary;
 
@@ -307,14 +306,9 @@ public final class Target_java_lang_ClassLoader {
         // All classes are already linked at runtime.
     }
 
-    /**
-     * TODO: This substitution should be reverted to a @Delete annotation once GR-38801 is fixed.
-     */
-    @Substitute
+    @Delete
     @SuppressWarnings("unused")
-    private static Class<?> defineClass1(ClassLoader loader, String name, byte[] b, int off, int len, ProtectionDomain pd, String source) {
-        throw VMError.unsupportedFeature("Defining classes at runtime is not supported.");
-    }
+    private static native Class<?> defineClass1(ClassLoader loader, String name, byte[] b, int off, int len, ProtectionDomain pd, String source);
 
     @Delete
     private static native Class<?> defineClass2(ClassLoader loader, String name, java.nio.ByteBuffer b, int off, int len, ProtectionDomain pd, String source);
@@ -326,7 +320,7 @@ public final class Target_java_lang_ClassLoader {
             String newName = name + LambdaUtils.digest(b);
             return PredefinedClassesSupport.loadClass(loader, newName.replace('/', '.'), b, off, b.length, null);
         }
-        throw VMError.unsupportedFeature("Defining hidden classes at runtime is not supported.");
+        throw new UnsupportedOperationException("Defining classes at runtime is not supported by Native Image: Failed to define a hidden class.");
     }
 
     // JDK-8265605

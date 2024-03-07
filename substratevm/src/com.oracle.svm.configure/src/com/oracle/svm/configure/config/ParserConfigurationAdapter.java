@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,9 +43,9 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
-    public TypeResult<ConfigurationType> resolveType(UnresolvedConfigurationCondition condition, String typeName, boolean allowPrimitives) {
+    public TypeResult<ConfigurationType> resolveType(UnresolvedConfigurationCondition condition, String typeName, boolean allowPrimitives, boolean includeAllElements) {
         ConfigurationType type = configuration.get(condition, typeName);
-        ConfigurationType result = type != null ? type : new ConfigurationType(condition, typeName);
+        ConfigurationType result = type != null ? type : new ConfigurationType(condition, typeName, includeAllElements);
         return TypeResult.forType(typeName, result);
     }
 
@@ -170,7 +170,7 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
 
     @Override
     public String getTypeName(ConfigurationType type) {
-        return type.getQualifiedJavaName();
+        return type.getTypeDescriptor().toString();
     }
 
     @Override

@@ -55,7 +55,7 @@ public final class ImageHeapInstance extends ImageHeapConstant {
     private static final VarHandle arrayHandle = MethodHandles.arrayElementVarHandle(Object[].class);
     public static final VarHandle valuesHandle = ReflectionUtil.unreflectField(InstanceData.class, "fieldValues", MethodHandles.lookup());
 
-    public static class InstanceData extends ConstantData {
+    private static final class InstanceData extends ConstantData {
 
         /**
          * Stores the field values, indexed by {@link AnalysisField#getPosition()}. For normal
@@ -70,33 +70,22 @@ public final class ImageHeapInstance extends ImageHeapConstant {
          */
         private Object[] fieldValues;
 
-        InstanceData(AnalysisType type, JavaConstant object, int identityHashCode) {
-            super(type, object, identityHashCode);
-        }
-
-        InstanceData(AnalysisType type, JavaConstant object, int identityHashCode, Object[] fieldValues) {
-            super(type, object, identityHashCode);
+        private InstanceData(AnalysisType type, JavaConstant hostedObject, Object[] fieldValues) {
+            super(type, hostedObject);
             this.fieldValues = fieldValues;
+            assert !type.isArray() : type;
         }
     }
 
-    ImageHeapInstance(AnalysisType type, JavaConstant object, int identityHashCode) {
-        super(new InstanceData(type, object, identityHashCode), false);
+    ImageHeapInstance(AnalysisType type, JavaConstant hostedObject) {
+        super(new InstanceData(type, hostedObject, null), false);
     }
 
-    public ImageHeapInstance(AnalysisType type, int identityHashCode) {
-        this(type, null, type.getInstanceFields(true).length, identityHashCode);
+    public ImageHeapInstance(AnalysisType type) {
+        super(new InstanceData(type, null, new Object[type.getInstanceFields(true).length]), false);
     }
 
-    private ImageHeapInstance(AnalysisType type, JavaConstant object, int length, int identityHashCode) {
-        this(type, object, identityHashCode, new Object[length], false);
-    }
-
-    private ImageHeapInstance(AnalysisType type, JavaConstant object, int identityHashCode, Object[] fieldValues, boolean compressed) {
-        super(new InstanceData(type, object, identityHashCode, fieldValues), compressed);
-    }
-
-    ImageHeapInstance(ConstantData data, boolean compressed) {
+    private ImageHeapInstance(ConstantData data, boolean compressed) {
         super(data, compressed);
     }
 
@@ -172,7 +161,7 @@ public final class ImageHeapInstance extends ImageHeapConstant {
     }
 
     @Override
-    public ImageHeapConstant forObjectClone(int identityHashCode) {
+    public ImageHeapConstant forObjectClone() {
         if (!constantData.type.isCloneableWithAllocation()) {
             return null;
         }
@@ -181,6 +170,6 @@ public final class ImageHeapInstance extends ImageHeapConstant {
         Objects.requireNonNull(fieldValues, "Cannot clone an instance before the field values are set.");
         Object[] newFieldValues = Arrays.copyOf(fieldValues, fieldValues.length);
         /* The new constant is never backed by a hosted object, regardless of the input object. */
-        return new ImageHeapInstance(constantData.type, null, identityHashCode, newFieldValues, compressed);
+        return new ImageHeapInstance(new InstanceData(constantData.type, null, newFieldValues), compressed);
     }
 }

@@ -1126,7 +1126,7 @@ public final class ClassfileParser {
                 throw ConstantPool.classFormatError("Invalid local variable table attribute entry: index points to an invalid frame slot: " + slot);
             }
 
-            locals[i] = new Local(poolName, typeName, bci, bci + length, slot);
+            locals[i] = new Local(poolName, typeName, bci, bci + length - 1, slot);
 
         }
         return new LocalVariableTable(name, locals);

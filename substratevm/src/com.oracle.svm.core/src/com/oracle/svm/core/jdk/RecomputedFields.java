@@ -296,7 +296,7 @@ class AtomicFieldUpdaterFeature implements InternalFeature {
 class InnocuousForkJoinWorkerThreadFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.concurrent.ForkJoinWorkerThread$InnocuousForkJoinWorkerThread"),
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtRunTime(access.findClassByName("java.util.concurrent.ForkJoinWorkerThread$InnocuousForkJoinWorkerThread"),
                         "innocuousThreadGroup must be initialized at run time");
     }
 }

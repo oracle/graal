@@ -15,13 +15,13 @@ Oracle GraalVM container images are published in two OCR repositories: **jdk** a
 
 | Repository       | Description |
 |------------------|-------------|
-| **jdk**          | Provides container images with Oracle GraalVM JDK which can be used to both compile and deploy Java applications. Image tags let you select the Java version and Oracle Linux version. |
+| **jdk**          | Provides container images with Oracle GraalVM JDK (without the `native-image` utility) which can be used to both compile and deploy Java applications. Image tags let you select the Java version and Oracle Linux version. |
 | **native-image** | Provides Oracle GraalVM container images with the `native-image` utility along with all tools required to compile applications into native Linux executables. These images are commonly used in multi-stage builds to compile applications into executables that are then packaged in a lightweight container image. Image tags let you select the Java version and Oracle Linux version as well as variants that include the musl toolchain for the creation of fully statically linked executables. |
 
 Both repositories provide container images for AMD64 and AArch64 processor architectures, with a choice of Oracle Linux versions 7, 8, or 9.
 
-Oracle GraalVM is installed in `/usr/lib64/graalvm/graalvm-java<$FeatureVersion>` where `<$FeatureVersion>` is `17`, `20`, etc. 
-For instance, Oracle GraalVM for JDK 17 is installed in `/usr/lib64/graalvm/graalvm-java17`. 
+Oracle GraalVM is installed in `/usr/lib64/graalvm/graalvm-java<$FeatureVersion>` where `<$FeatureVersion>` is `17`, `21`, `22`, etc. 
+For instance, Oracle GraalVM for JDK 22 is installed in `/usr/lib64/graalvm/graalvm-java22`. 
 All binaries, including `java`, `javac`, `native-image`, and other binaries are available as global commands via the `alternatives` command.
 
 ## Tags
@@ -46,40 +46,40 @@ The most-specific tag is unique and always points to the same image, while the l
 
 ## Pulling Images
 
-1. To pull the container image for Oracle GraalVM JDK for a specific JDK feature version, e.g., _17_, run:
+1. To pull the container image for Oracle GraalVM JDK for a specific JDK feature version, e.g., _22_, run:
 
     ```bash
-    docker pull container-registry.oracle.com/graalvm/jdk:17
+    docker pull container-registry.oracle.com/graalvm/jdk:22
     ```
     
     Alternatively, to use the container image as the base image in your Dockerfile, use:
     
     ```bash
-    FROM container-registry.oracle.com/graalvm/jdk:17
+    FROM container-registry.oracle.com/graalvm/jdk:22
     ```
 
-2.  To pull the container image for Oracle GraalVM `native-image` utility for a specific JDK feature version, e.g., _17_, run: 
+2.  To pull the container image for Oracle GraalVM `native-image` utility for a specific JDK feature version, e.g., _22_, run: 
     
     ```bash
-    docker pull container-registry.oracle.com/graalvm/native-image:17
+    docker pull container-registry.oracle.com/graalvm/native-image:22
     ```
 
 	Alternatively, to pull the container image for Oracle GraalVM `native-image` utility with the `musl libc` toolchain to create fully statically linked executables, run:
     
     ```bash
-    docker pull container-registry.oracle.com/graalvm/native-image:17-muslib
+    docker pull container-registry.oracle.com/graalvm/native-image:22-muslib
     ```
     
     Alternatively, to use the container image as the base image in your Dockerfile, use:
     
     ```bash
-    FROM container-registry.oracle.com/graalvm/native-image:17-muslib
+    FROM container-registry.oracle.com/graalvm/native-image:22-muslib
     ```
     
 3. To verify, start the container and enter the Bash session:
 
     ```bash
-    docker run -it --rm --entrypoint /bin/bash container-registry.oracle.com/graalvm/native-image:17
+    docker run -it --rm --entrypoint /bin/bash container-registry.oracle.com/graalvm/native-image:22
     ```
 
 	To check the version of Oracle GraalVM and its installed location, run the `env` command from the Bash prompt:
@@ -110,7 +110,7 @@ The most-specific tag is unique and always points to the same image, while the l
 To pull container images for a different platform architecture, specify the desired platform architecture with the `--platform` option and either `linux/amd64` or `linux/aarch64` as follows:
 
     ```bash
-    docker pull --platform linux/aarch64 container-registry.oracle.com/graalvm/native-image:17
+    docker pull --platform linux/aarch64 container-registry.oracle.com/graalvm/native-image:22
     ```
 
 ### Learn More

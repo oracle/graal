@@ -203,7 +203,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         } else if (source instanceof FieldLocationIdentity && !(source instanceof SubstrateFieldLocationIdentity)) {
             dest = createFieldLocationIdentity((FieldLocationIdentity) source);
         } else if (source instanceof ImageHeapConstant heapConstant) {
-            dest = SubstrateGraalUtils.hostedToRuntime(heapConstant);
+            dest = SubstrateGraalUtils.hostedToRuntime(heapConstant, beforeAnalysisAccess.getBigBang().getConstantReflectionProvider());
         }
 
         assert dest != null;
@@ -458,7 +458,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             JavaConstant constantValue = hField.isStatic() && ((HostedConstantFieldProvider) providers.getConstantFieldProvider()).isFinalField(hField, null)
                             ? providers.getConstantReflection().readFieldValue(hField, null)
                             : null;
-            constantValue = SubstrateGraalUtils.hostedToRuntime(constantValue);
+            constantValue = SubstrateGraalUtils.hostedToRuntime(constantValue, providers.getConstantReflection());
             sField.setSubstrateData(hField.getLocation(), hField.isAccessed(), hField.isWritten() || !hField.isValueAvailable(), constantValue);
         }
     }

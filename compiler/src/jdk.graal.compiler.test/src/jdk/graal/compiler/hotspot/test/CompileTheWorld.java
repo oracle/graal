@@ -238,6 +238,7 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
         super(jvmciRuntime, compiler,
                         Options.InvalidateInstalledCode.getValue(harnessOptions),
                         false,
+                        Options.IgnoreCompilationFailures.getValue(harnessOptions),
                         Options.MultiThreaded.getValue(harnessOptions),
                         Options.Threads.getValue(harnessOptions),
                         Options.StatsInterval.getValue(harnessOptions));
@@ -1031,6 +1032,7 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
         public static final OptionKey<Boolean> Help = new OptionKey<>(false);
         public static final OptionKey<String> Classpath = new OptionKey<>(CompileTheWorld.SUN_BOOT_CLASS_PATH);
         public static final OptionKey<Boolean> Verbose = new OptionKey<>(true);
+        public static final OptionKey<Boolean> IgnoreCompilationFailures = new OptionKey<>(false);
         /**
          * Ignore Graal classes by default to avoid problems associated with compiling snippets and
          * method substitutions.
@@ -1061,6 +1063,7 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
         static final ReflectionOptionDescriptors DESCRIPTORS = new ReflectionOptionDescriptors(Options.class,
                            "Help", "List options and their help messages and then exit.",
                       "Classpath", "Class path denoting methods to compile. Default is to compile boot classes.",
+      "IgnoreCompilationFailures", "Do not exit with an error if any errors in compilation are detected. Defaults to false.",
                         "Verbose", "Verbose operation. Default is !MultiThreaded.",
                    "LimitModules", "Comma separated list of module names to which compilation should be limited. " +
                                    "Module names can be prefixed with \"~\" to exclude the named module.",

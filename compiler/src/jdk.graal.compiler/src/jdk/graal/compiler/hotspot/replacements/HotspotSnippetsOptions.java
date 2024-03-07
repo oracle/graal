@@ -39,11 +39,11 @@ public class HotspotSnippetsOptions {
 
     // @formatter:off
     @Option(help = "If the probability that a type check will hit one the profiled types (up to " +
-                   "TypeCheckMaxHints) is below this value, the type check will be compiled without profiling info", type = OptionType.Expert)
+                   "TypeCheckMaxHints) is below this value, the type check will be compiled without profiling info", type = OptionType.Debug)
     public static final OptionKey<Double> TypeCheckMinProfileHitProbability = new OptionKey<>(0.5);
 
     @Option(help = "The maximum number of profiled types that will be used when compiling a profiled type check. " +
-                    "Note that TypeCheckMinProfileHitProbability also influences whether profiling info is used in compiled type checks.", type = OptionType.Expert)
+                    "Note that TypeCheckMinProfileHitProbability also influences whether profiling info is used in compiled type checks.", type = OptionType.Debug)
     public static final OptionKey<Integer> TypeCheckMaxHints = new OptionKey<>(2);
 
     @Option(help = "Use a VM runtime call to load and clear the exception object from the thread at the start of a compiled exception handler.", type = OptionType.Debug)

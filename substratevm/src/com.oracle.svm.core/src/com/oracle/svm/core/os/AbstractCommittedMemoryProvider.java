@@ -30,8 +30,6 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
 import static org.graalvm.word.WordFactory.nullPointer;
 
-import java.util.EnumSet;
-
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -40,11 +38,9 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
-import com.oracle.svm.core.code.RuntimeCodeCache;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -83,24 +79,6 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
         }
 
         return CEntryPointErrors.NO_ERROR;
-    }
-
-    @Override
-    public int protect(PointerBase start, UnsignedWord nbytes, EnumSet<Access> accessFlags) {
-        int vmAccessBits = VirtualMemoryProvider.Access.NONE;
-        if (accessFlags.contains(CommittedMemoryProvider.Access.READ)) {
-            vmAccessBits |= VirtualMemoryProvider.Access.READ;
-        }
-        if (accessFlags.contains(CommittedMemoryProvider.Access.WRITE)) {
-            vmAccessBits |= VirtualMemoryProvider.Access.WRITE;
-        }
-        if (accessFlags.contains(CommittedMemoryProvider.Access.EXECUTE)) {
-            if ((vmAccessBits & VirtualMemoryProvider.Access.WRITE) != 0 && !RuntimeCodeCache.Options.WriteableCodeCache.getValue()) {
-                throw VMError.shouldNotReachHere("memory should never be writable and executable at the same time");
-            }
-            vmAccessBits |= VirtualMemoryProvider.Access.EXECUTE;
-        }
-        return VirtualMemoryProvider.get().protect(start, nbytes, vmAccessBits);
     }
 
     @Override

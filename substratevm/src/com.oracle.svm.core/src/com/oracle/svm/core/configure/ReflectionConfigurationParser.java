@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,7 +48,7 @@ public final class ReflectionConfigurationParser<C, T> extends ConfigurationPars
 
     private final ConfigurationConditionResolver<C> conditionResolver;
     private final ReflectionConfigurationParserDelegate<C, T> delegate;
-    private static final List<String> OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS = Arrays.asList("allDeclaredConstructors", "allPublicConstructors",
+    private static final List<String> OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS = Arrays.asList("name", "type", "allDeclaredConstructors", "allPublicConstructors",
                     "allDeclaredMethods", "allPublicMethods", "allDeclaredFields", "allPublicFields",
                     "allDeclaredClasses", "allRecordComponents", "allPermittedSubclasses", "allNestMembers", "allSigners",
                     "allPublicClasses", "methods", "queriedMethods", "fields", CONDITIONAL_KEY,
@@ -75,14 +75,35 @@ public final class ReflectionConfigurationParser<C, T> extends ConfigurationPars
     }
 
     private void parseClass(EconomicMap<String, Object> data) {
-        checkAttributes(data, "reflection class descriptor object", Collections.singleton("name"), OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS);
-
-        Object classObject = data.get("name");
-        String className = asString(classObject, "name");
+        checkAttributes(data, "reflection class descriptor object", Collections.emptyList(), OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS);
+        checkHasExactlyOneAttribute(data, "reflection class descriptor object", List.of("name", "type"));
 
         TypeResult<C> conditionResult = conditionResolver.resolveCondition(parseCondition(data));
         if (!conditionResult.isPresent()) {
             return;
+        }
+
+        String className;
+        Object typeObject = data.get("type");
+        /*
+         * Classes registered using the old ("class") syntax will require elements (fields, methods,
+         * constructors, ...) to be registered for runtime queries, whereas the new ("type") syntax
+         * will automatically register all elements as queried.
+         */
+        if (typeObject != null) {
+            if (typeObject instanceof String stringValue) {
+                className = stringValue;
+            } else {
+                /*
+                 * We warn if we find a future version of a type descriptor (as a JSON object)
+                 * instead of failing parsing.
+                 */
+                asMap(typeObject, "type descriptor should be a string or object");
+                handleMissingElement("Unsupported type descriptor of type object");
+                return;
+            }
+        } else {
+            className = asString(data.get("name"), "class name should be a string");
         }
 
         /*
@@ -90,7 +111,7 @@ public final class ReflectionConfigurationParser<C, T> extends ConfigurationPars
          * allow getDeclaredMethods() and similar bulk queries at run time.
          */
         C condition = conditionResult.get();
-        TypeResult<T> result = delegate.resolveType(condition, className, true);
+        TypeResult<T> result = delegate.resolveType(condition, className, true, false);
         if (!result.isPresent()) {
             handleMissingElement("Could not resolve class " + className + " for reflection configuration.", result.getException());
             return;
@@ -277,7 +298,7 @@ public final class ReflectionConfigurationParser<C, T> extends ConfigurationPars
         List<T> result = new ArrayList<>();
         for (Object type : types) {
             String typeName = asString(type, "types");
-            TypeResult<T> typeResult = delegate.resolveType(conditionResolver.alwaysTrue(), typeName, true);
+            TypeResult<T> typeResult = delegate.resolveType(conditionResolver.alwaysTrue(), typeName, true, false);
             if (!typeResult.isPresent()) {
                 handleMissingElement("Could not register method " + formatMethod(clazz, methodName) + " for reflection.", typeResult.getException());
                 return null;

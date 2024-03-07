@@ -37,6 +37,6 @@ This reduces the set of instructions used by the compiler to a minimum and thus 
 
 Native Image provides additional features to further optimize a generated binary:
 
- - Profile-Guided Optimizations (PGO) can provide additional performance gain and higher throughput for most native images. See [Optimize a Native Executable with PGO](guides/optimize-native-executable-with-pgo.md).
+ - Profile-Guided Optimization (PGO) can provide additional performance gain and higher throughput for most native images. See [Profile-Guided Optimization](PGO.md).
  - Choosing an appropriate Garbage Collector and tailoring the garbage collection policy can reduce GC times. See [Memory Management](MemoryManagement.md).
  - Loading application configuration during the image build can speed up application startup. See [Class Initialization at Image Build Time](ClassInitialization.md).

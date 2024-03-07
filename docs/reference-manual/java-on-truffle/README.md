@@ -19,7 +19,7 @@ Now Java can be executed by the same principle as other languages in the GraalVM
 Besides complete language interoperability, with Java on Truffle you can:
 
 - run Java bytecode in a separate context from the host Java VM.
-- run either a Java 8, Java 11, Java 17, or Java 21 guest JVM, allowing to embed e.g. a Java 17 context in a Java 21 application, by using [GraalVM’s Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html)
+- run either a Java 8, Java 11, Java 17, Java 21, or Java 22 guest JVM, allowing to embed e.g. a Java 17 context in a Java 22 application, by using [GraalVM’s Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html).
 - leverage the whole stack of tools provided by the Truffle framework, not previously available for Java.
 - have an improved isolation of the host Java VM and the Java program running on Truffle, so you can run less trusted guest code.
 - run in the context of a native executable while still allowing dynamically-loaded bytecodes.

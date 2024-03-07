@@ -169,6 +169,18 @@ public abstract class SubstrateSegfaultHandler {
             return false;
         }
 
+        /* Try to determine the isolate via the thread register. */
+        if (tryEnterIsolateViaThreadRegister(context)) {
+            return true;
+        }
+
+        /* Try to determine the isolate via the heap base register. */
+        return SubstrateOptions.SpawnIsolates.getValue() && tryEnterIsolateViaHeapBaseRegister(context);
+    }
+
+    @Uninterruptible(reason = "Thread state not set up yet.")
+    @NeverInline("Prevent register writes from floating")
+    private static boolean tryEnterIsolateViaThreadRegister(RegisterDumper.Context context) {
         /*
          * Try to determine the isolate via the thread register. Set the thread register to null so
          * that we don't execute this code more than once if we trigger a recursive segfault.
@@ -177,7 +189,7 @@ public abstract class SubstrateSegfaultHandler {
 
         IsolateThread isolateThread = (IsolateThread) RegisterDumper.singleton().getThreadPointer(context);
         if (isolateThread.isNonNull()) {
-            isolate = VMThreads.IsolateTL.get(isolateThread);
+            Isolate isolate = VMThreads.IsolateTL.get(isolateThread);
             if (isValid(isolate)) {
                 if (SubstrateOptions.SpawnIsolates.getValue()) {
                     CEntryPointSnippets.setHeapBase(isolate);
@@ -187,22 +199,23 @@ public abstract class SubstrateSegfaultHandler {
                 return true;
             }
         }
+        return false;
+    }
 
-        /* Try to determine the isolate via the heap base register. */
-        if (SubstrateOptions.SpawnIsolates.getValue()) {
-            /*
-             * Set the heap base register to null so that we don't execute this code more than once
-             * if we trigger a recursive segfault.
-             */
-            CEntryPointSnippets.setHeapBase(WordFactory.nullPointer());
+    @Uninterruptible(reason = "Thread state not set up yet.")
+    @NeverInline("Prevent register writes from floating")
+    private static boolean tryEnterIsolateViaHeapBaseRegister(RegisterDumper.Context context) {
+        /*
+         * Set the heap base register to null so that we don't execute this code more than once if
+         * we trigger a recursive segfault.
+         */
+        CEntryPointSnippets.setHeapBase(WordFactory.nullPointer());
 
-            isolate = (Isolate) RegisterDumper.singleton().getHeapBase(context);
-            if (isValid(isolate)) {
-                int error = CEntryPointSnippets.enterAttachFromCrashHandler(isolate);
-                return error == CEntryPointErrors.NO_ERROR;
-            }
+        Isolate isolate = (Isolate) RegisterDumper.singleton().getHeapBase(context);
+        if (isValid(isolate)) {
+            int error = CEntryPointSnippets.enterAttachFromCrashHandler(isolate);
+            return error == CEntryPointErrors.NO_ERROR;
         }
-
         return false;
     }
 
