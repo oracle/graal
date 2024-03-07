@@ -147,6 +147,10 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Option(help = "Regexp to match names of resources to be excluded from the image.", type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ExcludeResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+
+        @Option(help = "Create a Native Image registered resources json", type = OptionType.Debug) //
+        public static final HostedOptionKey<Boolean> DumpRegisteredResources = new HostedOptionKey<>(false);
+
     }
 
     private boolean sealed = false;
@@ -442,7 +446,7 @@ public final class ResourcesFeature implements InternalFeature {
                 includePatterns.stream()
                                 .map(pattern -> pattern.compiledPattern)
                                 .forEach(resourcePattern -> {
-                                    Resources.singleton().registerIncludePattern(resourcePattern.moduleName, resourcePattern.pattern.pattern());
+                                    Resources.singleton().registerIncludePattern(resourcePattern.moduleName(), resourcePattern.pattern.pattern());
                                 });
             }
             ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
@@ -596,6 +600,17 @@ public final class ResourcesFeature implements InternalFeature {
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         sealed = true;
+// if (Options.DumpRegisteredResources.getValue()) {
+        Iterable<Resources.ModuleResourceRecord> registeredResources = Resources.singleton().getResourceStorage().getKeys();
+        List<Resources.ModuleResourceRecord> resourceInfoList = new ArrayList<>();
+        registeredResources.forEach(resource -> {
+            String resourceName = resource.resource();
+            Module module = resource.module();
+            resourceInfoList.add(new Resources.ModuleResourceRecord(module, resourceName));
+        });
+
+        ResourceReporter.printReport(resourceInfoList);
+// }
     }
 
     @Override
