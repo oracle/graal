@@ -597,7 +597,6 @@ def javac_image_command(javac_path):
     )
 
 
-# from https://docs.python.org/3/library/itertools.html#itertools.batched
 # replace with itertools.batched once python 3.12 is supported.
 def batched(iterable, n):
     if n < 1:

@@ -73,6 +73,7 @@ final class Target_java_lang_foreign_Linker_Option {
 @TargetClass(className = "jdk.internal.foreign.abi.AbstractLinker", onlyWith = ForeignDisabled.class)
 final class Target_jdk_internal_foreign_abi_AbstractLinker {
     @Substitute
+    @SuppressWarnings({"unused", "static-method"})
     Target_java_lang_foreign_MemorySegment upcallStub(MethodHandle target, Target_java_lang_foreign_FunctionDescriptor function,
                     Target_java_lang_foreign_Arena arena, Target_java_lang_foreign_Linker_Option... options) {
         throw ForeignDisabledSubstitutions.fail();
