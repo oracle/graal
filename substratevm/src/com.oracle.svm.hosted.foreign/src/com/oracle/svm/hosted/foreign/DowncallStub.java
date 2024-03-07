@@ -26,8 +26,6 @@ package com.oracle.svm.hosted.foreign;
 
 import java.util.List;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
@@ -45,6 +43,7 @@ import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
@@ -86,7 +85,9 @@ import jdk.vm.ci.meta.Signature;
  * the call state, which could happen if a safepoint was inserted between the downcall and the
  * capture.
  */
-@Platforms(Platform.HOSTED_ONLY.class)
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+12/src/hotspot/share/prims/nativeEntryPoint.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+12/src/hotspot/cpu/x86/downcallLinker_x86_64.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+12/src/hotspot/cpu/aarch64/downcallLinker_aarch64.cpp")
 class DowncallStub extends NonBytecodeMethod {
     public static Signature createSignature(MetaAccessProvider metaAccess) {
         return ResolvedSignature.fromKinds(new JavaKind[]{JavaKind.Object}, JavaKind.Object, metaAccess);

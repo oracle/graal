@@ -47,6 +47,7 @@ import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.headers.WindowsAPIs;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -165,6 +166,7 @@ public class ForeignFunctionsRuntime {
      */
     @Uninterruptible(reason = "Interruptions might change call state.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+12/src/hotspot/share/prims/downcallLinker.cpp")
     public static void captureCallState(int statesToCapture, CIntPointer captureBuffer) {
         assert statesToCapture != 0;
         assert captureBuffer.isNonNull();

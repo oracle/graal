@@ -115,17 +115,6 @@ public final class NativeEntryPointInfo {
         return new Target_jdk_internal_foreign_abi_NativeEntryPoint(info.methodType(), addr, capturedStateMask);
     }
 
-    public int callAddressIndex() {
-        return needsReturnBuffer() ? 1 : 0;
-    }
-
-    public int captureAddressIndex() {
-        if (!capturesCallState()) {
-            throw new IllegalArgumentException(this + " does not have a capture state argument");
-        }
-        return callAddressIndex() + 1;
-    }
-
     public MethodType methodType() {
         return this.methodType;
     }

@@ -69,10 +69,6 @@ public final class JavaEntryPointInfo {
         return methodType;
     }
 
-    public MethodType javaMethodType() {
-        return methodType.insertParameterTypes(0, MethodHandle.class);
-    }
-
     public boolean buffersReturn() {
         return returnAssignment.length >= 2;
     }

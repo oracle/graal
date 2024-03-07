@@ -53,6 +53,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.headers.WindowsAPIs;
+import com.oracle.svm.core.util.BasedOnJDKClass;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -83,6 +84,7 @@ import jdk.vm.ci.meta.PlatformKind;
  * Utils for ABI specific functionalities in the context of the Java Foreign API. Provides methods
  * to transform JDK-internal data-structures into SubstrateVM ones.
  */
+@BasedOnJDKClass(jdk.internal.foreign.abi.SharedUtils.class)
 public abstract class AbiUtils {
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -579,7 +581,11 @@ class ABIs {
         }
     }
 
+    @BasedOnJDKClass(X86_64Architecture.class)
+    @BasedOnJDKClass(jdk.internal.foreign.abi.DowncallLinker.class)
+    @BasedOnJDKClass(jdk.internal.foreign.abi.UpcallLinker.class)
     abstract static class X86_64 extends AbiUtils {
+        @BasedOnJDKClass(jdk.internal.foreign.abi.DowncallLinker.class)
         static class Downcalls {
             protected static Stream<Binding.VMStore> argMoveBindingsStream(CallingSequence callingSequence) {
                 return callingSequence.argumentBindings()
@@ -602,6 +608,7 @@ class ABIs {
             }
         }
 
+        @BasedOnJDKClass(jdk.internal.foreign.abi.UpcallLinker.class)
         static class Upcalls {
             static Binding.VMLoad[] argMoveBindings(CallingSequence callingSequence) {
                 return callingSequence.argumentBindings()
@@ -798,6 +805,8 @@ class ABIs {
         }
     }
 
+    @BasedOnJDKClass(jdk.internal.foreign.abi.x64.sysv.SysVx64Linker.class)
+    @BasedOnJDKClass(jdk.internal.foreign.abi.x64.sysv.CallArranger.class)
     static final class SysV extends X86_64 {
         @Override
         protected CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, LinkerOptions options) {
@@ -842,6 +851,8 @@ class ABIs {
         }
     }
 
+    @BasedOnJDKClass(jdk.internal.foreign.abi.x64.windows.Windowsx64Linker.class)
+    @BasedOnJDKClass(jdk.internal.foreign.abi.x64.windows.CallArranger.class)
     static final class Win64 extends X86_64 {
         @Override
         protected CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, LinkerOptions options) {
