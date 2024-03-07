@@ -105,6 +105,7 @@ class ReflectionProcessor extends AbstractProcessor {
                     configuration.getOrCreateType(condition, type);
                 }
             }
+            return;
         }
         String clazz = (String) entry.get("class");
         if (advisor.shouldIgnore(lazyValue(clazz), lazyValue(callerClass))) {
@@ -257,7 +258,6 @@ class ReflectionProcessor extends AbstractProcessor {
                 break;
             }
 
-            case "putBundleInCache":
             case "getBundleImpl": {
                 expectSize(args, 5);
                 String baseName = (String) args.get(2);

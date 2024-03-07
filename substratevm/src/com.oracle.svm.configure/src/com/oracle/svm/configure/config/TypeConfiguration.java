@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,7 +44,7 @@ import com.oracle.svm.core.util.json.JsonWriter;
 
 public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration, TypeConfiguration.Predicate> {
 
-    private final ConcurrentMap<ConditionalElement<String>, ConfigurationType> types = new ConcurrentHashMap<>();
+    private final ConcurrentMap<ConditionalElement<ConfigurationTypeDescriptor>, ConfigurationType> types = new ConcurrentHashMap<>();
 
     public TypeConfiguration() {
     }
@@ -95,18 +95,22 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
     }
 
     public ConfigurationType get(UnresolvedConfigurationCondition condition, String qualifiedJavaName) {
-        return types.get(new ConditionalElement<>(condition, qualifiedJavaName));
+        return get(condition, new NamedConfigurationTypeDescriptor(qualifiedJavaName));
+    }
+
+    private ConfigurationType get(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor) {
+        return types.get(new ConditionalElement<>(condition, typeDescriptor));
     }
 
     public void add(ConfigurationType type) {
-        ConfigurationType previous = types.putIfAbsent(new ConditionalElement<>(type.getCondition(), type.getQualifiedJavaName()), type);
+        ConfigurationType previous = types.putIfAbsent(new ConditionalElement<>(type.getCondition(), type.getTypeDescriptor()), type);
         if (previous != null && previous != type) {
             VMError.shouldNotReachHere("Cannot replace existing type " + previous + " with " + type);
         }
     }
 
     public void addOrMerge(ConfigurationType type) {
-        types.compute(new ConditionalElement<>(type.getCondition(), type.getQualifiedJavaName()), (key, value) -> {
+        types.compute(new ConditionalElement<>(type.getCondition(), type.getTypeDescriptor()), (key, value) -> {
             if (value == null) {
                 return type;
             } else {
@@ -117,7 +121,11 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
     }
 
     public ConfigurationType getOrCreateType(UnresolvedConfigurationCondition condition, String qualifiedForNameString) {
-        return types.computeIfAbsent(new ConditionalElement<>(condition, qualifiedForNameString), p -> new ConfigurationType(p.condition(), p.element()));
+        return getOrCreateType(condition, new NamedConfigurationTypeDescriptor(qualifiedForNameString));
+    }
+
+    private ConfigurationType getOrCreateType(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor) {
+        return types.computeIfAbsent(new ConditionalElement<>(condition, typeDescriptor), p -> new ConfigurationType(p.condition(), p.element(), false));
     }
 
     @Override
@@ -130,7 +138,7 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         List<ConfigurationType> typesList = new ArrayList<>(this.types.values());
-        typesList.sort(Comparator.comparing(ConfigurationType::getQualifiedJavaName).thenComparing(ConfigurationType::getCondition));
+        typesList.sort(Comparator.comparing(ConfigurationType::getTypeDescriptor).thenComparing(ConfigurationType::getCondition));
 
         writer.append('[');
         String prefix = "";
@@ -171,7 +179,6 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
 
     public interface Predicate {
 
-        boolean testIncludedType(ConditionalElement<String> conditionalElement, ConfigurationType type);
-
+        boolean testIncludedType(ConditionalElement<ConfigurationTypeDescriptor> conditionalElement, ConfigurationType type);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.core.common.type;
+package jdk.graal.compiler.hotspot.test;
 
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
+import java.io.IOException;
 
-public interface TypedConstant extends JavaConstant {
-    ResolvedJavaType getType(MetaAccessProvider provider);
+import org.junit.Assume;
+import org.junit.Test;
+
+import jdk.graal.compiler.core.test.SubprocessTest;
+import jdk.graal.compiler.replacements.test.MonitorTest;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+
+public class LightweightLockingTest extends SubprocessTest {
+
+    public void testMonitor() {
+        MonitorTest t = new MonitorTest();
+        t.test0();
+        t.test01();
+        t.test02();
+        t.test101();
+        t.test102();
+        t.test2();
+        t.test3();
+        t.test4();
+        t.test5();
+        t.test6();
+        t.test7();
+        t.test8();
+        t.testLoopPhi();
+    }
+
+    @Test
+    public void testInSubprocess() throws InterruptedException, IOException {
+        Assume.assumeTrue("LockingMode is supported after JDK22)", JavaVersionUtil.JAVA_SPEC >= 22);
+        launchSubprocess(this::testMonitor, "-XX:LockingMode=2");
+    }
+
 }

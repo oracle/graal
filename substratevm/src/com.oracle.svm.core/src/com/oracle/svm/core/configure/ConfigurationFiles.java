@@ -95,11 +95,13 @@ public final class ConfigurationFiles {
                         "Use a resource-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead."}, type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ResourceConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
-        @Option(help = {"Files describing program elements to be made accessible via JNI (for syntax, see ReflectionConfigurationFiles)",
+        @Option(help = {"Files describing program elements to be made accessible via JNI according to the schema at " +
+                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/jni-config-schema-v1.1.0.json",
                         "Use a jni-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead."}, type = OptionType.User)//
         @BundleMember(role = BundleMember.Role.Input)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Paths> JNIConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
-        @Option(help = {"Resources describing program elements to be made accessible via JNI (see JNIConfigurationFiles).",
+        @Option(help = {"Resources describing program elements to be made accessible via JNI according to the schema at " +
+                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/jni-config-schema-v1.1.0.json",
                         "Use a jni-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead."}, type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> JNIConfigurationResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 

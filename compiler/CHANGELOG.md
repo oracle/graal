@@ -4,6 +4,8 @@ This changelog summarizes newly introduced optimizations and other compiler rela
 
 ## GraalVM for JDK 23 (Internal Version 24.1.0)
 * (GR-50352): Added `-Djdk.graal.PrintPropertiesAll` to make `-XX:+JVMCIPrintProperties` show all Graal options.
+* (GR-25968): New optimization for reducing code size on AMD64, by emitting smaller jump instructions if the displacement fits in one byte.
+  Enabled for Native Image O1-O3 per default; disabled elsewhere. Use `-Djdk.graal.OptimizeLongJumps=true` to enable.
 
 ## GraalVM for JDK 22 (Internal Version 24.0.0)
 * (GR-49876): Added `-Dgraal.PrintIntrinsics=true` to log the intrinsics used by Graal in the current runtime.

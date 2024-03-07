@@ -101,8 +101,8 @@ import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.phases.common.util.LoopUtility;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
-
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import jdk.vm.ci.meta.TriState;
@@ -180,8 +180,13 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
             if (fullSchedule) {
                 cfg = ControlFlowGraph.newBuilder(graph).backendBlocks(true).connectBlocks(true).computeFrequency(true).computeLoops(true).computeDominators(true).computePostdominators(
                                 true).build();
+                graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Conditional elimination after computing CFG");
                 if (moveGuards && Options.MoveGuardsUpwards.getValue(graph.getOptions())) {
-                    cfg.visitDominatorTree(new MoveGuardsUpwards(), graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL));
+                    /**
+                     * See comment in {@link MoveGuardsUpwards#enter}.
+                     */
+                    final boolean deferLoopExits = false;
+                    cfg.visitDominatorTree(new MoveGuardsUpwards(), deferLoopExits);
                 }
                 try (DebugContext.Scope scheduleScope = graph.getDebug().scope(SchedulePhase.class)) {
                     SchedulePhase.run(graph, SchedulePhase.SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER, cfg, context, false);
@@ -214,6 +219,11 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
 
         HIRBlock anchorBlock;
 
+        @Override
+        public String toString() {
+            return "MoveGuardsUpwards - anchorBlock=" + anchorBlock;
+        }
+
         /**
          * Guards cannot be moved above CaptureStateBeginNodes in order to ensure deoptimizations
          * are always attached to valid FrameStates.
@@ -227,6 +237,8 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
         public HIRBlock enter(HIRBlock b) {
             HIRBlock oldAnchorBlock = anchorBlock;
             /*
+             * REASONING:
+             *
              * The goal of this pass is to move guards upward while not introducing the guards on
              * new paths. At all points the anchorBlock must set so the following two invariants
              * hold:
@@ -258,87 +270,105 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                 anchorBlock = b;
             }
 
-            AbstractBeginNode beginNode = b.getBeginNode();
-            if (beginNode instanceof AbstractMergeNode && anchorBlock != b) {
-                AbstractMergeNode mergeNode = (AbstractMergeNode) beginNode;
-                mergeNode.replaceAtUsages(anchorBlock.getBeginNode(), InputType.Anchor, InputType.Guard);
-                mergeNode.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, mergeNode.graph(), "After moving guard and anchored usages from %s to %s", mergeNode, anchorBlock.getBeginNode());
-                assert mergeNode.anchored().isEmpty();
-            }
+            final AbstractBeginNode beginNode = b.getBeginNode();
 
-            FixedNode endNode = b.getEndNode();
-            if (endNode instanceof IfNode) {
-                IfNode node = (IfNode) endNode;
+            /**
+             * A note on loop exits and deferred loop exits in dominator tree traversal for
+             * MoveGuardsUpwards: We must not defer loop exits when we run the move guards upwards
+             * because a loop exit block is itself part of the dominator tree (normally as a
+             * dedicated block) and we cannot leave it out. All the logic explained above under
+             * "REASONING" is only correct if we visit all blocks in dominance order. Thus, when we
+             * move guards we must ensure we are safe proxy wise.
+             *
+             * In order to do so we verify that the location of the anchor block can be used by the
+             * current block without the need of any proxies.
+             */
+            final boolean canMoveGuardsToAnchorBlock = b.getCfg().graph.isAfterStage(StageFlag.VALUE_PROXY_REMOVAL) ||
+                            LoopUtility.canUseWithoutProxy(b.getCfg(), anchorBlock.getBeginNode(), b.getBeginNode());
 
-                // Check if we can move guards upwards.
-                AbstractBeginNode trueSuccessor = node.trueSuccessor();
-                AbstractBeginNode falseSuccessor = node.falseSuccessor();
-
-                EconomicMap<LogicNode, GuardNode> trueGuards = EconomicMap.create(Equivalence.IDENTITY);
-                for (GuardNode guard : trueSuccessor.guards()) {
-                    LogicNode condition = guard.getCondition();
-                    if (condition.hasMoreThanOneUsage()) {
-                        trueGuards.put(condition, guard);
-                    }
+            if (canMoveGuardsToAnchorBlock) {
+                if (anchorBlock != b) {
+                    AbstractBeginNode abstractBegin = beginNode;
+                    abstractBegin.replaceAtUsages(anchorBlock.getBeginNode(), InputType.Anchor, InputType.Guard);
+                    abstractBegin.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, abstractBegin.graph(), "After moving guard and anchored usages from %s to %s", abstractBegin,
+                                    anchorBlock.getBeginNode());
+                    assert abstractBegin.anchored().isEmpty();
                 }
-                if (!trueGuards.isEmpty()) {
-                    /*
-                     * Special case loop exits: We must only ever move guards over loop exits if we
-                     * move them over all loop exits (i.e. if a successor is a loop exit it must be
-                     * the only loop exit or a loop has two exits and both are successors of the
-                     * current if). Else we would risk moving a guard from after a particular exit
-                     * into the loop (might be loop invariant) which can be too early resulting in
-                     * the generated code deopting without the need to.
-                     *
-                     * Note: The code below is written with the possibility in mind that both
-                     * successors are loop exits, even of potentially different loops. Thus, we need
-                     * to ensure we see all possible loop exits involved for all loops.
-                     */
-                    EconomicSet<LoopExitNode> allLoopsAllExits = null;
-                    if (trueSuccessor instanceof LoopExitNode successor) {
-                        if (allLoopsAllExits == null) {
-                            allLoopsAllExits = EconomicSet.create();
+                FixedNode endNode = b.getEndNode();
+                if (endNode instanceof IfNode) {
+                    IfNode node = (IfNode) endNode;
+
+                    // Check if we can move guards upwards.
+                    AbstractBeginNode trueSuccessor = node.trueSuccessor();
+                    AbstractBeginNode falseSuccessor = node.falseSuccessor();
+
+                    EconomicMap<LogicNode, GuardNode> trueGuards = EconomicMap.create(Equivalence.IDENTITY);
+                    for (GuardNode guard : trueSuccessor.guards()) {
+                        LogicNode condition = guard.getCondition();
+                        if (condition.hasMoreThanOneUsage()) {
+                            trueGuards.put(condition, guard);
                         }
-                        allLoopsAllExits.addAll(successor.loopBegin().loopExits());
-                        allLoopsAllExits.remove(successor);
                     }
-                    if (falseSuccessor instanceof LoopExitNode successor) {
-                        if (allLoopsAllExits == null) {
-                            allLoopsAllExits = EconomicSet.create();
+                    if (!trueGuards.isEmpty()) {
+                        /*
+                         * Special case loop exits: We must only ever move guards over loop exits if
+                         * we move them over all loop exits (i.e. if a successor is a loop exit it
+                         * must be the only loop exit or a loop has two exits and both are
+                         * successors of the current if). Else we would risk moving a guard from
+                         * after a particular exit into the loop (might be loop invariant) which can
+                         * be too early resulting in the generated code deopting without the need
+                         * to.
+                         *
+                         * Note: The code below is written with the possibility in mind that both
+                         * successors are loop exits, even of potentially different loops. Thus, we
+                         * need to ensure we see all possible loop exits involved for all loops.
+                         */
+                        EconomicSet<LoopExitNode> allLoopsAllExits = null;
+                        if (trueSuccessor instanceof LoopExitNode successor) {
+                            if (allLoopsAllExits == null) {
+                                allLoopsAllExits = EconomicSet.create();
+                            }
+                            allLoopsAllExits.addAll(successor.loopBegin().loopExits());
+                            allLoopsAllExits.remove(successor);
                         }
-                        allLoopsAllExits.addAll(successor.loopBegin().loopExits());
-                        allLoopsAllExits.remove(successor);
-                    }
-                    if (allLoopsAllExits == null || allLoopsAllExits.isEmpty()) {
-                        for (GuardNode falseGuard : falseSuccessor.guards().snapshot()) {
-                            GuardNode trueGuard = trueGuards.get(falseGuard.getCondition());
-                            if (trueGuard != null && falseGuard.isNegated() == trueGuard.isNegated()) {
-                                Speculation speculation = trueGuard.getSpeculation();
-                                if (speculation == null) {
-                                    speculation = falseGuard.getSpeculation();
-                                } else if (falseGuard.getSpeculation() != null && falseGuard.getSpeculation() != speculation) {
-                                    // Cannot optimize due to different speculations.
-                                    continue;
-                                }
-                                try (DebugCloseable closeable = falseGuard.withNodeSourcePosition()) {
-                                    StructuredGraph graph = falseGuard.graph();
-                                    GuardNode newlyCreatedGuard = new GuardNode(falseGuard.getCondition(), anchorBlock.getBeginNode(), falseGuard.getReason(), falseGuard.getAction(),
-                                                    falseGuard.isNegated(), speculation,
-                                                    falseGuard.getNoDeoptSuccessorPosition());
-                                    GuardNode newGuard = node.graph().unique(newlyCreatedGuard);
-                                    if (trueGuard.isAlive()) {
-                                        if (trueSuccessor instanceof LoopExitNode && beginNode.graph().isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
-                                            trueGuard.replaceAndDelete(ProxyNode.forGuard(newGuard, (LoopExitNode) trueSuccessor));
-                                        } else {
-                                            trueGuard.replaceAndDelete(newGuard);
+                        if (falseSuccessor instanceof LoopExitNode successor) {
+                            if (allLoopsAllExits == null) {
+                                allLoopsAllExits = EconomicSet.create();
+                            }
+                            allLoopsAllExits.addAll(successor.loopBegin().loopExits());
+                            allLoopsAllExits.remove(successor);
+                        }
+                        if (allLoopsAllExits == null || allLoopsAllExits.isEmpty()) {
+                            for (GuardNode falseGuard : falseSuccessor.guards().snapshot()) {
+                                GuardNode trueGuard = trueGuards.get(falseGuard.getCondition());
+                                if (trueGuard != null && falseGuard.isNegated() == trueGuard.isNegated()) {
+                                    Speculation speculation = trueGuard.getSpeculation();
+                                    if (speculation == null) {
+                                        speculation = falseGuard.getSpeculation();
+                                    } else if (falseGuard.getSpeculation() != null && falseGuard.getSpeculation() != speculation) {
+                                        // Cannot optimize due to different speculations.
+                                        continue;
+                                    }
+                                    try (DebugCloseable closeable = falseGuard.withNodeSourcePosition()) {
+                                        StructuredGraph graph = falseGuard.graph();
+                                        GuardNode newlyCreatedGuard = new GuardNode(falseGuard.getCondition(), anchorBlock.getBeginNode(), falseGuard.getReason(), falseGuard.getAction(),
+                                                        falseGuard.isNegated(), speculation,
+                                                        falseGuard.getNoDeoptSuccessorPosition());
+                                        GuardNode newGuard = node.graph().unique(newlyCreatedGuard);
+                                        if (trueGuard.isAlive()) {
+                                            if (trueSuccessor instanceof LoopExitNode && beginNode.graph().isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
+                                                trueGuard.replaceAndDelete(ProxyNode.forGuard(newGuard, (LoopExitNode) trueSuccessor));
+                                            } else {
+                                                trueGuard.replaceAndDelete(newGuard);
+                                            }
                                         }
+                                        if (falseSuccessor instanceof LoopExitNode && beginNode.graph().isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
+                                            falseGuard.replaceAndDelete(ProxyNode.forGuard(newGuard, (LoopExitNode) falseSuccessor));
+                                        } else {
+                                            falseGuard.replaceAndDelete(newGuard);
+                                        }
+                                        graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "GuardCombination", falseGuard);
                                     }
-                                    if (falseSuccessor instanceof LoopExitNode && beginNode.graph().isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
-                                        falseGuard.replaceAndDelete(ProxyNode.forGuard(newGuard, (LoopExitNode) falseSuccessor));
-                                    } else {
-                                        falseGuard.replaceAndDelete(newGuard);
-                                    }
-                                    graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "GuardCombination", falseGuard);
                                 }
                             }
                         }

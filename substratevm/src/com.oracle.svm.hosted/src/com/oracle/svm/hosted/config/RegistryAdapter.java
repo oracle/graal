@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -63,7 +63,7 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
     }
 
     @Override
-    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, String typeName, boolean allowPrimitives) {
+    public TypeResult<Class<?>> resolveType(ConfigurationCondition condition, String typeName, boolean allowPrimitives, boolean includeAllElements) {
         String name = canonicalizeTypeName(typeName);
         return classLoader.findClass(name, allowPrimitives);
     }

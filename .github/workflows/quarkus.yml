@@ -49,19 +49,15 @@ on:
       - '.github/workflows/quarkus.yml'
   schedule:
   - cron: '0 3 * * *'
+  workflow_dispatch:
 
 env:
   COMMON_MAVEN_ARGS: "-e -B --settings .github/mvn-settings.xml --fail-at-end"
   DB_NAME: hibernate_orm_test
   DB_PASSWORD: hibernate_orm_test
   DB_USER: hibernate_orm_test
-  GRAALVM_HOME: ${{ github.workspace }}/graalvm
-  LABSJDK_HOME: ${{ github.workspace }}/jdk
-  LANG: en_US.UTF-8 # Workaround testsuite locale issue
-  MX_GIT_CACHE: refcache
-  MX_PATH: ${{ github.workspace }}/mx
-  MX_PYTHON: python3.8
   NATIVE_TEST_MAVEN_ARGS: "-Dtest-containers -Dstart-containers -Dquarkus.native.native-image-xmx=5g -Dnative -Dnative.surefire.skip -Dformat.skip -Dno-descriptor-tests install -DskipDocs -Dquarkus.native.container-build=false"
+  QUARKUS_JAVA_VERSION: 17 # Use Java 17 to build Quarkus as that's the lowest supported JDK version currently
   QUARKUS_PATH: ${{ github.workspace }}/quarkus
 
 permissions: {}
@@ -80,17 +76,10 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 1
-    - name: Checkout graalvm/mx
-      uses: actions/checkout@v4
+    - name: Build GraalVM JDK
+      uses: ./.github/actions/build-graalvm
       with:
-        repository: graalvm/mx.git
-        fetch-depth: 1
-        ref: master
-        path: ${{ env.MX_PATH }}
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.8'
+        java-version: ${{ env.QUARKUS_JAVA_VERSION }}
     - name: Get latest Quarkus release
       run: |
         export QUARKUS_VERSION=main #$(curl https://repo1.maven.org/maven2/io/quarkus/quarkus-bom/maven-metadata.xml | awk -F"[<>]" '/latest/ {print $3}')
@@ -104,36 +93,14 @@ jobs:
         key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
         restore-keys: |
           ${{ runner.os }}-maven-
-    - uses: actions/cache@v4
-      with:
-        path: ~/.mx
-        key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
-        restore-keys: |
-          ${{ runner.os }}-mx-
-    - name: Fetch LabsJDK
-      run: |
-        mkdir jdk-dl
-        ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id labsjdk-ce-latest --to jdk-dl --alias ${LABSJDK_HOME}
-    - name: Build graalvm native-image
-      run: |
-        export JAVA_HOME=${LABSJDK_HOME}
-        cd substratevm
-        ${MX_PATH}/mx --native=native-image,lib:jvmcicompiler --components="Native Image,LibGraal" build
-        mv $(${MX_PATH}/mx --native=native-image,lib:jvmcicompiler --components="Native Image,LibGraal" graalvm-home) ${GRAALVM_HOME}
-        ${GRAALVM_HOME}/bin/native-image --version
     - name: Tar GraalVM
       shell: bash
-      run: tar -czvf graalvm.tgz -C $(dirname ${GRAALVM_HOME}) $(basename ${GRAALVM_HOME})
+      run: tar -czvhf graalvm.tgz -C $(dirname ${GRAALVM_HOME}) $(basename ${GRAALVM_HOME})
     - name: Persist GraalVM build
       uses: actions/upload-artifact@v4
       with:
         name: graalvm
         path: graalvm.tgz
-    # Use Java 17 to build Quarkus as that's the lowest supported JDK version currently
-    - uses: actions/setup-java@v4
-      with:
-        distribution: 'oracle'
-        java-version: '17'
     - name: Build Quarkus
       run: |
         cd ${QUARKUS_PATH}
@@ -157,6 +124,8 @@ jobs:
     name: Native Tests - ${{matrix.category}}
     needs: build-quarkus-and-graalvm
     runs-on: ubuntu-latest
+    env:
+      GRAALVM_HOME: ${{ github.workspace }}/graalvm # identical to the one in ./.github/actions/build-graalvm
     # Ignore the following YAML Schema error
     timeout-minutes: ${{matrix.timeout}}
     strategy:
@@ -204,7 +173,6 @@ jobs:
         env:
           TEST_MODULES: ${{matrix.test-modules}}
         run: |
-          export GRAALVM_HOME=${{ github.workspace }}/graalvm
           cd ${QUARKUS_PATH}
           ${GRAALVM_HOME}/bin/native-image --version
           ./mvnw $COMMON_MAVEN_ARGS -f integration-tests -pl "$TEST_MODULES" $NATIVE_TEST_MAVEN_ARGS

@@ -106,8 +106,10 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   local monthlies = {},
 
   local svm_common(os_arch, jdk) =
-    local obj = c["svm_common_" + underscore(os_arch)];
-    if std.type(obj) == "function" then obj(jdk) else obj,
+    if (os_arch == 'windows-amd64') then
+      c.svm_common_windows_amd64(jdk)
+    else
+      c.svm_common,
 
   local all_os_arches = [
     "linux-amd64",
@@ -121,7 +123,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   local all_platforms_builds = [
     c.vm_base(os(os_arch), arch(os_arch), 'gate') +
     svm_common(os_arch, jdk) +
-    vm["custom_vm_" + os(os_arch)] +
+    vm.custom_vm +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
                  include_common_os_arch=false,
                  jdk_name = "labsjdk",
@@ -152,7 +154,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   local all_platforms_zgc_builds = [
     adjust_windows_version(c.vm_base(os(os_arch), arch(os_arch), 'gate')) +
     svm_common(os_arch, jdk) +
-    vm["custom_vm_" + os(os_arch)] +
+    vm.custom_vm +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
                  include_common_os_arch=false,
                  gates_manifest=gates,
@@ -174,7 +176,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   local coverage_jdk21_builds = [
     c.vm_base(os(os_arch), arch(os_arch), 'gate') +
     svm_common(os_arch, jdk) +
-    vm["custom_vm_" + os(os_arch)] +
+    vm.custom_vm +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
                  include_common_os_arch=false,
                  gates_manifest=gates,

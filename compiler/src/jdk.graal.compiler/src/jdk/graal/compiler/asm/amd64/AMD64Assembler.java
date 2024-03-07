@@ -77,10 +77,15 @@ import static jdk.vm.ci.amd64.AMD64.CPUFeature.F16C;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.GFNI;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import jdk.graal.compiler.asm.BranchTargetOutOfBoundsException;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.debug.Assertions;
@@ -89,6 +94,9 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
+
+import org.graalvm.collections.EconomicSet;
+
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -111,6 +119,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     private final boolean useBranchesWithin32ByteBoundary;
+    private boolean optimizeLongJumps;
 
     /**
      * Constructs an assembler for the AMD64 architecture.
@@ -118,11 +127,13 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     public AMD64Assembler(TargetDescription target) {
         super(target);
         useBranchesWithin32ByteBoundary = false;
+        optimizeLongJumps = GraalOptions.OptimizeLongJumps.getDefaultValue();
     }
 
     public AMD64Assembler(TargetDescription target, OptionValues optionValues) {
         super(target);
         useBranchesWithin32ByteBoundary = Options.UseBranchesWithin32ByteBoundary.getValue(optionValues);
+        optimizeLongJumps = GraalOptions.OptimizeLongJumps.getValue(optionValues);
     }
 
     public AMD64Assembler(TargetDescription target, OptionValues optionValues, boolean hasIntelJccErratum) {
@@ -132,6 +143,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         } else {
             useBranchesWithin32ByteBoundary = hasIntelJccErratum;
         }
+        optimizeLongJumps = GraalOptions.OptimizeLongJumps.getValue(optionValues);
     }
 
     /**
@@ -2834,8 +2846,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public void jcc(ConditionFlag cc, int jumpTarget, boolean forceDisp32) {
-        final int shortSize = 2;
-        final int longSize = 6;
+        final int shortSize = JumpType.JCCB.instrSize;
+        final int longSize = JumpType.JCC.instrSize;
 
         long disp = jumpTarget - position();
         if (!forceDisp32 && isByte(disp - shortSize)) {
@@ -2844,8 +2856,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             disp = jumpTarget - position();
             if (isByte(disp - shortSize)) {
                 // 0111 tttn #8-bit disp
+                int pos = position();
                 emitByte(0x70 | cc.getValue());
                 emitByte((int) ((disp - shortSize) & 0xFF));
+                trackJump(JumpType.JCCB, pos);
                 return;
             }
         }
@@ -2853,10 +2867,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         // 0000 1111 1000 tttn #32-bit disp
         assert forceDisp32 || isInt(disp - longSize) : "must be 32bit offset (call4)";
         mitigateJCCErratum(longSize);
+        int pos = position();
         disp = jumpTarget - position();
         emitByte(0x0F);
         emitByte(0x80 | cc.getValue());
         emitInt((int) (disp - longSize));
+        trackJump(JumpType.JCC, pos);
     }
 
     /**
@@ -2865,15 +2881,19 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      */
     public final void jcc(ConditionFlag cc) {
         annotatePatchingImmediate(2, 4);
+        int pos = position();
         emitByte(0x0F);
         emitByte(0x80 | cc.getValue());
         emitInt(0);
+        trackJump(JumpType.JCC, pos);
     }
 
     public final void jcc(ConditionFlag cc, Label l) {
         assert (0 <= cc.getValue()) && (cc.getValue() < 16) : "illegal cc";
         if (l.isBound()) {
             jcc(cc, l.position(), false);
+        } else if (canUseShortJump(nextJumpIdx)) {
+            jccb(cc, l);
         } else {
             mitigateJCCErratum(6);
             // Note: could eliminate cond. jumps to this jump if condition
@@ -2881,9 +2901,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             // Note: use jccb() if label to be bound is very close to get
             // an 8-bit displacement
             l.addPatchAt(position(), this);
+            int pos = position();
             emitByte(0x0F);
             emitByte(0x80 | cc.getValue());
             emitInt(0);
+            trackJump(JumpType.JCC, pos);
         }
     }
 
@@ -2892,8 +2914,9 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             jcc(cc, l);
             return;
         }
-        final int shortSize = 2;
+        final int shortSize = JumpType.JCCB.instrSize;
         mitigateJCCErratum(shortSize);
+        int pos = position();
         if (l.isBound()) {
             int entry = l.position();
             assert isByte(entry - (position() + shortSize)) : "Displacement too large for a short jmp: " + (entry - (position() + shortSize));
@@ -2901,10 +2924,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             // 0111 tttn #8-bit disp
             emitByte(0x70 | cc.getValue());
             emitByte((int) ((disp - shortSize) & 0xFF));
+            trackJump(JumpType.JCCB, pos);
         } else {
             l.addPatchAt(position(), this);
             emitByte(0x70 | cc.getValue());
             emitByte(0);
+            trackJump(JumpType.JCCB, pos);
         }
     }
 
@@ -2925,8 +2950,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      * @return the position where the jmp instruction starts.
      */
     public final int jmp(int jumpTarget, boolean forceDisp32) {
-        final int shortSize = 2;
-        final int longSize = 5;
+        final int shortSize = JumpType.JMPB.instrSize;
+        final int longSize = JumpType.JMP.instrSize;
         // For long jmp, the jmp instruction will cross the jcc-erratum-mitigation-boundary when the
         // current position is between [0x1b, 0x1f]. For short jmp [0x1e, 0x1f], which is covered by
         // the long jmp triggering range.
@@ -2938,6 +2963,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             if (isByte(disp - shortSize)) {
                 emitByte(0xEB);
                 emitByte((int) ((disp - shortSize) & 0xFF));
+                trackJump(JumpType.JMPB, pos);
+
                 return pos;
             }
         }
@@ -2947,6 +2974,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         long disp = jumpTarget - pos;
         emitByte(0xE9);
         emitInt((int) (disp - longSize));
+        trackJump(JumpType.JMP, pos);
         return pos;
     }
 
@@ -2959,15 +2987,19 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     public final void jmp(Label l) {
         if (l.isBound()) {
             jmp(l.position(), false);
+        } else if (canUseShortJump(nextJumpIdx)) {
+            jmpb(l);
         } else {
             // By default, forward jumps are always 32-bit displacements, since
             // we can't yet know where the label will be bound. If you're sure that
             // the forward jump will not run beyond 256 bytes, use jmpb to
             // force an 8-bit displacement.
             mitigateJCCErratum(5);
-            l.addPatchAt(position(), this);
+            int pos = position();
+            l.addPatchAt(pos, this);
             emitByte(0xE9);
             emitInt(0);
+            trackJump(JumpType.JMP, pos);
         }
     }
 
@@ -3052,18 +3084,22 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             jmp(l);
             return;
         }
-        final int shortSize = 2;
+        final int shortSize = JumpType.JMPB.instrSize;
         mitigateJCCErratum(shortSize);
         if (l.isBound()) {
             // Displacement is relative to byte just after jmpb instruction
-            int displacement = l.position() - position() - shortSize;
+            int pos = position();
+            int displacement = l.position() - pos - shortSize;
             GraalError.guarantee(isByte(displacement), "Displacement too large to be encoded as a byte: %d", displacement);
             emitByte(0xEB);
             emitByte(displacement & 0xFF);
+            trackJump(JumpType.JMPB, pos);
         } else {
-            l.addPatchAt(position(), this);
+            int pos = position();
+            l.addPatchAt(pos, this);
             emitByte(0xEB);
             emitByte(0);
+            trackJump(JumpType.JMPB, pos);
         }
     }
 
@@ -4931,7 +4967,9 @@ public class AMD64Assembler extends AMD64BaseAssembler {
              * Since a wrongly patched short branch can potentially lead to working but really bad
              * behaving code we should always fail with an exception instead of having an assert.
              */
-            GraalError.guarantee(isByte(imm8), "Displacement too large to be encoded as a byte: %d", imm8);
+            if (!isByte(imm8)) {
+                throw new BranchTargetOutOfBoundsException(true, "Displacement too large to be encoded as a byte: %d", imm8);
+            }
             emitByte(imm8, branch + 1);
 
         } else {
@@ -5651,4 +5689,204 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitModRM(dst, src);
         emitByte(imm8);
     }
+
+    /**
+     * Wraps information for different jump instructions, such as the instruction and displacement
+     * size and the position of the displacement within the instruction.
+     */
+    public enum JumpType {
+        JMP(5, 1, 4),
+        JMPB(2, 1, 1),
+        JCC(6, 2, 4),
+        JCCB(2, 1, 1);
+
+        JumpType(int instrSize, int dispPos, int dispSize) {
+            assert instrSize == dispPos + dispSize : "Invalid JumpInfo: instrSize=" + instrSize + ", dispPos=" + dispPos + ", dispSize=" + dispSize;
+            this.instrSize = instrSize;
+            this.dispPos = dispPos;
+            this.dispSize = dispSize;
+        }
+
+        /**
+         * Size of the instruction in bytes.
+         */
+        public final int instrSize;
+        /**
+         * Size of the jump displacement in bytes.
+         */
+        public final int dispSize;
+        /**
+         * Position (in bytes) of the jump displacement within the instruction.
+         */
+        public final int dispPos;
+    }
+
+    /**
+     * Collects information about emitted jumps. Used for optimizing long jumps in a second code
+     * emit pass.
+     */
+    public static class JumpInfo {
+        /**
+         * Accounts for unknown alignments when deciding if a forward jump should be emitted with a
+         * single byte displacement (called "short" jump). Only forward jumps with displacements <
+         * (127 - {@link #ALIGNMENT_COMPENSATION_HEURISTIC}) are emitted as short jumps.
+         */
+        private static final int ALIGNMENT_COMPENSATION_HEURISTIC = 32;
+
+        /**
+         * The index of this jump within the emitted code. Corresponds to the emit order, e.g.,
+         * {@code idx = 5} denotes the 6th emitted jump.
+         */
+        public final int jumpIdx;
+
+        /**
+         * The position (bytes from the beginning of the method) of the instruction.
+         */
+        public final int instrPos;
+        /**
+         * The type of the jump instruction.
+         */
+        public final JumpType type;
+        /**
+         * The position (bytes from the beginning of the method) of the displacement.
+         */
+        public int displacementPosition;
+
+        private final AMD64Assembler asm;
+
+        JumpInfo(int jumpIdx, JumpType type, int pos, AMD64Assembler asm) {
+            this.jumpIdx = jumpIdx;
+            this.type = type;
+            this.instrPos = pos;
+            this.displacementPosition = pos + type.dispPos;
+            this.asm = asm;
+        }
+
+        /**
+         * Read the jump displacement from the code buffer. If the corresponding jump label has not
+         * been bound yet, the displacement is still uninitialized (=0).
+         */
+        public int getDisplacement() {
+            switch (type.dispSize) {
+                case Byte.BYTES:
+                    return asm.getByte(instrPos + type.dispPos);
+                case Integer.BYTES:
+                    return asm.getInt(instrPos + type.dispPos);
+                default:
+                    throw new RuntimeException("Unhandled jump displacement size: " + type.dispSize);
+            }
+        }
+
+        /**
+         * Returns true if this jump fulfills all following conditions:
+         *
+         * <ul>
+         * <li>it is a relative jmp or jcc with a 4 byte displacement</li>
+         * <li>it is a forward jump</li>
+         * <li>it has an actual jump distance < (127 -
+         * {@link JumpInfo#ALIGNMENT_COMPENSATION_HEURISTIC})</li>
+         * </ul>
+         * The jump distance of replaceable jumps is reduced by
+         * {@link JumpInfo#ALIGNMENT_COMPENSATION_HEURISTIC} to heuristically compensate alignments.
+         */
+        public boolean canBeOptimized() {
+            // check if suitable op:
+            if (type != JumpType.JCC && type != JumpType.JMP) {
+                return false;
+            }
+
+            int displacement = getDisplacement();
+            // backward jumps are already emitted in optimal size
+            if (displacement < 0) {
+                return false;
+            }
+            // Check if displacement (heuristically compensating alignments) fits in single byte.
+            return isByte(getDisplacement() + ALIGNMENT_COMPENSATION_HEURISTIC);
+        }
+
+        public boolean isLongJmp() {
+            return asm.getByte(instrPos) == 0xE9;
+        }
+
+        public boolean isLongJcc() {
+            return asm.getByte(instrPos) == 0x0F && (asm.getByte(instrPos + 1) & 0xF0) == 0x80;
+        }
+    }
+
+    /**
+     * Emit order index of next jump (jmp | jcc) to be emitted. Used for finding the same jumps
+     * across different code emits. This requires the order of emitted code from the same LIR to be
+     * deterministic.
+     */
+    private int nextJumpIdx = 0;
+
+    /**
+     * Checks if the jump at the given index can be replaced by a equivalent instruction with
+     * smaller displacement size. This replacement can only be done if
+     * {@link AMD64BaseAssembler#force4ByteNonZeroDisplacements} allows emitting short jumps and if
+     * a previous code emit has found that this jump will have a sufficiently small displacement.
+     */
+    private boolean canUseShortJump(int jumpIdx) {
+        return !force4ByteNonZeroDisplacements && optimizeLongJumps && longToShortJumps != null && longToShortJumps.contains(jumpIdx);
+    }
+
+    /**
+     * Information about emitted jumps, which can be processed after patching of jump targets.
+     */
+    private List<JumpInfo> jumpInfo = new ArrayList<>();
+
+    /**
+     * Stores the emit index of jumps which can be replaced by single byte displacement versions.
+     * Subsequent code emits can use this information to emit short jumps for these indices.
+     */
+    private EconomicSet<Integer> longToShortJumps = EconomicSet.create();
+
+    private void trackJump(JumpType type, int pos) {
+        jumpInfo.add(new JumpInfo(nextJumpIdx++, type, pos, this));
+    }
+
+    /**
+     * The maximum number of acceptable bailouts when optimizing long jumps. Only checked if
+     * assertions are enabled.
+     */
+    private static final int MAX_OPTIMIZE_LONG_JUMPS_BAILOUTS = 20;
+
+    /**
+     * Accumulated number of bailouts when optimizing long jumps. Such bailouts are ok in rare
+     * cases. Only checked if assertions are enabled.
+     */
+    private static AtomicInteger optimizeLongJumpsBailouts = new AtomicInteger(0);
+
+    /**
+     * Disables optimizing long jumps for this compilation. If assertions are enabled, checks that
+     * the accumulated number of bailouts when optimizing long jumps does not exceed
+     * {@link AMD64Assembler#MAX_OPTIMIZE_LONG_JUMPS_BAILOUTS}. This would indicate a regression in
+     * the algorithm / the heuristics.
+     */
+    public void disableOptimizeLongJumpsAfterException() {
+        assert optimizeLongJumpsBailouts.incrementAndGet() < MAX_OPTIMIZE_LONG_JUMPS_BAILOUTS : "Replacing 4byte-displacement jumps with 1byte-displacement jumps has resulted in too many BranchTargetOutOfBoundsExceptions. " +
+                        "Please check the algorithm or disable the optimization by setting OptimizeLongJumps=false!";
+        optimizeLongJumps = false;
+    }
+
+    @Override
+    public void reset() {
+        if (optimizeLongJumps) {
+            longToShortJumps.clear();
+            for (JumpInfo j : jumpInfo) {
+                if (j.canBeOptimized()) {
+                    /*
+                     * Mark the indices of emitted jumps (jmp | jcc) which could have been replaced
+                     * by short jumps (8bit displacement). The order in which jumps are emitted from
+                     * the same LIR is required to be deterministic!
+                     */
+                    longToShortJumps.add(j.jumpIdx);
+                }
+            }
+        }
+        super.reset();
+        nextJumpIdx = 0;
+        jumpInfo = new ArrayList<>();
+    }
+
 }
