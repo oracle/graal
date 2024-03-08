@@ -4271,7 +4271,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.string(operation.instruction != null ? "bci - " + operation.instruction.getInstructionLength() : "-1");
             b.end(2);
 
-            if (operation.isCustom()) {
+            if (operation.isCustom() && !operation.customModel.implicitTags.isEmpty()) {
                 VariableElement tagConstants = lookupTagConstant(operation.customModel.implicitTags);
                 if (tagConstants != null) {
                     buildEnd(b, model.tagOperation, tagConstants.getSimpleName().toString());
