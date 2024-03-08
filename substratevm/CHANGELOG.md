@@ -12,6 +12,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-52030) Add a stable name for `Proxy` types in Native Image. The name `$Proxy[id]` is replaced by `$Proxy.s[hashCode]` where `hashCode` is computed using the names of the `Proxy` interfaces, the name of the class loader and the name of the module if it is not a dynamic module.
 * (GR-47712) Using the `--static` option without the `--libc=musl` option causes the build process to fail (and reports the appropriate error). Static linking is currently only supported with musl.
 * (GR-50434) Introduce a `"type"` field in reflection and JNI configuration files to support more than simple named types.
+* (GR-51053) Use [`vswhere`](https://github.com/microsoft/vswhere) to find Visual Studio installations more reliably and in non-standard installation locations.
 
 ## GraalVM for JDK 22 (Internal Version 24.0.0)
 * (GR-48304) Red Hat added support for the JFR event ThreadAllocationStatistics.
