@@ -317,6 +317,8 @@ class NativeImageBenchmarkConfig:
                 bundle_path = Path(bundle_spec[:-len(BUNDLE_EXTENSION)] + ".output")
 
                 return bundle_path.absolute()
+            elif arg == "--bundle-create":
+                return self.output_dir / f"{self.final_image_name}.output"
 
         return None
 
