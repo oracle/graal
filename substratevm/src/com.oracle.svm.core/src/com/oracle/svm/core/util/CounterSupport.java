@@ -28,6 +28,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -50,8 +51,8 @@ public class CounterSupport {
         return ImageSingletons.lookup(CounterSupport.class);
     }
 
-    public static void logValues(@SuppressWarnings("unused") boolean firstIsolate) {
-        CounterSupport.singleton().logValues(Log.log());
+    public static RuntimeSupport.Hook shutdownHook() {
+        return (isFirstIsolate) -> CounterSupport.singleton().logValues(Log.log());
     }
 
     /**
