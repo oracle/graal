@@ -150,8 +150,10 @@ public class CompletionExecutor {
         }
     }
 
+    private ForkJoinPool pool = new ForkJoinPool();
+
     private void executeService(DebugContextRunnable command) {
-        ForkJoinPool.commonPool().execute(() -> executeCommand(command));
+        pool.execute(() -> executeCommand(command));
     }
 
     @SuppressWarnings("try")
