@@ -83,7 +83,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.Node;
 
-public class TagTest extends AbstractQuickeningTest {
+public class TagTest extends AbstractInstructionTest {
 
     private static TagInstrumentationTestRootNode parse(BytecodeParser<TagInstrumentationTestRootNodeGen.Builder> parser) {
         BytecodeRootNodes<TagInstrumentationTestRootNode> nodes = TagInstrumentationTestRootNodeGen.create(BytecodeConfig.DEFAULT, parser);
@@ -181,8 +181,7 @@ public class TagTest extends AbstractQuickeningTest {
                         "load.constant",
                         "store.local",
                         "load.local",
-                        "return",
-                        "pop");
+                        "return");
         assertEquals(42, node.getCallTarget().call());
         assertQuickenings(node, 3, 2);
 
@@ -190,8 +189,7 @@ public class TagTest extends AbstractQuickeningTest {
                         "load.constant$Int",
                         "store.local$Int$unboxed",
                         "load.local$Int",
-                        "return",
-                        "pop");
+                        "return");
 
         List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build());
 
@@ -203,10 +201,7 @@ public class TagTest extends AbstractQuickeningTest {
                         "tag.enter",
                         "load.local",
                         "tag.leave",
-                        "return",
-                        "tag.leave",
-                        "pop",
-                        "trap");
+                        "return");
 
         assertEquals(42, node.getCallTarget().call());
 
@@ -218,14 +213,12 @@ public class TagTest extends AbstractQuickeningTest {
                         "tag.enter",
                         "load.local$Int$unboxed",
                         "tag.leave$Int",
-                        "return",
-                        "tag.leave",
-                        "pop",
-                        "trap");
+                        "return");
 
         QuickeningCounts counts = assertQuickenings(node, 8, 4);
 
-        assertEvents(events,
+        assertEvents(node,
+                        events,
                         new Event(EventKind.ENTER, 0x0000, 0x0007, null, StatementTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0000, 0x0007, null, StatementTag.class),
                         new Event(EventKind.ENTER, 0x0009, 0x0011, null, StatementTag.class),
@@ -269,8 +262,7 @@ public class TagTest extends AbstractQuickeningTest {
                         "load.constant",
                         "store.local",
                         "load.local",
-                        "return",
-                        "pop");
+                        "return");
         assertEquals(42, node.getCallTarget().call());
         assertQuickenings(node, 0, 0);
 
@@ -278,8 +270,7 @@ public class TagTest extends AbstractQuickeningTest {
                         "load.constant",
                         "store.local",
                         "load.local",
-                        "return",
-                        "pop");
+                        "return");
 
         List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build());
 
@@ -291,10 +282,7 @@ public class TagTest extends AbstractQuickeningTest {
                         "tag.enter",
                         "load.local",
                         "tag.leave",
-                        "return",
-                        "tag.leave",
-                        "pop",
-                        "trap");
+                        "return");
 
         assertEquals(42, node.getCallTarget().call());
 
@@ -306,38 +294,40 @@ public class TagTest extends AbstractQuickeningTest {
                         "tag.enter",
                         "load.local",
                         "tag.leave",
-                        "return",
-                        "tag.leave",
-                        "pop",
-                        "trap");
+                        "return");
 
         QuickeningCounts counts = assertQuickenings(node, 0, 0);
 
-        assertEvents(events,
+        assertEvents(node,
+                        events,
                         new Event(EventKind.ENTER, 0x0000, 0x0007, null, StatementTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0000, 0x0007, null, StatementTag.class),
-                        new Event(EventKind.ENTER, 0x0009, 0x0011, null, StatementTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0009, 0x0011, 42, StatementTag.class));
+                        new Event(EventKind.ENTER, 0x0009, 0x0011, null, StatementTag.class), new Event(EventKind.RETURN_VALUE, 0x0009, 0x0011, 42, StatementTag.class));
 
         assertStable(counts, node);
     }
 
-    private static void assertEvents(List<Event> actualEvents, Event... expectedEvents) {
-        assertEquals("expectedEvents: " + Arrays.toString(expectedEvents) + " actualEvents:" + actualEvents, expectedEvents.length, actualEvents.size());
+    private static void assertEvents(BytecodeRootNode node, List<Event> actualEvents, Event... expectedEvents) {
+        try {
+            assertEquals("expectedEvents: " + Arrays.toString(expectedEvents) + " actualEvents:" + actualEvents, expectedEvents.length, actualEvents.size());
 
-        for (int i = 0; i < expectedEvents.length; i++) {
-            Event actualEvent = actualEvents.get(i);
-            Event expectedEvent = expectedEvents[i];
+            for (int i = 0; i < expectedEvents.length; i++) {
+                Event actualEvent = actualEvents.get(i);
+                Event expectedEvent = expectedEvents[i];
 
-            assertEquals("event kind at at index " + i, expectedEvent.kind, actualEvent.kind);
-            assertEquals("event value at at index " + i, expectedEvent.value, actualEvent.value);
-            assertEquals("start bci at at index " + i, "0x" + Integer.toHexString(expectedEvent.startBci), "0x" + Integer.toHexString(actualEvent.startBci));
-            assertEquals("end bci at at index " + i, "0x" + Integer.toHexString(expectedEvent.endBci), "0x" + Integer.toHexString(actualEvent.endBci));
-            assertEquals("end bci at at index " + i, Set.of(expectedEvent.tags), Set.of(actualEvent.tags));
+                assertEquals("event kind at at index " + i, expectedEvent.kind, actualEvent.kind);
+                assertEquals("event value at at index " + i, expectedEvent.value, actualEvent.value);
+                assertEquals("start bci at at index " + i, "0x" + Integer.toHexString(expectedEvent.startBci), "0x" + Integer.toHexString(actualEvent.startBci));
+                assertEquals("end bci at at index " + i, "0x" + Integer.toHexString(expectedEvent.endBci), "0x" + Integer.toHexString(actualEvent.endBci));
+                assertEquals("end bci at at index " + i, Set.of(expectedEvent.tags), Set.of(actualEvent.tags));
 
-            if (expectedEvent.id != -1) {
-                assertEquals("event id at at index " + i, expectedEvent.id, actualEvent.id);
+                if (expectedEvent.id != -1) {
+                    assertEquals("event id at at index " + i, expectedEvent.id, actualEvent.id);
+                }
             }
+        } catch (AssertionError e) {
+            System.out.println(node.dump());
+            throw e;
         }
     }
 
@@ -375,8 +365,7 @@ public class TagTest extends AbstractQuickeningTest {
                         "load.constant",
                         "store.local",
                         "load.local",
-                        "return",
-                        "pop");
+                        "return");
         assertEquals(42, node.getCallTarget().call());
         assertQuickenings(node, 0, 0);
 
@@ -384,8 +373,7 @@ public class TagTest extends AbstractQuickeningTest {
                         "load.constant",
                         "store.local",
                         "load.local",
-                        "return",
-                        "pop");
+                        "return");
 
         List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class, StandardTags.ExpressionTag.class).build());
 
@@ -401,10 +389,7 @@ public class TagTest extends AbstractQuickeningTest {
                         "load.local",
                         "tag.leave",
                         "tag.leave",
-                        "return",
-                        "tag.leave",
-                        "pop",
-                        "trap");
+                        "return");
 
         assertEquals(42, node.getCallTarget().call());
         assertInstructions(node,
@@ -419,24 +404,19 @@ public class TagTest extends AbstractQuickeningTest {
                         "load.local",
                         "tag.leave",
                         "tag.leave",
-                        "return",
-                        "tag.leave",
-                        "pop",
-                        "trap");
-
-        System.out.println(node.dump());
+                        "return");
 
         QuickeningCounts counts = assertQuickenings(node, 0, 0);
 
-        assertEvents(events,
+        assertEvents(node,
+                        events,
                         new Event(EventKind.ENTER, 0x0000, 0x000C, null, StatementTag.class),
                         new Event(EventKind.ENTER, 0x0002, 0x0006, null, ExpressionTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0002, 0x0006, 42, ExpressionTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0000, 0x000C, null, StatementTag.class),
                         new Event(EventKind.ENTER, 0x000e, 0x001b, null, StatementTag.class, ExpressionTag.class),
                         new Event(EventKind.ENTER, 0x0010, 0x0014, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0010, 0x0014, 42, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x000e, 0x001b, 42, StatementTag.class, ExpressionTag.class));
+                        new Event(EventKind.RETURN_VALUE, 0x0010, 0x0014, 42, ExpressionTag.class), new Event(EventKind.RETURN_VALUE, 0x000e, 0x001b, 42, StatementTag.class, ExpressionTag.class));
 
         assertStable(counts, node);
     }
@@ -454,23 +434,19 @@ public class TagTest extends AbstractQuickeningTest {
 
         assertInstructions(node,
                         "load.constant",
-                        "return",
-                        "pop");
+                        "return");
 
         List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootBodyTag.class, StandardTags.RootTag.class).build());
         assertInstructions(node,
                         "tag.enter",
                         "load.constant",
                         "tag.leave",
-                        "return",
-                        "tag.leave",
-                        "pop",
-                        "trap");
+                        "return");
 
         assertEquals(42, node.getCallTarget().call());
-        assertEvents(events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0008, null, RootTag.class, RootBodyTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0008, 42, RootTag.class, RootBodyTag.class));
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.ENTER, 0x0000, 0x0008, null, RootTag.class, RootBodyTag.class), new Event(EventKind.RETURN_VALUE, 0x0000, 0x0008, 42, RootTag.class, RootBodyTag.class));
 
     }
 
@@ -487,24 +463,20 @@ public class TagTest extends AbstractQuickeningTest {
 
         assertInstructions(node,
                         "load.constant",
-                        "return",
-                        "pop");
+                        "return");
 
         List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootBodyTag.class).build());
         assertInstructions(node,
                         "tag.enter",
                         "load.constant",
                         "tag.leave",
-                        "return",
-                        "tag.leave",
-                        "pop",
-                        "trap");
+                        "return");
 
         assertEquals(42, node.getCallTarget().call());
 
-        assertEvents(events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0008, null, RootBodyTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0008, 42, RootBodyTag.class));
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.ENTER, 0x0000, 0x0008, null, RootBodyTag.class), new Event(EventKind.RETURN_VALUE, 0x0000, 0x0008, 42, RootBodyTag.class));
 
     }
 
@@ -521,24 +493,20 @@ public class TagTest extends AbstractQuickeningTest {
 
         assertInstructions(node,
                         "load.constant",
-                        "return",
-                        "pop");
+                        "return");
 
         List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).build());
         assertInstructions(node,
                         "tag.enter",
                         "load.constant",
                         "tag.leave",
-                        "return",
-                        "tag.leave",
-                        "pop",
-                        "trap");
+                        "return");
 
         assertEquals(42, node.getCallTarget().call());
 
-        assertEvents(events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0008, null, RootTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0008, 42, RootTag.class));
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.ENTER, 0x0000, 0x0008, null, RootTag.class), new Event(EventKind.RETURN_VALUE, 0x0000, 0x0008, 42, RootTag.class));
 
     }
 
@@ -561,13 +529,9 @@ public class TagTest extends AbstractQuickeningTest {
                         "load.constant",
                         "c.LeaveValue",
                         "return",
-                        "c.LeaveValue",
-                        "pop",
-                        "branch",
                         "load.local",
                         "c.LeaveExceptional",
-                        "throw",
-                        "trap");
+                        "throw");
 
         assertEquals(0, tl.prologIndex);
         assertEquals(1, tl.epilogValue);
@@ -583,14 +547,9 @@ public class TagTest extends AbstractQuickeningTest {
                         "c.LeaveValue",
                         "tag.leave",
                         "return",
-                        "c.LeaveValue",
-                        "pop",
-                        "branch",
                         "load.local",
                         "c.LeaveExceptional",
-                        "throw",
-                        "tag.leaveVoid",
-                        "trap");
+                        "throw");
 
         assertEquals(42, node.getCallTarget().call());
 
@@ -599,9 +558,10 @@ public class TagTest extends AbstractQuickeningTest {
         assertEquals(42, tl.epilogValueObject);
         assertEquals(-1, tl.epilogExceptional);
 
-        assertEvents(events,
-                        new Event(0, EventKind.ENTER, 0x0000, 0x001a, null, RootTag.class),
-                        new Event(3, EventKind.RETURN_VALUE, 0x0000, 0x001a, 42, RootTag.class));
+        assertEvents(node,
+                        events,
+                        new Event(0, EventKind.ENTER, 0x0000, 0x0013, null, RootTag.class),
+                        new Event(3, EventKind.RETURN_VALUE, 0x0000, 0x0013, 42, RootTag.class));
 
     }
 
@@ -624,13 +584,9 @@ public class TagTest extends AbstractQuickeningTest {
                         "load.constant",
                         "c.LeaveValue",
                         "return",
-                        "c.LeaveValue",
-                        "pop",
-                        "branch",
                         "load.local",
                         "c.LeaveExceptional",
-                        "throw",
-                        "trap");
+                        "throw");
 
         assertEquals(0, tl.prologIndex);
         assertEquals(1, tl.epilogValue);
@@ -646,14 +602,9 @@ public class TagTest extends AbstractQuickeningTest {
                         "tag.leave",
                         "c.LeaveValue",
                         "return",
-                        "tag.leave",
-                        "c.LeaveValue",
-                        "pop",
-                        "branch",
                         "load.local",
                         "c.LeaveExceptional",
-                        "throw",
-                        "trap");
+                        "throw");
 
         assertEquals(42, node.getCallTarget().call());
 
@@ -662,9 +613,9 @@ public class TagTest extends AbstractQuickeningTest {
         assertEquals(42, tl.epilogValueObject);
         assertEquals(-1, tl.epilogExceptional);
 
-        assertEvents(events,
-                        new Event(1, EventKind.ENTER, 0x0002, 0x000d, null, RootBodyTag.class),
-                        new Event(2, EventKind.RETURN_VALUE, 0x0002, 0x000d, 42, RootBodyTag.class));
+        assertEvents(node,
+                        events,
+                        new Event(1, EventKind.ENTER, 0x0002, 0x000d, null, RootBodyTag.class), new Event(2, EventKind.RETURN_VALUE, 0x0002, 0x000d, 42, RootBodyTag.class));
 
     }
 
@@ -686,13 +637,9 @@ public class TagTest extends AbstractQuickeningTest {
                         "load.constant",
                         "c.LeaveValue",
                         "return",
-                        "c.LeaveValue",
-                        "pop",
-                        "branch",
                         "load.local",
                         "c.LeaveExceptional",
-                        "throw",
-                        "trap");
+                        "throw");
 
         assertEquals(0, tl.prologIndex);
         assertEquals(1, tl.epilogValue);
@@ -701,7 +648,6 @@ public class TagTest extends AbstractQuickeningTest {
         tl.reset();
 
         List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootBodyTag.class, StandardTags.RootTag.class).build());
-        printInstructions(node);
         assertInstructions(node,
                         "tag.enter",
                         "c.EnterMethod",
@@ -711,15 +657,9 @@ public class TagTest extends AbstractQuickeningTest {
                         "c.LeaveValue",
                         "tag.leave",
                         "return",
-                        "tag.leave",
-                        "c.LeaveValue",
-                        "pop",
-                        "branch",
                         "load.local",
                         "c.LeaveExceptional",
-                        "throw",
-                        "tag.leaveVoid",
-                        "trap");
+                        "throw");
 
         assertEquals(42, node.getCallTarget().call());
 
@@ -728,13 +668,12 @@ public class TagTest extends AbstractQuickeningTest {
         assertEquals(42, tl.epilogValueObject);
         assertEquals(-1, tl.epilogExceptional);
 
-        System.out.println(node.dump());
-
-        assertEvents(events,
-                        new Event(0, EventKind.ENTER, 0x0000, 0x0022, null, RootTag.class),
+        assertEvents(node,
+                        events,
+                        new Event(0, EventKind.ENTER, 0x0000, 0x0018, null, RootTag.class),
                         new Event(2, EventKind.ENTER, 0x0004, 0x0012, null, RootBodyTag.class),
                         new Event(3, EventKind.RETURN_VALUE, 0x0004, 0x0012, 42, RootBodyTag.class),
-                        new Event(5, EventKind.RETURN_VALUE, 0x0000, 0x0022, 42, RootTag.class));
+                        new Event(5, EventKind.RETURN_VALUE, 0x0000, 0x0018, 42, RootTag.class));
 
     }
 
@@ -752,7 +691,6 @@ public class TagTest extends AbstractQuickeningTest {
             b.beginTag(ExpressionTag.class);
             b.emitBranch(l);
             b.endTag(ExpressionTag.class);
-
             b.beginReturn();
             b.emitLoadConstant(42);
             b.endReturn();
@@ -762,19 +700,30 @@ public class TagTest extends AbstractQuickeningTest {
             b.endRoot();
         });
 
+        assertInstructions(node,
+                        "branch",
+                        "trap");
+
         List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class, StandardTags.ExpressionTag.class).build());
         assertFails(() -> node.getCallTarget().call(), AssertionError.class, (e) -> {
             assertEquals("Control reached past the end of the bytecode.", e.getMessage());
         });
 
-        // instrumentation events should be correct even if we hit a trap
-        assertEvents(events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0012, null, RootTag.class),
-                        new Event(EventKind.ENTER, 0x0002, 0x0008, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0002, 0x0008, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0012, null, RootTag.class));
+        assertInstructions(node,
+                        "tag.enter",
+                        "tag.enter",
+                        "tag.leaveVoid",
+                        "branch",
+                        "tag.leaveVoid",
+                        "trap");
 
-        System.out.println(node.dump());
+        // instrumentation events should be correct even if we hit a trap
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.ENTER, 0x0000, 0x0008, null, RootTag.class),
+                        new Event(EventKind.ENTER, 0x0002, 0x0008, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0002, 0x0008, null, ExpressionTag.class), new Event(EventKind.RETURN_VALUE, 0x0000, 0x0008, null, RootTag.class));
+
     }
 
     @Test
@@ -800,33 +749,30 @@ public class TagTest extends AbstractQuickeningTest {
         assertInstructions(node,
                         "branch",
                         "load.constant",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(42, node.getCallTarget().call());
 
         List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class,
                         StandardTags.ExpressionTag.class).build());
 
-        assertInstructions(node, "tag.enter",
+        assertInstructions(node,
+                        "tag.enter",
                         "tag.enter",
                         "tag.leaveVoid",
                         "branch",
-                        "tag.leaveVoid",
                         "load.constant",
                         "tag.leave",
-                        "return",
-                        "tag.leave",
-                        "pop",
-                        "trap");
+                        "return");
 
         assertEquals(42, node.getCallTarget().call());
 
-        assertEvents(events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0010, null, RootTag.class),
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.ENTER, 0x0000, 0x000e, null, RootTag.class),
                         new Event(EventKind.ENTER, 0x0002, 0x0008, null, ExpressionTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0002, 0x0008, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0010, 42, RootTag.class));
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x000e, 42, RootTag.class));
 
     }
 
@@ -892,7 +838,7 @@ public class TagTest extends AbstractQuickeningTest {
         @EpilogExceptional
         static final class LeaveExceptional {
             @Specialization
-            public static void doDefault(AbstractTruffleException t, @Bind("$node") Node node) {
+            public static void doDefault(@SuppressWarnings("unused") AbstractTruffleException t, @Bind("$node") Node node) {
                 TagTestLanguage.getThreadData(node).notifyEpilogExceptional();
             }
         }

@@ -64,7 +64,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
-public class BoxingEliminationTest extends AbstractQuickeningTest {
+public class BoxingEliminationTest extends AbstractInstructionTest {
 
     protected static final BytecodeDSLTestLanguage LANGUAGE = null;
 
@@ -85,8 +85,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
         assertInstructions(node,
                         "load.argument",
                         "c.Abs",
-                        "return",
-                        "pop");
+                        "return");
         assertQuickenings(node, 0, 0);
 
         assertEquals(42L, node.getCallTarget().call(42L));
@@ -95,8 +94,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
         assertInstructions(node,
                         "load.argument$Long",
                         "c.Abs$GreaterZero",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(42L, node.getCallTarget().call(-42L));
         assertQuickenings(node, 4, 2);
@@ -104,8 +102,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
         assertInstructions(node,
                         "load.argument$Long",
                         "c.Abs$GreaterZero#LessThanZero",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals("42", node.getCallTarget().call("42"));
         var stable = assertQuickenings(node, 7, 3);
@@ -113,8 +110,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
         assertInstructions(node,
                         "load.argument",
                         "c.Abs",
-                        "return",
-                        "pop");
+                        "return");
 
         assertStable(stable, node, 42L);
         assertStable(stable, node, "42");
@@ -147,8 +143,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "load.argument",
                         "c.Abs",
                         "c.Add",
-                        "return",
-                        "pop");
+                        "return");
 
         assertQuickenings(node, 0, 0);
 
@@ -161,8 +156,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "load.argument$Long",
                         "c.Abs$LessThanZero$unboxed",
                         "c.Add$Long",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(42L, node.getCallTarget().call(-21L, 21L));
 
@@ -173,8 +167,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "load.argument$Long",
                         "c.Abs$GreaterZero#LessThanZero$unboxed",
                         "c.Add$Long",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals("42", node.getCallTarget().call("4", "2"));
         var stable = assertQuickenings(node, 20, 8);
@@ -185,8 +178,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "load.argument",
                         "c.Abs",
                         "c.Add",
-                        "return",
-                        "pop");
+                        "return");
 
         assertStable(stable, node, 21L, -21L);
         assertStable(stable, node, -21L, 21L);
@@ -210,16 +202,14 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
         assertInstructions(node,
                         "load.constant",
                         "c.Abs",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(42L, node.getCallTarget().call());
 
         assertInstructions(node,
                         "load.constant$Long",
                         "c.Abs$GreaterZero",
-                        "return",
-                        "pop");
+                        "return");
 
     }
 
@@ -252,8 +242,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "load.constant",
                         "merge.conditional",
                         "c.Abs",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(42L, node.getCallTarget().call(true));
 
@@ -266,8 +255,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "load.constant",
                         "merge.conditional$Long$unboxed",
                         "c.Abs$LessThanZero",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(22L, node.getCallTarget().call(false));
 
@@ -280,8 +268,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "load.constant$Long",
                         "merge.conditional$Long$unboxed",
                         "c.Abs$GreaterZero#LessThanZero",
-                        "return",
-                        "pop");
+                        "return");
     }
 
     @Test
@@ -312,8 +299,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "load.constant",
                         "merge.conditional",
                         "c.Abs",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(42L, node.getCallTarget().call(true));
 
@@ -326,8 +312,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "load.constant",
                         "merge.conditional$Long$unboxed",
                         "c.Abs$LessThanZero",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals("42", node.getCallTarget().call(false));
 
@@ -340,8 +325,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "load.constant",
                         "merge.conditional$generic",
                         "c.Abs",
-                        "return",
-                        "pop");
+                        "return");
     }
 
     @Test
@@ -372,8 +356,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "load.constant",
                         "merge.conditional",
                         "c.Abs",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals("42", node.getCallTarget().call(false));
         assertInstructions(node,
@@ -385,8 +368,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "load.constant",
                         "merge.conditional$generic",
                         "c.Abs",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(42L, node.getCallTarget().call(true));
         assertInstructions(node,
@@ -398,8 +380,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "load.constant",
                         "merge.conditional$generic",
                         "c.Abs",
-                        "return",
-                        "pop");
+                        "return");
     }
 
     @Test
@@ -427,8 +408,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "store.local",
                         "load.local",
                         "c.Abs",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(42L, node.getCallTarget().call());
 
@@ -437,8 +417,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "store.local$Long$unboxed",
                         "load.local$Long$unboxed",
                         "c.Abs$GreaterZero",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(42L, node.getCallTarget().call());
 
@@ -447,8 +426,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "store.local$Long$unboxed",
                         "load.local$Long$unboxed",
                         "c.Abs$GreaterZero",
-                        "return",
-                        "pop");
+                        "return");
 
     }
 
@@ -478,8 +456,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "store.local",
                         "load.local",
                         "c.Abs",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(42L, node.getCallTarget().call(-42L));
 
@@ -488,8 +465,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "store.local$Long$unboxed",
                         "load.local$Long$unboxed",
                         "c.Abs$LessThanZero",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals("42", node.getCallTarget().call("42"));
 
@@ -498,8 +474,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "store.local$generic",
                         "load.local$generic",
                         "c.Abs",
-                        "return",
-                        "pop");
+                        "return");
 
     }
 
@@ -535,8 +510,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "store.local",
                         "load.local",
                         "c.Abs",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(42L, node.getCallTarget().call(Boolean.TRUE, -42L));
 
@@ -547,8 +521,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "store.local$generic",
                         "load.local$generic",
                         "c.Abs",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals("42", node.getCallTarget().call(Boolean.TRUE, "42"));
 
@@ -559,8 +532,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "store.local$generic",
                         "load.local$generic",
                         "c.Abs",
-                        "return",
-                        "pop");
+                        "return");
 
     }
 
@@ -600,8 +572,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "load.local",
                         "pop",
                         "load.constant",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(123, node.getCallTarget().call(true));
 
@@ -614,8 +585,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "load.local",
                         "pop",
                         "load.constant",
-                        "return",
-                        "pop");
+                        "return");
 
         /**
          * After the first call, the local frame slot is set to Int. During this second call, the
@@ -634,8 +604,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "load.local$generic",
                         "pop$generic",
                         "load.constant",
-                        "return",
-                        "pop");
+                        "return");
 
         var quickenings = assertQuickenings(node, 7, 4);
         assertStable(quickenings, node, true);
@@ -678,8 +647,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "load.argument",
                         "store.local",
                         "c.GetLocals",
-                        "return",
-                        "pop");
+                        "return");
 
         assertArrayEquals(new Object[]{42L, 123, true}, (Object[]) node.getCallTarget().call(42L, 123, true));
 
@@ -691,8 +659,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "load.argument$Boolean",
                         "store.local$Boolean$unboxed",
                         "c.GetLocals",
-                        "return",
-                        "pop");
+                        "return");
 
         assertArrayEquals(new Object[]{"42", 123, 1024}, (Object[]) node.getCallTarget().call("42", 123, 1024));
 
@@ -704,8 +671,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "load.argument",
                         "store.local$generic",
                         "c.GetLocals",
-                        "return",
-                        "pop");
+                        "return");
     }
 
     @Test
@@ -740,8 +706,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "store.local",
                         "load.argument",
                         "c.GetLocal",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(42L, node.getCallTarget().call(42L, 123, 0));
 
@@ -752,8 +717,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "store.local$Int$unboxed",
                         "load.argument$Int",
                         "c.GetLocal$Perform",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(1024, node.getCallTarget().call(true, 1024, 1));
 
@@ -764,8 +728,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "store.local$Int$unboxed",
                         "load.argument$Int",
                         "c.GetLocal$Perform",
-                        "return",
-                        "pop");
+                        "return");
     }
 
     /*
@@ -792,8 +755,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "load.constant",
                         "c.GenericOperationWithLong",
                         "c.GenericOperationWithLong",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(42L, node.getCallTarget().call());
 
@@ -802,8 +764,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "load.constant$Long",
                         "c.GenericOperationWithLong$Long$unboxed",
                         "c.GenericOperationWithLong$Long",
-                        "return",
-                        "pop");
+                        "return");
 
         assertStable(stable, node);
     }
@@ -835,10 +796,8 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "branch.false",
                         "load.constant",
                         "return",
-                        "pop",
                         "load.constant",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(42L, node.getCallTarget().call());
 
@@ -847,10 +806,8 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "branch.false$Boolean",
                         "load.constant",
                         "return",
-                        "pop",
                         "load.constant",
-                        "return",
-                        "pop");
+                        "return");
         var quickenings = assertQuickenings(node, 2, 1);
         assertStable(quickenings, node);
     }
@@ -859,6 +816,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
     public void testIfEndElse() {
         BoxingEliminationTestRootNode node = parse(b -> {
             b.beginRoot(LANGUAGE);
+
             b.beginIfThenElse();
             b.emitFalse();
             b.beginReturn();
@@ -879,12 +837,8 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "branch.false",
                         "load.constant",
                         "return",
-                        "pop",
-                        "branch",
                         "load.constant",
-                        "return",
-                        "pop",
-                        "trap");
+                        "return");
 
         assertEquals(42L, node.getCallTarget().call());
 
@@ -893,12 +847,8 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "branch.false$Boolean",
                         "load.constant",
                         "return",
-                        "pop",
-                        "branch",
                         "load.constant",
-                        "return",
-                        "pop",
-                        "trap");
+                        "return");
         var quickenings = assertQuickenings(node, 2, 1);
         assertStable(quickenings, node);
     }
@@ -928,11 +878,8 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "branch.false",
                         "load.constant",
                         "return",
-                        "pop",
-                        "branch.backward",
                         "load.constant",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(42L, node.getCallTarget().call());
 
@@ -941,11 +888,8 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "branch.false$Boolean",
                         "load.constant",
                         "return",
-                        "pop",
-                        "branch.backward",
                         "load.constant",
-                        "return",
-                        "pop");
+                        "return");
 
         var quickenings = assertQuickenings(node, 2, 1);
         assertStable(quickenings, node);
@@ -974,32 +918,28 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
         assertInstructions(node,
                         "load.argument",
                         "c.SwitchQuickening0",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(1L, node.getCallTarget().call(1L));
 
         assertInstructions(node,
                         "load.argument$Long",
                         "c.SwitchQuickening0$One",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals("42", node.getCallTarget().call("42"));
 
         assertInstructions(node,
                         "load.argument",
                         "c.SwitchQuickening0$NonNull",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(null, node.getCallTarget().call((Object) null));
 
         assertInstructions(node,
                         "load.argument",
                         "c.SwitchQuickening0$Object",
-                        "return",
-                        "pop");
+                        "return");
 
         var quickenings = assertQuickenings(node, 7, 3);
         assertStable(quickenings, node, "42");
@@ -1031,8 +971,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "c.SwitchQuickening1",
                         "c.GenericOperationWithLong",
                         "c.GenericOperationWithLong",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(1L, node.getCallTarget().call(1L));
 
@@ -1041,8 +980,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "c.SwitchQuickening1$One$unboxed",
                         "c.GenericOperationWithLong$Long$unboxed",
                         "c.GenericOperationWithLong$Long",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(2L, node.getCallTarget().call(2L));
 
@@ -1052,8 +990,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "c.SwitchQuickening1$GreaterEqualOne$unboxed",
                         "c.GenericOperationWithLong$Long$unboxed",
                         "c.GenericOperationWithLong$Long",
-                        "return",
-                        "pop");
+                        "return");
 
         var quickenings = assertQuickenings(node, 8, 4);
         assertStable(quickenings, node, 1L);
@@ -1084,8 +1021,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "c.LongToInt",
                         "c.PassLongOrInt",
                         "c.PassLongOrInt",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(1L, node.getCallTarget().call(1L));
 
@@ -1094,8 +1030,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "c.LongToInt$One$unboxed",
                         "c.PassLongOrInt$Long$unboxed",
                         "c.PassLongOrInt$Long",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(2, node.getCallTarget().call(2L));
 
@@ -1106,8 +1041,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         // it was previously specialized to long
                         "c.PassLongOrInt$Int$unboxed",
                         "c.PassLongOrInt$Int",
-                        "return",
-                        "pop");
+                        "return");
 
         var quickenings = assertQuickenings(node, 12, 6);
         assertStable(quickenings, node, 1L);
@@ -1143,8 +1077,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "c.PassLongOrInt",
                         "pop",
                         "load.constant",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(42, node.getCallTarget().call(1L));
 
@@ -1155,8 +1088,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "c.PassLongOrInt$Long$unboxed",
                         "pop$Long",
                         "load.constant",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(42, node.getCallTarget().call(2L));
 
@@ -1167,8 +1099,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "c.PassLongOrInt$Int$unboxed",
                         "pop$Int",
                         "load.constant",
-                        "return",
-                        "pop");
+                        "return");
 
         var quickenings = assertQuickenings(node, 16, 6);
         assertStable(quickenings, node, 1L);
@@ -1197,8 +1128,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "sc.And",
                         "load.argument",
                         "c.ToBoolean",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(true, node.getCallTarget().call(1L, Boolean.TRUE));
         assertInstructions(node,
@@ -1207,8 +1137,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "sc.And",
                         "load.argument$Boolean",
                         "c.ToBoolean$Boolean",
-                        "return",
-                        "pop");
+                        "return");
 
         var quickenings = assertQuickenings(node, 4, 2);
         assertStable(quickenings, node, 1L, Boolean.TRUE);
@@ -1237,8 +1166,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "sc.Or",
                         "load.argument",
                         "c.ToBoolean",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(true, node.getCallTarget().call(Boolean.FALSE, 1L));
         assertInstructions(node,
@@ -1247,8 +1175,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "sc.Or",
                         "load.argument$Long",
                         "c.ToBoolean$Long",
-                        "return",
-                        "pop");
+                        "return");
 
         var quickenings = assertQuickenings(node, 4, 2);
         assertStable(quickenings, node, Boolean.FALSE, 1L);
@@ -1277,8 +1204,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "c.ToBoolean",
                         "sc.OrReturn",
                         "load.argument",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(1L, node.getCallTarget().call(Boolean.FALSE, 1L));
         assertInstructions(node,
@@ -1287,8 +1213,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "c.ToBoolean",
                         "sc.OrReturn",
                         "load.argument",
-                        "return",
-                        "pop");
+                        "return");
 
         var quickenings = assertQuickenings(node, 1, 1);
         assertStable(quickenings, node, Boolean.FALSE, 1L);
@@ -1317,8 +1242,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "c.ToBoolean",
                         "sc.AndReturn",
                         "load.argument",
-                        "return",
-                        "pop");
+                        "return");
         assertEquals(Boolean.FALSE, node.getCallTarget().call(Boolean.FALSE, 1L));
         assertInstructions(node,
                         "load.argument",
@@ -1326,8 +1250,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
                         "c.ToBoolean",
                         "sc.AndReturn",
                         "load.argument",
-                        "return",
-                        "pop");
+                        "return");
 
         var quickenings = assertQuickenings(node, 1, 1);
         assertStable(quickenings, node, Boolean.FALSE, 1L);
@@ -1342,7 +1265,7 @@ public class BoxingEliminationTest extends AbstractQuickeningTest {
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                     enableYield = true, enableSerialization = true, //
                     enableQuickening = true, //
-                    enableTagInstrumentation = true, boxingEliminationTypes = {long.class, int.class, boolean.class})
+                    boxingEliminationTypes = {long.class, int.class, boolean.class})
     @ShortCircuitOperation(name = "And", operator = Operator.AND_RETURN_CONVERTED, booleanConverter = ToBoolean.class)
     @ShortCircuitOperation(name = "Or", operator = Operator.OR_RETURN_CONVERTED, booleanConverter = ToBoolean.class)
     @ShortCircuitOperation(name = "AndReturn", operator = Operator.AND_RETURN_VALUE, booleanConverter = ToBoolean.class)

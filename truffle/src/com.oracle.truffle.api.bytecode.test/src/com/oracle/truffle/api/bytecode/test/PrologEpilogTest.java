@@ -85,7 +85,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
 @RunWith(Parameterized.class)
-public class PrologEpilogTest extends AbstractQuickeningTest {
+public class PrologEpilogTest extends AbstractInstructionTest {
     @Parameters(name = "{0}")
     public static List<Object[]> getParameters() {
         return List.of(new Object[]{false}, new Object[]{true});

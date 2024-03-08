@@ -66,7 +66,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor.Builder;
 
 // TODO this test should be rewritten once we have something working for boxing elimination.
 @Ignore
-public class BoxingEliminationTypeSystemTest extends AbstractQuickeningTest {
+public class BoxingEliminationTypeSystemTest extends AbstractInstructionTest {
 
     private static final BoxingLanguage LANGUAGE = null;
 

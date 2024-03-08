@@ -50,7 +50,7 @@ import java.util.function.Consumer;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.introspection.Instruction;
 
-public class AbstractQuickeningTest {
+public class AbstractInstructionTest {
 
     public static void printInstructions(BytecodeRootNode root) {
         System.out.print("[\n");

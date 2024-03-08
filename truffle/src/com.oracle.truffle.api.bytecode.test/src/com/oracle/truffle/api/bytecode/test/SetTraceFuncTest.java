@@ -71,7 +71,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 /**
  * Showcases how to implement the python set trace func feature.
  */
-public class SetTraceFuncTest extends AbstractQuickeningTest {
+public class SetTraceFuncTest extends AbstractInstructionTest {
 
     private static SetTraceFuncRootNode parse(BytecodeParser<SetTraceFuncRootNodeGen.Builder> parser) {
         BytecodeRootNodes<SetTraceFuncRootNode> nodes = SetTraceFuncRootNodeGen.create(BytecodeConfig.WITH_SOURCE, parser);
@@ -132,7 +132,7 @@ public class SetTraceFuncTest extends AbstractQuickeningTest {
     @GenerateBytecode(languageClass = TraceFunLanguage.class, //
                     enableYield = true, enableSerialization = true, //
                     enableQuickening = true, //
-                    enableUncachedInterpreter = true, enableTagInstrumentation = true, //
+                    enableUncachedInterpreter = true,  //
                     boxingEliminationTypes = {long.class, int.class, boolean.class})
     public abstract static class SetTraceFuncRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 

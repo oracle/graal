@@ -168,7 +168,7 @@ public class BranchTest extends AbstractBasicInterpreterTest {
         // return 0;
 
         thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("BytecodeLabel was emitted at a position with a different stack height than a branch instruction that targets it. Branches must be balanced.");
+        thrown.expectMessage("BytecodeLabel was emitted at a position with a different stack height than a branch instruction that targets it. Expected stack height 1, but was 0. Branches must be balanced.");
         parse("branchOutwardInvalid", b -> {
             b.beginRoot(LANGUAGE);
 

@@ -244,6 +244,17 @@ public final class InstructionModel implements PrettyPrintable {
         return !shortCircuitInstructions.isEmpty();
     }
 
+    public boolean isEpilogReturn() {
+        if (this.operation == null) {
+            return false;
+        }
+        var epilogReturn = operation.parent.epilogReturn;
+        if (epilogReturn == null) {
+            return false;
+        }
+        return epilogReturn.operation.instruction == this;
+    }
+
     public int getId() {
         if (id == -1) {
             throw new IllegalStateException("Id not yet assigned");

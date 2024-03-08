@@ -77,7 +77,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 
-public class InstrumentationTest extends AbstractQuickeningTest {
+public class InstrumentationTest extends AbstractInstructionTest {
 
     private static InstrumentationTestRootNode parse(BytecodeParser<InstrumentationTestRootNodeGen.Builder> parser) {
         BytecodeRootNodes<InstrumentationTestRootNode> nodes = InstrumentationTestRootNodeGen.create(BytecodeConfig.WITH_SOURCE, parser);
@@ -313,7 +313,6 @@ public class InstrumentationTest extends AbstractQuickeningTest {
     @GenerateBytecode(languageClass = BytecodeInstrumentationTestLanguage.class, //
                     enableQuickening = true, //
                     enableUncachedInterpreter = true,  //
-                    enableTagInstrumentation = true, //
                     boxingEliminationTypes = {int.class})
     public abstract static class InstrumentationTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
@@ -476,7 +475,7 @@ public class InstrumentationTest extends AbstractQuickeningTest {
         static final LanguageReference<BytecodeInstrumentationTestLanguage> REF = LanguageReference.create(BytecodeInstrumentationTestLanguage.class);
     }
 
-    @GenerateBytecode(languageClass = BytecodeInstrumentationTestLanguage.class, enableTagInstrumentation = true)
+    @GenerateBytecode(languageClass = BytecodeInstrumentationTestLanguage.class)
     public abstract static class InstrumentationErrorRootNode1 extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected InstrumentationErrorRootNode1(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {

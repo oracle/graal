@@ -99,7 +99,6 @@ import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
-import com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeDSLNodeFactory.BuilderFactory.OperationDataClassesFactory;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.CustomOperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
@@ -127,7 +126,6 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.WildcardTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeParameterElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
@@ -307,6 +305,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         bytecodeNodeGen.add(createTransitionToCached());
         bytecodeNodeGen.add(createUpdateBytecode());
         bytecodeNodeGen.add(createEnsureSources());
+
+        bytecodeNodeGen.add(createIsInstrumentable());
+        bytecodeNodeGen.addOptional(createPrepareForInstrumentation());
 
         bytecodeNodeGen.add(createEncodeTags());
 
@@ -786,6 +787,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.end(); // insert
         b.end(); // statement
 
+        b.statement("assert this.bytecode.validateBytecodes()");
+
         return ctor;
     }
 
@@ -833,7 +836,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         ex.addParameter(new CodeVariableElement(context.getType(int.class), "startState"));
 
         CodeTreeBuilder b = ex.createBuilder();
-        String localFrame = localFrame();
 
         b.statement("int state = startState");
         // These don't change between invocations. Read them once.
@@ -1492,6 +1494,37 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return ex;
     }
 
+    private CodeExecutableElement createIsInstrumentable() {
+        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.RootNode, "isInstrumentable");
+        CodeTreeBuilder b = ex.createBuilder();
+        if (model.enableTagInstrumentation) {
+            b.statement("return true");
+        } else {
+            b.statement("return false");
+        }
+        return ex;
+    }
+
+    private CodeExecutableElement createPrepareForInstrumentation() {
+        if (!model.enableTagInstrumentation) {
+            return null;
+        }
+        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.RootNode, "prepareForInstrumentation");
+        ex.renameArguments("materializedTags");
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.declaration(types.BytecodeConfig_Builder, "b", "newConfigBuilder()");
+        b.lineComment("Sources are always needed for instrumentation.");
+        b.statement("b.addSource()");
+
+        b.startFor().type(type(Class.class)).string(" tag : materializedTags").end().startBlock();
+        b.statement("b.addTag((Class<? extends Tag>) tag)");
+        b.end();
+
+        b.statement("getRootNodes().update(b.build())");
+        return ex;
+    }
+
     private CodeExecutableElement createEncodeTags() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(int.class), "encodeTags");
         ex.addParameter(new CodeVariableElement(arrayOf(type(Class.class)), "tags"));
@@ -1789,6 +1822,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "exHandlerCount"),
                         new CodeVariableElement(Set.of(PRIVATE), unresolvedLabelsType, "unresolvedLabels")));
 
+        CodeVariableElement reachable = new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean.class), "reachable");
+
         // This state is shared across all contexts for a given root node. It does not get
         // saved/restored when entering/leaving a FinallyTry.
         List<CodeVariableElement> builderContextInsensitiveState = new ArrayList<>(List.of(
@@ -1804,6 +1839,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceIndexSp"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceLocationStack"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceLocationSp"),
+                        reachable,
                         new CodeVariableElement(Set.of(PRIVATE), finallyTryContext.asType(), "finallyTryContext"),
                         new CodeVariableElement(Set.of(PRIVATE), constantPool.asType(), "constantPool"),
 
@@ -1811,6 +1847,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         new CodeVariableElement(Set.of(PRIVATE), savedState.asType(), "savedState")));
 
         {
+            reachable.createInitBuilder().string("true");
+
             if (model.enableTagInstrumentation) {
                 builderContextSensitiveState.add(new CodeVariableElement(Set.of(PRIVATE), generic(type(List.class), tagNode.asType()), "tagRoots"));
                 builderContextSensitiveState.add(new CodeVariableElement(Set.of(PRIVATE), generic(type(List.class), tagNode.asType()), "tagNodes"));
@@ -1843,7 +1881,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 result.add(createDataClass("RootData",
                                 field(types.TruffleLanguage, "language").asFinal(),
-                                field(context.getType(boolean.class), "mayFallThrough").withInitializer("true")));
+                                field(context.getType(boolean.class), "reachable").withInitializer("true")));
 
                 result.add(createDataClass("TransparentOperationData",
                                 field(context.getType(boolean.class), "producedValue"),
@@ -1869,27 +1907,35 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
 
                 result.add(createDataClass("IfThenData",
-                                field(context.getType(int.class), "falseBranchFixupBci")));
+                                field(context.getType(int.class), "falseBranchFixupBci"),
+                                field(context.getType(boolean.class), "thenReachable")));
 
                 result.add(createDataClass("IfThenElseData",
                                 field(context.getType(int.class), "falseBranchFixupBci"),
-                                field(context.getType(int.class), "endBranchFixupBci")));
+                                field(context.getType(int.class), "endBranchFixupBci"),
+                                field(context.getType(boolean.class), "thenReachable"),
+                                field(context.getType(boolean.class), "elseReachable")));
 
                 if (model.usesBoxingElimination()) {
                     result.add(createDataClass("ConditionalData",
                                     field(context.getType(int.class), "falseBranchFixupBci"),
                                     field(context.getType(int.class), "endBranchFixupBci"),
+                                    field(context.getType(boolean.class), "thenReachable"),
+                                    field(context.getType(boolean.class), "elseReachable"),
                                     field(context.getType(int.class), "child0Bci"),
                                     field(context.getType(int.class), "child1Bci")));
                 } else {
                     result.add(createDataClass("ConditionalData",
                                     field(context.getType(int.class), "falseBranchFixupBci"),
-                                    field(context.getType(int.class), "endBranchFixupBci")));
+                                    field(context.getType(int.class), "endBranchFixupBci"),
+                                    field(context.getType(boolean.class), "thenReachable"),
+                                    field(context.getType(boolean.class), "elseReachable")));
                 }
 
                 result.add(createDataClass("WhileData",
                                 field(context.getType(int.class), "whileStartBci").asFinal(),
-                                field(context.getType(int.class), "endBranchFixupBci")));
+                                field(context.getType(int.class), "endBranchFixupBci"),
+                                field(context.getType(boolean.class), "bodyReachable")));
 
                 result.add(createDataClass("TryCatchData",
                                 field(context.getType(int.class), "tryStartBci").asFinal(),
@@ -1897,11 +1943,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                 field(context.getType(int.class), "exceptionLocalIndex").asFinal(),
                                 field(context.getType(int.class), "tryEndBci"),
                                 field(context.getType(int.class), "catchStartBci"),
-                                field(context.getType(int.class), "endBranchFixupBci")));
+                                field(context.getType(int.class), "endBranchFixupBci"),
+                                field(context.getType(boolean.class), "initialReachable"),
+                                field(context.getType(boolean.class), "tryReachable"),
+                                field(context.getType(boolean.class), "catchReachable")));
 
                 result.add(createDataClass("FinallyTryData",
                                 field(types.BytecodeLocal, "exceptionLocal").asFinal(),
-                                field(context.getDeclaredType(Object.class), "finallyTryContext").asFinal()));
+                                field(context.getDeclaredType(Object.class), "finallyTryContext").asFinal(),
+                                field(context.getType(boolean.class), "initialReachable"),
+                                field(context.getType(boolean.class), "finallyReachable"),
+                                field(context.getType(boolean.class), "tryReachable")));
 
                 result.add(
                                 createDataClass("CustomOperationData",
@@ -2261,6 +2313,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     builder.add(createEmit(operation));
                 }
             }
+            builder.add(createMarkReachable());
+            builder.add(createUpdateReachable());
 
             builder.add(createBeginOperation());
             builder.add(createEndOperation());
@@ -2287,6 +2341,226 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             builder.addAll(doEmitInstructionMethods.values());
 
             return builder;
+        }
+
+        private CodeExecutableElement createMarkReachable() {
+            CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE),
+                            context.getType(void.class), "markReachable");
+            method.addParameter(new CodeVariableElement(type(boolean.class), "newReachable"));
+            CodeTreeBuilder b = method.createBuilder();
+            b.statement("this.reachable = newReachable");
+
+            b.startFor().string("int sp = this.operationSp - 1; sp >= 0; sp--").end().startBlock();
+            b.declaration(operationStackEntry.asType(), "operation", "operationStack[sp]");
+            b.startSwitch().string("operation.operation").end().startBlock();
+            for (OperationModel op : model.getOperations()) {
+                switch (op.kind) {
+                    case ROOT:
+                        b.startCase().tree(createOperationConstant(op)).end().startBlock();
+                        emitCastOperationData(b, "RootData", "sp");
+                        b.statement("operationData.reachable = newReachable");
+                        b.statement("return");
+                        b.end();
+                        break;
+                    case IF_THEN:
+                        b.startCase().tree(createOperationConstant(op)).end().startBlock();
+                        emitCastOperationData(b, "IfThenData", "sp");
+                        b.startIf().string("operation.childCount == 0").end().startBlock();
+                        b.lineComment("Unreachable condition branch makes the if and parent block unreachable.");
+                        b.statement("operationData.thenReachable = newReachable");
+                        b.statement("continue");
+                        b.end().startElseIf().string("operation.childCount == 1").end().startBlock();
+                        b.statement("operationData.thenReachable = newReachable");
+                        b.end().startElseBlock();
+                        b.lineComment("Invalid child index, but we will fail in the end method.");
+                        b.end();
+                        b.statement("return");
+                        b.end();
+                        break;
+                    case IF_THEN_ELSE:
+                        b.startCase().tree(createOperationConstant(op)).end().startBlock();
+                        emitCastOperationData(b, "IfThenElseData", "sp");
+                        b.startIf().string("operation.childCount == 0").end().startBlock();
+                        b.lineComment("Unreachable condition branch makes the if, then and parent block unreachable.");
+                        b.statement("operationData.thenReachable = newReachable");
+                        b.statement("operationData.elseReachable = newReachable");
+                        b.statement("continue");
+                        b.end().startElseIf().string("operation.childCount == 1").end().startBlock();
+                        b.statement("operationData.thenReachable = newReachable");
+                        b.end().startElseIf().string("operation.childCount == 2").end().startBlock();
+                        b.statement("operationData.elseReachable = newReachable");
+                        b.end().startElseBlock();
+                        b.lineComment("Invalid child index, but we will fail in the end method.");
+                        b.end();
+                        b.statement("return");
+                        b.end();
+                        break;
+                    case CONDITIONAL:
+                        b.startCase().tree(createOperationConstant(op)).end().startBlock();
+                        emitCastOperationData(b, "ConditionalData", "sp");
+                        b.startIf().string("operation.childCount == 0").end().startBlock();
+                        b.lineComment("Unreachable condition branch makes the if, then and parent block unreachable.");
+                        b.statement("operationData.thenReachable = newReachable");
+                        b.statement("operationData.elseReachable = newReachable");
+                        b.statement("continue");
+                        b.end().startElseIf().string("operation.childCount == 1").end().startBlock();
+                        b.statement("operationData.thenReachable = newReachable");
+                        b.end().startElseIf().string("operation.childCount == 2").end().startBlock();
+                        b.statement("operationData.elseReachable = newReachable");
+                        b.end().startElseBlock();
+                        b.lineComment("Invalid child index, but we will fail in the end method.");
+                        b.end();
+                        b.statement("return");
+                        b.end();
+                        break;
+                    case TRY_CATCH:
+                        b.startCase().tree(createOperationConstant(op)).end().startBlock();
+                        emitCastOperationData(b, "TryCatchData", "sp");
+                        b.startIf().string("operation.childCount == 0").end().startBlock();
+                        b.statement("operationData.tryReachable = newReachable");
+                        b.end().startElseIf().string("operation.childCount == 1").end().startBlock();
+                        b.statement("operationData.catchReachable = newReachable");
+                        b.end().startElseBlock();
+                        b.lineComment("Invalid child index, but we will fail in the end method.");
+                        b.end();
+                        b.statement("return");
+                        b.end();
+                        break;
+                    case WHILE:
+                        b.startCase().tree(createOperationConstant(op)).end().startBlock();
+                        emitCastOperationData(b, "WhileData", "sp");
+                        b.startIf().string("operation.childCount == 0").end().startBlock();
+                        b.statement("operationData.bodyReachable = newReachable");
+                        b.statement("continue");
+                        b.end().startElseIf().string("operation.childCount == 1").end().startBlock();
+                        b.statement("operationData.bodyReachable = newReachable");
+                        b.end().startElseBlock();
+                        b.lineComment("Invalid child index, but we will fail in the end method.");
+                        b.end();
+                        b.statement("return");
+                        b.end();
+                        break;
+                    case FINALLY_TRY:
+                    case FINALLY_TRY_NO_EXCEPT:
+                        b.startCase().tree(createOperationConstant(op)).end().startBlock();
+                        emitCastOperationData(b, "FinallyTryData", "sp");
+                        b.startIf().string("operation.childCount == 0").end().startBlock();
+                        b.statement("operationData.finallyReachable = newReachable");
+                        b.end().startElseIf().string("operation.childCount == 1").end().startBlock();
+                        b.statement("operationData.tryReachable = newReachable");
+                        b.end().startElseBlock();
+                        b.lineComment("Invalid child index, but we will fail in the end method.");
+                        b.end();
+                        b.statement("return");
+                        b.end();
+                        break;
+                }
+            }
+            b.end(); // switch
+            b.end(); // for
+
+            return method;
+        }
+
+        private CodeExecutableElement createUpdateReachable() {
+            CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE),
+                            context.getType(void.class), "updateReachable");
+
+            CodeTreeBuilder doc = method.createDocBuilder();
+            doc.startJavadoc();
+            doc.string("Updates the reachable field from the current operation. Typically invoked when the operation ended or the child is changing.");
+            doc.newLine();
+            doc.end();
+
+            CodeTreeBuilder b = method.createBuilder();
+            b.statement("boolean newReachable = reachable");
+            b.startFor().string("int sp = this.operationSp - 1; sp >= 0; sp--").end().startBlock();
+            b.declaration(operationStackEntry.asType(), "operation", "operationStack[sp]");
+            b.startSwitch().string("operation.operation").end().startBlock();
+            for (OperationModel op : model.getOperations()) {
+                switch (op.kind) {
+                    case ROOT:
+                        b.startCase().tree(createOperationConstant(op)).end().startBlock();
+                        emitCastOperationData(b, "RootData", "sp");
+                        b.statement("this.reachable = operationData.reachable");
+                        b.statement("return");
+                        b.end();
+                        break;
+                    case IF_THEN:
+                        b.startCase().tree(createOperationConstant(op)).end().startBlock();
+                        emitCastOperationData(b, "IfThenData", "sp");
+                        b.startIf().string("operation.childCount == 0").end().startBlock();
+                        b.statement("continue");
+                        b.end().startElseIf().string("operation.childCount == 1").end().startBlock();
+                        b.statement("this.reachable = operationData.thenReachable");
+                        b.end().startElseBlock();
+                        b.lineComment("Invalid child index, but we will fail in the end method.");
+                        b.end();
+                        b.statement("return");
+                        b.end();
+                        break;
+                    case IF_THEN_ELSE:
+                        b.startCase().tree(createOperationConstant(op)).end().startBlock();
+                        emitCastOperationData(b, "IfThenElseData", "sp");
+                        b.startIf().string("operation.childCount == 0").end().startBlock();
+                        b.lineComment("Unreachable condition branch makes the if, then and parent block unreachable.");
+                        b.statement("continue");
+                        b.end().startElseIf().string("operation.childCount == 1").end().startBlock();
+                        b.statement("this.reachable = operationData.thenReachable");
+                        b.end().startElseIf().string("operation.childCount == 2").end().startBlock();
+                        b.statement("this.reachable = operationData.elseReachable");
+                        b.end().startElseBlock();
+                        b.lineComment("Invalid child index, but we will fail in the end method.");
+                        b.end();
+                        b.statement("return");
+                        b.end();
+                        break;
+                    case TRY_CATCH:
+                        b.startCase().tree(createOperationConstant(op)).end().startBlock();
+                        emitCastOperationData(b, "TryCatchData", "sp");
+                        b.startIf().string("operation.childCount == 0").end().startBlock();
+                        b.statement("this.reachable = operationData.tryReachable");
+                        b.end().startElseIf().string("operation.childCount == 1").end().startBlock();
+                        b.statement("this.reachable = operationData.catchReachable");
+                        b.end().startElseBlock();
+                        b.lineComment("Invalid child index, but we will fail in the end method.");
+                        b.end();
+                        b.statement("return");
+                        b.end();
+                        break;
+                    case WHILE:
+                        b.startCase().tree(createOperationConstant(op)).end().startBlock();
+                        emitCastOperationData(b, "WhileData", "sp");
+                        b.startIf().string("operation.childCount == 0").end().startBlock();
+                        b.statement("continue");
+                        b.end().startElseIf().string("operation.childCount == 1").end().startBlock();
+                        b.statement("this.reachable = operationData.bodyReachable");
+                        b.end().startElseBlock();
+                        b.lineComment("Invalid child index, but we will fail in the end method.");
+                        b.end();
+                        b.statement("return");
+                        b.end();
+                        break;
+                    case FINALLY_TRY:
+                    case FINALLY_TRY_NO_EXCEPT:
+                        b.startCase().tree(createOperationConstant(op)).end().startBlock();
+                        emitCastOperationData(b, "FinallyTryData", "sp");
+                        b.startIf().string("operation.childCount == 0").end().startBlock();
+                        b.statement("this.reachable = operationData.finallyReachable");
+                        b.end().startElseIf().string("operation.childCount == 1").end().startBlock();
+                        b.statement("this.reachable = operationData.tryReachable");
+                        b.end().startElseBlock();
+                        b.lineComment("Invalid child index, but we will fail in the end method.");
+                        b.end();
+                        b.statement("return");
+                        b.end();
+                        break;
+                }
+            }
+
+            b.end(); // switch
+            b.end(); // for
+            return method;
         }
 
         private CodeExecutableElement createSerialize() {
@@ -2661,7 +2935,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startFor().startGroup().type(bytecodeLocation.asType()).string(" site : sites").end(2).startBlock();
 
             b.startIf().string("stackHeight != site.sp").end().startBlock();
-            emitThrowIllegalStateException(b, "\"BytecodeLabel was emitted at a position with a different stack height than a branch instruction that targets it. Branches must be balanced.\"");
+            b.startThrow().startNew(type(IllegalStateException.class));
+            b.startStaticCall(type(String.class), "format");
+            b.doubleQuote("BytecodeLabel was emitted at a position with a different stack height than a branch instruction that targets it. Expected stack height %s, but was %s. Branches must be balanced.");
+            b.string("site.sp");
+            b.string("stackHeight");
+            b.end(); // String.format
+            b.end(2);
             b.end();
             b.statement(writeBc("site.bci", "(short) impl.bci"));
             b.end(2);
@@ -2987,6 +3267,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("operationSequenceNumber = 0");
             b.statement("operationSp = 0");
 
+            b.statement("reachable = true");
+            if (model.enableTagInstrumentation) {
+                b.statement("tagRoots = null");
+                b.statement("tagNodes = null");
+            }
+
             b.statement("numLocals = " + USER_LOCALS_START_IDX);
             b.statement("numLabels = 0");
             b.statement("numNodes = 0");
@@ -3136,23 +3422,22 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 {
                     yield CodeTreeBuilder.singleString(operation.getOperationArgumentName(0));
                 }
-                case IF_THEN ->
-
-                                createOperationData("IfThenData", UNINIT);
-                case IF_THEN_ELSE -> createOperationData("IfThenElseData", UNINIT, UNINIT);
+                case IF_THEN -> createOperationData("IfThenData", UNINIT, "this.reachable");
+                case IF_THEN_ELSE -> createOperationData("IfThenElseData", UNINIT, UNINIT, "this.reachable", "this.reachable");
                 case CONDITIONAL -> {
                     if (model.usesBoxingElimination()) {
 
-                        yield createOperationData("ConditionalData", UNINIT, UNINIT, UNINIT, UNINIT);
+                        yield createOperationData("ConditionalData", UNINIT, UNINIT, "this.reachable", "this.reachable", UNINIT, UNINIT);
                     } else
 
                     {
 
-                        yield createOperationData("ConditionalData", UNINIT, UNINIT);
+                        yield createOperationData("ConditionalData", UNINIT, UNINIT, "this.reachable", "this.reachable");
                     }
                 }
-                case WHILE -> createOperationData("WhileData", "bci", UNINIT);
-                case TRY_CATCH -> createOperationData("TryCatchData", "bci", "currentStackHeight", "((BytecodeLocalImpl) " + operation.getOperationArgumentName(0) + ").index", UNINIT, UNINIT, UNINIT);
+                case WHILE -> createOperationData("WhileData", "bci", UNINIT, "this.reachable");
+                case TRY_CATCH -> createOperationData("TryCatchData", "bci", "currentStackHeight", "((BytecodeLocalImpl) " + operation.getOperationArgumentName(0) + ").index", UNINIT, UNINIT, UNINIT,
+                                "this.reachable", "this.reachable", "this.reachable");
                 case FINALLY_TRY, FINALLY_TRY_NO_EXCEPT -> {
                     // set finallyTryContext inside createFinallyTry before calling beginOperation
                     b.startAssign("finallyTryContext").startNew(finallyTryContext.asType());
@@ -3168,7 +3453,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                     String arg1 = (operation.kind == OperationKind.FINALLY_TRY) ? operation.getOperationArgumentName(0) : "null";
 
-                    yield createOperationData("FinallyTryData", arg1, "finallyTryContext");
+                    yield createOperationData("FinallyTryData", arg1, "finallyTryContext", "this.reachable", "this.reachable", "this.reachable");
                 }
                 case CUSTOM, CUSTOM_INSTRUMENTATION ->
 
@@ -3381,31 +3666,62 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("doEmitSourceInfo(sourceIndexStack[sourceIndexSp], -1, -1)");
                     b.end();
                     break;
-                case IF_THEN:
                 case IF_THEN_ELSE:
+                    if (model.enableTracing) {
+                        b.statement("basicBlockBoundary[bci] = true");
+                    }
+                    emitCastOperationData(b, "IfThenElseData", "operationSp");
+                    b.statement("markReachable(operationData.thenReachable || operationData.elseReachable)");
+                    break;
+                case IF_THEN:
                 case WHILE:
                     if (model.enableTracing) {
                         b.statement("basicBlockBoundary[bci] = true");
                     }
+                    b.statement("updateReachable()");
                     break;
                 case CONDITIONAL:
                     emitCastOperationData(b, "ConditionalData", "operationSp");
                     if (model.enableTracing) {
                         b.statement("basicBlockBoundary[bci] = true");
                     }
+                    b.statement("markReachable(operationData.thenReachable || operationData.elseReachable)");
                     if (model.usesBoxingElimination()) {
                         buildEmitInstruction(b, operation.instruction, emitMergeConditionalArguments(operation.instruction));
                     }
                     break;
+                case TRY_CATCH:
+                    emitCastOperationData(b, "TryCatchData", "operationSp");
+                    b.statement("markReachable(operationData.tryReachable || operationData.catchReachable)");
+                    break;
                 case FINALLY_TRY:
                     emitCastOperationData(b, "FinallyTryData", "operationSp");
+
+                    b.declaration(type(int.class), "exHandlerIndex", UNINIT);
+                    b.declaration(type(short.class), "exceptionIndex", UNINIT);
                     b.statement("BytecodeLocalImpl exceptionLocal = (BytecodeLocalImpl) operationData.exceptionLocal");
                     b.statement("FinallyTryContext ctx = (FinallyTryContext) operationData.finallyTryContext");
-                    b.statement("short exceptionIndex = (short) exceptionLocal.index");
-                    b.statement("int exHandlerIndex = doCreateExceptionHandler(ctx.bci, bci, " + UNINIT + " /* handler start */, currentStackHeight, exceptionIndex)");
+
+                    b.startIf().string("operationData.initialReachable").end().startBlock();
+                    b.lineComment("exception handler may be reachable");
+                    b.statement("exceptionIndex = (short) exceptionLocal.index");
+                    b.statement("exHandlerIndex = doCreateExceptionHandler(ctx.bci, bci, " + UNINIT + " /* handler start */, currentStackHeight, exceptionIndex)");
+                    b.end().startElseBlock();
+                    b.statement("assert !operationData.tryReachable");
+                    b.end();
+
+                    b.declaration(type(int.class), "endBranchIndex", UNINIT);
+                    b.startIf().string("operationData.tryReachable").end().startBlock();
+                    b.statement("this.reachable = true");
                     b.lineComment("emit handler for normal completion case");
                     b.statement("doEmitFinallyHandler(ctx)");
-                    b.statement("int endBranchIndex = bci + 1");
+                    b.startIf().string("operationData.finallyReachable").end().startBlock();
+                    b.statement("endBranchIndex = bci + 1");
+                    emitFinallyRelativeBranchCheck(b, 1);
+                    buildEmitInstruction(b, model.branchInstruction, new String[]{UNINIT});
+                    b.end();
+                    b.end();
+
                     /**
                      * Skip over the catch handler. This branch could be relative if the current
                      * FinallyTry is nested in another FinallyTry handler.
@@ -3413,25 +3729,44 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                      * (NB: By the time we invoke endFinallyTry, our finallyTryContext has been
                      * restored to point to the parent context.)
                      */
-                    emitFinallyRelativeBranchCheck(b, 1);
-                    buildEmitInstruction(b, model.branchInstruction, new String[]{UNINIT});
-
+                    b.startIf().string("exHandlerIndex != ", UNINIT).end().startBlock();
                     b.lineComment("emit handler for exceptional case");
+                    b.statement("this.reachable = true");
                     b.statement("exHandlers[exHandlerIndex + 2] = bci /* handler start */");
                     b.statement("doEmitFinallyHandler(ctx)");
                     buildEmitInstruction(b, model.throwInstruction, new String[]{"exceptionIndex"});
+                    b.end();
+
+                    b.end();
+                    b.startIf().string("endBranchIndex != ", UNINIT).end().startBlock();
                     b.statement(writeBc("endBranchIndex", "(short) bci"));
+                    b.end();
+
+                    b.startIf().string("!operationData.finallyReachable || !operationData.tryReachable").end().startBlock();
+                    b.statement("markReachable(false)");
+                    b.end().startElseBlock();
+                    b.statement("updateReachable()");
+                    b.end();
                     break;
                 case FINALLY_TRY_NO_EXCEPT:
                     emitCastOperationData(b, "FinallyTryData", "operationSp");
                     b.statement("BytecodeLocalImpl exceptionLocal = (BytecodeLocalImpl) operationData.exceptionLocal");
+
                     b.statement("FinallyTryContext ctx = (FinallyTryContext) operationData.finallyTryContext");
                     b.statement("doEmitFinallyHandler(ctx)");
+
+                    b.startIf().string("!operationData.finallyReachable || !operationData.tryReachable").end().startBlock();
+                    b.statement("markReachable(false)");
+                    b.end().startElseBlock();
+                    b.statement("updateReachable()");
+                    b.end();
+
                     break;
                 case RETURN:
                     emitCastOperationData(b, "ReturnOperationData", "operationSp");
                     b.statement("doEmitReturn(operationData.childBci)");
                     buildEmitOperationInstruction(b, operation);
+                    b.statement("markReachable(false)");
                     break;
                 case TAG:
                     emitCastOperationData(b, "TagOperationData", "operationSp");
@@ -3472,11 +3807,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.end();
 
                     b.statement("tagNode.children = children");
-
-                    b.startFor().string("TagNode child : tagNode.children").end().startBlock();
-                    b.statement("tagNode.insert(child)");
-                    b.end();
-
                     b.statement("tagNode.leaveBci = (short)bci");
 
                     b.startIf().string("operationData.producedValue").end().startBlock();
@@ -3592,7 +3922,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     buildEnd(b, model.epilogExceptional.operation);
 
                     buildEmitInstruction(b, model.throwInstruction, EPILOG_EXCEPTION_IDX);
-
+                    b.statement("markReachable(false)");
                     buildEnd(b, model.blockOperation);
                     buildEnd(b, model.tryCatchOperation);
                 }
@@ -3612,10 +3942,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(2);
 
             emitCastOperationData(b, "RootData", "operationSp");
-
-            b.startIf().string("operationData.mayFallThrough").end().startBlock();
             buildEmitInstruction(b, model.trapInstruction);
-            b.end();
 
             for (VariableElement e : ElementFilter.fieldsIn(abstractBytecodeNode.getEnclosedElements())) {
                 b.defaultDeclaration(e.asType(), e.getSimpleName().toString() + "_");
@@ -3905,6 +4232,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 assert operation.instruction != null;
                 buildEmitOperationInstruction(b, operation);
             }
+            switch (operation.kind) {
+                case BRANCH:
+                    b.statement("markReachable(false)");
+                    break;
+                case LABEL:
+                    b.statement("markReachable(true)");
+                    break;
+
+            }
 
             b.startStatement().startCall("afterChild");
             b.string("" + !operation.isVoid);
@@ -4029,7 +4365,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private enum BeforeChildKind {
             TRANSPARENT,
             SHORT_CIRCUIT,
-            DEFAULT
+            UPDATE_REACHABLE,
+            DEFAULT,
         }
 
         private CodeExecutableElement createBeforeChild() {
@@ -4046,6 +4383,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     return BeforeChildKind.TRANSPARENT;
                 } else if (op.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
                     return BeforeChildKind.SHORT_CIRCUIT;
+                } else if (op.kind == OperationKind.TRY_CATCH ||
+                                op.kind == OperationKind.IF_THEN_ELSE ||
+                                op.kind == OperationKind.IF_THEN ||
+                                op.kind == OperationKind.CONDITIONAL ||
+                                op.kind == OperationKind.FINALLY_TRY_NO_EXCEPT ||
+                                op.kind == OperationKind.FINALLY_TRY) {
+                    return BeforeChildKind.UPDATE_REACHABLE;
                 } else {
                     return BeforeChildKind.DEFAULT;
                 }
@@ -4070,23 +4414,40 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 for (OperationModel op : groupedOperations.get(BeforeChildKind.SHORT_CIRCUIT)) {
                     b.startCase().tree(createOperationConstant(op)).end().startBlock();
 
+                    emitCastOperationData(b, "CustomShortCircuitOperationData", "operationSp - 1");
                     b.startIf().string("childIndex != 0").end().startBlock();
                     if (!op.instruction.shortCircuitModel.returnConvertedBoolean()) {
                         // DUP so the boolean converter doesn't clobber the original value.
                         buildEmitInstruction(b, model.dupInstruction);
                     }
-                    emitCastOperationData(b, "CustomShortCircuitOperationData", "operationSp - 1");
 
                     b.declaration(type(int.class), "converterBci", "bci");
 
                     buildEmitBooleanConverterInstruction(b, op.instruction);
+                    b.startIf().string("this.reachable").end().startBlock();
                     b.statement("operationData.branchFixupBcis.add(bci + " + op.instruction.getImmediate("branch_target").offset() + ")");
-                    buildEmitInstruction(b, op.instruction, emitShortCircuitArguments(op.instruction));
                     b.end();
+                    buildEmitInstruction(b, op.instruction, emitShortCircuitArguments(op.instruction));
+                    b.end(); // fallthrough
 
                     b.statement("break");
                     b.end();
                 }
+            }
+
+            if (groupedOperations.containsKey(BeforeChildKind.UPDATE_REACHABLE)) {
+                for (OperationModel op : groupedOperations.get(BeforeChildKind.UPDATE_REACHABLE)) {
+                    b.startCase().tree(createOperationConstant(op)).end();
+                }
+                b.startCaseBlock();
+
+                // catch block is always assumed reachable
+                b.startIf().string("childIndex >= 1").end().startBlock();
+                b.statement("updateReachable()");
+                b.end();
+
+                b.statement("break");
+                b.end();
             }
 
             // Do nothing for every other operation.
@@ -4238,44 +4599,20 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 switch (op.kind) {
                     case ROOT:
-                        /**
-                         * To avoid reading past the end of the bytecode, we insert a TRAP at the
-                         * end. If the root ends with an instruction that definitely cannot fall
-                         * through, we can omit it.
-                         *
-                         * NB: This is a simple heuristic, but it is conservative: it should not
-                         * incorrectly omit a TRAP. Certain problematic cases (e.g., IfThenElse
-                         * operations, a label after the last instruction) are avoided because the
-                         * childBci will be -1.
-                         */
-                        emitCastOperationData(b, "RootData", "operationSp - 1");
-                        b.startIf().string("childBci != -1").end().startBlock();
-                        b.startSwitch().string(readBc("childBci")).end().startBlock(); // switch
-                        List<InstructionModel> nonFallthroughInstructions = List.of(model.returnInstruction, model.branchBackwardInstruction, model.throwInstruction, model.trapInstruction);
-                        for (InstructionModel instr : nonFallthroughInstructions) {
-                            b.startCase().tree(createInstructionConstant(instr)).end();
-                        }
-                        b.startBlock();
-                        b.statement("operationData.mayFallThrough = false");
-                        b.statement("break");
-                        b.end();
-                        b.caseDefault().startBlock();
-                        b.statement("operationData.mayFallThrough = true");
-                        b.end();
-                        b.end(); // switch
-                        b.end().startElseBlock();
-                        b.statement("operationData.mayFallThrough = true");
-                        b.end();
                         break;
                     case IF_THEN:
                         emitCastOperationData(b, "IfThenData", "operationSp - 1");
                         b.startIf().string("childIndex == 0").end().startBlock();
+                        b.startIf().string("reachable").end().startBlock();
                         b.statement("operationData.falseBranchFixupBci = bci + " + model.branchFalseInstruction.getImmediates(ImmediateKind.BYTECODE_INDEX).get(0).offset());
                         emitFinallyRelativeBranchCheck(b, 1);
+                        b.end();
                         buildEmitInstruction(b, model.branchFalseInstruction, emitBranchArguments(model.branchFalseInstruction));
                         b.end().startElseBlock();
                         b.statement("int toUpdate = operationData.falseBranchFixupBci");
+                        b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
                         b.statement(writeBc("toUpdate", "(short) bci"));
+                        b.end();
                         b.end();
                         if (model.enableTracing) {
                             b.statement("basicBlockBoundary[bci] = true");
@@ -4294,19 +4631,26 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case IF_THEN_ELSE:
                         emitCastOperationData(b, "IfThenElseData", "operationSp - 1");
                         b.startIf().string("childIndex == 0").end().startBlock();
+                        b.startIf().string("reachable").end().startBlock();
                         b.statement("operationData.falseBranchFixupBci = bci + 1");
                         emitFinallyRelativeBranchCheck(b, 1);
-
+                        b.end();
                         buildEmitInstruction(b, model.branchFalseInstruction, emitBranchArguments(model.branchFalseInstruction));
                         b.end().startElseIf().string("childIndex == 1").end().startBlock();
+                        b.startIf().string("reachable").end().startBlock();
                         b.statement("operationData.endBranchFixupBci = bci + 1");
                         emitFinallyRelativeBranchCheck(b, 1);
+                        b.end();
                         buildEmitInstruction(b, model.branchInstruction, new String[]{UNINIT});
                         b.statement("int toUpdate = operationData.falseBranchFixupBci");
+                        b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
                         b.statement(writeBc("toUpdate", "(short) bci"));
+                        b.end();
                         b.end().startElseBlock();
                         b.statement("int toUpdate = operationData.endBranchFixupBci");
+                        b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
                         b.statement(writeBc("toUpdate", "(short) bci"));
+                        b.end();
                         b.end();
                         if (model.enableTracing) {
                             b.statement("basicBlockBoundary[bci] = true");
@@ -4318,28 +4662,36 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         if (model.usesBoxingElimination()) {
                             buildEmitInstruction(b, model.dupInstruction);
                         }
+                        b.startIf().string("reachable").end().startBlock();
                         b.statement("operationData.falseBranchFixupBci = bci + 1");
                         emitFinallyRelativeBranchCheck(b, 1);
-
+                        b.end();
                         buildEmitInstruction(b, model.branchFalseInstruction, emitBranchArguments(model.branchFalseInstruction));
+
                         b.end().startElseIf().string("childIndex == 1").end().startBlock();
                         if (model.usesBoxingElimination()) {
                             b.statement("operationData.child0Bci = childBci");
                         }
+                        b.startIf().string("reachable").end().startBlock();
                         b.statement("operationData.endBranchFixupBci = bci + 1");
-
                         emitFinallyRelativeBranchCheck(b, 1);
                         buildEmitInstruction(b, model.branchInstruction, new String[]{UNINIT});
                         // we have to adjust the stack for the third child
+                        b.end();
                         b.statement("currentStackHeight -= 1");
+
                         b.statement("int toUpdate = operationData.falseBranchFixupBci");
+                        b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
                         b.statement(writeBc("toUpdate", "(short) bci"));
+                        b.end();
                         b.end().startElseBlock();
                         if (model.usesBoxingElimination()) {
                             b.statement("operationData.child1Bci = childBci");
                         }
                         b.statement("int toUpdate = operationData.endBranchFixupBci");
+                        b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
                         b.statement(writeBc("toUpdate", "(short) bci"));
+                        b.end();
                         b.end();
                         if (model.enableTracing) {
                             b.statement("basicBlockBoundary[bci] = true");
@@ -4348,15 +4700,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case WHILE:
                         emitCastOperationData(b, "WhileData", "operationSp - 1");
                         b.startIf().string("childIndex == 0").end().startBlock();
+                        b.startIf().string("reachable").end().startBlock();
                         b.statement("operationData.endBranchFixupBci = bci + 1");
                         emitFinallyRelativeBranchCheck(b, 1);
-
+                        b.end();
                         buildEmitInstruction(b, model.branchFalseInstruction, emitBranchArguments(model.branchFalseInstruction));
                         b.end().startElseBlock();
                         emitFinallyRelativeBranchCheck(b, 1);
                         buildEmitInstruction(b, model.branchBackwardInstruction, new String[]{"(short) operationData.whileStartBci"});
                         b.statement("int toUpdate = operationData.endBranchFixupBci");
+                        b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
                         b.statement(writeBc("toUpdate", "(short) bci"));
+                        b.end();
                         b.end();
                         if (model.enableTracing) {
                             b.statement("basicBlockBoundary[bci] = true");
@@ -4365,16 +4720,27 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case TRY_CATCH:
                         emitCastOperationData(b, "TryCatchData", "operationSp - 1");
                         b.startIf().string("childIndex == 0").end().startBlock();
+                        b.startIf().string("operationData.initialReachable").end().startBlock();
                         b.statement("operationData.tryEndBci = bci");
+
+                        b.startIf().string("operationData.tryReachable").end().startBlock();
                         b.statement("operationData.endBranchFixupBci = bci + 1");
                         emitFinallyRelativeBranchCheck(b, 1);
                         buildEmitInstruction(b, model.branchInstruction, new String[]{UNINIT});
+                        b.end(); // if tryReachable
                         b.statement("operationData.catchStartBci = bci");
+
+                        b.end(); // if initialReachable
                         b.end();
+
                         b.startElseIf().string("childIndex == 1").end().startBlock();
                         b.statement("int toUpdate = operationData.endBranchFixupBci");
+                        b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
                         b.statement(writeBc("toUpdate", "(short) bci"));
+                        b.end();
+                        b.startIf().string("operationData.initialReachable").end().startBlock();
                         b.statement("doCreateExceptionHandler(operationData.tryStartBci, operationData.tryEndBci, operationData.catchStartBci, operationData.startStackHeight, operationData.exceptionLocalIndex)");
+                        b.end();
                         b.end();
                         if (model.enableTracing) {
                             b.statement("basicBlockBoundary[bci] = true");
@@ -4390,12 +4756,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                          * lookup of the unknown label and the stack height at the branch
                          * instruction.
                          */
-                        b.declaration(
-                                        generic(HashMap.class, context.getDeclaredType(Integer.class), types.BytecodeLabel),
+                        b.declaration(generic(HashMap.class, context.getDeclaredType(Integer.class), types.BytecodeLabel),
                                         "unresolvedBranchLabels",
                                         CodeTreeBuilder.createBuilder().startStaticCall(bytecodeBuilderType, "createBranchLabelMapping").string("unresolvedLabels").end());
-                        b.declaration(
-                                        generic(HashMap.class, context.getDeclaredType(Integer.class), context.getDeclaredType(Integer.class)),
+                        b.declaration(generic(HashMap.class, context.getDeclaredType(Integer.class), context.getDeclaredType(Integer.class)),
                                         "unresolvedBranchStackHeights",
                                         CodeTreeBuilder.createBuilder().startStaticCall(bytecodeBuilderType, "createBranchStackHeightMapping").string("unresolvedLabels").end());
 
@@ -4531,6 +4895,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "doEmitFinallyHandler");
             ex.addParameter(new CodeVariableElement(finallyTryContext.asType(), "context"));
             CodeTreeBuilder b = ex.createBuilder();
+            b.startIf().string("!this.reachable").end().startBlock();
+            b.statement("return");
+            b.end();
 
             b.statement("int offsetBci = bci");
             b.statement("short[] handlerBc = context.handlerBc");
@@ -4782,12 +5149,26 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createDoEmitInstruction(int argumentLength) {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "doEmitInstruction");
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(boolean.class), "doEmitInstruction");
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "instruction"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "stackEffect"));
             for (int i = 0; i < argumentLength; i++) {
                 ex.addParameter(new CodeVariableElement(type(int.class), "data" + i));
             }
             CodeTreeBuilder b = ex.createBuilder();
+
+            b.startIf().string("stackEffect != 0").end().startBlock();
+            b.statement("currentStackHeight += stackEffect");
+            b.end();
+
+            b.startIf().string("!reachable").end().startBlock();
+            b.statement("return false");
+            b.end();
+
+            b.startIf().string("stackEffect > 0").end().startBlock();
+            b.statement("maxStackHeight = Math.max(maxStackHeight, currentStackHeight)");
+            b.end();
+
             b.declaration(type(int.class), "newSize", "bci + " + (argumentLength + 1));
             b.startIf().string("newSize > bc.length").end().startBlock();
             b.statement("ensureBytecodeCapacity(newSize)");
@@ -4811,6 +5192,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             b.statement("bci = bci + " + (argumentLength + 1));
+            b.statement("return true");
 
             return ex;
         }
@@ -4833,30 +5215,34 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "count"));
             CodeTreeBuilder b = ex.createBuilder();
 
+            b.statement("currentStackHeight -= count - 1");
+            b.startIf().string("!reachable").end().startBlock();
+            b.statement("return");
+            b.end();
+
             int variadicCount = model.popVariadicInstruction.length - 1;
 
             b.startIf().string("count <= ").string(variadicCount).end().startBlock();
-            b.startStatement().string("doEmitInstruction(").tree(createInstructionConstant(model.popVariadicInstruction[0])).string(" + count)").end();
+            b.startStatement().string("doEmitInstruction(").tree(createInstructionConstant(model.popVariadicInstruction[0])).string(" + count, 0)").end();
             b.end().startElseBlock();
 
-            b.startIf().string("currentStackHeight + 1 > maxStackHeight").end().startBlock();
-            b.statement("maxStackHeight = currentStackHeight + 1");
+            b.startIf().string("currentStackHeight + count > maxStackHeight").end().startBlock();
+            b.statement("maxStackHeight = currentStackHeight + count");
             b.end();
             b.statement("int elementCount = count + 1");
-            b.startStatement().startCall("doEmitInstruction").tree(createInstructionConstant(model.storeNullInstruction)).end(2);
+            b.startStatement().startCall("doEmitInstruction").tree(createInstructionConstant(model.storeNullInstruction)).string("0").end(2);
 
             b.startWhile().string("elementCount > 8").end().startBlock();
-            b.startStatement().startCall("doEmitInstruction").tree(createInstructionConstant(model.popVariadicInstruction[variadicCount])).end(2);
+            b.startStatement().startCall("doEmitInstruction").tree(createInstructionConstant(model.popVariadicInstruction[variadicCount])).string("0").end(2);
             b.statement("elementCount -= 7");
             b.end();
 
             b.startIf().string("elementCount > 0").end().startBlock();
-            b.startStatement().startCall("doEmitInstruction").startGroup().tree(createInstructionConstant(model.popVariadicInstruction[0])).string(" + elementCount").end(3);
+            b.startStatement().startCall("doEmitInstruction").startGroup().tree(createInstructionConstant(model.popVariadicInstruction[0])).string(" + elementCount").end().string("0").end(2);
             b.end();
-            b.startStatement().startCall("doEmitInstruction").tree(createInstructionConstant(model.mergeVariadicInstruction)).end(2);
+            b.startStatement().startCall("doEmitInstruction").tree(createInstructionConstant(model.mergeVariadicInstruction)).string("0").end(2);
             b.end();
 
-            b.statement("currentStackHeight -= count - 1");
             b.startIf().string("count == 0 && currentStackHeight > maxStackHeight").end().startBlock();
             b.statement("maxStackHeight = currentStackHeight");
             b.end();
@@ -4865,8 +5251,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private void buildEmitInstruction(CodeTreeBuilder b, InstructionModel instr, String... arguments) {
-            boolean hasPositiveDelta = false;
-
+            int stackEffect = 0;
             switch (instr.kind) {
                 case BRANCH:
                 case BRANCH_BACKWARD:
@@ -4883,14 +5268,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case POP:
                 case STORE_LOCAL:
                 case MERGE_CONDITIONAL:
-                    b.statement("currentStackHeight -= 1");
+                    stackEffect = -1;
                     break;
                 case CUSTOM:
                     int delta = (instr.signature.isVoid ? 0 : 1) - instr.signature.valueCount;
-                    if (delta != 0) {
-                        b.statement("currentStackHeight += " + delta);
-                        hasPositiveDelta = delta > 0;
-                    }
+                    stackEffect = delta;
                     break;
                 case CUSTOM_SHORT_CIRCUIT:
                     /*
@@ -4905,34 +5287,28 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     ShortCircuitInstructionModel shortCircuitInstruction = instr.shortCircuitModel;
                     if (shortCircuitInstruction.returnConvertedBoolean()) {
                         // Stack: [..., convertedValue]
-                        b.statement("currentStackHeight -= 1");
+                        stackEffect = -1;
                     } else {
                         // Stack: [..., value, convertedValue]
-                        b.statement("currentStackHeight -= 2");
+                        stackEffect = -2;
                     }
                     break;
                 case DUP:
                 case LOAD_ARGUMENT:
                 case LOAD_CONSTANT:
                 case LOAD_LOCAL:
-                    hasPositiveDelta = true;
-                    b.statement("currentStackHeight += 1");
+                    stackEffect = 1;
                     break;
                 case STORE_LOCAL_MATERIALIZED:
-                    b.statement("currentStackHeight -= 2");
+                    stackEffect = -2;
                     break;
                 default:
                     throw new UnsupportedOperationException();
             }
 
-            if (hasPositiveDelta) {
-                b.startIf().string("currentStackHeight > maxStackHeight").end().startBlock();
-                b.statement("maxStackHeight = currentStackHeight");
-                b.end();
-            }
-
             b.startStatement().startCall("doEmitInstruction");
             b.tree(createInstructionConstant(instr));
+            b.string(stackEffect);
             int argumentsLength = arguments != null ? arguments.length : 0;
             if (argumentsLength != instr.immediates.size()) {
                 throw new AssertionError("Invalid number of immediates for instruction " + instr.name + ". Expected " + instr.immediates.size() + " but got " + argumentsLength + ". Immediates" +
@@ -4991,6 +5367,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "exceptionLocal"));
 
             CodeTreeBuilder b = ex.createBuilder();
+// b.startIf().string("startBci == endBci").end().startBlock();
+// b.startReturn().string("-1").end();
+// b.end();
 
             b.startIf().string("exHandlers.length <= exHandlerCount + 5").end().startBlock();
             b.statement("exHandlers = Arrays.copyOf(exHandlers, exHandlers.length * 2)");
@@ -5016,7 +5395,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = ex.createBuilder();
 
             b.declaration(type(int.class), "childBci", "parentBci");
-
             b.startFor().string("int i = operationSp -1; i >= 0; i--").end().startBlock();
             b.startSwitch().string("operationStack[i].operation").end().startBlock();
             if (model.enableTagInstrumentation) {
@@ -5028,7 +5406,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.statement("childBci = bci - " + op.instruction.getInstructionLength());
 
                 b.statement("break");
-                b.end();
+                b.end(); // case tag
             }
 
             if (model.epilogReturn != null) {
@@ -5037,7 +5415,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 buildEmitOperationInstruction(b, model.epilogReturn.operation, "childBci", "i");
                 b.statement("childBci = bci - " + model.epilogReturn.operation.instruction.getInstructionLength());
                 b.statement("break");
-                b.end();
+                b.end(); // case epilog
             }
 
             b.startCase().tree(createOperationConstant(model.findOperation(OperationKind.FINALLY_TRY))).end();
@@ -5046,16 +5424,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             emitCastOperationData(b, "FinallyTryData", "i");
 
             b.statement("FinallyTryContext ctx = (FinallyTryContext) operationData.finallyTryContext");
-            b.startIf().string("ctx.handlerIsSet()").end().startBlock();
+            b.startIf().string("ctx.handlerIsSet() && reachable").end().startBlock();
             b.statement("doEmitFinallyHandler(ctx)");
             b.end();
 
             b.statement("break");
-            b.end();
+            b.end(); // case finally
 
-            b.end();
-
-            b.end();
+            b.end(); // switch
+            b.end(); // for
 
             return ex;
         }
@@ -5106,7 +5483,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             emitCastOperationData(b, "FinallyTryData", "i");
 
             b.statement("FinallyTryContext ctx = (FinallyTryContext) operationData.finallyTryContext");
-            b.startIf().string("ctx.handlerIsSet()").end().startBlock();
+            b.startIf().string("ctx.handlerIsSet() && reachable").end().startBlock();
             b.statement("doEmitFinallyHandler(ctx)");
             b.end();
 
@@ -5120,43 +5497,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private int computeTagMask(TypeMirror providedTag) throws AssertionError {
-            int tagIndex = model.getProvidedTags().indexOf(providedTag);
-            if (tagIndex == -1) {
-                throw new AssertionError("Tag index for root body tag not found.");
-            }
-            int mask = 1 << tagIndex;
-            return mask;
-        }
-
-        private CodeExecutableElement searchRootBodyTag;
-
-        private CodeExecutableElement lookupSearchRootBodyTag() {
-            if (searchRootBodyTag != null) {
-                return searchRootBodyTag;
-            }
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(int.class), "searchRootBodyTag");
-            ex.addParameter(new CodeVariableElement(type(int.class), "startSp"));
-            CodeTreeBuilder b = ex.createBuilder();
-
-            b.startFor().string("int op = 0; op < startSp; op++").end().startBlock();
-            b.startIf().string("operationStack[op].operation == ").tree(createOperationConstant(model.tagOperation)).end().startBlock();
-            emitCastOperationData(b, "TagOperationData", "op");
-            int mask = computeTagMask(model.getProvidedRootBodyTag());
-            b.startIf().string("(operationData.node.tags & 0x", Integer.toHexString(mask), ") != 0").end().startBlock();
-            b.statement("return op");
-            b.end(); // if
-            b.end(); // if
-            b.end(); // for
-            b.startReturn().string("-1").end();
-            builder.add(ex);
-            searchRootBodyTag = ex;
-            return ex;
-        }
-
         private CodeExecutableElement createAllocateNode() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(int.class), "allocateNode");
             CodeTreeBuilder b = ex.createBuilder();
+            b.startIf().string("!reachable").end().startBlock();
+            b.statement("return -1");
+            b.end();
 
             b.startIf().string("inFinallyTryHandler(finallyTryContext)").end().startBlock();
             b.lineComment("We allocate nodes later when the finally block is emitted.");
@@ -5173,6 +5519,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createAllocateBranchProfile() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(int.class), "allocateBranchProfile");
             CodeTreeBuilder b = ex.createBuilder();
+
+            b.startIf().string("!reachable").end().startBlock();
+            b.statement("return -1");
+            b.end();
 
             b.startIf().string("inFinallyTryHandler(finallyTryContext)").end().startBlock();
             b.lineComment("We allocate nodes later when the finally block is emitted.");
@@ -5856,7 +6206,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 type.add(createInstrumentableNodeIsInstrumentable());
                 type.add(createInstrumentableNodeFindProbe());
                 type.add(createInstrumentableNodeHasTag());
-                type.add(createInstrumentableNodeMaterializeInstrumentableNodes());
             }
 
             continueAt = type.add(new CodeExecutableElement(Set.of(ABSTRACT), type(int.class), "continueAt"));
@@ -5888,6 +6237,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 type.add(createInvalidate());
             }
 
+            type.add(createValidateBytecodes());
+
             type.add(new CodeExecutableElement(Set.of(ABSTRACT), type.asType(), "cloneUninitialized"));
 
             type.add(new CodeExecutableElement(Set.of(ABSTRACT), arrayOf(types.Node), "getCachedNodes"));
@@ -5910,6 +6261,156 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             return type;
+        }
+
+        private Element createValidateBytecodes() {
+            CodeExecutableElement validate = new CodeExecutableElement(Set.of(FINAL), type(boolean.class), "validateBytecodes");
+            CodeTreeBuilder b = validate.createBuilder();
+
+            b.declaration(arrayOf(type(short.class)), "bc", "this.bytecodes");
+            b.startIf().string("bc == null").end().startBlock();
+            b.lineComment("bc is null for serialization root nodes.");
+            b.statement("return true");
+            b.end();
+
+            b.declaration(arrayOf(types.Node), "cachedNodes", "getCachedNodes()");
+            b.declaration(arrayOf(type(int.class)), "branchProfiles", "getBranchProfiles()");
+            b.declaration(type(int.class), "bci", "0");
+            if (model.enableTagInstrumentation) {
+                b.declaration(arrayOf(tagNode.asType()), "tagNodes", "tagRoot != null ? tagRoot.tagNodes : null");
+            }
+
+            b.startIf().string("bc.length == 0").end().startBlock();
+            b.tree(createValidationError("bytecode array must not be null"));
+            b.end();
+
+            b.startWhile().string("bci < bc.length").end().startBlock();
+            b.startSwitch().string("bc[bci]").end().startBlock();
+
+            for (InstructionModel instr : model.getInstructions()) {
+                b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
+
+                // instruction data array
+
+                for (InstructionImmediate immediate : instr.getImmediates()) {
+                    // argument data array
+                    String readImmediate = readBc("bci + " + immediate.offset());
+                    String localName = immediate.name();
+                    b.declaration(type(int.class), localName, readImmediate);
+
+                    switch (immediate.kind()) {
+                        case BYTECODE_INDEX:
+                            b.startIf();
+                            if (instr.isShortCircuitConverter() || instr.isEpilogReturn()) {
+                                // supports -1 immediates
+                                b.string(localName, " < -1");
+                            } else {
+                                b.string(localName, " < 0");
+                            }
+                            b.string(" || ").string(localName).string(" >= bc.length").end().startBlock();
+                            b.tree(createValidationError("bytecode index is out of bounds"));
+                            b.end();
+                            break;
+                        case LOCAL_SETTER:
+                        case LOCAL_SETTER_RANGE_LENGTH:
+                        case LOCAL_SETTER_RANGE_START:
+                            b.startIf().string(localName).string(" < 0 || ").string(localName).string(" >= getRoot().numLocals").end().startBlock();
+                            b.tree(createValidationError("local is out of bounds"));
+                            b.end();
+                            break;
+                        case INTEGER:
+                            break;
+                        case CONSTANT:
+                            b.startIf().string(localName).string(" < 0 || ").string(localName).string(" >= constants.length").end().startBlock();
+                            b.tree(createValidationError("constant is out of bounds"));
+                            b.end();
+                            break;
+                        case NODE_PROFILE:
+                            b.startIf().string(localName).string(" < 0 || ").string(localName).string(" >= numNodes").end().startBlock();
+                            b.tree(createValidationError("node profile is out of bounds"));
+                            b.end();
+                            break;
+                        case BRANCH_PROFILE:
+                            b.startIf().string("branchProfiles != null").end().startBlock();
+                            b.startIf().string(localName).string(" < 0 || ").string(localName).string(" >= branchProfiles.length").end().startBlock();
+                            b.tree(createValidationError("branch profile is out of bounds"));
+                            b.end();
+                            b.end();
+                            break;
+                        case TAG_NODE:
+                            b.startIf().string("tagNodes != null").end().startBlock();
+                            b.declaration(tagNode.asType(), "node", readInstrumentationProfile(tagNode.asType(), CodeTreeBuilder.singleString(immediate.name())));
+                            b.startIf().string("node == null").end().startBlock();
+                            b.tree(createValidationError("tagNode is null"));
+                            b.end();
+                            b.end();
+                            break;
+                        default:
+                            throw new AssertionError("Unexpected kind");
+                    }
+                }
+
+                b.statement("bci = bci + " + instr.getInstructionLength());
+                b.statement("break");
+
+                b.end();
+            }
+
+            b.caseDefault().startCaseBlock();
+            b.tree(GeneratorUtils.createShouldNotReachHere(b.create().doubleQuote("Invalid BCI at index: ").string(" + bci").build()));
+            b.end();
+
+            b.end();
+            b.end();
+
+            b.declaration(arrayOf(type(int.class)), "ex", "this.handlers");
+
+            b.startIf().string("ex.length % 5 != 0").end().startBlock();
+            b.tree(createValidationError("exception handler table size is incorrect"));
+            b.end();
+
+            b.startFor().string("int i = 0; i < ex.length; i = i + 5").end().startBlock();
+            b.declaration(type(int.class), "startBci", "ex[i + 0]");
+            b.declaration(type(int.class), "endBci", "ex[i + 1]");
+            b.declaration(type(int.class), "handlerBci", "ex[i + 2]");
+            b.declaration(type(int.class), "spStart", "ex[i + 3]");
+            b.declaration(type(int.class), "exceptionLocal", "ex[i + 4]");
+
+            b.startIf().string("startBci").string(" < 0 || ").string("startBci").string(" >= bc.length").end().startBlock();
+            b.tree(createValidationError("startBci index is out of bounds"));
+            b.end();
+
+            b.startIf().string("endBci").string(" < 0 || ").string("endBci").string(" >= bc.length").end().startBlock();
+            b.tree(createValidationError("endBci index is out of bounds"));
+            b.end();
+
+            b.startIf().string("handlerBci").string(" < 0 || ").string("handlerBci").string(" >= bc.length").end().startBlock();
+            b.tree(createValidationError("handlerBci index is out of bounds"));
+            b.end();
+
+            b.startIf().string("exceptionLocal").string(" < 0 || ").string("exceptionLocal").string(" >= getRoot().numLocals").end().startBlock();
+            b.tree(createValidationError("exceptionLocal index is out of bounds"));
+            b.end();
+
+            b.end();
+
+            b.startReturn().string("true").end();
+
+            return validate;
+        }
+
+        private CodeTree createValidationError(String message) {
+            CodeTreeBuilder b = new CodeTreeBuilder(null);
+            b.startThrow().startStaticCall(types.CompilerDirectives, "shouldNotReachHere");
+            b.startGroup();
+            b.startStaticCall(type(String.class), "format");
+            b.doubleQuote("Bytecode validation error at index: %s. " + message + "%n%s");
+            b.string("bci");
+            b.string("dump(findLocation(bci))");
+            b.end(); // String.format
+            b.end();
+            b.end().end();
+            return b.build();
         }
 
         private CodeExecutableElement createInstrumentableNodeCreateWrapper() {
@@ -5943,28 +6444,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.getModifiers().remove(Modifier.ABSTRACT);
             ex.getModifiers().add(Modifier.FINAL);
             ex.createBuilder().returnFalse();
-            return ex;
-        }
-
-        private CodeExecutableElement createInstrumentableNodeMaterializeInstrumentableNodes() {
-            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "materializeInstrumentableNodes");
-            ex.renameArguments("materializedTags");
-            ex.getModifiers().remove(Modifier.ABSTRACT);
-            CodeTreeBuilder b = ex.createBuilder();
-            b.startIf().string("materializedTags.isEmpty()").end().startBlock();
-            b.statement("return this");
-            b.end();
-
-            b.declaration(types.BytecodeConfig_Builder, "b", "newConfigBuilder()");
-            b.lineComment("Sources are always needed for instrumentation.");
-            b.statement("b.addSource()");
-
-            b.startFor().type(generic(Class.class, new WildcardTypeMirror(types.Tag, null))).string(" tag : materializedTags").end().startBlock();
-            b.statement("b.addTag(tag)");
-            b.end();
-
-            b.statement("getBytecodeRootNode().getRootNodes().update(b.build())");
-            b.statement("return getRoot().bytecode");
             return ex;
         }
 
@@ -6545,6 +7024,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 type.addAll(new OSRMembersFactory().create());
             } else if (tier.isUninitialized()) {
                 type.add(GeneratorUtils.createConstructorUsingFields(Set.of(), type));
+            } else {
+                throw new AssertionError("invalid tier");
             }
 
             type.add(createSetUncachedThreshold());

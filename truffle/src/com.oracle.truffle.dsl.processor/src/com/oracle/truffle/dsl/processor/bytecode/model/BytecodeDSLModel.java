@@ -61,7 +61,6 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
-import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Signature;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationArgument;
@@ -367,7 +366,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         for (int i = 0; i < maxLength; i++) {
             InstructionModel model = instruction(InstructionKind.INVALIDATE, "invalidate" + i, signature(void.class));
             for (int j = 0; j < i; j++) {
-                model.getImmediates().add(new InstructionImmediate(j, ImmediateKind.INTEGER, "invalidated" + j));
+                model.addImmediate(ImmediateKind.INTEGER, "invalidated" + j);
             }
             invalidateInstructions[i] = model;
         }
