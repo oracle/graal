@@ -3136,6 +3136,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
             }
 
+            if (operation.isCustom() && !operation.customModel.implicitTags.isEmpty()) {
+                VariableElement tagConstants = lookupTagConstant(operation.customModel.implicitTags);
+                if (tagConstants != null) {
+                    buildBegin(b, model.tagOperation, tagConstants.getSimpleName().toString());
+                }
+            }
+
             if (operation.kind == OperationKind.TAG) {
                 b.declaration(tagNode.asType(), "node", "new TagNode(encodedTags & this.tags, (short)bci)");
                 b.startIf().string("tagNodes == null").end().startBlock();
@@ -3344,6 +3351,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private VariableElement lookupTagConstant(TypeMirror... tags) {
+            return lookupTagConstant(List.of(tags));
+        }
+
+        private VariableElement lookupTagConstant(List<TypeMirror> tags) {
             String name = "TAGS";
             for (TypeMirror type : tags) {
                 name += "_" + ElementUtils.createConstantName(ElementUtils.getSimpleName(type));
@@ -3860,6 +3871,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end(2);
             }
 
+            if (operation.isCustom() && !operation.customModel.implicitTags.isEmpty()) {
+                VariableElement tagConstants = lookupTagConstant(operation.customModel.implicitTags);
+                if (tagConstants != null) {
+                    buildEnd(b, model.tagOperation, tagConstants.getSimpleName().toString());
+                }
+            }
+
             return ex;
         }
 
@@ -4208,6 +4226,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.statement("return");
                 b.end();
             }
+            if (operation.isCustom() && !operation.customModel.implicitTags.isEmpty()) {
+                VariableElement tagConstants = lookupTagConstant(operation.customModel.implicitTags);
+                if (tagConstants != null) {
+                    buildBegin(b, model.tagOperation, tagConstants.getSimpleName().toString());
+                }
+            }
 
             b.startStatement().startCall("beforeChild").end(2);
             b.startStatement().startCall("emitOperationBegin").end(2);
@@ -4246,6 +4270,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.string("" + !operation.isVoid);
             b.string(operation.instruction != null ? "bci - " + operation.instruction.getInstructionLength() : "-1");
             b.end(2);
+
+            if (operation.isCustom()) {
+                VariableElement tagConstants = lookupTagConstant(operation.customModel.implicitTags);
+                if (tagConstants != null) {
+                    buildEnd(b, model.tagOperation, tagConstants.getSimpleName().toString());
+                }
+            }
 
             return ex;
         }
