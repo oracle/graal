@@ -600,17 +600,17 @@ public final class ResourcesFeature implements InternalFeature {
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         sealed = true;
-// if (Options.DumpRegisteredResources.getValue()) {
-        Iterable<Resources.ModuleResourceRecord> registeredResources = Resources.singleton().getResourceStorage().getKeys();
-        List<Resources.ModuleResourceRecord> resourceInfoList = new ArrayList<>();
-        registeredResources.forEach(resource -> {
-            String resourceName = resource.resource();
-            Module module = resource.module();
-            resourceInfoList.add(new Resources.ModuleResourceRecord(module, resourceName));
-        });
+        if (Options.DumpRegisteredResources.getValue()) {
+            Iterable<Resources.ModuleResourceRecord> registeredResources = Resources.singleton().getResourceStorage().getKeys();
+            List<Resources.ModuleResourceRecord> resourceInfoList = new ArrayList<>();
+            registeredResources.forEach(resource -> {
+                String resourceName = resource.resource();
+                Module module = resource.module();
+                resourceInfoList.add(new Resources.ModuleResourceRecord(module, resourceName));
+            });
 
-        ResourceReporter.printReport(resourceInfoList);
-// }
+            ResourceReporter.printReport(resourceInfoList);
+        }
     }
 
     @Override

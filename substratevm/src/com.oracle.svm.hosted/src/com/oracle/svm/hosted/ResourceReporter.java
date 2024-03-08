@@ -26,7 +26,7 @@ public class ResourceReporter {
         w.append('{').indent().newline();
         w.quote("resource").append(':').quote(p.resource());
         w.newline();
-        w.quote("module").append(':').quote(p.module() == null ? "ALL_UNNAMED" : p.module().getName());
+        w.quote("module").append(':').quote(p.module() == null ? "ALL-UNNAMED" : p.module().getName());
         w.unindent().newline().append('}');
         w.unindent();
     }
