@@ -55,6 +55,7 @@ import jdk.graal.compiler.graph.NodeStack;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
+import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.BinaryOpLogicNode;
 import jdk.graal.compiler.nodes.CompressionNode;
 import jdk.graal.compiler.nodes.ConditionAnchorNode;
@@ -178,6 +179,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
             NodeMap<HIRBlock> nodeToBlock = null;
             ControlFlowGraph cfg = null;
             if (fullSchedule) {
+                trySkippingGuardPis(graph);
                 cfg = ControlFlowGraph.newBuilder(graph).backendBlocks(true).connectBlocks(true).computeFrequency(true).computeLoops(true).computeDominators(true).computePostdominators(
                                 true).build();
                 graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Conditional elimination after computing CFG");
@@ -204,6 +206,13 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
             ControlFlowGraph.RecursiveVisitor<?> visitor = createVisitor(graph, cfg, blockToNodes, nodeToBlock, context);
             cfg.visitDominatorTree(visitor, graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL));
         }
+    }
+
+    private static void trySkippingGuardPis(StructuredGraph graph) {
+        for (GuardNode floatingGuard : graph.getNodes(GuardNode.TYPE).snapshot()) {
+            GraphUtil.guardTrySkipPi(floatingGuard, floatingGuard.getCondition(), floatingGuard.isNegated());
+        }
+        graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After trySkipGuardPis");
     }
 
     protected BlockMap<List<Node>> getBlockToNodes(@SuppressWarnings("unused") ControlFlowGraph cfg) {
@@ -474,8 +483,10 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                     if (condition.hasNoUsages()) {
                         GraphUtil.killWithUnusedFloatingInputs(condition);
                     }
-                    if (guard instanceof DeoptimizingGuard && !((DeoptimizingGuard) guard).isNegated()) {
-                        rebuildPiNodes((DeoptimizingGuard) guard);
+                    if (guard instanceof BeginNode b && b.predecessor() instanceof IfNode ifNode) {
+                        rebuildPiNodes(b, ifNode.condition());
+                    } else if (guard instanceof DeoptimizingGuard dg && !((DeoptimizingGuard) guard).isNegated()) {
+                        rebuildPiNodes(dg, dg.getCondition());
                     }
                 } else {
                     AbstractBeginNode beginNode = (AbstractBeginNode) node.getAnchor();
@@ -508,8 +519,11 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                     node.replaceAtUsages(guard.asNode());
                     GraphUtil.unlinkFixedNode(node);
                     GraphUtil.killWithUnusedFloatingInputs(node);
-                    if (guard instanceof DeoptimizingGuard && !((DeoptimizingGuard) guard).isNegated()) {
-                        rebuildPiNodes((DeoptimizingGuard) guard);
+
+                    if (guard instanceof BeginNode b && b.predecessor() instanceof IfNode ifNode) {
+                        rebuildPiNodes(b, ifNode.condition());
+                    } else if (guard instanceof DeoptimizingGuard dg && !((DeoptimizingGuard) guard).isNegated()) {
+                        rebuildPiNodes(dg, dg.getCondition());
                     }
                 } else {
                     node.setCondition(LogicConstantNode.forBoolean(result, node.graph()), node.isNegated());
@@ -522,8 +536,8 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
             }
         }
 
-        private void rebuildPiNodes(DeoptimizingGuard guard) {
-            LogicNode newCondition = guard.getCondition();
+        private void rebuildPiNodes(GuardingNode guard, LogicNode condition) {
+            LogicNode newCondition = condition;
             if (newCondition instanceof InstanceOfNode) {
                 InstanceOfNode inst = (InstanceOfNode) newCondition;
                 ValueNode originalValue = GraphUtil.skipPi(inst.getValue());
