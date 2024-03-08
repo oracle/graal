@@ -185,6 +185,8 @@ public abstract class Accessor {
 
         public abstract List<TruffleStackTraceElement> findAsynchronousFrames(CallTarget target, Frame frame);
 
+        public abstract void prepareForInstrumentation(RootNode root, Set<Class<?>> tags);
+
         public abstract int getRootNodeBits(RootNode root);
 
         public abstract void setRootNodeBits(RootNode root, int bits);

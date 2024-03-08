@@ -2125,8 +2125,10 @@ final class InstrumentationHandler {
             this.firstExecution = firstExec;
             this.root = r;
             this.providedTags = getProvidedTags(r);
+            Set<?> tags = (this.materializeLimitedTags == null ? this.providedTags : this.materializeLimitedTags);
+            this.materializeTags = (Set<Class<? extends Tag>>) tags;
+            InstrumentAccessor.NODES.prepareForInstrumentation(r, (Set<Class<?>>) tags);
             this.rootSourceSection = r.getSourceSection();
-            this.materializeTags = (Set<Class<? extends Tag>>) (this.materializeLimitedTags == null ? this.providedTags : this.materializeLimitedTags);
 
             for (VisitOperation operation : operations) {
                 operation.preVisit(r, rootSourceSection, setExecutedRootNodeBit || RootNodeBits.wasExecuted(rootBits), visitRoot);
