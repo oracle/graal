@@ -28,8 +28,6 @@ import static jdk.graal.compiler.nodeinfo.InputType.Guard;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
 
-import jdk.graal.compiler.core.common.type.Stamp;
-import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.graph.IterableNodeType;
 import jdk.graal.compiler.graph.Node;
