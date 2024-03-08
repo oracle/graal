@@ -44,8 +44,10 @@ import static java.lang.foreign.ValueLayout.*;
 class ForeignRegistrationFeature implements Feature { 
   public void duringSetup(DuringSetupAccess access) {
     RuntimeForeignAccess.registerForDowncall(FunctionDescriptor.ofVoid());
-    RuntimeForeignAccess.registerForDowncall(FunctionDescriptor.ofVoid(), Linker.Option.isTrivial());
-    RuntimeForeignAccess.registerForDowncall(FunctionDescriptor.of(JAVA_INT, JAVA_INT, JAVA_INT));
+    RuntimeForeignAccess.registerForUpcall(FunctionDescriptor.ofVoid());
+    RuntimeForeignAccess.registerForDowncall(FunctionDescriptor.ofVoid(), Linker.Option.critical(false));
+    RuntimeForeignAccess.registerForUpcall(FunctionDescriptor.of(JAVA_INT, JAVA_INT));
+    RuntimeForeignAccess.registerForUpcall(FunctionDescriptor.of(JAVA_INT, JAVA_INT, JAVA_INT));
     RuntimeForeignAccess.registerForDowncall(FunctionDescriptor.of(ADDRESS, JAVA_INT, JAVA_INT), Linker.Option.firstVariadicArg(1));
     RuntimeForeignAccess.registerForDowncall(FunctionDescriptor.ofVoid(JAVA_INT), Linker.Option.captureCallState("errno"));
   }
