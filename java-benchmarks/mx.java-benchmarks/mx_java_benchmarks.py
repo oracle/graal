@@ -279,7 +279,7 @@ class BaseTikaBenchmarkSuite(BaseQuarkusBenchmarkSuite):
             mx.abort(benchmark + " needs at least JDK version " + str(expectedJdkVersion))
         return [
                    # Workaround for wrong class initialization configuration in Quarkus Tika
-                   '--initialize-at-build-time=org.apache.pdfbox.rendering.ImageType,org.apache.pdfbox.rendering.ImageType$1,org.apache.pdfbox.rendering.ImageType$2,org.apache.pdfbox.rendering.ImageType$3,org.apache.pdfbox.rendering.ImageType$4,org.apache.xmlbeans.XmlObject',
+                   '--initialize-at-build-time=org.apache.pdfbox.rendering.ImageType,org.apache.pdfbox.rendering.ImageType$1,org.apache.pdfbox.rendering.ImageType$2,org.apache.pdfbox.rendering.ImageType$3,org.apache.pdfbox.rendering.ImageType$4,org.apache.xmlbeans.XmlObject,org.apache.xmlbeans.SchemaTypeSystem',
                ] + super(BaseTikaBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
 
