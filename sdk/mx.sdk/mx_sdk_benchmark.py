@@ -475,7 +475,13 @@ class NativeImageBenchmarkMixin(object):
 
     def is_native_mode(self, bm_suite_args: List[str]):
         """Checks whether the given arguments request a Native Image benchmark"""
-        return "native-image" in self.jvm(bm_suite_args)
+        jvm_flag = self.jvm(bm_suite_args)
+        if not jvm_flag:
+            # In case the --jvm argument was not given explicitly, let the registry load the appropriate vm and extract
+            # the name from there.
+            # This is much more expensive, so it is only used as a fallback
+            jvm_flag = self.get_vm_registry().get_vm_from_suite_args(bm_suite_args).name()
+        return "native-image" in jvm_flag
 
     def apply_command_mapper_hooks(self, cmd, vm):
         return mx.apply_command_mapper_hooks(cmd, vm.command_mapper_hooks)
