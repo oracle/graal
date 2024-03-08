@@ -88,7 +88,7 @@ public class TestVirtualThreadsJfrStreaming extends JfrStreamingTest {
 
         VirtualStressor.execute(THREADS, eventEmitter);
         waitUntilTrue(() -> emittedEventsPerType.get() == EXPECTED_EVENTS);
-        waitUntilTrue(() -> expectedThreads.isEmpty());
+        waitUntilTrue(expectedThreads::isEmpty);
         stopStream(stream, null);
     }
 }
