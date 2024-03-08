@@ -46,7 +46,8 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       git: '>=1.8.3',
     },
     run+: [
-        ['test', ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], '!=', 'master', '||'] + self.ci_resources.infra.notify_releaser_service,
+      ['test', ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], '!=', 'master', '||'] + self.ci_resources.infra.notify_releaser_service,
+      ['test', ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], '!=', 'master', '||'] + self.ci_resources.infra.notify_indexer_service,
     ],
     runAfter: [
       'post-merge-deploy-vm-base-java-latest-linux-amd64',
