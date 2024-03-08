@@ -451,6 +451,44 @@ public class TagTest extends AbstractInstructionTest {
     }
 
     @Test
+    public void testImplicitCustomTag() {
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginReturn();
+            b.beginImplicitExpressionAdd();
+            b.emitLoadConstant(20);
+            b.emitLoadConstant(22);
+            b.endImplicitExpressionAdd();
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(42, node.getCallTarget().call());
+
+        assertInstructions(node,
+                        "load.constant",
+                        "load.constant",
+                        "c.ImplicitExpressionAdd",
+                        "return");
+
+        List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build());
+        assertInstructions(node,
+                        "tag.enter",
+                        "load.constant",
+                        "load.constant",
+                        "c.ImplicitExpressionAdd",
+                        "tag.leave",
+                        "return");
+
+        assertEquals(42, node.getCallTarget().call());
+
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.ENTER, 0x0000, 0x000a, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x000a, 42, ExpressionTag.class));
+
+    }
+
+    @Test
     public void testImplicitRootBodyTagNoProlog() {
         TagInstrumentationTestRootNode node = parse((b) -> {
             b.beginRoot(TagTestLanguage.REF.get(null));
@@ -796,6 +834,14 @@ public class TagTest extends AbstractInstructionTest {
             }
         }
 
+        @Operation(tags = ExpressionTag.class)
+        static final class ImplicitExpressionAdd {
+            @Specialization
+            public static int doInt(int a, int b) {
+                return a + b;
+            }
+        }
+
         @Operation
         static final class IsNot {
             @Specialization
@@ -1063,6 +1109,46 @@ public class TagTest extends AbstractInstructionTest {
         }
 
         @Operation
+        static final class Is {
+
+            @Specialization
+            public static boolean doInt(int operand, int value) {
+                return operand == value;
+            }
+        }
+
+    }
+
+    @GenerateBytecode(languageClass = NoRootBodyTagTestLanguage.class, //
+                    enableTagInstrumentation = false, enableRootBodyTagging = false)
+    public abstract static class ErrorImplicitTag1 extends DebugBytecodeRootNode implements BytecodeRootNode {
+
+        protected ErrorImplicitTag1(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @ExpectError("Tag instrumentation is not enabled. The tags attribute can only be used if tag instrumentation is enabled for the parent root node.  Enable tag instrumentation using @GenerateBytecode(... enableTagInstrumentation = true) to resolve this or remove the tags attribute.")
+        @Operation(tags = ExpressionTag.class)
+        static final class Is {
+
+            @Specialization
+            public static boolean doInt(int operand, int value) {
+                return operand == value;
+            }
+        }
+
+    }
+
+    @GenerateBytecode(languageClass = NoRootTagTestLanguage.class, //
+                    enableTagInstrumentation = true, enableRootTagging = false)
+    public abstract static class ErrorImplicitTag2 extends DebugBytecodeRootNode implements BytecodeRootNode {
+
+        protected ErrorImplicitTag2(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @ExpectError("Invalid tag 'StatementTag' specified. The tag is not provided by language 'com.oracle.truffle.api.bytecode.test.TagTest.NoRootTagTestLanguage'.")
+        @Operation(tags = StatementTag.class)
         static final class Is {
 
             @Specialization

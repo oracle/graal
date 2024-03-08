@@ -118,6 +118,8 @@ public class OperationModel implements PrettyPrintable {
     public OperationArgument[] operationArguments = EMPTY_ARGUMENTS;
     public boolean operationArgumentVarArgs = false;
 
+    public CustomOperationModel customModel;
+
     public int instrumentationIndex;
 
     public OperationModel(BytecodeDSLModel parent, int id, OperationKind kind, String name) {
