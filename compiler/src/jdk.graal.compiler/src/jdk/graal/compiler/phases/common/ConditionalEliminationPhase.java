@@ -92,6 +92,7 @@ import jdk.graal.compiler.nodes.extended.LoadHubNode;
 import jdk.graal.compiler.nodes.extended.OpaqueLogicNode;
 import jdk.graal.compiler.nodes.extended.SwitchNode;
 import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
+import jdk.graal.compiler.nodes.java.AccessFieldNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.java.TypeSwitchNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
@@ -102,9 +103,11 @@ import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.phases.common.ConditionalEliminationUtil.InfoElement;
 import jdk.graal.compiler.phases.common.util.LoopUtility;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import jdk.vm.ci.meta.TriState;
 
@@ -424,7 +427,6 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
         protected final EconomicMap<MergeNode, EconomicMap<ValuePhiNode, PhiInfoElement>> mergeMaps;
         private final ConditionalEliminationUtil.InfoElementProvider infoElementProvider;
         private final ConditionalEliminationUtil.GuardFolding guardFolding;
-
         protected final ArrayDeque<ConditionalEliminationUtil.GuardedCondition> conditions;
 
         /**
@@ -533,6 +535,52 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                 return true;
             })) {
                 registerNewCondition(node.condition(), node.isNegated(), node);
+            }
+        }
+
+        private void processAccessField(AccessFieldNode af) {
+            ValueNode object = af.object();
+            ResolvedJavaField field = af.field();
+            if (object instanceof PiNode objectPi) {
+                // see if there are earlier pi's we can use for the same data
+
+                final boolean nonNull = ((AbstractObjectStamp) object.stamp(NodeView.DEFAULT)).nonNull();
+                GuardingNode fieldPiGuard = objectPi.getGuard();
+                LogicNode condition = null;
+                if (fieldPiGuard instanceof BeginNode b) {
+                    if (b.predecessor() instanceof IfNode ifNode) {
+                        condition = ifNode.condition();
+                    }
+                } else if (fieldPiGuard instanceof GuardNode floatingGuard) {
+                    condition = floatingGuard.getCondition();
+                } else if (fieldPiGuard instanceof FixedGuardNode fixedGuard) {
+                    condition = fixedGuard.getCondition();
+                }
+
+                if (condition instanceof UnaryOpLogicNode unaryLogicNode) {
+                    ValueNode value = unaryLogicNode.getValue();
+                    InfoElement infoElement = infoElementProvider.infoElements(value);
+                    while (infoElement != null) {
+                        // skip the current guard of the pi and ensure (after a transform already
+                        // happened we are not routing it down again)
+                        if (infoElement.getGuard() != fieldPiGuard && nodeToBlock.get(infoElement.getGuard().asNode()).strictlyDominates(nodeToBlock.get(fieldPiGuard.asNode()))) {
+                            Stamp stamp = infoElement.getStamp();
+                            /*
+                             * Determine if this pi can be skipped by using a pi based on the stamp
+                             * of this guard.
+                             */
+                            if (stamp instanceof AbstractObjectStamp objectStamp && objectStamp.nonNull() == nonNull && objectStamp.type() != null &&
+                                            field.getDeclaringClass().isAssignableFrom(objectStamp.type())) {
+                                ValueNode newPi = graph.addOrUnique(PiNode.create(value, stamp, infoElement.getGuard().asNode()));
+                                af.setObject(newPi);
+                                graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "AccessFieldSkipPi", af);
+                                break;
+                            }
+                        }
+                        infoElement = infoElementProvider.nextElement(infoElement);
+                    }
+                }
+
             }
         }
 
@@ -737,6 +785,8 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                     processValueAnchor((ValueAnchorNode) node);
                 } else if (node instanceof CompressionNode c) {
                     processCompressionNode(c);
+                } else if (node instanceof AccessFieldNode af) {
+                    processAccessField(af);
                 }
             }
         }
@@ -1195,6 +1245,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                 conditions.pop();
             }
         }
+
     }
 
     @Override
