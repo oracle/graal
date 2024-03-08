@@ -246,7 +246,13 @@ public abstract class AbstractBasicInterpreterTest {
         } catch (InvocationTargetException e) {
             // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
             // get caught by the test harness.
-            throw new IllegalStateException(e.getCause());
+            if (e.getCause() instanceof RuntimeException) {
+                throw (RuntimeException) e.getCause();
+            } else if (e.getCause() instanceof Error) {
+                throw (Error) e.getCause();
+            } else {
+                throw new AssertionError(e);
+            }
         } catch (Exception e) {
             throw new AssertionError(e);
         }

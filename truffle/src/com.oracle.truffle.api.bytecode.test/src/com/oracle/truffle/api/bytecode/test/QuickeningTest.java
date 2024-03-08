@@ -57,7 +57,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class QuickeningTest extends AbstractQuickeningTest {
+public class QuickeningTest extends AbstractInstructionTest {
 
     protected static final BytecodeDSLTestLanguage LANGUAGE = null;
 
@@ -78,40 +78,35 @@ public class QuickeningTest extends AbstractQuickeningTest {
         assertInstructions(node,
                         "load.argument",
                         "c.Abs",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(1L, node.getCallTarget().call(-1L));
         assertQuickenings(node, 1, 1);
         assertInstructions(node,
                         "load.argument",
                         "c.Abs$LessThanZero",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(1L, node.getCallTarget().call(1L));
         assertQuickenings(node, 2, 2);
         assertInstructions(node,
                         "load.argument",
                         "c.Abs$GreaterZero#LessThanZero",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals("", node.getCallTarget().call(""));
         assertQuickenings(node, 3, 3);
         assertInstructions(node,
                         "load.argument",
                         "c.Abs",
-                        "return",
-                        "pop");
+                        "return");
 
         assertEquals(1L, node.getCallTarget().call(-1L));
         var stable = assertQuickenings(node, 3, 3);
         assertInstructions(node,
                         "load.argument",
                         "c.Abs",
-                        "return",
-                        "pop");
+                        "return");
 
         assertStable(stable, node, -1L);
         assertStable(stable, node, 1L);
@@ -148,8 +143,7 @@ public class QuickeningTest extends AbstractQuickeningTest {
                         "load.argument",
                         "c.Add",
                         "c.Abs",
-                        "return",
-                        "pop");
+                        "return");
 
         // quickening during the first execution
         assertEquals(5L, node.getCallTarget().call(2L, 1L));
@@ -162,8 +156,7 @@ public class QuickeningTest extends AbstractQuickeningTest {
                         "load.argument",
                         "c.Add$Long",
                         "c.Abs$GreaterZero",
-                        "return",
-                        "pop");
+                        "return");
 
         // quickening remains stable
         assertEquals(5L, node.getCallTarget().call(2L, 1L));
@@ -175,8 +168,7 @@ public class QuickeningTest extends AbstractQuickeningTest {
                         "load.argument",
                         "c.Add$Long",
                         "c.Abs$GreaterZero",
-                        "return",
-                        "pop");
+                        "return");
 
         // switch to strings to trigger polymorphic rewrite
         assertEquals("aba", node.getCallTarget().call("a", "b"));
@@ -189,8 +181,7 @@ public class QuickeningTest extends AbstractQuickeningTest {
                         "load.argument",
                         "c.Add",
                         "c.Abs",
-                        "return",
-                        "pop");
+                        "return");
 
         assertStable(stable, node, 3L, 1L);
         assertStable(stable, node, "a", "b");

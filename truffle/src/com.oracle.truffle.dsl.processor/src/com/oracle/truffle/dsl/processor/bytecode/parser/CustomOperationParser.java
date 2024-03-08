@@ -235,8 +235,13 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             operation.operationArguments[signature.localSetterCount + i] = new OperationArgument(new CodeTypeMirror.ArrayCodeTypeMirror(types.BytecodeLocal), "localRange" + i,
                             "the local range that will be set by the LocalSetterRange at index " + i);
         }
+
         operation.childrenMustBeValues = new boolean[signature.valueCount];
-        Arrays.fill(operation.childrenMustBeValues, true);
+        if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.EpilogReturn)) {
+            Arrays.fill(operation.childrenMustBeValues, false);
+        } else {
+            Arrays.fill(operation.childrenMustBeValues, true);
+        }
 
         customOperation.operation.setInstruction(createCustomInstruction(customOperation, typeElement, generatedNode, signature, name));
 

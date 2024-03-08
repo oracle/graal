@@ -291,7 +291,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             b.string("ACCESS.shortArrayRead($bc, $bci + " + immediate.offset() + ")");
             b.end();
 
-            if (instruction.isShortCircuitConverter()) {
+            if (instruction.isShortCircuitConverter() || instruction.isEpilogReturn()) {
                 b.declaration(context.getType(short.class), "oldOperand" + valueIndex);
 
                 b.startIf().string("oldOperandIndex" + valueIndex).string(" != -1").end().startBlock();

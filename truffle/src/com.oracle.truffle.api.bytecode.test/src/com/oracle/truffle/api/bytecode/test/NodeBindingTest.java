@@ -64,7 +64,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 
-public class NodeBindingTest extends AbstractQuickeningTest {
+public class NodeBindingTest extends AbstractInstructionTest {
 
     protected static final BytecodeDSLTestLanguage LANGUAGE = null;
 

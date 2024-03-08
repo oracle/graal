@@ -56,6 +56,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.introspection.Instruction;
 import com.oracle.truffle.api.bytecode.introspection.SourceInformation;
+import com.oracle.truffle.api.bytecode.test.AbstractInstructionTest;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.source.Source;
@@ -403,14 +404,15 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     @Test
     public void testUndeclaredLabel() {
         // goto lbl;
-
-        thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("Operation Root ended without emitting one or more declared labels. This likely indicates a bug in the parser.");
-        parse("undeclaredLabel", b -> {
-            b.beginRoot(LANGUAGE);
-            BytecodeLabel lbl = b.createLabel();
-            b.emitBranch(lbl);
-            b.endRoot();
+        AbstractInstructionTest.assertFails(() -> {
+            parse("undeclaredLabel", b -> {
+                b.beginRoot(LANGUAGE);
+                BytecodeLabel lbl = b.createLabel();
+                b.emitBranch(lbl);
+                b.endRoot();
+            });
+        }, IllegalStateException.class, (e)-> {
+            assertTrue(e.getMessage(), e.getMessage().endsWith("ended without emitting one or more declared labels. This likely indicates a bug in the parser."));
         });
     }
 
@@ -961,14 +963,13 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
         BytecodeIntrospection data = node.getIntrospectionData();
 
-        assertEquals(5, data.getInstructions().size());
+        assertEquals(4, data.getInstructions().size());
         assertInstructionEquals(data.getInstructions().get(0), 0, "load.argument");
         assertInstructionEquals(data.getInstructions().get(1), 2, "load.argument");
         assertInstructionEquals(data.getInstructions().get(2), 4, "c.AddOperation");
         // With BE, the add instruction's encoding includes its child indices.
         int beOffset = hasBE(interpreterClass) ? 2 : 0;
         assertInstructionEquals(data.getInstructions().get(3), 6 + beOffset, "return");
-        assertInstructionEquals(data.getInstructions().get(4), 7 + beOffset, "pop");
 
     }
 
