@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -105,6 +105,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
     private final StableProfileProvider profileProvider;
 
     private final boolean shouldRetainLocalVariables;
+    private final boolean shouldUsePreciseUnresolvedDeopts;
 
     private final boolean eagerResolving;
 
@@ -220,7 +221,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
 
             try (DebugContext.Scope s = debug.scope("Compiling", new DebugDumpScope(getIdString(), true))) {
                 graph = compiler.createGraph(method, entryBCI, profileProvider, compilationId, debug.getOptions(), debug);
-                result = compiler.compile(graph, shouldRetainLocalVariables, eagerResolving, compilationId, debug);
+                result = compiler.compile(graph, shouldRetainLocalVariables, shouldUsePreciseUnresolvedDeopts, eagerResolving, compilationId, debug);
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
@@ -257,8 +258,9 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                     HotSpotCompilationRequest request,
                     boolean useProfilingInfo,
                     boolean shouldRetainLocalVariables,
+                    boolean shouldUsePreciseUnresolvedDeopts,
                     boolean installAsDefault) {
-        this(jvmciRuntime, compiler, request, useProfilingInfo, shouldRetainLocalVariables, false, installAsDefault);
+        this(jvmciRuntime, compiler, request, useProfilingInfo, shouldRetainLocalVariables, shouldUsePreciseUnresolvedDeopts, false, installAsDefault);
     }
 
     public CompilationTask(HotSpotJVMCIRuntime jvmciRuntime,
@@ -266,6 +268,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                     HotSpotCompilationRequest request,
                     boolean useProfilingInfo,
                     boolean shouldRetainLocalVariables,
+                    boolean shouldUsePreciseUnresolvedDeopts,
                     boolean eagerResolving,
                     boolean installAsDefault) {
         this.jvmciRuntime = jvmciRuntime;
@@ -273,6 +276,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
         this.compilationId = new HotSpotCompilationIdentifier(request);
         this.profileProvider = useProfilingInfo ? new StableProfileProvider() : null;
         this.shouldRetainLocalVariables = shouldRetainLocalVariables;
+        this.shouldUsePreciseUnresolvedDeopts = shouldUsePreciseUnresolvedDeopts;
         this.eagerResolving = eagerResolving;
         this.installAsDefault = installAsDefault;
     }
