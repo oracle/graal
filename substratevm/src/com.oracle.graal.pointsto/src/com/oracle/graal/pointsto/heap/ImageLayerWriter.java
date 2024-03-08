@@ -27,7 +27,6 @@ package com.oracle.graal.pointsto.heap;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ARRAY_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_JAVA_NAME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_NAME_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.COMPONENT_TYPE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CONSTANTS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CONSTANT_TYPE_TAG;
@@ -36,6 +35,10 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ENCLOSING_TY
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ENUM_CLASS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ENUM_NAME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FIELDS_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FIELD_ACCESSED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FIELD_FOLDED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FIELD_READ_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FIELD_WRITTEN_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IDENTITY_HASH_CODE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INSTANCE_TAG;
@@ -46,7 +49,7 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INTERFACE
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_LINKED_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.METHODS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.MODIFIERS_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NAME_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NEXT_FIELD_ID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NEXT_METHOD_ID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NEXT_TYPE_ID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NOT_MATERIALIZED_CONSTANT;
@@ -129,6 +132,7 @@ public class ImageLayerWriter {
 
         jsonMap.put(NEXT_TYPE_ID_TAG, analysisUniverse.getNextTypeId());
         jsonMap.put(NEXT_METHOD_ID_TAG, analysisUniverse.getNextMethodId());
+        jsonMap.put(NEXT_FIELD_ID_TAG, analysisUniverse.getNextFieldId());
 
         /*
          * $$TypeSwitch classes should not be instantiated as they are only used as a container for
@@ -152,14 +156,11 @@ public class ImageLayerWriter {
         }
         jsonMap.put(METHODS_TAG, methodsMap);
 
-        ArrayList<Object> fieldsList = new ArrayList<>();
+        EconomicMap<String, EconomicMap<String, Object>> fieldsMap = EconomicMap.create();
         for (AnalysisField field : analysisUniverse.getFields().stream().filter(AnalysisField::isReachable).toList()) {
-            EconomicMap<String, Object> fieldMap = EconomicMap.create();
-            fieldMap.put(CLASS_TAG, field.getDeclaringClass().getId());
-            fieldMap.put(NAME_TAG, field.getName());
-            fieldMap.put(ID_TAG, field.getId());
+            persistField(fieldsMap, field);
         }
-        jsonMap.put(FIELDS_TAG, fieldsList);
+        jsonMap.put(FIELDS_TAG, fieldsMap);
 
         EconomicMap<String, Object> constantsMap = EconomicMap.create();
         for (Map.Entry<AnalysisType, Set<ImageHeapConstant>> entry : imageHeap.getReachableObjects().entrySet()) {
@@ -215,6 +216,24 @@ public class ImageLayerWriter {
         methodMap.put(ID_TAG, method.getId());
         String name = imageLayerSnapshotUtil.getMethodIdentifier(method, clazz.getModule().getName());
         methodsMap.put(name, methodMap);
+    }
+
+    private static void persistField(EconomicMap<String, EconomicMap<String, Object>> fieldsMap, AnalysisField field) {
+        EconomicMap<String, Object> fieldMap = EconomicMap.create();
+        fieldMap.put(ID_TAG, field.getId());
+        fieldMap.put(FIELD_ACCESSED_TAG, field.getAccessedReason() != null);
+        fieldMap.put(FIELD_READ_TAG, field.getReadReason() != null);
+        fieldMap.put(FIELD_WRITTEN_TAG, field.getWrittenReason() != null);
+        fieldMap.put(FIELD_FOLDED_TAG, field.getFoldedReason() != null);
+
+        String tid = String.valueOf(field.getDeclaringClass().getId());
+        if (fieldsMap.containsKey(tid)) {
+            fieldsMap.get(tid).put(field.getName(), fieldMap);
+        } else {
+            EconomicMap<String, Object> typeFieldsMap = EconomicMap.create();
+            typeFieldsMap.put(field.getName(), fieldMap);
+            fieldsMap.put(tid, typeFieldsMap);
+        }
     }
 
     private void persistConstant(AnalysisUniverse analysisUniverse, ImageHeapConstant imageHeapConstant, EconomicMap<String, Object> constantsMap) {

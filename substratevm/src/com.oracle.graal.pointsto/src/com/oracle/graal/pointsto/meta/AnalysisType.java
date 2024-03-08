@@ -628,6 +628,17 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             scheduledTypeReachableNotifications = futures;
         }
 
+        if (isInBaseLayer && !(wrapped instanceof BaseLayerType)) {
+            /*
+             * Since the analysis of the type is skipped, the fields have to be created manually to
+             * ensure their flags are loaded from the base layer. Not creating the fields would
+             * cause inconsistency issues between the size of objects from the base and the
+             * extension layers.
+             */
+            getInstanceFields(true);
+            getStaticFields();
+        }
+
         universe.notifyReachableType();
         universe.hostVM.checkForbidden(this, UsageKind.Reachable);
         if (isArray()) {

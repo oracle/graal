@@ -66,10 +66,13 @@ public class ImageLayerSnapshotUtil {
     public static final String INSTANCE_TAG = "instance";
     public static final String ARRAY_TAG = "array";
     public static final String PRIMITIVE_ARRAY_TAG = "primitive array";
-    public static final String CLASS_TAG = "class";
-    public static final String NAME_TAG = "name";
+    public static final String FIELD_ACCESSED_TAG = "accessed";
+    public static final String FIELD_READ_TAG = "read";
+    public static final String FIELD_WRITTEN_TAG = "written";
+    public static final String FIELD_FOLDED_TAG = "folded";
     public static final String NEXT_TYPE_ID_TAG = "next type id";
     public static final String NEXT_METHOD_ID_TAG = "next method id";
+    public static final String NEXT_FIELD_ID_TAG = "next field id";
     public static final String VALUE_TAG = "value";
     public static final String ENUM_CLASS_TAG = "enum class";
     public static final String ENUM_NAME_TAG = "enum name";

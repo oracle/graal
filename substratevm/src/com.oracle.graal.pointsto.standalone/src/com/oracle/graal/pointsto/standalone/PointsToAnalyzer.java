@@ -167,6 +167,7 @@ public final class PointsToAnalyzer {
         StandaloneImageHeapScanner heapScanner = new StandaloneImageHeapScanner(bigbang, heap, aMetaAccess,
                         snippetReflection, aConstantReflection, new AnalysisObjectScanningObserver(bigbang), analysisClassLoader, hostedValuesProvider);
         aUniverse.setHeapScanner(heapScanner);
+        imageLayerLoader.executeHeapScannerTasks();
         ImageLayerWriter imageLayerWriter = new ImageLayerWriter(heap);
         aUniverse.setImageLayerWriter(imageLayerWriter);
         HeapSnapshotVerifier heapVerifier = new StandaloneHeapSnapshotVerifier(bigbang, heap, heapScanner);

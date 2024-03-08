@@ -997,6 +997,7 @@ public class NativeImageGenerator {
                 ImageLayerWriter imageLayerWriter = new SVMImageLayerWriter(imageHeap);
                 aUniverse.setImageLayerWriter(imageLayerWriter);
                 ((HostedSnippetReflectionProvider) aProviders.getSnippetReflection()).setHeapScanner(heapScanner);
+                aUniverse.getImageLayerLoader().executeHeapScannerTasks();
                 HeapSnapshotVerifier heapVerifier = new SVMImageHeapVerifier(bb, imageHeap, heapScanner);
                 aUniverse.setHeapVerifier(heapVerifier);
 

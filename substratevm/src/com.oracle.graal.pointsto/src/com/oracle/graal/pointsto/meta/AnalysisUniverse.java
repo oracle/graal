@@ -170,6 +170,10 @@ public class AnalysisUniverse implements Universe {
         return nextMethodId.get();
     }
 
+    public int getNextFieldId() {
+        return nextFieldId.get();
+    }
+
     public void seal() {
         sealed = true;
     }
@@ -381,6 +385,9 @@ public class AnalysisUniverse implements Universe {
         }
         AnalysisField newValue = analysisFactory.createField(this, field);
         AnalysisField oldValue = fields.putIfAbsent(field, newValue);
+        if (oldValue == null && newValue.isInBaseLayer()) {
+            getImageLayerLoader().loadFieldFlags(newValue);
+        }
         return oldValue != null ? oldValue : newValue;
     }
 
@@ -757,14 +764,20 @@ public class AnalysisUniverse implements Universe {
         /* No type was created yet, so the array can be overwritten without any concurrency issue */
         typesById = new AnalysisType[startTid];
 
-        if (nextTypeId.compareAndExchange(0, startTid) != 0) {
-            throw AnalysisError.shouldNotReachHere("A type id was assigned before the start id was set.");
-        }
+        setStartId(nextTypeId, startTid, 0);
     }
 
     public void setStartMethodId(int startMid) {
-        if (nextMethodId.compareAndExchange(1, startMid) != 1) {
-            throw AnalysisError.shouldNotReachHere("A method id was assigned before the start id was set.");
+        setStartId(nextMethodId, startMid, 1);
+    }
+
+    public void setStartFieldId(int startFid) {
+        setStartId(nextFieldId, startFid, 1);
+    }
+
+    private static void setStartId(AtomicInteger nextId, int startFid, int expectedStartValue) {
+        if (nextId.compareAndExchange(expectedStartValue, startFid) != expectedStartValue) {
+            throw AnalysisError.shouldNotReachHere("An id was assigned before the start id was set.");
         }
     }
 
@@ -774,5 +787,9 @@ public class AnalysisUniverse implements Universe {
 
     public int computeNextMethodId() {
         return nextMethodId.getAndIncrement();
+    }
+
+    public int computeNextFieldId() {
+        return nextFieldId.getAndIncrement();
     }
 }

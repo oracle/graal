@@ -34,6 +34,11 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.DATA_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ENCLOSING_TYPE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ENUM_CLASS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ENUM_NAME_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FIELDS_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FIELD_ACCESSED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FIELD_FOLDED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FIELD_READ_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FIELD_WRITTEN_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INSTANCE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INTERFACES_TAG;
@@ -43,11 +48,13 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INTERFACE
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_LINKED_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.METHODS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.MODIFIERS_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NEXT_FIELD_ID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NEXT_METHOD_ID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NEXT_TYPE_ID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NOT_MATERIALIZED_CONSTANT;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NULL_POINTER_CONSTANT;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.OBJECT_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PERSISTED;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PRIMITIVE_ARRAY_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.SIMULATED_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.SOURCE_FILE_NAME_TAG;
@@ -69,6 +76,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -93,6 +101,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * {
  *      "next type id": nextTypeId,
  *      "next method id": nextMethodId,
+ *      "next field id": nextFieldId,
  *      "types": {
  *          typeIdentifier: {
  *              "id": id,
@@ -118,13 +127,19 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  *          },
  *          ...
  *      },
- *      "fields": [
- *          {
- *              "class": tid,
- *              "name": name
+ *      "fields": {
+ *          tid: {
+ *              name: {
+ *                  "id": id,
+ *                  "accessed": accessed,
+ *                  "read": read,
+ *                  "written": written,
+ *                  "folded": folded
+ *              },
+ *              ...
  *          },
  *          ...
- *      ],
+ *      },
  *      "constants": {
  *          id: {
  *              "tid": tid,
@@ -167,6 +182,7 @@ public class ImageLayerLoader {
      * processed before they are force loaded.
      */
     private final Set<Integer> processedTypeIds = ConcurrentHashMap.newKeySet();
+    private final Set<Integer> processedFieldsIds = ConcurrentHashMap.newKeySet();
     protected final Map<Integer, AnalysisMethod> methods = new ConcurrentHashMap<>();
     private final Map<Integer, ImageHeapConstant> constants = new ConcurrentHashMap<>();
     /**
@@ -197,6 +213,7 @@ public class ImageLayerLoader {
      */
     protected final ConcurrentHashMap<Integer, Set<AnalysisFuture<JavaConstant>>> missingMethodTasks = new ConcurrentHashMap<>();
     private final Map<Integer, String> typeToIdentifier = new HashMap<>();
+    protected final Set<AnalysisFuture<Void>> heapScannerTasks = ConcurrentHashMap.newKeySet();
     private final Map<Integer, Set<Integer>> typeToConstants = new HashMap<>();
     private final ImageLayerSnapshotUtil imageLayerSnapshotUtil;
     private final Map<AnalysisType, Set<ImageHeapConstant>> baseLayerImageHeap = new ConcurrentHashMap<>();
@@ -232,6 +249,9 @@ public class ImageLayerLoader {
 
         int nextMethodId = get(maps, NEXT_METHOD_ID_TAG);
         universe.setStartMethodId(nextMethodId);
+
+        int nextFieldId = get(maps, NEXT_FIELD_ID_TAG);
+        universe.setStartFieldId(nextFieldId);
 
         /* This mapping allows to get the base layer information from a type id */
         EconomicMap<String, Object> typesMap = get(jsonMap, TYPES_TAG);
@@ -516,6 +536,71 @@ public class ImageLayerLoader {
         Class<?> clazz = analysisMethod.getDeclaringClass().getJavaClass();
         String name = imageLayerSnapshotUtil.getMethodIdentifier(analysisMethod, clazz.getModule().getName());
         return getElementData(METHODS_TAG, name);
+    }
+
+    /**
+     * Returns the field id of the given field in the base layer if it exists. This makes the link
+     * between the base layer and the extension image as the id allows to set the flags of the
+     * fields in the extension image.
+     */
+    public int lookupHostedFieldInBaseLayer(AnalysisField analysisField) {
+        EconomicMap<String, Object> fieldData = getFieldData(analysisField);
+        if (fieldData == null) {
+            /* The field was not reachable in the base image */
+            return -1;
+        }
+        return get(fieldData, ID_TAG);
+    }
+
+    public void loadFieldFlags(AnalysisField analysisField) {
+        if (processedFieldsIds.add(analysisField.getId())) {
+            EconomicMap<String, Object> fieldData = getFieldData(analysisField);
+
+            if (fieldData == null) {
+                /* The field was not reachable in the base image */
+                return;
+            }
+
+            boolean isAccessed = get(fieldData, FIELD_ACCESSED_TAG);
+            boolean isRead = get(fieldData, FIELD_READ_TAG);
+            boolean isWritten = get(fieldData, FIELD_WRITTEN_TAG);
+            boolean isFolded = get(fieldData, FIELD_FOLDED_TAG);
+
+            if (!analysisField.isStatic() && (isAccessed || isRead)) {
+                analysisField.getDeclaringClass().getInstanceFields(true);
+            }
+            registerFieldFlag(isAccessed, () -> analysisField.registerAsAccessed(PERSISTED));
+            registerFieldFlag(isRead, () -> analysisField.registerAsRead(PERSISTED));
+            registerFieldFlag(isWritten, () -> analysisField.registerAsWritten(PERSISTED));
+            registerFieldFlag(isFolded, () -> analysisField.registerAsFolded(PERSISTED));
+        }
+    }
+
+    private EconomicMap<String, Object> getFieldData(AnalysisField analysisField) {
+        int tid = analysisField.getDeclaringClass().getId();
+        EconomicMap<String, Object> typeFieldsMap = getElementData(FIELDS_TAG, Integer.toString(tid));
+        if (typeFieldsMap == null) {
+            /* The type has no reachable field */
+            return null;
+        }
+        return get(typeFieldsMap, analysisField.getName());
+    }
+
+    private void registerFieldFlag(boolean flag, Runnable runnable) {
+        if (flag) {
+            if (universe.getBigbang() != null) {
+                universe.getBigbang().postTask(debug -> runnable.run());
+            } else {
+                heapScannerTasks.add(new AnalysisFuture<>(runnable));
+            }
+        }
+    }
+
+    public void executeHeapScannerTasks() {
+        guarantee(universe.getHeapScanner() != null, "Those tasks should only be executed when the bigbang is not null.");
+        for (AnalysisFuture<Void> task : heapScannerTasks) {
+            task.ensureDone();
+        }
     }
 
     private void createConstant(EconomicMap<String, Object> constantsMap, String stringId, AnalysisType type) {
