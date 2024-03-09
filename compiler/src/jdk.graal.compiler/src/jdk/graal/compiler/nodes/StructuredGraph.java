@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -356,7 +356,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.profileProvider = profileProvider;
         this.isSubstitution = isSubstitution;
         this.cancellable = cancellable;
-        this.inliningLog = GraalOptions.TraceInlining.getValue(options) || OptimizationLog.isOptimizationLogEnabled(options) ? new InliningLog(rootMethod) : null;
+        this.inliningLog = GraalOptions.TraceInlining.getValue(options) || OptimizationLog.isStructuredOptimizationLogEnabled(options) ? new InliningLog(rootMethod) : null;
         this.callerContext = context;
         this.optimizationLog = OptimizationLog.getInstance(this);
     }
@@ -548,7 +548,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         if (inliningLog != null) {
             inliningLog.addDecision(invoke, positive, phase, replacements, calleeInliningLog, inlineeMethod, reason, args);
         }
-        if (positive && calleeOptimizationLog != null && optimizationLog.isOptimizationLogEnabled()) {
+        if (positive && calleeOptimizationLog != null && optimizationLog.isStructuredOptimizationLogEnabled()) {
             FixedNode invokeNode = invoke.asFixedNodeOrNull();
             optimizationLog.inline(calleeOptimizationLog, true, invokeNode == null ? null : invokeNode.getNodeSourcePosition());
         }

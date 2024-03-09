@@ -21,7 +21,7 @@ The `report` method handles the following use cases:
 |----------------------------------|-------------------------------|--------------------------------------------------------------------------|
 | `log` using a `DebugContext`     | `-Djdk.graal.Log`             | log `Performed {optimizationName} {eventName} at bci {bci} {properties}` |
 | `dump` using a `DebugContext`    | `-Djdk.graal.Dump`            | dump with caption `{optimizationName} {eventName} for node {nodeName}`   |
-| increment a `CounterKey`         | `-Djdk.graal.Count`           | increment the counter `{optimizationName}_{eventName}`                   |
+| increment a `CounterKey`         | `-Djdk.graal.Count`           | increment the counter `Optimization_{optimizationName}_{eventName}`      |
 | structured optimization logging  | `-Djdk.graal.OptimizationLog` | optimization info dumped to stdout, a JSON file or an IGV graph          |
 
 The method logs and dumps at `DETAILED_LEVEL` by default. There is a variant of the method which allows the log level to

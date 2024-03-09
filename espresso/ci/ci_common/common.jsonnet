@@ -258,12 +258,12 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   dacapo_stable(env): if std.startsWith(env, 'jvm')
     # exclude pmd and lusearch
-    then 'dacapo:*[avrora,h2,fop,jython,luindex,sunflow,xalan]'
+    then 'dacapo:*[h2,fop,jython,luindex,sunflow,xalan]'
     # exclude fop on native
     else if env == 'native-ce'
       # additionally exclude luindex on native-ce: it gets stuck on the first interation
-      then 'dacapo:*[avrora,h2,jython,lusearch,pmd,sunflow,xalan]'
-      else 'dacapo:*[avrora,h2,jython,luindex,lusearch,pmd,sunflow,xalan]',
+      then 'dacapo:*[h2,jython,lusearch,pmd,sunflow,xalan]'
+      else 'dacapo:*[h2,jython,luindex,lusearch,pmd,sunflow,xalan]',
 
   # exclude scalatest, which goes into deopt loop and becomes slower on every subsequent operation
   scala_dacapo_fast: 'scala-dacapo:*[apparat,factorie,kiama,scalac,scaladoc,scalap,scalariform,scalaxb,tmt]',

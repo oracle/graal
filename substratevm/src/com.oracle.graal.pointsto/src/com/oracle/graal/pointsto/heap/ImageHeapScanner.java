@@ -684,6 +684,18 @@ public abstract class ImageHeapScanner {
     }
 
     /**
+     * Returns true if the provided {@code object} was seen as reachable by the static analysis.
+     */
+    public boolean isObjectReachable(Object object) {
+        var javaConstant = asConstant(Objects.requireNonNull(object));
+        Object existingTask = imageHeap.getSnapshot(javaConstant);
+        if (existingTask instanceof ImageHeapConstant imageHeapConstant) {
+            return imageHeapConstant.isReachable();
+        }
+        return false;
+    }
+
+    /**
      * Add the object to the image heap and, if the object is a collection, rescan its elements.
      */
     public void rescanObject(Object object) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -224,10 +224,6 @@ public abstract class DynamicObject implements TruffleObject {
     @TruffleBoundary
     private static CloneNotSupportedException cloneNotSupported() throws CloneNotSupportedException {
         throw new CloneNotSupportedException();
-    }
-
-    final DynamicObject objectClone() throws CloneNotSupportedException {
-        return (DynamicObject) super.clone();
     }
 
     final Object[] getObjectStore() {

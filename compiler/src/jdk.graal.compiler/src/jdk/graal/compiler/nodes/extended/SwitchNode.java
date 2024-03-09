@@ -106,7 +106,8 @@ public abstract class SwitchNode extends ControlSplitNode {
             total += d;
             GraalError.guarantee(d >= 0.0, "Cannot have negative probabilities in switch node: %s", d);
         }
-        GraalError.guarantee(total > 0.999 && total < 1.001, "Total probability across branches not equal to one: %.4f", total);
+        GraalError.guarantee(ProfileData.isApproximatelyEqual(total, 1.0),
+                        "Total probability across branches not equal to one: %.10f", total);
         return true;
     }
 
@@ -130,7 +131,6 @@ public abstract class SwitchNode extends ControlSplitNode {
     public boolean setProbability(AbstractBeginNode successor, BranchProbabilityData successorProfileData) {
         double newProbability = successorProfileData.getDesignatedSuccessorProbability();
         assert newProbability <= 1.0 && newProbability >= 0.0 : newProbability;
-        assert assertProbabilities();
 
         double[] keyProbabilities = getKeyProbabilities().clone();
         double sum = 0;

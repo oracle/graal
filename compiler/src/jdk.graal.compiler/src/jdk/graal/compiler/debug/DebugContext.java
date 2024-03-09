@@ -107,6 +107,11 @@ public final class DebugContext implements AutoCloseable {
      */
     boolean closed;
 
+    /**
+     * Set to true during a retry compilation in case of a compilation error.
+     */
+    boolean inRetryCompilation;
+
     DebugConfigImpl currentConfig;
     ScopeImpl currentScope;
     CloseableCounter currentTimer;
@@ -771,6 +776,13 @@ public final class DebugContext implements AutoCloseable {
     }
 
     /**
+     * Checks if this context is in the scope of a retry compilation.
+     */
+    public boolean inRetryCompilation() {
+        return inRetryCompilation;
+    }
+
+    /**
      * Gets a string composed of the names in the current nesting of debug
      * {@linkplain #scope(Object) scopes} separated by {@code '.'}.
      */
@@ -1075,6 +1087,21 @@ public final class DebugContext implements AutoCloseable {
             return currentScope.disableIntercept();
         }
         return null;
+    }
+
+    /**
+     * Opens a scope in which {@link #inRetryCompilation()} returns true. The current retry state is
+     * restored when {@link DebugCloseable#close()} is called on the returned object.
+     */
+    public DebugCloseable openRetryCompilation() {
+        boolean previous = inRetryCompilation;
+        inRetryCompilation = true;
+        return new DebugCloseable() {
+            @Override
+            public void close() {
+                inRetryCompilation = previous;
+            }
+        };
     }
 
     /**

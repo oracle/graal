@@ -27,6 +27,9 @@ package jdk.graal.compiler.core.test;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
+import org.junit.Assert;
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugDumpScope;
@@ -41,8 +44,6 @@ import jdk.graal.compiler.nodes.loop.DefaultLoopPolicies;
 import jdk.graal.compiler.nodes.loop.LoopEx;
 import jdk.graal.compiler.nodes.loop.LoopPolicies;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class LoopUnswitchTest extends GraalCompilerTest {
 
@@ -474,6 +475,46 @@ public class LoopUnswitchTest extends GraalCompilerTest {
     public void test05() {
         final StructuredGraph graph = parseEager("manySwitch", AllowAssumptions.NO);
         CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
+        new LoopUnswitchingPhase(new DefaultLoopPolicies(), canonicalizer).apply(graph, getDefaultHighTierContext());
+    }
+
+    static final double ULP = Math.ulp(0.25);
+
+    /**
+     * Simulate a profile that due to floating imprecision has branch probabilities summing to the
+     * next floating point number after 1.
+     */
+    public static int testImpreciseProfileSnippet(int a) {
+        int sum = 0;
+        for (int i = 0; i < 1000; i++) {
+            switch (a) {
+                case 0:
+                    GraalDirectives.injectSwitchCaseProbability(0.25);
+                    sum += 1;
+                    break;
+                case 1:
+                    GraalDirectives.injectSwitchCaseProbability(0.25);
+                    sum += 2;
+                    break;
+                case 2:
+                    GraalDirectives.injectSwitchCaseProbability(0.25);
+                    sum += 3;
+                    break;
+                default:
+                    GraalDirectives.injectSwitchCaseProbability(0.25 + ULP);
+                    sum += a;
+                    break;
+            }
+        }
+        return sum;
+    }
+
+    @Test
+    public void testImpreciseProfile() {
+        final StructuredGraph graph = parseEager("testImpreciseProfileSnippet", AllowAssumptions.NO);
+        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
+        // Apply canonicalizer to inject switch probabilities
+        canonicalizer.apply(graph, getDefaultHighTierContext());
         new LoopUnswitchingPhase(new DefaultLoopPolicies(), canonicalizer).apply(graph, getDefaultHighTierContext());
     }
 }
