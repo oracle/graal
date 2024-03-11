@@ -150,7 +150,7 @@ public class CompletionExecutor {
         }
     }
 
-    private ForkJoinPool pool = new ForkJoinPool();
+    private final ForkJoinPool pool = new ForkJoinPool();
 
     private void executeService(DebugContextRunnable command) {
         pool.execute(() -> executeCommand(command));
@@ -210,7 +210,7 @@ public class CompletionExecutor {
             while (true) {
                 assert state.get() == State.STARTED : state.get();
 
-                boolean quiescent = ForkJoinPool.commonPool().awaitQuiescence(100, TimeUnit.MILLISECONDS);
+                boolean quiescent = pool.awaitQuiescence(100, TimeUnit.MILLISECONDS);
                 if (timing != null && !quiescent) {
                     long curTime = System.nanoTime();
                     if (curTime - lastPrint > timing.getPrintIntervalNanos()) {
@@ -246,7 +246,7 @@ public class CompletionExecutor {
     }
 
     public void shutdown() {
-        assert !ForkJoinPool.commonPool().hasQueuedSubmissions() : "There should be no queued submissions on shutdown.";
+        assert !pool.hasQueuedSubmissions() : "There should be no queued submissions on shutdown.";
         assert completedOperations.sum() == postedOperations.sum() : "Posted operations (" + postedOperations.sum() + ") must match completed (" + completedOperations.sum() + ") operations";
         setState(State.UNUSED);
     }
