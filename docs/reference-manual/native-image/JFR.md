@@ -33,7 +33,7 @@ For example:
 ### Run a Demo
 
 Transform this very simple demo application into a native image and see how to use JFR events from it.
-Save the following code to the _Example.java_ file. This demo make use of the JFR Event API to create and emit custom events.
+Save the following code to the _Example.java_ file. This demo makes use of the JFR Event API to create and emit custom events.
 
 ```java
 import jdk.jfr.Event;
@@ -112,24 +112,39 @@ Otherwise, this option expects a comma separated list of tag combinations, each 
 
 
 ## Features and Limitations
-Work is ongoing to achieve feature parity with JFR in Java HotSpot VM. This section outlines the major JFR features that are supported in Native Image.
+Work is ongoing to achieve feature parity with JFR in Java HotSpot VM. This section outlines the JFR features that are supported in Native Image.
 
 ### Method Profiling and Stack Traces
+(Since GraalVM for JDK 17 / 20).
 Method profiling is implemented by handling the SIGPROF signal to periodically collect method samples. 
 The event `jdk.ExecutionSample` is supported and its flamegraphs can be viewed in applications such as JDK Mission Control and VisualVM to diagnose hot methods.
 In addition, other JFR events that support stacktraces in Java HotSpot VM also support stacktraces in Native Image. This means you can do interesting things like view flamegraphs of `jdk.ObjectAllocationInNewTLAB` to diagnose where object allocations are frequently happening. 
 
 
 ### Event Streaming
+(Since GraalVM for JDK 17 / 20).
 Event streaming is supported in Native Image. Event Streaming lets you register callbacks for specific events at the application level. This introduces more flexibility and control over how recordings are managed. For example, you may dynamically increase the duration threshold of an event if it is found in the stream beyond a certain number times. Event streaming also allows the application to get continuous periodic JFR updates that are useful for monitoring purposes. 
 
 Currently, stacktraces are not supported on streamed events. This means you cannot access the stacktrace of an event inside its callback method. However, this limitation does not affect stacktraces in the JFR snapshot (.jfr) file, those will still work as usual.   
 
 ### Interaction with FlightRecorderMXBean via Remote JMX
+(Since GraalVM for JDK 17 / 20).
 You can now interact with Native Image JFR from out of process via remote JMX connection to `FlightRecorderMXBean`.  This can be done in using applications such as JDK Mission Control or VisualVM. Over JMX you can start, stop, and dump JFR recordings using the `FlightRecorderMXBean` API as an interface. [This blog post](https://developers.redhat.com/articles/2023/06/13/improvements-native-image-jfr-support-graalvm-jdk-20?source=sso#new_supported_features) provides a step-by-step walk-through of how to start using JFR over remote JMX in JDK Mission Control.
 Find more general information on how to use JMX with Native Image in [this guide](guides/build-and-run-native-executable-with-remote-jmx.md).
 
 > Note: Remote JMX support in Native Image is experimental and may be changed in the future. 
+
+### Event Throttling
+(Build from source).
+Similar to OpenJDK, event throttling is enabled by default for `jdk.ObjectAllocationSample`. This limits the overhead of the event. The unsampled version of this event is `jdk.ObjectAllocationInNewTLAB`. You can specify whether to enable this event as well as the throttling rate within a JFR configuration file (.jfc). 
+
+### FlightRecorderOptions 
+(Build from source).
+You can fine tune JFR parameters by using `-XX:FlightRecorderOptions` at runtime. This is primarily for advanced users, and most people should be fine with the default parameters. The options are the same as in OpenJDK.
+
+### Leak Profiling
+(Build from source).
+Leak profiling implemented by the `jdk.OldObjectSample` event is partially implemented. Specifically, old object tracking is possible, but path to GC root information is unavailable. 
 
 ### Built-In Events
 Many of the VM-level built-in events found in OpenJDK are available in Native Image. Java-level events implemented by bytecode instrumentation in the Java HotSpot VM are not yet supported in Native Image. 
@@ -180,14 +195,6 @@ Such events include file IO, exception, and network IO built-in events. Support 
 | jdk.VirtualThreadStart         | GraalVM for JDK 21    |
 
 Note: GraalVM's version naming scheme changed. Version 22.1 is older than 22.2, while 22.3 is older than GraalVM for JDK17.  Version 22.1 - 22.3 supported both JDK 11 and JDK 17.
-
-## Current Limitations
-
-JFR support in Native Image is currently not on par with Java HotSpot VM. The following is a list of unsupported features that are currently a work in progress:
-- Many built-in events found in Java HotSpot VM are still not supported 
-- Old object leak profiling 
-- Support for `-XX:FlightRecorderOptions`
-- Event throttling
 
 To see an exhaustive list of JFR events and features supported by Native Image, see [this GitHub issue](https://github.com/oracle/graal/issues/5410).
 
