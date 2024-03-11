@@ -54,8 +54,8 @@ public class Vector128Ops {
         return switch (vectorOpcode) {
             case Bytecode.VECTOR_V128_NOT -> v128_not(x);
             case Bytecode.VECTOR_I8X16_ABS, Bytecode.VECTOR_I8X16_NEG, Bytecode.VECTOR_I8X16_POPCNT -> i8x16_unop(x, vectorOpcode);
-            case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8x16_S, Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8x16_U, Bytecode.VECTOR_I16X8_EXTEND_LOW_I8x16_S, Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8x16_S,
-                            Bytecode.VECTOR_I16X8_EXTEND_LOW_I8x16_U, Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8x16_U ->
+            case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_S, Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_U, Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_S, Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_S,
+                            Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_U, Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_U ->
                 i16x8_extend_i8x16(x, vectorOpcode);
             case Bytecode.VECTOR_I16X8_ABS, Bytecode.VECTOR_I16X8_NEG -> i16x8_unop(x, vectorOpcode);
             case Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_S, Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_U, Bytecode.VECTOR_I32X4_EXTEND_LOW_I16X8_S, Bytecode.VECTOR_I32X4_EXTEND_HIGH_I16X8_S,
@@ -110,7 +110,7 @@ public class Vector128Ops {
                             Bytecode.VECTOR_I16X8_SUB_SAT_S, Bytecode.VECTOR_I16X8_SUB_SAT_U, Bytecode.VECTOR_I16X8_MUL, Bytecode.VECTOR_I16X8_MIN_S, Bytecode.VECTOR_I16X8_MIN_U,
                             Bytecode.VECTOR_I16X8_MAX_S, Bytecode.VECTOR_I16X8_MAX_U, Bytecode.VECTOR_I16X8_AVGR_U ->
                 i16x8_binop(x, y, vectorOpcode);
-            case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8x16_S, Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8x16_S, Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8x16_U, Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8x16_U ->
+            case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_S, Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8X16_S, Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_U, Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8X16_U ->
                 i16x8_binop_extend_i8x16(x, y, vectorOpcode);
             case Bytecode.VECTOR_I32X4_ADD, Bytecode.VECTOR_I32X4_SUB, Bytecode.VECTOR_I32X4_MUL, Bytecode.VECTOR_I32X4_MIN_S, Bytecode.VECTOR_I32X4_MIN_U, Bytecode.VECTOR_I32X4_MAX_S,
                             Bytecode.VECTOR_I32X4_MAX_U ->
@@ -595,12 +595,12 @@ public class Vector128Ops {
         CompilerDirectives.ensureVirtualized(result);
         for (int i = 0; i < result.length; i++) {
             result[i] = (short) switch (vectorOpcode) {
-                case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8x16_S -> x[2 * i] + x[2 * i + 1];
-                case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8x16_U -> Byte.toUnsignedInt(x[2 * i]) + Byte.toUnsignedInt(x[2 * i + 1]);
-                case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8x16_S -> x[i];
-                case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8x16_S -> x[i + result.length];
-                case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8x16_U -> Byte.toUnsignedInt(x[i]);
-                case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8x16_U -> Byte.toUnsignedInt(x[i + result.length]);
+                case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_S -> x[2 * i] + x[2 * i + 1];
+                case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_U -> Byte.toUnsignedInt(x[2 * i]) + Byte.toUnsignedInt(x[2 * i + 1]);
+                case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_S -> x[i];
+                case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_S -> x[i + result.length];
+                case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_U -> Byte.toUnsignedInt(x[i]);
+                case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_U -> Byte.toUnsignedInt(x[i + result.length]);
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
@@ -723,10 +723,10 @@ public class Vector128Ops {
         CompilerDirectives.ensureVirtualized(result);
         for (int i = 0; i < result.length; i++) {
             result[i] = (short) switch (vectorOpcode) {
-                case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8x16_S -> x[i] * y[i];
-                case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8x16_S -> x[i + result.length] * y[i + result.length];
-                case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8x16_U -> Byte.toUnsignedInt(x[i]) * Byte.toUnsignedInt(y[i]);
-                case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8x16_U -> Byte.toUnsignedInt(x[i + result.length]) * Byte.toUnsignedInt(y[i + result.length]);
+                case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_S -> x[i] * y[i];
+                case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8X16_S -> x[i + result.length] * y[i + result.length];
+                case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_U -> Byte.toUnsignedInt(x[i]) * Byte.toUnsignedInt(y[i]);
+                case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8X16_U -> Byte.toUnsignedInt(x[i + result.length]) * Byte.toUnsignedInt(y[i + result.length]);
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }

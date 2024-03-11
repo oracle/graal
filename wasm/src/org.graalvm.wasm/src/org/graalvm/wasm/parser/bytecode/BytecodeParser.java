@@ -1040,8 +1040,8 @@ public abstract class BytecodeParser {
                         case Bytecode.VECTOR_I8X16_MAX_S:
                         case Bytecode.VECTOR_I8X16_MAX_U:
                         case Bytecode.VECTOR_I8X16_AVGR_U:
-                        case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8x16_S:
-                        case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8x16_U:
+                        case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_S:
+                        case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_U:
                         case Bytecode.VECTOR_I16X8_ABS:
                         case Bytecode.VECTOR_I16X8_NEG:
                         case Bytecode.VECTOR_I16X8_Q15MULR_SAT_S:
@@ -1049,10 +1049,10 @@ public abstract class BytecodeParser {
                         case Bytecode.VECTOR_I16X8_BITMASK:
                         case Bytecode.VECTOR_I16X8_NARROW_I32X4_S:
                         case Bytecode.VECTOR_I16X8_NARROW_I32X4_U:
-                        case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8x16_S:
-                        case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8x16_S:
-                        case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8x16_U:
-                        case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8x16_U:
+                        case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_S:
+                        case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_S:
+                        case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_U:
+                        case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_U:
                         case Bytecode.VECTOR_I16X8_SHL:
                         case Bytecode.VECTOR_I16X8_SHR_S:
                         case Bytecode.VECTOR_I16X8_SHR_U:
@@ -1068,10 +1068,10 @@ public abstract class BytecodeParser {
                         case Bytecode.VECTOR_I16X8_MAX_S:
                         case Bytecode.VECTOR_I16X8_MAX_U:
                         case Bytecode.VECTOR_I16X8_AVGR_U:
-                        case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8x16_S:
-                        case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8x16_S:
-                        case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8x16_U:
-                        case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8x16_U:
+                        case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_S:
+                        case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8X16_S:
+                        case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_U:
+                        case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8X16_U:
                         case Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_S:
                         case Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_U:
                         case Bytecode.VECTOR_I32X4_ABS:

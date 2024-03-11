@@ -481,8 +481,8 @@ public final class Instructions {
     public static final int VECTOR_I8X16_MAX_U = 0x79;
     public static final int VECTOR_I8X16_AVGR_U = 0x7B;
 
-    public static final int VECTOR_I16X8_EXTADD_PAIRWISE_I8x16_S = 0x7C;
-    public static final int VECTOR_I16X8_EXTADD_PAIRWISE_I8x16_U = 0x7D;
+    public static final int VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_S = 0x7C;
+    public static final int VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_U = 0x7D;
     public static final int VECTOR_I16X8_ABS = 0x80;
     public static final int VECTOR_I16X8_NEG = 0x81;
     public static final int VECTOR_I16X8_Q15MULR_SAT_S = 0x82;
@@ -490,10 +490,10 @@ public final class Instructions {
     public static final int VECTOR_I16X8_BITMASK = 0x84;
     public static final int VECTOR_I16X8_NARROW_I32X4_S = 0x85;
     public static final int VECTOR_I16X8_NARROW_I32X4_U = 0x86;
-    public static final int VECTOR_I16X8_EXTEND_LOW_I8x16_S = 0x87;
-    public static final int VECTOR_I16X8_EXTEND_HIGH_I8x16_S = 0x88;
-    public static final int VECTOR_I16X8_EXTEND_LOW_I8x16_U = 0x89;
-    public static final int VECTOR_I16X8_EXTEND_HIGH_I8x16_U = 0x8A;
+    public static final int VECTOR_I16X8_EXTEND_LOW_I8X16_S = 0x87;
+    public static final int VECTOR_I16X8_EXTEND_HIGH_I8X16_S = 0x88;
+    public static final int VECTOR_I16X8_EXTEND_LOW_I8X16_U = 0x89;
+    public static final int VECTOR_I16X8_EXTEND_HIGH_I8X16_U = 0x8A;
     public static final int VECTOR_I16X8_SHL = 0x8B;
     public static final int VECTOR_I16X8_SHR_S = 0x8C;
     public static final int VECTOR_I16X8_SHR_U = 0x8D;
@@ -509,10 +509,10 @@ public final class Instructions {
     public static final int VECTOR_I16X8_MAX_S = 0x98;
     public static final int VECTOR_I16X8_MAX_U = 0x99;
     public static final int VECTOR_I16X8_AVGR_U = 0x9B;
-    public static final int VECTOR_I16X8_EXTMUL_LOW_I8x16_S = 0x9C;
-    public static final int VECTOR_I16X8_EXTMUL_HIGH_I8x16_S = 0x9D;
-    public static final int VECTOR_I16X8_EXTMUL_LOW_I8x16_U = 0x9E;
-    public static final int VECTOR_I16X8_EXTMUL_HIGH_I8x16_U = 0x9F;
+    public static final int VECTOR_I16X8_EXTMUL_LOW_I8X16_S = 0x9C;
+    public static final int VECTOR_I16X8_EXTMUL_HIGH_I8X16_S = 0x9D;
+    public static final int VECTOR_I16X8_EXTMUL_LOW_I8X16_U = 0x9E;
+    public static final int VECTOR_I16X8_EXTMUL_HIGH_I8X16_U = 0x9F;
 
     public static final int VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_S = 0x7E;
     public static final int VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_U = 0x7F;

@@ -172,8 +172,8 @@ public enum Vector128Shape {
             case Instructions.VECTOR_I8X16_MAX_U -> I8X16;
             case Instructions.VECTOR_I8X16_AVGR_U -> I8X16;
 
-            case Instructions.VECTOR_I16X8_EXTADD_PAIRWISE_I8x16_S -> I16X8;
-            case Instructions.VECTOR_I16X8_EXTADD_PAIRWISE_I8x16_U -> I16X8;
+            case Instructions.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_S -> I16X8;
+            case Instructions.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_U -> I16X8;
             case Instructions.VECTOR_I16X8_ABS -> I16X8;
             case Instructions.VECTOR_I16X8_NEG -> I16X8;
             case Instructions.VECTOR_I16X8_Q15MULR_SAT_S -> I16X8;
@@ -181,10 +181,10 @@ public enum Vector128Shape {
             case Instructions.VECTOR_I16X8_BITMASK -> I16X8;
             case Instructions.VECTOR_I16X8_NARROW_I32X4_S -> I16X8;
             case Instructions.VECTOR_I16X8_NARROW_I32X4_U -> I16X8;
-            case Instructions.VECTOR_I16X8_EXTEND_LOW_I8x16_S -> I16X8;
-            case Instructions.VECTOR_I16X8_EXTEND_HIGH_I8x16_S -> I16X8;
-            case Instructions.VECTOR_I16X8_EXTEND_LOW_I8x16_U -> I16X8;
-            case Instructions.VECTOR_I16X8_EXTEND_HIGH_I8x16_U -> I16X8;
+            case Instructions.VECTOR_I16X8_EXTEND_LOW_I8X16_S -> I16X8;
+            case Instructions.VECTOR_I16X8_EXTEND_HIGH_I8X16_S -> I16X8;
+            case Instructions.VECTOR_I16X8_EXTEND_LOW_I8X16_U -> I16X8;
+            case Instructions.VECTOR_I16X8_EXTEND_HIGH_I8X16_U -> I16X8;
             case Instructions.VECTOR_I16X8_SHL -> I16X8;
             case Instructions.VECTOR_I16X8_SHR_S -> I16X8;
             case Instructions.VECTOR_I16X8_SHR_U -> I16X8;
@@ -200,10 +200,10 @@ public enum Vector128Shape {
             case Instructions.VECTOR_I16X8_MAX_S -> I16X8;
             case Instructions.VECTOR_I16X8_MAX_U -> I16X8;
             case Instructions.VECTOR_I16X8_AVGR_U -> I16X8;
-            case Instructions.VECTOR_I16X8_EXTMUL_LOW_I8x16_S -> I16X8;
-            case Instructions.VECTOR_I16X8_EXTMUL_HIGH_I8x16_S -> I16X8;
-            case Instructions.VECTOR_I16X8_EXTMUL_LOW_I8x16_U -> I16X8;
-            case Instructions.VECTOR_I16X8_EXTMUL_HIGH_I8x16_U -> I16X8;
+            case Instructions.VECTOR_I16X8_EXTMUL_LOW_I8X16_S -> I16X8;
+            case Instructions.VECTOR_I16X8_EXTMUL_HIGH_I8X16_S -> I16X8;
+            case Instructions.VECTOR_I16X8_EXTMUL_LOW_I8X16_U -> I16X8;
+            case Instructions.VECTOR_I16X8_EXTMUL_HIGH_I8X16_U -> I16X8;
 
             case Instructions.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_S -> I32X4;
             case Instructions.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_U -> I32X4;

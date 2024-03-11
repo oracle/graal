@@ -2876,12 +2876,12 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             case Bytecode.VECTOR_I8X16_ABS:
             case Bytecode.VECTOR_I8X16_NEG:
             case Bytecode.VECTOR_I8X16_POPCNT:
-            case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8x16_S:
-            case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8x16_U:
-            case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8x16_S:
-            case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8x16_S:
-            case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8x16_U:
-            case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8x16_U:
+            case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_S:
+            case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_U:
+            case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_S:
+            case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_S:
+            case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_U:
+            case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_U:
             case Bytecode.VECTOR_I16X8_ABS:
             case Bytecode.VECTOR_I16X8_NEG:
             case Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_S:
@@ -3008,10 +3008,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             case Bytecode.VECTOR_I16X8_MAX_S:
             case Bytecode.VECTOR_I16X8_MAX_U:
             case Bytecode.VECTOR_I16X8_AVGR_U:
-            case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8x16_S:
-            case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8x16_S:
-            case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8x16_U:
-            case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8x16_U:
+            case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_S:
+            case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8X16_S:
+            case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_U:
+            case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8X16_U:
             case Bytecode.VECTOR_I32X4_ADD:
             case Bytecode.VECTOR_I32X4_SUB:
             case Bytecode.VECTOR_I32X4_MUL:

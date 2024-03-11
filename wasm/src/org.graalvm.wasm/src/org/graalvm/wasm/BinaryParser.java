@@ -2013,14 +2013,14 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.VECTOR_I8X16_ABS:
                     case Instructions.VECTOR_I8X16_NEG:
                     case Instructions.VECTOR_I8X16_POPCNT:
-                    case Instructions.VECTOR_I16X8_EXTADD_PAIRWISE_I8x16_S:
-                    case Instructions.VECTOR_I16X8_EXTADD_PAIRWISE_I8x16_U:
+                    case Instructions.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_S:
+                    case Instructions.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_U:
                     case Instructions.VECTOR_I16X8_ABS:
                     case Instructions.VECTOR_I16X8_NEG:
-                    case Instructions.VECTOR_I16X8_EXTEND_LOW_I8x16_S:
-                    case Instructions.VECTOR_I16X8_EXTEND_HIGH_I8x16_S:
-                    case Instructions.VECTOR_I16X8_EXTEND_LOW_I8x16_U:
-                    case Instructions.VECTOR_I16X8_EXTEND_HIGH_I8x16_U:
+                    case Instructions.VECTOR_I16X8_EXTEND_LOW_I8X16_S:
+                    case Instructions.VECTOR_I16X8_EXTEND_HIGH_I8X16_S:
+                    case Instructions.VECTOR_I16X8_EXTEND_LOW_I8X16_U:
+                    case Instructions.VECTOR_I16X8_EXTEND_HIGH_I8X16_U:
                     case Instructions.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_S:
                     case Instructions.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_U:
                     case Instructions.VECTOR_I32X4_ABS:
@@ -2144,10 +2144,10 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.VECTOR_I16X8_MAX_S:
                     case Instructions.VECTOR_I16X8_MAX_U:
                     case Instructions.VECTOR_I16X8_AVGR_U:
-                    case Instructions.VECTOR_I16X8_EXTMUL_LOW_I8x16_S:
-                    case Instructions.VECTOR_I16X8_EXTMUL_HIGH_I8x16_S:
-                    case Instructions.VECTOR_I16X8_EXTMUL_LOW_I8x16_U:
-                    case Instructions.VECTOR_I16X8_EXTMUL_HIGH_I8x16_U:
+                    case Instructions.VECTOR_I16X8_EXTMUL_LOW_I8X16_S:
+                    case Instructions.VECTOR_I16X8_EXTMUL_HIGH_I8X16_S:
+                    case Instructions.VECTOR_I16X8_EXTMUL_LOW_I8X16_U:
+                    case Instructions.VECTOR_I16X8_EXTMUL_HIGH_I8X16_U:
                     case Instructions.VECTOR_I32X4_ADD:
                     case Instructions.VECTOR_I32X4_SUB:
                     case Instructions.VECTOR_I32X4_MUL:
