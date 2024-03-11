@@ -333,7 +333,7 @@ class StagesInfo:
 
     def should_produce_datapoints(self, stages: Union[None, Stage, Collection[Stage]] = None) -> bool:
         """
-        Whether, under the current configuration, datapoints should be produced for any of the given stage
+        Whether, under the current configuration, datapoints should be produced for any of the given stage.
 
         In fallback mode, we only produce datapoints for the ``image`` and ``run`` stage because stages are not run
         individually and datapoints from other stages may not be distinguishable from the ``image`` and ``run`` stage.
