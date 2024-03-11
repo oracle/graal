@@ -1041,7 +1041,7 @@ public class SubstrateOptions {
                     "\"Throw\" (default): Throw a MissingReflectionRegistrationError;",
                     "\"Exit\": Call System.exit() to avoid accidentally catching the error;",
                     "\"Warn\": Print a message to stdout, including a stack trace to see what caused the issue."})//
-    public static final HostedOptionKey<ReportingMode> MissingRegistrationReportingMode = new HostedOptionKey<>(
+    public static final RuntimeOptionKey<ReportingMode> MissingRegistrationReportingMode = new RuntimeOptionKey<>(
                     ReportingMode.Throw);
 
     @Option(help = "Instead of warning, throw IOExceptions for link-at-build-time resources at build time")//
