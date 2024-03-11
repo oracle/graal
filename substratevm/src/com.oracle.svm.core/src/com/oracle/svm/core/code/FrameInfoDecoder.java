@@ -378,11 +378,9 @@ public class FrameInfoDecoder {
 
         int encodedSourceLineNumber = readBuffer.getSVInt();
         long compressedBci = readBuffer.getSV();
-        int sourceMethodModifier = readBuffer.getSVInt();
 
         queryResult.sourceLineNumber = CompressedFrameDecoderHelper.decodeSourceLineNumber(encodedSourceLineNumber);
         queryResult.encodedBci = CompressedFrameDecoderHelper.decodeCompressedEncodedBci(compressedBci);
-        queryResult.sourceMethodModifier = sourceMethodModifier;
 
         if (CompressedFrameDecoderHelper.hasEncodedUniqueSharedFrameSuccessor(compressedBci)) {
             state.successorIndex = readBuffer.getSVInt();
@@ -464,7 +462,6 @@ public class FrameInfoDecoder {
 
             cur.sourceMethodId = readBuffer.getSVInt();
             cur.sourceLineNumber = readBuffer.getSVInt();
-            cur.sourceMethodModifier = readBuffer.getUVInt();
 
             if (prev == null) {
                 // first frame read during this invocation
