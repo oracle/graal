@@ -93,6 +93,13 @@ public final class StringConversion {
     private final ToHost toHost;
     private final ToGuest toGuest;
 
+    public StringConversion(MaybeCopy maybeCopy, FromGuest fromGuest, ToGuest toGuest, ToHost toHost) {
+        this.maybeCopy = maybeCopy;
+        this.fromGuest = fromGuest;
+        this.toHost = toHost;
+        this.toGuest = toGuest;
+    }
+
     public String toHost(StaticObject str, EspressoLanguage language, Meta meta) {
         return fromGuest.extract(str, language, meta, maybeCopy) /*- Unpacks guest string into (bytes, hash, coder), copying if necessary. */
                         .toHost(toHost); /*- Repacks, taking care whether host has compact strings enabled. */
@@ -100,13 +107,6 @@ public final class StringConversion {
 
     public StaticObject toGuest(String str, Meta meta) {
         return toGuest.hostToGuest(str, meta, maybeCopy);
-    }
-
-    public StringConversion(MaybeCopy maybeCopy, FromGuest fromGuest, ToGuest toGuest, ToHost toHost) {
-        this.maybeCopy = maybeCopy;
-        this.fromGuest = fromGuest;
-        this.toHost = toHost;
-        this.toGuest = toGuest;
     }
 
     static StringConversion select(EspressoContext context) {
@@ -217,6 +217,7 @@ public final class StringConversion {
                 // We already have an inflated string, we can re-use it as-is.
                 return produceHostString(almostString.bytes, almostString.hash, almostString.coder);
             } else {
+                assert almostString.coder == HostConstants.LATIN1;
                 // Have to inflate from LATIN1.
                 return new String(almostString.bytes, StandardCharsets.ISO_8859_1 /*- LATIN1 */);
             }
