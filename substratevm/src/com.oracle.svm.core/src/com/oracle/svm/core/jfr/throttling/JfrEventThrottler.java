@@ -50,8 +50,10 @@ public class JfrEventThrottler extends JfrAdaptiveSampler {
     private static final long TEN_PER_1000_MS_IN_DAYS = 864000;
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/share/jfr/recorder/service/jfrEventThrottler.cpp#L105-L106") //
     private static final long DEFAULT_WINDOW_LOOKBACK_COUNT = 25;
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/share/jfr/recorder/service/jfrEventThrottler.cpp#L112-L113") private static final long LOW_RATE_UPPER_BOUND = 9;
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/share/jfr/recorder/service/jfrEventThrottler.cpp#L113-L114") private static final long WINDOW_DIVISOR = 5;
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/share/jfr/recorder/service/jfrEventThrottler.cpp#L112-L113") //
+    private static final long LOW_RATE_UPPER_BOUND = 9;
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+8/src/hotspot/share/jfr/recorder/service/jfrEventThrottler.cpp#L113-L114") //
+    private static final long WINDOW_DIVISOR = 5;
 
     private static final JfrSamplerParams DISABLED_PARAMS = new JfrSamplerParams();
 
