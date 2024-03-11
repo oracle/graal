@@ -27,6 +27,7 @@ package jdk.graal.compiler.nodes;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
@@ -240,7 +241,11 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         }
     }
 
+    @SuppressFBWarnings(value = {"NP"}, justification = "We null check it before")
     public static ValueNode canonical(ValueNode object, Stamp piStamp, GuardingNode guard, ValueNode self) {
+        // GR-52557
+        GraalError.guarantee(piStamp != null && object != null, "Invariant piStamp=%s object=%s guard=%s self=%s", piStamp, object, guard, self);
+
         // Use most up to date stamp.
         Stamp computedStamp = piStamp.improveWith(object.stamp(NodeView.DEFAULT));
 
