@@ -39,7 +39,7 @@
     targets: ["gate"],
   },
 
-  builds: [utils.add_gate_predicate(b, ["sdk", "truffle", "regex", "compiler", "vm", "substratevm"]) for b in std.flattenArrays([
+  local _builds = [utils.add_gate_predicate(b, ["sdk", "truffle", "regex", "compiler", "vm", "substratevm"]) for b in std.flattenArrays([
     [
       common.linux_amd64  + jdk + regex_gate,
       common.linux_amd64  + jdk + regex_downstream_js,
@@ -48,4 +48,6 @@
       common.labsjdkLatest,
     ]
   ])],
+
+  builds: utils.add_defined_in(_builds, std.thisFile),
 }

@@ -17,11 +17,13 @@
     }
   },
 
-  builds: [
+  local _builds = [
     common.linux_amd64  + common.oraclejdkLatest + sdk_gate + common.deps.eclipse + common.deps.jdt,
     common.linux_amd64  + common.oraclejdk21 + sdk_gate + common.deps.eclipse + common.deps.jdt + common.mach5_target,
     common.darwin_amd64 + common.oraclejdkLatest + sdk_gate,
     common.darwin_aarch64 + common.oraclejdkLatest + sdk_gate,
     common.darwin_amd64 + common.oraclejdk21 + sdk_gate + common.mach5_target,
-  ]
+  ],
+
+  builds: utils.add_defined_in(_builds, std.thisFile),
 }

@@ -1,7 +1,8 @@
 {
   local common = import '../../ci/ci_common/common.jsonnet',
   local bench_hw = (import '../../ci/ci_common/bench-common.libsonnet').bench_hw,
-  local top_level_ci = (import '../../ci/ci_common/common-utils.libsonnet').top_level_ci,
+  local utils = import "../../ci/ci_common/common-utils.libsonnet",
+  local top_level_ci = utils.top_level_ci,
   local devkits = common.devkits,
 
   local darwin_amd64 = common.darwin_amd64,
@@ -102,7 +103,7 @@
 
   local truffle_weekly = common.weekly + {notify_groups:: ["truffle"]},
 
-  builds: std.flattenArrays([
+  local _builds = std.flattenArrays([
       [
         linux_amd64  + jdk + sigtest + guard,
         darwin_amd64 + jdk + truffle_weekly + gate_lite + guard,
@@ -178,5 +179,7 @@
       ],
       targets: ["gate"],
     },
-  ]
+  ],
+
+  builds: utils.add_defined_in(_builds, std.thisFile),
 }
