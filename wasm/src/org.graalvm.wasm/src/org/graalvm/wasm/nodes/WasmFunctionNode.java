@@ -142,6 +142,247 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         assert Integer.bitCount(REPORT_LOOP_STRIDE) == 1 : "must be a power of 2";
     }
 
+    @CompilationFinal(dimensions = 1) private static final byte[] vectorOpStackPointerUpdate = new byte[256];
+
+    static {
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_LOAD] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_LOAD8X8_S] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_LOAD8X8_U] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_LOAD16X4_S] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_LOAD16X4_U] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_LOAD32X2_S] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_LOAD32X2_U] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_LOAD8_SPLAT] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_LOAD16_SPLAT] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_LOAD32_SPLAT] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_LOAD64_SPLAT] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_LOAD32_ZERO] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_LOAD64_ZERO] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_STORE] = -2;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_LOAD8_LANE] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_LOAD16_LANE] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_LOAD32_LANE] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_LOAD64_LANE] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_STORE8_LANE] = -2;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_STORE16_LANE] = -2;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_STORE32_LANE] = -2;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_STORE64_LANE] = -2;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_CONST] = 1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_SHUFFLE] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_EXTRACT_LANE_S] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_EXTRACT_LANE_U] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_REPLACE_LANE] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_EXTRACT_LANE_S] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_EXTRACT_LANE_U] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_REPLACE_LANE] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_EXTRACT_LANE] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_REPLACE_LANE] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_EXTRACT_LANE] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_REPLACE_LANE] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_EXTRACT_LANE] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_REPLACE_LANE] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_EXTRACT_LANE] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_REPLACE_LANE] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_SWIZZLE] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_SPLAT] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_SPLAT] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_SPLAT] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_SPLAT] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_SPLAT] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_SPLAT] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_EQ] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_NE] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_LT_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_LT_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_GT_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_GT_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_LE_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_LE_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_GE_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_GE_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_EQ] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_NE] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_LT_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_LT_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_GT_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_GT_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_LE_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_LE_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_GE_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_GE_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_EQ] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_NE] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_LT_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_LT_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_GT_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_GT_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_LE_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_LE_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_GE_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_GE_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_EQ] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_NE] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_LT_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_GT_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_LE_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_GE_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_EQ] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_NE] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_LT] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_GT] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_LE] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_GE] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_EQ] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_NE] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_LT] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_GT] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_LE] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_GE] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_NOT] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_AND] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_ANDNOT] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_OR] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_XOR] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_BITSELECT] = -2;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_V128_ANY_TRUE] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_ABS] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_NEG] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_POPCNT] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_ALL_TRUE] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_BITMASK] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_NARROW_I16X8_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_NARROW_I16X8_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_SHL] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_SHR_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_SHR_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_ADD] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_ADD_SAT_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_ADD_SAT_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_SUB] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_SUB_SAT_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_SUB_SAT_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_MIN_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_MIN_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_MAX_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_MAX_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I8X16_AVGR_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_S] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_U] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_ABS] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_NEG] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_Q15MULR_SAT_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_ALL_TRUE] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_BITMASK] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_NARROW_I32X4_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_NARROW_I32X4_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_S] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_S] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_U] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_U] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_SHL] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_SHR_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_SHR_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_ADD] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_ADD_SAT_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_ADD_SAT_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_SUB] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_SUB_SAT_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_SUB_SAT_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_MUL] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_MIN_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_MIN_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_MAX_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_MAX_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_AVGR_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8X16_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8X16_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_S] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_U] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_ABS] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_NEG] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_ALL_TRUE] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_BITMASK] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_EXTEND_LOW_I16X8_S] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_EXTEND_HIGH_I16X8_S] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_EXTEND_LOW_I16X8_U] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_EXTEND_HIGH_I16X8_U] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_SHL] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_SHR_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_SHR_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_ADD] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_SUB] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_MUL] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_MIN_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_MIN_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_MAX_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_MAX_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_DOT_I16X8_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_EXTMUL_LOW_I16X8_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_EXTMUL_HIGH_I16X8_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_EXTMUL_LOW_I16X8_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_EXTMUL_HIGH_I16X8_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_ABS] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_NEG] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_ALL_TRUE] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_BITMASK] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_EXTEND_LOW_I32X4_S] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_EXTEND_HIGH_I32X4_S] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_EXTEND_LOW_I32X4_U] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_EXTEND_HIGH_I32X4_U] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_SHL] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_SHR_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_SHR_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_ADD] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_SUB] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_MUL] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_EXTMUL_LOW_I32X4_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_EXTMUL_HIGH_I32X4_S] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_EXTMUL_LOW_I32X4_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I64X2_EXTMUL_HIGH_I32X4_U] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_CEIL] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_FLOOR] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_TRUNC] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_NEAREST] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_ABS] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_NEG] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_SQRT] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_ADD] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_SUB] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_MUL] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_DIV] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_MIN] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_MAX] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_PMIN] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_PMAX] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_CEIL] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_FLOOR] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_TRUNC] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_NEAREST] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_ABS] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_NEG] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_SQRT] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_ADD] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_SUB] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_MUL] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_DIV] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_MIN] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_MAX] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_PMIN] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_PMAX] = -1;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_CONVERT_I32X4_S] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_CONVERT_I32X4_U] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_S] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_U] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F32X4_DEMOTE_F64X2_ZERO] = 0;
+        vectorOpStackPointerUpdate[Bytecode.VECTOR_F64X2_PROMOTE_LOW_F32X4] = 0;
+    }
+
     private final WasmModule module;
     private final WasmCodeEntry codeEntry;
 
@@ -1721,9 +1962,11 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 }
                 case Bytecode.VECTOR: {
-                    ExecutionState state = executeVector(instance, frame, new ExecutionState(offset, stackPointer));
-                    offset = state.offset();
-                    stackPointer = state.stackPointer();
+                    final int vectorOpcode = rawPeekU8(bytecode, offset);
+                    offset++;
+                    CompilerAsserts.partialEvaluationConstant(vectorOpcode);
+                    offset = executeVector(instance, frame, offset, stackPointer, vectorOpcode);
+                    stackPointer += vectorOpStackPointerUpdate[vectorOpcode];
                     break;
                 }
                 case Bytecode.NOTIFY: {
@@ -2604,15 +2847,12 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     @SuppressWarnings("hiding")
-    private ExecutionState executeVector(WasmInstance instance, VirtualFrame frame, ExecutionState state) {
+    private int executeVector(WasmInstance instance, VirtualFrame frame, int startingOffset, int startingStackPointer, int vectorOpcode) {
         final byte[] bytecode = this.bytecode;
 
-        int offset = state.offset();
-        int stackPointer = state.stackPointer();
+        int offset = startingOffset;
+        int stackPointer = startingStackPointer;
 
-        final int vectorOpcode = rawPeekU8(bytecode, offset);
-        offset++;
-        CompilerAsserts.partialEvaluationConstant(vectorOpcode);
         switch (vectorOpcode) {
             case Bytecode.VECTOR_V128_LOAD:
             case Bytecode.VECTOR_V128_LOAD8X8_S:
@@ -3133,7 +3373,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 throw CompilerDirectives.shouldNotReachHere();
         }
 
-        return new ExecutionState(offset, stackPointer);
+        assert stackPointer - startingStackPointer == vectorOpStackPointerUpdate[vectorOpcode];
+        return offset;
     }
 
     private void loadVector(WasmMemory memory, VirtualFrame frame, int stackPointer, int vectorOpcode, long address) {
@@ -4789,6 +5030,4 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             }
         }
     }
-
-    private record ExecutionState(int offset, int stackPointer) { }
 }
