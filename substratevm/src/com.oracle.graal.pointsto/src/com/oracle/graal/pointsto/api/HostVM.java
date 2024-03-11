@@ -249,10 +249,6 @@ public abstract class HostVM {
     public void clearInThread() {
     }
 
-    public Object getConfiguration() {
-        return null;
-    }
-
     public abstract Comparator<? super ResolvedJavaType> getTypeComparator();
 
     /*

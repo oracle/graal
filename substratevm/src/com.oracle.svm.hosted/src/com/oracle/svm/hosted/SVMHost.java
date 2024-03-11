@@ -277,11 +277,6 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public Object getConfiguration() {
-        return ImageSingletonsSupportImpl.HostedManagement.getAndAssertExists();
-    }
-
-    @Override
     public void registerType(AnalysisType analysisType) {
 
         DynamicHub hub = createHub(analysisType);
