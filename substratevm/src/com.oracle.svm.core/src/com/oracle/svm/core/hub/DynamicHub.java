@@ -186,9 +186,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
     private int typeID;
 
-    /*
-     * ### Start closed-world only fields ###
-     */
+    // region closed-world only fields
 
     /**
      * In our current version, type checks are accomplished by performing a range check on a value
@@ -217,15 +215,11 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * match the assignee's type.
      */
     @UnknownObjectField(availability = AfterHostedUniverse.class)//
-    private short[] closedWorldTypeCheckSlots;
+    private short[] closedTypeWorldTypeCheckSlots;
 
-    /*
-     * ### End closed-world only fields ###
-     */
+    // endregion closed-world only fields
 
-    /*
-     * ### Start open-world only fields ###
-     */
+    // region open-world only fields
 
     /**
      * This stores the depth of the type in the inheritance hierarchy. If the type is an interface
@@ -245,11 +239,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * searched for a matching typeID.
      */
     @UnknownObjectField(availability = AfterHostedUniverse.class)//
-    private int[] openWorldTypeIDSlots;
+    private int[] openTypeWorldTypeCheckSlots;
 
-    /*
-     * ### End open-world only fields ###
-     */
+    // endregion open-world only fields
 
     /**
      * The offset of the synthetic field which stores whatever is used for monitorEnter/monitorExit
@@ -498,9 +490,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setSharedData(int layoutEncoding, int monitorOffset, int identityHashOffset,
-                    long referenceMapIndex, boolean isInstantiated, boolean canInstantiateAsInstance,
-                    boolean isRegisteredForSerialization) {
+    public void setSharedData(int layoutEncoding, int monitorOffset, int identityHashOffset, long referenceMapIndex,
+                    boolean isInstantiated, boolean canInstantiateAsInstance, boolean isRegisteredForSerialization) {
         assert !(!isInstantiated && canInstantiateAsInstance);
         VMError.guarantee(monitorOffset == (char) monitorOffset, "Class %s has an invalid monitor field offset. Most likely, its objects are larger than supported.", name);
         VMError.guarantee(identityHashOffset == (char) identityHashOffset, "Class %s has an invalid identity hash code field offset. Most likely, its objects are larger than supported.", name);
@@ -519,28 +510,27 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setClosedWorldData(CFunctionPointer[] vtable, int typeID, short typeCheckStart, short typeCheckRange, short typeCheckSlot,
-                    short[] typeCheckSlots) {
+    public void setClosedTypeWorldData(CFunctionPointer[] vtable, int typeID, short typeCheckStart, short typeCheckRange, short typeCheckSlot, short[] typeCheckSlots) {
         assert this.vtable == null : "Initialization must be called only once";
 
         this.typeID = typeID;
         this.typeCheckStart = typeCheckStart;
         this.typeCheckRange = typeCheckRange;
         this.typeCheckSlot = typeCheckSlot;
-        this.closedWorldTypeCheckSlots = typeCheckSlots;
+        this.closedTypeWorldTypeCheckSlots = typeCheckSlots;
         this.vtable = vtable;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setOpenWorldData(CFunctionPointer[] vtable, int typeID,
-                    int typeCheckDepth, int numClassTypes, int numInterfaceTypes, int[] openWorldTypeCheckSlots) {
+    public void setOpenTypeWorldData(CFunctionPointer[] vtable, int typeID,
+                    int typeCheckDepth, int numClassTypes, int numInterfaceTypes, int[] typeCheckSlots) {
         assert this.vtable == null : "Initialization must be called only once";
 
         this.typeID = typeID;
         this.typeIDDepth = typeCheckDepth;
         this.numClassTypes = numClassTypes;
         this.numInterfaceTypes = numInterfaceTypes;
-        this.openWorldTypeIDSlots = openWorldTypeCheckSlots;
+        this.openTypeWorldTypeCheckSlots = typeCheckSlots;
         this.vtable = vtable;
     }
 
@@ -707,8 +697,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return numInterfaceTypes;
     }
 
-    public int[] getOpenWorldTypeIDSlots() {
-        return openWorldTypeIDSlots;
+    public int[] getOpenTypeWorldTypeCheckSlots() {
+        return openTypeWorldTypeCheckSlots;
     }
 
     public int getMonitorOffset() {

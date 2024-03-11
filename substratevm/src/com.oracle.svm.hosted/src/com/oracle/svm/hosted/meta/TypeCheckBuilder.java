@@ -109,7 +109,9 @@ import jdk.graal.compiler.core.common.calc.UnsignedMath;
  *
  * The implementation of the open-world typecheck can be found in {@link OpenTypeWorldSnippets}.
  */
-public class TypeCheckBuilder {
+public final class TypeCheckBuilder {
+    public static final int UNINITIALIZED_TYPECHECK_SLOTS = -1;
+
     private static final int SLOT_CAPACITY = 1 << 16;
 
     private final HostedType objectType;
@@ -134,7 +136,7 @@ public class TypeCheckBuilder {
      */
     private final List<HostedType> heightOrderedTypes;
 
-    private int numTypeCheckSlots = -1;
+    private int numTypeCheckSlots = UNINITIALIZED_TYPECHECK_SLOTS;
 
     /**
      * Map created to describe the type hierarchy graph.
@@ -153,7 +155,19 @@ public class TypeCheckBuilder {
         return result;
     };
 
-    public TypeCheckBuilder(Collection<HostedType> types, HostedType objectType, HostedType cloneableType, HostedType serializableType) {
+    public static int buildTypeMetadata(HostedUniverse hUniverse, Collection<HostedType> types, HostedType objectType, HostedType cloneableType, HostedType serializableType) {
+        var builder = new TypeCheckBuilder(types, objectType, cloneableType, serializableType);
+        builder.buildTypeInformation(hUniverse);
+        if (SubstrateOptions.closedTypeWorld()) {
+            builder.calculateClosedTypeWorldTypeMetadata();
+            return builder.getNumTypeCheckSlots();
+        } else {
+            builder.calculateOpenTypeWorldTypeMetadata();
+            return UNINITIALIZED_TYPECHECK_SLOTS;
+        }
+    }
+
+    private TypeCheckBuilder(Collection<HostedType> types, HostedType objectType, HostedType cloneableType, HostedType serializableType) {
         this.allTypes = types;
         this.objectType = objectType;
         this.cloneableType = cloneableType;
@@ -173,13 +187,13 @@ public class TypeCheckBuilder {
         heightOrderedTypes = generateHeightOrder(allIncludedRoots, subtypeMap);
     }
 
-    public int getNumTypeCheckSlots() {
-        assert numTypeCheckSlots != -1;
+    private int getNumTypeCheckSlots() {
+        assert numTypeCheckSlots != UNINITIALIZED_TYPECHECK_SLOTS;
         return numTypeCheckSlots;
     }
 
     private void setNumTypeCheckSlots(int num) {
-        assert numTypeCheckSlots == -1;
+        assert numTypeCheckSlots == UNINITIALIZED_TYPECHECK_SLOTS;
         numTypeCheckSlots = num;
     }
 
@@ -505,13 +519,13 @@ public class TypeCheckBuilder {
     /**
      * Calculates all of the needed type check id information and stores it in the HostedTypes.
      */
-    public boolean calculateClosedWorldTypeMetadata() {
+    public boolean calculateClosedTypeWorldTypeMetadata() {
         ClassIDBuilder classBuilder = new ClassIDBuilder(objectType, allIncludedRoots, heightOrderedTypes, subtypeMap);
         classBuilder.computeSlots();
         InterfaceIDBuilder interfaceBuilder = new InterfaceIDBuilder(classBuilder.numClassSlots, heightOrderedTypes, subtypeMap);
         interfaceBuilder.computeSlots();
-        generateClosedWorldTypeMetadata(classBuilder, interfaceBuilder);
-        assert ClosedWorldTypeCheckValidator.compareTypeIDResults(heightOrderedTypes);
+        generateClosedTypeWorldTypeMetadata(classBuilder, interfaceBuilder);
+        assert ClosedTypeWorldTypeCheckValidator.compareTypeIDResults(heightOrderedTypes);
         return true;
     }
 
@@ -519,7 +533,7 @@ public class TypeCheckBuilder {
      * Combines the class and interface slots array into one array of shorts and sets this
      * information in the hosted type.
      */
-    private void generateClosedWorldTypeMetadata(ClassIDBuilder classBuilder, InterfaceIDBuilder interfaceBuilder) {
+    private void generateClosedTypeWorldTypeMetadata(ClassIDBuilder classBuilder, InterfaceIDBuilder interfaceBuilder) {
         int numClassSlots = classBuilder.numClassSlots;
         int numSlots = numClassSlots + interfaceBuilder.numInterfaceSlots;
         setNumTypeCheckSlots(numSlots);
@@ -540,7 +554,7 @@ public class TypeCheckBuilder {
                 }
             }
 
-            type.setClosedWorldTypeCheckSlots(typeCheckSlots);
+            type.setClosedTypeWorldTypeCheckSlots(typeCheckSlots);
         }
     }
 
@@ -1799,7 +1813,7 @@ public class TypeCheckBuilder {
         }
     }
 
-    private static final class ClosedWorldTypeCheckValidator {
+    private static final class ClosedTypeWorldTypeCheckValidator {
 
         static boolean compareTypeIDResults(List<HostedType> types) {
             if (!SubstrateOptions.DisableTypeIdResultVerification.getValue()) {
@@ -1832,12 +1846,12 @@ public class TypeCheckBuilder {
             int typeCheckStart = Short.toUnsignedInt(superType.getTypeCheckStart());
             int typeCheckRange = Short.toUnsignedInt(superType.getTypeCheckRange());
             int typeCheckSlot = Short.toUnsignedInt(superType.getTypeCheckSlot());
-            int checkedTypeID = Short.toUnsignedInt(checkedType.getClosedWorldTypeCheckSlots()[typeCheckSlot]);
+            int checkedTypeID = Short.toUnsignedInt(checkedType.getClosedTypeWorldTypeCheckSlots()[typeCheckSlot]);
             return UnsignedMath.belowThan(checkedTypeID - typeCheckStart, typeCheckRange);
         }
     }
 
-    private static class OpenWorldTypeInfo {
+    private static class OpenTypeWorldTypeInfo {
 
         /**
          * Within {@link com.oracle.svm.core.hub.DynamicHub} typecheck metadata the ids of the
@@ -1867,15 +1881,15 @@ public class TypeCheckBuilder {
         }
     }
 
-    public void calculateOpenWorldTypeMetadata() {
-        Map<HostedType, OpenWorldTypeInfo> typeInfoMap = new HashMap<>();
+    public void calculateOpenTypeWorldTypeMetadata() {
+        Map<HostedType, OpenTypeWorldTypeInfo> typeInfoMap = new HashMap<>();
 
-        BiFunction<HostedType, Boolean, OpenWorldTypeInfo> getTypeInfo = (type, allowMissing) -> {
+        BiFunction<HostedType, Boolean, OpenTypeWorldTypeInfo> getTypeInfo = (type, allowMissing) -> {
             if (allowMissing) {
-                typeInfoMap.computeIfAbsent(type, (k) -> new OpenWorldTypeInfo());
+                typeInfoMap.computeIfAbsent(type, (k) -> new OpenTypeWorldTypeInfo());
             }
 
-            OpenWorldTypeInfo typeInfo = typeInfoMap.get(type);
+            OpenTypeWorldTypeInfo typeInfo = typeInfoMap.get(type);
             assert typeInfo != null;
             return typeInfo;
         };
@@ -1888,7 +1902,7 @@ public class TypeCheckBuilder {
         }
 
         for (HostedType type : heightOrderedTypes) {
-            OpenWorldTypeInfo info = getTypeInfo.apply(type, false);
+            OpenTypeWorldTypeInfo info = getTypeInfo.apply(type, false);
             if (info.classDisplay == null) {
                 assert isInterface(type);
                 /*
@@ -1924,39 +1938,42 @@ public class TypeCheckBuilder {
             });
         }
 
-        generateOpenWorldTypeMetadata(typeInfoMap);
-        assert OpenWorldTypeCheckValidator.compareTypeIDResults(heightOrderedTypes);
+        generateOpenTypeWorldTypeMetadata(typeInfoMap);
+        assert OpenTypeWorldTypeCheckValidator.compareTypeIDResults(heightOrderedTypes);
     }
 
     /**
      * Stores type check information in the HostedTypes.
      */
-    private static void generateOpenWorldTypeMetadata(Map<HostedType, OpenWorldTypeInfo> typeInfoMap) {
+    private static void generateOpenTypeWorldTypeMetadata(Map<HostedType, OpenTypeWorldTypeInfo> typeInfoMap) {
         for (var entry : typeInfoMap.entrySet()) {
             HostedType type = entry.getKey();
-            OpenWorldTypeInfo info = entry.getValue();
+            OpenTypeWorldTypeInfo info = entry.getValue();
             int idDepth = isInterface(type) ? -1 : info.classDisplay.length - 1;
             if (idDepth >= 0) {
                 assert info.classDisplay[idDepth] == type.typeID : String.format("Mismatch between class display and type. idDepth: %s typeID: %s info: %s ", idDepth, type.typeID, info);
             }
+
             int numInterfaceTypes = info.implementedInterfaces.size();
-            int[] interfaceTypes = info.implementedInterfaces.stream().mapToInt(HostedType::getTypeID).sorted().toArray();
+            List<HostedType> orderedInterfaces = info.implementedInterfaces.stream().sorted(Comparator.comparingInt(HostedType::getTypeID)).toList();
+            int[] interfaceTypeIDs = orderedInterfaces.stream().mapToInt(HostedType::getTypeID).toArray();
             int numClassTypes = info.classDisplay.length;
             int[] typeIDSlots = new int[numClassTypes + numInterfaceTypes];
             System.arraycopy(info.classDisplay, 0, typeIDSlots, 0, numClassTypes);
-            System.arraycopy(interfaceTypes, 0, typeIDSlots, numClassTypes, numInterfaceTypes);
-            type.setOpenWorldTypeIDSlots(typeIDSlots);
+            System.arraycopy(interfaceTypeIDs, 0, typeIDSlots, numClassTypes, numInterfaceTypes);
+            type.setOpenTypeWorldTypeCheckSlots(typeIDSlots);
             type.setTypeIDDepth(idDepth);
             type.setNumInterfaceTypes(numInterfaceTypes);
             type.setNumClassTypes(numClassTypes);
+            type.typeCheckInterfaceOrder = orderedInterfaces.toArray(HostedType.EMPTY_ARRAY);
         }
     }
 
-    private static final class OpenWorldTypeCheckValidator {
+    private static final class OpenTypeWorldTypeCheckValidator {
 
         static String printTypeInfo(HostedType type) {
             return String.format("%s%ntypeID: %s, typeDepth: %s, numClasses: %s, numInterfaces: %s%nslots: %s", type, type.getTypeID(), type.getTypeIDDepth(), type.getNumClassTypes(),
-                            type.getNumInterfaceTypes(), Arrays.toString(type.getOpenWorldTypeIDSlots()));
+                            type.getNumInterfaceTypes(), Arrays.toString(type.getOpenTypeWorldTypeCheckSlots()));
         }
 
         static boolean compareTypeIDResults(List<HostedType> types) {
@@ -1989,7 +2006,7 @@ public class TypeCheckBuilder {
         static boolean runtimeIsAssignableFrom(HostedType superType, HostedType checkedType) {
             int typeID = superType.getTypeID();
             int typeIDDepth = superType.getTypeIDDepth();
-            int[] typeIDSlots = checkedType.getOpenWorldTypeIDSlots();
+            int[] typeIDSlots = checkedType.getOpenTypeWorldTypeCheckSlots();
             int numClassTypes = checkedType.getNumClassTypes();
             if (typeIDDepth >= 0) {
                 // this is a class check

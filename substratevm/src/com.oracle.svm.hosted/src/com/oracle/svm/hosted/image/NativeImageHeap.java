@@ -479,12 +479,12 @@ public final class NativeImageHeap implements ImageHeap {
                  * to check this.
                  */
                 if (SubstrateOptions.closedTypeWorld()) {
-                    Object typeIDSlots = readInlinedField(dynamicHubLayout.closedWorldTypeCheckSlotsField, constant);
-                    assert typeIDSlots != null : "Cannot read value for field " + dynamicHubLayout.closedWorldTypeCheckSlotsField.format("%H.%n");
+                    Object typeIDSlots = readInlinedField(dynamicHubLayout.closedTypeWorldTypeCheckSlotsField, constant);
+                    assert typeIDSlots != null : "Cannot read value for field " + dynamicHubLayout.closedTypeWorldTypeCheckSlotsField.format("%H.%n");
                     blacklist.add(typeIDSlots);
                 } else {
                     if (SubstrateUtil.assertionsEnabled()) {
-                        Object typeIDSlots = readInlinedField(dynamicHubLayout.closedWorldTypeCheckSlotsField, constant);
+                        Object typeIDSlots = readInlinedField(dynamicHubLayout.closedTypeWorldTypeCheckSlotsField, constant);
                         assert typeIDSlots == null : typeIDSlots;
                     }
                 }

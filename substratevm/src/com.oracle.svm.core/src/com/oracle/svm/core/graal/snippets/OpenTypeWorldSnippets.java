@@ -70,7 +70,7 @@ public final class OpenTypeWorldSnippets extends SubstrateTemplates implements S
                     SubstrateIntrinsics.Any trueValue,
                     SubstrateIntrinsics.Any falseValue,
                     @Snippet.ConstantParameter boolean allowsNull,
-                    @Snippet.ConstantParameter DynamicHub exactType) {
+                    @Snippet.NonNullParameter DynamicHub exactType) {
         if (allowsNull) {
             if (probability(NOT_FREQUENT_PROBABILITY, object == null)) {
                 return trueValue;
@@ -166,7 +166,7 @@ public final class OpenTypeWorldSnippets extends SubstrateTemplates implements S
         if (typeIDDepth >= numClassTypes) {
             return falseValue;
         }
-        int[] checkedTypeIds = checkedHub.getOpenWorldTypeIDSlots();
+        int[] checkedTypeIds = checkedHub.getOpenTypeWorldTypeCheckSlots();
         // int checkedClassId = checkedTypeIds[typeIDDepth];
         int offset = (int) ImageSingletons.lookup(ObjectLayout.class).getArrayElementOffset(JavaKind.Int, typeIDDepth);
         // GR-51603 can make a floating read
@@ -186,8 +186,8 @@ public final class OpenTypeWorldSnippets extends SubstrateTemplates implements S
                     SubstrateIntrinsics.Any falseValue) {
         int numClassTypes = checkedHub.getNumClassTypes();
         int numInterfaceTypes = checkedHub.getNumInterfaceTypes();
-        int[] checkedTypeIds = checkedHub.getOpenWorldTypeIDSlots();
-        for (int i = 0; i < numInterfaceTypes; i++) {
+        int[] checkedTypeIds = checkedHub.getOpenTypeWorldTypeCheckSlots();
+        for (int i = 0; i < numInterfaceTypes * 2; i += 2) {
             // int checkedInterfaceId = checkedTypeIds[numClassTypes + i];
             int offset = (int) ImageSingletons.lookup(ObjectLayout.class).getArrayElementOffset(JavaKind.Int, numClassTypes + i);
             // GR-51603 can make a floating read
@@ -260,7 +260,7 @@ public final class OpenTypeWorldSnippets extends SubstrateTemplates implements S
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
                 args.addConst("allowsNull", node.allowsNull());
-                args.add("typeID", hub.getTypeID());
+                args.addConst("typeID", hub.getTypeID());
                 args.addConst("typeIDDepth", hub.getTypeIDDepth());
                 return args;
             }

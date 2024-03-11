@@ -46,7 +46,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
         var impl = (FeatureImpl.BeforeCompilationAccessImpl) access;
         for (HostedType type : impl.getUniverse().getTypes()) {
             DynamicHub hub = type.getHub();
-            impl.registerAsImmutable(hub.getOpenWorldTypeIDSlots());
+            impl.registerAsImmutable(hub.getOpenTypeWorldTypeCheckSlots());
         }
     }
 }

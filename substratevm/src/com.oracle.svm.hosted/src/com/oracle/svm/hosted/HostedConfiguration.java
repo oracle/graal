@@ -177,35 +177,36 @@ public class HostedConfiguration {
         JavaKind vTableSlotStorageKind = vtableField.getType().getComponentType().getStorageKind();
         int vTableSlotSize = layout.sizeInBytes(vTableSlotStorageKind);
 
-        var closedWorldTypeCheckSlotsField = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "closedWorldTypeCheckSlots"));
-        int closedWorldTypeCheckSlotsOffset;
-        int closedWorldTypeCheckSlotSize;
+        var closedTypeWorldTypeCheckSlotsField = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "closedTypeWorldTypeCheckSlots"));
+        int closedTypeWorldTypeCheckSlotsOffset;
+        int closedTypeWorldTypeCheckSlotSize;
 
         Set<HostedField> ignoredFields;
         if (SubstrateOptions.closedTypeWorld()) {
-            closedWorldTypeCheckSlotsOffset = layout.getArrayLengthOffset() + layout.sizeInBytes(JavaKind.Int);
-            closedWorldTypeCheckSlotSize = layout.sizeInBytes(closedWorldTypeCheckSlotsField.getType().getComponentType().getStorageKind());
+            closedTypeWorldTypeCheckSlotsOffset = layout.getArrayLengthOffset() + layout.sizeInBytes(JavaKind.Int);
+            closedTypeWorldTypeCheckSlotSize = layout.sizeInBytes(closedTypeWorldTypeCheckSlotsField.getType().getComponentType().getStorageKind());
 
             ignoredFields = Set.of(
-                            closedWorldTypeCheckSlotsField,
+                            closedTypeWorldTypeCheckSlotsField,
                             vtableField,
                             hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "typeIDDepth")),
                             hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "numClassTypes")),
                             hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "numInterfaceTypes")),
-                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "openWorldTypeIDSlots")));
+                            hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "openTypeWorldTypeCheckSlots")));
         } else {
-            closedWorldTypeCheckSlotsOffset = -1;
-            closedWorldTypeCheckSlotSize = -1;
+            closedTypeWorldTypeCheckSlotsOffset = -1;
+            closedTypeWorldTypeCheckSlotSize = -1;
 
             ignoredFields = Set.of(
-                            closedWorldTypeCheckSlotsField,
+                            closedTypeWorldTypeCheckSlotsField,
                             vtableField,
                             hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "typeCheckStart")),
                             hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "typeCheckRange")),
                             hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "typeCheckSlot")));
 
         }
-        return new DynamicHubLayout(layout, dynamicHubType, closedWorldTypeCheckSlotsField, closedWorldTypeCheckSlotsOffset, closedWorldTypeCheckSlotSize, vtableField, vTableSlotStorageKind,
+        return new DynamicHubLayout(layout, dynamicHubType, closedTypeWorldTypeCheckSlotsField, closedTypeWorldTypeCheckSlotsOffset, closedTypeWorldTypeCheckSlotSize, vtableField,
+                        vTableSlotStorageKind,
                         vTableSlotSize, ignoredFields);
     }
 
