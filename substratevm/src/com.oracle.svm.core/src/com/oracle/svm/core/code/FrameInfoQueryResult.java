@@ -172,6 +172,11 @@ public class FrameInfoQueryResult {
     protected ValueInfo[][] virtualObjects;
     protected int sourceMethodId;
     protected int sourceLineNumber;
+<<<<<<< HEAD
+=======
+    protected int methodId;
+    protected int sourceMethodModifier;
+>>>>>>> 869b8ba04c4 (Add method modifier to JfrMethod entry.)
 
     /* These are used only for constructing/encoding the code and frame info, or as cache. */
     private ResolvedJavaMethod sourceMethod;
@@ -198,6 +203,7 @@ public class FrameInfoQueryResult {
         virtualObjects = null;
         sourceMethodId = 0;
         sourceLineNumber = -1;
+        sourceMethodModifier = -1;
 
         sourceMethod = null;
         sourceClass = Encoders.INVALID_CLASS;
@@ -391,6 +397,11 @@ public class FrameInfoQueryResult {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getSourceMethodId() {
         return sourceMethodId;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public int getSourceMethodModifier() {
+        return sourceMethodModifier;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
