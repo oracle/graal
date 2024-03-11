@@ -143,16 +143,16 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                     }
                 }
                 if (opNode.hasExactlyOneUsage() && cmpNode.hasExactlyOneUsage() &&
-                        LIRValueUtil.asJavaConstant(c).isDefaultForKind()) {
+                                LIRValueUtil.asJavaConstant(c).isDefaultForKind()) {
                     NodeClass<?> nodeClass = opNode.getNodeClass();
                     if (nodeClass == AndNode.TYPE ||
-                            nodeClass == OrNode.TYPE ||
-                            nodeClass == XorNode.TYPE) {
+                                    nodeClass == OrNode.TYPE ||
+                                    nodeClass == XorNode.TYPE) {
                         gen.append(new AMD64ControlFlow.BranchOp(
-                                ((CompareNode) ifNode.condition()).condition().asCondition(),
-                                getLIRBlock(ifNode.trueSuccessor()),
-                                getLIRBlock(ifNode.falseSuccessor()),
-                                ifNode.probability(ifNode.trueSuccessor())));
+                                        ((CompareNode) ifNode.condition()).condition().asCondition(),
+                                        getLIRBlock(ifNode.trueSuccessor()),
+                                        getLIRBlock(ifNode.falseSuccessor()),
+                                        ifNode.probability(ifNode.trueSuccessor())));
                         return true;
                     }
                 }
