@@ -82,6 +82,10 @@ public abstract class HostVM {
         this.classReachabilityListeners = new ArrayList<>();
     }
 
+    public ClassLoader getClassLoader() {
+        return classLoader;
+    }
+
     public OptionValues options() {
         return options;
     }
