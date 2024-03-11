@@ -246,10 +246,6 @@ public abstract class HostVM {
         return true;
     }
 
-    public void installInThread(@SuppressWarnings("unused") Object vmConfig) {
-        Thread.currentThread().setContextClassLoader(classLoader);
-    }
-
     public void clearInThread() {
     }
 

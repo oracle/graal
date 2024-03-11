@@ -65,7 +65,6 @@ public class CompletionExecutor {
     private final DebugContext debug;
     private final BigBang bb;
     private Timing timing;
-    private Object vmConfig;
 
     public interface Timing {
         long getPrintIntervalNanos();
@@ -97,7 +96,6 @@ public class CompletionExecutor {
         postedOperations.reset();
         completedOperations.reset();
         postedBeforeStart = Collections.synchronizedList(new ArrayList<>());
-        vmConfig = bb.getHostVM().getConfiguration();
     }
 
     /**
@@ -156,7 +154,6 @@ public class CompletionExecutor {
 
     @SuppressWarnings("try")
     private void executeCommand(DebugContextRunnable command) {
-        bb.getHostVM().installInThread(vmConfig);
         long startTime = 0L;
         if (timing != null) {
             startTime = System.nanoTime();
