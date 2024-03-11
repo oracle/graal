@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.foreign;
 
+import java.lang.invoke.MethodType;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -34,52 +36,48 @@ import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
-/** Downcall stubs will be synthesized in this class. */
+/** Upcall stubs will be synthesized in this class. */
 @InternalVMMethod
-public final class DowncallStubsHolder {
+public final class UpcallStubsHolder {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static ConstantPool getConstantPool(MetaAccessProvider metaAccess) {
-        return metaAccess.lookupJavaType(DowncallStubsHolder.class).getDeclaredConstructors()[0].getConstantPool();
+        return metaAccess.lookupJavaType(UpcallStubsHolder.class).getDeclaredConstructors()[0].getConstantPool();
     }
 
     /**
-     * Generates the name used by a stub associated with the provided {@link NativeEntryPointInfo}.
+     * Generates the name used by a stub associated with the provided {@link JavaEntryPointInfo}.
      *
      * Naming scheme:
-     * 
+     *
      * <pre>
-     *  downcall_(<c argument>*)<c return type>_<digest of paramsMemoryAssignment>[_<returnMemoryAssignment>]>
+     *  upcall<High|Low>_(<c argument>*)<c return type>_<digest of paramsMemoryAssignment>[_<returnMemoryAssignment>]>
      * </pre>
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static String stubName(NativeEntryPointInfo nep) {
-        StringBuilder builder = new StringBuilder("downcall_");
-        for (var param : nep.methodType().parameterArray()) {
+    public static String stubName(JavaEntryPointInfo jep, boolean highLevel) {
+        MethodType type = jep.handleType();
+
+        StringBuilder builder = new StringBuilder("upcall");
+        builder.append(highLevel ? "High" : "Low");
+        builder.append("_");
+        for (var param : type.parameterArray()) {
             builder.append(JavaKind.fromJavaClass(param).getTypeChar());
         }
         builder.append("_");
-        builder.append(JavaKind.fromJavaClass(nep.methodType().returnType()).getTypeChar());
+        builder.append(JavaKind.fromJavaClass(type.returnType()).getTypeChar());
 
-        if (nep.needsReturnBuffer()) {
+        if (jep.buffersReturn()) {
             builder.append("_r");
-        }
-        if (nep.capturesCallState()) {
-            builder.append("_c");
-        }
-        if (nep.skipsTransition()) {
-            builder.append("_t");
         }
 
         StringBuilder assignmentsBuilder = new StringBuilder();
-        for (var assignment : nep.parametersAssignment()) {
+        for (var assignment : jep.parametersAssignment()) {
             assignmentsBuilder.append(assignment);
         }
 
-        if (nep.returnsAssignment() != null) {
-            assignmentsBuilder.append('_');
-            for (var assignment : nep.returnsAssignment()) {
-                assignmentsBuilder.append(assignment);
-            }
+        assignmentsBuilder.append('_');
+        for (var assignment : jep.returnAssignment()) {
+            assignmentsBuilder.append(assignment);
         }
 
         builder.append('_');
@@ -88,6 +86,6 @@ public final class DowncallStubsHolder {
         return builder.toString();
     }
 
-    private DowncallStubsHolder() {
+    private UpcallStubsHolder() {
     }
 }

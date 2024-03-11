@@ -116,7 +116,7 @@ There are some expert level options that a user may find useful or needed. For e
 
 Native Image provides an informative [build output](BuildOutput.md) including various statistics during the build process.
 The build output in a JSON-based, machine-readable format can be requested using the `-H:BuildOutputJSONFile` option, and later processed by a monitoring tool.
-The JSON files validate against the JSON schema defined in [build-output-schema-v0.9.2.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.2.json). 
+The JSON files validate against the JSON schema defined in [build-output-schema-v0.9.3.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.3.json).
 A comprehensive report with additional information can be requested using the `-H:+BuildReport` option.
 
 ### Graph Dumping

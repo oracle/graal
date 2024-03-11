@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,25 +24,25 @@
  */
 package com.oracle.svm.core.foreign;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
-import jdk.internal.foreign.abi.AbstractLinker;
+import jdk.internal.foreign.MemorySessionImpl;
 
-@TargetClass(AbstractLinker.class)
-public final class Target_jdk_internal_foreign_abi_AbstractLinker {
-    // Checkstyle: stop
-    @Alias //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.foreign.abi.SoftReferenceCache") //
-    private Target_jdk_internal_foreign_abi_SoftReferenceCache DOWNCALL_CACHE;
-
-    @Alias //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.foreign.abi.SoftReferenceCache") //
-    private Target_jdk_internal_foreign_abi_SoftReferenceCache UPCALL_CACHE;
-    // Checkstyle: resume
-}
-
-@TargetClass(className = "jdk.internal.foreign.abi.SoftReferenceCache")
-final class Target_jdk_internal_foreign_abi_SoftReferenceCache {
+@TargetClass(className = "jdk.internal.foreign.abi.UpcallStubs", onlyWith = ForeignFunctionsEnabled.class)
+final class Target_jdk_internal_foreign_abi_UpcallStubs {
+    @Substitute
+    @SuppressWarnings("restricted")
+    static MemorySegment makeUpcall(long entry, Arena arena) {
+        MemorySessionImpl.toMemorySession(arena).addOrCleanupIfFail(new MemorySessionImpl.ResourceList.ResourceCleanup() {
+            @Override
+            public void cleanup() {
+                ForeignFunctionsRuntime.singleton().freeTrampoline(entry);
+            }
+        });
+        return MemorySegment.ofAddress(entry).reinterpret(arena, null);
+    }
 }
