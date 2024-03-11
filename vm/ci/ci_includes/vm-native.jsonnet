@@ -34,7 +34,7 @@ local vm_common = import '../ci_common/common.jsonnet';
     ],
     notify_emails: ["christian.humer@oracle.com", "tomas.zezula@oracle.com", "jakub.chaloupka@oracle.com"],
     timelimit: '40:00',
-    name: self.targets[0] + '-vm-ce-truffle-lts-compatibility-check-' + mode + '-linux-amd64',
+    name: self.targets[0] + '-vm-ce-truffle-lts-compatibility-' + mode + '-linux-amd64',
   },
 
   local svm_truffle_tck = vm_common.svm_common  + {
@@ -88,7 +88,7 @@ local vm_common = import '../ci_common/common.jsonnet';
     vm.vm_java_21     + vm_common.vm_base('linux', 'amd64', 'daily') + truffle_maven_downloader,
     vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate')  + truffle_maven_downloader,
     vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate')  + truffle_lts_compatibility('jvm'),
-    vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate')  + truffle_lts_compatibility('native') + vm.custom_vm_linux,
+    vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate')  + truffle_lts_compatibility('native') + vm.custom_vm,
   ],
 
   builds: utils.add_defined_in(builds, std.thisFile),
