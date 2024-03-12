@@ -235,8 +235,7 @@ class SpringHelloWorldWrkBenchmarkSuite(BaseSpringHelloWorldBenchmarkSuite, mx_s
 mx_benchmark.add_bm_suite(SpringHelloWorldWrkBenchmarkSuite())
 
 
-class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBundleBasedBenchmarkMixin):
-
+class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
     def get_application_startup_regex(self):
         # Example of Quarkus startup log:
         # "2021-03-17 20:03:33,893 INFO  [io.quarkus] (main) tika-quickstart 1.0.0-SNAPSHOT on JVM (powered by Quarkus 1.12.1.Final) started in 1.210s. Listening on: <url>"
@@ -252,6 +251,8 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBundl
     def default_stages(self):
         return ['instrument-image', 'instrument-run', 'image', 'run']
 
+
+class BaseQuarkusBundleBenchmarkSuite(BaseQuarkusBenchmarkSuite, NativeImageBundleBasedBenchmarkMixin):
     def uses_bundles(self):
         return True
 
@@ -259,7 +260,7 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBundl
         return self.create_bundle_command_line_args(benchmarks, bmSuiteArgs)
 
 
-class BaseTikaBenchmarkSuite(BaseQuarkusBenchmarkSuite):
+class BaseTikaBenchmarkSuite(BaseQuarkusBundleBenchmarkSuite):
     def version(self):
         return "1.0.11"
 
@@ -298,7 +299,7 @@ class TikaWrkBenchmarkSuite(BaseTikaBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenc
 mx_benchmark.add_bm_suite(TikaWrkBenchmarkSuite())
 
 
-class BaseQuarkusHelloWorldBenchmarkSuite(BaseQuarkusBenchmarkSuite):
+class BaseQuarkusHelloWorldBenchmarkSuite(BaseQuarkusBundleBenchmarkSuite):
     def version(self):
         return "1.0.6"
 
