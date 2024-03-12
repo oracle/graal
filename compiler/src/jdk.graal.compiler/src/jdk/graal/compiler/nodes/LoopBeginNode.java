@@ -41,7 +41,6 @@ import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
-import jdk.graal.compiler.nodes.loop.LoopFragment;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
@@ -152,8 +151,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     public static final SpeculationReasonGroup LOOP_OVERFLOW_DEOPT = new SpeculationReasonGroup("LoopOverflowDeopt", ResolvedJavaMethod.class, int.class);
 
     /**
-     * Debug only pointer to a previous loop header this loop was cloned from, this is relevant for
-     * loop optimizations calling {@link LoopFragment#duplicate()}.
+     * Hash code of the {@link LoopBeginNode} this node was cloned from.
      */
     private int clonedFrom = -1;
 

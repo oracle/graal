@@ -1358,10 +1358,6 @@ public class Graph implements EventCounter {
         // nodes aren't removed from the type cache here - they will be removed during iteration
     }
 
-    /**
-     * For subclasses to specify more verification override {@link #verify(boolean)} which is called
-     * by regular compiler phases.
-     */
     public final boolean verify() {
         verify(true);
         return true;
