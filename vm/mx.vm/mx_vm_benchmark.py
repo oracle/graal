@@ -814,7 +814,7 @@ class NativeImageVM(GraalVm):
                 {
                     "runtime.gc": ("<general_info.garbage_collector>", gc_mapper),
                     "native-image.stage": str(self.stages_info.effective_stage),
-                    "native-image.instrumented": self.stages_info.effective_stage.is_instrument(),
+                    "native-image.instrumented": str(self.stages_info.effective_stage.is_instrument()).lower(),
                     "native-image.pgo": pgo_value,
                     "native-image.opt": ("<general_info.graal_compiler.optimization_level>", opt_mapper),
                 },
