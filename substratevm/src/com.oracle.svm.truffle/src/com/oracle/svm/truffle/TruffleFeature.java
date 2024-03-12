@@ -103,6 +103,7 @@ import java.util.function.ToLongBiFunction;
 import java.util.function.ToLongFunction;
 import java.util.function.UnaryOperator;
 
+import org.graalvm.compiler.phases.common.InsertGuardFencesPhase;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.phases.HighTier;
@@ -996,6 +997,15 @@ public class TruffleFeature implements InternalFeature {
          */
         if (hosted && HostInliningPhase.Options.TruffleHostInlining.getValue(HostedOptionValues.singleton()) && suites.getHighTier() instanceof HighTier) {
             suites.getHighTier().prependPhase(new SubstrateHostInliningPhase(CanonicalizerPhase.create()));
+        }
+        /*
+         * On HotSpot, the InsertGuardFencesPhase is inserted into the mid-tier depending on the
+         * runtime option SpectrePHTBarriers. However, TruffleFeature registers phases during
+         * image-build time. Therefore, for Truffle compilations, we need to register the phase
+         * eagerly because the SpectrePHTBarriers options is set only at image-execution time.
+         */
+        if (!hosted && suites.getMidTier().findPhase(InsertGuardFencesPhase.class, true) == null) {
+            suites.getMidTier().appendPhase(new InsertGuardFencesPhase());
         }
     }
 }
