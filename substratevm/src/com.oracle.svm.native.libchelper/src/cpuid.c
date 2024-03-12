@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,6 +67,10 @@ int get_cpuid (unsigned int leaf, unsigned int *eax, unsigned int *ebx, unsigned
     return (get_cpuid_count(leaf, 0, eax, ebx, ecx, edx));
 }
 
+int get_cpuid_ecx_1 (unsigned int leaf, unsigned int *eax, unsigned int *ebx, unsigned int *ecx, unsigned int *edx) {
+    return (get_cpuid_count(leaf, 1, eax, ebx, ecx, edx));
+}
+
 #else
 
 #include <intrin.h>
@@ -103,6 +107,10 @@ int get_cpuid_count (unsigned int leaf, unsigned int subleaf, unsigned int *eax,
 
 int get_cpuid (unsigned int leaf, unsigned int *eax, unsigned int *ebx, unsigned int *ecx, unsigned int *edx) {
     return (get_cpuid_count(leaf, 0, eax, ebx, ecx, edx));
+}
+
+int get_cpuid_ecx_1 (unsigned int leaf, unsigned int *eax, unsigned int *ebx, unsigned int *ecx, unsigned int *edx) {
+    return (get_cpuid_count(leaf, 1, eax, ebx, ecx, edx));
 }
 
 #endif
@@ -301,6 +309,9 @@ static void initialize_cpuinfo(CpuidInfo *_cpuid_info)
     _cpuid_info->sef_cpuid7_ebx.value = ebx;
     _cpuid_info->sef_cpuid7_ecx.value = ecx;
     _cpuid_info->sef_cpuid7_edx.value = edx;
+
+    get_cpuid_ecx_1(7, &eax, &ebx, &ecx, &edx);
+    _cpuid_info->sef_cpuid7_ecx1_eax.value = eax;
   }
 
   // topology
@@ -430,6 +441,8 @@ NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_i
       features->fF16C = 1;
     if (_cpuid_info->sef_cpuid7_ebx.bits.avx2 != 0)
       features->fAVX2 = 1;
+      if (_cpuid_info->sef_cpuid7_ecx1_eax.bits.avx_ifma != 0)
+        features->fAVX_IFMA = 1;
     if (_cpuid_info->sef_cpuid7_ebx.bits.avx512f != 0 &&
         _cpuid_info->xem_xcr0_eax.bits.opmask != 0 &&
         _cpuid_info->xem_xcr0_eax.bits.zmm512 != 0 &&
