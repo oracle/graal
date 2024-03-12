@@ -277,17 +277,6 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public void installInThread(Object vmConfig) {
-        super.installInThread(vmConfig);
-        assert vmConfig == ImageSingletonsSupportImpl.HostedManagement.get();
-    }
-
-    @Override
-    public Object getConfiguration() {
-        return ImageSingletonsSupportImpl.HostedManagement.getAndAssertExists();
-    }
-
-    @Override
     public void registerType(AnalysisType analysisType) {
 
         DynamicHub hub = createHub(analysisType);
