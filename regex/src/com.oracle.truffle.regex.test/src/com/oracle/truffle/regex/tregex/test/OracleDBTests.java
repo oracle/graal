@@ -53,59 +53,77 @@ public class OracleDBTests extends RegexTestBase {
 
     @Override
     Encodings.Encoding getTRegexEncoding() {
-        return Encodings.UTF_16;
+        return Encodings.UTF_8;
     }
 
     @Test
-    public void testPositionAssertions() {
+    public void generatedTests() {
+        /* GENERATED CODE BEGIN - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
+        test("\\0", "", "\\0", 0, true, 1, 2);
+        test("\\b", "", "\\b", 0, true, 1, 2);
+        test("\\B", "", "\\B", 0, true, 1, 2);
+        test("\\f", "", "\\f", 0, true, 1, 2);
+        test("\\n", "", "\\n", 0, true, 1, 2);
+        test("\\r", "", "\\r", 0, true, 1, 2);
+        test("\\t", "", "\\t", 0, true, 1, 2);
+        test("\\v", "", "\\v", 0, true, 1, 2);
+        test("\\x", "", "\\x", 0, true, 1, 2);
+        test("\\u", "", "\\u", 0, true, 1, 2);
+        test("\\p", "", "\\p", 0, true, 1, 2);
+        test("\\P", "", "\\P", 0, true, 1, 2);
+        test("(:)", "", ":", 0, true, 0, 1, 0, 1);
+        test("(?:)", "", "?:", 0, true, 1, 2, 1, 2);
+        test("(=)", "", "=", 0, true, 0, 1, 0, 1);
+        test("(?=)", "", "?=", 0, true, 1, 2, 1, 2);
+        test("(!)", "", "!", 0, true, 0, 1, 0, 1);
+        test("(?!)", "", "?!", 0, true, 1, 2, 1, 2);
+        test("(<=)", "", "<=", 0, true, 0, 2, 0, 2);
+        test("(?<=)", "", "?<=", 0, true, 1, 3, 1, 3);
+        test("(<!)", "", "<!", 0, true, 0, 2, 0, 2);
+        test("(?<!)", "", "?<!", 0, true, 1, 3, 1, 3);
+        test("(<a>)", "", "<a>", 0, true, 0, 3, 0, 3);
+        test("(?<a>)", "", "?<a>", 0, true, 1, 4, 1, 4);
+        test("(P<a>)", "", "P<a>", 0, true, 0, 4, 0, 4);
+        test("(?P<a>)", "", "?P<a>", 0, true, 1, 5, 1, 5);
+        test("(P=a)", "", "P=a", 0, true, 0, 3, 0, 3);
+        test("(?P=a)", "", "?P=a", 0, true, 1, 4, 1, 4);
         test("\\Ax", "", "yx", 0, false);
-
         test("\\s\\Z", "", "x \n", 0, true, 1, 2);
         test("\\s\\Z", "", "x \n", 2, true, 2, 3);
         test("\\s\\Z", "", "x \n \n", 0, true, 3, 4);
         test("\\s\\Z", "m", "x \n \n", 0, true, 3, 4);
-
         test("\\s$", "", "x \n", 0, true, 1, 2);
         test("\\s$", "", "x \n", 2, true, 2, 3);
         test("\\s$", "", "x \n \n", 0, true, 3, 4);
         test("\\s$", "m", "x \n \n", 0, true, 1, 2);
-
         test("\\s\\z", "", "x \n", 0, true, 2, 3);
         test("\\s\\z", "", "x \n", 2, true, 2, 3);
         test("\\s\\z", "", "x \n \n", 0, true, 4, 5);
         test("\\s\\z", "m", "x \n \n", 0, true, 4, 5);
-    }
-
-    @Test
-    public void testUnmatchedParens() {
         test("}", "", "}", 0, true, 0, 1);
         test("{", "", "{", 0, true, 0, 1);
         test("]", "", "]", 0, true, 0, 1);
-        expectSyntaxError("[", "", "unmatched bracket in regular expression", 0);
-        expectSyntaxError(")", "", "unmatched parentheses in regular expression", 0);
-    }
-
-    @Test
-    public void testQuantifiers() {
+        expectSyntaxError("[", "", "", getTRegexEncoding(), "_", 0, "unmatched bracket in regular expression");
+        expectSyntaxError(")", "", "", getTRegexEncoding(), "_", 0, "unmatched parentheses in regular expression");
         test("x{,1}", "", "x", 0, false);
         test("x{,1}?", "", "x", 0, false);
         test("x{,1}", "", "x{,1}", 0, true, 0, 5);
         test("x{,1}?", "", "x{,1}", 0, true, 0, 5);
         test("x{,1}?", "", "x{,1", 0, true, 0, 4);
         test("x{1,}", "", "x{1,}", 0, true, 0, 1);
-        expectSyntaxError("x{2,1}", "", "invalid interval value in regular expression", 1);
-        test("x{2147483649}", "", "x{2147483649}", 0, true, 0, 1);
-        test("x{2147483649,}", "", "x{2147483649}", 0, true, 0, 1);
-        expectSyntaxError("x{2147483649,2}", "", "invalid interval value in regular expression", 1);
-        test("x{2147483649,2147483650}", "", "xxx", 0, true, 0, 2);
-        test("x{0,4294967295}", "", "x{4294967295}", 0, true, 0, 1);
-        test("x{1,4294967295}", "", "x{4294967295}", 0, true, 0, 1);
-        test("x{2147483648,4294967295}", "", "xx", 0, true, 0, 2);
-        test("x{1,2147483648}", "", "xx", 0, false);
-        test("x{2,2147483648}", "", "xx", 0, false);
-        test("x{2,2147483649}", "", "xx", 0, false);
-        test("x{4294967296}", "", "x{4294967296}", 0, true, 0, 13);
-        test("x{4294967297}", "", "x{4294967297}", 0, true, 0, 13);
+        expectSyntaxError("x{2,1}", "", "", getTRegexEncoding(), "_", 0, "invalid interval in regular expression");
+        expectSyntaxError("x{2147483649}", "", "", getTRegexEncoding(), "x{2147483649}", 0, "invalid interval in regular expression");
+        expectSyntaxError("x{2147483649,}", "", "", getTRegexEncoding(), "x{2147483649}", 0, "invalid interval in regular expression");
+        expectSyntaxError("x{2147483649,2}", "", "", getTRegexEncoding(), "_", 0, "invalid interval in regular expression");
+        expectSyntaxError("x{2147483649,2147483650}", "", "", getTRegexEncoding(), "xxx", 0, "invalid interval in regular expression");
+        expectSyntaxError("x{0,4294967295}", "", "", getTRegexEncoding(), "x{4294967295}", 0, "invalid interval in regular expression");
+        expectSyntaxError("x{1,4294967295}", "", "", getTRegexEncoding(), "x{4294967295}", 0, "invalid interval in regular expression");
+        expectSyntaxError("x{2147483648,4294967295}", "", "", getTRegexEncoding(), "xx", 0, "invalid interval in regular expression");
+        expectSyntaxError("x{1,2147483648}", "", "", getTRegexEncoding(), "xx", 0, "invalid interval in regular expression");
+        expectSyntaxError("x{2,2147483648}", "", "", getTRegexEncoding(), "xx", 0, "invalid interval in regular expression");
+        expectSyntaxError("x{2,2147483649}", "", "", getTRegexEncoding(), "xx", 0, "invalid interval in regular expression");
+        expectSyntaxError("x{4294967296}", "", "", getTRegexEncoding(), "x{4294967296}", 0, "invalid interval in regular expression");
+        expectSyntaxError("x{4294967297}", "", "", getTRegexEncoding(), "x{4294967297}", 0, "invalid interval in regular expression");
         test("x??", "", "x", 0, true, 0, 0);
         test("x{2}+", "", "x", 0, false);
         test("x{2}+", "", "xx", 0, true, 0, 2);
@@ -121,32 +139,23 @@ public class OracleDBTests extends RegexTestBase {
         test("x????", "", "xx?", 0, true, 0, 0);
         test("x??????", "", "x?", 0, true, 0, 0);
         test("x??????", "", "xx?", 0, true, 0, 0);
-        test("x????????", "", "x?", 0, true, 0, 0);
-        test("x????????", "", "xx?", 0, true, 0, 0);
         test("x{2}?", "", "xxxxx", 0, true, 0, 2);
         test("x{2}??", "", "xxxxx", 0, true, 0, 2);
         test("x{2}+", "", "xxxxx", 0, true, 0, 4);
         test("x{2}*", "", "xxxxx", 0, true, 0, 4);
-
-        // known to fail, suspected to be caused by LXR bug 35718208
-
-        // test("x???", "", "x", 0, true, 0, 1);
-        // test("x{2}*??", "", "xxxx", 0, true, 0, 2);
-        // test("x???", "", "x?", 0, true, 0, 1);
-        // test("x???", "", "xx?", 0, true, 0, 1);
-        // test("x?????", "", "x?", 0, true, 0, 1);
-        // test("x?????", "", "xx?", 0, true, 0, 1);
-        // test("(a{0,1})*b\\1", "", "aab", 0, true, 1, 3, 2, 2);
-        // test("(a{0,1})*b\\1", "", "aaba", 0, true, 1, 3, 2, 2);
-        // test("(a{0,1})*b\\1", "", "aabaa", 0, true, 1, 3, 2, 2);
-    }
-
-    @Test
-    public void testCharClasses() {
+        test("x???", "", "x", 0, true, 0, 0);
+        test("x{2}*??", "", "xxxx", 0, true, 0, 0);
+        test("x???", "", "x?", 0, true, 0, 0);
+        test("x???", "", "xx?", 0, true, 0, 0);
+        test("x?????", "", "x?", 0, true, 0, 0);
+        test("x?????", "", "xx?", 0, true, 0, 0);
+        test("(a{0,1})*b\\1", "", "aab", 0, true, 0, 3, 2, 2);
+        test("(a{0,1})*b\\1", "", "aaba", 0, true, 0, 3, 2, 2);
+        test("(a{0,1})*b\\1", "", "aabaa", 0, true, 0, 3, 2, 2);
         test("[]]", "", "]", 0, true, 0, 1);
         test("[][]+", "", "[]", 0, true, 0, 2);
-        expectSyntaxError("[]", "", "unmatched bracket in regular expression", 1);
-        expectSyntaxError("[b-a]", "", "invalid range in regular expression", 3);
+        expectSyntaxError("[]", "", "", getTRegexEncoding(), "_", 0, "unmatched bracket in regular expression");
+        expectSyntaxError("[b-a]", "", "", getTRegexEncoding(), "_", 0, "invalid range in regular expression");
         test("[-a]", "", "-a", 0, true, 0, 1);
         test("[a-]", "", "-a", 0, true, 0, 1);
         test("[[ab]]", "", "[]ab]", 0, true, 0, 2);
@@ -154,7 +163,7 @@ public class OracleDBTests extends RegexTestBase {
         test("[[::]]", "", "[]:", 0, true, 0, 1);
         test("[[::]]", "", "[]:", 1, true, 1, 2);
         test("[[::]]", "", "[]:", 2, true, 2, 3);
-        expectSyntaxError("[[:ab:]]", "", "invalid character class in regular expression", 1);
+        expectSyntaxError("[[:ab:]]", "", "", getTRegexEncoding(), "_", 0, "invalid character class in regular expression");
         test("[[:upper:]]+", "", ":upper:", 0, false);
         test("[[:upper:]]+", "", ":UPPER:", 0, true, 1, 6);
         test("[:upper:]+", "", ":upper:", 0, true, 0, 7);
@@ -170,17 +179,13 @@ public class OracleDBTests extends RegexTestBase {
         test("[[=a=]-[=z=]]+", "", "abc-", 0, true, 0, 3);
         test("[[.a.]-[=z=]]+", "", "abc-", 0, true, 0, 3);
         test("[[=a=]-[.z.]]+", "", "abc-", 0, true, 0, 3);
-        expectSyntaxError("[[.a.]-[.ch.]]+", "", "invalid collation class in regular expression", 7);
-        expectSyntaxError("[[.a.]-[:lower:]]+", "", "invalid range in regular expression", 7);
-        expectSyntaxError("[[=a=]-[:lower:]]+", "", "invalid range in regular expression", 7);
+        expectSyntaxError("[[.a.]-[.ch.]]+", "", "", getTRegexEncoding(), "_", 0, "invalid collation class in regular expression");
+        expectSyntaxError("[[.a.]-[:lower:]]+", "", "", getTRegexEncoding(), "_", 0, "invalid range in regular expression");
+        expectSyntaxError("[[=a=]-[:lower:]]+", "", "", getTRegexEncoding(), "_", 0, "invalid range in regular expression");
         test("[[:upper:]-[.a.]]+", "", "a-A", 0, true, 0, 3);
-        test("[[=c=]-c]", "", "\u010d-=c", 0, true, 3, 4);
-        test("[[=c=]-]+", "", "\u010d-=c", 0, true, 0, 2);
-    }
-
-    @Test
-    public void testBackReferences() {
-        expectSyntaxError("(\\2())", "", "invalid back reference in regular expression", 1);
+        test("[[=c=]-c]", "", "\u010d-=c", 0, true, 4, 5);
+        test("[[=c=]-]+", "", "\u010d-=c", 0, true, 0, 3);
+        expectSyntaxError("(\\2())", "", "", getTRegexEncoding(), "_", 0, "invalid back reference in regular expression");
         test("(\\1a)", "", "aa", 0, false);
         test("(\\1a|){2}", "", "aa", 0, true, 0, 0, 0, 0);
         test("(\\1a|)*", "", "aa", 0, true, 0, 0, 0, 0);
@@ -197,20 +202,12 @@ public class OracleDBTests extends RegexTestBase {
         test("^(a|\\1b)+$", "", "ab", 0, false);
         test("(a)\\10", "", "aa0", 0, true, 0, 3, 0, 1);
         test("(a)\\100", "", "aa00", 0, true, 0, 4, 0, 1);
-    }
-
-    @Test
-    public void testIgnoreWhiteSpace() {
         test("a a", "x", "aa", 0, true, 0, 2);
         test("a\na", "x", "aa", 0, true, 0, 2);
-        test("a\ta", "x", "aa", 0, false);
-        test("a\fa", "x", "aa", 0, false);
+        test("a\u0009a", "x", "aa", 0, false);
         test("a\u000ba", "x", "aa", 0, false);
+        test("a\u000ca", "x", "aa", 0, false);
         test("a\ra", "x", "aa", 0, false);
-    }
-
-    @Test
-    public void testEscapeSequences() {
         test("\\", "", "aa", 0, true, 0, 0);
         test("\\077", "", "?", 0, false);
         test("\\077", "", "077", 0, true, 0, 3);
@@ -218,33 +215,10 @@ public class OracleDBTests extends RegexTestBase {
         test("\\x61", "", "x61", 0, true, 0, 3);
         test("\\u0061", "", "a", 0, false);
         test("\\u0061", "", "u0061", 0, true, 0, 5);
-        for (char c : new char[]{'0', 'b', 'B', 'f', 'n', 'r', 't', 'v', 'x', 'u', 'p', 'P'}) {
-            test("\\" + c, "", "\\" + c, 0, true, 1, 2);
-        }
-    }
-
-    @Test
-    public void testSpecialGroups() {
-        for (String s : new String[]{":", "=", "!", "<=", "<!", "<a>", "P<a>", "P=a"}) {
-            test(String.format("(%s)", s), "", s, 0, true, 0, s.length(), 0, s.length());
-            test(String.format("(?%s)", s), "", "?" + s, 0, true, 1, s.length() + 1, 1, s.length() + 1);
-        }
-    }
-
-    @Test
-    public void testNestedQuantifier() {
         test("(a*|b)*", "", "aaaaaabaaaaaaaaaaaaaabb", 0, true, 0, 6, 6, 6);
         test("a((b?)*)*", "", "ab", 0, true, 0, 2, 2, 2, 2, 2);
-    }
-
-    @Test
-    public void testAnchorPrecedence() {
+        test("(()|()|a)+b", "", "ab", 0, true, 0, 2, 1, 1, 1, 1, -1, -1);
         test("a(\\z|())", "", "a", 0, true, 0, 1, 1, 1, -1, -1);
-    }
-
-    @Test
-    public void generatedTests() {
-        /* GENERATED CODE BEGIN - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
         test("abracadabra$", "", "abracadabracadabra", 0, true, 7, 18);
         test("a...b", "", "abababbb", 0, true, 2, 7);
         test("XXXXXX", "", "..XXXXXX", 0, true, 2, 8);
@@ -271,7 +245,7 @@ public class OracleDBTests extends RegexTestBase {
         test("a{0}b", "", "ab", 0, true, 1, 2);
         test("(a*)(b?)(b+)b{3}", "", "aaabbbbbbb", 0, true, 0, 10, 0, 3, 3, 4, 4, 7);
         test("(a*)(b{0,1})(b{1,})b{3}", "", "aaabbbbbbb", 0, true, 0, 10, 0, 3, 3, 4, 4, 7);
-        test("a{9876543210}", "", "a", 0, false);
+        expectSyntaxError("a{9876543210}", "", "", getTRegexEncoding(), "a", 0, "invalid interval in regular expression");
         test("((a|a)|a)", "", "a", 0, true, 0, 1, 0, 1, 0, 1);
         test("(a*)(a|aa)", "", "aaaa", 0, true, 0, 4, 0, 3, 3, 4);
         test("a*(a.|aa)", "", "aaaa", 0, true, 0, 4, 2, 4);
@@ -578,14 +552,17 @@ public class OracleDBTests extends RegexTestBase {
         test("(a*)b\\1*", "", "abaa", 0, true, 0, 4, 0, 1);
         test("(a*)*b\\1*", "", "abaa", 0, true, 0, 2, 1, 1);
         test("(a*)*b(\\1)*", "", "abaa", 0, true, 0, 2, 1, 1, 2, 2);
+        test("(a{0,1})*b\\1", "", "aab", 0, true, 0, 3, 2, 2);
         test("(a*)*b\\1", "", "aab", 0, true, 0, 3, 2, 2);
         test("(a*)b\\1*", "", "aab", 0, true, 0, 3, 0, 2);
         test("(a*)*b\\1*", "", "aab", 0, true, 0, 3, 2, 2);
         test("(a*)*b(\\1)*", "", "aab", 0, true, 0, 3, 2, 2, 3, 3);
+        test("(a{0,1})*b\\1", "", "aaba", 0, true, 0, 3, 2, 2);
         test("(a*)*b\\1", "", "aaba", 0, true, 0, 3, 2, 2);
         test("(a*)b\\1*", "", "aaba", 0, true, 0, 3, 0, 2);
         test("(a*)*b\\1*", "", "aaba", 0, true, 0, 3, 2, 2);
         test("(a*)*b(\\1)*", "", "aaba", 0, true, 0, 3, 2, 2, 3, 3);
+        test("(a{0,1})*b\\1", "", "aabaa", 0, true, 0, 3, 2, 2);
         test("(a*)*b\\1", "", "aabaa", 0, true, 0, 3, 2, 2);
         test("(a*)b\\1*", "", "aabaa", 0, true, 0, 5, 0, 2);
         test("(a*)*b\\1*", "", "aabaa", 0, true, 0, 3, 2, 2);
@@ -797,37 +774,37 @@ public class OracleDBTests extends RegexTestBase {
         test("\ufb02", "i", "FL", 0, true, 0, 2);
         test("\ufb03", "i", "FFI", 0, true, 0, 3);
         test("\ufb04", "i", "FFL", 0, true, 0, 3);
-        test("\ufb00I", "i", "\ufb03", 0, true, 0, 1);
-        test("\ufb03", "i", "\ufb00I", 0, true, 0, 2);
-        test("F\ufb01", "i", "\ufb03", 0, true, 0, 1);
-        test("\ufb03", "i", "F\ufb01", 0, true, 0, 2);
-        test("\ufb00L", "i", "\ufb04", 0, true, 0, 1);
-        test("\ufb04", "i", "\ufb00L", 0, true, 0, 2);
-        test("F\ufb02", "i", "\ufb04", 0, true, 0, 1);
-        test("\ufb04", "i", "F\ufb02", 0, true, 0, 2);
-        test("[\ufb04[=a=]o]+", "i", "F\ufb02a\u00c4\u00f6", 0, true, 0, 4);
-        test("\u1f50", "i", "\u03c5\u0313", 0, true, 0, 2);
-        test("\u1f52", "i", "\u03c5\u0313\u0300", 0, true, 0, 3);
-        test("\u1f54", "i", "\u03c5\u0313\u0301", 0, true, 0, 3);
-        test("\u1f56", "i", "\u03c5\u0313\u0342", 0, true, 0, 3);
-        test("\u1f50\u0300", "i", "\u1f52", 0, true, 0, 1);
-        test("\u1f52", "i", "\u1f50\u0300", 0, true, 0, 2);
-        test("\u1f50\u0301", "i", "\u1f54", 0, true, 0, 1);
-        test("\u1f54", "i", "\u1f50\u0301", 0, true, 0, 2);
-        test("\u1f50\u0342", "i", "\u1f56", 0, true, 0, 1);
-        test("\u1f56", "i", "\u1f50\u0342", 0, true, 0, 2);
-        test("\u1fb6", "i", "\u03b1\u0342", 0, true, 0, 2);
-        test("\u1fb7", "i", "\u03b1\u0342\u03b9", 0, true, 0, 3);
-        test("\u1fb6\u03b9", "i", "\u1fb7", 0, true, 0, 1);
-        test("\u1fb7", "i", "\u1fb6\u03b9", 0, true, 0, 2);
-        test("\u1fc6", "i", "\u03b7\u0342", 0, true, 0, 2);
-        test("\u1fc7", "i", "\u03b7\u0342\u03b9", 0, true, 0, 3);
-        test("\u1fc6\u03b9", "i", "\u1fc7", 0, true, 0, 1);
-        test("\u1fc7", "i", "\u1fc6\u03b9", 0, true, 0, 2);
-        test("\u1ff6", "i", "\u03c9\u0342", 0, true, 0, 2);
-        test("\u1ff7", "i", "\u03c9\u0342\u03b9", 0, true, 0, 3);
-        test("\u1ff6\u03b9", "i", "\u1ff7", 0, true, 0, 1);
-        test("\u1ff7", "i", "\u1ff6\u03b9", 0, true, 0, 2);
+        test("\ufb00I", "i", "\ufb03", 0, true, 0, 3);
+        test("\ufb03", "i", "\ufb00I", 0, true, 0, 4);
+        test("F\ufb01", "i", "\ufb03", 0, true, 0, 3);
+        test("\ufb03", "i", "F\ufb01", 0, true, 0, 4);
+        test("\ufb00L", "i", "\ufb04", 0, true, 0, 3);
+        test("\ufb04", "i", "\ufb00L", 0, true, 0, 4);
+        test("F\ufb02", "i", "\ufb04", 0, true, 0, 3);
+        test("\ufb04", "i", "F\ufb02", 0, true, 0, 4);
+        test("[\ufb04[=a=]o]+", "i", "F\ufb02a\u00c4\u00f6", 0, true, 0, 7);
+        test("\u1f50", "i", "\u03c5\u0313", 0, true, 0, 4);
+        test("\u1f52", "i", "\u03c5\u0313\u0300", 0, true, 0, 6);
+        test("\u1f54", "i", "\u03c5\u0313\u0301", 0, true, 0, 6);
+        test("\u1f56", "i", "\u03c5\u0313\u0342", 0, true, 0, 6);
+        test("\u1f50\u0300", "i", "\u1f52", 0, true, 0, 3);
+        test("\u1f52", "i", "\u1f50\u0300", 0, true, 0, 5);
+        test("\u1f50\u0301", "i", "\u1f54", 0, true, 0, 3);
+        test("\u1f54", "i", "\u1f50\u0301", 0, true, 0, 5);
+        test("\u1f50\u0342", "i", "\u1f56", 0, true, 0, 3);
+        test("\u1f56", "i", "\u1f50\u0342", 0, true, 0, 5);
+        test("\u1fb6", "i", "\u03b1\u0342", 0, true, 0, 4);
+        test("\u1fb7", "i", "\u03b1\u0342\u03b9", 0, true, 0, 6);
+        test("\u1fb6\u03b9", "i", "\u1fb7", 0, true, 0, 3);
+        test("\u1fb7", "i", "\u1fb6\u03b9", 0, true, 0, 5);
+        test("\u1fc6", "i", "\u03b7\u0342", 0, true, 0, 4);
+        test("\u1fc7", "i", "\u03b7\u0342\u03b9", 0, true, 0, 6);
+        test("\u1fc6\u03b9", "i", "\u1fc7", 0, true, 0, 3);
+        test("\u1fc7", "i", "\u1fc6\u03b9", 0, true, 0, 5);
+        test("\u1ff6", "i", "\u03c9\u0342", 0, true, 0, 4);
+        test("\u1ff7", "i", "\u03c9\u0342\u03b9", 0, true, 0, 6);
+        test("\u1ff6\u03b9", "i", "\u1ff7", 0, true, 0, 3);
+        test("\u1ff7", "i", "\u1ff6\u03b9", 0, true, 0, 5);
         test("f*", "i", "ff", 0, true, 0, 2);
         test("f*", "i", "\ufb00", 0, true, 0, 0);
         test("f+", "i", "ff", 0, true, 0, 2);
@@ -844,9 +821,9 @@ public class OracleDBTests extends RegexTestBase {
         test("f{2}", "i", "\ufb00", 0, false);
         test("f{2,2}", "i", "ff", 0, true, 0, 2);
         test("f{2,2}", "i", "\ufb00", 0, false);
-        test("K", "i", "\u212a", 0, true, 0, 1);
-        test("k", "i", "\u212a", 0, true, 0, 1);
-        test("\\w", "i", "\u212a", 0, true, 0, 1);
+        test("K", "i", "\u212a", 0, true, 0, 3);
+        test("k", "i", "\u212a", 0, true, 0, 3);
+        test("\\w", "i", "\u212a", 0, true, 0, 3);
         test("\\W", "i", "\u212a", 0, false);
         test("[\\w]", "i", "\u212a", 0, false);
         test("[\\w]+", "i", "a\\wWc", 0, true, 1, 4);
@@ -855,15 +832,15 @@ public class OracleDBTests extends RegexTestBase {
         test("[\\D]+", "i", "a\\dDc", 0, true, 1, 4);
         test("[\\s]+", "i", " \\sS\u0009", 0, true, 1, 4);
         test("[\\S]+", "i", " \\sS\u0009", 0, true, 1, 4);
-        test("[kx]", "i", "\u212a", 0, true, 0, 1);
-        test("ff", "i", "\ufb00", 0, true, 0, 1);
+        test("[kx]", "i", "\u212a", 0, true, 0, 3);
+        test("ff", "i", "\ufb00", 0, true, 0, 3);
         test("[f]f", "i", "\ufb00", 0, false);
         test("f[f]", "i", "\ufb00", 0, false);
         test("[f][f]", "i", "\ufb00", 0, false);
         test("(?:f)f", "i", "\ufb00", 0, false);
         test("f(?:f)", "i", "\ufb00", 0, false);
         test("(?:f)(?:f)", "i", "\ufb00", 0, false);
-        test("\\A[\ufb00]\\z", "i", "\ufb00", 0, true, 0, 1);
+        test("\\A[\ufb00]\\z", "i", "\ufb00", 0, true, 0, 3);
         test("\\A[\ufb00]\\z", "i", "ff", 0, true, 0, 2);
         test("\\A[^\ufb00]\\z", "i", "\ufb00", 0, false);
         test("\\A[^\ufb00]\\z", "i", "ff", 0, false);
@@ -892,8 +869,8 @@ public class OracleDBTests extends RegexTestBase {
         test("([[=a=]])\\1", "i", "\u00e4a", 0, false);
         test("([[=a=]])\\1", "i", "\u00c4a", 0, false);
         test("([[=a=]])\\1", "i", "\u00c4A", 0, false);
-        test("[[=a=]o]+", "i", "\u00e4O\u00f6", 0, true, 0, 2);
-        test("[[=a=]o]+", "i", "\u00e4O\u00f6", 0, true, 0, 2);
+        test("[[=a=]o]+", "i", "\u00e4O\u00f6", 0, true, 0, 3);
+        test("[[=a=]o]+", "i", "\u00e4O\u00f6", 0, true, 0, 3);
         test("[[=\u00df=]o]+", "i", "s", 0, false);
         test("[[=\u00df=]o]+", "i", "ss", 0, true, 0, 2);
         test("[[=\u00df=]o]+", "", "s", 0, false);
@@ -903,40 +880,92 @@ public class OracleDBTests extends RegexTestBase {
         test("[[=\u0132=]]+", "", "ij", 0, true, 0, 2);
         test("[[=\u0132=]o]+", "", "ij", 0, true, 0, 2);
         test("[[=\u0132=]o]+", "i", "ij", 0, true, 0, 2);
-        expectSyntaxError("[\\s-r]+", "", "invalid range in regular expression");
+        expectSyntaxError("[\\s-r]+", "", "", getTRegexEncoding(), "\\stu", 0, "invalid range in regular expression");
         test("[\\s-v]+", "", "\\stu", 0, true, 0, 4);
         test("$(\\A|)", "", "x", 0, true, 1, 1, 1, 1);
         test("(^\\w)|()^", "", "empty", 0, true, 0, 1, 0, 1, -1, -1);
-        test("x(y|())", "", "xy", 0, true, 0, 2, 1, 2, -1, -1);
-        test("(x|())*", "", "xxx", 0, true, 0, 3, 3, 3, 3, 3);
+        test("a(b|())", "", "ab", 0, true, 0, 2, 1, 2, -1, -1);
+        test("(a|())*", "", "aaa", 0, true, 0, 3, 3, 3, 3, 3);
+        test("a|", "", "a", 0, true, 0, 1);
+        test("a|", "", "b", 0, true, 0, 0);
+        test("a|", "", "a|", 0, true, 0, 1);
+        test("a|", "", "b|", 0, true, 0, 0);
+        test("a|?", "", "a", 0, true, 0, 1);
+        test("a|?", "", "b", 0, true, 0, 0);
+        test("a|?", "", "?", 0, true, 0, 0);
+        test("|", "", "b", 0, true, 0, 0);
+        test("a|()", "", "a", 0, true, 0, 1, -1, -1);
+        test("a|()", "", "b", 0, true, 0, 0, 0, 0);
+        test("a||", "", "a", 0, true, 0, 1);
+        test("a||", "", "b", 0, true, 0, 0);
+        test("a||b", "", "a", 0, true, 0, 1);
+        test("a||b", "", "b", 0, true, 0, 0);
+        test("a||b", "", "c", 0, true, 0, 0);
+        test("a||b|", "", "a", 0, true, 0, 1);
+        test("a||b|", "", "b", 0, true, 0, 0);
+        test("a||b|", "", "c", 0, true, 0, 0);
+        test("a|()|", "", "a", 0, true, 0, 1, -1, -1);
+        test("a|()|", "", "b", 0, true, 0, 0, 0, 0);
+        test("(a|)", "", "a", 0, true, 0, 1, 0, 1);
+        test("(a|)", "", "b", 0, true, 0, 0, 0, 0);
+        test("|a", "", "a", 0, true, 0, 0);
+        test("|a", "", "b", 0, true, 0, 0);
+        test("|a|", "", "a", 0, true, 0, 0);
+        test("|a|", "", "b", 0, true, 0, 0);
+        test("||a|", "", "b", 0, true, 0, 0);
+        test("|()|", "", "a", 0, true, 0, 0, -1, -1);
+        test("a\\Z\\z[[:cntrl:]]", "", "a\n", 0, false);
+        test("\\z", "", "a", 0, true, 1, 1);
+        test("\\z", "", "\n", 0, true, 1, 1);
+        test("\\z", "", "a\n", 0, true, 2, 2);
+        test("\\Z", "", "a", 0, true, 1, 1);
+        test("\\Z", "", "\n", 0, true, 0, 0);
+        test("\\Z", "", "a\n", 0, true, 1, 1);
+        test("$", "", "a", 0, true, 1, 1);
+        test("$", "", "\n", 0, true, 0, 0);
+        test("$", "", "a\n", 0, true, 1, 1);
+        test("a\\z", "", "a", 0, true, 0, 1);
+        test("a\\z", "", "\n", 0, false);
+        test("a\\z", "", "a\n", 0, false);
+        test("a\\Z", "", "a", 0, true, 0, 1);
+        test("a\\Z", "", "\n", 0, false);
+        test("a\\Z", "", "a\n", 0, true, 0, 1);
+        test("a$", "", "a", 0, true, 0, 1);
+        test("a$", "", "\n", 0, false);
+        test("a$", "", "a\n", 0, true, 0, 1);
+        test("\n\\z", "", "a", 0, false);
+        test("\n\\z", "", "\n", 0, true, 0, 1);
+        test("\n\\z", "", "a\n", 0, true, 1, 2);
+        test("\n\\Z", "", "a", 0, false);
+        test("\n\\Z", "", "\n", 0, true, 0, 1);
+        test("\n\\Z", "", "a\n", 0, true, 1, 2);
+        test("\n$", "", "a", 0, false);
+        test("\n$", "", "\n", 0, true, 0, 1);
+        test("\n$", "", "a\n", 0, true, 1, 2);
+        test("a\n\\z", "", "a", 0, false);
+        test("a\n\\z", "", "\n", 0, false);
+        test("a\n\\z", "", "a\n", 0, true, 0, 2);
+        test("a\n\\Z", "", "a", 0, false);
+        test("a\n\\Z", "", "\n", 0, false);
+        test("a\n\\Z", "", "a\n", 0, true, 0, 2);
+        test("a\n$", "", "a", 0, false);
+        test("a\n$", "", "\n", 0, false);
+        test("a\n$", "", "a\n", 0, true, 0, 2);
+        test("a\\z\n", "", "a\n", 0, false);
+        test("a\\Z\n", "", "a\n", 0, true, 0, 2);
+        test("(^|\\Z)a", "", "a", 0, true, 0, 1, 0, 0);
         test("a(\\z|())", "", "a", 0, true, 0, 1, 1, 1, -1, -1);
-        test("a??+", "", "aaa", 0, true, 0, 0);
-        test("()??()??()??()??()??()??()??()??\\3\\5\\7", "", "a", 0, true, 0, 0, -1, -1, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1);
-        test("()*", "", "a", 0, true, 0, 0, 0, 0);
-        test("(a|)*", "", "a", 0, true, 0, 1, 1, 1);
-        test("(|a)?", "", "a", 0, true, 0, 0, 0, 0);
-        test("(a|())*", "", "a", 0, true, 0, 1, 1, 1, 1, 1);
-        test("()??\\1", "", "a", 0, true, 0, 0, 0, 0);
-        test("(a|())*?\\2", "", "a", 0, true, 0, 1, 1, 1, 1, 1);
-        test("(a*)+", "", "a", 0, true, 0, 1, 1, 1);
-        test("(\\1a|){2}", "", "aa", 0, true, 0, 0, 0, 0);
-        test("(|[ab]){3,3}b", "", "aab", 0, true, 0, 3, 2, 2);
-        test("(|[ab]){3}b", "", "aab", 0, true, 0, 3, 2, 2);
-        test("(|a){3}b", "", "aab", 0, true, 0, 3, 2, 2);
-        test("(|a){2}b", "", "ab", 0, true, 0, 2, 1, 1);
-        test("(|a){1}b", "", "b", 0, true, 0, 1, 0, 0);
-        test("(|a)b", "", "b", 0, true, 0, 1, 0, 0);
-        test("(|a)(|a)(|a)b", "", "aab", 0, true, 0, 3, 0, 0, 0, 1, 1, 2);
-        test("(|a)(|a)b", "", "ab", 0, true, 0, 2, 0, 0, 0, 1);
-        test("(|a+?){0,4}b", "", "aaab", 0, true, 0, 4, 3, 3);
-        /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
-    }
-
-    @Test
-    public void nfaTraversalTests() {
-        test("a+*?", "", "aaa", 0, true, 0, 0);
-        test("a??+", "", "aaa", 0, true, 0, 0);
-
+        test("\\z|\\Z", "", "\n", 0, true, 0, 0);
+        test("\\z|\\Z", "", "a\n", 0, true, 1, 1);
+        test("\\Z|\\z", "", "\n", 0, true, 0, 0);
+        test("\\Z|\\z", "", "a\n", 0, true, 1, 1);
+        test("a\\z\\Z", "", "a\n", 0, false);
+        test("a\\Z\\z", "", "a\n", 0, false);
+        test("a\n\\z\\Z", "", "a\n", 0, true, 0, 2);
+        test("a\n\\Z\\z", "", "a\n", 0, true, 0, 2);
+        test("a\\z\\Z\n", "", "a\n", 0, false);
+        test("a\\Z\\z\n", "", "a\n", 0, false);
+        test("a((b?)*)*", "", "ab", 0, true, 0, 2, 2, 2, 2, 2);
         test("(()|()|a)+b", "", "ab", 0, true, 0, 2, 1, 1, 1, 1, -1, -1);
         test("a(|()|())*", "", "a", 0, true, 0, 1, 1, 1, -1, -1, -1, -1);
         test("a(()|()|)*b", "", "ab", 0, true, 0, 2, 1, 1, 1, 1, -1, -1);
@@ -952,18 +981,185 @@ public class OracleDBTests extends RegexTestBase {
         test("a(()|()|b|()|())*c", "", "abbc", 0, true, 0, 4, 3, 3, 3, 3, -1, -1, -1, -1, -1, -1);
         test("a(()|()|()|b|())*c", "", "abbc", 0, true, 0, 4, 3, 3, 3, 3, -1, -1, -1, -1, -1, -1);
         test("a(()|()|()|()|b)*c", "", "abbc", 0, true, 0, 4, 3, 3, 3, 3, -1, -1, -1, -1, -1, -1);
-
+        test("a??+", "", "aaa", 0, true, 0, 0);
+        test("()??()??()??()??()??()??()??()??\\3\\5\\7", "", "a", 0, true, 0, 0, -1, -1, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1);
+        test("()*", "", "a", 0, true, 0, 0, 0, 0);
+        test("(a|)*", "", "a", 0, true, 0, 1, 1, 1);
+        test("(|a)?", "", "a", 0, true, 0, 0, 0, 0);
+        test("(a|())*", "", "a", 0, true, 0, 1, 1, 1, 1, 1);
+        test("()??\\1", "", "a", 0, true, 0, 0, 0, 0);
+        test("(a|())*?\\2", "", "a", 0, true, 0, 1, 1, 1, 1, 1);
+        test("(a*)+", "", "a", 0, true, 0, 1, 1, 1);
+        test("(\\1a|){2}", "", "aa", 0, true, 0, 0, 0, 0);
+        expectSyntaxError("[[.\\].]]", "", "", getTRegexEncoding(), "]", 0, "invalid collation class in regular expression");
+        expectSyntaxError("[[.\\[.]]", "", "", getTRegexEncoding(), "[", 0, "invalid collation class in regular expression");
+        expectSyntaxError("[[=\\]=]]", "", "", getTRegexEncoding(), "]", 0, "invalid equivalence class in regular expression");
+        expectSyntaxError("[[=\\[=]]", "", "", getTRegexEncoding(), "[", 0, "invalid equivalence class in regular expression");
+        test("[--I]", "", "-", 0, true, 0, 1);
+        expectSyntaxError("[[=^=]--I]", "", "", getTRegexEncoding(), "-", 0, "invalid range in regular expression");
+        expectSyntaxError("[[=\\}=]I]", "", "", getTRegexEncoding(), "-", 0, "invalid equivalence class in regular expression");
+        expectSyntaxError("[I-[=\\}=]]", "", "", getTRegexEncoding(), "I", 0, "invalid equivalence class in regular expression");
+        expectSyntaxError("[y-\\{]", "", "", getTRegexEncoding(), "I", 0, "invalid range in regular expression");
+        expectSyntaxError("[y-\\{]", "", "", getTRegexEncoding(), "I", 0, "invalid range in regular expression");
+        expectSyntaxError("[y-\\{][y-\\{]", "", "", getTRegexEncoding(), "I", 0, "invalid range in regular expression");
+        test("a?", "", "aaa", 0, true, 0, 1);
+        test("a??", "", "aaa", 0, true, 0, 0);
+        test("a???", "", "aaa", 0, true, 0, 0);
+        test("a+?", "", "aaa", 0, true, 0, 1);
+        test("a+??", "", "aaa", 0, true, 0, 1);
+        test("a??+", "", "aaa", 0, true, 0, 0);
+        test("a?+", "", "aaa", 0, true, 0, 3);
+        test("a?+?", "", "aaa", 0, true, 0, 1);
+        test("a?+??", "", "aaa", 0, true, 0, 1);
+        test("a?*??", "", "aaa", 0, true, 0, 0);
+        test("(a?)*??", "", "aaa", 0, true, 0, 0, -1, -1);
+        test("((a?)*)??", "", "aaa", 0, true, 0, 0, -1, -1, -1, -1);
+        test("((a?)*?)?", "", "aaa", 0, true, 0, 0, 0, 0, -1, -1);
+        test("a?*?", "", "aaa", 0, true, 0, 0);
+        test("a*??", "", "aaa", 0, true, 0, 0);
+        test("a+*?", "", "aaa", 0, true, 0, 0);
+        test("(a+)*?", "", "aaa", 0, true, 0, 0, -1, -1);
+        test("((a+)*)?", "", "aaa", 0, true, 0, 3, 0, 3, 0, 3);
+        test("a+*??", "", "aaa", 0, true, 0, 0);
+        test("a++?", "", "aaa", 0, true, 0, 3);
+        expectSyntaxError("[[.\\a.]]", "", "", getTRegexEncoding(), ".", 0, "invalid collation class in regular expression");
+        test("[[...]]", "", ".", 0, true, 0, 1);
+        test("[[...]]", "", "[", 0, false);
+        test("[[...]]", "", "]", 0, false);
+        expectSyntaxError("[[.\\..]]", "", "", getTRegexEncoding(), ".", 0, "invalid collation class in regular expression");
+        expectSyntaxError("[[.\\..]]", "", "", getTRegexEncoding(), "\\", 0, "invalid collation class in regular expression");
+        expectSyntaxError("[[.\\..]]", "", "", getTRegexEncoding(), "[", 0, "invalid collation class in regular expression");
+        expectSyntaxError("[[.\\..]]", "", "", getTRegexEncoding(), "]", 0, "invalid collation class in regular expression");
+        test("[[...]]", "", ".]", 0, true, 0, 1);
+        test("[[...]a]", "", ".a]", 0, true, 0, 1);
+        test("[a[...]]", "", "a]", 0, true, 0, 1);
+        test("[[...]a]a", "", "a", 0, false);
+        test("[[...]a]?a", "", "a", 0, true, 0, 1);
+        test("[[...]a]|a", "", "a", 0, true, 0, 1);
+        test("a++?", "", "aaa", 0, true, 0, 3);
+        test("\\D|++?", "", "9", 0, true, 0, 0);
+        test("\\D|++?^", "", "9", 0, true, 0, 0);
+        test("\\S|\\D|++?^(3)", "", "9", 0, true, 0, 1, -1, -1);
+        test("\\S|\\D|++?^((3)|[R-_\\(/])t[[:alnum:]]c", "", "9", 0, true, 0, 1, -1, -1, -1, -1);
+        test("(\\d)|5+*?|[[:lower:]][[=l=]]^%", "", "\u0169\u2113%", 0, true, 0, 0, -1, -1);
+        test("[[===]]", "", "=", 0, true, 0, 1);
+        expectSyntaxError("[[=\\==]]", "", "", getTRegexEncoding(), "=", 0, "invalid equivalence class in regular expression");
+        expectSyntaxError("[[=\\==]]", "", "", getTRegexEncoding(), "\\", 0, "invalid equivalence class in regular expression");
+        test("[[===]]", "", "=]", 0, true, 0, 1);
+        test("[[===]a]", "", "=a]", 0, true, 0, 1);
+        test("[a[===]]", "", "a]", 0, true, 0, 1);
+        test("[[===]a]a", "", "aa", 0, true, 0, 2);
+        test("[[===]a]a", "", "a]a", 0, false);
+        test("[[===]a]?a", "", "a", 0, true, 0, 1);
+        test("[[===]a]|a", "", "a", 0, true, 0, 1);
+        test("\\\\(a+)", "", "(\\a)", 0, true, 1, 3, 2, 3);
+        test("\\\\(a+)", "", "\\a)", 0, true, 0, 2, 1, 2);
+        test("\\\\(a)", "", "\\a)", 0, true, 0, 2, 1, 2);
+        test("\\\\(a)", "", "(\\a)", 0, true, 1, 3, 2, 3);
+        test("\\\\(a)", "", "\\(a)", 0, false);
+        test("\\\\(a)", "", "\\\\(a)", 0, false);
+        test("\\\\(a)+", "", "\\a\\a", 0, true, 0, 2, 1, 2);
+        test("\\\\(a)+", "", "\\aa", 0, true, 0, 3, 2, 3);
+        expectSyntaxError("\\(a)", "", "", getTRegexEncoding(), "\\a)", 0, "unmatched parentheses in regular expression");
+        expectSyntaxError(")", "", "", getTRegexEncoding(), "(\\a)", 0, "unmatched parentheses in regular expression");
+        expectSyntaxError("\\()", "", "", getTRegexEncoding(), "\\a)", 0, "unmatched parentheses in regular expression");
+        test("\\\\()", "", "\\a)", 0, true, 0, 1, 1, 1);
+        test("\\\\(a)b", "", "\\ab", 0, true, 0, 3, 1, 2);
+        test("\\\\(a)()b", "", "\\ab", 0, true, 0, 3, 1, 2, 2, 2);
+        test("\\\\(a)()()()()()()()()()()b", "", "\\ab", 0, true, 0, 3, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2);
+        test("\\[[=a=]c-b]", "", "[ac-b]", 0, true, 0, 6);
+        test("\\[[.a.]c-b]", "", "[ac-b]", 0, true, 0, 6);
+        test("\\[[=a=]c-b", "", "[ac-b]", 0, true, 0, 5);
+        test("\\[[.a.]c-b", "", "[ac-b]", 0, true, 0, 5);
+        test("[=a=]c-b]", "", "[ac-b]", 0, true, 1, 6);
+        test("\\[[a=]c-b]", "", "[ac-b]", 0, true, 0, 6);
+        test("\\[[=a]c-b]", "", "[ac-b]", 0, true, 0, 6);
+        test("\\[[=]c-b]", "", "[=c-b]", 0, true, 0, 6);
+        test("\\[[a]c-b]", "", "[ac-b]", 0, true, 0, 6);
+        test("\\[[=a=]b-b]*", "", "[[aabb", 0, false);
+        test("\\[[=a=]b-b]*", "", "[aabb", 0, false);
+        test("\\[[=a=]b-b]*", "", "[aabb]]", 0, false);
+        test("\\[[=a=]b-b]*", "", "[aabb==]]", 0, false);
+        test("\\[[=a=]b-b]*", "", "[aabb==]]", 0, false);
+        test("\\[[=a=]b-b]*", "", "aabb", 0, false);
+        test("\\[b-b]", "", "[b-b]", 0, true, 0, 5);
+        test("\\[[b-b]", "", "[b-b]", 0, true, 0, 2);
+        test("\\[c-b]", "", "[c-b]", 0, true, 0, 5);
+        expectSyntaxError("\\[[c-b]", "", "", getTRegexEncoding(), "[c-b]", 0, "invalid range in regular expression");
         test("()?*", "", "c", 0, true, 0, 0, 0, 0);
-        test("X(.?){8,8}Y", "", "X1234567Y", 0, true, 0, 9, 8, 8);
-    }
-
-    @Test
-    public void gr52397() {
+        test("()?*|", "", "c", 0, true, 0, 0, 0, 0);
+        test("()?*||", "", "c", 0, true, 0, 0, 0, 0);
+        test("()?*||a", "", "b", 0, true, 0, 0, 0, 0);
+        test("()?*||^a\\Zb", "", "c", 0, true, 0, 0, 0, 0);
+        test("ac??bc?", "", "abc", 0, true, 0, 3);
+        test("ac??bc?", "", "acbc", 0, true, 0, 4);
+        test("a?", "", "a", 0, true, 0, 1);
+        test("a??", "", "a", 0, true, 0, 0);
+        test("a???", "", "a", 0, true, 0, 0);
+        test("(a)???", "", "a", 0, true, 0, 0, -1, -1);
+        test("(a?)??", "", "a", 0, true, 0, 0, -1, -1);
+        test("(a??)?", "", "a", 0, true, 0, 0, 0, 0);
+        test("(a???)", "", "a", 0, true, 0, 0, 0, 0);
+        test("a{0,1}??", "", "a", 0, true, 0, 0);
+        test("a??{0,1}", "", "a", 0, true, 0, 0);
+        test("a{0,1}?{0,1}", "", "a", 0, true, 0, 0);
+        test("(a{0,1})*", "", "aaaaaa", 0, true, 0, 6, 6, 6);
+        test("(a{0,2})*", "", "aaaaaa", 0, true, 0, 6, 6, 6);
+        test("(a{1,2})*", "", "aaaaaa", 0, true, 0, 6, 4, 6);
+        test("(a{2,2})*", "", "aaaaaa", 0, true, 0, 6, 4, 6);
+        test("(\\d)", "", "\u1a89", 0, true, 0, 3, 0, 3);
+        test("a^^?", "", "a", 0, false);
+        test("a||b{2,5}", "", "aaaaa", 0, true, 0, 1);
+        test("a||b{1,5}", "", "aaaaa", 0, true, 0, 1);
+        test("a|b{1,5}", "", "aaaaa", 0, true, 0, 1);
+        test("[^]()|(())||()|u\\A\\6k()\\Z[\\(](|Z^|[[=A=]]|[[=k=]])", "", ":Z", 0, true, 0, 1, 1, 1);
+        test("(a*?)*", "", "aaa", 0, true, 0, 0, 0, 0);
+        test("?a{1,2}||b", "", "ccc", 0, true, 0, 0);
+        test("()?a{1,2}||b", "", "ccc", 0, true, 0, 0, -1, -1);
+        test("[a-a]", "", "a", 0, true, 0, 1);
+        test("[---]", "", "-", 0, true, 0, 1);
+        expectSyntaxError("[a---]", "", "", getTRegexEncoding(), "-", 0, "invalid range in regular expression");
+        test("[a-a---]", "", "-", 0, true, 0, 1);
+        test("[a-a---[:alpha:]]", "", "-", 0, true, 0, 1);
+        test("[---[:alpha:]]", "", "-", 0, true, 0, 1);
+        test("[a-c-e]", "", "-", 0, true, 0, 1);
+        test("[a-c-e]", "", "a", 0, true, 0, 1);
+        test("[a-c-e]", "", "b", 0, true, 0, 1);
+        test("[a-c-e]", "", "c", 0, true, 0, 1);
+        test("[a-c-e]", "", "d", 0, false);
+        test("[a-c-e]", "", "e", 0, true, 0, 1);
+        test("a?a+?", "", "aaa", 0, true, 0, 2);
+        test("(a)\\1\\1b", "", "aaab", 0, true, 0, 4, 0, 1);
+        test("[[:space:]-y]", "", "empty", 0, true, 4, 5);
+        test("[[:space:]-y]", "", "empt-y", 0, true, 4, 5);
+        test("[[:space:]--y]", "", "empty", 0, true, 0, 1);
+        test("a{1,2}|", "", "ccc", 0, true, 0, 0);
+        test("?a{1,2}|", "", "ccc", 0, true, 0, 0);
+        test("()?a{1,2}|", "", "ccc", 0, true, 0, 0, -1, -1);
+        test("()a{1,2}|", "", "ccc", 0, true, 0, 0, -1, -1);
+        test("b?a{1,2}|", "", "ccc", 0, true, 0, 0);
+        test("(|[ab]){3,3}?b", "", "aab", 0, true, 0, 3, 2, 2);
         test("(|[ab]){3,3}b", "", "aab", 0, true, 0, 3, 2, 2);
-    }
-
-    @Test
-    public void gr52472() {
+        test("(|[ab]){3}b", "", "aab", 0, true, 0, 3, 2, 2);
+        test("(|a){3}b", "", "aab", 0, true, 0, 3, 2, 2);
+        test("(|a){2}b", "", "ab", 0, true, 0, 2, 1, 1);
+        test("(|a){1}b", "", "b", 0, true, 0, 1, 0, 0);
+        test("(|a)b", "", "b", 0, true, 0, 1, 0, 0);
+        test("(|a)(|a)(|a)b", "", "aab", 0, true, 0, 3, 0, 0, 0, 1, 1, 2);
+        test("(|a)(|a)b", "", "ab", 0, true, 0, 2, 0, 0, 0, 1);
+        test("(|a+?){0,4}", "", "aaa", 0, true, 0, 0, 0, 0);
         test("(|a+?){0,4}b", "", "aaab", 0, true, 0, 4, 3, 3);
+        expectSyntaxError("[^][.a[.b.]]", "", "", getTRegexEncoding(), "ab", 0, "invalid collation class in regular expression");
+        expectSyntaxError("[^[.a[.b.]]", "", "", getTRegexEncoding(), "ab", 0, "invalid collation class in regular expression");
+        expectSyntaxError("[[.a[.b.]]*", "", "", getTRegexEncoding(), "[[[...aabb", 0, "invalid collation class in regular expression");
+        expectSyntaxError("[[.a[.b.]]*", "", "", getTRegexEncoding(), "[]]]", 0, "invalid collation class in regular expression");
+        expectSyntaxError("[[.a[.b.]*]*", "", "", getTRegexEncoding(), "[..aa..bb..]][", 0, "invalid collation class in regular expression");
+        expectSyntaxError("[[=abcdefgh=]*]*", "", "", getTRegexEncoding(), "[..aa..bb..]][", 0, "invalid equivalence class in regular expression");
+        expectSyntaxError("[^]", "", "", getTRegexEncoding(), "[]^", 0, "unmatched bracket in regular expression");
+        test("[^]]", "", "[]^", 0, true, 0, 1);
+        expectSyntaxError("[]", "", "", getTRegexEncoding(), "[]", 0, "unmatched bracket in regular expression");
+        test("[]]", "", "[]", 0, true, 1, 2);
+        expectSyntaxError("[[.a.b.]]", "", "", getTRegexEncoding(), "[[.a.b.]]", 0, "invalid collation class in regular expression");
+        /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
     }
 }
