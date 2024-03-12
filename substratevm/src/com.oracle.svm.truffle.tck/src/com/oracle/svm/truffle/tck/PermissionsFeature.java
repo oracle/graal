@@ -50,20 +50,12 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.graph.NodeInputList;
-import jdk.graal.compiler.nodes.Invoke;
-import jdk.graal.compiler.nodes.PiNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.java.NewInstanceNode;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionType;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
@@ -82,6 +74,18 @@ import com.oracle.svm.util.ClassUtil;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeInputList;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.PiNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.java.NewInstanceNode;
+import jdk.graal.compiler.nodes.spi.TrackedUnsafeAccess;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ModifiersProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -333,6 +337,43 @@ public class PermissionsFeature implements Feature {
         return visited;
     }
 
+    private void findUnsafeAccesses(
+                    BaseMethodNode mNode,
+                    Map<BaseMethodNode, Set<BaseMethodNode>> visited,
+                    SVMHost hostVM) {
+        /*
+         * In this situation it is unnecessary to check for unsafe accesses.
+         */
+        if (inlinedUnsafeCall == null || isSystemOrSafeClass(mNode)) {
+            return;
+        }
+
+        StructuredGraph mGraph = hostVM.getAnalysisGraph(mNode.getMethod());
+        for (Node node : mGraph.getNodes().filter(n -> n instanceof TrackedUnsafeAccess)) {
+            /*
+             * Check the origin of all tracked unsafe accesses.
+             *
+             * We must determine whether the access originates from a safe class. It is possible for
+             * these accesses to be inlined into other methods during the method handle
+             * intrinsification process.
+             */
+            NodeSourcePosition current = node.getNodeSourcePosition();
+            boolean foundSystemClass = false;
+            while (current != null) {
+                var declaringClass = OriginalClassProvider.getJavaClass(current.getMethod().getDeclaringClass());
+                if (!declaringClass.equals(sunMiscUnsafe) && isSystemClass(declaringClass)) {
+                    foundSystemClass = true;
+                    break;
+                }
+                current = current.getCaller();
+            }
+            if (!foundSystemClass) {
+                visited.computeIfAbsent(inlinedUnsafeCall, (e) -> new HashSet<>()).add(mNode);
+                return;
+            }
+        }
+    }
+
     private boolean callGraphImpl(
                     BaseMethodNode mNode,
                     Set<BaseMethodNode> targets,
@@ -343,13 +384,7 @@ public class PermissionsFeature implements Feature {
         AnalysisMethod m = mNode.getMethod();
         String mName = getMethodName(m);
         path.addFirst(mNode);
-        StructuredGraph mGraph = hostVM.getAnalysisGraph(m);
-        if (mGraph.hasUnsafeAccess() && !isSystemOrSafeClass(mNode)) {
-            debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Method: %s has unsafe access.", mName);
-            if (inlinedUnsafeCall != null) {
-                visited.computeIfAbsent(inlinedUnsafeCall, (e) -> new HashSet<>()).add(mNode);
-            }
-        }
+        findUnsafeAccesses(mNode, visited, hostVM);
         try {
             boolean callPathContainsTarget = false;
             debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Entered method: %s.", mName);
@@ -514,7 +549,10 @@ public class PermissionsFeature implements Feature {
      * @param methodNode the {@link BaseMethodNode} to check
      */
     private static boolean isSystemClass(BaseMethodNode methodNode) {
-        Class<?> clz = methodNode.getOwner().getJavaClass();
+        return isSystemClass(methodNode.getOwner().getJavaClass());
+    }
+
+    private static boolean isSystemClass(Class<?> clz) {
         if (clz == null) {
             return false;
         }
