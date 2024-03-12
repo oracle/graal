@@ -65,8 +65,7 @@ import com.oracle.truffle.regex.tregex.nodes.dfa.SequentialMatchers.SimpleSequen
 import com.oracle.truffle.regex.tregex.nodes.dfa.SequentialMatchers.UTF16Or32SequentialMatchers;
 import com.oracle.truffle.regex.tregex.nodes.dfa.SequentialMatchers.UTF16RawSequentialMatchers;
 import com.oracle.truffle.regex.tregex.nodes.dfa.SequentialMatchers.UTF8SequentialMatchers;
-import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfNode;
-import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfStringNode;
+import com.oracle.truffle.regex.tregex.nodes.input.InputOps;
 
 public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
 
@@ -79,8 +78,8 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     @CompilationFinal(dimensions = 1) private final int[] cgResultOrder;
     private final TRegexDFAExecutorDebugRecorder debugRecorder;
 
-    @Children private InputIndexOfNode[] indexOfNodes;
-    @Child private InputIndexOfStringNode indexOfStringNode;
+    @Children private TruffleString.ByteIndexOfCodePointSetNode[] indexOfNodes;
+    @Child private TruffleString.ByteIndexOfStringNode indexOfStringNode;
     /** A TRegexDFAExecutorNode, or TRegexExecutorBaseNodeWrapper when instrumented. */
     @Child private TRegexExecutorBaseNode innerLiteralPrefixMatcher;
 
@@ -206,22 +205,22 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         return debugRecorder;
     }
 
-    InputIndexOfNode getIndexOfNode(int index) {
+    TruffleString.ByteIndexOfCodePointSetNode getIndexOfNode(int index) {
         if (indexOfNodes == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            InputIndexOfNode[] nodes = new InputIndexOfNode[indexOfParameters.length];
+            TruffleString.ByteIndexOfCodePointSetNode[] nodes = new TruffleString.ByteIndexOfCodePointSetNode[indexOfParameters.length];
             for (int i = 0; i < nodes.length; i++) {
-                nodes[i] = InputIndexOfNode.create();
+                nodes[i] = TruffleString.ByteIndexOfCodePointSetNode.create();
             }
             indexOfNodes = insert(nodes);
         }
         return indexOfNodes[index];
     }
 
-    InputIndexOfStringNode getIndexOfStringNode() {
+    TruffleString.ByteIndexOfStringNode getIndexOfStringNode() {
         if (indexOfStringNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            indexOfStringNode = insert(InputIndexOfStringNode.create());
+            indexOfStringNode = insert(TruffleString.ByteIndexOfStringNode.create());
         }
         return indexOfStringNode;
     }
@@ -386,12 +385,12 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     CompilerAsserts.partialEvaluationConstant(canDoIndexOf);
                     if (canDoIndexOf && injectBranchProbability(CONTINUE_PROBABILITY, inputHasNext(locals))) {
                         int indexOfNodeId = state.getIndexOfNodeId();
-                        InputIndexOfNode indexOfNode = getIndexOfNode(indexOfNodeId);
+                        TruffleString.ByteIndexOfCodePointSetNode indexOfNode = getIndexOfNode(indexOfNodeId);
                         TruffleString.CodePointSet indexOfParameter = indexOfParameters[indexOfNodeId];
                         CompilerAsserts.partialEvaluationConstant(indexOfNodeId);
                         CompilerAsserts.partialEvaluationConstant(indexOfNode);
                         CompilerAsserts.partialEvaluationConstant(indexOfParameter);
-                        int indexOfResult = indexOfNode.execute(this, locals.getInput(), locals.getIndex(), getMaxIndex(locals), indexOfParameter, getEncoding());
+                        int indexOfResult = InputOps.indexOf(locals.getInput(), locals.getIndex(), getMaxIndex(locals), indexOfParameter, getEncoding(), indexOfNode);
                         int postLoopIndex = indexOfResult < 0 ? getMaxIndex(locals) : indexOfResult;
                         state.afterIndexOf(locals, this, locals.getIndex(), postLoopIndex, codeRange);
                         assert locals.getIndex() == postLoopIndex;
