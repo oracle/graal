@@ -415,6 +415,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
             prolog = operation;
         } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.EpilogReturn)) {
             op.setInternal();
+            op.setTransparent(true);
+
             if (epilogReturn != null) {
                 addError(typeElement, "%s is already annotated with @%s. A Bytecode DSL class can only declare one return epilog.", getSimpleName(epilogReturn.getTemplateType()),
                                 getSimpleName(types.EpilogReturn));

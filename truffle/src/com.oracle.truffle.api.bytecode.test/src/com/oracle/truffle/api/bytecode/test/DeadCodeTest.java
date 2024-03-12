@@ -360,6 +360,7 @@ public class DeadCodeTest extends AbstractInstructionTest {
             b.beginReturn();
             b.emitLoadConstant(41);
             b.endReturn();
+
             b.endConditional();
 
             emitUnreachableCode(b);
