@@ -1938,7 +1938,7 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     case Instructions.VECTOR_I8X16_SHUFFLE: {
                         final Vector128 indices = readUnsignedInt128();
-                        for (byte index : indices.asBytes()) {
+                        for (byte index : indices.getBytes()) {
                             if (Byte.toUnsignedInt(index) >= 32) {
                                 fail(Failure.INVALID_LANE_INDEX, "i8x16.shuffle lane index %d out of bounds", Byte.toUnsignedInt(index));
                             }
@@ -3189,7 +3189,7 @@ public class BinaryParser extends BinaryStreamParser {
         for (int i = 0; i < 16; i++) {
             bytes[i] = read1();
         }
-        return Vector128.ofBytes(bytes);
+        return new Vector128(bytes);
     }
 
     /**

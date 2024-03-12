@@ -505,7 +505,7 @@ public class Linker {
                     break;
                 }
                 case Bytecode.VECTOR_V128_CONST: {
-                    Vector128 value = Vector128.ofBytes(rawPeekI128(bytecode, offset));
+                    Vector128 value = new Vector128(rawPeekI128(bytecode, offset));
                     offset += 16;
                     stack.add(value);
                     break;

@@ -239,7 +239,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
     @Override
     public Vector128 load_i128(Node node, long address) {
         if (ByteArraySupport.littleEndian().inBounds(byteArrayBuffer.buffer(), address, 16)) {
-            return Vector128.ofBytes(Arrays.copyOfRange(byteArrayBuffer.buffer(), (int) address, (int) address + 16));
+            return new Vector128(Arrays.copyOfRange(byteArrayBuffer.buffer(), (int) address, (int) address + 16));
         } else {
             throw trapOutOfBounds(node, address, 16);
         }
@@ -330,7 +330,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
     @Override
     public void store_i128(Node node, long address, Vector128 value) {
         if (ByteArraySupport.littleEndian().inBounds(byteArrayBuffer.buffer(), address, 16)) {
-            System.arraycopy(value.asBytes(), 0, byteArrayBuffer.buffer(), (int) address, 16);
+            System.arraycopy(value.getBytes(), 0, byteArrayBuffer.buffer(), (int) address, 16);
         } else {
             throw trapOutOfBounds(node, address, 16);
         }
