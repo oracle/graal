@@ -46,6 +46,7 @@ import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode;
@@ -58,8 +59,10 @@ import com.oracle.svm.core.util.TimeUtils;
 public class HeapDumpSupportImpl extends HeapDumping {
     private final HeapDumpWriter writer;
     private final HeapDumpOperation heapDumpOperation;
+    private final VMMutex outOfMemoryHeapDumpMutex = new VMMutex("outOfMemoryHeapDump");
 
     private CCharPointer outOfMemoryHeapDumpPath;
+    private boolean outOfMemoryHeapDumpAttempted;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public HeapDumpSupportImpl(HeapDumpMetadata metadata) {
@@ -86,6 +89,23 @@ public class HeapDumpSupportImpl extends HeapDumping {
     @Override
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "OutOfMemoryError heap dumping must not allocate.")
     public void dumpHeapOnOutOfMemoryError() {
+        /*
+         * Try exactly once to create an out-of-memory heap dump. If another thread triggers an
+         * OutOfMemoryError while heap dumping is in progress, it needs to wait until heap dumping
+         * finishes.
+         */
+        outOfMemoryHeapDumpMutex.lock();
+        try {
+            if (!outOfMemoryHeapDumpAttempted) {
+                dumpHeapOnOutOfMemoryError0();
+                outOfMemoryHeapDumpAttempted = true;
+            }
+        } finally {
+            outOfMemoryHeapDumpMutex.unlock();
+        }
+    }
+
+    private void dumpHeapOnOutOfMemoryError0() {
         CCharPointer path = outOfMemoryHeapDumpPath;
         if (path.isNull()) {
             Log.log().string("OutOfMemoryError heap dumping failed because the heap dump file path could not be allocated.").newline();
