@@ -134,6 +134,8 @@ public final class RegexOptions {
     private static final String BOOLEAN_MATCH_NAME = "BooleanMatch";
     private static final int MUST_ADVANCE = 1 << 10;
     public static final String MUST_ADVANCE_NAME = "MustAdvance";
+    private static final int GENERATE_INPUT = 1 << 11;
+    public static final String GENERATE_INPUT_NAME = "GenerateInput";
     public static final String COLLATION_NAME = "Collation";
 
     public static final String FLAVOR_NAME = "Flavor";
@@ -258,6 +260,14 @@ public final class RegexOptions {
         return isBitSet(MUST_ADVANCE);
     }
 
+    /**
+     * Try to generate a string that matches the given regex and return it instead of the compiled
+     * regex.
+     */
+    public boolean isGenerateInput() {
+        return isBitSet(GENERATE_INPUT);
+    }
+
     public RegexFlavor getFlavor() {
         return flavor;
     }
@@ -366,6 +376,9 @@ public final class RegexOptions {
         if (pythonLocale != null) {
             sb.append(PYTHON_LOCALE_NAME + "=" + pythonLocale + ",");
         }
+        if (isGenerateInput()) {
+            sb.append(GENERATE_INPUT_NAME).append("=true");
+        }
         return sb.toString();
     }
 
@@ -411,7 +424,19 @@ public final class RegexOptions {
                         i = parseFlavor(i);
                         break;
                     case 'G':
-                        i = parseBooleanOption(i, GENERATE_DFA_IMMEDIATELY_NAME, GENERATE_DFA_IMMEDIATELY);
+                        if ((long) i + "Generate".length() >= src.length()) {
+                            throw optionsSyntaxErrorUnexpectedKey(i);
+                        }
+                        switch (src.charAt(i + "Generate".length())) {
+                            case 'D':
+                                i = parseBooleanOption(i, GENERATE_DFA_IMMEDIATELY_NAME, GENERATE_DFA_IMMEDIATELY);
+                                break;
+                            case 'I':
+                                i = parseBooleanOption(i, GENERATE_INPUT_NAME, GENERATE_INPUT);
+                                break;
+                            default:
+                                throw optionsSyntaxErrorUnexpectedKey(i);
+                        }
                         break;
                     case 'I':
                         i = parseBooleanOption(i, IGNORE_ATOMIC_GROUPS_NAME, IGNORE_ATOMIC_GROUPS);
