@@ -221,12 +221,12 @@ public final class Vector128 implements TruffleObject {
 
     @ExportMessage
     protected static boolean isArrayElementReadable(@SuppressWarnings("unused") Vector128 receiver, long index) {
-        return index < 16;
+        return index >= 0 && index < 16;
     }
 
     @ExportMessage
     protected byte readArrayElement(long index) throws InvalidArrayIndexException {
-        if (index >= 16) {
+        if (!isArrayElementReadable(this, index)) {
             throw InvalidArrayIndexException.create(index);
         }
         return bytes[(int) index];
