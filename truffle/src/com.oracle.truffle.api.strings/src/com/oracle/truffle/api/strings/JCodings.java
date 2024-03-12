@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.strings;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.nodes.Node;
@@ -51,8 +53,37 @@ interface JCodings {
     interface Encoding {
     }
 
-    boolean ENABLED = !TruffleOptions.AOT || TStringAccessor.getNeedsAllEncodings();
+    String JCODINGS_MODULE_NAME = "org.graalvm.shadowed.jcodings";
+    boolean ENABLED = isAvailable() && (!TruffleOptions.AOT || TStringAccessor.getNeedsAllEncodings());
     JCodings INSTANCE = ENABLED ? new JCodingsImpl() : new JCodingsDisabled();
+
+    static boolean isAvailable() {
+        // Try to find jcodings module on the truffle module layer or the boot module layer.
+        Module truffleModule = JCodings.class.getModule();
+        ModuleLayer layer = Objects.requireNonNullElse(truffleModule.getLayer(), ModuleLayer.boot());
+        if (layer.findModule(JCODINGS_MODULE_NAME).isPresent()) {
+            return true;
+        } else if (truffleModule.isNamed()) {
+            /*
+             * Note: Named modules cannot read unnamed modules. So if truffle was loaded as a named
+             * module, we can only find jcodings as a named module (i.e., if it is only on the class
+             * path, and not added to the boot layer using --add-modules, we cannot read it).
+             */
+            return false;
+        } else {
+            /*
+             * We haven't found jcodings as a named module but if truffle itself is in an unnamed
+             * module, we might still be able to find it in the unnamed module. Try loading an
+             * arbitrary JCodings class.
+             */
+            try {
+                org.graalvm.shadowed.org.jcodings.Encoding.class.getModule();
+                return true;
+            } catch (NoClassDefFoundError e) {
+                return false;
+            }
+        }
+    }
 
     static JCodings getInstance() {
         return INSTANCE;
