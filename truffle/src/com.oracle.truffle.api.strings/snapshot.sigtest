@@ -695,7 +695,7 @@ meth public static com.oracle.truffle.api.strings.TruffleString$Encoding fromJCo
 meth public static com.oracle.truffle.api.strings.TruffleString$Encoding valueOf(java.lang.String)
 meth public static com.oracle.truffle.api.strings.TruffleString$Encoding[] values()
 supr java.lang.Enum<com.oracle.truffle.api.strings.TruffleString$Encoding>
-hfds EMPTY_STRINGS,ENCODINGS_TABLE,J_CODINGS_NAME_MAP,J_CODINGS_TABLE,MAX_COMPATIBLE_CODE_RANGE,fixedWidth,id,jCoding,maxCompatibleCodeRange,name,naturalStride
+hfds EMPTY_BYTES,EMPTY_STRINGS,ENCODINGS_TABLE,MAX_COMPATIBLE_CODE_RANGE,fixedWidth,id,jCodingName,maxCompatibleCodeRange,naturalStride
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$EqualNode
  outer com.oracle.truffle.api.strings.TruffleString
