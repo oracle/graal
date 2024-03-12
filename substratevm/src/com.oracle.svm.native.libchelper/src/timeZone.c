@@ -34,6 +34,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define jio_fprintf fprintf
+
 #define VALUE_UNKNOWN           0
 #define VALUE_KEY               1
 #define VALUE_MAPID             2
