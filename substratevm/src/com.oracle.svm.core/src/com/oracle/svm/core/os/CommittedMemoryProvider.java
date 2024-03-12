@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.os;
 
-import java.util.EnumSet;
-
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -116,23 +114,4 @@ public interface CommittedMemoryProvider {
      */
     default void afterGarbageCollection() {
     }
-
-    enum Access {
-        READ,
-        WRITE,
-        EXECUTE
-    }
-
-    /**
-     * Change access permissions for a block of committed memory that was allocated with one of the
-     * allocation methods.
-     *
-     * @param start The start of the address range to be protected, which must be a multiple of the
-     *            {@linkplain #getGranularity() granularity}.
-     * @param nbytes The size in bytes of the address range to be protected, which will be rounded
-     *            up to a multiple of the {@linkplain #getGranularity() granularity}.
-     * @param access The modes in which the memory is permitted to be accessed, see {@link Access}.
-     * @return 0 when successful, or a non-zero implementation-specific error code.
-     */
-    int protect(PointerBase start, UnsignedWord nbytes, EnumSet<Access> access);
 }
