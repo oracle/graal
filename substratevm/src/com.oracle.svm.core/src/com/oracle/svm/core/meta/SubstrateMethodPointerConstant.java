@@ -36,7 +36,7 @@ public class SubstrateMethodPointerConstant implements VMConstant {
         this.pointer = pointer;
     }
 
-    public static SubstrateMethodPointerConstant ALWAYS_NULL = new SubstrateMethodPointerConstant(null);
+    public static final SubstrateMethodPointerConstant ALWAYS_NULL = new SubstrateMethodPointerConstant(null);
 
     public MethodPointer pointer() {
         return pointer;
