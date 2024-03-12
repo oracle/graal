@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.meta;
 
+import java.lang.reflect.Method;
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -87,7 +88,8 @@ public final class KnownOffsetsFeature implements InternalFeature {
     }
 
     private static int findStructOffset(BeforeCompilationAccessImpl access, Class<?> clazz, String accessorName) {
-        AccessorInfo accessorInfo = (AccessorInfo) access.getNativeLibraries().findElementInfo(access.getMetaAccess().lookupJavaMethod(ReflectionUtil.lookupMethod(clazz, accessorName)));
+        Method method = ReflectionUtil.lookupPublicMethodInClassHierarchy(clazz, accessorName);
+        AccessorInfo accessorInfo = (AccessorInfo) access.getNativeLibraries().findElementInfo(access.getMetaAccess().lookupJavaMethod(method));
         StructFieldInfo structFieldInfo = (StructFieldInfo) accessorInfo.getParent();
         return structFieldInfo.getOffsetInfo().getProperty();
     }
