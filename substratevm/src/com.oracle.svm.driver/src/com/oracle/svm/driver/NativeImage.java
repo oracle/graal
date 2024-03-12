@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -651,8 +651,8 @@ public class NativeImage {
                             ModuleFinder finder = ModuleFinder.of(classpathEntry);
                             ModuleReference ref = finder.find(forceOnModulePath).orElse(null);
                             if (ref == null) {
-                                throw showError("Failed to process ForceOnModulePath attribute: No module descriptor was not found in class-path entry: " +
-                                                classpathEntry + ".");
+                                throw showError("Failed to process ForceOnModulePath attribute: Module descriptor for the module " + forceOnModulePath +
+                                                " was not found in class-path entry: " + classpathEntry + ".");
                             }
                         } catch (FindException e) {
                             throw showError("Failed to process ForceOnModulePath attribute: Module descriptor for the module " + forceOnModulePath +
