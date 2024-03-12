@@ -157,6 +157,8 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
         @Option(help = "Moves guard nodes to earlier places in the dominator tree if " +
                        "all successors of a basic block share a common guard condition.", type = OptionType.Expert)
         public static final OptionKey<Boolean> MoveGuardsUpwards = new OptionKey<>(true);
+        @Option(help = "", type = OptionType.Debug)
+         public static final OptionKey<Boolean> FieldAccessSkipPreciseTypes = new OptionKey<>(false);
         // @formatter:on
     }
 
@@ -428,6 +430,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
         private final ConditionalEliminationUtil.InfoElementProvider infoElementProvider;
         private final ConditionalEliminationUtil.GuardFolding guardFolding;
         protected final ArrayDeque<ConditionalEliminationUtil.GuardedCondition> conditions;
+        private final boolean processFieldAccess;
 
         /**
          * Tests which may be eliminated because post dominating tests to prove a broader condition.
@@ -459,6 +462,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                     return foldPendingTest(thisGuard, original, newStamp, rewireGuardFunction);
                 }
             };
+            this.processFieldAccess = Options.FieldAccessSkipPreciseTypes.getValue(graph.getOptions());
         }
 
         protected void processConditionAnchor(ConditionAnchorNode node) {
@@ -785,7 +789,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                     processValueAnchor((ValueAnchorNode) node);
                 } else if (node instanceof CompressionNode c) {
                     processCompressionNode(c);
-                } else if (node instanceof AccessFieldNode af) {
+                } else if (processFieldAccess && node instanceof AccessFieldNode af) {
                     processAccessField(af);
                 }
             }

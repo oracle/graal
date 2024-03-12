@@ -155,14 +155,19 @@ public class LoadFieldPiCanonicalizationTest extends GraalCompilerTest {
         return -1;
     }
 
+    private static OptionValues getOptions() {
+        OptionValues opt = new OptionValues(getInitialOptions(), ConditionalEliminationPhase.Options.FieldAccessSkipPreciseTypes, true);
+        return opt;
+    }
+
     @Test
     public void getFieldNullCheck() {
-        test("getFieldNullCheckSnippet", new A(42));
+        test(getOptions(), "getFieldNullCheckSnippet", new A(42));
     }
 
     @Test
     public void getFieldNullCheckOldStyle() {
-        test("getFieldNullCheckOldStyleSnippet", new A(42));
+        test(getOptions(), "getFieldNullCheckOldStyleSnippet", new A(42));
     }
 
     public static int uniqueGetFieldSnippet(Object base) {
@@ -195,8 +200,8 @@ public class LoadFieldPiCanonicalizationTest extends GraalCompilerTest {
 
     @Test
     public void uniqueGetField() {
-        test("uniqueGetFieldSnippet", new B(42));
-        test("uniqueGetFieldSnippet", new A(23));
+        test(getOptions(), "uniqueGetFieldSnippet", new B(42));
+        test(getOptions(), "uniqueGetFieldSnippet", new A(23));
     }
 
     @Test
@@ -207,8 +212,8 @@ public class LoadFieldPiCanonicalizationTest extends GraalCompilerTest {
          */
         expectHighTierNullChecks = true;
         try {
-            test("uniqueGetFieldFromParameterSnippet", new B(42));
-            test("uniqueGetFieldFromParameterSnippet", new A(23));
+            test(getOptions(), "uniqueGetFieldFromParameterSnippet", new B(42));
+            test(getOptions(), "uniqueGetFieldFromParameterSnippet", new A(23));
         } finally {
             expectHighTierNullChecks = false;
         }
@@ -246,8 +251,8 @@ public class LoadFieldPiCanonicalizationTest extends GraalCompilerTest {
         try {
             ArgSupplier b = () -> new B(42);
             ArgSupplier a = () -> new A(23);
-            test("uniquePutFieldSnippet", b, 56);
-            test("uniquePutFieldSnippet", a, 56);
+            test(getOptions(), "uniquePutFieldSnippet", b, 56);
+            test(getOptions(), "uniquePutFieldSnippet", a, 56);
         } finally {
             graphCheck = GraphCheck.HIGH_TIER;
         }
@@ -263,8 +268,8 @@ public class LoadFieldPiCanonicalizationTest extends GraalCompilerTest {
         try {
             ArgSupplier b = () -> new B(42);
             ArgSupplier a = () -> new A(23);
-            test("uniquePutFieldFromParameterSnippet", b, 56);
-            test("uniquePutFieldFromParameterSnippet", a, 56);
+            test(getOptions(), "uniquePutFieldFromParameterSnippet", b, 56);
+            test(getOptions(), "uniquePutFieldFromParameterSnippet", a, 56);
         } finally {
             graphCheck = GraphCheck.HIGH_TIER;
         }
