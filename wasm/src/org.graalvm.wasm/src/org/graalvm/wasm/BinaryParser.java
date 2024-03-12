@@ -1940,7 +1940,7 @@ public class BinaryParser extends BinaryStreamParser {
                         final Vector128 indices = readUnsignedInt128();
                         for (byte index : indices.getBytes()) {
                             if (Byte.toUnsignedInt(index) >= 32) {
-                                fail(Failure.INVALID_LANE_INDEX, "i8x16.shuffle lane index %d out of bounds", Byte.toUnsignedInt(index));
+                                fail(Failure.INVALID_LANE_INDEX, "Lane index %d out of bounds for i8x16.shuffle", Byte.toUnsignedInt(index));
                             }
                         }
                         state.popChecked(V128_TYPE);
