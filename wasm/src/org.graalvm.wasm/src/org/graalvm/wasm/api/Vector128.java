@@ -56,65 +56,61 @@ public final class Vector128 implements TruffleObject {
     // v128 component values are stored in little-endian order
     private static final ByteArraySupport byteArraySupport = ByteArraySupport.littleEndian();
 
-    public static final Vector128 ZERO = Vector128.ofBytes(new byte[16]);
+    public static final Vector128 ZERO = new Vector128(new byte[16]);
 
     @CompilerDirectives.CompilationFinal(dimensions = 1) private final byte[] bytes;
 
-    private Vector128(byte[] bytes) {
+    public Vector128(byte[] bytes) {
         assert bytes.length == 16;
         this.bytes = bytes;
     }
 
-    public byte[] asBytes() {
+    public byte[] getBytes() {
         return bytes;
     }
 
-    public static Vector128 ofBytes(byte[] bytes) {
-        return new Vector128(bytes);
+    public short[] toShorts() {
+        return fromBytesToShorts(bytes);
     }
 
-    public short[] asShorts() {
-        return bytesAsShorts(bytes);
+    public static Vector128 fromShorts(short[] shorts) {
+        return new Vector128(fromShortsToBytes(shorts));
     }
 
-    public static Vector128 ofShorts(short[] shorts) {
-        return new Vector128(shortsAsBytes(shorts));
+    public int[] toInts() {
+        return fromBytesToInts(bytes);
     }
 
-    public int[] asInts() {
-        return bytesAsInts(bytes);
+    public static Vector128 fromInts(int[] ints) {
+        return new Vector128(fromIntsToBytes(ints));
     }
 
-    public static Vector128 ofInts(int[] ints) {
-        return new Vector128(intsAsBytes(ints));
+    public long[] toLongs() {
+        return fromBytesToLongs(bytes);
     }
 
-    public long[] asLongs() {
-        return bytesAsLongs(bytes);
+    public static Vector128 fromLongs(long[] longs) {
+        return new Vector128(fromLongsToBytes(longs));
     }
 
-    public static Vector128 ofLongs(long[] longs) {
-        return new Vector128(longsAsBytes(longs));
+    public float[] toFloats() {
+        return fromBytesToFloats(bytes);
     }
 
-    public float[] asFloats() {
-        return bytesAsFloats(bytes);
+    public static Vector128 fromFloats(float[] floats) {
+        return new Vector128(fromFloatsToBytes(floats));
     }
 
-    public static Vector128 ofFloats(float[] floats) {
-        return new Vector128(floatsAsBytes(floats));
+    public double[] toDoubles() {
+        return fromBytesToDoubles(bytes);
     }
 
-    public double[] asDoubles() {
-        return bytesAsDoubles(bytes);
-    }
-
-    public static Vector128 ofDoubles(double[] doubles) {
-        return new Vector128(doublesAsBytes(doubles));
+    public static Vector128 fromDoubles(double[] doubles) {
+        return new Vector128(fromDoublesToBytes(doubles));
     }
 
     @ExplodeLoop
-    public static short[] bytesAsShorts(byte[] bytes) {
+    public static short[] fromBytesToShorts(byte[] bytes) {
         assert bytes.length == 16;
         short[] shorts = new short[8];
         for (int i = 0; i < 8; i++) {
@@ -124,7 +120,7 @@ public final class Vector128 implements TruffleObject {
     }
 
     @ExplodeLoop
-    public static int[] bytesAsInts(byte[] bytes) {
+    public static int[] fromBytesToInts(byte[] bytes) {
         assert bytes.length == 16;
         int[] ints = new int[4];
         for (int i = 0; i < 4; i++) {
@@ -134,7 +130,7 @@ public final class Vector128 implements TruffleObject {
     }
 
     @ExplodeLoop
-    public static long[] bytesAsLongs(byte[] bytes) {
+    public static long[] fromBytesToLongs(byte[] bytes) {
         assert bytes.length == 16;
         long[] longs = new long[2];
         for (int i = 0; i < 2; i++) {
@@ -144,7 +140,7 @@ public final class Vector128 implements TruffleObject {
     }
 
     @ExplodeLoop
-    public static float[] bytesAsFloats(byte[] bytes) {
+    public static float[] fromBytesToFloats(byte[] bytes) {
         assert bytes.length == 16;
         float[] floats = new float[4];
         for (int i = 0; i < 4; i++) {
@@ -154,7 +150,7 @@ public final class Vector128 implements TruffleObject {
     }
 
     @ExplodeLoop
-    public static double[] bytesAsDoubles(byte[] bytes) {
+    public static double[] fromBytesToDoubles(byte[] bytes) {
         assert bytes.length == 16;
         double[] doubles = new double[2];
         for (int i = 0; i < 2; i++) {
@@ -164,7 +160,7 @@ public final class Vector128 implements TruffleObject {
     }
 
     @ExplodeLoop
-    public static byte[] shortsAsBytes(short[] shorts) {
+    public static byte[] fromShortsToBytes(short[] shorts) {
         assert shorts.length == 8;
         byte[] bytes = new byte[16];
         for (int i = 0; i < 8; i++) {
@@ -174,7 +170,7 @@ public final class Vector128 implements TruffleObject {
     }
 
     @ExplodeLoop
-    public static byte[] intsAsBytes(int[] ints) {
+    public static byte[] fromIntsToBytes(int[] ints) {
         assert ints.length == 4;
         byte[] bytes = new byte[16];
         for (int i = 0; i < 4; i++) {
@@ -184,7 +180,7 @@ public final class Vector128 implements TruffleObject {
     }
 
     @ExplodeLoop
-    public static byte[] longsAsBytes(long[] longs) {
+    public static byte[] fromLongsToBytes(long[] longs) {
         assert longs.length == 2;
         byte[] bytes = new byte[16];
         for (int i = 0; i < 2; i++) {
@@ -194,7 +190,7 @@ public final class Vector128 implements TruffleObject {
     }
 
     @ExplodeLoop
-    public static byte[] floatsAsBytes(float[] floats) {
+    public static byte[] fromFloatsToBytes(float[] floats) {
         assert floats.length == 4;
         byte[] bytes = new byte[16];
         for (int i = 0; i < 4; i++) {
@@ -204,7 +200,7 @@ public final class Vector128 implements TruffleObject {
     }
 
     @ExplodeLoop
-    public static byte[] doublesAsBytes(double[] doubles) {
+    public static byte[] fromDoublesToBytes(double[] doubles) {
         assert doubles.length == 2;
         byte[] bytes = new byte[16];
         for (int i = 0; i < 2; i++) {

@@ -247,7 +247,7 @@ class NativeWasmMemory extends WasmMemory {
         validateAddress(node, address, 16);
         byte[] bytes = new byte[16];
         unsafe.copyMemory(null, startAddress + address, bytes, Unsafe.ARRAY_BYTE_BASE_OFFSET, 16);
-        return Vector128.ofBytes(bytes);
+        return new Vector128(bytes);
     }
 
     @Override
@@ -307,7 +307,7 @@ class NativeWasmMemory extends WasmMemory {
     @Override
     public void store_i128(Node node, long address, Vector128 value) {
         validateAddress(node, address, 16);
-        unsafe.copyMemory(value.asBytes(), Unsafe.ARRAY_BYTE_BASE_OFFSET, null, startAddress + address, 16);
+        unsafe.copyMemory(value.getBytes(), Unsafe.ARRAY_BYTE_BASE_OFFSET, null, startAddress + address, 16);
     }
 
     @Override
