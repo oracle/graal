@@ -318,6 +318,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return first.providerAdapter.getProviderClass() == second.providerAdapter.getProviderClass();
     }
 
+    @SuppressWarnings("deprecation")
     private static void loadLanguageImpl(ProviderAdapter providerAdapter, List<LanguageCache> into, Map<String, Map<String, Supplier<InternalResourceCache>>> optionalResources) {
         Class<?> providerClass = providerAdapter.getProviderClass();
         Module providerModule = providerClass.getModule();

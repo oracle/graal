@@ -51,7 +51,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.strings.TruffleString;
 
-@TruffleLanguage.Registration(name = TStringTestDummyLanguage.NAME, id = TStringTestDummyLanguage.ID, characterMimeTypes = TStringTestDummyLanguage.MIME_TYPE, version = "0.1", needsAllEncodings = true)
+@TruffleLanguage.Registration(name = TStringTestDummyLanguage.NAME, id = TStringTestDummyLanguage.ID, characterMimeTypes = TStringTestDummyLanguage.MIME_TYPE, version = "0.1")
 @SuppressWarnings("truffle-inlining")
 public class TStringTestDummyLanguage extends TruffleLanguage<TStringTestDummyLanguage.DummyLanguageContext> {
 
