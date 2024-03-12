@@ -60,6 +60,11 @@ import sys
 import textwrap
 import zipfile
 
+try:
+    from defusedxml.ElementTree import parse as etreeParse
+except ImportError:
+    from xml.etree.ElementTree import parse as etreeParse
+
 import mx
 import mx_gate
 import mx_javamodules
@@ -454,7 +459,6 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
             _incl_list = []
             orig_info_plist = join(_src_jdk_dir, 'Contents', 'Info.plist')
             if exists(orig_info_plist):
-                from mx import etreeParse
                 root = etreeParse(orig_info_plist)
                 found_el = False
                 for el in root.iter():
