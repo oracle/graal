@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,93 +29,18 @@
  */
 package com.oracle.truffle.llvm.toolchain.launchers;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-
-import org.graalvm.nativeimage.ProcessProperties;
-
 import com.oracle.truffle.llvm.toolchain.launchers.common.Driver;
 
-public final class BinUtil {
+import java.nio.file.Path;
+
+public final class BinUtil extends AbstractBinUtil {
+
     public static void main(String[] args) {
-        String processName = getProcessName();
-
-        if (processName == null) {
-            System.err.println("Error: Could not figure out process name");
-            System.exit(1);
-        }
-
-        if (!processName.startsWith("llvm-")) {
-            processName = "llvm-" + processName;
-        }
-
-        final String targetName = Driver.getLLVMBinDir().resolve(processName).toString();
-
-        ArrayList<String> utilArgs = new ArrayList<>(args.length + 1);
-        utilArgs.add(targetName);
-        if (args.length > 0) {
-            utilArgs.addAll(Arrays.asList(args));
-        }
-        ProcessBuilder pb = new ProcessBuilder(utilArgs).redirectError(ProcessBuilder.Redirect.INHERIT).redirectInput(ProcessBuilder.Redirect.INHERIT).redirectOutput(ProcessBuilder.Redirect.INHERIT);
-        Process p = null;
-        try {
-            p = pb.start();
-            p.waitFor();
-            System.exit(p.exitValue());
-        } catch (IOException e) {
-            System.err.println("Error: " + e.getMessage());
-            Driver.printMissingToolMessage();
-            System.exit(1);
-        } catch (InterruptedException e) {
-            if (p != null) {
-                p.destroyForcibly();
-            }
-            System.err.println("Error: Subprocess interrupted: " + e.getMessage());
-            System.exit(1);
-        }
+        new BinUtil().run(args);
     }
 
-    private static boolean isWindows() {
-        return System.getProperty("os.name").startsWith("Windows");
-    }
-
-    private static String getProcessName() {
-        String binPathName = System.getProperty("org.graalvm.launcher.executablename");
-
-        if (binPathName == null) {
-            if (isWindows()) {
-                binPathName = System.getenv("GRAALVM_ARGUMENT_VECTOR_PROGRAM_NAME");
-                if (binPathName == null) {
-                    return null;
-                }
-            } else {
-                if (ProcessProperties.getArgumentVectorBlockSize() <= 0) {
-                    return null;
-                }
-                binPathName = ProcessProperties.getArgumentVectorProgramName();
-
-                if (binPathName == null) {
-                    return null;
-                }
-            }
-        }
-
-        Path p = Paths.get(binPathName);
-        Path f = p.getFileName();
-
-        if (f == null) {
-            return null;
-        }
-
-        String result = f.toString();
-
-        if (isWindows()) {
-            result = result.replace(".cmd", ".exe");
-        }
-
-        return result;
+    @Override
+    protected Path getTargetPath(String binUtilName) {
+        return Driver.getLLVMBinDir().resolve(binUtilName);
     }
 }
