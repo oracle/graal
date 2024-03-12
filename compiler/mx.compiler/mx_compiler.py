@@ -51,7 +51,6 @@ import mx_sdk_vm_impl
 
 import mx_benchmark
 
-import argparse
 import shlex
 import json
 
