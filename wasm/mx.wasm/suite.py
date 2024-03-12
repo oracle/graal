@@ -237,6 +237,9 @@ suite = {
     "WASM" : {
       "moduleInfo" : {
         "name" : "org.graalvm.wasm",
+        "requires": [
+          "org.graalvm.collections",
+        ],
       },
       "subDir" : "src",
       "dependencies" : [
@@ -275,6 +278,9 @@ suite = {
         "name" : "org.graalvm.wasm.launcher",
         "exports" : [
           "org.graalvm.wasm.launcher to org.graalvm.launcher",
+        ],
+        "requires": [
+          "org.graalvm.polyglot",
         ],
       },
       "subDir" : "src",
