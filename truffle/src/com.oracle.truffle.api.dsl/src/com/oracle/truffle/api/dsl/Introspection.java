@@ -58,7 +58,8 @@ import com.oracle.truffle.api.nodes.Node;
  * <p>
  * Example for using introspection in unit testing:
  *
- * {@codesnippet com.oracle.truffle.api.dsl.IntrospectionSnippets.NegateNode}
+ * {@snippet file="com/oracle/truffle/api/dsl/Introspection.java"
+ * region="com.oracle.truffle.api.dsl.IntrospectionSnippets.NegateNode"}
  *
  * @since 0.22
  * @see Introspectable
@@ -414,7 +415,7 @@ public final class Introspection {
 @SuppressFBWarnings("")
 class IntrospectionSnippets {
 
-    // BEGIN: com.oracle.truffle.api.dsl.IntrospectionSnippets.NegateNode
+    // @start region = "com.oracle.truffle.api.dsl.IntrospectionSnippets.NegateNode"
     @Introspectable
     abstract static class NegateNode extends Node {
 
@@ -451,5 +452,5 @@ class IntrospectionSnippets {
         info = Introspection.getSpecialization(node, "doGeneric");
         assert info.getInstances() == 1;
     }
-    // END: com.oracle.truffle.api.dsl.IntrospectionSnippets.NegateNode
+    // @end region = "com.oracle.truffle.api.dsl.IntrospectionSnippets.NegateNode"
 }

@@ -172,10 +172,14 @@ public abstract class Node implements NodeInterface, Cloneable {
      * be called on any thread and without a language context being active.
      * <p>
      * Simple example implementation using a simple implementation using a field:
-     * {@link com.oracle.truffle.api.nodes.NodeSnippets.SimpleNode}
+     * 
+     * {@snippet file="com/oracle/truffle/api/nodes/Node.java"
+     * region="com.oracle.truffle.api.nodes.NodeSnippets.SimpleNode"}
      * <p>
      * Recommended implementation computing the source section lazily from primitive fields:
-     * {@link com.oracle.truffle.api.nodes.NodeSnippets.RecommendedNode}
+     * 
+     * {@snippet file="com/oracle/truffle/api/nodes/Node.java"
+     * region="com.oracle.truffle.api.nodes.NodeSnippets.RecommendedNode"}
      *
      * @return the source code represented by this Node
      * @since 0.8 or earlier
@@ -275,7 +279,8 @@ public abstract class Node implements NodeInterface, Cloneable {
      * AST before invoking this method. The caller must ensure that this method is invoked only once
      * for a given node and its children.
      * <p>
-     * Example usage: {@link com.oracle.truffle.api.nodes.NodeSnippets#notifyInserted}
+     * {@snippet file = "com/oracle/truffle/api/nodes/Node.java" region =
+     * "com.oracle.truffle.api.nodes.NodeSnippets#notifyInserted"}
      *
      * @param node the node tree that got inserted.
      * @since 0.27
@@ -289,7 +294,9 @@ public abstract class Node implements NodeInterface, Cloneable {
         INSTRUMENT.onNodeInserted(rootNode, node);
     }
 
-    /** @since 0.8 or earlier */
+    /**
+     * @since 0.8 or earlier
+     */
     public final void adoptChildren() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         NodeUtil.adoptChildrenHelper(this);
@@ -473,7 +480,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Checks if this node can be replaced by another node: tree structure & type.
+     * Checks if this node can be replaced by another node: tree structure &amp; type.
      *
      * @since 0.8 or earlier
      */
@@ -591,7 +598,9 @@ public abstract class Node implements NodeInterface, Cloneable {
         return getRootNodeImpl();
     }
 
-    /** Protect against parent cycles and extremely long parent chains. */
+    /**
+     * Protect against parent cycles and extremely long parent chains.
+     */
     static final int PARENT_LIMIT = 100000;
 
     @ExplodeLoop
@@ -656,7 +665,9 @@ public abstract class Node implements NodeInterface, Cloneable {
         return sb.toString();
     }
 
-    /** @since 0.8 or earlier */
+    /**
+     * @since 0.8 or earlier
+     */
     public final void atomic(Runnable closure) {
         Lock lock = getLock();
         try {
@@ -667,7 +678,9 @@ public abstract class Node implements NodeInterface, Cloneable {
         }
     }
 
-    /** @since 0.8 or earlier */
+    /**
+     * @since 0.8 or earlier
+     */
     public final <T> T atomic(Callable<T> closure) {
         Lock lock = getLock();
         try {
@@ -754,7 +767,7 @@ public abstract class Node implements NodeInterface, Cloneable {
 @SuppressWarnings("unused")
 class NodeSnippets {
 
-    // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets.SimpleNode
+    // @start region = "com.oracle.truffle.api.nodes.NodeSnippets.SimpleNode"
     abstract class SimpleNode extends Node {
 
         private SourceSection sourceSection;
@@ -768,9 +781,9 @@ class NodeSnippets {
             return sourceSection;
         }
     }
-    // END: com.oracle.truffle.api.nodes.NodeSnippets.SimpleNode
+    // @end region = "com.oracle.truffle.api.nodes.NodeSnippets.SimpleNode"
 
-    // BEGIN:com.oracle.truffle.api.nodes.NodeSnippets.RecommendedNode
+    // @start region = "com.oracle.truffle.api.nodes.NodeSnippets.RecommendedNode"
     abstract class RecommendedNode extends Node {
 
         private static final int NO_SOURCE = -1;
@@ -803,7 +816,7 @@ class NodeSnippets {
         }
 
     }
-    // END: com.oracle.truffle.api.nodes.NodeSnippets.RecommendedNode
+    // @end region = "com.oracle.truffle.api.nodes.NodeSnippets.RecommendedNode"
 
     public static void notifyInserted() {
         class InstrumentableLanguageNode extends Node {
@@ -819,8 +832,8 @@ class NodeSnippets {
             }
         }
 
-        // @formatter:off
-        // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets#notifyInserted
+        // @formatter:off // @replace regex='.*' replacement=''
+        // @start region="com.oracle.truffle.api.nodes.NodeSnippets#notifyInserted"
         class MyRootNode extends RootNode {
 
             protected MyRootNode(MyLanguage language) {
@@ -840,7 +853,7 @@ class NodeSnippets {
             }
 
         }
-        // END: com.oracle.truffle.api.nodes.NodeSnippets#notifyInserted
-        // @formatter:on
+        // @end region="com.oracle.truffle.api.nodes.NodeSnippets#notifyInserted"
+        // @formatter:on // @replace regex='.*' replacement=''
     }
 }

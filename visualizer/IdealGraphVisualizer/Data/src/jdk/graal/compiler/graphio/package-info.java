@@ -31,7 +31,8 @@
  * {@link jdk.graal.compiler.graphio.GraphOutput} specialized for your data is a matter of
  * implementing a single interface:
  *
- * {@link jdk.graal.compiler.graphio.GraphJavadocSnippets#acmeGraphStructure}
+ * {@snippet file = "jdk/graal/compiler/graphio/GraphJavadocSnippets.java" region =
+ * "jdk.graal.compiler.graphio.GraphJavadocSnippets#acmeGraphStructure"}
  *
  * The {@link jdk.graal.compiler.graphio.GraphStructure} interface defines the set of operations
  * that are needed by the <em>graph protocol</em> to encode a graph into the <b>IGV</b> expected
@@ -45,7 +46,8 @@
  * {@link jdk.graal.compiler.graphio.GraphOutput.Builder builder} just like shown in the following
  * method:
  *
- * {@link jdk.graal.compiler.graphio.GraphJavadocSnippets#buildOutput}
+ * {@snippet file = "jdk/graal/compiler/graphio/GraphJavadocSnippets.java" region =
+ * "jdk.graal.compiler.graphio.GraphJavadocSnippets#buildOutput"}
  *
  * Now you are ready to dump your graph into <b>IGV</b>. Where to obtain the right channel? One
  * option is to create a {@link java.nio.channels.FileChannel} and dump the data into a file
@@ -53,7 +55,8 @@
  * <code>4445</code> (the default port <b>IGV</b> listens to) and dump the data there. Here is an
  * example:
  *
- * {@link jdk.graal.compiler.graphio.GraphJavadocSnippets#dump}
+ * {@snippet file = "jdk/graal/compiler/graphio/GraphJavadocSnippets.java" region =
+ * "jdk.graal.compiler.graphio.GraphJavadocSnippets#dump"}
  *
  * Call the {@code dump} method with pointer to file {@code diamond.bgv} and then you can open the
  * file in <b>IGV</b>. The result will look like this:
@@ -78,7 +81,8 @@
  * such they can be specified via {@link jdk.graal.compiler.graphio.GraphOutput.Builder} instance
  * methods, which may, but need not be called at all. Here is an example:
  *
- * {@link jdk.graal.compiler.graphio.GraphJavadocSnippets#buildAll}
+ * {@snippet file = "jdk/graal/compiler/graphio/GraphJavadocSnippets.java" region =
+ * "jdk.graal.compiler.graphio.GraphJavadocSnippets#buildAll"}
  *
  * All these interfaces follow the
  * <a href="http://wiki.apidesign.org/wiki/Singletonizer">singletonizer</a> API pattern again - e.g.

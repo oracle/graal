@@ -187,7 +187,7 @@ public abstract class AbstractForeignCallStub extends Stub {
      * <pre>
      *     Object foreignFunctionStub(args...) {
      *         foreignFunction(currentThread,  args);
-     *         if ((shouldClearException && clearPendingException(thread())) || (!shouldClearException && hasPendingException(thread)) {
+     *         if ((shouldClearException &amp;&amp; clearPendingException(thread())) || (!shouldClearException &amp;&amp; hasPendingException(thread)) {
      *             getAndClearObjectResult(thread());
      *             DeoptimizeCallerNode.deopt(None, RuntimeConstraint);
      *         }
@@ -201,7 +201,7 @@ public abstract class AbstractForeignCallStub extends Stub {
      * <pre>
      *     int foreignFunctionStub(args...) {
      *         int result = foreignFunction(currentThread,  args);
-     *         if ((shouldClearException && clearPendingException(thread())) || (!shouldClearException && hasPendingException(thread)) {
+     *         if ((shouldClearException &amp;&amp; clearPendingException(thread())) || (!shouldClearException &amp;&amp; hasPendingException(thread)) {
      *             DeoptimizeCallerNode.deopt(None, RuntimeConstraint);
      *         }
      *         return result;
@@ -213,7 +213,7 @@ public abstract class AbstractForeignCallStub extends Stub {
      * <pre>
      *     void foreignFunctionStub(args...) {
      *         foreignFunction(currentThread,  args);
-     *         if ((shouldClearException && clearPendingException(thread())) || (!shouldClearException && hasPendingException(thread)) {
+     *         if ((shouldClearException &amp;&amp; clearPendingException(thread())) || (!shouldClearException &amp;&amp; hasPendingException(thread)) {
      *             DeoptimizeCallerNode.deopt(None, RuntimeConstraint);
      *         }
      *     }

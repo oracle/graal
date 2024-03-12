@@ -395,8 +395,8 @@ public class AArch64ControlFlow {
      * <ol>
      * <li>Determine whether the index is within the JumpTable. This is accomplished by first
      * normalizing the index (normalizedIdx == index - lowKey), and then checking whether
-     * <code>(unsigned(normalizedIdx) <= highKey - lowKey</code>). If not, then one must jump to the
-     * defaultTarget.</li>
+     * <code>(unsigned(normalizedIdx) &lt;= highKey - lowKey</code>). If not, then one must jump to
+     * the defaultTarget.</li>
      *
      * <li>If normalizedIdx is within the JumpTable, then jump to JumpTableStart +
      * JumpTable[normalizedIdx].</li>

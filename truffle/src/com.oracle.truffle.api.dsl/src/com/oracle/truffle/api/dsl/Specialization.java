@@ -249,10 +249,10 @@ public @interface Specialization {
      * </p>
      * <p>
      * Guard expressions are defined using a subset of Java. This subset includes field/parameter
-     * accesses, function calls, type exact infix comparisons (==, !=, <, <=, >, >=), logical
-     * negation (!), logical disjunction (||), null, true, false, and integer literals. The return
-     * type of guard expressions must be <code>boolean</code>. Bound elements without receivers are
-     * resolved using the following order:
+     * accesses, function calls, type exact infix comparisons (==, !=, &lt;, &lt;=, &gt;, &gt;=),
+     * logical negation (!), logical disjunction (||), null, true, false, and integer literals. The
+     * return type of guard expressions must be <code>boolean</code>. Bound elements without
+     * receivers are resolved using the following order:
      * <ol>
      * <li>Dynamic and cached parameters of the enclosing specialization.</li>
      * <li>Fields defined using {@link NodeField} for the enclosing node.</li>
@@ -267,11 +267,11 @@ public @interface Specialization {
      *
      * <pre>
      * static boolean acceptOperand(int operand) {
-     *     assert operand <= 42;
-     *     return (operand & 1) == 1;
+     *     assert operand &lt;= 42;
+     *     return (operand &amp; 1) == 1;
      * }
      *
-     * &#64;Specialization(guards = {"operand <= 42", "acceptOperand(operand)"})
+     * &#64;Specialization(guards = {"operand &lt;= 42", "acceptOperand(operand)"})
      * void doSpecialization(int operand) {...}
      * </pre>
      *
@@ -293,9 +293,9 @@ public @interface Specialization {
      * </p>
      * <p>
      * Assumption expressions are defined using a subset of Java. This subset includes
-     * field/parameter accesses, function calls, type exact infix comparisons (==, !=, <, <=, >,
-     * >=), logical negation (!), logical disjunction (||), null, true, false, and integer literals.
-     * The return type of the expression must be {@link Assumption} or an array of
+     * field/parameter accesses, function calls, type exact infix comparisons (==, !=, &lt;, &lt;=,
+     * &gt;, &gt;=), logical negation (!), logical disjunction (||), null, true, false, and integer
+     * literals. The return type of the expression must be {@link Assumption} or an array of
      * {@link Assumption} instances. Assumption expressions are not allowed to bind to dynamic
      * parameter values of the specialization. Bound elements without receivers are resolved using
      * the following order:
@@ -339,11 +339,11 @@ public @interface Specialization {
      * </p>
      * <p>
      * The limit expression is defined using a subset of Java. This subset includes field/parameter
-     * accesses, function calls, type exact infix comparisons (==, !=, <, <=, >, >=), logical
-     * negation (!), logical disjunction (||), null, true, false, and integer literals. The return
-     * type of the limit expression must be <code>int</code>. Limit expressions are not allowed to
-     * bind to dynamic parameter values of the specialization. Bound elements without receivers are
-     * resolved using the following order:
+     * accesses, function calls, type exact infix comparisons (==, !=, &lt;, &lt;=, &gt;, &gt;=),
+     * logical negation (!), logical disjunction (||), null, true, false, and integer literals. The
+     * return type of the limit expression must be <code>int</code>. Limit expressions are not
+     * allowed to bind to dynamic parameter values of the specialization. Bound elements without
+     * receivers are resolved using the following order:
      * <ol>
      * <li>Cached parameters of the enclosing specialization.</li>
      * <li>Fields defined using {@link NodeField} for the enclosing node.</li>

@@ -169,7 +169,10 @@ import com.oracle.truffle.api.source.SourceSection;
  * </ul>
  * </p>
  * <p>
- * Usage example: {@link DebuggerSessionSnippets#example}
+ * Usage example:
+ *
+ * {@snippet file="com/oracle/truffle/api/debug/DebuggerSession.java"
+ * region="DebuggerSessionSnippets#example"}
  *
  * @since 0.17
  */
@@ -1840,9 +1843,9 @@ class DebuggerSessionSnippets {
 
     @SuppressFBWarnings("")
     public void example() {
-        // @formatter:off
+        // @formatter:off // @replace regex='.*' replacement=''
         TruffleInstrument.Env instrumentEnv = null;
-        // BEGIN: DebuggerSessionSnippets#example
+        // @start region="DebuggerSessionSnippets#example"
         try (DebuggerSession session = Debugger.find(instrumentEnv).
                         startSession(new SuspendedCallback() {
             public void onSuspend(SuspendedEvent event) {
@@ -1856,7 +1859,7 @@ class DebuggerSessionSnippets {
             // install line breakpoint
             session.install(Breakpoint.newBuilder(someCode).lineIs(3).build());
         }
-        // END: DebuggerSessionSnippets#example
-        // @formatter:on
+        // @end region="DebuggerSessionSnippets#example"
+        // @formatter:on // @replace regex='.*' replacement=''
     }
 }

@@ -58,8 +58,8 @@ import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
  * The {@code ==} operator of SL is defined on all types. Therefore, we need a
- * {@link #equal(Object, Object) implementation} that can handle all possible types including
- * interop types.
+ * {@link #doGeneric(Object, Object, InteropLibrary, InteropLibrary) implementation} that can handle
+ * all possible types including interop types.
  * <p>
  * Note that we do not need the analogous {@code !=} operator, because we can just
  * {@link SLLogicalNotNode negate} the {@code ==} operator.

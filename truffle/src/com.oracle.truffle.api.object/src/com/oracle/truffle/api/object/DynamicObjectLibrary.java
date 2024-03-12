@@ -410,7 +410,7 @@ public abstract class DynamicObjectLibrary extends Library {
      * Object writeMember(String member, Object value,
      *                 &#64;CachedLibrary("this") DynamicObjectLibrary objLib)
      *                 throws UnsupportedMessageException {
-     *     if ((objLib.getShapeFlags(receiver) & FROZEN) != 0) {
+     *     if ((objLib.getShapeFlags(receiver) &amp; FROZEN) != 0) {
      *         throw UnsupportedMessageException.create();
      *     }
      *     objLib.put(this, member, value);
@@ -592,7 +592,7 @@ public abstract class DynamicObjectLibrary extends Library {
      *
      *     &#64;ExportMessage
      *     boolean isArrayElementReadable(long index) {
-     *         return index >= 0 && index < keys.length;
+     *         return index &gt;= 0 &amp;&amp; index &lt; keys.length;
      *     }
      * }
      * </pre>

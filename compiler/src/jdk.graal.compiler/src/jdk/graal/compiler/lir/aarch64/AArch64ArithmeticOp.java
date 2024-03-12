@@ -626,7 +626,7 @@ public enum AArch64ArithmeticOp {
         private final int shiftAmt;
 
         /**
-         * Computes <code>result = src1 + extendType(src2) << shiftAmt</code>.
+         * Computes <code>result = src1 + extendType(src2) &lt;&lt; shiftAmt</code>.
          *
          * @param extendType defines how src2 is extended to the same size as src1.
          * @param shiftAmt must be in range 0 to 4.

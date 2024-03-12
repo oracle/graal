@@ -99,21 +99,21 @@ import jdk.vm.ci.meta.SpeculationLog;
  *              OptimizedRuntimeSupport#callProfiled                    OptimizedRuntimeSupport#callInlined
  *                                |                                               |
  *                                |                                               V
- *  PUBLIC   call -> callIndirect | callOSR   callDirect <================> callInlined
+ *  PUBLIC   call -> callIndirect | callOSR   callDirect &lt;================> callInlined
  *                           |  +-+    |           |             ^                |
  *                           |  |  +---+           |     substituted by the       |
  *                           V  V  V               |     compiler if inlined      |
- *  PROTECTED               doInvoke <-------------+                              |
+ *  PROTECTED               doInvoke &lt;-------------+                              |
  *                             |                                                  |
- *                             | <= Jump to installed code                        |
+ *                             | &lt;= Jump to installed code                        |
  *                             V                                                  |
  *  PROTECTED              callBoundary                                           |
  *                             |                                                  |
- *                             | <= Tail jump to installed code in Int.           |
+ *                             | &lt;= Tail jump to installed code in Int.           |
  *                             V                                                  |
  *  PROTECTED           profiledPERoot                                            |
  *                             |                                                  |
- *  PRIVATE                    +----------> executeRootNode <---------------------+
+ *  PRIVATE                    +----------> executeRootNode &lt;---------------------+
  *                                                 |
  *                                                 V
  *                                         rootNode.execute()

@@ -72,8 +72,6 @@ import com.oracle.truffle.api.dsl.NeverDefault;
  * <p>
  *
  *
- * {@inheritDoc}
- *
  * @see #createRawIdentityProfile()
  * @see ValueProfile
  * @since 0.10

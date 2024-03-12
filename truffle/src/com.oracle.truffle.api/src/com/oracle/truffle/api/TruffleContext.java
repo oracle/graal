@@ -82,7 +82,10 @@ import com.oracle.truffle.api.source.Source;
  * {@link #close() closed} when it is no longer needed. If the context is not closed explicitly,
  * then it is automatically closed together with the parent context.
  * <p>
- * Example usage: {@link TruffleContextSnippets.MyNode#executeInContext}
+ * Example usage:
+ * 
+ * {@snippet file="com/oracle/truffle/api/TruffleContext.java"
+ * region="TruffleContextSnippets.MyNode#executeInContext"}
  *
  * @since 0.27
  */
@@ -1216,13 +1219,13 @@ public final class TruffleContext implements AutoCloseable {
 }
 
 class TruffleContextSnippets {
-    // @formatter:off
+    // @formatter:off // @replace regex='.*' replacement=''
     abstract class MyContext {
     }
     abstract class MyLanguage extends TruffleLanguage<MyContext> {
     }
     static
-    // BEGIN: TruffleContextSnippets.MyNode#executeInContext
+    // @start region="TruffleContextSnippets.MyNode#executeInContext"
     final class MyNode extends Node {
         void executeInContext(Env env) {
             MyContext outerLangContext = getContext(this);
@@ -1251,7 +1254,7 @@ class TruffleContextSnippets {
     private static MyContext getContext(Node node) {
         return REFERENCE.get(node);
     }
-    // END: TruffleContextSnippets.MyNode#executeInContext
-    // @formatter:on
+    // @end region="TruffleContextSnippets.MyNode#executeInContext"
+    // @formatter:on // @replace regex='.*' replacement=''
 
 }

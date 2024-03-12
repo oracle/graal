@@ -46,7 +46,7 @@ import java.util.List;
 /**
  * Parsed representation of library descriptors of the Truffle NFI.
  *
- * @see com.oracle.truffle.nfi.backend.spi.NativeBackend#parse
+ * @see com.oracle.truffle.nfi.backend.spi.NFIBackend#parse(NativeLibraryDescriptor)
  */
 public final class NativeLibraryDescriptor {
 
@@ -76,7 +76,7 @@ public final class NativeLibraryDescriptor {
      * An optional array of implementation dependent flags. Implementors of the TruffleNFI backends
      * should ignore unknown flags, and should always provide sensible default behavior if no flags
      * are specified.
-     *
+     * <p>
      * This can for example be used to specify the {@code RTLD_*} flags on posix compliant systems.
      */
     public List<String> getFlags() {
