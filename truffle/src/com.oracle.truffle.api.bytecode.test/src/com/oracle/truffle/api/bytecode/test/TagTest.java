@@ -55,6 +55,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.bytecode.AbstractBytecodeTruffleException;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
@@ -115,7 +116,8 @@ public class TagTest extends AbstractInstructionTest {
 
     enum EventKind {
         ENTER,
-        RETURN_VALUE
+        RETURN_VALUE,
+        EXCEPTIONAL,
     }
 
     @SuppressWarnings("unchecked")
@@ -140,6 +142,12 @@ public class TagTest extends AbstractInstructionTest {
                 @Override
                 public void onReturnValue(VirtualFrame f, Object arg) {
                     events.add(new Event(TagTestLanguage.REF.get(this).threadLocal.get().newEvent(), EventKind.RETURN_VALUE, tree.getStartBci(), tree.getEndBci(), arg,
+                                    tree.getTags().toArray(Class[]::new)));
+                }
+
+                @Override
+                public void onReturnExceptional(VirtualFrame frame, Throwable t) {
+                    events.add(new Event(TagTestLanguage.REF.get(this).threadLocal.get().newEvent(), EventKind.EXCEPTIONAL, tree.getStartBci(), tree.getEndBci(), t,
                                     tree.getTags().toArray(Class[]::new)));
                 }
             };
@@ -444,9 +452,88 @@ public class TagTest extends AbstractInstructionTest {
                         "return");
 
         assertEquals(42, node.getCallTarget().call());
-        assertEvents(node,
-                        events,
-                        new Event(EventKind.ENTER, 0x0000, 0x0008, null, RootTag.class, RootBodyTag.class), new Event(EventKind.RETURN_VALUE, 0x0000, 0x0008, 42, RootTag.class, RootBodyTag.class));
+        assertEvents(node, events,
+                        new Event(EventKind.ENTER, 0x0000, 0x0008, null, RootTag.class, RootBodyTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0008, 42, RootTag.class, RootBodyTag.class));
+
+    }
+
+    @Test
+    public void testRootExceptionHandler() {
+        TagInstrumentationTestWithPrologRootNode node = parseProlog((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.emitThrow();
+            b.endRoot();
+        });
+
+        assertFails(() -> node.getCallTarget().call(), TestException.class);
+
+        assertInstructions(node,
+                        "c.EnterMethod",
+                        "c.Throw",
+                        "branch",
+                        "load.local",
+                        "c.LeaveExceptional",
+                        "throw",
+                        "trap");
+
+        List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).build());
+        assertInstructions(node,
+                        "tag.enter",
+                        "c.EnterMethod",
+                        "c.Throw",
+                        "branch",
+                        "load.local",
+                        "c.LeaveExceptional",
+                        "throw",
+                        "tag.leaveVoid",
+                        "trap");
+
+        assertFails(() -> node.getCallTarget().call(), TestException.class);
+        // TODO not yet supported
+// assertEvents(node,
+// events,
+// new Event(EventKind.ENTER, 0x0000, 0x000a, null, ExpressionTag.class),
+// new Event(EventKind.RETURN_VALUE, 0x0000, 0x000a, 42, ExpressionTag.class));
+
+    }
+
+    @Test
+    public void testRootBodyExceptionHandler() {
+        TagInstrumentationTestWithPrologRootNode node = parseProlog((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.emitThrow();
+            b.endRoot();
+        });
+
+        assertFails(() -> node.getCallTarget().call(), TestException.class);
+
+        assertInstructions(node,
+                        "c.EnterMethod",
+                        "c.Throw",
+                        "branch",
+                        "load.local",
+                        "c.LeaveExceptional",
+                        "throw",
+                        "trap");
+
+        List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootBodyTag.class).build());
+        assertInstructions(node,
+                        "c.EnterMethod",
+                        "tag.enter",
+                        "c.Throw",
+                        "tag.leaveVoid",
+                        "branch",
+                        "load.local",
+                        "c.LeaveExceptional",
+                        "throw",
+                        "trap");
+
+        assertFails(() -> node.getCallTarget().call(), TestException.class);
+// assertEvents(node,
+// events,
+// new Event(EventKind.ENTER, 0x0000, 0x000a, null, ExpressionTag.class),
+// new Event(EventKind.RETURN_VALUE, 0x0000, 0x000a, 42, ExpressionTag.class));
 
     }
 
@@ -814,6 +901,15 @@ public class TagTest extends AbstractInstructionTest {
 
     }
 
+    @SuppressWarnings("serial")
+    static class TestException extends AbstractBytecodeTruffleException {
+
+        TestException(Node location, int bci) {
+            super(location, bci);
+        }
+
+    }
+
     @GenerateBytecode(languageClass = TagTestLanguage.class, //
                     enableQuickening = true, //
                     enableUncachedInterpreter = true,  //
@@ -859,6 +955,14 @@ public class TagTest extends AbstractInstructionTest {
             }
         }
 
+        @Operation
+        static final class Throw {
+            @Specialization
+            public static void doInt(@Bind("$node") Node node, @Bind("$bci") int bci) {
+                throw new TestException(node, bci);
+            }
+        }
+
     }
 
     @GenerateBytecode(languageClass = TagTestLanguage.class, //
@@ -895,6 +999,14 @@ public class TagTest extends AbstractInstructionTest {
             public static int doDefault(int a, @Bind("$node") Node node) {
                 TagTestLanguage.getThreadData(node).notifyEpilogValue(a);
                 return a;
+            }
+        }
+
+        @Operation
+        static final class Throw {
+            @Specialization
+            public static void doInt(@Bind("$node") Node node, @Bind("$bci") int bci) {
+                throw new TestException(node, bci);
             }
         }
 

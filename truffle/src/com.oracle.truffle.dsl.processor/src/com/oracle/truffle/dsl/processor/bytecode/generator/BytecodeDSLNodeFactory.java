@@ -1955,10 +1955,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                 field(context.getType(boolean.class), "finallyReachable"),
                                 field(context.getType(boolean.class), "tryReachable")));
 
-                result.add(
-                                createDataClass("CustomOperationData",
-                                                field(arrayOf(context.getType(int.class)), "childBcis").asFinal(),
-                                                field(arrayOf(context.getDeclaredType(Object.class)), "locals").asFinal().asVarArgs()));
+                result.add(createDataClass("CustomOperationData",
+                                field(arrayOf(context.getType(int.class)), "childBcis").asFinal(),
+                                field(arrayOf(context.getDeclaredType(Object.class)), "locals").asFinal().asVarArgs()));
 
                 if (model.isBoxingEliminated(type(boolean.class))) {
                     result.add(createDataClass("CustomShortCircuitOperationData",
@@ -2349,6 +2348,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             method.addParameter(new CodeVariableElement(type(boolean.class), "newReachable"));
             CodeTreeBuilder b = method.createBuilder();
             b.statement("this.reachable = newReachable");
+            b.startTryBlock();
 
             b.startFor().string("int sp = this.operationSp - 1; sp >= 0; sp--").end().startBlock();
             b.declaration(operationStackEntry.asType(), "operation", "operationStack[sp]");
@@ -2459,12 +2459,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(); // switch
             b.end(); // for
 
+            b.end().startFinallyBlock();
+            b.startAssert().string("updateReachable() == this.reachable : ").doubleQuote("Inconsistent reachability detected.").end();
+            b.end();
+
             return method;
         }
 
         private CodeExecutableElement createUpdateReachable() {
             CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE),
-                            context.getType(void.class), "updateReachable");
+                            context.getType(boolean.class), "updateReachable");
 
             CodeTreeBuilder doc = method.createDocBuilder();
             doc.startJavadoc();
@@ -2473,7 +2477,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             doc.end();
 
             CodeTreeBuilder b = method.createBuilder();
-            b.statement("boolean newReachable = reachable");
+            b.statement("boolean oldReachable = reachable");
             b.startFor().string("int sp = this.operationSp - 1; sp >= 0; sp--").end().startBlock();
             b.declaration(operationStackEntry.asType(), "operation", "operationStack[sp]");
             b.startSwitch().string("operation.operation").end().startBlock();
@@ -2483,7 +2487,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.startCase().tree(createOperationConstant(op)).end().startBlock();
                         emitCastOperationData(b, "RootData", "sp");
                         b.statement("this.reachable = operationData.reachable");
-                        b.statement("return");
+                        b.statement("return oldReachable");
                         b.end();
                         break;
                     case IF_THEN:
@@ -2496,7 +2500,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.end().startElseBlock();
                         b.lineComment("Invalid child index, but we will fail in the end method.");
                         b.end();
-                        b.statement("return");
+                        b.statement("return oldReachable");
                         b.end();
                         break;
                     case IF_THEN_ELSE:
@@ -2512,7 +2516,23 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.end().startElseBlock();
                         b.lineComment("Invalid child index, but we will fail in the end method.");
                         b.end();
-                        b.statement("return");
+                        b.statement("return oldReachable");
+                        b.end();
+                        break;
+                    case CONDITIONAL:
+                        b.startCase().tree(createOperationConstant(op)).end().startBlock();
+                        emitCastOperationData(b, "ConditionalData", "sp");
+                        b.startIf().string("operation.childCount == 0").end().startBlock();
+                        b.lineComment("Unreachable condition branch makes the if, then and parent block unreachable.");
+                        b.statement("continue");
+                        b.end().startElseIf().string("operation.childCount == 1").end().startBlock();
+                        b.statement("this.reachable = operationData.thenReachable");
+                        b.end().startElseIf().string("operation.childCount == 2").end().startBlock();
+                        b.statement("this.reachable = operationData.elseReachable");
+                        b.end().startElseBlock();
+                        b.lineComment("Invalid child index, but we will fail in the end method.");
+                        b.end();
+                        b.statement("return oldReachable");
                         b.end();
                         break;
                     case TRY_CATCH:
@@ -2525,7 +2545,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.end().startElseBlock();
                         b.lineComment("Invalid child index, but we will fail in the end method.");
                         b.end();
-                        b.statement("return");
+                        b.statement("return oldReachable");
                         b.end();
                         break;
                     case WHILE:
@@ -2538,7 +2558,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.end().startElseBlock();
                         b.lineComment("Invalid child index, but we will fail in the end method.");
                         b.end();
-                        b.statement("return");
+                        b.statement("return oldReachable");
                         b.end();
                         break;
                     case FINALLY_TRY:
@@ -2552,7 +2572,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.end().startElseBlock();
                         b.lineComment("Invalid child index, but we will fail in the end method.");
                         b.end();
-                        b.statement("return");
+                        b.statement("return oldReachable");
                         b.end();
                         break;
                 }
@@ -2560,6 +2580,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.end(); // switch
             b.end(); // for
+
+            b.statement("return oldReachable");
             return method;
         }
 
@@ -3847,6 +3869,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     break;
                 default:
                     if (operation.instruction != null) {
+                        if (operation.instruction.isEpilogReturn()) {
+                            // do not emit an instruction for epilog returns
+                            // it should only be emitted in doEmitReturn
+                            break;
+                        }
                         buildEmitOperationInstruction(b, operation);
                     }
                     break;
@@ -3855,6 +3882,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (operation.kind == OperationKind.TAG) {
                 // handled in tag section
             } else if (operation.isTransparent) {
+                // custom transparent operations have the operation cast on the stack
                 emitCastOperationData(b, "TransparentOperationData", "operationSp");
                 b.startStatement().startCall("afterChild");
                 b.string("operationData.producedValue");
@@ -4298,7 +4326,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             if (!inEmit) {
                 // make "operationData" available for endX methods.
-                emitCastOperationData(b, "CustomOperationData", sp);
+                if (operation.isTransparent) {
+                    emitCastOperationData(b, "TransparentOperationData", sp);
+                } else {
+                    emitCastOperationData(b, "CustomOperationData", sp);
+                }
             }
 
             List<InstructionImmediate> immediates = instruction.getImmediates();
@@ -4314,13 +4346,20 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         if (customChildBci != null) {
                             yield customChildBci;
                         } else {
-                            String child = "child" + childNodeIndex;
-                            b.startAssign("int " + child);
-                            b.string("operationData.childBcis[" + childNodeIndex + "]");
-                            b.end();
-                            childNodeIndex++;
-
-                            yield child;
+                            if (operation.isTransparent) {
+                                if (childNodeIndex != 0) {
+                                    throw new AssertionError("Unexpected transparent child.");
+                                }
+                                childNodeIndex++;
+                                yield "operationData.childBci";
+                            } else {
+                                String child = "child" + childNodeIndex;
+                                b.startAssign("int " + child);
+                                b.string("operationData.childBcis[" + childNodeIndex + "]");
+                                b.end();
+                                childNodeIndex++;
+                                yield child;
+                            }
                         }
                     }
                     case LOCAL_SETTER -> {
@@ -5398,9 +5437,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "exceptionLocal"));
 
             CodeTreeBuilder b = ex.createBuilder();
-// b.startIf().string("startBci == endBci").end().startBlock();
-// b.startReturn().string("-1").end();
-// b.end();
 
             b.startIf().string("exHandlers.length <= exHandlerCount + 5").end().startBlock();
             b.statement("exHandlers = Arrays.copyOf(exHandlers, exHandlers.length * 2)");
