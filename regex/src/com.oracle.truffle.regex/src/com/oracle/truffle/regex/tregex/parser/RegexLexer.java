@@ -1114,9 +1114,6 @@ public abstract class RegexLexer {
                     case ':':
                         return ClassSetContents.createCharacterClass(getPOSIXCharClass(name));
                     case '.':
-                        if (".".equals(name) || "\\.".equals(name)) {
-                            break;
-                        }
                         if (JavaStringUtil.isSingleCodePoint(name)) {
                             return ClassSetContents.createPOSIXCollationElement(name.codePointAt(0));
                         } else {
@@ -1124,9 +1121,6 @@ public abstract class RegexLexer {
                             return ClassSetContents.createPOSIXCollationElement(name);
                         }
                     case '=':
-                        if ("=".equals(name) || "\\=".equals(name)) {
-                            break;
-                        }
                         if (JavaStringUtil.isSingleCodePoint(name)) {
                             return ClassSetContents.createPOSIXCollationEquivalenceClass(name.codePointAt(0));
                         } else {
