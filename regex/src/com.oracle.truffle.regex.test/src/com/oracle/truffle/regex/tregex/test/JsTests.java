@@ -73,6 +73,7 @@ public class JsTests extends RegexTestBase {
         test("(x??)?", "", "x", 1, true, 1, 1, -1, -1);
         test("(x??)*", "", "x", 0, true, 0, 1, 0, 1);
         test("(x??)*", "", "x", 1, true, 1, 1, -1, -1);
+        test("X(.?){8,8}Y", "", "X1234567Y", 0, true, 0, 9, 8, 8);
     }
 
     @Test
