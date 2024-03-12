@@ -214,6 +214,69 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
     }
 
     @Test
+    public void testTryCatch2() {
+        // @formatter:off
+        // try {
+        //   try {
+        //     throw 1;
+        //   } catch x {
+        //     throw x + 1
+        //   }
+        // } catch x {
+        //   return x + 1;
+        // }
+        // return 42;
+        // @formatter:on
+
+        BasicInterpreter root = parseNodeForPE(interpreterClass, "sum", b -> {
+            b.beginRoot(LANGUAGE);
+
+            BytecodeLocal ex = b.createLocal();
+
+            b.beginTryCatch(ex);
+
+            b.beginTryCatch(ex);
+
+            b.beginThrowOperation();
+            b.emitLoadConstant(1L);
+            b.endThrowOperation();
+
+            b.beginThrowOperation();
+            b.beginAddOperation();
+            b.beginReadExceptionOperation();
+            b.emitLoadLocal(ex);
+            b.endReadExceptionOperation();
+            b.emitLoadConstant(1L);
+            b.endAddOperation();
+            b.endThrowOperation();
+
+            b.endTryCatch();
+
+            b.beginReturn();
+            b.beginAddOperation();
+
+            b.beginReadExceptionOperation();
+            b.emitLoadLocal(ex);
+            b.endReadExceptionOperation();
+
+            b.emitLoadConstant(1L);
+
+            b.endAddOperation();
+            b.endReturn();
+
+            b.endTryCatch();
+
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertPartialEvalEquals(supplier(3L), root);
+    }
+
+    @Test
     public void testConditionalTrue() {
         // return true ? 42 : 21;
 
