@@ -40,8 +40,8 @@ _suite = mx.suite("substratevm")
 
 
 def extract_archive(path, extracted_name):
-    extracted_archive = mx.join(mx.dirname(path), extracted_name)
-    if not mx.exists(extracted_archive):
+    extracted_archive = os.path.join(os.path.dirname(path), extracted_name)
+    if not os.path.exists(extracted_archive):
         # There can be multiple processes doing this so be atomic about it
         with mx.SafeDirectoryUpdater(extracted_archive, create=True) as sdu:
             with zipfile.ZipFile(path, 'r') as zf:
@@ -52,7 +52,7 @@ def extract_archive(path, extracted_name):
 def list_jars(path):
     jars = []
     for f in os.listdir(path):
-        if os.path.isfile(mx.join(path, f)) and f.endswith('.jar'):
+        if os.path.isfile(os.path.join(path, f)) and f.endswith('.jar'):
             jars.append(f)
     return jars
 
@@ -286,7 +286,7 @@ class BaseDaCapoNativeImageBenchmarkSuite():
     def collect_dependencies(path):
         deps = []
         for f in list_jars(path):
-            deps.append(mx.join(path, f))
+            deps.append(os.path.join(path, f))
         return deps
 
     @staticmethod
@@ -313,9 +313,9 @@ class BaseDaCapoNativeImageBenchmarkSuite():
         benchmark_resources = self.benchmark_resources(benchmark)
         if benchmark_resources:
             for resource in benchmark_resources:
-                dacapo_dat_resource = extract_archive(mx.join(dacapo_extracted, resource), benchmark)
+                dacapo_dat_resource = extract_archive(os.path.join(dacapo_extracted, resource), benchmark)
                 dat_resource_name = os.path.splitext(os.path.basename(resource))[0]
-                dacapo_dat_resources.append(mx.join(dacapo_dat_resource, dat_resource_name))
+                dacapo_dat_resources.append(os.path.join(dacapo_dat_resource, dat_resource_name))
                 #collects nested jar files and classes directories
                 dacapo_nested_resources += self.collect_nested_dependencies(dacapo_dat_resource)
         return dacapo_extracted, dacapo_dat_resources, dacapo_nested_resources
@@ -325,9 +325,9 @@ class BaseDaCapoNativeImageBenchmarkSuite():
         # if there are more versions of the same jar, we choose one and omit remaining from the classpath
         if benchmark in exclude_libs:
             for lib in exclude_libs[benchmark]:
-                lib_path = mx.join(path, lib)
+                lib_path = os.path.join(path, lib)
                 if lib_path in deps:
-                    deps.remove(mx.join(path, lib))
+                    deps.remove(os.path.join(path, lib))
         return deps
 
 
@@ -620,7 +620,7 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
     @staticmethod
     def substitution_path():
         path = mx.project('com.oracle.svm.bench').classpath_repr()
-        if not mx.exists(path):
+        if not os.path.exists(path):
             mx.abort('Path to substitutions for scala dacapo not present: ' + path + '. Did you build all of substratevm?')
         return path
 

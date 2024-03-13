@@ -61,6 +61,7 @@ import mx_subst
 import mx_unittest
 import mx_jardistribution
 import mx_pomdistribution
+import mx_util
 from mx_gate import Task
 from mx_javamodules import as_java_module, get_module_name
 from mx_sigtest import sigtest
@@ -1037,7 +1038,7 @@ def tck(args):
     if tckConfiguration == "default":
         unittest(unitTestOptions + ["--"] + jvmOptions + tests)
     elif tckConfiguration == "debugger":
-        with mx.SafeFileCreation(os.path.join(tempfile.gettempdir(), "debugalot")) as sfc:
+        with mx_util.SafeFileCreation(os.path.join(tempfile.gettempdir(), "debugalot")) as sfc:
             _execute_debugger_test(tests, sfc.tmpPath, False, unitTestOptions, jvmOptions)
     elif tckConfiguration == "compile":
         if '--use-graalvm' in unitTestOptions:
@@ -1256,40 +1257,40 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
     def __init__(self, suite, name, deps, workingSets, **kwargs):
         subDir = 'src'
         srcDirs = ['patches']
-        d = mx.join(suite.dir, subDir, name)
+        d = os.path.join(suite.dir, subDir, name)
         super(LibffiBuilderProject, self).__init__(suite, name, subDir, srcDirs, deps, workingSets, d, **kwargs)
 
         self.out_dir = self.get_output_root()
         if mx.get_os() == 'windows':
             self.delegate = mx_native.DefaultNativeProject(suite, name, subDir, [], [], None,
-                                                           mx.join(self.out_dir, 'libffi-3.4.4'),
+                                                           os.path.join(self.out_dir, 'libffi-3.4.4'),
                                                            'static_lib',
                                                            deliverable='ffi',
                                                            cflags=['-MD', '-O2', '-DFFI_BUILDING_DLL'])
             self.delegate._source = dict(tree=['include',
                                                'src',
-                                               mx.join('src', 'x86')],
-                                         files={'.h': [mx.join('include', 'ffi.h'),
-                                                       mx.join('include', 'ffitarget.h'),
-                                                       mx.join('src', 'fficonfig.h'),
-                                                       mx.join('src', 'ffi_common.h')],
-                                                '.c': [mx.join('src', 'closures.c'),
-                                                       mx.join('src', 'prep_cif.c'),
-                                                       mx.join('src', 'raw_api.c'),
-                                                       mx.join('src', 'types.c'),
-                                                       mx.join('src', 'tramp.c'),
-                                                       mx.join('src', 'x86', 'ffiw64.c')],
-                                                '.S': [mx.join('src', 'x86', 'win64_intel.S')]})
+                                               os.path.join('src', 'x86')],
+                                         files={'.h': [os.path.join('include', 'ffi.h'),
+                                                       os.path.join('include', 'ffitarget.h'),
+                                                       os.path.join('src', 'fficonfig.h'),
+                                                       os.path.join('src', 'ffi_common.h')],
+                                                '.c': [os.path.join('src', 'closures.c'),
+                                                       os.path.join('src', 'prep_cif.c'),
+                                                       os.path.join('src', 'raw_api.c'),
+                                                       os.path.join('src', 'types.c'),
+                                                       os.path.join('src', 'tramp.c'),
+                                                       os.path.join('src', 'x86', 'ffiw64.c')],
+                                                '.S': [os.path.join('src', 'x86', 'win64_intel.S')]})
         else:
             class LibtoolNativeProject(mx.NativeProject,  # pylint: disable=too-many-ancestors
                                        mx_native.NativeDependency):
-                include_dirs = property(lambda self: [mx.join(self.getOutput(), 'include')])
+                include_dirs = property(lambda self: [os.path.join(self.getOutput(), 'include')])
                 libs = property(lambda self: [next(self.getArchivableResults(single=True))[0]])
 
                 def getArchivableResults(self, use_relpath=True, single=False):
                     for file_path, archive_path in super(LibtoolNativeProject, self).getArchivableResults(use_relpath):
-                        path_in_lt_objdir = mx.basename(mx.dirname(file_path)) == '.libs'
-                        yield file_path, mx.basename(archive_path) if path_in_lt_objdir else archive_path
+                        path_in_lt_objdir = os.path.basename(os.path.dirname(file_path)) == '.libs'
+                        yield file_path, os.path.basename(archive_path) if path_in_lt_objdir else archive_path
                         if single:
                             assert path_in_lt_objdir, 'the first build result must be from LT_OBJDIR'
                             break
@@ -1298,8 +1299,8 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
                                                  ['.libs/libffi.a',
                                                   'include/ffi.h',
                                                   'include/ffitarget.h'],
-                                                 mx.join(self.out_dir, 'libffi-build'),
-                                                 mx.join(self.out_dir, 'libffi-3.4.4'))
+                                                 os.path.join(self.out_dir, 'libffi-build'),
+                                                 os.path.join(self.out_dir, 'libffi-3.4.4'))
             configure_args = ['--disable-dependency-tracking',
                               '--disable-shared',
                               '--with-pic',
@@ -1308,8 +1309,8 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
                              ]
 
             self.delegate.buildEnv = dict(
-                SOURCES=mx.basename(self.delegate.dir),
-                OUTPUT=mx.basename(self.delegate.getOutput()),
+                SOURCES=os.path.basename(self.delegate.dir),
+                OUTPUT=os.path.basename(self.delegate.getOutput()),
                 CONFIGURE_ARGS=' '.join(configure_args)
             )
 
@@ -1329,17 +1330,17 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
     def patches(self):
         """A list of patches that will be applied during a build."""
         def patch_dir(d):
-            return mx.join(self.source_dirs()[0], d)
+            return os.path.join(self.source_dirs()[0], d)
 
         def get_patches(patchdir):
             if os.path.isdir(patchdir):
                 for patch in os.listdir(patchdir):
-                    yield mx.join(patchdir, patch)
+                    yield os.path.join(patchdir, patch)
 
         for p in get_patches(patch_dir('common')):
             yield p
         os_arch_dir = patch_dir('{}-{}'.format(mx.get_os(), mx.get_arch()))
-        if mx.exists(os_arch_dir):
+        if os.path.exists(os_arch_dir):
             for p in get_patches(os_arch_dir):
                 yield p
         else:
@@ -1378,7 +1379,7 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
         return None if output and not output.exists() else output
 
     def build(self):
-        assert not mx.exists(self.subject.out_dir), '{} must be cleaned before build'.format(self.subject.name)
+        assert not os.path.exists(self.subject.out_dir), '{} must be cleaned before build'.format(self.subject.name)
 
         mx.log('Extracting {}...'.format(self.subject.sources))
         mx.Extractor.create(self.subject.sources.get_path(False)).extract(self.subject.out_dir)

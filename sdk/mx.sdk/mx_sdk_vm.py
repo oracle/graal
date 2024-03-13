@@ -45,6 +45,7 @@ from abc import ABCMeta
 import mx
 import mx_javamodules
 import mx_subst
+import mx_util
 import os
 import re
 import shutil
@@ -951,7 +952,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
     # Read hashes stored in java.base (the only module in the JDK where hashes are stored)
     hashes = _read_java_base_hashes(jdk)
 
-    build_dir = mx.ensure_dir_exists(join(dst_jdk_dir + ".build"))
+    build_dir = mx_util.ensure_dir_exists(join(dst_jdk_dir + ".build"))
 
     # Directory under dst_jdk_dir for artifacts related to use_upgrade_module_path
     upgrade_dir = join(dst_jdk_dir, 'upgrade_modules_support')
@@ -977,7 +978,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                 for name, requires in sorted(target_requires.items()):
                     module_jar = join(build_dir, name + '.jar')
                     jmd = JavaModuleDescriptor(name, {}, requires={module: [] for module in requires}, uses=set(), provides={}, jarpath=module_jar)
-                    module_build_dir = mx.ensure_dir_exists(join(build_dir, name))
+                    module_build_dir = mx_util.ensure_dir_exists(join(build_dir, name))
                     module_info = jmd.as_module_info()
                     module_info_java = join(module_build_dir, 'module-info.java')
                     module_info_class = join(module_build_dir, 'module-info.class')
@@ -1122,7 +1123,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
         if use_upgrade_module_path:
             # Move synthetic upgrade modules into final location
             for jmd, jarpath in synthetic_modules.items():
-                mx.ensure_dir_exists(dirname(jarpath))
+                mx_util.ensure_dir_exists(dirname(jarpath))
                 os.rename(jmd.jarpath, jarpath)
             # Persist VM options cooked into image to be able to skip a subsequent
             # jlink execution if the options do not change.

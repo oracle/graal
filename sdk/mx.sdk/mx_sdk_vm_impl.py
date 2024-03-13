@@ -60,12 +60,20 @@ import sys
 import textwrap
 import zipfile
 
+try:
+    # Use more secure defusedxml library, if available
+    from defusedxml.ElementTree import parse as etreeParse
+except ImportError:
+    from xml.etree.ElementTree import parse as etreeParse
+
 import mx
 import mx_gate
+import mx_javamodules
 import mx_native
 import mx_subst
 import mx_sdk
 import mx_sdk_vm
+import mx_util
 
 
 if sys.version_info[0] < 3:
@@ -452,7 +460,6 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
             _incl_list = []
             orig_info_plist = join(_src_jdk_dir, 'Contents', 'Info.plist')
             if exists(orig_info_plist):
-                from mx import etreeParse
                 root = etreeParse(orig_info_plist)
                 found_el = False
                 for el in root.iter():
@@ -1499,7 +1506,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
         return self._contents
 
     def build(self):
-        with mx.SafeFileCreation(self.subject.properties_output_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
+        with mx_util.SafeFileCreation(self.subject.properties_output_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
             f.write(self.contents())
 
     def needsBuild(self, newestInput):
@@ -1651,7 +1658,7 @@ class JvmciParentClasspathBuildTask(mx.ProjectBuildTask):  # based NativePropert
         return "Creating '{}' file".format(GraalVmJvmciParentClasspath.output_file_name())
 
     def build(self):
-        with mx.SafeFileCreation(self.subject.output_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
+        with mx_util.SafeFileCreation(self.subject.output_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
             f.write(self.contents())
 
     def needsBuild(self, newestInput):
@@ -2050,7 +2057,7 @@ class PolyglotConfigBuildTask(mx.ProjectBuildTask, metaclass=ABCMeta):
         return mx.TimeStampFile.newest(paths)
 
     def build(self):
-        with mx.SafeFileCreation(self.subject.polyglot_config_output_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
+        with mx_util.SafeFileCreation(self.subject.polyglot_config_output_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
             f.write(self.polyglot_config_contents())
 
     def clean(self, forBuild=False):
@@ -2119,7 +2126,7 @@ class NativeImageResourcesFileListBuildTask(mx.ProjectBuildTask, metaclass=ABCMe
         return mx.TimeStampFile.newest(paths)
 
     def build(self):
-        with mx.SafeFileCreation(self.subject.native_image_resources_filelist_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
+        with mx_util.SafeFileCreation(self.subject.native_image_resources_filelist_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
             f.write(self.native_image_resources_filelist_contents())
 
     def clean(self, forBuild=False):
@@ -2178,7 +2185,7 @@ class GraalVmNativeImageBuildTask(mx.ProjectBuildTask, metaclass=ABCMeta):
 
     def build(self):
         if self.with_polyglot_config():
-            with mx.SafeFileCreation(self.subject.polyglot_config_output_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
+            with mx_util.SafeFileCreation(self.subject.polyglot_config_output_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
                 f.write(self.polyglot_config_contents())
 
     def clean(self, forBuild=False):
@@ -2217,7 +2224,7 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
     def build(self):
         super(GraalVmBashLauncherBuildTask, self).build()
         output_file = self.subject.output_file()
-        mx.ensure_dir_exists(dirname(output_file))
+        mx_util.ensure_dir_exists(dirname(output_file))
         graal_vm = self.subject.get_containing_graalvm()
         script_destination_directory = dirname(graal_vm.find_single_source_location('dependency:' + self.subject.name))
         jre_bin = _get_graalvm_archive_path('bin', graal_vm=graal_vm)
@@ -2278,7 +2285,7 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
             with open(add_exports_argfile, 'w') as argfile:
                 argfile.write('\n'.join(_get_add_exports().split()))
 
-        with open(self._template_file(), 'r') as template, mx.SafeFileCreation(output_file) as sfc, open(sfc.tmpPath, 'w') as launcher:
+        with open(self._template_file(), 'r') as template, mx_util.SafeFileCreation(output_file) as sfc, open(sfc.tmpPath, 'w') as launcher:
             for line in template:
                 launcher.write(_template_subst.substitute(line))
         os.chmod(output_file, 0o755)
@@ -2371,7 +2378,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
         super(GraalVmSVMNativeImageBuildTask, self).build()
         build_args = self.get_build_args()
         output_file = self.subject.output_file()
-        mx.ensure_dir_exists(dirname(output_file))
+        mx_util.ensure_dir_exists(dirname(output_file))
 
         # Disable build server (different Java properties on each build prevent server reuse)
         self.svm_support.native_image(build_args, output_file)
@@ -2484,13 +2491,13 @@ class JmodModifierBuildTask(mx.ProjectBuildTask, metaclass=ABCMeta):
         return False, None
 
     def build(self):
-        mx.ensure_dir_exists(dirname(self.subject.output_file()))
+        mx_util.ensure_dir_exists(dirname(self.subject.output_file()))
         graalvm_jimage_home = self.subject.jimage_project.output_directory()
 
         # 1. copy the jmod file from the jimage to the output path
         jmod_copy_src = join(graalvm_jimage_home, 'jmods', self.subject.jmod_file)
         jmod_copy_dst = self.subject.output_file()
-        assert mx.exists(jmod_copy_src), "Library projects {} have an invalid 'add_to_modules' attribute: '{}' does not exist".format([lp.name for lp in self.subject.library_projects], jmod_copy_src)
+        assert os.path.exists(jmod_copy_src), "Library projects {} have an invalid 'add_to_modules' attribute: '{}' does not exist".format([lp.name for lp in self.subject.library_projects], jmod_copy_src)
         mx.copyfile(jmod_copy_src, jmod_copy_dst)
         for library_project in [lp for lp in self.subject.library_projects if not lp.is_skipped()]:
             # 2. append the native libraries defined by the library projects to the copy of the jmod file
@@ -3056,7 +3063,7 @@ _stage1_graalvm_distribution = 'uninitialized'
 
 
 def _platform_classpath(cp_entries):
-    return os.pathsep.join(mx.normpath(entry) for entry in cp_entries)
+    return os.pathsep.join(os.path.normpath(entry) for entry in cp_entries)
 
 
 def get_stage1_graalvm_distribution_name():
@@ -4718,7 +4725,7 @@ def default_jlink_missing_export_action():
 def mx_post_parse_cmd_line(args):
     for component in registered_graalvm_components():
         for boot_jar in component.boot_jars:
-            if not mx.get_module_name(mx.distribution(boot_jar)):
+            if not mx_javamodules.get_module_name(mx.distribution(boot_jar)):
                 mx.abort("Component '{}' declares a boot jar distribution ('{}') that does not define a module.\nPlease set 'moduleInfo' or 'moduleName'.".format(component.name, boot_jar))
 
 
