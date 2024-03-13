@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.charset.collation.BinaryCollator;
 import com.oracle.truffle.regex.result.RegexResult;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.OracleDBFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor;
@@ -155,17 +156,39 @@ public final class RegexOptions {
 
     public static final String PYTHON_LOCALE_NAME = "PythonLocale";
 
-    public static final RegexOptions DEFAULT = new RegexOptions(0, ECMAScriptFlavor.INSTANCE, Encodings.UTF_16_RAW, null, null, null);
+    public static final String MAX_DFA_SIZE_NAME = "MaxDFASize";
+
+    public static final String MAX_BACK_TRACKER_SIZE_NAME = "MaxBackTrackerCompileSize";
+
+    private static final String PARSE_SHORT_ERROR_MSG = "expected a short integer value";
+
+    public static final RegexOptions DEFAULT = new RegexOptions(0,
+                    (short) TRegexOptions.TRegexMaxDFATransitions,
+                    (short) TRegexOptions.TRegexMaxBackTrackerMergeExplodeSize,
+                    ECMAScriptFlavor.INSTANCE,
+                    Encodings.UTF_16_RAW, null, null, null);
 
     private final int options;
+    private final short maxDFASize;
+    private final short maxBackTrackerCompileSize;
     private final RegexFlavor flavor;
     private final Encodings.Encoding encoding;
     private final PythonMethod pythonMethod;
     private final String pythonLocale;
     private final String collation;
 
-    private RegexOptions(int options, RegexFlavor flavor, Encodings.Encoding encoding, PythonMethod pythonMethod, String pythonLocale, String collation) {
+    private RegexOptions(
+                    int options,
+                    short maxDFASize,
+                    short maxBackTrackerCompileSize,
+                    RegexFlavor flavor,
+                    Encodings.Encoding encoding,
+                    PythonMethod pythonMethod,
+                    String pythonLocale,
+                    String collation) {
         this.options = options;
+        this.maxDFASize = maxDFASize;
+        this.maxBackTrackerCompileSize = maxBackTrackerCompileSize;
         this.flavor = flavor;
         this.encoding = encoding;
         this.pythonMethod = pythonMethod;
@@ -179,6 +202,23 @@ public final class RegexOptions {
 
     private boolean isBitSet(int bit) {
         return (options & bit) != 0;
+    }
+
+    /**
+     * Maximum number of DFA transitions. Must be less than {@link Short#MAX_VALUE}. Defaults to
+     * {@link com.oracle.truffle.regex.tregex.TRegexOptions#TRegexMaxDFATransitions}.
+     */
+    public short getMaxDFASize() {
+        return maxDFASize;
+    }
+
+    /**
+     * Maximum number of NFA transitions to allow for runtime compilation. Must be less than
+     * {@link Short#MAX_VALUE}. Defaults to
+     * {@link com.oracle.truffle.regex.tregex.TRegexOptions#TRegexMaxBackTrackerMergeExplodeSize}.
+     */
+    public short getMaxBackTrackerCompileSize() {
+        return maxBackTrackerCompileSize;
     }
 
     public boolean isU180EWhitespace() {
@@ -285,25 +325,27 @@ public final class RegexOptions {
     }
 
     public RegexOptions withEncoding(Encodings.Encoding newEnc) {
-        return newEnc == encoding ? this : new RegexOptions(options, flavor, newEnc, pythonMethod, pythonLocale, collation);
+        return newEnc == encoding ? this : new RegexOptions(options, maxDFASize, maxBackTrackerCompileSize, flavor, newEnc, pythonMethod, pythonLocale, collation);
     }
 
     public RegexOptions withoutPythonMethod() {
-        return pythonMethod == null ? this : new RegexOptions(options, flavor, encoding, null, pythonLocale, collation);
+        return pythonMethod == null ? this : new RegexOptions(options, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, null, pythonLocale, collation);
     }
 
     public RegexOptions withBooleanMatch() {
-        return new RegexOptions(options | BOOLEAN_MATCH, flavor, encoding, pythonMethod, pythonLocale, collation);
+        return new RegexOptions(options | BOOLEAN_MATCH, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, pythonMethod, pythonLocale, collation);
     }
 
     public RegexOptions withoutBooleanMatch() {
-        return new RegexOptions(options & ~BOOLEAN_MATCH, flavor, encoding, pythonMethod, pythonLocale, collation);
+        return new RegexOptions(options & ~BOOLEAN_MATCH, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, pythonMethod, pythonLocale, collation);
     }
 
     @Override
     public int hashCode() {
         final int prime = 31;
         int hash = options;
+        hash = prime * hash + Objects.hashCode(maxDFASize);
+        hash = prime * hash + Objects.hashCode(maxBackTrackerCompileSize);
         hash = prime * hash + Objects.hashCode(flavor);
         hash = prime * hash + encoding.hashCode();
         hash = prime * hash + Objects.hashCode(pythonMethod);
@@ -316,17 +358,27 @@ public final class RegexOptions {
         if (obj == this) {
             return true;
         }
-        if (!(obj instanceof RegexOptions)) {
+        if (!(obj instanceof RegexOptions other)) {
             return false;
         }
-        RegexOptions other = (RegexOptions) obj;
-        return this.options == other.options && this.flavor == other.flavor && this.encoding == other.encoding && this.pythonMethod == other.pythonMethod &&
+        return this.options == other.options &&
+                        this.maxDFASize == other.maxDFASize &&
+                        this.maxBackTrackerCompileSize == other.maxBackTrackerCompileSize &&
+                        this.flavor == other.flavor &&
+                        this.encoding == other.encoding &&
+                        this.pythonMethod == other.pythonMethod &&
                         this.pythonLocale.equals(other.pythonLocale);
     }
 
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
+        if (maxDFASize != TRegexOptions.TRegexMaxDFATransitions) {
+            sb.append(MAX_DFA_SIZE_NAME + "=").append(maxDFASize);
+        }
+        if (maxBackTrackerCompileSize != TRegexOptions.TRegexMaxBackTrackerMergeExplodeSize) {
+            sb.append(MAX_BACK_TRACKER_SIZE_NAME + "=").append(maxBackTrackerCompileSize);
+        }
         if (isU180EWhitespace()) {
             sb.append(U180E_WHITESPACE_NAME + "=true,");
         }
@@ -365,7 +417,7 @@ public final class RegexOptions {
         } else if (flavor == RubyFlavor.INSTANCE) {
             sb.append(FLAVOR_NAME + "=" + FLAVOR_RUBY + ",");
         }
-        sb.append(ENCODING_NAME + "=" + encoding.getName() + ",");
+        sb.append(ENCODING_NAME + "=").append(encoding.getName()).append(",");
         if (pythonMethod == PythonMethod.search) {
             sb.append(PYTHON_METHOD_NAME + "=" + PYTHON_METHOD_SEARCH + ",");
         } else if (pythonMethod == PythonMethod.match) {
@@ -374,7 +426,7 @@ public final class RegexOptions {
             sb.append(PYTHON_METHOD_NAME + "=" + PYTHON_METHOD_FULLMATCH + ",");
         }
         if (pythonLocale != null) {
-            sb.append(PYTHON_LOCALE_NAME + "=" + pythonLocale + ",");
+            sb.append(PYTHON_LOCALE_NAME + "=").append(pythonLocale).append(",");
         }
         if (isGenerateInput()) {
             sb.append(GENERATE_INPUT_NAME).append("=true");
@@ -386,7 +438,10 @@ public final class RegexOptions {
 
         private final Source source;
         private final String src;
+        private int i;
         private int options;
+        private short maxDFASize = TRegexOptions.TRegexMaxDFATransitions;
+        private short maxBackTrackerCompileSize = TRegexOptions.TRegexMaxBackTrackerMergeExplodeSize;
         private RegexFlavor flavor;
         private Encodings.Encoding encoding = Encodings.UTF_16_RAW;
         private PythonMethod pythonMethod;
@@ -402,78 +457,84 @@ public final class RegexOptions {
 
         @TruffleBoundary
         public int parseOptions() throws RegexSyntaxException {
-            int i = 0;
+            i = 0;
             while (i < src.length()) {
                 switch (src.charAt(i)) {
                     case 'A':
-                        i = parseBooleanOption(i, ALWAYS_EAGER_NAME, ALWAYS_EAGER);
+                        parseBooleanOption(ALWAYS_EAGER_NAME, ALWAYS_EAGER);
                         break;
                     case 'B':
-                        i = parseBooleanOption(i, BOOLEAN_MATCH_NAME, BOOLEAN_MATCH);
+                        parseBooleanOption(BOOLEAN_MATCH_NAME, BOOLEAN_MATCH);
                         break;
                     case 'C':
-                        i = parseCollation(i);
+                        collation = parseStringOption(COLLATION_NAME, "expected a valid collation identifier");
                         break;
                     case 'D':
-                        i = parseBooleanOption(i, DUMP_AUTOMATA_NAME, DUMP_AUTOMATA);
+                        parseBooleanOption(DUMP_AUTOMATA_NAME, DUMP_AUTOMATA);
                         break;
                     case 'E':
-                        i = parseEncoding(i);
+                        encoding = parseEncoding();
                         break;
                     case 'F':
-                        i = parseFlavor(i);
+                        flavor = parseFlavor();
                         break;
                     case 'G':
-                        if ((long) i + "Generate".length() >= src.length()) {
-                            throw optionsSyntaxErrorUnexpectedKey(i);
-                        }
-                        switch (src.charAt(i + "Generate".length())) {
+                        switch (lookAheadInKey("Generate".length())) {
                             case 'D':
-                                i = parseBooleanOption(i, GENERATE_DFA_IMMEDIATELY_NAME, GENERATE_DFA_IMMEDIATELY);
+                                parseBooleanOption(GENERATE_DFA_IMMEDIATELY_NAME, GENERATE_DFA_IMMEDIATELY);
                                 break;
                             case 'I':
-                                i = parseBooleanOption(i, GENERATE_INPUT_NAME, GENERATE_INPUT);
+                                parseBooleanOption(GENERATE_INPUT_NAME, GENERATE_INPUT);
                                 break;
                             default:
-                                throw optionsSyntaxErrorUnexpectedKey(i);
+                                throw optionsSyntaxErrorUnexpectedKey();
                         }
                         break;
                     case 'I':
-                        i = parseBooleanOption(i, IGNORE_ATOMIC_GROUPS_NAME, IGNORE_ATOMIC_GROUPS);
+                        parseBooleanOption(IGNORE_ATOMIC_GROUPS_NAME, IGNORE_ATOMIC_GROUPS);
                         break;
                     case 'M':
-                        i = parseBooleanOption(i, MUST_ADVANCE_NAME, MUST_ADVANCE);
+                        switch (lookAheadInKey(3)) {
+                            case 'B':
+                                maxBackTrackerCompileSize = parseShortOption(MAX_BACK_TRACKER_SIZE_NAME);
+                                break;
+                            case 'D':
+                                maxDFASize = parseShortOption(MAX_DFA_SIZE_NAME);
+                                break;
+                            case 't':
+                                parseBooleanOption(MUST_ADVANCE_NAME, MUST_ADVANCE);
+                                break;
+                            default:
+                                throw optionsSyntaxErrorUnexpectedKey();
+                        }
                         break;
                     case 'P':
                         if (src.regionMatches(i, PYTHON_METHOD_NAME, 0, PYTHON_METHOD_NAME.length())) {
-                            i = parsePythonMethod(i);
+                            pythonMethod = parsePythonMethod();
                         } else {
-                            i = parsePythonLocale(i);
+                            pythonLocale = parseStringOption(PYTHON_LOCALE_NAME, "expected a python locale name");
                         }
                         break;
                     case 'R':
-                        i = parseBooleanOption(i, REGRESSION_TEST_MODE_NAME, REGRESSION_TEST_MODE);
+                        parseBooleanOption(REGRESSION_TEST_MODE_NAME, REGRESSION_TEST_MODE);
                         break;
                     case 'S':
-                        i = parseBooleanOption(i, STEP_EXECUTION_NAME, STEP_EXECUTION);
+                        parseBooleanOption(STEP_EXECUTION_NAME, STEP_EXECUTION);
                         break;
                     case 'U':
-                        if (i + 1 >= src.length()) {
-                            throw optionsSyntaxErrorUnexpectedKey(i);
-                        }
-                        switch (src.charAt(i + 1)) {
+                        switch (lookAheadInKey(1)) {
                             case '1':
-                                i = parseBooleanOption(i, U180E_WHITESPACE_NAME, U180E_WHITESPACE);
+                                parseBooleanOption(U180E_WHITESPACE_NAME, U180E_WHITESPACE);
                                 break;
                             case 'T':
-                                i = parseBooleanOption(i, UTF_16_EXPLODE_ASTRAL_SYMBOLS_NAME, UTF_16_EXPLODE_ASTRAL_SYMBOLS);
+                                parseBooleanOption(UTF_16_EXPLODE_ASTRAL_SYMBOLS_NAME, UTF_16_EXPLODE_ASTRAL_SYMBOLS);
                                 break;
                             default:
-                                throw optionsSyntaxErrorUnexpectedKey(i);
+                                throw optionsSyntaxErrorUnexpectedKey();
                         }
                         break;
                     case 'V':
-                        i = parseBooleanOption(i, VALIDATE_NAME, VALIDATE);
+                        parseBooleanOption(VALIDATE_NAME, VALIDATE);
                         break;
                     case ',':
                         i++;
@@ -481,160 +542,174 @@ public final class RegexOptions {
                     case '/':
                         return i;
                     default:
-                        throw optionsSyntaxErrorUnexpectedKey(i);
+                        throw optionsSyntaxErrorUnexpectedKey();
                 }
             }
             return i;
         }
 
-        private int expectOptionName(int i, String key) {
+        private char lookAheadInKey(int offset) {
+            if (Integer.compareUnsigned(i + offset, src.length()) >= 0) {
+                throw optionsSyntaxErrorUnexpectedKey();
+            }
+            return src.charAt(i + offset);
+        }
+
+        private void expectOptionName(String key) {
             if (!src.regionMatches(i, key, 0, key.length()) || src.charAt(i + key.length()) != '=') {
-                throw optionsSyntaxErrorUnexpectedKey(i);
+                throw optionsSyntaxErrorUnexpectedKey();
             }
-            return i + key.length() + 1;
+            i += key.length() + 1;
         }
 
-        private int expectValue(int i, String value, String... expected) {
+        private <T> T expectValue(T returnValue, String value, String... expected) {
             if (!src.regionMatches(i, value, 0, value.length())) {
-                throw optionsSyntaxErrorUnexpectedValue(i, expected);
+                throw optionsSyntaxErrorUnexpectedValue(expected);
             }
-            return i + value.length();
+            i += value.length();
+            return returnValue;
         }
 
-        private int parseBooleanOption(int i, String key, int flag) throws RegexSyntaxException {
-            int iVal = expectOptionName(i, key);
-            if (src.regionMatches(iVal, "true", 0, "true".length())) {
+        private void parseBooleanOption(String key, int flag) throws RegexSyntaxException {
+            expectOptionName(key);
+            if (src.regionMatches(i, "true", 0, "true".length())) {
                 options |= flag;
-                return iVal + "true".length();
-            } else if (!src.regionMatches(iVal, "false", 0, "false".length())) {
-                throw optionsSyntaxErrorUnexpectedValue(iVal, "true", "false");
-            }
-            return iVal + "false".length();
-        }
-
-        private int parseFlavor(int i) throws RegexSyntaxException {
-            int iVal = expectOptionName(i, FLAVOR_NAME);
-            if (iVal >= src.length()) {
-                throw optionsSyntaxErrorUnexpectedValue(iVal, FLAVOR_OPTIONS);
-            }
-            switch (src.charAt(iVal)) {
-                case 'E':
-                    flavor = ECMAScriptFlavor.INSTANCE;
-                    return expectValue(iVal, FLAVOR_ECMASCRIPT, FLAVOR_OPTIONS);
-                case 'R':
-                    flavor = RubyFlavor.INSTANCE;
-                    return expectValue(iVal, FLAVOR_RUBY, FLAVOR_OPTIONS);
-                case 'O':
-                    flavor = OracleDBFlavor.INSTANCE;
-                    return expectValue(iVal, FLAVOR_ORACLE_DB, FLAVOR_OPTIONS);
-                case 'P':
-                    flavor = PythonFlavor.INSTANCE;
-                    return expectValue(iVal, FLAVOR_PYTHON, FLAVOR_OPTIONS);
-                default:
-                    throw optionsSyntaxErrorUnexpectedValue(iVal, FLAVOR_OPTIONS);
+                i += "true".length();
+            } else if (!src.regionMatches(i, "false", 0, "false".length())) {
+                throw optionsSyntaxErrorUnexpectedValue("true", "false");
+            } else {
+                i += "false".length();
             }
         }
 
-        private int parseCollation(int i) {
-            int iVal = expectOptionName(i, COLLATION_NAME);
-            if (iVal >= src.length()) {
-                throw optionsSyntaxErrorUnexpectedValueMsg(iVal, "expected a valid collation identifier");
+        private short parseShortOption(String key) throws RegexSyntaxException {
+            expectOptionName(key);
+            if (i >= src.length()) {
+                throw optionsSyntaxErrorUnexpectedValueMsg(PARSE_SHORT_ERROR_MSG);
             }
-            int endPos = ArrayUtils.indexOf(src, iVal, src.length(), ',', '/');
+            int endPos = findValueEndPos(PARSE_SHORT_ERROR_MSG);
+            try {
+                int value = Integer.parseUnsignedInt(src, i, endPos, 10);
+                if (value < 0 || value > Short.MAX_VALUE) {
+                    throw optionsSyntaxErrorUnexpectedValueMsg(PARSE_SHORT_ERROR_MSG);
+                }
+                i = endPos;
+                return (short) value;
+            } catch (NumberFormatException e) {
+                throw optionsSyntaxErrorUnexpectedValueMsg(PARSE_SHORT_ERROR_MSG);
+            }
+        }
+
+        private String parseStringOption(String key, String errorMsg) throws RegexSyntaxException {
+            expectOptionName(key);
+            if (i >= src.length()) {
+                throw optionsSyntaxErrorUnexpectedValueMsg(errorMsg);
+            }
+            int endPos = findValueEndPos(errorMsg);
+            String value = src.substring(i, endPos);
+            i = endPos;
+            return value;
+        }
+
+        private int findValueEndPos(String errorMsg) {
+            int endPos = ArrayUtils.indexOf(src, i, src.length(), ',', '/');
             if (endPos < 0) {
-                throw optionsSyntaxErrorUnexpectedValueMsg(iVal, "expected a valid collation identifier");
+                throw optionsSyntaxErrorUnexpectedValueMsg(errorMsg);
             }
-            collation = src.substring(iVal, endPos);
             return endPos;
         }
 
-        private int parseEncoding(int i) throws RegexSyntaxException {
-            int iVal = expectOptionName(i, ENCODING_NAME);
-            if (iVal >= src.length()) {
-                throw optionsSyntaxErrorUnexpectedValue(iVal, Encodings.ALL_NAMES);
+        private RegexFlavor parseFlavor() throws RegexSyntaxException {
+            expectOptionName(FLAVOR_NAME);
+            if (i >= src.length()) {
+                throw optionsSyntaxErrorUnexpectedValue(FLAVOR_OPTIONS);
             }
-            switch (src.charAt(iVal)) {
+            switch (src.charAt(i)) {
+                case 'E':
+                    return expectValue(ECMAScriptFlavor.INSTANCE, FLAVOR_ECMASCRIPT, FLAVOR_OPTIONS);
+                case 'R':
+                    return expectValue(RubyFlavor.INSTANCE, FLAVOR_RUBY, FLAVOR_OPTIONS);
+                case 'O':
+                    return expectValue(OracleDBFlavor.INSTANCE, FLAVOR_ORACLE_DB, FLAVOR_OPTIONS);
+                case 'P':
+                    return expectValue(PythonFlavor.INSTANCE, FLAVOR_PYTHON, FLAVOR_OPTIONS);
+                default:
+                    throw optionsSyntaxErrorUnexpectedValue(FLAVOR_OPTIONS);
+            }
+        }
+
+        private Encodings.Encoding parseEncoding() throws RegexSyntaxException {
+            expectOptionName(ENCODING_NAME);
+            if (i >= src.length()) {
+                throw optionsSyntaxErrorUnexpectedValue(Encodings.ALL_NAMES);
+            }
+            switch (src.charAt(i)) {
                 case 'A':
-                    encoding = Encodings.ASCII;
-                    return expectValue(iVal, Encodings.ASCII.getName(), Encodings.ALL_NAMES);
+                    return expectEncodingValue(Encodings.ASCII);
                 case 'B':
-                    encoding = Encodings.BYTES;
-                    return expectValue(iVal, "BYTES", Encodings.ALL_NAMES);
+                    return expectValue(Encodings.BYTES, "BYTES", Encodings.ALL_NAMES);
                 case 'L':
-                    encoding = Encodings.LATIN_1;
-                    return expectValue(iVal, Encodings.LATIN_1.getName(), Encodings.ALL_NAMES);
+                    return expectEncodingValue(Encodings.LATIN_1);
                 case 'U':
-                    if (iVal + 4 >= src.length()) {
-                        throw optionsSyntaxErrorUnexpectedValue(iVal, FLAVOR_OPTIONS);
+                    if (i + 4 >= src.length()) {
+                        throw optionsSyntaxErrorUnexpectedValue(FLAVOR_OPTIONS);
                     }
-                    switch (src.charAt(iVal + 4)) {
+                    switch (src.charAt(i + 4)) {
                         case '8':
-                            encoding = Encodings.UTF_8;
-                            return expectValue(iVal, Encodings.UTF_8.getName(), Encodings.ALL_NAMES);
+                            return expectEncodingValue(Encodings.UTF_8);
                         case '1':
-                            encoding = Encodings.UTF_16;
-                            return expectValue(iVal, Encodings.UTF_16.getName(), Encodings.ALL_NAMES);
+                            return expectEncodingValue(Encodings.UTF_16);
                         case '3':
-                            encoding = Encodings.UTF_32;
-                            return expectValue(iVal, Encodings.UTF_32.getName(), Encodings.ALL_NAMES);
+                            return expectEncodingValue(Encodings.UTF_32);
                         default:
-                            throw optionsSyntaxErrorUnexpectedValue(iVal, Encodings.ALL_NAMES);
+                            throw optionsSyntaxErrorUnexpectedValue(Encodings.ALL_NAMES);
                     }
                 default:
-                    throw optionsSyntaxErrorUnexpectedValue(iVal, Encodings.ALL_NAMES);
+                    throw optionsSyntaxErrorUnexpectedValue(Encodings.ALL_NAMES);
             }
         }
 
-        private int parsePythonMethod(int i) throws RegexSyntaxException {
-            int iVal = expectOptionName(i, PYTHON_METHOD_NAME);
-            if (iVal >= src.length()) {
-                throw optionsSyntaxErrorUnexpectedValue(iVal, PYTHON_METHOD_OPTIONS);
+        private Encodings.Encoding expectEncodingValue(Encodings.Encoding enc) {
+            return expectValue(enc, enc.getName(), Encodings.ALL_NAMES);
+        }
+
+        private PythonMethod parsePythonMethod() throws RegexSyntaxException {
+            expectOptionName(PYTHON_METHOD_NAME);
+            if (i >= src.length()) {
+                throw optionsSyntaxErrorUnexpectedValue(PYTHON_METHOD_OPTIONS);
             }
-            switch (src.charAt(iVal)) {
+            switch (src.charAt(i)) {
                 case 's':
-                    pythonMethod = PythonMethod.search;
-                    return expectValue(iVal, PYTHON_METHOD_SEARCH, PYTHON_METHOD_OPTIONS);
+                    return expectValue(PythonMethod.search, PYTHON_METHOD_SEARCH, PYTHON_METHOD_OPTIONS);
                 case 'm':
-                    pythonMethod = PythonMethod.match;
-                    return expectValue(iVal, PYTHON_METHOD_MATCH, PYTHON_METHOD_OPTIONS);
+                    return expectValue(PythonMethod.match, PYTHON_METHOD_MATCH, PYTHON_METHOD_OPTIONS);
                 case 'f':
-                    pythonMethod = PythonMethod.fullmatch;
-                    return expectValue(iVal, PYTHON_METHOD_FULLMATCH, PYTHON_METHOD_OPTIONS);
+                    return expectValue(PythonMethod.fullmatch, PYTHON_METHOD_FULLMATCH, PYTHON_METHOD_OPTIONS);
                 default:
-                    throw optionsSyntaxErrorUnexpectedValue(iVal, PYTHON_METHOD_OPTIONS);
+                    throw optionsSyntaxErrorUnexpectedValue(PYTHON_METHOD_OPTIONS);
             }
-        }
-
-        private int parsePythonLocale(int i) throws RegexSyntaxException {
-            int iStart = expectOptionName(i, PYTHON_LOCALE_NAME);
-            int iEnd = ArrayUtils.indexOf(src, iStart, src.length(), ',', '/');
-            if (iEnd == -1) {
-                iEnd = src.length();
-            }
-            pythonLocale = src.substring(iStart, iEnd);
-            return iEnd;
         }
 
         @TruffleBoundary
-        private RegexSyntaxException optionsSyntaxErrorUnexpectedKey(int i) {
+        private RegexSyntaxException optionsSyntaxErrorUnexpectedKey() {
             int eqlPos = src.indexOf('=', i);
-            return optionsSyntaxError(String.format("unexpected option '%s'", src.substring(i, eqlPos < 0 ? src.length() : eqlPos)), i);
+            return optionsSyntaxError(String.format("unexpected option '%s'", src.substring(i, eqlPos < 0 ? src.length() : eqlPos)));
         }
 
         @TruffleBoundary
-        private RegexSyntaxException optionsSyntaxErrorUnexpectedValue(int i, String... expected) {
-            return optionsSyntaxErrorUnexpectedValueMsg(i, String.format("expected one of %s", Arrays.toString(expected)));
+        private RegexSyntaxException optionsSyntaxErrorUnexpectedValue(String... expected) {
+            return optionsSyntaxErrorUnexpectedValueMsg(String.format("expected one of %s", Arrays.toString(expected)));
         }
 
         @TruffleBoundary
-        private RegexSyntaxException optionsSyntaxErrorUnexpectedValueMsg(int i, String msg) {
+        private RegexSyntaxException optionsSyntaxErrorUnexpectedValueMsg(String msg) {
             int commaPos = src.indexOf(',', i);
             String value = src.substring(i, commaPos < 0 ? src.length() : commaPos);
-            return optionsSyntaxError(String.format("unexpected value '%s', %s", value, msg), i);
+            return optionsSyntaxError(String.format("unexpected value '%s', %s", value, msg));
         }
 
         @TruffleBoundary
-        private RegexSyntaxException optionsSyntaxError(String msg, int i) {
+        private RegexSyntaxException optionsSyntaxError(String msg) {
             return RegexSyntaxException.createOptions(source, String.format("Invalid options syntax in '%s': %s", src, msg), i);
         }
 
@@ -738,7 +813,7 @@ public final class RegexOptions {
         }
 
         public RegexOptions build() {
-            return new RegexOptions(options, flavor, encoding, pythonMethod, pythonLocale, collation);
+            return new RegexOptions(options, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, pythonMethod, pythonLocale, collation);
         }
 
         private void updateOption(boolean enabled, int bitMask) {

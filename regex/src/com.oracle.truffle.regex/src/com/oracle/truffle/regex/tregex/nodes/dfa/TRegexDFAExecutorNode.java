@@ -92,7 +92,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     DFAAbstractStateNode[] states,
                     TRegexDFAExecutorDebugRecorder debugRecorder,
                     TRegexDFAExecutorNode innerLiteralPrefixMatcher) {
-        this(source, props, numberOfCaptureGroups, calcNumberOfTransitions(states), maxNumberOfNFAStates, indexOfParameters, states,
+        this(source, props, numberOfCaptureGroups, calcNumberOfTransitions(source, states), maxNumberOfNFAStates, indexOfParameters, states,
                         props.isGenericCG() && maxNumberOfNFAStates > 1 ? initResultOrder(maxNumberOfNFAStates, numberOfCaptureGroups, props) : null, debugRecorder,
                         innerLiteralPrefixMatcher);
     }
@@ -182,7 +182,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         return states.length;
     }
 
-    private static int calcNumberOfTransitions(DFAAbstractStateNode[] states) {
+    private static int calcNumberOfTransitions(RegexSource source, DFAAbstractStateNode[] states) {
         int sum = 0;
         for (DFAAbstractStateNode state : states) {
             sum += state.getSuccessors().length;
@@ -191,7 +191,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                 sum++;
             }
         }
-        if (sum > TRegexOptions.TRegexMaxDFATransitions) {
+        if (sum > source.getOptions().getMaxDFASize()) {
             throw new UnsupportedRegexException("too many transitions");
         }
         return sum;
