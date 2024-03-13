@@ -3,7 +3,6 @@ local wasm_common = import 'ci_common/common.jsonnet';
 
 local jdks = {
   jdk17:: graal_common.labsjdk17,
-  jdk20:: graal_common.labsjdk20,
 };
 
 jdks + wasm_common +
@@ -15,10 +14,8 @@ jdks + wasm_common +
   builds: [
     # Gates.
     $.jdk17 + $.linux_amd64     + $.gate         + $.gate_graalwasm_style                                                                      + {name: 'gate-graalwasm-style-fullbuild' + self.name_suffix},
-    $.jdk20 + $.linux_amd64     + $.gate         + $.gate_graalwasm_style                                                                      + {name: 'gate-graalwasm-style-fullbuild' + self.name_suffix},
 
     $.jdk17 + $.linux_amd64     + $.gate         + $.gate_graalwasm_full        + {environment+: {GATE_TAGS: 'build,wasmtest'}}                + {name: 'gate-graalwasm-unittest' + self.name_suffix},
-    $.jdk20 + $.linux_amd64     + $.gate         + $.gate_graalwasm_full        + {environment+: {GATE_TAGS: 'build,wasmtest'}}                + {name: 'gate-graalwasm-unittest' + self.name_suffix},
     $.jdk17 + $.windows_amd64   + $.gate         + $.gate_graalwasm_full        + {environment+: {GATE_TAGS: 'build,wasmtest'}}                + {name: 'gate-graalwasm-unittest' + self.name_suffix},
     $.jdk17 + $.darwin_aarch64  + $.gate         + $.gate_graalwasm_full        + {environment+: {GATE_TAGS: 'build,wasmtest'}}                + {name: 'gate-graalwasm-unittest' + self.name_suffix},
 

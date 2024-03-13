@@ -67,11 +67,11 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
   # See definition of `gates` local variable in ../../compiler/ci_common/gate.jsonnet
   local gates = {
-    "gate-vm-libgraal_compiler-labsjdk-20-linux-amd64": {},
-    "gate-vm-libgraal_truffle-labsjdk-20-linux-amd64": {},
-    "gate-vm-libgraal_compiler_zgc-labsjdk-20-linux-amd64": {},
-    "gate-vm-libgraal_compiler_quickbuild-labsjdk-20-linux-amd64": {},
-    "gate-vm-libgraal_truffle_quickbuild-labsjdk-20-linux-amd64": t("1:10:00"),
+    "gate-vm-libgraal_compiler-labsjdk-17-linux-amd64": {},
+    "gate-vm-libgraal_truffle-labsjdk-17-linux-amd64": {},
+    "gate-vm-libgraal_compiler_zgc-labsjdk-17-linux-amd64": {},
+    "gate-vm-libgraal_compiler_quickbuild-labsjdk-17-linux-amd64": {},
+    "gate-vm-libgraal_truffle_quickbuild-labsjdk-17-linux-amd64": t("1:10:00"),
   },
 
   # See definition of `dailies` local variable in ../../compiler/ci_common/gate.jsonnet
@@ -80,7 +80,6 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     "daily-vm-libgraal_truffle-labsjdk-17-linux-amd64": {},
     "daily-vm-libgraal_compiler_zgc-labsjdk-17-linux-amd64": {},
     "daily-vm-libgraal_truffle_zgc-labsjdk-17-linux-amd64": {},
-    "daily-vm-libgraal_truffle_zgc-labsjdk-20-linux-amd64": {},
     "daily-vm-libgraal_compiler_quickbuild-labsjdk-17-linux-amd64": {},
     "daily-vm-libgraal_truffle_quickbuild-labsjdk-17-linux-amd64": {},
   },
@@ -102,22 +101,22 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     c["gate_vm_" + underscore(os_arch)] +
     svm_common(os_arch, jdk) +
     vm["custom_vm_" + os(os_arch)] +
-    g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
+    g.make_build(gate_type, jdk, os_arch, task, extra_tasks=self, suite="vm",
                  include_common_os_arch=false,
                  gates_manifest=gates,
                  dailies_manifest=dailies,
                  weeklies_manifest=weeklies,
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
+    for gate_type in [
+        "gate",
+        "daily",
+    ]
     for jdk in [
       "17",
-      "20"
     ]
     for os_arch in [
       "linux-amd64",
-      "linux-aarch64",
-      "darwin-amd64",
-      "darwin-aarch64"
     ]
     for task in [
       "libgraal_compiler",
@@ -130,20 +129,23 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   ],
 
 
-  # Builds run on only on linux-amd64-jdk20
-  local linux_amd64_jdk20_builds = [
+  # Builds run on only on linux-amd64-jdk17
+  local linux_amd64_jdk17_builds = [
     c["gate_vm_" + underscore(os_arch)] +
     svm_common(os_arch, jdk) +
     vm["custom_vm_" + os(os_arch)] +
-    g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
+    g.make_build(gate_type, jdk, os_arch, task, extra_tasks=self, suite="vm",
                  include_common_os_arch=false,
                  gates_manifest=gates,
                  dailies_manifest=dailies,
                  weeklies_manifest=weeklies,
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
+    for gate_type in [
+        "weekly"
+    ]
     for jdk in [
-      "20"
+      "17"
     ]
     for os_arch in [
       "linux-amd64",
@@ -156,13 +158,15 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   ],
 
   # Complete set of builds defined in this file
-  local all_builds =
+  local all_builds = std.set(
     all_platforms_builds +
-    linux_amd64_jdk20_builds,
+    linux_amd64_jdk17_builds, function(o) o.name),
+
+  local filtered_builds = [x for x in all_builds if g.manifest_match(dailies, x.name) || g.manifest_match(gates, x.name) || g.manifest_match(weeklies, x.name)],
 
   builds: if
-      g.check_manifest(gates, all_builds, std.thisFile, "gates").result
+      g.check_manifest(gates, filtered_builds, std.thisFile, "gates").result
     then
       local conf = repo_config.vm.libgraal_predicate_conf;
-      [utils.add_gate_predicate(b, suites=conf.suites, extra_excludes=conf.extra_excludes) for b in all_builds]
+      [utils.add_gate_predicate(b, suites=conf.suites, extra_excludes=conf.extra_excludes) for b in filtered_builds]
 }

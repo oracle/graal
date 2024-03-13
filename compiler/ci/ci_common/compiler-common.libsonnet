@@ -33,10 +33,9 @@
     ]
   },
 
-  latest_jdk:: common["labsjdk-ee-20"],
+  latest_jdk:: common["labsjdk-ee-17"],
   bench_jdks:: [
-    common["labsjdk-ee-17"],
-    self.latest_jdk
+    common["labsjdk-ee-17"]
   ],
 
   compiler_benchmarks_notifications:: {

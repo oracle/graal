@@ -50,7 +50,6 @@ local devkits = graal_common.devkits;
   },
 
   common_vm_windows_jdk17: self.common_vm_windows + devkits['windows-jdk17'],
-  common_vm_windows_jdk20: self.common_vm_windows + devkits['windows-jdk20'],
 
   # JS
   js_windows_common: {
@@ -63,13 +62,6 @@ local devkits = graal_common.devkits;
     setup+: [
       # Keep in sync with the 'devkits' object defined in ci/common.jsonnet.
       ['set-export', 'DEVKIT_VERSION', '2019'],
-    ],
-  },
-
-  js_windows_jdk20: self.js_windows_common + {
-    setup+: [
-      # Keep in sync with the 'devkits' object defined in ci/common.jsonnet.
-      ['set-export', 'DEVKIT_VERSION', '2022'],
     ],
   },
 
@@ -189,7 +181,6 @@ local devkits = graal_common.devkits;
 
   vm_windows: self.common_vm_windows + graal_common.windows_server_2016_amd64,
   vm_windows_jdk17: self.common_vm_windows_jdk17 + graal_common.windows_server_2016_amd64,
-  vm_windows_jdk20: self.common_vm_windows_jdk20 + graal_common.windows_server_2016_amd64,
 
   gate_vm_linux_amd64: self.vm_linux_amd64 + {
     targets+: ['gate']
@@ -274,14 +265,6 @@ local devkits = graal_common.devkits;
     targets+: ['post-merge', 'deploy'],
   },
 
-  deploy_daily_vm_windows_jdk20: self.vm_windows_jdk20 + {
-    targets+: ['daily', 'deploy'],
-  },
-
-  deploy_vm_windows_jdk20: self.vm_windows_jdk20 + {
-    targets+: ['post-merge', 'deploy'],
-  },
-
   postmerge_vm_linux_amd64: self.vm_linux_amd64 + {
     targets+: ['post-merge'],
   },
@@ -310,10 +293,6 @@ local devkits = graal_common.devkits;
     targets+: ['daily'],
   },
 
-  daily_vm_windows_jdk20: self.vm_windows_jdk20 + {
-    targets+: ['daily'],
-  },
-
   weekly_vm_linux_amd64: self.vm_linux_amd64 + {
     targets+: ['weekly'],
   },
@@ -335,10 +314,6 @@ local devkits = graal_common.devkits;
   },
 
   weekly_vm_windows_jdk17: self.vm_windows_jdk17 + {
-    targets+: ['weekly'],
-  },
-
-  weekly_vm_windows_jdk20: self.vm_windows_jdk20 + {
     targets+: ['weekly'],
   },
 
@@ -371,10 +346,6 @@ local devkits = graal_common.devkits;
   },
 
   ondemand_deploy_vm_windows_jdk17: self.vm_windows_jdk17 + {
-    targets+: ['ondemand', 'deploy'],
-  },
-
-  ondemand_deploy_vm_windows_jdk20: self.vm_windows_jdk20 + {
     targets+: ['ondemand', 'deploy'],
   },
 
@@ -615,53 +586,34 @@ local devkits = graal_common.devkits;
 
   # Linux/AMD64
   deploy_vm_java17_linux_amd64: vm.vm_java_17_llvm + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64("java17") + {name: 'post-merge-deploy-vm-java17-linux-amd64', diskspace_required: vm.diskspace_required.java17_linux_amd64, notify_groups:: ["deploy"]},
-  deploy_vm_java20_linux_amd64: vm.vm_java_20_llvm + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64("java20") + {name: 'post-merge-deploy-vm-java20-linux-amd64', diskspace_required: vm.diskspace_required.java20_linux_amd64, notify_groups:: ["deploy"]},
 
   # Linux/AARCH64
   deploy_vm_java17_linux_aarch64: vm.vm_java_17 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_vm_linux_aarch64 + self.deploy_graalvm_linux_aarch64("java17") + {name: 'post-merge-deploy-vm-java17-linux-aarch64', notify_groups:: ["deploy"]},
-  deploy_vm_java20_linux_aarch64: vm.vm_java_20 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_vm_linux_aarch64 + self.deploy_graalvm_linux_aarch64("java20") + {name: 'post-merge-deploy-vm-java20-linux-aarch64', notify_groups:: ["deploy"]},
 
   # Darwin/AMD64
   deploy_vm_base_java17_darwin_amd64: vm.vm_java_17_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_vm_darwin_amd64 + self.deploy_graalvm_base_darwin_amd64("java17") + {name: 'post-merge-deploy-vm-base-java17-darwin-amd64', notify_groups:: ["deploy"]},
   deploy_vm_installable_java17_darwin_amd64: vm.vm_java_17_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_vm_darwin_amd64 + self.deploy_graalvm_installables_darwin_amd64("java17") + {name: 'post-merge-deploy-vm-installable-java17-darwin-amd64', diskspace_required: "31GB", notify_groups:: ["deploy"]},
-  deploy_vm_base_java20_darwin_amd64: vm.vm_java_20_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_vm_darwin_amd64 + self.deploy_graalvm_base_darwin_amd64("java20") + {name: 'post-merge-deploy-vm-base-java20-darwin-amd64', notify_groups:: ["deploy"]},
-  deploy_vm_installable_java20_darwin_amd64: vm.vm_java_20_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_vm_darwin_amd64 + self.deploy_graalvm_installables_darwin_amd64("java20") + {name: 'post-merge-deploy-vm-installable-java20-darwin-amd64', diskspace_required: "31GB", notify_groups:: ["deploy"]},
 
   # Darwin/AARCH64
   deploy_vm_base_java17_darwin_aarch64: vm.vm_java_17 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_vm_darwin_aarch64 + self.deploy_graalvm_base_darwin_aarch64("java17") + {name: 'post-merge-deploy-vm-base-java17-darwin-aarch64', notify_groups:: ["deploy"]},
   deploy_vm_installable_java17_darwin_aarch64: vm.vm_java_17 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_vm_darwin_aarch64 + self.deploy_graalvm_installables_darwin_aarch64("java17") + {name: 'post-merge-deploy-vm-installable-java17-darwin-aarch64', diskspace_required: "31GB", notify_groups:: ["deploy"]},
-  deploy_vm_base_java20_darwin_aarch64: vm.vm_java_20 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_vm_darwin_aarch64 + self.deploy_graalvm_base_darwin_aarch64("java20") + {name: 'post-merge-deploy-vm-base-java20-darwin-aarch64', notify_groups:: ["deploy"]},
-  deploy_vm_installable_java20_darwin_aarch64: vm.vm_java_20 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_vm_darwin_aarch64 + self.deploy_graalvm_installables_darwin_aarch64("java20") + {name: 'post-merge-deploy-vm-installable-java20-darwin-aarch64', diskspace_required: "31GB", notify_groups:: ["deploy"]},
 
   # Windows/AMD64
   deploy_vm_base_java17_windows_amd64: vm.vm_java_17 + self.svm_common_windows_amd64("17") + self.js_windows_jdk17 + self.deploy_vm_windows_jdk17 + self.deploy_graalvm_base_windows_amd64("java17") + self.deploy_build + {name: 'post-merge-deploy-vm-base-java17-windows-amd64', notify_groups:: ["deploy"]},
   deploy_vm_installable_java17_windows_amd64: vm.vm_java_17 + self.svm_common_windows_amd64("17") + self.js_windows_jdk17 + self.sulong_windows + self.deploy_vm_windows_jdk17 + self.deploy_graalvm_installables_windows_amd64("java17") + self.deploy_build + {name: 'post-merge-deploy-vm-installable-java17-windows-amd64', diskspace_required: "31GB", notify_groups:: ["deploy"]},
-  deploy_vm_base_java20_windows_amd64: vm.vm_java_20 + self.svm_common_windows_amd64("20") + self.js_windows_jdk20 + self.deploy_vm_windows_jdk20 + self.deploy_graalvm_base_windows_amd64("java20") + self.deploy_build + {name: 'post-merge-deploy-vm-base-java20-windows-amd64', notify_groups:: ["deploy"]},
-  deploy_vm_installable_java20_windows_amd64: vm.vm_java_20 + self.svm_common_windows_amd64("20") + self.js_windows_jdk20 + self.sulong_windows + self.deploy_vm_windows_jdk20 + self.deploy_graalvm_installables_windows_amd64("java20") + self.deploy_build + {name: 'post-merge-deploy-vm-installable-java20-windows-amd64', diskspace_required: "31GB", notify_groups:: ["deploy"]},
-
-  #
-  # Deploy the GraalVM Ruby artifact (GraalVM Base + ruby - native image)
-  #
-
-  deploy_vm_ruby_java17_linux_amd64: vm.vm_java_17 + self.ruby_vm_build_linux_amd64 + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_ruby('linux', 'amd64', 'java17') + {name: 'post-merge-deploy-vm-ruby-java17-linux-amd64', notify_groups:: ["deploy"]},
-  deploy_vm_ruby_java17_darwin_amd64: vm.vm_java_17 + self.ruby_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_vm_darwin_amd64 + self.deploy_graalvm_ruby('darwin', 'amd64', 'java17') + {name: 'post-merge-deploy-vm-ruby-java17-darwin-amd64', notify_groups:: ["deploy"]},
-  deploy_vm_ruby_java17_darwin_aarch64: vm.vm_java_17 + self.ruby_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_vm_darwin_aarch64 + self.deploy_graalvm_ruby('darwin', 'aarch64', 'java17') + {name: 'post-merge-deploy-vm-ruby-java17-darwin-aarch64', notify_groups:: ["deploy"]},
-  deploy_vm_ruby_java20_linux_amd64: vm.vm_java_20 + self.ruby_vm_build_linux_amd64 + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_ruby('linux', 'amd64', 'java20') + {name: 'post-merge-deploy-vm-ruby-java20-linux-amd64', notify_groups:: ["deploy"]},
-  deploy_vm_ruby_java20_darwin_amd64: vm.vm_java_20 + self.ruby_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_vm_darwin_amd64 + self.deploy_graalvm_ruby('darwin', 'amd64', 'java20') + {name: 'post-merge-deploy-vm-ruby-java20-darwin-amd64', notify_groups:: ["deploy"]},
-  deploy_vm_ruby_java20_darwin_aarch64: vm.vm_java_20 + self.ruby_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_vm_darwin_aarch64 + self.deploy_graalvm_ruby('darwin', 'aarch64', 'java20') + {name: 'post-merge-deploy-vm-ruby-java20-darwin-aarch64', notify_groups:: ["deploy"]},
 
   local builds = [
     #
     # Gates
     #
-    vm.vm_java_20 + graal_common.deps.eclipse + graal_common.deps.jdt + self.gate_vm_linux_amd64 + {
+    vm.vm_java_17 + graal_common.deps.eclipse + graal_common.deps.jdt + self.gate_vm_linux_amd64 + {
      run: [
        ['mx', 'gate', '-B=--force-deprecation-as-warning', '--tags', 'style,fullbuild'],
      ],
-     name: 'gate-vm-style-jdk20-linux-amd64',
+     name: 'gate-vm-style-jdk17-linux-amd64',
     },
 
-    vm.vm_java_20 + self.svm_common_linux_amd64 + self.sulong_linux + vm.custom_vm_linux + self.gate_vm_linux_amd64 + {
+    vm.vm_java_17 + self.svm_common_linux_amd64 + self.sulong_linux + vm.custom_vm_linux + self.gate_vm_linux_amd64 + {
      run: [
        ['export', 'SVM_SUITE=' + vm.svm_suite],
        ['mx', '--dynamicimports', '$SVM_SUITE,/sulong', '--disable-polyglot', '--disable-libpolyglot', 'gate', '--no-warning-as-error', '--tags', 'build,sulong'],
