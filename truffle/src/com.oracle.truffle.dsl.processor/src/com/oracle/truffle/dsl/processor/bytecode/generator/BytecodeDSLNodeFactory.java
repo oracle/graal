@@ -7085,6 +7085,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 type.add(createCachedConstructor());
                 type.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE, FINAL), arrayOf(types.Node), "cachedNodes_")));
                 type.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE, FINAL), arrayOf(context.getType(int.class)), "branchProfiles_")));
+                type.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE, FINAL), arrayOf(context.getType(boolean.class)), "exceptionProfiles_")));
                 type.add(createLoadConstantCompiled());
                 // Define the members required to support OSR.
                 type.getImplements().add(types.BytecodeOSRNode);
@@ -7286,6 +7287,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
 
             for (VariableElement var : ElementFilter.fieldsIn(type.getEnclosedElements())) {
+                if (var.getModifiers().contains(STATIC)) {
+                    continue;
+                }
                 String name = var.getSimpleName().toString();
                 ex.addParameter(new CodeVariableElement(var.asType(), name));
                 b.statement("this.", name, " = ", name);
@@ -7300,6 +7304,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("assert bytecodes_ != null || sourceInfo_ != null");
 
             for (VariableElement e : ElementFilter.fieldsIn(abstractBytecodeNode.getEnclosedElements())) {
+                if (e.getModifiers().contains(STATIC)) {
+                    continue;
+                }
                 b.declaration(e.asType(), e.getSimpleName().toString() + "__");
             }
 
@@ -7343,6 +7350,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startReturn();
                 b.startNew(type.asType());
                 for (VariableElement e : ElementFilter.fieldsIn(abstractBytecodeNode.getEnclosedElements())) {
+                    if (e.getModifiers().contains(STATIC)) {
+                        continue;
+                    }
                     b.string(e.getSimpleName().toString() + "__");
                 }
                 b.end();
@@ -7352,9 +7362,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startReturn();
                 b.startNew(type.asType());
                 for (VariableElement e : ElementFilter.fieldsIn(abstractBytecodeNode.getEnclosedElements())) {
+                    if (e.getModifiers().contains(STATIC)) {
+                        continue;
+                    }
                     b.string(e.getSimpleName().toString() + "__");
                 }
                 for (VariableElement e : ElementFilter.fieldsIn(type.getEnclosedElements())) {
+                    if (e.getModifiers().contains(STATIC)) {
+                        continue;
+                    }
                     b.string("this.", e.getSimpleName().toString());
                 }
                 b.end();
@@ -7537,7 +7553,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startAssert().string("bci == bc.length").end();
             b.startAssign("this.cachedNodes_").string("result").end();
             b.startAssign("this.branchProfiles_").startStaticCall(types.BytecodeSupport, "allocateBranchProfiles").string("numConditionalBranches").end(2);
-
+            b.startAssign("this.exceptionProfiles_").string("handlers.length == 0 ? EMPTY_EXCEPTION_PROFILES : new boolean[handlers.length / 5]").end();
+            type.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(boolean[].class), "EMPTY_EXCEPTION_PROFILES")).createInitBuilder().string("new boolean[0]");
             return ex;
         }
 
@@ -8149,6 +8166,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("int handler = resolveExceptionHandler(localHandlers, bci)");
 
             b.startIf().string("handler != -1").end().startBlock();
+
+            if (tier.isCached()) {
+                b.startIf().string("!this.exceptionProfiles_[handler / 5]").end().startBlock();
+                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                b.statement("this.exceptionProfiles_[handler / 5] = true");
+                b.end();
+            }
+
             b.statement("bci = localHandlers[handler + 2]");
             b.statement("int handlerSp = localHandlers[handler + 3] + $root.numLocals");
             b.statement("assert sp >= handlerSp");
@@ -8240,6 +8265,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startAssign("ex").string("ate").end();
                 b.end();
             }
+            b.startElseIf().startGroup().string("throwable instanceof ").type(types.ControlFlowException).string(" cfe").end(2).startBlock();
+            b.startThrow().string("cfe").end();
+            b.end();
 
             if (model.interceptInternalException == null) {
                 // Special case: no handlers for non-Truffle exceptions. Just rethrow.
@@ -8252,17 +8280,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startTryBlock();
                 b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                 if (model.interceptInternalException != null) {
-                    if (model.interceptControlFlowException == null) {
-                        // If there was no handler, we need to ensure throwable is not a
-                        // ControlFlowException
-                        b.startIf().string("!(throwable instanceof ").type(types.ControlFlowException).string(")").end().startBlock();
-                    }
                     b.startAssign("throwable").startCall("$root", model.interceptInternalException).string("throwable").string("this").string("bci").end(2);
-                    if (model.interceptControlFlowException == null) {
-                        // If there was no handler, we need to ensure throwable is not a
-                        // ControlFlowException
-                        b.end();
-                    }
                 }
                 b.startThrow().startCall("sneakyThrow").string("throwable").end(2);
                 b.end().startCatchBlock(types.AbstractTruffleException, "ate");
