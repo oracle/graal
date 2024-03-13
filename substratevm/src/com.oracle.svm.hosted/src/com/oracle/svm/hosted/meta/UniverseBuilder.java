@@ -44,7 +44,6 @@ import java.util.concurrent.ForkJoinTask;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -118,7 +117,6 @@ public class UniverseBuilder {
     private final HostedMetaAccess hMetaAccess;
     private StrengthenGraphs strengthenGraphs;
     private final UnsupportedFeatures unsupportedFeatures;
-    private TypeCheckBuilder typeCheckBuilder;
 
     public UniverseBuilder(AnalysisUniverse aUniverse, AnalysisMetaAccess aMetaAccess, HostedUniverse hUniverse, HostedMetaAccess hMetaAccess,
                     StrengthenGraphs strengthenGraphs, UnsupportedFeatures unsupportedFeatures) {
@@ -179,24 +177,18 @@ public class UniverseBuilder {
             HostedType objectType = hUniverse.objectType();
             HostedType cloneableType = hUniverse.types.get(aMetaAccess.lookupJavaType(Cloneable.class));
             HostedType serializableType = hUniverse.types.get(aMetaAccess.lookupJavaType(Serializable.class));
-            typeCheckBuilder = new TypeCheckBuilder(allTypes, objectType, cloneableType, serializableType);
-            typeCheckBuilder.buildTypeInformation(hUniverse);
-            if (SubstrateOptions.closedTypeWorld()) {
-                typeCheckBuilder.calculateClosedWorldTypeMetadata();
-            } else {
-                typeCheckBuilder.calculateOpenWorldTypeMetadata();
-            }
+            int numTypeCheckSlots = TypeCheckBuilder.buildTypeMetadata(hUniverse, allTypes, objectType, cloneableType, serializableType);
 
             collectDeclaredMethods();
             collectMonitorFieldInfo(aUniverse.getBigbang());
 
             ForkJoinTask<?> profilingInformationBuildTask = ForkJoinTask.adapt(this::buildProfilingInformation).fork();
 
-            layoutInstanceFields();
+            layoutInstanceFields(numTypeCheckSlots);
             layoutStaticFields();
 
             collectMethodImplementations();
-            buildVTables();
+            VTableBuilder.buildTables(hUniverse, hMetaAccess);
             buildHubs();
 
             processFieldLocations();
@@ -423,10 +415,10 @@ public class UniverseBuilder {
         return IMMUTABLE_TYPES.contains(clazz);
     }
 
-    private void layoutInstanceFields() {
+    private void layoutInstanceFields(int numTypeCheckSlots) {
         BitSet usedBytes = new BitSet();
         usedBytes.set(0, ConfigurationValues.getObjectLayout().getFirstFieldOffset());
-        layoutInstanceFields(hUniverse.getObjectClass(), new HostedField[0], usedBytes);
+        layoutInstanceFields(hUniverse.getObjectClass(), new HostedField[0], usedBytes, numTypeCheckSlots);
     }
 
     private static boolean mustReserveArrayFields(HostedInstanceClass clazz) {
@@ -453,7 +445,7 @@ public class UniverseBuilder {
         usedBytes.set(endOffset, endOffset + size);
     }
 
-    private void layoutInstanceFields(HostedInstanceClass clazz, HostedField[] superFields, BitSet usedBytes) {
+    private void layoutInstanceFields(HostedInstanceClass clazz, HostedField[] superFields, BitSet usedBytes, int numTypeCheckSlots) {
         ArrayList<HostedField> rawFields = new ArrayList<>();
         ArrayList<HostedField> allFields = new ArrayList<>();
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
@@ -468,20 +460,21 @@ public class UniverseBuilder {
              * Reserve the vtable and typeslots
              */
             int intSize = layout.sizeInBytes(JavaKind.Int);
-            int afterVtableLengthOffset = dynamicHubLayout.getVTableLengthOffset() + intSize;
+            int afterVTableLengthOffset = dynamicHubLayout.getVTableLengthOffset() + intSize;
 
             /*
              * Reserve the extra memory that DynamicHub fields may use (at least the vtable length
              * field).
              */
-            int fieldBytes = afterVtableLengthOffset - minimumFirstFieldOffset;
+            int fieldBytes = afterVTableLengthOffset - minimumFirstFieldOffset;
             assert fieldBytes >= intSize;
             reserve(usedBytes, minimumFirstFieldOffset, fieldBytes);
 
             if (SubstrateOptions.closedTypeWorld()) {
                 /* Each type check id slot is 2 bytes. */
-                int slotsSize = typeCheckBuilder.getNumTypeCheckSlots() * 2;
-                int typeIDSlotsBaseOffset = dynamicHubLayout.getClosedWorldTypeCheckSlotsOffset();
+                assert numTypeCheckSlots != TypeCheckBuilder.UNINITIALIZED_TYPECHECK_SLOTS : "numTypeCheckSlots is uninitialized";
+                int slotsSize = numTypeCheckSlots * 2;
+                int typeIDSlotsBaseOffset = dynamicHubLayout.getClosedTypeWorldTypeCheckSlotsOffset();
                 reserve(usedBytes, typeIDSlotsBaseOffset, slotsSize);
                 firstInstanceFieldOffset = typeIDSlotsBaseOffset + slotsSize;
             } else {
@@ -489,7 +482,7 @@ public class UniverseBuilder {
                  * In the open world we do not inline the type checks into the dynamic hub since the
                  * typeIDSlots array will be of variable length.
                  */
-                firstInstanceFieldOffset = afterVtableLengthOffset;
+                firstInstanceFieldOffset = afterVTableLengthOffset;
             }
 
         } else if (mustReserveArrayFields(clazz)) {
@@ -615,7 +608,7 @@ public class UniverseBuilder {
 
         for (HostedType subClass : clazz.subTypes) {
             if (subClass.isInstanceClass()) {
-                layoutInstanceFields((HostedInstanceClass) subClass, clazz.instanceFieldsWithSuper, (BitSet) usedBytesInSubclasses.clone());
+                layoutInstanceFields((HostedInstanceClass) subClass, clazz.instanceFieldsWithSuper, (BitSet) usedBytesInSubclasses.clone(), numTypeCheckSlots);
             }
         }
     }
@@ -806,290 +799,6 @@ public class UniverseBuilder {
         }
     }
 
-    private void buildVTables() {
-        /*
-         * We want to pack the vtables as tight as possible, i.e., we want to avoid filler slots as
-         * much as possible. Filler slots are unavoidable because we use the vtable also for
-         * interface calls, i.e., an interface method needs a vtable index that is filled for all
-         * classes that implement that interface.
-         *
-         * Note that because of interface methods the same implementation method can be registered
-         * multiple times in the same vtable, with a different index used by different interface
-         * methods.
-         *
-         * The optimization goal is to reduce the overall number of vtable slots. To achieve a good
-         * result, we process types in three steps: 1) java.lang.Object, 2) interfaces, 3) classes.
-         */
-
-        /*
-         * The mutable vtables while this algorithm is running. Contains an ArrayList for each type,
-         * which is in the end converted to the vtable array.
-         */
-        Map<HostedType, ArrayList<HostedMethod>> vtablesMap = new HashMap<>();
-
-        /*
-         * A bit set of occupied vtable slots for each type.
-         */
-
-        Map<HostedType, BitSet> usedSlotsMap = new HashMap<>();
-        /*
-         * The set of vtable slots used for this method. Because of interfaces, one method can have
-         * multiple vtable slots. The assignment algorithm uses this table to find out if a suitable
-         * vtable index already exists for a method.
-         */
-        Map<HostedMethod, Set<Integer>> vtablesSlots = new HashMap<>();
-
-        for (HostedType type : hUniverse.getTypes()) {
-            vtablesMap.put(type, new ArrayList<>());
-            BitSet initialBitSet = new BitSet();
-            usedSlotsMap.put(type, initialBitSet);
-        }
-
-        /*
-         * 1) Process java.lang.Object first because the methods defined there (equals, hashCode,
-         * toString, clone) are in every vtable. We must not have filler slots before these methods.
-         */
-        HostedInstanceClass objectClass = hUniverse.getObjectClass();
-        assignImplementations(objectClass, vtablesMap, usedSlotsMap, vtablesSlots);
-
-        /*
-         * 2) Process interfaces. Interface methods have higher constraints on vtable slots because
-         * the same slots need to be used in all implementation classes, which can be spread out
-         * across the type hierarchy. We assign an importance level to each interface and then sort
-         * by that number, to further reduce the filler slots.
-         */
-        List<Pair<HostedType, Integer>> interfaces = new ArrayList<>();
-        for (HostedType type : hUniverse.getTypes()) {
-            if (type.isInterface()) {
-                /*
-                 * We use the number of subtypes as the importance for an interface: If an interface
-                 * is implemented often, then it can produce more unused filler slots than an
-                 * interface implemented rarely. We do not multiply with the number of methods that
-                 * the interface implements: there are usually no filler slots in between methods of
-                 * an interface, i.e., an interface that declares many methods does not lead to more
-                 * filler slots than an interface that defines only one method.
-                 */
-                int importance = collectSubtypes(type, new HashSet<>()).size();
-                interfaces.add(Pair.create(type, importance));
-            }
-        }
-        interfaces.sort((pair1, pair2) -> pair2.getRight() - pair1.getRight());
-        for (Pair<HostedType, Integer> pair : interfaces) {
-            assignImplementations(pair.getLeft(), vtablesMap, usedSlotsMap, vtablesSlots);
-        }
-
-        /*
-         * 3) Process all implementation classes, starting with java.lang.Object and going
-         * depth-first down the tree.
-         */
-        buildVTable(objectClass, vtablesMap, usedSlotsMap, vtablesSlots);
-
-        /*
-         * To avoid segfaults when jumping to address 0, all unused vtable entries are filled with a
-         * stub that reports a fatal error.
-         */
-        HostedMethod invalidVTableEntryHandler = hMetaAccess.lookupJavaMethod(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD);
-
-        for (HostedType type : hUniverse.getTypes()) {
-            if (type.isArray()) {
-                type.vtable = objectClass.vtable;
-            }
-            if (type.vtable == null) {
-                assert type.isInterface() || type.isPrimitive();
-                type.vtable = HostedMethod.EMPTY_ARRAY;
-            }
-
-            HostedMethod[] vtableArray = type.vtable;
-            for (int i = 0; i < vtableArray.length; i++) {
-                if (vtableArray[i] == null) {
-                    vtableArray[i] = invalidVTableEntryHandler;
-                }
-            }
-        }
-
-        if (SubstrateUtil.assertionsEnabled()) {
-            /* Check that all vtable entries are the correctly resolved methods. */
-            for (HostedType type : hUniverse.getTypes()) {
-                for (HostedMethod m : type.vtable) {
-                    assert m == null || m.equals(invalidVTableEntryHandler) || m.equals(hUniverse.lookup(type.wrapped.resolveConcreteMethod(m.wrapped, type.wrapped)));
-                }
-            }
-        }
-    }
-
-    /** Collects all subtypes of the provided type in the provided set. */
-    private static Set<HostedType> collectSubtypes(HostedType type, Set<HostedType> allSubtypes) {
-        if (allSubtypes.add(type)) {
-            for (HostedType subtype : type.subTypes) {
-                collectSubtypes(subtype, allSubtypes);
-            }
-        }
-        return allSubtypes;
-    }
-
-    private void buildVTable(HostedClass clazz, Map<HostedType, ArrayList<HostedMethod>> vtablesMap, Map<HostedType, BitSet> usedSlotsMap, Map<HostedMethod, Set<Integer>> vtablesSlots) {
-        assignImplementations(clazz, vtablesMap, usedSlotsMap, vtablesSlots);
-
-        ArrayList<HostedMethod> vtable = vtablesMap.get(clazz);
-        HostedMethod[] vtableArray = vtable.toArray(new HostedMethod[vtable.size()]);
-        assert vtableArray.length == 0 || vtableArray[vtableArray.length - 1] != null : "Unnecessary entry at end of vtable";
-        clazz.vtable = vtableArray;
-
-        for (HostedType subClass : clazz.subTypes) {
-            if (!subClass.isInterface() && !subClass.isArray()) {
-                buildVTable((HostedClass) subClass, vtablesMap, usedSlotsMap, vtablesSlots);
-            }
-        }
-    }
-
-    private void assignImplementations(HostedType type, Map<HostedType, ArrayList<HostedMethod>> vtablesMap, Map<HostedType, BitSet> usedSlotsMap, Map<HostedMethod, Set<Integer>> vtablesSlots) {
-        for (HostedMethod method : type.getAllDeclaredMethods()) {
-            /* We only need to look at methods that the static analysis registered as invoked. */
-            if (method.wrapped.isInvoked() || method.wrapped.isImplementationInvoked()) {
-                /*
-                 * Methods with 1 implementations do not need a vtable because invokes can be done
-                 * as direct calls without the need for a vtable. Methods with 0 implementations are
-                 * unreachable.
-                 *
-                 * Methods manually registered as virtual root methods always need a vtable slot,
-                 * even if there are 0 or 1 implementations.
-                 */
-                if (method.implementations.length > 1 || method.wrapped.isVirtualRootMethod()) {
-                    /*
-                     * Find a suitable vtable slot for the method, taking the existing vtable
-                     * assignments into account.
-                     */
-                    int slot = findSlot(method, vtablesMap, usedSlotsMap, vtablesSlots);
-                    method.vtableIndex = slot;
-
-                    /* Assign the vtable slot for the type and all subtypes. */
-                    assignImplementations(method.getDeclaringClass(), method, slot, vtablesMap);
-                }
-            }
-        }
-    }
-
-    /**
-     * Assign the vtable slot to the correct resolved method for all subtypes.
-     */
-    private void assignImplementations(HostedType type, HostedMethod method, int slot, Map<HostedType, ArrayList<HostedMethod>> vtablesMap) {
-        if (type.wrapped.isInstantiated()) {
-            assert (type.isInstanceClass() && !type.isAbstract()) || type.isArray();
-
-            HostedMethod resolvedMethod = resolveMethod(type, method);
-            if (resolvedMethod != null) {
-                ArrayList<HostedMethod> vtable = vtablesMap.get(type);
-                if (slot < vtable.size() && vtable.get(slot) != null) {
-                    /* We already have a vtable entry from a supertype. Check that it is correct. */
-                    assert vtable.get(slot).equals(resolvedMethod);
-                } else {
-                    resize(vtable, slot + 1);
-                    assert vtable.get(slot) == null;
-                    vtable.set(slot, resolvedMethod);
-                }
-                resolvedMethod.vtableIndex = slot;
-            }
-        }
-
-        for (HostedType subtype : type.subTypes) {
-            if (!subtype.isArray()) {
-                assignImplementations(subtype, method, slot, vtablesMap);
-            }
-        }
-    }
-
-    private HostedMethod resolveMethod(HostedType type, HostedMethod method) {
-        AnalysisMethod resolved = type.wrapped.resolveConcreteMethod(method.wrapped, type.wrapped);
-        if (resolved == null || !resolved.isImplementationInvoked()) {
-            return null;
-        } else {
-            assert !resolved.isAbstract();
-            return hUniverse.lookup(resolved);
-        }
-    }
-
-    private static void resize(ArrayList<?> list, int minSize) {
-        list.ensureCapacity(minSize);
-        while (list.size() < minSize) {
-            list.add(null);
-        }
-    }
-
-    private int findSlot(HostedMethod method, Map<HostedType, ArrayList<HostedMethod>> vtablesMap, Map<HostedType, BitSet> usedSlotsMap, Map<HostedMethod, Set<Integer>> vtablesSlots) {
-        /*
-         * Check if all implementation methods already have a common slot assigned. Each
-         * implementation method can have multiple slots because of interfaces. We compute the
-         * intersection of the slot sets for all implementation methods.
-         */
-        if (method.implementations.length > 0) {
-            Set<Integer> resultSlots = vtablesSlots.get(method.implementations[0]);
-            for (HostedMethod impl : method.implementations) {
-                Set<Integer> implSlots = vtablesSlots.get(impl);
-                if (implSlots == null) {
-                    resultSlots = null;
-                    break;
-                }
-                resultSlots.retainAll(implSlots);
-            }
-            if (resultSlots != null && !resultSlots.isEmpty()) {
-                /*
-                 * All implementations already have the same vtable slot assigned, so we can re-use
-                 * that. If we have multiple candidates, we use the slot with the lowest number.
-                 */
-                int resultSlot = Integer.MAX_VALUE;
-                for (int slot : resultSlots) {
-                    resultSlot = Math.min(resultSlot, slot);
-                }
-                return resultSlot;
-            }
-        }
-        /*
-         * No slot found, we need to compute a new one. Check the whole subtype hierarchy for
-         * constraints using bitset union, and then use the lowest slot number that is available in
-         * all subtypes.
-         */
-        BitSet usedSlots = new BitSet();
-        collectUsedSlots(method.getDeclaringClass(), usedSlots, usedSlotsMap);
-        for (HostedMethod impl : method.implementations) {
-            collectUsedSlots(impl.getDeclaringClass(), usedSlots, usedSlotsMap);
-        }
-
-        /*
-         * The new slot number is the lowest slot number not occupied by any subtype, i.e., the
-         * lowest index not set in the union bitset.
-         */
-        int resultSlot = usedSlots.nextClearBit(0);
-
-        markSlotAsUsed(resultSlot, method.getDeclaringClass(), vtablesMap, usedSlotsMap);
-        for (HostedMethod impl : method.implementations) {
-            markSlotAsUsed(resultSlot, impl.getDeclaringClass(), vtablesMap, usedSlotsMap);
-
-            vtablesSlots.computeIfAbsent(impl, k -> new HashSet<>()).add(resultSlot);
-        }
-
-        return resultSlot;
-    }
-
-    private void collectUsedSlots(HostedType type, BitSet usedSlots, Map<HostedType, BitSet> usedSlotsMap) {
-        usedSlots.or(usedSlotsMap.get(type));
-        for (HostedType sub : type.subTypes) {
-            if (!sub.isArray()) {
-                collectUsedSlots(sub, usedSlots, usedSlotsMap);
-            }
-        }
-    }
-
-    private void markSlotAsUsed(int resultSlot, HostedType type, Map<HostedType, ArrayList<HostedMethod>> vtablesMap, Map<HostedType, BitSet> usedSlotsMap) {
-        assert resultSlot >= vtablesMap.get(type).size() || vtablesMap.get(type).get(resultSlot) == null;
-
-        usedSlotsMap.get(type).set(resultSlot);
-        for (HostedType sub : type.subTypes) {
-            if (!sub.isArray()) {
-                markSlotAsUsed(resultSlot, sub, vtablesMap, usedSlotsMap);
-            }
-        }
-    }
-
     private void buildHubs() {
         InstanceReferenceMapEncoder referenceMapEncoder = new InstanceReferenceMapEncoder();
         Map<HostedType, ReferenceMapEncoder.Input> referenceMaps = new HashMap<>();
@@ -1099,10 +808,11 @@ public class UniverseBuilder {
             referenceMaps.put(type, referenceMap);
             referenceMapEncoder.add(referenceMap);
         }
-        ImageSingletons.lookup(DynamicHubSupport.class).setData(referenceMapEncoder.encodeAll());
+        ImageSingletons.lookup(DynamicHubSupport.class).setReferenceMapEncoding(referenceMapEncoder.encodeAll());
 
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
         DynamicHubLayout dynamicHubLayout = DynamicHubLayout.singleton();
+
         for (HostedType type : hUniverse.getTypes()) {
             hUniverse.hostVM().recordActivity();
 
@@ -1143,19 +853,6 @@ public class UniverseBuilder {
                 throw VMError.shouldNotReachHereUnexpectedInput(type); // ExcludeFromJacocoGeneratedReport
             }
 
-            /*
-             * The vtable entry values are available only after the code cache layout is fixed, so
-             * leave them 0.
-             */
-            CFunctionPointer[] vtable = new CFunctionPointer[type.vtable.length];
-            for (int idx = 0; idx < type.vtable.length; idx++) {
-                /*
-                 * We install a CodePointer in the vtable; when generating relocation info, we will
-                 * know these point into .text
-                 */
-                vtable[idx] = new MethodPointer(type.vtable[idx]);
-            }
-
             // pointer maps in Dynamic Hub
             ReferenceMapEncoder.Input referenceMap = referenceMaps.get(type);
             assert referenceMap != null;
@@ -1167,12 +864,58 @@ public class UniverseBuilder {
             hub.setSharedData(layoutHelper, monitorOffset, identityHashOffset,
                             referenceMapIndex, type.isInstantiated(), canInstantiateAsInstance,
                             s.isRegisteredForSerialization(type.getJavaClass()));
+
             if (SubstrateOptions.closedTypeWorld()) {
-                hub.setClosedWorldData(vtable, type.getTypeID(), type.getTypeCheckStart(), type.getTypeCheckRange(),
-                                type.getTypeCheckSlot(), type.getClosedWorldTypeCheckSlots());
+                CFunctionPointer[] vtable = new CFunctionPointer[type.closedTypeWorldVTable.length];
+                for (int idx = 0; idx < type.closedTypeWorldVTable.length; idx++) {
+                    /*
+                     * We install a CodePointer in the vtable; when generating relocation info, we
+                     * will know these point into .text
+                     */
+                    vtable[idx] = new MethodPointer(type.closedTypeWorldVTable[idx]);
+                }
+                hub.setClosedTypeWorldData(vtable, type.getTypeID(), type.getTypeCheckStart(), type.getTypeCheckRange(),
+                                type.getTypeCheckSlot(), type.getClosedTypeWorldTypeCheckSlots());
             } else {
-                hub.setOpenWorldData(vtable, type.getTypeID(),
-                                type.getTypeIDDepth(), type.getNumClassTypes(), type.getNumInterfaceTypes(), type.getOpenWorldTypeIDSlots());
+
+                /*
+                 * Within the open type world, interface type checks are two entries long and
+                 * contain information about both the implemented interface ids as well as their
+                 * itable starting offset within the dispatch table.
+                 */
+                int numClassTypes = type.getNumClassTypes();
+                int[] openTypeWorldTypeCheckSlots = new int[numClassTypes + (type.getNumInterfaceTypes() * 2)];
+                System.arraycopy(type.openTypeWorldTypeCheckSlots, 0, openTypeWorldTypeCheckSlots, 0, numClassTypes);
+                int typeSlotIdx = numClassTypes;
+                for (int interfaceIdx = 0; interfaceIdx < type.numInterfaceTypes; interfaceIdx++) {
+                    int typeID = type.getOpenTypeWorldTypeCheckSlots()[numClassTypes + interfaceIdx];
+                    int itableStartingOffset;
+                    if (type.itableStartingOffsets.length > 0) {
+                        itableStartingOffset = type.itableStartingOffsets[interfaceIdx];
+                    } else {
+                        itableStartingOffset = 0xBADD0D1D;
+                    }
+                    openTypeWorldTypeCheckSlots[typeSlotIdx] = typeID;
+                    /*
+                     * We directly encode the offset of the itable within the DynamicHub to limit
+                     * the amount of arithmetic needed to be performed at runtime.
+                     */
+                    int itableDynamicHubOffset = dynamicHubLayout.vTableOffset() + (itableStartingOffset * dynamicHubLayout.vTableSlotSize);
+                    openTypeWorldTypeCheckSlots[typeSlotIdx + 1] = itableDynamicHubOffset;
+                    typeSlotIdx += 2;
+                }
+
+                CFunctionPointer[] vtable = new CFunctionPointer[type.openTypeWorldDispatchTables.length];
+                for (int idx = 0; idx < type.openTypeWorldDispatchTables.length; idx++) {
+                    /*
+                     * We install a CodePointer in the open world vtable; when generating relocation
+                     * info, we will know these point into .text
+                     */
+                    vtable[idx] = new MethodPointer(type.openTypeWorldDispatchTables[idx]);
+                }
+
+                hub.setOpenTypeWorldData(vtable, type.getTypeID(),
+                                type.getTypeIDDepth(), type.getNumClassTypes(), type.getNumInterfaceTypes(), openTypeWorldTypeCheckSlots);
             }
         }
     }

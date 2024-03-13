@@ -42,6 +42,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.nodes.LoadOpenTypeWorldDispatchTableStartingOffset;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -78,6 +79,7 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
@@ -92,6 +94,7 @@ import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
+import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.nodes.spi.LoweringTool.StandardLoweringStage;
 import jdk.graal.compiler.nodes.spi.StampProvider;
@@ -295,10 +298,12 @@ public abstract class NonSnippetLowerings {
                 NodeInputList<ValueNode> parameters = callTarget.arguments();
                 ValueNode receiver = parameters.size() <= 0 ? null : parameters.get(0);
                 FixedGuardNode nullCheck = null;
+                List<Lowerable> nodesToLower = new ArrayList<>(3);
                 if (!callTarget.isStatic() && receiver.getStackKind() == JavaKind.Object && !StampTool.isPointerNonNull(receiver)) {
                     LogicNode isNull = graph.unique(IsNullNode.create(receiver));
                     nullCheck = graph.add(new FixedGuardNode(isNull, DeoptimizationReason.NullCheckException, DeoptimizationAction.None, true));
                     graph.addBeforeFixed(node, nullCheck);
+                    nodesToLower.add(nullCheck);
                 }
                 SharedMethod method = (SharedMethod) callTarget.targetMethod();
                 JavaType[] signature = method.getSignature().toParameterTypes(callTarget.isStatic() ? null : method.getDeclaringClass());
@@ -349,7 +354,6 @@ public abstract class NonSnippetLowerings {
                     reportError.setNext(graph.add(new LoweredDeadEndNode()));
                 }
 
-                LoadHubNode hub = null;
                 CallTargetNode loweredCallTarget;
                 if (invokeKind.isDirect() || implementations.length == 1) {
                     SharedMethod targetMethod = method;
@@ -408,25 +412,51 @@ public abstract class NonSnippetLowerings {
                     loweredCallTarget = createUnreachableCallTarget(tool, node, parameters, callTarget.returnStamp(), signature, method, callType, invokeKind);
 
                 } else {
-                    int vtableEntryOffset = knownOffsets.getVTableOffset(method.getVTableIndex());
+                    LoadHubNode hub = graph.unique(new LoadHubNode(runtimeConfig.getProviders().getStampProvider(), graph.addOrUnique(PiNode.create(receiver, nullCheck))));
+                    nodesToLower.add(hub);
 
-                    hub = graph.unique(new LoadHubNode(runtimeConfig.getProviders().getStampProvider(), graph.addOrUnique(PiNode.create(receiver, nullCheck))));
-                    AddressNode address = graph.unique(new OffsetAddressNode(hub, ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), vtableEntryOffset, graph)));
-                    ReadNode entry = graph.add(new ReadNode(address, SubstrateBackend.getVTableIdentity(), FrameAccess.getWordStamp(), BarrierType.NONE, MemoryOrderMode.PLAIN));
-                    loweredCallTarget = createIndirectCall(graph, callTarget, parameters, method, signature, callType, invokeKind, entry);
+                    if (SubstrateOptions.closedTypeWorld()) {
+                        int vtableEntryOffset = knownOffsets.getVTableOffset(method.getVTableIndex(), true);
 
-                    graph.addBeforeFixed(node, entry);
+                        AddressNode address = graph.unique(new OffsetAddressNode(hub, ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), vtableEntryOffset, graph)));
+                        ReadNode entry = graph.add(new ReadNode(address, SubstrateBackend.getVTableIdentity(), FrameAccess.getWordStamp(), BarrierType.NONE, MemoryOrderMode.PLAIN));
+
+                        loweredCallTarget = createIndirectCall(graph, callTarget, parameters, method, signature, callType, invokeKind, entry);
+
+                        graph.addBeforeFixed(node, entry);
+                    } else {
+
+                        // Compute the dispatch table starting offset
+                        LoadOpenTypeWorldDispatchTableStartingOffset tableStartingOffset = graph.add(new LoadOpenTypeWorldDispatchTableStartingOffset(hub, method));
+                        nodesToLower.add(tableStartingOffset);
+
+                        // Add together table starting offset and index offset
+                        ValueNode methodAddressOffset = graph.unique(new AddNode(tableStartingOffset,
+                                        ConstantNode.forIntegerKind(ConfigurationValues.getWordKind(), knownOffsets.getVTableOffset(method.getVTableIndex(), false), graph)));
+
+                        // The load the method address for the dispatch table
+                        AddressNode dispatchTableAddress = graph.unique(new OffsetAddressNode(hub, methodAddressOffset));
+                        ReadNode entry = graph.add(new ReadNode(dispatchTableAddress, SubstrateBackend.getVTableIdentity(), FrameAccess.getWordStamp(), BarrierType.NONE, MemoryOrderMode.PLAIN));
+
+                        loweredCallTarget = createIndirectCall(graph, callTarget, parameters, method, signature, callType, invokeKind, entry);
+
+                        // wire in the new nodes
+                        FixedWithNextNode predecessor = (FixedWithNextNode) node.predecessor();
+                        predecessor.setNext(tableStartingOffset);
+                        tableStartingOffset.setNext(entry);
+                        entry.setNext(node);
+
+                        /*
+                         * note here we don't delete the invoke because it remains in the graph,
+                         * albeit with a different call target
+                         */
+                    }
                 }
 
                 callTarget.replaceAndDelete(loweredCallTarget);
 
                 // Recursive lowering
-                if (nullCheck != null) {
-                    nullCheck.lower(tool);
-                }
-                if (hub != null) {
-                    hub.lower(tool);
-                }
+                nodesToLower.forEach(n -> n.lower(tool));
             }
         }
 

@@ -159,6 +159,7 @@ import com.oracle.svm.core.graal.phases.RemoveUnwindPhase;
 import com.oracle.svm.core.graal.phases.SubstrateSafepointInsertionPhase;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
 import com.oracle.svm.core.graal.snippets.OpenTypeWorldSnippets;
 import com.oracle.svm.core.graal.snippets.TypeSnippets;
 import com.oracle.svm.core.graal.word.SubstrateWordOperationPlugins;
@@ -1468,6 +1469,7 @@ public class NativeImageGenerator {
                 TypeSnippets.registerLowerings(options, providers, lowerings);
             } else {
                 OpenTypeWorldSnippets.registerLowerings(options, providers, lowerings);
+                OpenTypeWorldDispatchTableSnippets.registerLowerings(options, providers, lowerings);
             }
 
             featureHandler.forEachGraalFeature(feature -> feature.registerLowerings(runtimeConfig, options, providers, lowerings, hosted));
@@ -1834,10 +1836,10 @@ public class NativeImageGenerator {
 
             if (SubstrateOptions.closedTypeWorld()) {
                 writer.format("type check start %d range %d slot # %d ", type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot());
-                writer.format("type check slots %s  ", slotsToString(type.getClosedWorldTypeCheckSlots()));
+                writer.format("type check slots %s  ", slotsToString(type.getClosedTypeWorldTypeCheckSlots()));
             } else {
                 writer.format("type id %s depth %s num class types %s num interface types %s ", type.getTypeID(), type.getTypeIDDepth(), type.getNumClassTypes(), type.getNumInterfaceTypes());
-                writer.format("type check slots %s  ", String.join(" ", Arrays.stream(type.getOpenWorldTypeIDSlots()).mapToObj(Integer::toString).toArray(String[]::new)));
+                writer.format("type check slots %s  ", String.join(" ", Arrays.stream(type.getOpenTypeWorldTypeCheckSlots()).mapToObj(Integer::toString).toArray(String[]::new)));
             }
             // if (type.findLeafConcreteSubtype() != null) {
             // writer.format("unique %d %s ", type.findLeafConcreteSubtype().getTypeID(),

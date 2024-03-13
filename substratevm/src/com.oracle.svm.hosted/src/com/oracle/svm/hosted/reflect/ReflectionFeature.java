@@ -48,6 +48,7 @@ import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.configure.ConfigurationFile;
@@ -80,6 +81,7 @@ import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.util.ModuleSupport;
@@ -309,6 +311,9 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
          * to see SubstrateMethodAccessor.vtableOffset before we register the transformer.
          */
         access.registerFieldValueTransformer(ReflectionUtil.lookupField(SubstrateMethodAccessor.class, "vtableOffset"), new ComputeVTableOffset());
+        if (!SubstrateOptions.closedTypeWorld()) {
+            access.registerFieldValueTransformer(ReflectionUtil.lookupField(SubstrateMethodAccessor.class, "interfaceTypeID"), new ComputeInterfaceTypeID());
+        }
 
         /* Make sure array classes don't need to be registered for reflection. */
         RuntimeReflection.register(Object.class.getDeclaredMethods());
@@ -445,12 +450,36 @@ final class ComputeVTableOffset implements FieldValueTransformerWithAvailability
     @Override
     public Object transform(Object receiver, Object originalValue) {
         SubstrateMethodAccessor accessor = (SubstrateMethodAccessor) receiver;
+
         if (accessor.getVTableOffset() == SubstrateMethodAccessor.OFFSET_NOT_YET_COMPUTED) {
             SharedMethod member = ImageSingletons.lookup(ReflectionFeature.class).hostedMetaAccess().lookupJavaMethod(accessor.getMember());
-            return KnownOffsets.singleton().getVTableOffset(member.getVTableIndex());
+            if (SubstrateOptions.closedTypeWorld()) {
+                return KnownOffsets.singleton().getVTableOffset(member.getVTableIndex(), true);
+            } else {
+                return KnownOffsets.singleton().getVTableOffset(member.getVTableIndex(), false);
+            }
         } else {
             VMError.guarantee(accessor.getVTableOffset() == SubstrateMethodAccessor.STATICALLY_BOUND);
             return accessor.getVTableOffset();
         }
+    }
+}
+
+final class ComputeInterfaceTypeID implements FieldValueTransformerWithAvailability {
+    @Override
+    public ValueAvailability valueAvailability() {
+        return ValueAvailability.AfterAnalysis;
+    }
+
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        SubstrateMethodAccessor accessor = (SubstrateMethodAccessor) receiver;
+        VMError.guarantee(accessor.getInterfaceTypeID() == SubstrateMethodAccessor.OFFSET_NOT_YET_COMPUTED);
+
+        HostedMethod member = ImageSingletons.lookup(ReflectionFeature.class).hostedMetaAccess().lookupJavaMethod(accessor.getMember());
+        if (member.getDeclaringClass().isInterface()) {
+            return member.getDeclaringClass().getTypeID();
+        }
+        return SubstrateMethodAccessor.INTERFACE_TYPEID_CLASS_TABLE;
     }
 }

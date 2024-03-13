@@ -80,9 +80,9 @@ public class DynamicHubLayout {
 
     private final ObjectLayout layout;
     private final HostedInstanceClass dynamicHubType;
-    public final HostedField closedWorldTypeCheckSlotsField;
-    private final int closedWorldTypeCheckSlotsOffset;
-    private final int closedWorldTypeCheckSlotSize;
+    public final HostedField closedTypeWorldTypeCheckSlotsField;
+    private final int closedTypeWorldTypeCheckSlotsOffset;
+    private final int closedTypeWorldTypeCheckSlotSize;
     public final HostedField vTableField;
     public final int vTableSlotSize;
     public final JavaKind vTableSlotStorageKind;
@@ -97,15 +97,16 @@ public class DynamicHubLayout {
     /**
      * See {@code HostedConfiguration#DynamicHubLayout} for the exact initialization values.
      */
-    public DynamicHubLayout(ObjectLayout layout, HostedType dynamicHubType, HostedField closedWorldTypeCheckSlotsField, int closedWorldTypeCheckSlotsOffset, int closedWorldTypeCheckSlotSize,
+    public DynamicHubLayout(ObjectLayout layout, HostedType dynamicHubType, HostedField closedTypeWorldTypeCheckSlotsField, int closedTypeWorldTypeCheckSlotsOffset,
+                    int closedTypeWorldTypeCheckSlotSize,
                     HostedField vTableField,
                     JavaKind vTableSlotStorageKind, int vTableSlotSize,
                     Set<HostedField> ignoredFields) {
         this.layout = layout;
         this.dynamicHubType = (HostedInstanceClass) dynamicHubType;
-        this.closedWorldTypeCheckSlotsField = closedWorldTypeCheckSlotsField;
-        this.closedWorldTypeCheckSlotsOffset = closedWorldTypeCheckSlotsOffset;
-        this.closedWorldTypeCheckSlotSize = closedWorldTypeCheckSlotSize;
+        this.closedTypeWorldTypeCheckSlotsField = closedTypeWorldTypeCheckSlotsField;
+        this.closedTypeWorldTypeCheckSlotsOffset = closedTypeWorldTypeCheckSlotsOffset;
+        this.closedTypeWorldTypeCheckSlotSize = closedTypeWorldTypeCheckSlotSize;
         this.vTableField = vTableField;
         this.vTableSlotStorageKind = vTableSlotStorageKind;
         this.vTableSlotSize = vTableSlotSize;
@@ -133,21 +134,21 @@ public class DynamicHubLayout {
     }
 
     public boolean isInlinedField(HostedField field) {
-        return field.equals(closedWorldTypeCheckSlotsField) || field.equals(vTableField);
+        return field.equals(closedTypeWorldTypeCheckSlotsField) || field.equals(vTableField);
     }
 
     public int getVTableSlotOffset(int index) {
         return vTableOffset() + index * vTableSlotSize;
     }
 
-    public int getClosedWorldTypeCheckSlotsOffset() {
+    public int getClosedTypeWorldTypeCheckSlotsOffset() {
         assert SubstrateOptions.closedTypeWorld();
-        return closedWorldTypeCheckSlotsOffset;
+        return closedTypeWorldTypeCheckSlotsOffset;
     }
 
-    public int getClosedWorldTypeCheckSlotsOffset(int index) {
+    public int getClosedTypeWorldTypeCheckSlotsOffset(int index) {
         assert SubstrateOptions.closedTypeWorld();
-        return closedWorldTypeCheckSlotsOffset + index * closedWorldTypeCheckSlotSize;
+        return closedTypeWorldTypeCheckSlotsOffset + index * closedTypeWorldTypeCheckSlotSize;
     }
 
     public int getVTableLengthOffset() {

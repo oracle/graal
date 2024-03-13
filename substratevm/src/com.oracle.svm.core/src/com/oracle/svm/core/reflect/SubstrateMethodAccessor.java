@@ -29,8 +29,11 @@ import java.lang.reflect.Executable;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
+import com.oracle.svm.core.graal.nodes.LoadOpenTypeWorldDispatchTableStartingOffset;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointer;
@@ -51,6 +54,7 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
 
     public static final int STATICALLY_BOUND = -1;
     public static final int OFFSET_NOT_YET_COMPUTED = 0xdead0001;
+    public static final int INTERFACE_TYPEID_CLASS_TABLE = -1;
 
     /**
      * The expected receiver type, which is checked before invoking the {@link #expandSignature}
@@ -59,6 +63,7 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
     private final Class<?> receiverType;
     /** The actual value is computed after static analysis using a field value transformer. */
     private int vtableOffset;
+    private int interfaceTypeID;
     private final boolean callerSensitiveAdapter;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -67,11 +72,16 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
         super(member, expandSignature, directTarget, targetMethod, initializeBeforeInvoke);
         this.receiverType = receiverType;
         this.vtableOffset = vtableOffset;
+        this.interfaceTypeID = OFFSET_NOT_YET_COMPUTED;
         this.callerSensitiveAdapter = callerSensitiveAdapter;
     }
 
     public int getVTableOffset() {
         return vtableOffset;
+    }
+
+    public int getInterfaceTypeID() {
+        return interfaceTypeID;
     }
 
     private void preInvoke(Object obj) {
@@ -96,15 +106,34 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
          * In case we have both a vtableOffset and a directTarget, the vtable lookup wins. For such
          * methods, the directTarget is only used when doing an invokeSpecial.
          */
-        CFunctionPointer target;
-        if (vtableOffset == OFFSET_NOT_YET_COMPUTED) {
-            throw VMError.shouldNotReachHere("Missed vtableOffset recomputation at image build time");
-        } else if (vtableOffset != STATICALLY_BOUND) {
-            target = BarrieredAccess.readWord(obj.getClass(), vtableOffset, NamedLocationIdentity.FINAL_LOCATION);
+        if (SubstrateOptions.closedTypeWorld()) {
+            CFunctionPointer target;
+            if (vtableOffset == OFFSET_NOT_YET_COMPUTED) {
+                throw VMError.shouldNotReachHere("Missed vtableOffset recomputation at image build time");
+            } else if (vtableOffset != STATICALLY_BOUND) {
+                target = BarrieredAccess.readWord(obj.getClass(), vtableOffset, NamedLocationIdentity.FINAL_LOCATION);
+            } else {
+                target = directTarget;
+            }
+            return target;
         } else {
-            target = directTarget;
+            CFunctionPointer target;
+            if (vtableOffset == OFFSET_NOT_YET_COMPUTED) {
+                throw VMError.shouldNotReachHere("Missed vtableOffset recomputation at image build time");
+            } else if (vtableOffset != STATICALLY_BOUND) {
+                long tableStartingOffset = LoadOpenTypeWorldDispatchTableStartingOffset.createOpenTypeWorldLoadDispatchTableStartingOffset(obj.getClass(), interfaceTypeID);
+
+                /*
+                 * Must also add in the vtable base offset as well as the offset within the table.
+                 */
+                long methodOffset = tableStartingOffset + vtableOffset;
+
+                target = BarrieredAccess.readWord(obj.getClass(), WordFactory.pointer(methodOffset), NamedLocationIdentity.FINAL_LOCATION);
+            } else {
+                target = directTarget;
+            }
+            return target;
         }
-        return target;
     }
 
     @Override
