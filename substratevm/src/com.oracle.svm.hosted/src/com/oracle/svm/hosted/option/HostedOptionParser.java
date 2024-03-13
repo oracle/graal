@@ -51,10 +51,10 @@ import com.oracle.svm.core.util.UserError;
 public class HostedOptionParser implements HostedOptionProvider {
 
     private final List<String> arguments;
-    private EconomicMap<OptionKey<?>, Object> hostedValues = OptionValues.newOptionMap();
-    private EconomicMap<OptionKey<?>, Object> runtimeValues = OptionValues.newOptionMap();
-    private EconomicMap<String, OptionDescriptor> allHostedOptions = EconomicMap.create();
-    private EconomicMap<String, OptionDescriptor> allRuntimeOptions = EconomicMap.create();
+    private final EconomicMap<OptionKey<?>, Object> hostedValues = OptionValues.newOptionMap();
+    private final EconomicMap<OptionKey<?>, Object> runtimeValues = OptionValues.newOptionMap();
+    private final EconomicMap<String, OptionDescriptor> allHostedOptions = EconomicMap.create();
+    private final EconomicMap<String, OptionDescriptor> allRuntimeOptions = EconomicMap.create();
 
     public HostedOptionParser(ClassLoader imageClassLoader, List<String> arguments) {
         this.arguments = Collections.unmodifiableList(arguments);
