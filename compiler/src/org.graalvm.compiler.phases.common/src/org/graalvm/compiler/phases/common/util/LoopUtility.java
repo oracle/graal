@@ -26,10 +26,14 @@ package org.graalvm.compiler.phases.common.util;
 
 import java.util.EnumSet;
 
+import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Graph.NodeEvent;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ProxyNode;
@@ -39,6 +43,8 @@ import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
 import org.graalvm.compiler.nodes.calc.MulNode;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.loop.BasicInductionVariable;
 import org.graalvm.compiler.nodes.loop.InductionVariable;
 import org.graalvm.compiler.nodes.loop.LoopEx;
@@ -47,6 +53,47 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 
 public class LoopUtility {
+
+    /**
+     * Determine if the def can use node {@code use} without the need for value proxies. This means
+     * there is no loop exit between the schedule point of def and use that would require a
+     * {@link ProxyNode}.
+     */
+    public static boolean canUseWithoutProxy(ControlFlowGraph cfg, Node def, Node use) {
+        if (def.graph() instanceof StructuredGraph g && g.isAfterStage(StageFlag.VALUE_PROXY_REMOVAL)) {
+            return true;
+        }
+        if (!isFixedNode(def) || !isFixedNode(use)) {
+            /*
+             * If def or use are not fixed nodes we cannot determine the schedule point for them.
+             * Without the schedule point we cannot find their basic block in the control flow
+             * graph. If we would schedule the graph we could answer the question for floating nodes
+             * as well but this is too much overhead. Thus, for floating nodes we give up and assume
+             * a proxy is necessary.
+             */
+            return false;
+        }
+        HIRBlock useBlock = cfg.blockFor(use);
+        HIRBlock defBlock = cfg.blockFor(def);
+        Loop<HIRBlock> defLoop = defBlock.getLoop();
+        Loop<HIRBlock> useLoop = useBlock.getLoop();
+        if (defLoop != null) {
+            // the def is inside a loop, either a parent or a disjunct loop
+            if (useLoop != null) {
+                // we are only safe without proxies if we are included in the def loop,
+                // i.e., the def loop is a parent loop
+                return useLoop.isAncestorOrSelf(defLoop);
+            } else {
+                // the use is not in a loop but the def is, needs proxies, fail
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isFixedNode(Node n) {
+        return n instanceof FixedNode;
+    }
 
     public static boolean isNumericInteger(ValueNode v) {
         Stamp s = v.stamp(NodeView.DEFAULT);
