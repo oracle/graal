@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ package jdk.graal.compiler.truffle.test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -108,24 +107,6 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         boundaryCall();
         Assert.assertTrue(CompilerDirectives.inCompiledCode());
         boundaryCall();
-    }
-
-    private static void checkFrameAssertionsDisabled() {
-        Field assertionsEnabledField = null;
-        for (Field f : FrameWithoutBoxing.class.getDeclaredFields()) {
-            if (f.getName().equals("ASSERTIONS_ENABLED")) {
-                assertionsEnabledField = f;
-                break;
-            }
-        }
-        Assert.assertNotNull(assertionsEnabledField);
-        try {
-            assertionsEnabledField.setAccessible(true);
-            boolean enabledStatus = (boolean) assertionsEnabledField.get(null);
-            Assert.assertFalse(enabledStatus);
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     /*
@@ -440,7 +421,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         // Execute in a subprocess to disable assertion checking for frames.
         SubprocessTestUtils.executeInSubprocessWithAssertionsDisabled(BytecodeOSRNodeTest.class,
                         () -> {
-                            checkFrameAssertionsDisabled();
+                            Assert.assertFalse(FrameAssertionsChecker.areFrameAssertionsEnabled());
                             frameTransferWithStaticAccesses();
                         }, true, List.of(FrameWithoutBoxing.class));
     }
@@ -514,7 +495,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         // Execute in a subprocess to disable assertion checking for frames.
         SubprocessTestUtils.executeInSubprocessWithAssertionsDisabled(BytecodeOSRNodeTest.class,
                         () -> {
-                            checkFrameAssertionsDisabled();
+                            Assert.assertFalse(FrameAssertionsChecker.areFrameAssertionsEnabled());
                             frameTransferWithUninitializedStaticSlots();
                         }, true, List.of(FrameWithoutBoxing.class));
     }

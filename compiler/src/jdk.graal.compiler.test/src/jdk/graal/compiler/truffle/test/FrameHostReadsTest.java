@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package jdk.graal.compiler.truffle.test;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.util.List;
 
 import org.graalvm.word.LocationIdentity;
@@ -81,7 +80,7 @@ public class FrameHostReadsTest extends TruffleCompilerImplTest {
         initAssertionError();
         Assert.assertSame("New frame implementation detected. Make sure to update this test.", FrameWithoutBoxing.class,
                         Truffle.getRuntime().createVirtualFrame(new Object[0], FrameDescriptor.newBuilder().build()).getClass());
-        Assert.assertTrue("Frame assertions should be disabled.", areFrameAssertionsDisabled());
+        Assert.assertTrue("Frame assertions should be disabled.", !FrameAssertionsChecker.areFrameAssertionsEnabled());
 
         StructuredGraph graph = getFinalGraph("snippet0");
 
@@ -132,22 +131,4 @@ public class FrameHostReadsTest extends TruffleCompilerImplTest {
             }
         };
     }
-
-    private static boolean areFrameAssertionsDisabled() {
-        Field assertionsEnabledField = null;
-        for (Field f : FrameWithoutBoxing.class.getDeclaredFields()) {
-            if (f.getName().equals("ASSERTIONS_ENABLED")) {
-                assertionsEnabledField = f;
-                break;
-            }
-        }
-        Assert.assertNotNull(assertionsEnabledField);
-        try {
-            assertionsEnabledField.setAccessible(true);
-            return !((boolean) assertionsEnabledField.get(null));
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
 }
