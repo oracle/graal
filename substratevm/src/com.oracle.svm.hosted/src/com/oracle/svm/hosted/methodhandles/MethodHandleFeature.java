@@ -47,6 +47,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.fieldvaluetransformer.NewEmptyArrayFieldValueTransformer;
 import com.oracle.svm.core.invoke.MethodHandleIntrinsic;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -230,19 +231,22 @@ public class MethodHandleFeature implements InternalFeature {
                                 ConcurrentHashMap<Object, Object> originalMap = (ConcurrentHashMap<Object, Object>) originalValue;
                                 ConcurrentHashMap<Object, Object> filteredMap = new ConcurrentHashMap<>();
                                 originalMap.forEach((key, speciesData) -> {
-                                    if (isSpeciesReachable(speciesData)) {
+                                    if (isSpeciesTypeInstantiated(speciesData)) {
                                         filteredMap.put(key, speciesData);
                                     }
                                 });
                                 return filteredMap;
                             }
 
-                            private boolean isSpeciesReachable(Object speciesData) {
+                            private boolean isSpeciesTypeInstantiated(Object speciesData) {
                                 Class<?> speciesClass = ReflectionUtil.readField(speciesDataClass, "speciesCode", speciesData);
                                 Optional<AnalysisType> analysisType = metaAccess.optionalLookupJavaType(speciesClass);
-                                return analysisType.isPresent() && analysisType.get().isReachable();
+                                return analysisType.isPresent() && analysisType.get().isInstantiated();
                             }
                         });
+        access.registerFieldValueTransformer(
+                        ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.invoke.DirectMethodHandle"), "ACCESSOR_FORMS"),
+                        NewEmptyArrayFieldValueTransformer.INSTANCE);
         access.registerFieldValueTransformer(
                         ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.invoke.MethodType"), "internTable"),
                         (receiver, originalValue) -> runtimeMethodTypeInternTable);

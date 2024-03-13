@@ -185,10 +185,17 @@ public abstract class ImageHeapScanner {
     }
 
     void markTypeInstantiated(AnalysisType type, ScanReason reason) {
-        if (universe.sealed() && !type.isReachable()) {
-            throw AnalysisError.shouldNotReachHere("Universe is sealed. New type reachable: " + type.toJavaName());
+        if (universe.sealed()) {
+            AnalysisError.guarantee(type.isReachable(), "The type %s should have been reachable during analysis.", type);
+            AnalysisError.guarantee(type.isInstantiated(), "The type %s should have been instantiated during analysis.", type);
+        } else {
+            /*
+             * If the type was registered as allocated, but not registered as in heap,
+             * registerTypeAsInHeap must not be executed after the universe is sealed as the
+             * contextInsensitiveAnalysisObject was cleaned up.
+             */
+            universe.getBigbang().registerTypeAsInHeap(type, reason);
         }
-        universe.getBigbang().registerTypeAsInHeap(type, reason);
     }
 
     public JavaConstant getImageHeapConstant(JavaConstant constant) {
@@ -496,7 +503,7 @@ public abstract class ImageHeapScanner {
         return analysisModified;
     }
 
-    private JavaConstant markReachable(JavaConstant constant, ScanReason reason) {
+    protected JavaConstant markReachable(JavaConstant constant, ScanReason reason) {
         return markReachable(constant, reason, null);
     }
 
@@ -510,7 +517,7 @@ public abstract class ImageHeapScanner {
     private ImageHeapConstant markReachable(ImageHeapConstant imageHeapConstant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
         if (imageHeapConstant.markReachable(reason)) {
             /* Follow all the array elements and reachable field values asynchronously. */
-            postTask(() -> onObjectReachable(imageHeapConstant, reason, onAnalysisModified));
+            maybeRunInExecutor(unused -> onObjectReachable(imageHeapConstant, reason, onAnalysisModified));
         }
         return imageHeapConstant;
     }
