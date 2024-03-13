@@ -46,6 +46,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntrySupport;
@@ -212,8 +213,14 @@ public class RuntimeCompiledMethodSupport {
         private void compileRuntimeCompiledMethod(DebugContext debug) {
             assert method.getMultiMethodKey() == RUNTIME_COMPILED_METHOD;
 
+            /*
+             * The availability of NodeSourcePosition for JIT compilation is controlled by a
+             * separate option and not TrackNodeSourcePosition to decouple AOT and JIT compilation.
+             */
+            boolean trackNodeSourcePosition = SubstrateOptions.IncludeNodeSourcePositions.getValue();
+
             AnalysisMethod aMethod = method.getWrapped();
-            StructuredGraph graph = aMethod.decodeAnalyzedGraph(debug, null, false,
+            StructuredGraph graph = aMethod.decodeAnalyzedGraph(debug, null, trackNodeSourcePosition,
                             (arch, analyzedGraph) -> new RuntimeCompilationGraphDecoder(arch, analyzedGraph, compilationState.heapScanner));
             if (graph == null) {
                 throw VMError.shouldNotReachHere("Method not parsed during static analysis: " + aMethod.format("%r %H.%n(%p)"));
@@ -223,6 +230,17 @@ public class RuntimeCompiledMethodSupport {
              * into the hosted universe.
              */
             aMethod.setAnalyzedGraph(null);
+
+            if (!trackNodeSourcePosition) {
+                /*
+                 * GR-52693: Even if a graph is built with trackNodeSourcePosition set to false,
+                 * that explicit information is overwritten when the option TrackNodeSourcePosition
+                 * is set to true. We therefore clear the NodeSourcePosition manually.
+                 */
+                for (Node node : graph.getNodes()) {
+                    node.clearNodeSourcePosition();
+                }
+            }
 
             try (DebugContext.Scope s = debug.scope("RuntimeOptimize", graph, method, this)) {
                 CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
