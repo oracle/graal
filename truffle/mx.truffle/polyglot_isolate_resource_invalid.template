@@ -45,6 +45,7 @@ import com.oracle.truffle.api.InternalResource;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import org.graalvm.nativeimage.ImageInfo;
 
 @InternalResource.Id(value = PolyglotIsolateResource.ID, componentId = "engine", optional = true)
 public final class PolyglotIsolateResource implements InternalResource {
@@ -53,21 +54,17 @@ public final class PolyglotIsolateResource implements InternalResource {
 
     @Override
     public void unpackFiles(Env env, Path targetDirectory) throws IOException {
-        Path base = basePath(env);
-        env.unpackResourceFiles(base.resolve("files"), targetDirectory, base);
+        if (!ImageInfo.inImageBuildtimeCode()) {
+            throw shouldNotReachHere();
+        }
     }
 
     @Override
     public String versionHash(Env env) {
-        try {
-            Path base = basePath(env);
-            return env.readResourceLines(base.resolve("sha256")).get(0);
-        } catch (IOException ioe) {
-            throw CompilerDirectives.shouldNotReachHere(ioe);
-        }
+        throw shouldNotReachHere();
     }
 
-    private static Path basePath(Env env) {
-        return Path.of("META-INF", "resources", "engine", ID, "libvm");
+    private static RuntimeException shouldNotReachHere() {
+        throw CompilerDirectives.shouldNotReachHere("The polyglot isolate library was not built for the current platform.");
     }
 }
