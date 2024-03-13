@@ -335,7 +335,7 @@ class QuarkusHelloWorldWrkBenchmarkSuite(BaseQuarkusHelloWorldBenchmarkSuite, mx
 mx_benchmark.add_bm_suite(QuarkusHelloWorldWrkBenchmarkSuite())
 
 
-class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBundleBasedBenchmarkMixin):
+class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
     def get_application_startup_regex(self):
         # Example of Micronaut startup log (there can be some formatting in between):
         # "[main] INFO io.micronaut.runtime.Micronaut - Startup completed in 328ms. Server Running: <url>"
@@ -355,11 +355,14 @@ class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBun
     def default_stages(self):
         return ['instrument-image', 'instrument-run', 'image', 'run']
 
+
+class BaseMicronautBundleBenchmarkSuite(BaseMicronautBenchmarkSuite, NativeImageBundleBasedBenchmarkMixin):
     def uses_bundles(self):
         return True
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         return self.create_bundle_command_line_args(benchmarks, bmSuiteArgs)
+
 
 class BaseQuarkusRegistryBenchmark(BaseQuarkusBenchmarkSuite, mx_sdk_benchmark.BaseMicroserviceBenchmarkSuite):
     """
@@ -480,7 +483,8 @@ class BaseMicronautMuShopBenchmark(BaseMicronautBenchmarkSuite, mx_sdk_benchmark
 
 mx_benchmark.add_bm_suite(BaseMicronautMuShopBenchmark())
 
-class BaseShopCartBenchmarkSuite(BaseMicronautBenchmarkSuite):
+
+class BaseShopCartBenchmarkSuite(BaseMicronautBundleBenchmarkSuite):
     def version(self):
         return "0.3.10"
 
@@ -509,7 +513,7 @@ class ShopCartWrkBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.Bas
 mx_benchmark.add_bm_suite(ShopCartWrkBenchmarkSuite())
 
 
-class BaseMicronautHelloWorldBenchmarkSuite(BaseMicronautBenchmarkSuite):
+class BaseMicronautHelloWorldBenchmarkSuite(BaseMicronautBundleBenchmarkSuite):
     def version(self):
         return "1.0.7"
 
