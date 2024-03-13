@@ -87,6 +87,15 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
         STABLE_CHAR_ARRAY[1] = 0x10;
         STABLE_BOOLEAN_ARRAY[1] = true;
         Setter.reset();
+
+        // Ensure boxing caches are initialized
+        Byte.valueOf((byte)0);
+        Short.valueOf((short)0);
+        Character.valueOf('0');
+        Integer.valueOf(0);
+        Long.valueOf(0);
+        Float.valueOf(0.0F);
+        Double.valueOf(0.0F);
     }
     static final Unsafe U = Unsafe.getUnsafe();
 
@@ -211,7 +220,7 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
         static double  testD_D() { return U.getDouble( STABLE_DOUBLE_ARRAY, ARRAY_DOUBLE_BASE_OFFSET); }
 
         @SuppressWarnings("removal")
-        static Object  testL_L() { return U.getObject( STABLE_OBJECT_ARRAY, ARRAY_OBJECT_BASE_OFFSET); }
+        static Object  testL_L() { return U.getReference(STABLE_OBJECT_ARRAY, ARRAY_OBJECT_BASE_OFFSET); }
         static boolean testL_Z() { return U.getBoolean(STABLE_OBJECT_ARRAY, ARRAY_OBJECT_BASE_OFFSET); }
         static byte    testL_B() { return U.getByte(   STABLE_OBJECT_ARRAY, ARRAY_OBJECT_BASE_OFFSET); }
         static short   testL_S() { return U.getShort(  STABLE_OBJECT_ARRAY, ARRAY_OBJECT_BASE_OFFSET); }
@@ -313,17 +322,13 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
     /**
      * Tests this sequence:
      *
-     * <pre>
-     * 1. {@code
-     * res1 = c()
-     * }
-     * 2. Compile c.
-     * 3. Change stable array element read by c.
-     * 4. {@code
-     * res2 = c()
-     * }
-     * 5. {@code assert Objects.equals(res1, res2)}
-     * </pre>
+     * <ol>
+     * <li>{@code res1 = c()}</li>
+     * <li>Compile c.</li>
+     * <li>Change stable array element read by c.</li>
+     * <li>{@code res2 = c()}</li>
+     * <li>{@code assert Objects.equals(res1, res2)}</li>
+     * </ol>
      *
      * That is, tests that compiling a method with an unsafe read of a stable array element folds
      * the element value into the compiled code.
@@ -363,17 +368,13 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
     /**
      * Tests this sequence:
      *
-     * <pre>
-     * 1. {@code
-     * res1 = c()
-     * }
-     * 2. Compile c.
-     * 3. Change stable array element read by c.
-     * 4. {@code
-     * res2 = c()
-     * }
-     * 5. {@code assert !Objects.equals(res1, res2)}
-     * </pre>
+     * <ol>
+     * <li>{@code res1 = c()}</li>
+     * <li>Compile c.</li>
+     * <li>Change stable array element read by c.</li>
+     * <li>{@code res2 = c()}</li>
+     * <li>{@code assert !Objects.equals(res1, res2)}</li>
+     * </ol>
      *
      * That is, tests that compiling a method with an unsafe read of a stable array element does not
      * fold the element value into the compiled code.

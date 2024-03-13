@@ -49,6 +49,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -558,7 +559,12 @@ public class StandardGraphBuilderPlugins {
              * "Object" to "Reference", but kept the "Object" version as deprecated. We want to
              * intrinsify both variants, to avoid problems with Uninterruptible methods in Native
              * Image.
+             *
+             * As of JDK-8327729 (resolved in JDK 23), the "Object" versions have been removed.
              */
+            if (JavaVersionUtil.JAVA_SPEC >= 23) {
+                return new String[]{"Reference"};
+            }
             return new String[]{"Object", "Reference"};
         } else {
             return new String[]{kind.name()};
