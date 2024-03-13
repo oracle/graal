@@ -110,16 +110,13 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     vm["vm_java_" + jdk]
     for gate_type in [
         "gate",
-        "daily"
+        "daily",
     ]
     for jdk in [
-      "17"
+      "17",
     ]
     for os_arch in [
       "linux-amd64",
-      "linux-aarch64",
-      "darwin-amd64",
-      "darwin-aarch64"
     ]
     for task in [
       "libgraal_compiler",
@@ -145,8 +142,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
     for gate_type in [
-        "gate",
-        "daily"
+        "weekly"
     ]
     for jdk in [
       "17"
@@ -164,12 +160,13 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   # Complete set of builds defined in this file
   local all_builds = std.set(
     all_platforms_builds +
-    linux_amd64_jdk17_builds,
-  function(o) o.name),
+    linux_amd64_jdk17_builds, function(o) o.name),
+
+  local filtered_builds = [x for x in all_builds if g.manifest_match(dailies, x.name) || g.manifest_match(gates, x.name) || g.manifest_match(weeklies, x.name)],
 
   builds: if
-      g.check_manifest(gates, all_builds, std.thisFile, "gates").result
+      g.check_manifest(gates, filtered_builds, std.thisFile, "gates").result
     then
       local conf = repo_config.vm.libgraal_predicate_conf;
-      [utils.add_gate_predicate(b, suites=conf.suites, extra_excludes=conf.extra_excludes) for b in all_builds]
+      [utils.add_gate_predicate(b, suites=conf.suites, extra_excludes=conf.extra_excludes) for b in filtered_builds]
 }

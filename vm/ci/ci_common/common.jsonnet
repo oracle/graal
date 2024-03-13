@@ -50,7 +50,6 @@ local devkits = graal_common.devkits;
   },
 
   common_vm_windows_jdk17: self.common_vm_windows + devkits['windows-jdk17'],
-  common_vm_windows_jdk20: self.common_vm_windows + devkits['windows-jdk20'],
 
   # JS
   js_windows_common: {
@@ -63,13 +62,6 @@ local devkits = graal_common.devkits;
     setup+: [
       # Keep in sync with the 'devkits' object defined in ci/common.jsonnet.
       ['set-export', 'DEVKIT_VERSION', '2019'],
-    ],
-  },
-
-  js_windows_jdk20: self.js_windows_common + {
-    setup+: [
-      # Keep in sync with the 'devkits' object defined in ci/common.jsonnet.
-      ['set-export', 'DEVKIT_VERSION', '2022'],
     ],
   },
 
@@ -189,7 +181,6 @@ local devkits = graal_common.devkits;
 
   vm_windows: self.common_vm_windows + graal_common.windows_server_2016_amd64,
   vm_windows_jdk17: self.common_vm_windows_jdk17 + graal_common.windows_server_2016_amd64,
-  vm_windows_jdk20: self.common_vm_windows_jdk20 + graal_common.windows_server_2016_amd64,
 
   gate_vm_linux_amd64: self.vm_linux_amd64 + {
     targets+: ['gate']
@@ -274,14 +265,6 @@ local devkits = graal_common.devkits;
     targets+: ['post-merge', 'deploy'],
   },
 
-  deploy_daily_vm_windows_jdk20: self.vm_windows_jdk20 + {
-    targets+: ['daily', 'deploy'],
-  },
-
-  deploy_vm_windows_jdk20: self.vm_windows_jdk20 + {
-    targets+: ['post-merge', 'deploy'],
-  },
-
   postmerge_vm_linux_amd64: self.vm_linux_amd64 + {
     targets+: ['post-merge'],
   },
@@ -310,10 +293,6 @@ local devkits = graal_common.devkits;
     targets+: ['daily'],
   },
 
-  daily_vm_windows_jdk20: self.vm_windows_jdk20 + {
-    targets+: ['daily'],
-  },
-
   weekly_vm_linux_amd64: self.vm_linux_amd64 + {
     targets+: ['weekly'],
   },
@@ -335,10 +314,6 @@ local devkits = graal_common.devkits;
   },
 
   weekly_vm_windows_jdk17: self.vm_windows_jdk17 + {
-    targets+: ['weekly'],
-  },
-
-  weekly_vm_windows_jdk20: self.vm_windows_jdk20 + {
     targets+: ['weekly'],
   },
 
@@ -371,10 +346,6 @@ local devkits = graal_common.devkits;
   },
 
   ondemand_deploy_vm_windows_jdk17: self.vm_windows_jdk17 + {
-    targets+: ['ondemand', 'deploy'],
-  },
-
-  ondemand_deploy_vm_windows_jdk20: self.vm_windows_jdk20 + {
     targets+: ['ondemand', 'deploy'],
   },
 
