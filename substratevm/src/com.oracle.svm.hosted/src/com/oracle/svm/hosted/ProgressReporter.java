@@ -39,10 +39,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.Map.Entry;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -74,7 +74,9 @@ import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.OptionMigrationMessage;
 import com.oracle.svm.core.option.OptionOrigin;
+import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
@@ -356,8 +358,7 @@ public class ProgressReporter {
                 continue;
             }
             String origins = "";
-            /* The first extra help item is used for migration messages of options. */
-            String migrationMessage = descriptor.getExtraHelp().isEmpty() ? "" : descriptor.getExtraHelp().getFirst();
+            String migrationMessage = OptionUtils.getAnnotationsByType(descriptor, OptionMigrationMessage.class).stream().map(a -> a.value()).collect(Collectors.joining(". "));
             String alternatives = "";
 
             if (optionValue instanceof LocatableMultiOptionValue<?> lmov) {

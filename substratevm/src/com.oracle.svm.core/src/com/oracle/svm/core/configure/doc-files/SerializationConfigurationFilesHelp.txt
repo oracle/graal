@@ -1,5 +1,4 @@
 One or several (comma-separated) paths to JSON files that specify lists of serialization configurations.
-Use a serialization-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead.
 
 The structure is described in the following schema:
 
