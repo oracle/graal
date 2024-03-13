@@ -531,7 +531,7 @@ public abstract class ImageHeapScanner {
         /* Simulated constants don't have a backing object and don't need to be processed. */
         if (object != null) {
             try {
-                type.notifyObjectReachable(universe.getConcurrentAnalysisAccess(), object);
+                type.notifyObjectReachable(universe.getConcurrentAnalysisAccess(), object, reason);
             } catch (UnsupportedFeatureException e) {
                 /* Enhance the unsupported feature message with the object trace and rethrow. */
                 StringBuilder backtrace = new StringBuilder();

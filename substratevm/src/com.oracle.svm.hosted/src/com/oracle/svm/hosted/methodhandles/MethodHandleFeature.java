@@ -150,8 +150,8 @@ public class MethodHandleFeature implements InternalFeature {
         substitutionProcessor = new MethodHandleInvokerRenamingSubstitutionProcessor(accessImpl.getBigBang());
         accessImpl.registerSubstitutionProcessor(substitutionProcessor);
 
-        accessImpl.registerObjectReachableCallback(memberNameClass, (ignore, member) -> registerHeapMemberName((Member) member));
-        accessImpl.registerObjectReachableCallback(MethodType.class, (ignore, methodType) -> registerHeapMethodType(methodType));
+        accessImpl.registerObjectReachableCallback(memberNameClass, (a1, member, reason) -> registerHeapMemberName((Member) member));
+        accessImpl.registerObjectReachableCallback(MethodType.class, (a1, methodType, reason) -> registerHeapMethodType(methodType));
     }
 
     @Override

@@ -66,6 +66,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
+import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -318,7 +319,8 @@ public class LocalizationFeature implements InternalFeature {
      * runtime failures. Therefore, we register a callback that notifies us for every reachable
      * {@link ResourceBundle} object in the heap, and we eagerly initialize it.
      */
-    private void eagerlyInitializeBundles(@SuppressWarnings("unused") DuringAnalysisAccess access, ResourceBundle bundle) {
+    @SuppressWarnings("unused")
+    private void eagerlyInitializeBundles(DuringAnalysisAccess access, ResourceBundle bundle, ObjectScanner.ScanReason reason) {
         assert optimizedMode : "Should only be triggered in the optimized mode.";
         try {
             /*

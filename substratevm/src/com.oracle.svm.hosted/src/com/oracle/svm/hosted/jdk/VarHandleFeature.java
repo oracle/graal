@@ -35,6 +35,7 @@ import java.util.function.ToLongFunction;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.GraalAccess;
@@ -122,8 +123,8 @@ public class VarHandleFeature implements InternalFeature {
          */
         access.registerObjectReplacer(VarHandleFeature::eagerlyInitializeVarHandle);
 
-        access.registerObjectReachableCallback(VarHandle.class, (a1, obj) -> registerReachableHandle(obj));
-        access.registerObjectReachableCallback(access.findClassByName("java.lang.invoke.DirectMethodHandle"), (a1, obj) -> registerReachableHandle(obj));
+        access.registerObjectReachableCallback(VarHandle.class, (a1, obj, reason) -> registerReachableHandle(obj, reason));
+        access.registerObjectReachableCallback(access.findClassByName("java.lang.invoke.DirectMethodHandle"), (a1, obj, reason) -> registerReachableHandle(obj, reason));
     }
 
     @Override
@@ -236,7 +237,7 @@ public class VarHandleFeature implements InternalFeature {
      * Register all fields accessed by a reachable VarHandle for an instance field or a static field
      * as unsafe accessed, which is necessary for correctness of the static analysis.
      */
-    private Object registerReachableHandle(Object obj) {
+    private Object registerReachableHandle(Object obj, ObjectScanner.ScanReason reason) {
         VarHandleInfo info = infos.get(obj.getClass());
         if (info != null) {
             AnalysisField field = findVarHandleAnalysisField(obj);
@@ -248,7 +249,7 @@ public class VarHandleFeature implements InternalFeature {
              */
             if (!field.isUnsafeAccessed()) {
                 VMError.guarantee(hUniverse == null, "New VarHandle %s found after static analysis for field %s", obj, field);
-                field.registerAsUnsafeAccessed("Referenced by VarHandle");
+                field.registerAsUnsafeAccessed(reason);
             }
         }
         return obj;

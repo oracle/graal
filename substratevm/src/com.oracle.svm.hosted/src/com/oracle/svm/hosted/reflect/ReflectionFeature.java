@@ -44,6 +44,7 @@ import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
+import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -279,10 +280,9 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         access.registerObjectReachableCallback(SubstrateAccessor.class, ReflectionFeature::onAccessorReachable);
     }
 
-    private static void onAccessorReachable(DuringAnalysisAccess a, SubstrateAccessor accessor) {
+    private static void onAccessorReachable(DuringAnalysisAccess a, SubstrateAccessor accessor, ObjectScanner.ScanReason reason) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
 
-        String reason = "Registered in " + ReflectionFeature.class;
         ResolvedJavaMethod expandSignatureMethod = ((MethodPointer) accessor.getExpandSignature()).getMethod();
         access.registerAsRoot((AnalysisMethod) expandSignatureMethod, true, reason);
 
