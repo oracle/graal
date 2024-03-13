@@ -25,7 +25,9 @@
 
 package com.oracle.svm.hosted;
 
+import static com.oracle.svm.core.jdk.Resources.NEGATIVE_QUERY_MARKER;
 import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATOR;
+import static com.oracle.svm.core.jdk.Resources.createStorageKey;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -83,6 +85,7 @@ import com.oracle.svm.core.jdk.resources.NativeImageResourceFileAttributes;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileAttributesView;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystem;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider;
+import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionMigrationMessage;
@@ -163,6 +166,7 @@ public final class ResourcesFeature implements InternalFeature {
 
     private Set<ConditionalPattern> resourcePatternWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<String> excludedResourcePatterns = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final ConcurrentHashMap<Resources.ModuleResourceRecord, List<String>> registeredResources = new ConcurrentHashMap<>();
     private int loadedConfigurations;
     private ImageClassLoader imageClassLoader;
 
@@ -197,6 +201,8 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
+            // we don't have source (only module and resourcePath)
+            declareResourceAsRegistered(module, resourcePath, "Injected resource");
             Resources.singleton().registerResource(module, resourcePath, resourceContent);
         }
 
@@ -222,6 +228,16 @@ public final class ResourcesFeature implements InternalFeature {
         @Override
         public void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales) {
             registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(basename, locales));
+        }
+
+        private void declareResourceAsRegistered(Module module, String resource, String source) {
+            Resources.ModuleResourceRecord key = createStorageKey(module, resource);
+            synchronized (registeredResources) {
+                registeredResources.computeIfAbsent(key, k -> new ArrayList<>());
+                if (!registeredResources.get(key).contains(source)) {
+                    registeredResources.get(key).add(source);
+                }
+            }
         }
 
         /*
@@ -278,6 +294,7 @@ public final class ResourcesFeature implements InternalFeature {
                     InputStream is = module.getResourceAsStream(resourcePath);
                     registerResource(module, resourcePath, false, is);
                 }
+                declareResourceAsRegistered(module, resourcePath, resourcePath);
             } catch (IOException e) {
                 Resources.singleton().registerIOException(module, resourcePath, e, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(resourcePath));
             }
@@ -315,6 +332,7 @@ public final class ResourcesFeature implements InternalFeature {
                         InputStream is = url.openStream();
                         registerResource(null, resourcePath, fromJar, is);
                     }
+                    declareResourceAsRegistered(null, resourcePath, url.toString());
                 } catch (IOException e) {
                     Resources.singleton().registerIOException(null, resourcePath, e, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(resourcePath));
                     return;
@@ -326,6 +344,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         private void registerResource(Module module, String resourcePath, boolean fromJar, InputStream is) {
             if (is == null) {
+                Resources.singleton().registerNegativeQuery(module, resourcePath);
                 return;
             }
 
@@ -601,12 +620,19 @@ public final class ResourcesFeature implements InternalFeature {
     public void afterAnalysis(AfterAnalysisAccess access) {
         sealed = true;
         if (Options.DumpRegisteredResources.getValue()) {
-            Iterable<Resources.ModuleResourceRecord> registeredResources = Resources.singleton().getResourceStorage().getKeys();
-            List<Resources.ModuleResourceRecord> resourceInfoList = new ArrayList<>();
-            registeredResources.forEach(resource -> {
-                String resourceName = resource.resource();
-                Module module = resource.module();
-                resourceInfoList.add(new Resources.ModuleResourceRecord(module, resourceName));
+            List<ResourceReporter.ResourceReportEntry> resourceInfoList = new ArrayList<>();
+            registeredResources.forEach((key, value) -> {
+                Module module = key.module();
+                String resourceName = key.resource();
+                ResourceStorageEntryBase storageEntry = Resources.singleton().getResourceStorage().get(key);
+                List<ResourceReporter.SourceSizePair> sources = new ArrayList<>();
+                for (int i = 0; i < value.size(); i++) {
+                    String source = value.get(i);
+                    String size = storageEntry == NEGATIVE_QUERY_MARKER ? "NEGATIVE QUERY" : String.valueOf(storageEntry.getData().get(i).length);
+                    sources.add(new ResourceReporter.SourceSizePair(source, size));
+                }
+
+                resourceInfoList.add(new ResourceReporter.ResourceReportEntry(module, resourceName, sources));
             });
 
             ResourceReporter.printReport(resourceInfoList);

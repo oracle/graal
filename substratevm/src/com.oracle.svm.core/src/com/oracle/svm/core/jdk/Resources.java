@@ -33,7 +33,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
@@ -94,9 +93,6 @@ public final class Resources {
     }
 
     public record ModuleResourceRecord(Module module, String resource) {
-        public static Comparator<ModuleResourceRecord> comparator() {
-            return Comparator.comparing(ModuleResourceRecord::resource);
-        }
     }
 
     /**
@@ -144,7 +140,7 @@ public final class Resources {
         return module == null ? null : module.getName();
     }
 
-    private static ModuleResourceRecord createStorageKey(Module module, String resourceName) {
+    public static ModuleResourceRecord createStorageKey(Module module, String resourceName) {
         Module m = module != null && module.isNamed() ? module : null;
         return new ModuleResourceRecord(m, resourceName);
     }
@@ -175,9 +171,7 @@ public final class Resources {
     private void addEntry(Module module, String resourceName, boolean isDirectory, byte[] data, boolean fromJar, boolean isNegativeQuery) {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to add a resource entry after analysis.");
         Module m = module != null && module.isNamed() ? module : null;
-        if (m != null) {
-            m = RuntimeModuleSupport.instance().getRuntimeModuleForHostedModule(m);
-        }
+
         synchronized (resources) {
             ModuleResourceRecord key = createStorageKey(m, resourceName);
             ResourceStorageEntryBase entry = resources.get(key);
