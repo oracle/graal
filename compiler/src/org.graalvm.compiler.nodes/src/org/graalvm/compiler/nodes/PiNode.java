@@ -27,6 +27,8 @@ package org.graalvm.compiler.nodes;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import java.util.List;
+
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -249,7 +251,9 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         if (guardNode.hasNoUsages()) {
             return;
         }
-        for (PiNode pi : guardNode.usages().filter(PiNode.class).snapshot()) {
+
+        List<PiNode> pis = guardNode.usages().filter(PiNode.class).snapshot();
+        for (PiNode pi : pis) {
             if (!pi.isAlive()) {
                 continue;
             }
@@ -259,6 +263,8 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
             }
 
             /*
+             * RECURSE CALL
+             *
              * If there are PiNodes still anchored at this guard then either they must simplify away
              * because they are no longer necessary or this node must be replaced with a
              * ValueAnchorNode because the type injected by the PiNode is only true at this point in
@@ -271,6 +277,16 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
                 if (otherGuard != null) {
                     tryEvacuate(tool, otherGuard, false);
                 }
+            }
+            /*
+             * A note on the RECURSE CALL above: When we have pis with input pis on the same guard
+             * (which should actually be combined) it can be that the recurse call (processing the
+             * same pis again) already deletes this node (very special stamp setups necessary).
+             * Thus, it can be that pi is dead at this point already, so we have to check for this
+             * again.
+             */
+            if (!pi.isAlive()) {
+                continue;
             }
             Node canonical = pi.canonical(tool);
             if (canonical != pi) {
