@@ -7,12 +7,31 @@ permalink: /reference-manual/native-image/optimizations-and-performance/PGO/LCOV
 
 # Creating LCOV Coverage Reports
 
-Instrumentation phase plays an essential role in the PGO pipeline.
-All the run-time data, i.e, a profile, is collected during the execution of an instrumented binary.
-This data is then used in the second optimization build to further improve the application performance.
-The same profile can additionally be used for extracting the coverage information.
-Native Image supports creating coverage reports in the [LCOV format](https://github.com/linux-test-project/lcov),
-so-called *trace files*.
+Here you will learn how to analyze PGO profiles with the aid of LCOV-based tooling.
+
+Profile-Guided Optimizations (PGO) help you maximize the performance of your native application.
+As part of the PGO process, you create an instrumented binary and run a workload on it to generate
+a PGO profile file that you can then feed back into the build process to generate an optimized binary
+of your application.
+Typically, there's no need for you to understand the contents of such a PGO profile.
+In some cases, however, you may want to understand what has been recorded as part of a profile,
+especially when there is a problem with the performance of your optimized binary.
+GraalVM Native Image can export profiling information in an additional file in the [LCOV format](https://github.com/linux-test-project/lcov).
+You can open and visualize such a file in any IDE or tool that supports the LCOV format.
+This allows you to see what methods of your code are called and how often.
+
+The Graal compiler spends more time optimizing *hot methods*, methods that are called many times, than
+*cold methods*, methods that are only called a few times or not at all.
+Therefore, you can use the additional LCOV export to check what methods have actually been called as
+part of the workload that ran on an instrumented binary.
+This also means that the PGO profile contains appropriate profiling information for the methods.
+Besides, the coverage visualization helps you identify the hot methods of your application, again for
+the workload that ran on the instrumented binary.
+If you want to maximize performance, these are typically the methods you want to take a closer look at.
+On the contrary, methods that are not covered at all are potential candidates for cleanups, which in
+turn can speed up the build time.
+
+## Creating Coverage Report
 
 To create a coverage report, you first need to pass the `-H:+ProfilingLCOV` experimental option along
 with the `--pgo-instrument` option when building an instrumented binary.
