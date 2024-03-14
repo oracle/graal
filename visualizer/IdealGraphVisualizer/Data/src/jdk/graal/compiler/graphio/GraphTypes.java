@@ -22,14 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.graphio;
+package jdk.graal.compiler.graphio;
 
 /**
  * Special support for dealing with enums. Normally one can represent various {@link GraphOutput
  * graph} enum values with real {@link Enum} instances. In case this is not possible, the
- * {@link GraphOutput.Builder} allows one to
- * {@link GraphOutput.Builder#types(org.graalvm.graphio.GraphTypes) register} an implementation of
- * this interface to treat them specially.
+ * {@link GraphOutput.Builder} allows one to {@link GraphOutput.Builder#types(GraphTypes) register}
+ * an implementation of this interface to treat them specially.
  */
 public interface GraphTypes {
     /**

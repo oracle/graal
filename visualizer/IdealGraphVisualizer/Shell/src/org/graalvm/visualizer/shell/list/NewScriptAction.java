@@ -72,7 +72,7 @@ public class NewScriptAction extends AbstractAction {
             scriptRoot = ShellUtils.ensureScriptRoot();
         } catch (IOException ex) {
             Exceptions.printStackTrace(
-                    Exceptions.attachMessage(ex, Bundle.ERR_CannotCreateScripts(ex.getLocalizedMessage())));
+                    Exceptions.attachMessage(ex, Bundle.ERR_CannotCreateScripts(ex.toString())));
             return;
         }
         DataFolder scriptFolder = DataFolder.findFolder(folder);

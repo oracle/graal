@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.graphio;
+package jdk.graal.compiler.graphio;
 
 /**
  * Representation of methods, fields, their signatures and code locations.

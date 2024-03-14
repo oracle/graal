@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.graphio;
+package jdk.graal.compiler.graphio;
 
 final class DefaultGraphTypes implements GraphTypes {
     static final GraphTypes DEFAULT = new DefaultGraphTypes();

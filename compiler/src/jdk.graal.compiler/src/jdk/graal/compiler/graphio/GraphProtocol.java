@@ -40,8 +40,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.WeakHashMap;
 
-import jdk.graal.compiler.debug.Assertions;
-
 abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition, Location> implements Closeable {
     private static final Charset UTF8 = Charset.forName("UTF-8");
 
@@ -577,7 +575,9 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
                     writeShort((char) 0);
                 } else {
                     int listSize = list.size();
-                    assert listSize == ((char) listSize) : Assertions.errorMessage(listSize);
+                    if (listSize != ((char) listSize)) {
+                        throw new IOException("Too many nodes in list: " + list.size());
+                    }
                     writeShort((char) listSize);
                     for (Node edge : list) {
                         writeNodeRef(edge);
