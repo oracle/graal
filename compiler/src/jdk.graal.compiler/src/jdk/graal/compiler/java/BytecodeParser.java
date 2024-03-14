@@ -1215,38 +1215,76 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
      * the current bytecode location.
      */
     protected SpeculationLog.Speculation mayUseUnresolved(int bci) {
-        if (graphBuilderConfig.usePreciseUnresolvedDeopts()) {
-            return null;
-        }
         return mayUseSpeculation(bci, UNRESOLVED, unresolvedSpeculationTaken, unresolvedSpeculationNotTaken);
     }
 
+    /**
+     * Ensure that the current bytecode can be unresolved.
+     */
+    protected void bytecodeMayBeUnresolved() {
+        int bytecode = stream.currentBC();
+        switch (bytecode) {
+            case GETFIELD:
+            case GETSTATIC:
+            case PUTFIELD:
+            case PUTSTATIC:
+            case LDC:
+            case LDC2_W:
+            case LDC_W:
+            case CHECKCAST:
+            case INSTANCEOF:
+            case INVOKEDYNAMIC:
+            case INVOKEINTERFACE:
+            case INVOKESPECIAL:
+            case INVOKEVIRTUAL:
+            case INVOKESTATIC:
+            case NEW:
+            case NEWARRAY:
+            case ANEWARRAY:
+                return;
+        }
+        throw new GraalError("bytecode %s can't use precise deopts", Bytecodes.nameOf(bytecode));
+    }
+
     protected void appendUnresolvedDeopt() {
+        SpeculationLog.Speculation speculation;
+        boolean mayConvertToGuard = true;
+
         /*
          * Make sure we didn't pop something that we shouldn't have from the stack between
          * processing the opcode and emitting the deopt, which could cause an underflow.
          */
         if (currentBlock.isInstructionBlock()) {
             GraalError.guarantee(frameState.stackSize() + Bytecodes.stackEffectOf(stream.currentBC()) >= 0, "Stack underflow at unresolved deopt");
-        }
+            bytecodeMayBeUnresolved();
 
-        SpeculationLog.Speculation speculation = mayUseUnresolved(bci());
-        if (speculation == null) {
+            speculation = graphBuilderConfig.usePreciseUnresolvedDeopts() ? null : mayUseUnresolved(bci());
+            if (speculation == null) {
+                /*
+                 * A previous speculation on this unresolved bytecode failed. This means that we
+                 * previously deopted at this position. The interpreter should have resolved the
+                 * item we need here. However, due to inlining and our use of imprecise frame
+                 * states, we may have deopted to and invalidated the callee of this method rather
+                 * than this method itself. Prevent a deopt loop by capturing a precise state.
+                 */
+                speculation = SpeculationLog.NO_SPECULATION;
+                mayConvertToGuard = false;
+                StateSplitProxyNode stateSplit = append(new StateSplitProxyNode());
+                stateSplit.setStateAfter(createFrameState(bci(), stateSplit));
+            }
+        } else if (currentBlock instanceof ExceptionDispatchBlock) {
             /*
-             * A previous speculation on this unresolved item failed. This means that we previously
-             * deopted at this position. The interpreter should have resolved the item we need here.
-             * However, due to inlining and our use of imprecise frame states, we may have deopted
-             * to and invalidated the callee of this method rather than this method itself. Prevent
-             * a deopt loop by capturing a precise state.
+             * This is part of the exception dispatch path so there is no actual unresolved bytecode
+             * so we can't use a precise deopt.
              */
             speculation = SpeculationLog.NO_SPECULATION;
-            StateSplitProxyNode stateSplit = append(new StateSplitProxyNode());
-            stateSplit.setStateAfter(createFrameState(bci(), stateSplit));
+        } else {
+            throw GraalError.shouldNotReachHere("Unexpected block " + currentBlock);
         }
+
         DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved, speculation));
-        if (graphBuilderConfig.usePreciseUnresolvedDeopts()) {
-            deopt.mayConvertToGuard(false);
-        }
+        deopt.mayConvertToGuard(mayConvertToGuard);
+
         /*
          * Track source position for deopt nodes even if
          * GraphBuilderConfiguration.trackNodeSourcePosition is not set.
@@ -1355,6 +1393,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
      */
     protected void handleUnresolvedExceptionType(JavaType type) {
         assert !graphBuilderConfig.unresolvedIsError();
+        assert currentBlock instanceof ExceptionDispatchBlock : "unresolved types should only appear in ExceptionDispatchBlock: " + currentBlock;
         appendUnresolvedDeopt();
     }
 
