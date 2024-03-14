@@ -91,7 +91,8 @@ import com.oracle.truffle.api.nodes.RootNode;
                 @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableTagInstrumentation = true, enableUncachedInterpreter = true)),
                 @Variant(suffix = "WithBE", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableTagInstrumentation = true, boxingEliminationTypes = {
                                 boolean.class, long.class}, decisionsFile = "basic_interpreter_quickening_only.json")),
-                @Variant(suffix = "WithOptimizations", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableTagInstrumentation = true, decisionsFile = "basic_interpreter_decisions.json")),
+                @Variant(suffix = "WithOptimizations", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableTagInstrumentation = true, //
+                                decisionsFile = "basic_interpreter_decisions.json")),
                 // A typical "production" configuration with all of the bells and whistles.
                 @Variant(suffix = "Production", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableTagInstrumentation = true, enableUncachedInterpreter = true, //
                                 boxingEliminationTypes = {long.class}, decisionsFile = "basic_interpreter_decisions.json"))
