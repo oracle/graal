@@ -98,9 +98,4 @@ abstract class EspressoInstrumentableRootNodeImpl extends EspressoInstrumentable
         }
         return false;
     }
-
-    @Override
-    public int getBci(Frame frame) {
-        return VM.EspressoStackElement.NATIVE_BCI;
-    }
 }
