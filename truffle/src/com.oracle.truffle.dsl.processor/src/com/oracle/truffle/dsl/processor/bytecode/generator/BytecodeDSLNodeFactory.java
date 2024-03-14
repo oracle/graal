@@ -370,7 +370,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         bytecodeNodeGen.add(createGetBytecodeNode());
         bytecodeNodeGen.add(createGetRootNodes());
         bytecodeNodeGen.add(createGetSourceSection());
-        bytecodeNodeGen.add(createReadBciFromFrame());
         bytecodeNodeGen.addAll(createCopyLocals());
 
         // Define the generated Node classes for custom instructions.
@@ -1272,24 +1271,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         copyLocalsBuilder.end(2);
 
         return List.of(copyAllLocals, copyLocals);
-    }
-
-    private CodeExecutableElement createReadBciFromFrame() {
-        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNode, "readBciFromFrame");
-
-        CodeTreeBuilder b = ex.createBuilder();
-        if (model.needsBciSlot()) {
-            /*
-             * NB: we cannot use ACCESS here. The unsafe accessor expects the frame to be a
-             * FrameWithoutBoxing, but it can be a ReadOnlyFrame if it comes from a stack trace.
-             */
-            b.startReturn().string("frame.getInt(" + BCI_IDX + ")").end();
-        } else {
-            b.lineComment("The bci is not stored in the frame.");
-            b.startReturn().string("-1").end();
-        }
-
-        return ex;
     }
 
     static Object[] merge(Object[] array0, Object[] array1) {
@@ -3488,9 +3469,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                     yield createOperationData("FinallyTryData", arg1, "finallyTryContext", "this.reachable", "this.reachable", "this.reachable");
                 }
-                case CUSTOM, CUSTOM_INSTRUMENTATION ->
-
-                {
+                case CUSTOM, CUSTOM_INSTRUMENTATION -> {
                     CodeTreeBuilder childBciArrayBuilder = CodeTreeBuilder.createBuilder();
                     childBciArrayBuilder.startNewArray(arrayOf(context.getType(int.class)), null);
                     for (InstructionImmediate immediate : operation.instruction.getImmediates()) {
@@ -3514,28 +3493,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                     yield createOperationData("CustomOperationData", args);
                 }
-                case CUSTOM_SHORT_CIRCUIT ->
-
-                {
+                case CUSTOM_SHORT_CIRCUIT -> {
                     if (model.isBoxingEliminated(type(boolean.class))) {
-
                         yield createOperationData("CustomShortCircuitOperationData", UNINIT);
-                    } else
-
-                    {
-
+                    } else {
                         yield createOperationData("CustomShortCircuitOperationData");
                     }
-
                 }
                 case TAG -> {
-
                     yield createOperationData("TagOperationData", "false", UNINIT, "nodeId", "node");
                 }
-                case RETURN ->
-
-                {
-
+                case RETURN -> {
                     yield createOperationData("ReturnOperationData", "false", UNINIT);
                 }
                 default -> CodeTreeBuilder.singleString("null");
