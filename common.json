@@ -48,9 +48,9 @@
     "labsjdk-ce-latest":      {"name": "labsjdk",   "version": "ce-22+36-jvmci-b02", "platformspecific": true },
     "labsjdk-ce-latestDebug": {"name": "labsjdk",   "version": "ce-22+36-jvmci-b02-debug", "platformspecific": true },
     "labsjdk-ce-latest-llvm": {"name": "labsjdk",   "version": "ce-22+36-jvmci-b02-sulong", "platformspecific": true },
-    "labsjdk-ee-latest":      {"name": "labsjdk",   "version": "ee-22+36-jvmci-b02", "platformspecific": true },
-    "labsjdk-ee-latestDebug": {"name": "labsjdk",   "version": "ee-22+36-jvmci-b02-debug", "platformspecific": true },
-    "labsjdk-ee-latest-llvm": {"name": "labsjdk",   "version": "ee-22+36-jvmci-b02-sulong", "platformspecific": true }
+    "labsjdk-ee-latest":      {"name": "labsjdk",   "version": "ee-22.0.1+8-jvmci-b01-20240313063512-3dd40df11e+6772b5262e", "platformspecific": true },
+    "labsjdk-ee-latestDebug": {"name": "labsjdk",   "version": "ee-22.0.1+8-jvmci-b01-20240313063512-3dd40df11e+6772b5262e-debug", "platformspecific": true },
+    "labsjdk-ee-latest-llvm": {"name": "labsjdk",   "version": "ee-22.0.1+8-jvmci-b01-20240313063512-3dd40df11e+6772b5262e-sulong", "platformspecific": true }
   },
 
   "eclipse": {
