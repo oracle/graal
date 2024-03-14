@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -273,6 +273,8 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     public abstract void store_i64_16(Node node, long address, short value);
 
     public abstract void store_i64_32(Node node, long address, int value);
+
+    public abstract void store_i128(Node node, long address, Vector128 value);
 
     public abstract int atomic_load_i32(Node node, long address);
 

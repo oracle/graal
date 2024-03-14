@@ -52,19 +52,42 @@
   (func (export "benchmarkTeardownEach") (type $teardown_func))
 
   (func (export "benchmarkRun") (type $int_func)
-    (local $i i32)
-    (local $v v128)
-    (local.set $v (v128.const f64x2 1 1))
+    ;; Accumulator vector
+    (local $acc_x i32)
+    (local $acc_y i32)
+    (local $acc_z i32)
+    (local $acc_w i32)
+    ;; Increment vector
+    (local $inc_x i32)
+    (local $inc_y i32)
+    (local $inc_z i32)
+    (local $inc_w i32)
+    (local.set $inc_x (i32.const 3))
+    (local.set $inc_y (i32.const 5))
+    (local.set $inc_z (i32.const 7))
+    (local.set $inc_w (i32.const 11))
 
     (loop $bench_loop
-      ;; Perform double vector multiplication
-      (local.set $v (f64x2.mul (local.get $v) (v128.const f64x2 2.7 3.14)))
+      ;; Perform four int multiplications on the increment vector
+      (local.set $inc_x (i32.mul (local.get $inc_x) (local.get $inc_x)))
+      (local.set $inc_y (i32.mul (local.get $inc_y) (local.get $inc_y)))
+      (local.set $inc_z (i32.mul (local.get $inc_z) (local.get $inc_z)))
+      (local.set $inc_w (i32.mul (local.get $inc_w) (local.get $inc_w)))
+      ;; Perform four int additions on the accumulator vector
+      (local.set $acc_x (i32.add (local.get $acc_x) (local.get $inc_x)))
+      (local.set $acc_y (i32.add (local.get $acc_y) (local.get $inc_y)))
+      (local.set $acc_z (i32.add (local.get $acc_z) (local.get $inc_z)))
+      (local.set $acc_w (i32.add (local.get $acc_w) (local.get $inc_w)))
 
-      ;; Increment loop counter and exit loop
-      (local.set $i (i32.add (local.get $i) (i32.const 1)))
-      (br_if $bench_loop (i32.lt_s (local.get $i) (global.get $iterations)))
+      (br_if $bench_loop (i32.and (i32.and (i32.lt_u (local.get $acc_x) (i32.const -1000000))
+                                           (i32.lt_u (local.get $acc_y) (i32.const -1000000)))
+                                  (i32.and (i32.lt_u (local.get $acc_z) (i32.const -1000000))
+                                           (i32.lt_u (local.get $acc_w) (i32.const -1000000)))))
     )
 
-    (v128.any_true (local.get $v))
+    (i32.and (i32.and (i32.ne (local.get $acc_x) (i32.const 0))
+                      (i32.ne (local.get $acc_y) (i32.const 0)))
+             (i32.and (i32.ne (local.get $acc_z) (i32.const 0))
+                      (i32.ne (local.get $acc_w) (i32.const 0))))
   )
 )

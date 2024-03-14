@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -239,7 +239,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
     @Override
     public Vector128 load_i128(Node node, long address) {
         if (ByteArraySupport.littleEndian().inBounds(byteArrayBuffer.buffer(), address, 16)) {
-            return Vector128.ofBytes(Arrays.copyOfRange(byteArrayBuffer.buffer(), (int) address, (int) address + 16));
+            return new Vector128(Arrays.copyOfRange(byteArrayBuffer.buffer(), (int) address, (int) address + 16));
         } else {
             throw trapOutOfBounds(node, address, 16);
         }
@@ -324,6 +324,15 @@ final class ByteArrayWasmMemory extends WasmMemory {
             ByteArraySupport.littleEndian().putInt(byteArrayBuffer.buffer(), address, value);
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 4);
+        }
+    }
+
+    @Override
+    public void store_i128(Node node, long address, Vector128 value) {
+        if (ByteArraySupport.littleEndian().inBounds(byteArrayBuffer.buffer(), address, 16)) {
+            System.arraycopy(value.getBytes(), 0, byteArrayBuffer.buffer(), (int) address, 16);
+        } else {
+            throw trapOutOfBounds(node, address, 16);
         }
     }
 

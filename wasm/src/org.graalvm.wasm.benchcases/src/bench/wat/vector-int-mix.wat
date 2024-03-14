@@ -52,19 +52,21 @@
   (func (export "benchmarkTeardownEach") (type $teardown_func))
 
   (func (export "benchmarkRun") (type $int_func)
-    (local $i i32)
-    (local $v v128)
-    (local.set $v (v128.const f64x2 1 1))
+    ;; Accumulator vector
+    (local $acc v128)
+    ;; Increment vector
+    (local $inc v128)
+    (local.set $inc (v128.const i32x4 3 5 7 11))
 
     (loop $bench_loop
-      ;; Perform double vector multiplication
-      (local.set $v (f64x2.mul (local.get $v) (v128.const f64x2 2.7 3.14)))
+      ;; Perform int vector multiplication on the increment vector
+      (local.set $inc (i32x4.mul (local.get $inc) (local.get $inc)))
+      ;; Perform int vector addition on the accumulator vector
+      (local.set $acc (i32x4.add (local.get $acc) (local.get $inc)))
 
-      ;; Increment loop counter and exit loop
-      (local.set $i (i32.add (local.get $i) (i32.const 1)))
-      (br_if $bench_loop (i32.lt_s (local.get $i) (global.get $iterations)))
+      (br_if $bench_loop (i32x4.all_true (i32x4.lt_u (local.get $acc) (v128.const i32x4 -1000000 -1000000 -1000000 -1000000))))
     )
 
-    (v128.any_true (local.get $v))
+    (i32x4.all_true (local.get $acc))
   )
 )
