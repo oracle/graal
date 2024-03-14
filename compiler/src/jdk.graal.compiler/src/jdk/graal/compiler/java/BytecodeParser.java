@@ -1252,14 +1252,14 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
      * the current bytecode location.
      */
     protected SpeculationLog.Speculation mayUseUnresolved(int bci) {
-        bytecodeMayBeUnresolved();
+        ensureBytecodeMayBeUnresolved();
         return mayUseSpeculation(bci, UNRESOLVED);
     }
 
     /**
      * Ensure that the current bytecode can be unresolved.
      */
-    protected void bytecodeMayBeUnresolved() {
+    protected void ensureBytecodeMayBeUnresolved() {
         int bytecode = stream.currentBC();
         switch (bytecode) {
             case GETFIELD:
