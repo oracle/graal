@@ -1411,7 +1411,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
         'sdk:JNIUTILS',
         'truffle:TRUFFLE_API',
         'truffle:TRUFFLE_RUNTIME',
-        'truffle:TRUFFLE_JCODINGS',
     ],
     stability="supported",
 ))
