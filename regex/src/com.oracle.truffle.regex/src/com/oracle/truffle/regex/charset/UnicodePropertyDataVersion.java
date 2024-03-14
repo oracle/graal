@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,31 +38,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+
 package com.oracle.truffle.regex.charset;
 
-import org.graalvm.collections.EconomicMap;
+public final class UnicodePropertyDataVersion {
 
-/**
- * This class hosts lookup tables for case insensitive Unicode properties. Those are used by the
- * Ruby flavor, which does case insensitive matching on property names. This class was created in
- * order to separate the data from {@link UnicodePropertyData}, which is machine generated, and from
- * {@link UnicodeProperties}, so that the tables are filled in only when needed (i.e. when this
- * class is accessed).
- */
-class UnicodePropertyDataRuby {
-    static final EconomicMap<String, String> PROPERTY_ALIASES_LOWERCASE = EconomicMap.create(UnicodePropertyData.PROPERTY_ALIASES.size());
-    static final EconomicMap<String, String> GENERAL_CATEGORY_ALIASES_LOWERCASE = EconomicMap.create(UnicodePropertyData.GENERAL_CATEGORY_ALIASES.size());
-    static final EconomicMap<String, String> SCRIPT_ALIASES_LOWERCASE = EconomicMap.create(UnicodePropertyData.SCRIPT_ALIASES.size());
+    /* GENERATED CODE BEGIN - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
+    public static final UnicodePropertyData UNICODE_15_0_0 = UnicodePropertyData.INSTANCE;
+    public static final UnicodePropertyData UNICODE_15_1_0 = UnicodePropertyData.populateUNICODE_15_1_0(UNICODE_15_0_0);
 
-    static {
-        for (String propertyAlias : UnicodePropertyData.PROPERTY_ALIASES.getKeys()) {
-            PROPERTY_ALIASES_LOWERCASE.put(propertyAlias.toLowerCase(), propertyAlias);
-        }
-        for (String generalCategoryAlias : UnicodePropertyData.GENERAL_CATEGORY_ALIASES.getKeys()) {
-            GENERAL_CATEGORY_ALIASES_LOWERCASE.put(generalCategoryAlias.toLowerCase(), generalCategoryAlias);
-        }
-        for (String scriptAlias : UnicodePropertyData.SCRIPT_ALIASES.getKeys()) {
-            SCRIPT_ALIASES_LOWERCASE.put(scriptAlias.toLowerCase(), scriptAlias);
-        }
-    }
+    /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
 }

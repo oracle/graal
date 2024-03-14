@@ -46,7 +46,6 @@ import java.util.Objects;
 import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.regex.charset.collation.BinaryCollator;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor;
@@ -138,7 +137,6 @@ public final class RegexOptions {
     public static final String MUST_ADVANCE_NAME = "MustAdvance";
     private static final int GENERATE_INPUT = 1 << 11;
     public static final String GENERATE_INPUT_NAME = "GenerateInput";
-    public static final String COLLATION_NAME = "Collation";
     public static final String FLAVOR_NAME = "Flavor";
     public static final String FLAVOR_PYTHON = "Python";
     public static final String FLAVOR_RUBY = "Ruby";
@@ -156,6 +154,11 @@ public final class RegexOptions {
     private static final String[] PYTHON_METHOD_OPTIONS = {PYTHON_METHOD_SEARCH, PYTHON_METHOD_MATCH, PYTHON_METHOD_FULLMATCH};
 
     public static final String PYTHON_LOCALE_NAME = "PythonLocale";
+    public static final String JAVA_JDK_VERSION_NAME = "JavaJDKVersion";
+    public static final String[] JAVA_JDK_VERSION_OPTIONS = {"21", "22", "23"};
+    public static final int JAVA_JDK_VERSION_MIN = 21;
+    public static final int JAVA_JDK_VERSION_MAX = 23;
+    private static final byte JAVA_JDK_VERSION_DEFAULT = JAVA_JDK_VERSION_MAX;
 
     public static final String MAX_DFA_SIZE_NAME = "MaxDFASize";
 
@@ -167,7 +170,7 @@ public final class RegexOptions {
                     (short) TRegexOptions.TRegexMaxDFATransitions,
                     (short) TRegexOptions.TRegexMaxBackTrackerMergeExplodeSize,
                     ECMAScriptFlavor.INSTANCE,
-                    Encodings.UTF_16_RAW, null, null, null);
+                    Encodings.UTF_16_RAW, null, null, JAVA_JDK_VERSION_DEFAULT);
 
     private final int options;
     private final short maxDFASize;
@@ -176,7 +179,7 @@ public final class RegexOptions {
     private final Encodings.Encoding encoding;
     private final PythonMethod pythonMethod;
     private final String pythonLocale;
-    private final String collation;
+    private final byte javaJDKVersion;
 
     private RegexOptions(
                     int options,
@@ -186,7 +189,7 @@ public final class RegexOptions {
                     Encodings.Encoding encoding,
                     PythonMethod pythonMethod,
                     String pythonLocale,
-                    String collation) {
+                    byte javaJDKVersion) {
         this.options = options;
         this.maxDFASize = maxDFASize;
         this.maxBackTrackerCompileSize = maxBackTrackerCompileSize;
@@ -194,7 +197,7 @@ public final class RegexOptions {
         this.encoding = encoding;
         this.pythonMethod = pythonMethod;
         this.pythonLocale = pythonLocale;
-        this.collation = collation;
+        this.javaJDKVersion = javaJDKVersion;
     }
 
     public static Builder builder(Source source, String sourceString) {
@@ -325,20 +328,27 @@ public final class RegexOptions {
         return pythonLocale;
     }
 
+    /**
+     * JDK compatibility version for {@link JavaFlavor}.
+     */
+    public int getJavaJDKVersion() {
+        return javaJDKVersion;
+    }
+
     public RegexOptions withEncoding(Encodings.Encoding newEnc) {
-        return newEnc == encoding ? this : new RegexOptions(options, maxDFASize, maxBackTrackerCompileSize, flavor, newEnc, pythonMethod, pythonLocale, collation);
+        return newEnc == encoding ? this : new RegexOptions(options, maxDFASize, maxBackTrackerCompileSize, flavor, newEnc, pythonMethod, pythonLocale, javaJDKVersion);
     }
 
     public RegexOptions withoutPythonMethod() {
-        return pythonMethod == null ? this : new RegexOptions(options, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, null, pythonLocale, collation);
+        return pythonMethod == null ? this : new RegexOptions(options, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, null, pythonLocale, javaJDKVersion);
     }
 
     public RegexOptions withBooleanMatch() {
-        return new RegexOptions(options | BOOLEAN_MATCH, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, pythonMethod, pythonLocale, collation);
+        return new RegexOptions(options | BOOLEAN_MATCH, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, pythonMethod, pythonLocale, javaJDKVersion);
     }
 
     public RegexOptions withoutBooleanMatch() {
-        return new RegexOptions(options & ~BOOLEAN_MATCH, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, pythonMethod, pythonLocale, collation);
+        return new RegexOptions(options & ~BOOLEAN_MATCH, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, pythonMethod, pythonLocale, javaJDKVersion);
     }
 
     @Override
@@ -351,6 +361,7 @@ public final class RegexOptions {
         hash = prime * hash + encoding.hashCode();
         hash = prime * hash + Objects.hashCode(pythonMethod);
         hash = prime * hash + Objects.hashCode(pythonLocale);
+        hash = prime * hash + Objects.hashCode(javaJDKVersion);
         return hash;
     }
 
@@ -368,7 +379,8 @@ public final class RegexOptions {
                         this.flavor == other.flavor &&
                         this.encoding == other.encoding &&
                         this.pythonMethod == other.pythonMethod &&
-                        this.pythonLocale.equals(other.pythonLocale);
+                        this.pythonLocale.equals(other.pythonLocale) &&
+                        this.javaJDKVersion == other.javaJDKVersion;
     }
 
     @Override
@@ -432,6 +444,9 @@ public final class RegexOptions {
         if (isGenerateInput()) {
             sb.append(GENERATE_INPUT_NAME).append("=true");
         }
+        if (javaJDKVersion != JAVA_JDK_VERSION_DEFAULT) {
+            sb.append(JAVA_JDK_VERSION_NAME).append("=").append(javaJDKVersion);
+        }
         return sb.toString();
     }
 
@@ -447,7 +462,7 @@ public final class RegexOptions {
         private Encodings.Encoding encoding = Encodings.UTF_16_RAW;
         private PythonMethod pythonMethod;
         private String pythonLocale;
-        private String collation = BinaryCollator.NAME;
+        private byte javaJDKVersion = JAVA_JDK_VERSION_DEFAULT;
 
         private Builder(Source source, String sourceString) {
             this.source = source;
@@ -466,9 +481,6 @@ public final class RegexOptions {
                         break;
                     case 'B':
                         parseBooleanOption(BOOLEAN_MATCH_NAME, BOOLEAN_MATCH);
-                        break;
-                    case 'C':
-                        collation = parseStringOption(COLLATION_NAME, "expected a valid collation identifier");
                         break;
                     case 'D':
                         parseBooleanOption(DUMP_AUTOMATA_NAME, DUMP_AUTOMATA);
@@ -493,6 +505,13 @@ public final class RegexOptions {
                         break;
                     case 'I':
                         parseBooleanOption(IGNORE_ATOMIC_GROUPS_NAME, IGNORE_ATOMIC_GROUPS);
+                        break;
+                    case 'J':
+                        short version = parseShortOption(JAVA_JDK_VERSION_NAME);
+                        if (version < JAVA_JDK_VERSION_MIN || version > JAVA_JDK_VERSION_MAX) {
+                            throw optionsSyntaxErrorUnexpectedValue(JAVA_JDK_VERSION_OPTIONS);
+                        }
+                        javaJDKVersion = (byte) version;
                         break;
                     case 'M':
                         switch (lookAheadInKey(3)) {
@@ -818,7 +837,7 @@ public final class RegexOptions {
         }
 
         public RegexOptions build() {
-            return new RegexOptions(options, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, pythonMethod, pythonLocale, collation);
+            return new RegexOptions(options, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, pythonMethod, pythonLocale, javaJDKVersion);
         }
 
         private void updateOption(boolean enabled, int bitMask) {

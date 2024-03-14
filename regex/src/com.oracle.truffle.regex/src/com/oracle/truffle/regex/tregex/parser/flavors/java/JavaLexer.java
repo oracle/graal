@@ -43,9 +43,7 @@ package com.oracle.truffle.regex.tregex.parser.flavors.java;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.Locale;
-import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexSource;
@@ -55,7 +53,6 @@ import com.oracle.truffle.regex.charset.ClassSetContents;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
-import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.JavaErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
@@ -65,16 +62,6 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.TBitSet;
 
 public final class JavaLexer extends RegexLexer {
-
-    // [A-Za-z]
-    public static final CodePointSet ASCII_LETTERS = CodePointSet.createNoDedup(
-                    0x0041, 0x005a,
-                    0x0061, 0x007a);
-    // [A-Za-z0-9]
-    public static final CodePointSet ASCII_LETTERS_AND_DIGITS = CodePointSet.createNoDedup(
-                    0x0030, 0x0039,
-                    0x0041, 0x005a,
-                    0x0061, 0x007a);
 
     // 0x0009, CHARACTER TABULATION, <TAB>
     // 0x0020, SPACE, <SP>
@@ -148,27 +135,8 @@ public final class JavaLexer extends RegexLexer {
 
     private static final TBitSet WHITESPACE = TBitSet.valueOf('\t', '\n', '\f', '\r', ' ');
     private static final TBitSet PREDEFINED_CHAR_CLASSES = TBitSet.valueOf('D', 'H', 'S', 'V', 'W', 'd', 'h', 's', 'v', 'w');
-    public static final Map<Character, CodePointSet> UNICODE_CHAR_CLASS_SETS;
 
-    static {
-        CodePointSet digits = UnicodeProperties.getProperty("General_Category=Decimal_Number");
-        CodePointSet whiteSpace = UnicodeProperties.getProperty("White_Space");
-        CodePointSet alpha = UnicodeProperties.getProperty("Alphabetic");
-        CodePointSet gcMn = UnicodeProperties.getProperty("General_Category=Mn");
-        CodePointSet gcMe = UnicodeProperties.getProperty("General_Category=Me");
-        CodePointSet gcMc = UnicodeProperties.getProperty("General_Category=Mc");
-        CodePointSet gcPc = UnicodeProperties.getProperty("General_Category=Pc");
-        CodePointSet joinControl = UnicodeProperties.getProperty("Join_Control");
-        CodePointSet wordChars = alpha.union(digits).union(gcMn).union(gcMe).union(gcMc).union(gcPc).union(joinControl);
-        UNICODE_CHAR_CLASS_SETS = new HashMap<>();
-        UNICODE_CHAR_CLASS_SETS.put('d', digits);
-        UNICODE_CHAR_CLASS_SETS.put('D', digits.createInverse(Encodings.UTF_16));
-        UNICODE_CHAR_CLASS_SETS.put('s', whiteSpace);
-        UNICODE_CHAR_CLASS_SETS.put('S', whiteSpace.createInverse(Encodings.UTF_16));
-        UNICODE_CHAR_CLASS_SETS.put('w', wordChars);
-        UNICODE_CHAR_CLASS_SETS.put('W', wordChars.createInverse(Encodings.UTF_16));
-    }
-
+    final JavaUnicodeProperties unicode;
     private final Deque<JavaFlags> flagsStack = new ArrayDeque<>();
     private JavaFlags currentFlags;
     private JavaFlags stagedFlags;
@@ -182,6 +150,7 @@ public final class JavaLexer extends RegexLexer {
         if (flags.isLiteral()) {
             throw new UnsupportedRegexException("Literal parsing is not supported");
         }
+        this.unicode = JavaUnicodeProperties.create(source.getOptions());
         this.currentFlags = flags;
         this.stagedFlags = flags;
     }
@@ -328,11 +297,9 @@ public final class JavaLexer extends RegexLexer {
 
     @Override
     protected void caseFoldUnfold(CodePointSetAccumulator charClass) {
-        // TODO: this is just a copy of JS, check the Java casefolding behavior
-        // Have a look at Java's behavior together with Jirka Marsik, we may be able to re-use the
-        // implementation from Python or Ruby
-        CaseFoldData.CaseFoldUnfoldAlgorithm caseFolding = (getLocalFlags().isUnicodeCase() || getLocalFlags().isUnicodeCharacterClass()) ? CaseFoldData.CaseFoldUnfoldAlgorithm.PythonUnicode
-                        : CaseFoldData.CaseFoldUnfoldAlgorithm.PythonAscii;
+        CaseFoldData.CaseFoldUnfoldAlgorithm caseFolding = (getLocalFlags().isUnicodeCase() || getLocalFlags().isUnicodeCharacterClass())
+                        ? CaseFoldData.CaseFoldUnfoldAlgorithm.JavaUnicode
+                        : CaseFoldData.CaseFoldUnfoldAlgorithm.Ascii;
         CaseFoldData.applyCaseFoldUnfold(charClass, compilationBuffer.getCodePointSetAccumulator1(), caseFolding);
     }
 
@@ -356,17 +323,17 @@ public final class JavaLexer extends RegexLexer {
 
     @Override
     protected CodePointSet getDotCodePointSet() {
-        return getLocalFlags().isDotAll() ? Constants.DOT_ALL : getLocalFlags().isUnixLines() ? Constants.JAVA_DOT_UNIX : Constants.JAVA_DOT;
+        return getLocalFlags().isDotAll() ? Constants.DOT_ALL : getLocalFlags().isUnixLines() ? JavaUnicodeProperties.DOT_UNIX : JavaUnicodeProperties.DOT;
     }
 
     @Override
     protected CodePointSet getIdStart() {
-        return ASCII_LETTERS;
+        return JavaASCII.ALPHA;
     }
 
     @Override
     protected CodePointSet getIdContinue() {
-        return ASCII_LETTERS_AND_DIGITS;
+        return JavaASCII.ALNUM;
     }
 
     @Override
@@ -384,13 +351,28 @@ public final class JavaLexer extends RegexLexer {
     protected CodePointSet getPredefinedCharClass(char c) {
         char lowerCaseC = Character.toLowerCase(c);
         if (getLocalFlags().isUnicodeCharacterClass() && lowerCaseC != 'v' && lowerCaseC != 'h') {
-            return UNICODE_CHAR_CLASS_SETS.get(c);
+            switch (c) {
+                case 'd':
+                    return unicode.digit;
+                case 'D':
+                    return unicode.nonDigit;
+                case 's':
+                    return unicode.space;
+                case 'S':
+                    return unicode.nonSpace;
+                case 'w':
+                    return unicode.word;
+                case 'W':
+                    return unicode.nonWord;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
         }
         switch (c) {
             case 's':
-                return Constants.WHITE_SPACE;
+                return JavaASCII.SPACE;
             case 'S':
-                return Constants.NON_WHITE_SPACE;
+                return JavaASCII.NON_SPACE;
             case 'd':
                 return Constants.DIGITS;
             case 'D':
@@ -588,20 +570,15 @@ public final class JavaLexer extends RegexLexer {
             while (!atEnd() && curChar() != '}') {
                 advance();
             }
-
             if (!consumingLookahead("}")) {
                 throw syntaxError(JavaErrorMessages.UNCLOSED_CHAR_FAMILY);
             }
-
             name = pattern.substring(namePos, position - 1);
-
             if (name.isEmpty()) {
                 throw syntaxError(JavaErrorMessages.EMPTY_CHAR_FAMILY);
             }
         }
-
         CodePointSet p = null;
-
         int i = name.indexOf('=');
         if (i != -1) {
             // property construct \p{name=value}
@@ -611,17 +588,17 @@ public final class JavaLexer extends RegexLexer {
                 case "sc":
                 case "script":
                     // p = CharPredicates.forUnicodeScript(value);
-                    p = UnicodeProperties.getScriptJava(value);
+                    p = unicode.getScript(value);
                     break;
                 case "blk":
                 case "block":
                     // p = CharPredicates.forUnicodeBlock(value);
-                    p = UnicodeProperties.getBlockJava(value);
+                    p = unicode.getBlock(value);
                     break;
                 case "gc":
                 case "general_category":
                     // p = CharPredicates.forProperty(value, has(CASE_INSENSITIVE));
-                    p = UnicodeProperties.getPropertyJava(value, getLocalFlags().isCaseInsensitive());
+                    p = unicode.getProperty(value, getLocalFlags().isCaseInsensitive());
                     break;
                 default:
                     break;
@@ -629,41 +606,38 @@ public final class JavaLexer extends RegexLexer {
             if (p == null) {
                 throw syntaxError(JavaErrorMessages.unknownUnicodeProperty(name, value));
             }
-
         } else {
             if (name.startsWith("In")) {
                 // \p{InBlockName}
-                p = UnicodeProperties.getBlockJava(name.substring(2));
+                p = unicode.getBlock(name.substring(2));
             } else if (name.startsWith("Is")) {
                 // TODO handling the case sensitivity in UnicodeProperties might be redundant
                 // \p{IsGeneralCategory} and \p{IsScriptName}
                 String shortName = name.substring(2);
-                p = UnicodeProperties.forUnicodePropertyJava(shortName, getLocalFlags().isCaseInsensitive());
+                p = unicode.forUnicodeProperty(shortName, getLocalFlags().isCaseInsensitive());
                 if (p == null) {
-                    p = UnicodeProperties.getPropertyJava(shortName, getLocalFlags().isCaseInsensitive());
+                    p = unicode.getProperty(shortName, getLocalFlags().isCaseInsensitive());
                 }
                 if (p == null) {
-                    p = UnicodeProperties.getScriptJava(shortName);
+                    p = unicode.getScript(shortName);
                 }
             } else {
                 if (getLocalFlags().isUnicodeCharacterClass()) {
-                    p = UnicodeProperties.forPOSIXNameJava(name, getLocalFlags().isCaseInsensitive());
+                    p = unicode.forPOSIXName(name, getLocalFlags().isCaseInsensitive());
                 }
                 if (p == null) {
-                    p = UnicodeProperties.getPropertyJava(name, getLocalFlags().isCaseInsensitive());
+                    p = unicode.getProperty(name, getLocalFlags().isCaseInsensitive());
                 }
             }
             if (p == null) {
                 throw syntaxError(JavaErrorMessages.unknownUnicodeCharacterProperty(name));
             }
         }
-
         if (invert) {
             // TODO reference implementation has something with hasSupplementary, do we care about
             // this?;
             p = p.createInverse(Encodings.UTF_16);
         }
-
         return ClassSetContents.createCharacterClass(p);
     }
 

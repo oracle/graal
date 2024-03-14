@@ -40,25 +40,35 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
-import com.oracle.truffle.regex.tregex.parser.flavors.java.JavaFlags;
-import com.oracle.truffle.regex.tregex.string.Encodings;
-import com.oracle.truffle.regex.util.EmptyArrays;
-import org.graalvm.polyglot.PolyglotException;
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
-
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Stream;
 
+import org.graalvm.collections.Pair;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Value;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
+
+import com.oracle.truffle.regex.charset.Range;
+import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
+import com.oracle.truffle.regex.tregex.parser.flavors.java.JavaFlags;
+import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.util.EmptyArrays;
+
 public class JavaUtilPatternTests extends RegexTestBase {
+
+    public static final String ENGINE_OPTIONS = "Flavor=JavaUtilPattern,PythonMethod=search,JavaJDKVersion=" + Runtime.version().feature();
 
     @Override
     String getEngineOptions() {
-        return "Flavor=JavaUtilPattern,PythonMethod=search";
+        return ENGINE_OPTIONS;
     }
 
     @Test
@@ -1083,6 +1093,12 @@ public class JavaUtilPatternTests extends RegexTestBase {
                         "Space",
                         "Upper",
                         "XDigit",
+                        "EBase",
+                        "EComp",
+                        "EMod",
+                        "EPres",
+                        "Emoji",
+                        "ExtPict",
                         "javaLowerCase",
                         "javaUpperCase",
                         "javaAlphabetic",
@@ -1102,14 +1118,53 @@ public class JavaUtilPatternTests extends RegexTestBase {
                         "javaISOControl",
                         "javaMirrored"
         };
+        testUnicodeProperties(properties);
+    }
 
-        for (String prop : properties) {
+    @SuppressWarnings("unchecked")
+    private void testUnicodeProperty(String prop) {
+        System.out.println("unicodeProperty: " + prop);
+        testAllCharacters(new Pair[]{
+                        Pair.create(String.format("\\p{Is%s}", prop), 0),
+                        Pair.create(String.format("\\p{Is%s}", prop), Pattern.CASE_INSENSITIVE),
+                        Pair.create(String.format("\\P{Is%s}", prop), 0),
+                        Pair.create(String.format("\\P{Is%s}", prop), Pattern.CASE_INSENSITIVE)});
+    }
+
+    private void testAllCharacters(Pair<String, Integer>[] regexes) {
+        try (Context ctx = createContext()) {
+            ctx.enter();
+            Value[] compiledTRegex = new Value[regexes.length];
+            Pattern[] compiledJava = new Pattern[regexes.length];
+            int nErrors = 0;
+            for (int i = 0; i < regexes.length; i++) {
+                String flags = new JavaFlags(regexes[i].getRight()).toString();
+                try {
+                    compiledJava[i] = Pattern.compile(regexes[i].getLeft(), regexes[i].getRight().intValue());
+                    compiledTRegex[i] = compileRegex(ctx, regexes[i].getLeft(), flags, "", getTRegexEncoding());
+                } catch (PatternSyntaxException e) {
+                    nErrors++;
+                    expectSyntaxError(regexes[i].getLeft(), flags, e);
+                }
+            }
+            if (nErrors == regexes.length) {
+                return;
+            }
             for (int j = 0; j <= 0x10FFFF; j++) {
-                String s = new String(new int[]{j}, 0, 1);
-                test(String.format("\\p{%s}", prop), 0, s);
-                test(String.format("\\p{Is%s}", prop), Pattern.CASE_INSENSITIVE, s);
-                test(String.format("\\P{%s}", prop), 0, s);
-                test(String.format("\\P{Is%s}", prop), Pattern.CASE_INSENSITIVE, s);
+                String s = Character.toString(j);
+                for (int i = 0; i < regexes.length; i++) {
+                    if (compiledJava[i] != null) {
+                        test(compiledTRegex[i], compiledJava[i], regexes[i].getLeft(), regexes[i].getRight(), s, 0);
+                    }
+                }
+            }
+        }
+    }
+
+    private void testUnicodeProperties(String[] props) {
+        try (ExecutorService pool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors())) {
+            for (String prop : props) {
+                pool.execute(() -> testUnicodeProperty(prop));
             }
         }
     }
@@ -1118,29 +1173,20 @@ public class JavaUtilPatternTests extends RegexTestBase {
     @Ignore
     public void unicodePOSIX() {
         String[] properties = new String[]{
-                        "ALPHA",
-                        "LOWER",
-                        "UPPER",
-                        "SPACE",
-                        "PUNCT",
-                        "XDIGIT",
-                        "ALNUM",
-                        "CNTRL",
-                        "DIGIT",
-                        "BLANK",
-                        "GRAPH",
-                        "PRINT"
+                        "Alnum",
+                        "Alpha",
+                        "Blank",
+                        "Cntrl",
+                        "Digit",
+                        "Graph",
+                        "Lower",
+                        "Punct",
+                        "Print",
+                        "Space",
+                        "Upper",
+                        "XDigit",
         };
-
-        for (String prop : properties) {
-            for (int j = 0; j <= 0x10FFFF; j++) {
-                String s = new String(new int[]{j}, 0, 1);
-                test(String.format("\\p{Is%s}", prop), 0, s);
-                test(String.format("\\p{Is%s}", prop), Pattern.CASE_INSENSITIVE, s);
-                test(String.format("\\P{%s}", prop), 0, s);
-                test(String.format("\\P{Is%s}", prop), Pattern.CASE_INSENSITIVE, s);
-            }
-        }
+        testUnicodeProperties(properties);
     }
 
     @Test
@@ -1172,14 +1218,23 @@ public class JavaUtilPatternTests extends RegexTestBase {
                         "WHITE_SPACE",
                         "WORD"
         };
+        testUnicodeProperties(properties);
+    }
 
-        for (String prop : properties) {
-            for (int j = 0; j <= 0x10FFFF; j++) {
-                String s = new String(new int[]{j}, 0, 1);
-                test(String.format("\\p{Is%s}", prop), 0, s);
-                test(String.format("\\p{Is%s}", prop), Pattern.CASE_INSENSITIVE, s);
-                test(String.format("\\P{%s}", prop), 0, s);
-                test(String.format("\\P{Is%s}", prop), Pattern.CASE_INSENSITIVE, s);
+    @Test
+    @Ignore
+    @SuppressWarnings("unchecked")
+    public void predefinedCharClasses() {
+        char[] classes = {'D', 'H', 'S', 'V', 'W', 'd', 'h', 's', 'v', 'w'};
+        try (ExecutorService pool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors())) {
+            for (char c : classes) {
+                System.out.println("predefined char class: " + c);
+                pool.execute(() -> testAllCharacters(new Pair[]{
+                                Pair.create("\\" + c, 0),
+                                Pair.create("\\" + c, Pattern.CASE_INSENSITIVE),
+                                Pair.create("\\" + c, Pattern.UNICODE_CHARACTER_CLASS),
+                                Pair.create("\\" + c, Pattern.UNICODE_CHARACTER_CLASS | Pattern.CASE_INSENSITIVE)
+                }));
             }
         }
     }
@@ -1199,14 +1254,29 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("[\\u0100a&&]", 0, "");
     }
 
+    @Test
+    public void caseFolding() {
+        CaseFoldData.getTable(CaseFoldData.CaseFoldAlgorithm.Ruby).caseFold(new Range(0, 0x10ffff), (codepoint, folded) -> {
+            String codepointStr = Character.toString(codepoint);
+            String foldedStr = new String(folded, 0, folded.length);
+            test(codepointStr, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE, foldedStr);
+            test(foldedStr, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE, codepointStr);
+        });
+    }
+
     void test(String pattern, int flags, String input) {
         test(pattern, flags, input, 0);
     }
 
     void test(String pattern, int javaFlags, String input, int fromIndex) {
+        test(null, null, pattern, javaFlags, input, fromIndex);
+    }
+
+    void test(Value compiledRegex, Pattern compiledJavaRegex, String pattern, int javaFlags, String input, int fromIndex) {
         String flags = new JavaFlags(javaFlags).toString();
         try {
-            Matcher m = Pattern.compile(pattern, javaFlags).matcher(input);
+            Pattern javaPattern = compiledJavaRegex == null ? Pattern.compile(pattern, javaFlags) : compiledJavaRegex;
+            Matcher m = javaPattern.matcher(input);
             boolean isMatch = m.find(fromIndex);
             final int[] groupBoundaries;
             if (isMatch) {
@@ -1218,16 +1288,24 @@ public class JavaUtilPatternTests extends RegexTestBase {
             } else {
                 groupBoundaries = EmptyArrays.INT;
             }
-            test(pattern, flags, input, fromIndex, isMatch, groupBoundaries);
-        } catch (PatternSyntaxException javaPatternException) {
-            try {
-                compileRegex(pattern, flags, "", getTRegexEncoding());
-            } catch (PolyglotException tRegexException) { // TODO why do we need PolyglotException
-                // instead of RegexSyntaxException?
-                Assert.assertTrue(tRegexException.getMessage().contains(javaPatternException.getDescription()));
-                return;
+            if (compiledRegex == null) {
+                test(pattern, flags, input, fromIndex, isMatch, groupBoundaries);
+            } else {
+                test(compiledRegex, pattern, flags, "", getTRegexEncoding(), input, fromIndex, isMatch, groupBoundaries);
             }
-            Assert.fail("expected syntax exception: " + javaPatternException.getDescription());
+        } catch (PatternSyntaxException javaPatternException) {
+            expectSyntaxError(pattern, flags, javaPatternException);
         }
+    }
+
+    private void expectSyntaxError(String pattern, String flags, PatternSyntaxException javaPatternException) {
+        try {
+            compileRegex(pattern, flags, "", getTRegexEncoding());
+        } catch (PolyglotException tRegexException) { // TODO why do we need PolyglotException
+            // instead of RegexSyntaxException?
+            Assert.assertTrue(tRegexException.getMessage().contains(javaPatternException.getDescription()));
+            return;
+        }
+        Assert.fail("expected syntax exception: " + javaPatternException.getDescription());
     }
 }

@@ -77,9 +77,9 @@ public final class JavaFlavor extends RegexFlavor {
 
     public static CaseFoldData.CaseFoldUnfoldAlgorithm getCaseFoldingAlgorithm(boolean isUnicodeCase) {
         if (isUnicodeCase) {
-            return CaseFoldData.CaseFoldUnfoldAlgorithm.PythonUnicode;
+            return CaseFoldData.CaseFoldUnfoldAlgorithm.JavaUnicode;
         } else {
-            return CaseFoldData.CaseFoldUnfoldAlgorithm.PythonAscii;
+            return CaseFoldData.CaseFoldUnfoldAlgorithm.Ascii;
         }
     }
 }

@@ -94,7 +94,6 @@ public class JavaRegexValidator implements RegexValidator {
     public void validate() throws RegexSyntaxException {
         List<RegexStackElem> syntaxStack = new ArrayList<>();
         CurTermState curTermState = CurTermState.Null;
-
         Token token = null;
         Token last;
         while (lexer.hasNext()) {
@@ -120,15 +119,12 @@ public class JavaRegexValidator implements RegexValidator {
                     if (last instanceof Token.Quantifier && quantifier.isSingleChar()) {
                         throw syntaxErrorHere(JavaErrorMessages.danglingMetaCharacter(quantifier));
                     }
-
                     if (curTermState == CurTermState.Null && quantifier.isSingleChar()) {
                         throw syntaxErrorHere(JavaErrorMessages.danglingMetaCharacter(quantifier));
                     }
-
                     if (quantifier.isPossessive()) {
                         throw new UnsupportedRegexException("possessive quantifiers are not supported");
                     }
-
                     break;
                 case alternation:
                 case inlineFlags:
@@ -176,5 +172,4 @@ public class JavaRegexValidator implements RegexValidator {
     private RegexSyntaxException syntaxErrorHere(String message) {
         return RegexSyntaxException.createPattern(source, message, lexer.getLastTokenPosition());
     }
-
 }

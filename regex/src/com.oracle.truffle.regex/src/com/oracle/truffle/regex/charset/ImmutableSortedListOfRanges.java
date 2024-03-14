@@ -144,13 +144,27 @@ public interface ImmutableSortedListOfRanges extends SortedListOfRanges, Iterabl
 
     <T extends ImmutableSortedListOfRanges> T createIntersectionSingleRange(T o);
 
+    @SuppressWarnings("unchecked")
+    default <T extends SortedListOfRanges> T subtract(T o) {
+        if (o.isEmpty()) {
+            return (T) this;
+        }
+        return subtract(o, createTempBuffer());
+    }
+
+    default <T extends SortedListOfRanges> T subtract(T o, CompilationBuffer compilationBuffer) {
+        return subtract(o, getBuffer1(compilationBuffer));
+    }
+
     /**
      * Returns the result of the subtraction of {@code o} from this list. Uses
      * {@link #getBuffer1(CompilationBuffer)}.
      */
     @SuppressWarnings("unchecked")
-    default <T extends SortedListOfRanges> T subtract(T o, CompilationBuffer compilationBuffer) {
-        RangesBuffer subtractionRanges = getBuffer1(compilationBuffer);
+    default <T extends SortedListOfRanges> T subtract(T o, RangesBuffer subtractionRanges) {
+        if (o.isEmpty()) {
+            return (T) this;
+        }
         int tmpLo;
         int tmpHi;
         boolean unchanged = true;
@@ -369,7 +383,11 @@ public interface ImmutableSortedListOfRanges extends SortedListOfRanges, Iterabl
     /**
      * Returns the union of this list and {@code o}. Creates a temporary buffer.
      */
+    @SuppressWarnings("unchecked")
     default <T extends ImmutableSortedListOfRanges> T union(T o) {
+        if (o.isEmpty()) {
+            return (T) this;
+        }
         return union(o, createTempBuffer());
     }
 

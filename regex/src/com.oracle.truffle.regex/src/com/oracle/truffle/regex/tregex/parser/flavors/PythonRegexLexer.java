@@ -57,7 +57,6 @@ import com.oracle.truffle.regex.chardata.UnicodeCharacterAliases;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
-import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.PyErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.charset.ClassSetContents;
@@ -65,6 +64,8 @@ import com.oracle.truffle.regex.tregex.parser.RegexLexer;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.TBitSet;
+
+import static com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor.UNICODE;
 
 public final class PythonRegexLexer extends RegexLexer {
 
@@ -75,11 +76,11 @@ public final class PythonRegexLexer extends RegexLexer {
      * The (slightly modified) version of the XID_Start Unicode property used to check names of
      * capture groups.
      */
-    private static final CodePointSet XID_START = UnicodeProperties.getProperty("XID_Start").union(CodePointSet.create('_'));
+    private static final CodePointSet XID_START = UNICODE.getProperty("XID_Start").union(CodePointSet.create('_'));
     /**
      * The XID_Continue Unicode character property.
      */
-    private static final CodePointSet XID_CONTINUE = UnicodeProperties.getProperty("XID_Continue");
+    private static final CodePointSet XID_CONTINUE = UNICODE.getProperty("XID_Continue");
 
     /**
      * Maps Python's predefined Unicode character classes to sets containing the characters to be
@@ -96,9 +97,9 @@ public final class PythonRegexLexer extends RegexLexer {
         // Python accepts characters with the Numeric_Type=Decimal property.
         // As of Unicode 11.0.0, these happen to be exactly the characters
         // in the Decimal_Number General Category.
-        UNICODE_CHAR_CLASS_SETS.put('d', UnicodeProperties.getProperty("General_Category=Decimal_Number"));
+        UNICODE_CHAR_CLASS_SETS.put('d', UNICODE.getProperty("General_Category=Decimal_Number"));
         // Non-digits: \D
-        UNICODE_CHAR_CLASS_SETS.put('D', UnicodeProperties.getProperty("General_Category=Decimal_Number").createInverse(Encodings.UTF_32));
+        UNICODE_CHAR_CLASS_SETS.put('D', UNICODE.getProperty("General_Category=Decimal_Number").createInverse(Encodings.UTF_32));
 
         // Spaces: \s
         // Python accepts characters with either the Space_Separator General Category
@@ -112,7 +113,7 @@ public final class PythonRegexLexer extends RegexLexer {
         // which is not possible in ECMAScript regular expressions. Therefore, we have to expand
         // the definition of the White_Space property, do the set subtraction and then list the
         // contents of the resulting set.
-        CodePointSet unicodeSpaces = UnicodeProperties.getProperty("White_Space");
+        CodePointSet unicodeSpaces = UNICODE.getProperty("White_Space");
         CodePointSet spaces = unicodeSpaces.union(CodePointSet.createNoDedup('\u001c', '\u001f'));
         CodePointSet nonSpaces = spaces.createInverse(Encodings.UTF_32);
         UNICODE_CHAR_CLASS_SETS.put('s', spaces);
@@ -135,9 +136,9 @@ public final class PythonRegexLexer extends RegexLexer {
         // Non-word characters: \W
         // Similarly as for \S, we will not be able to produce a replacement string for \W.
         // We will need to construct the set ourselves.
-        CodePointSet alpha = UnicodeProperties.getProperty("General_Category=Letter");
+        CodePointSet alpha = UNICODE.getProperty("General_Category=Letter");
         CodePointSet numericExtras = CodePointSet.createNoDedup(0xf96b, 0xf973, 0xf978, 0xf9b2, 0xf9d1, 0xf9d3, 0xf9fd, 0x2f890);
-        CodePointSet numeric = UnicodeProperties.getProperty("General_Category=Number").union(numericExtras);
+        CodePointSet numeric = UNICODE.getProperty("General_Category=Number").union(numericExtras);
         CodePointSet wordChars = alpha.union(numeric).union(CodePointSet.create('_'));
         CodePointSet nonWordChars = wordChars.createInverse(Encodings.UTF_32);
         UNICODE_CHAR_CLASS_SETS.put('w', wordChars);
@@ -342,7 +343,7 @@ public final class PythonRegexLexer extends RegexLexer {
         if (getLocalFlags().isLocale()) {
             getLocaleData().caseFoldUnfold(charClass, caseFoldTmp);
         } else {
-            CaseFoldData.CaseFoldUnfoldAlgorithm caseFolding = getLocalFlags().isUnicode(mode) ? CaseFoldData.CaseFoldUnfoldAlgorithm.PythonUnicode : CaseFoldData.CaseFoldUnfoldAlgorithm.PythonAscii;
+            CaseFoldData.CaseFoldUnfoldAlgorithm caseFolding = getLocalFlags().isUnicode(mode) ? CaseFoldData.CaseFoldUnfoldAlgorithm.PythonUnicode : CaseFoldData.CaseFoldUnfoldAlgorithm.Ascii;
             CaseFoldData.applyCaseFoldUnfold(charClass, caseFoldTmp, caseFolding);
         }
     }

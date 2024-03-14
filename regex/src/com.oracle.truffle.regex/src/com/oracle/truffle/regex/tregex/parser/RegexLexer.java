@@ -56,9 +56,9 @@ import com.oracle.truffle.regex.charset.ClassSetContents;
 import com.oracle.truffle.regex.charset.ClassSetContentsAccumulator;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
-import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.JsErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.util.JavaStringUtil;
@@ -913,12 +913,6 @@ public abstract class RegexLexer {
         return Token.createWordBoundary();
     }
 
-    protected Token parseUnicodePropertyEscape(char c) {
-        ClassSetContents unicodePropertyContents = parseUnicodeCharacterProperty(c == 'P');
-        assert unicodePropertyContents.isCodePointSetOnly();
-        return charClass(unicodePropertyContents.getCodePointSet());
-    }
-
     private Token parseGroupBegin() throws RegexSyntaxException {
         if (featureEnabledSpecialGroups() && consumingLookahead("?")) {
             if (atEnd()) {
@@ -1443,7 +1437,7 @@ public abstract class RegexLexer {
         try {
             String propertyName = pattern.substring(namePos, position - 1);
             if (featureEnabledClassSetExpressions()) {
-                ClassSetContents property = UnicodeProperties.getPropertyOfStrings(propertyName);
+                ClassSetContents property = ECMAScriptFlavor.UNICODE.getPropertyOfStrings(propertyName);
                 if (invert) {
                     if (property.mayContainStrings()) {
                         throw handleComplementOfStringSet();
@@ -1455,7 +1449,7 @@ public abstract class RegexLexer {
                     return caseFoldClassSetAtom(property);
                 }
             } else {
-                CodePointSet propertySet = UnicodeProperties.getProperty(propertyName);
+                CodePointSet propertySet = ECMAScriptFlavor.UNICODE.getProperty(propertyName);
                 return ClassSetContents.createCharacterClass(invert ? propertySet.createInverse(encoding) : propertySet);
             }
         } catch (IllegalArgumentException e) {
