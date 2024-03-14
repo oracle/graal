@@ -183,6 +183,11 @@ public class BytecodeLocationTest extends AbstractBasicInterpreterTest {
         BasicInterpreter baz = nodeList.get(1);
         assert baz.getName().equals("baz");
 
+        // Check that the start locations map to the first instruction.
+        assertEquals(0, foo.getStartLocation().findInstructionIndex());
+        assertEquals(0, bar.getStartLocation().findInstructionIndex());
+        assertEquals(0, baz.getStartLocation().findInstructionIndex());
+
         for (boolean fooArgument : List.of(true, false)) {
             Object result = foo.getCallTarget().call(fooArgument);
             assertTrue(result instanceof List<?>);
