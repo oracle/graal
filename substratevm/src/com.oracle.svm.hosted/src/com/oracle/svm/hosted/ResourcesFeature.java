@@ -63,7 +63,10 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
@@ -166,7 +169,20 @@ public final class ResourcesFeature implements InternalFeature {
 
     private Set<ConditionalPattern> resourcePatternWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<String> excludedResourcePatterns = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private final ConcurrentHashMap<Resources.ModuleResourceRecord, List<String>> registeredResources = new ConcurrentHashMap<>();
+
+    @Platforms(Platform.HOSTED_ONLY.class) private static final ConcurrentHashMap<Resources.ModuleResourceRecord, List<String>> registeredResources = new ConcurrentHashMap<>();
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void declareResourceAsRegistered(Module module, String resource, String source) {
+        Resources.ModuleResourceRecord key = createStorageKey(module, resource);
+        synchronized (registeredResources) {
+            registeredResources.computeIfAbsent(key, k -> new ArrayList<>());
+            if (!registeredResources.get(key).contains(source)) {
+                registeredResources.get(key).add(source);
+            }
+        }
+    }
+
     private int loadedConfigurations;
     private ImageClassLoader imageClassLoader;
 
@@ -202,7 +218,7 @@ public final class ResourcesFeature implements InternalFeature {
         @Override
         public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
             // we don't have source (only module and resourcePath)
-            declareResourceAsRegistered(module, resourcePath, "Injected resource");
+            declareResourceAsRegistered(module, resourcePath, "INJECTED RESOURCE");
             Resources.singleton().registerResource(module, resourcePath, resourceContent);
         }
 
@@ -228,16 +244,6 @@ public final class ResourcesFeature implements InternalFeature {
         @Override
         public void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales) {
             registerConditionalConfiguration(condition, (cnd) -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(basename, locales));
-        }
-
-        private void declareResourceAsRegistered(Module module, String resource, String source) {
-            Resources.ModuleResourceRecord key = createStorageKey(module, resource);
-            synchronized (registeredResources) {
-                registeredResources.computeIfAbsent(key, k -> new ArrayList<>());
-                if (!registeredResources.get(key).contains(source)) {
-                    registeredResources.get(key).add(source);
-                }
-            }
         }
 
         /*
@@ -294,6 +300,7 @@ public final class ResourcesFeature implements InternalFeature {
                     InputStream is = module.getResourceAsStream(resourcePath);
                     registerResource(module, resourcePath, false, is);
                 }
+                // TODO maybe under if as well?
                 declareResourceAsRegistered(module, resourcePath, resourcePath);
             } catch (IOException e) {
                 Resources.singleton().registerIOException(module, resourcePath, e, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(resourcePath));
@@ -332,7 +339,9 @@ public final class ResourcesFeature implements InternalFeature {
                         InputStream is = url.openStream();
                         registerResource(null, resourcePath, fromJar, is);
                     }
-                    declareResourceAsRegistered(null, resourcePath, url.toString());
+                    // TODO maybe under if as well?
+                    String source = fromJar ? url.toString().split("!")[0] : Paths.get(url.toURI()).toString();
+                    declareResourceAsRegistered(null, resourcePath, source);
                 } catch (IOException e) {
                     Resources.singleton().registerIOException(null, resourcePath, e, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(resourcePath));
                     return;
@@ -579,6 +588,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void registerNegativeQuery(Module module, String resourceName) {
+            declareResourceAsRegistered(module, resourceName, resourceName);
             Resources.singleton().registerNegativeQuery(module, resourceName);
         }
     }
@@ -621,15 +631,29 @@ public final class ResourcesFeature implements InternalFeature {
         sealed = true;
         if (Options.DumpRegisteredResources.getValue()) {
             List<ResourceReporter.ResourceReportEntry> resourceInfoList = new ArrayList<>();
-            registeredResources.forEach((key, value) -> {
+            EconomicMap<Resources.ModuleResourceRecord, ResourceStorageEntryBase> resourceStorage = Resources.singleton().getResourceStorage();
+            resourceStorage.getKeys().forEach(key -> {
                 Module module = key.module();
                 String resourceName = key.resource();
-                ResourceStorageEntryBase storageEntry = Resources.singleton().getResourceStorage().get(key);
+
+                ResourceStorageEntryBase storageEntry = resourceStorage.get(key);
+                List<String> registeredEntrySources = registeredResources.get(key);
                 List<ResourceReporter.SourceSizePair> sources = new ArrayList<>();
-                for (int i = 0; i < value.size(); i++) {
-                    String source = value.get(i);
-                    String size = storageEntry == NEGATIVE_QUERY_MARKER ? "NEGATIVE QUERY" : String.valueOf(storageEntry.getData().get(i).length);
-                    sources.add(new ResourceReporter.SourceSizePair(source, size));
+
+                // if registeredEntrySource is null we are processing
+                if (registeredEntrySources == null) {
+                    if (storageEntry != NEGATIVE_QUERY_MARKER) {
+                        VMError.shouldNotReachHere("Resource: " + resourceName +
+                                        " from module: " + module +
+                                        " wasn't register from ResourcesFeature. It should never happen except for NEGATIVE_QUERIES in some cases");
+                    }
+                    sources.add(new ResourceReporter.SourceSizePair("NO SOURCE", "NEGATIVE QUERY"));
+                } else {
+                    for (int i = 0; i < registeredEntrySources.size(); i++) {
+                        String source = registeredEntrySources.get(i);
+                        String size = storageEntry == NEGATIVE_QUERY_MARKER ? "NEGATIVE QUERY" : String.valueOf(storageEntry.getData().get(i).length);
+                        sources.add(new ResourceReporter.SourceSizePair(source, size));
+                    }
                 }
 
                 resourceInfoList.add(new ResourceReporter.ResourceReportEntry(module, resourceName, sources));
