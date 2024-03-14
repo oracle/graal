@@ -105,6 +105,7 @@ import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntrySupport;
@@ -570,6 +571,17 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
          * the hosted universe.
          */
         aMethod.setAnalyzedGraph(null);
+
+        /*
+         * The availability of NodeSourcePosition for JIT compilation is controlled by a separate
+         * option and not TrackNodeSourcePosition to decouple AOT and JIT compilation.
+         */
+        boolean trackNodeSourcePosition = SubstrateOptions.IncludeNodeSourcePositions.getValue();
+        if (!trackNodeSourcePosition) {
+            for (Node node : graph.getNodes()) {
+                node.clearNodeSourcePosition();
+            }
+        }
 
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         IterativeConditionalEliminationPhase conditionalElimination = new IterativeConditionalEliminationPhase(canonicalizer, true);
