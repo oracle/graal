@@ -208,7 +208,7 @@ final class DeoptimizationTargetBciBlockMapping extends BciBlockMapping {
         }
 
         DeoptExceptionDispatchBlock(ExceptionDispatchBlock dispatch, int bci, boolean isDeoptEntry, boolean isInvokeProxy) {
-            super(dispatch.handler, handlerID, bci);
+            super(dispatch.handler, dispatch.handlerID, bci);
             this.isDeoptEntry = isDeoptEntry;
             this.isInvokeProxy = isInvokeProxy;
         }
