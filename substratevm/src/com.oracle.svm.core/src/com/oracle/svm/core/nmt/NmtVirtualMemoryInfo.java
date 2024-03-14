@@ -26,15 +26,24 @@
 
 package com.oracle.svm.core.nmt;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicLong;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
+import jdk.internal.misc.Unsafe;
 
 class NmtVirtualMemoryInfo {
+
+    private static final Unsafe U = Unsafe.getUnsafe();
+    protected static final long PEAK_RESERVED_OFFSET = U.objectFieldOffset(NmtVirtualMemoryInfo.class, "peakReservedSize");
+    protected static final long PEAK_COMMITTED_OFFSET = U.objectFieldOffset(NmtVirtualMemoryInfo.class, "peakCommittedSize");
     private AtomicLong reservedSize;
     private AtomicLong committedSize;
+    private volatile long peakReservedSize;
+    private volatile long peakCommittedSize;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     NmtVirtualMemoryInfo() {
@@ -44,24 +53,55 @@ class NmtVirtualMemoryInfo {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void trackReserved(UnsignedWord size) {
-        reservedSize.addAndGet(size.rawValue());
+        updatePeakReserved(reservedSize.addAndGet(size.rawValue()));
+
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void trackCommitted(UnsignedWord size) {
-        long lastCommitted = committedSize.addAndGet(size.rawValue());
+        updatePeakCommitted(committedSize.addAndGet(size.rawValue()));
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void trackUncommit(long size) {
         long lastSize = committedSize.addAndGet(-size);
         assert lastSize >= 0;
+
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void trackFree(long size) {
         long lastSize = reservedSize.addAndGet(-size);
         assert lastSize >= 0;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private void updatePeakReserved(long newValue) {
+        long expectedPeak = peakReservedSize;
+        while (expectedPeak < newValue) {
+            if (U.compareAndSetLong(this, PEAK_RESERVED_OFFSET, expectedPeak, newValue)) { // TODO
+                                                                                           // use
+                                                                                           // compare
+                                                                                           // and
+                                                                                           // set in
+                                                                                           // other
+                                                                                           // PR
+                                                                                           // too!
+                return;
+            }
+            expectedPeak = peakReservedSize;
+        }
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private void updatePeakCommitted(long newValue) {
+        long expectedPeak = peakCommittedSize;
+        while (expectedPeak < newValue) {
+            if (U.compareAndSetLong(this, PEAK_COMMITTED_OFFSET, expectedPeak, newValue)) {
+                return;
+            }
+            expectedPeak = peakCommittedSize;
+        }
     }
 
     long getReservedSize() {
@@ -70,5 +110,13 @@ class NmtVirtualMemoryInfo {
 
     long getCommittedSize() {
         return committedSize.get();
+    }
+
+    long getPeakReservedSize() {
+        return peakReservedSize;
+    }
+
+    long getPeakCommittedSize() {
+        return peakCommittedSize;
     }
 }

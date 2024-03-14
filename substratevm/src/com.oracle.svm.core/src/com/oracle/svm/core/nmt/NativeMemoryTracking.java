@@ -169,6 +169,20 @@ public class NativeMemoryTracking {
         return -1;
     }
 
+    public static long getPeakCommittedByCategory(NmtCategory category) {
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            return NativeMemoryTracking.singleton().virtualMemorySnapshot.getInfoByCategory(category).getPeakCommittedSize();
+        }
+        return -1;
+    }
+
+    public static long getPeakReservedByCategory(NmtCategory category) {
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            return NativeMemoryTracking.singleton().virtualMemorySnapshot.getInfoByCategory(category).getPeakReservedSize();
+        }
+        return -1;
+    }
+
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void untrack(UnsignedWord size, int category) {
         mallocMemorySnapshot.getInfoByCategory(category).untrack(size);
@@ -207,6 +221,8 @@ public class NativeMemoryTracking {
             System.out.println("  Total alive malloc allocations: " + mallocMemorySnapshot.getTotalInfo().getCount());
             System.out.println("  Total committed memory: " + virtualMemorySnapshot.getTotalInfo().getCommittedSize() + " bytes");
             System.out.println("  Total reserved memory: " + virtualMemorySnapshot.getTotalInfo().getReservedSize() + " bytes");
+            System.out.println("  Peak Total committed memory: " + virtualMemorySnapshot.getTotalInfo().getPeakCommittedSize() + " bytes");
+            System.out.println("  Peak Total reserved memory: " + virtualMemorySnapshot.getTotalInfo().getPeakReservedSize() + " bytes");
 
             for (int i = 0; i < NmtCategory.values().length; i++) {
                 String name = NmtCategory.values()[i].getName();
@@ -217,6 +233,8 @@ public class NativeMemoryTracking {
                 System.out.println("  " + name + " alive allocations: " + mallocInfo.getCount());
                 System.out.println("  " + name + " committed memory: " + vMemInfo.getCommittedSize());
                 System.out.println("  " + name + " reserved memory: " + vMemInfo.getReservedSize());
+                System.out.println("  " + name + " peak committed memory: " + vMemInfo.getPeakCommittedSize());
+                System.out.println("  " + name + " peak reserved memory: " + vMemInfo.getPeakReservedSize());
             }
         }
     }

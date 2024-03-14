@@ -110,13 +110,13 @@ public class NativeMemoryTrackingTests {
         assertTrue(NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) == 0);
 
         assertTrue("free op failed", 0 == VirtualMemoryProvider.get().free(reservePtr, WordFactory.unsigned(reserveSize)));
-        assertTrue("After freeing memory for test, mtTest category should have size 0. Actual:" + NativeMemoryTracking.getReservedByCategory(NmtCategory.Code),
+        assertTrue("After freeing memory for test, test category should have size 0. Actual:" + NativeMemoryTracking.getReservedByCategory(NmtCategory.Code),
                         NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) == 0);
     }
 
     @Test
     public void testSmallAlignmentReserveAndCommit() {
-        assertTrue("Test should start with no memory already allocated in the mtTest category.", NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) == 0);
+        assertTrue("Test should start with no memory already allocated in the test category.", NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) == 0);
 
         Pointer reservePtr = VirtualMemoryProvider.get().reserve(WordFactory.unsigned(reserveSize), VirtualMemoryProvider.get().getGranularity().unsignedDivide(2), false,
                         NmtCategory.Code);
@@ -153,13 +153,13 @@ public class NativeMemoryTrackingTests {
         assertTrue("Free failed", 0 == VirtualMemoryProvider.get().free(reservePtr1, WordFactory.unsigned(reserveSize)));
         assertTrue("Free failed", 0 == VirtualMemoryProvider.get().free(reservePtr2, WordFactory.unsigned(reserveSize)));
         assertTrue("Free failed", 0 == VirtualMemoryProvider.get().free(reservePtr3, WordFactory.unsigned(reserveSize)));
-        assertTrue("After releasing memory for test, mtTest category should have size 0. Actual:" + NativeMemoryTracking.getReservedByCategory(NmtCategory.Code),
+        assertTrue("After releasing memory for test, test category should have size 0. Actual:" + NativeMemoryTracking.getReservedByCategory(NmtCategory.Code),
                         NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) == 0);
     }
 
     @Test
     public void testAlternatingReserveFree() {
-        assertTrue("Test should start with no memory already allocated in the mtTest category.", NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) == 0);
+        assertTrue("Test should start with no memory already allocated in the test category.", NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) == 0);
 
         Pointer reservePtr1 = VirtualMemoryProvider.get().reserve(WordFactory.unsigned(reserveSize), HeapParameters.getAlignedHeapChunkSize(), false,
                         NmtCategory.Code);
@@ -375,13 +375,63 @@ public class NativeMemoryTrackingTests {
         endVirtualMemoryTest(reservePtr);
     }
 
+    @Test
+    public void testReservedPeak() {
+        assertTrue("Test should start with no memory already allocated in the test category.", NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) == 0);
+        assertTrue("Test should start with no memory already allocated in the test category.", NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) == 0);
+
+        long initialPeak = NativeMemoryTracking.getPeakReservedByCategory(NmtCategory.Code);
+
+        Pointer reservePtr1 = VirtualMemoryProvider.get().reserve(WordFactory.unsigned(initialPeak), VirtualMemoryProvider.get().getGranularity(), false,
+                        NmtCategory.Code);
+        assertTrue(NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) >= initialPeak);
+
+        Pointer reservePtr2 = VirtualMemoryProvider.get().reserve(WordFactory.unsigned(initialPeak), VirtualMemoryProvider.get().getGranularity(), false,
+                        NmtCategory.Code);
+        long peakReserved = NativeMemoryTracking.getReservedByCategory(NmtCategory.Code);
+        assertTrue(NativeMemoryTracking.getPeakReservedByCategory(NmtCategory.Code) == peakReserved);
+
+        assertTrue("Free failed", 0 == VirtualMemoryProvider.get().free(reservePtr1, WordFactory.unsigned(initialPeak)));
+        assertTrue("Free failed", 0 == VirtualMemoryProvider.get().free(reservePtr2, WordFactory.unsigned(initialPeak)));
+
+        assertTrue(NativeMemoryTracking.getPeakReservedByCategory(NmtCategory.Code) == peakReserved);
+        assertTrue("After releasing memory for test, test category should have size 0. Actual:" + NativeMemoryTracking.getReservedByCategory(NmtCategory.Code),
+                        NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) == 0);
+    }
+
+    @Test
+    public void testCommittedPeak() {
+        long initialPeak = NativeMemoryTracking.getPeakCommittedByCategory(NmtCategory.Code);
+        long largeReserveSize = initialPeak * 2;
+        int largeCommitSize = (int) initialPeak;
+        Pointer reservePtr = VirtualMemoryProvider.get().reserve(WordFactory.unsigned(largeReserveSize), HeapParameters.getAlignedHeapChunkSize(), false,
+                        NmtCategory.Code);
+
+        Pointer commitPtr1 = VirtualMemoryProvider.get().commit(reservePtr, WordFactory.unsigned(largeCommitSize), 0, NmtCategory.Code);
+        long recordedCommittedSize1 = NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code);
+        assertTrue(NativeMemoryTracking.getPeakCommittedByCategory(NmtCategory.Code) == recordedCommittedSize1);
+
+        Pointer commitPtr2 = VirtualMemoryProvider.get().commit(commitPtr1.add(largeCommitSize), WordFactory.unsigned(largeCommitSize), 0, NmtCategory.Code);
+        long recordedCommittedSize2 = NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code);
+        assertTrue(NativeMemoryTracking.getPeakCommittedByCategory(NmtCategory.Code) == recordedCommittedSize2);
+
+        assertTrue("Uncommit failed", 0 == VirtualMemoryProvider.get().uncommit(commitPtr1, WordFactory.unsigned(largeCommitSize)));
+        assertTrue("Uncommit failed", 0 == VirtualMemoryProvider.get().uncommit(commitPtr2, WordFactory.unsigned(largeCommitSize)));
+        assertTrue(NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) == 0);
+        assertTrue(NativeMemoryTracking.getPeakCommittedByCategory(NmtCategory.Code) == recordedCommittedSize2);
+
+        assertTrue("Free failed.", 0 == VirtualMemoryProvider.get().free(reservePtr, WordFactory.unsigned(largeReserveSize)));
+        assertTrue("After freeing memory for test, test category should have size 0.", NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) == 0);
+        assertTrue("After freeing memory for test, test category committed size should be 0.", NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) == 0);
+    }
+
     /**
      * A convenience method that should be used with
      * {@link com.oracle.svm.test.nmt.NativeMemoryTrackingTests#endVirtualMemoryTest(Pointer)}.
      */
     private Pointer beginVirtualMemoryTest() {
-        assertTrue("Test should start with no memory already allocated in the mtTest category.", NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) == 0);
-        assertTrue("Test should start with no memory already allocated in the mtTest category.", NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) == 0);
+        assertTrue("Test should start with no memory already reserved in the test category.", NativeMemoryTracking.getReservedByCategory(NmtCategory.Code) == 0);
+        assertTrue("Test should start with no memory already committed in the test category.", NativeMemoryTracking.getCommittedByCategory(NmtCategory.Code) == 0);
 
         /* Reserve some memory. */
         Pointer reservePtr = VirtualMemoryProvider.get().reserve(WordFactory.unsigned(reserveSize), HeapParameters.getAlignedHeapChunkSize(), false,

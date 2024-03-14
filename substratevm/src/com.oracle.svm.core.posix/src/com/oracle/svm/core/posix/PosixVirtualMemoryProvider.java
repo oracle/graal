@@ -173,6 +173,7 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
         }
         if (nmtData.isNull()) {
             NativeMemoryTracking.trackReserve(begin, mappingSize.subtract(unmappedSize), category);
+//            NativeMemoryTracking.trackReserve(begin, nbytes, category); // *** didn't fix problem.
         } else {
             nmtData.setReserved(nmtData.getReserved().add(mappingSize.subtract(unmappedSize)));
             nmtData.setBaseAddr(begin);

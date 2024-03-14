@@ -102,20 +102,7 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
     private Pointer allocate(UnsignedWord size, UnsignedWord alignment, boolean executable, NmtCategory category) {
         Pointer reserved = WordFactory.nullPointer();
         if (!UnsignedUtils.isAMultiple(getGranularity(), alignment)) {
-            reserved = VirtualMemoryProvider.get().reserve(size, alignment, executable, category); // ***
-                                                                                                   // this
-                                                                                                   // is
-                                                                                                   // prev
-                                                                                                   // in
-                                                                                                   // fail
-                                                                                                   // 42.
-                                                                                                   // (which
-                                                                                                   // means
-                                                                                                   // the
-                                                                                                   // problem
-                                                                                                   // is
-                                                                                                   // in
-                                                                                                   // reserve)
+            reserved = VirtualMemoryProvider.get().reserve(size, alignment, executable, category);
             if (reserved.isNull()) {
                 return nullPointer();
             }
@@ -124,11 +111,7 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
         if (executable) {
             access |= VirtualMemoryProvider.Access.FUTURE_EXECUTE;
         }
-        Pointer committed = VirtualMemoryProvider.get().commit(reserved, size, access, category); // ***
-                                                                                                  // "reserved"
-                                                                                                  // may
-                                                                                                  // be
-                                                                                                  // null
+        Pointer committed = VirtualMemoryProvider.get().commit(reserved, size, access, category);
         if (committed.isNull()) {
             if (reserved.isNonNull()) {
                 VirtualMemoryProvider.get().free(reserved, size);
