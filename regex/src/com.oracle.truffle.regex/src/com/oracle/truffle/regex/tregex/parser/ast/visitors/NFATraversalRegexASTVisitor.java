@@ -654,7 +654,7 @@ public abstract class NFATraversalRegexASTVisitor {
                     }
                     // When we expand quantifiers, we wrap them in a group. This lets us escape past
                     // the expansion of the quantifier even in cases when we are in the mandatory
-                    // prefix (e.g. empty-check fails in the first A in (AA(A(A|)|))).
+                    // prefix (e.g. empty-check fails in the first A in (AA((A)((A)|)|))).
                     return advanceTerm(group.getParent().getParent().asGroup());
                 } else {
                     if (pathIsGroupExit(lastVisited)) {
