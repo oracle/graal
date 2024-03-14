@@ -28,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
@@ -210,6 +211,7 @@ public final class StringConversion {
         byte[] maybeCopy(byte[] bytes);
     }
 
+    @SuppressFBWarnings(value = {"UCF"}, justification = "javac introduces a jump to next instruction in <clinit>")
     private interface ToHost {
         ToHost COMPACT_ENABLED = (almostString) -> produceHostString(almostString.bytes, almostString.hash, almostString.coder);
         ToHost COMPACT_DISABLED = (almostString) -> {
