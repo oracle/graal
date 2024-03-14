@@ -1712,11 +1712,11 @@ public final class VM extends NativeEnv {
         /**
          * @see StackTraceElement#isNativeMethod()
          */
-        public static int NATIVE_BCI = -2;
+        public static int NATIVE_BCI = -1;
         /**
          * @see StackTraceElement#toString()
          */
-        public static int UNKNOWN_BCI = -1;
+        public static int UNKNOWN_BCI = -2;
 
         private final Method m;
         private final int bci;

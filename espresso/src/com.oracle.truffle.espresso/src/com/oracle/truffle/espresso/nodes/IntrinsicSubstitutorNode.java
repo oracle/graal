@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -88,5 +88,12 @@ final class IntrinsicSubstitutorNode extends EspressoInstrumentableRootNodeImpl 
     @Override
     boolean isTrivial() {
         return substitution.isTrivial();
+    }
+
+    @Override
+    public int getBci(Frame frame) {
+        // when we intrinsify a Java method, we need to return a non-native
+        // bci, so we just use 0 to signal the beginning of the method
+        return 0;
     }
 }
