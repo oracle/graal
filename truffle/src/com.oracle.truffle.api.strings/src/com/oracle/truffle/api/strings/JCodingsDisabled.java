@@ -42,8 +42,8 @@ package com.oracle.truffle.api.strings;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.strings.provider.JCodingsProvider.Encoding;
 
 final class JCodingsDisabled implements JCodings {
 
@@ -132,8 +132,6 @@ final class JCodingsDisabled implements JCodings {
 
     @Override
     public TruffleString transcode(Node location, AbstractTruffleString a, Object arrayA, int codePointLengthA, TruffleString.Encoding targetEncoding,
-                    InlinedBranchProfile outOfMemoryProfile,
-                    InlinedConditionProfile nativeProfile,
                     TStringInternalNodes.FromBufferWithStringCompactionNode fromBufferWithStringCompactionNode,
                     TranscodingErrorHandler errorHandler) {
         throw CompilerDirectives.shouldNotReachHere(MESSAGE);

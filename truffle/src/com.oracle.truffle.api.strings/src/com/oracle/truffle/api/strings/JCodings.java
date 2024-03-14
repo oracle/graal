@@ -40,49 +40,47 @@
  */
 package com.oracle.truffle.api.strings;
 
-import java.util.Objects;
+import java.util.ServiceLoader;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.strings.provider.JCodingsProvider;
+import com.oracle.truffle.api.strings.provider.JCodingsProvider.Encoding;
 
 interface JCodings {
 
-    interface Encoding {
-    }
+    JCodingsProvider PROVIDER = loadProvider();
+    boolean ENABLED = PROVIDER != null;
+    JCodings INSTANCE = ENABLED ? new JCodingsImpl(PROVIDER) : new JCodingsDisabled();
 
-    String JCODINGS_MODULE_NAME = "org.graalvm.shadowed.jcodings";
-    boolean ENABLED = isAvailable() && (!TruffleOptions.AOT || TStringAccessor.getNeedsAllEncodings());
-    JCodings INSTANCE = ENABLED ? new JCodingsImpl() : new JCodingsDisabled();
-
-    static boolean isAvailable() {
-        // Try to find jcodings module on the truffle module layer or the boot module layer.
-        Module truffleModule = JCodings.class.getModule();
-        ModuleLayer layer = Objects.requireNonNullElse(truffleModule.getLayer(), ModuleLayer.boot());
-        if (layer.findModule(JCODINGS_MODULE_NAME).isPresent()) {
-            return true;
-        } else if (truffleModule.isNamed()) {
-            /*
-             * Note: Named modules cannot read unnamed modules. So if truffle was loaded as a named
-             * module, we can only find jcodings as a named module (i.e., if it is only on the class
-             * path, and not added to the boot layer using --add-modules, we cannot read it).
-             */
-            return false;
-        } else {
-            /*
-             * We haven't found jcodings as a named module but if truffle itself is in an unnamed
-             * module, we might still be able to find it in the unnamed module. Try loading an
-             * arbitrary JCodings class.
-             */
-            try {
-                org.graalvm.shadowed.org.jcodings.Encoding.class.getModule();
-                return true;
-            } catch (NoClassDefFoundError e) {
-                return false;
+    private static JCodingsProvider loadProvider() {
+        if (!TruffleOptions.AOT || TStringAccessor.getNeedsAllEncodings()) {
+            for (JCodingsProvider provider : loadService(JCodingsProvider.class)) {
+                return provider;
             }
         }
+        return null;
+    }
+
+    private static <S> Iterable<S> loadService(Class<S> service) {
+        Class<?> lookupClass = JCodings.class;
+        Module truffleModule = lookupClass.getModule();
+        ModuleLayer moduleLayer = truffleModule.getLayer();
+        if (!truffleModule.canUse(service)) {
+            truffleModule.addUses(service);
+        }
+        Iterable<S> services;
+        if (moduleLayer != null) {
+            services = ServiceLoader.load(moduleLayer, service);
+        } else {
+            services = ServiceLoader.load(service, lookupClass.getClassLoader());
+        }
+        if (!services.iterator().hasNext()) {
+            services = ServiceLoader.load(service);
+        }
+        return services;
     }
 
     static JCodings getInstance() {
@@ -149,8 +147,6 @@ interface JCodings {
                     InlinedConditionProfile fixedWidthProfile);
 
     TruffleString transcode(Node location, AbstractTruffleString a, Object arrayA, int codePointLengthA, TruffleString.Encoding targetEncoding,
-                    InlinedBranchProfile outOfMemoryProfile,
-                    InlinedConditionProfile nativeProfile,
                     TStringInternalNodes.FromBufferWithStringCompactionNode fromBufferWithStringCompactionNode,
                     TranscodingErrorHandler errorHandler);
 }

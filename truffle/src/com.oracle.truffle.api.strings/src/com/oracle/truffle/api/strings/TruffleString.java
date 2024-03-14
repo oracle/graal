@@ -93,6 +93,7 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedIntValueProfile;
 import com.oracle.truffle.api.strings.TStringInternalNodesFactory.CalcStringAttributesNodeGen;
+import com.oracle.truffle.api.strings.provider.JCodingsProvider;
 
 /**
  * Represents a primitive String type, which can be reused across languages. Language implementers
@@ -1007,7 +1008,7 @@ public final class TruffleString extends AbstractTruffleString {
 
         final byte id;
         final String jCodingName;
-        final JCodings.Encoding jCoding;
+        final JCodingsProvider.Encoding jCoding;
         final byte maxCompatibleCodeRange;
         final byte naturalStride;
         final boolean fixedWidth;
@@ -1703,7 +1704,7 @@ public final class TruffleString extends AbstractTruffleString {
                 }
             } else if (exoticProfile.profile(this, !isSupportedEncoding(enc))) {
                 assert !isBytes(enc);
-                JCodings.Encoding jCodingsEnc = JCodings.getInstance().get(enc);
+                var jCodingsEnc = JCodings.getInstance().get(enc);
                 length = JCodings.getInstance().getCodePointLength(jCodingsEnc, c);
                 stride = 0;
                 codeRange = TSCodeRange.getValid(JCodings.getInstance().isSingleByte(jCodingsEnc));

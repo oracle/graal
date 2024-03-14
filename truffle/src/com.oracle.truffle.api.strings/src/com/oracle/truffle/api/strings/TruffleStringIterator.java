@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -360,7 +360,7 @@ public final class TruffleStringIterator {
             int startIndex = it.rawIndex;
             int p = it.a.byteArrayOffset() + it.rawIndex;
             int end = it.a.byteArrayOffset() + it.a.length();
-            JCodings.Encoding jCoding = JCodings.getInstance().get(it.encoding);
+            var jCoding = JCodings.getInstance().get(it.encoding);
             int length = JCodings.getInstance().getCodePointLength(jCoding, bytes, p, end);
             int codepoint = 0;
             if (length < 1) {
@@ -643,7 +643,7 @@ public final class TruffleStringIterator {
             int start = it.a.byteArrayOffset();
             int index = it.a.byteArrayOffset() + it.rawIndex;
             int end = it.a.byteArrayOffset() + it.a.length();
-            JCodings.Encoding jCoding = JCodings.getInstance().get(it.encoding);
+            var jCoding = JCodings.getInstance().get(it.encoding);
             int prevIndex = JCodings.getInstance().getPreviousCodePointIndex(jCoding, bytes, start, index, end);
             int codepoint = 0;
             if (prevIndex < 0) {

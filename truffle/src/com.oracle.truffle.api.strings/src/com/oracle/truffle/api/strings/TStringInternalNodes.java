@@ -457,7 +457,7 @@ final class TStringInternalNodes {
         @Specialization(guards = "isUnsupportedEncoding(encoding)")
         int unsupported(AbstractTruffleString a, Object arrayA, int codeRangeA, Encoding encoding, int index, ErrorHandling errorHandling) {
             assert isStride0(a);
-            JCodings.Encoding jCoding = JCodings.getInstance().get(encoding);
+            var jCoding = JCodings.getInstance().get(encoding);
             int cpLength = JCodings.getInstance().getCodePointLength(jCoding, JCodings.asByteArray(arrayA), a.byteArrayOffset() + index, a.byteArrayOffset() + a.length());
             int regionLength = a.length() - index;
             if (errorHandling == ErrorHandling.BEST_EFFORT) {
@@ -593,7 +593,7 @@ final class TStringInternalNodes {
         @TruffleBoundary
         @Specialization(guards = "isUnsupportedEncoding(encoding)")
         int unsupported(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, Encoding encoding, int extraOffsetRaw, int index, boolean isLength) {
-            JCodings.Encoding jCoding = JCodings.getInstance().get(encoding);
+            var jCoding = JCodings.getInstance().get(encoding);
             return JCodings.getInstance().codePointIndexToRaw(this, a, JCodings.asByteArray(arrayA), extraOffsetRaw, index, isLength, jCoding);
         }
 
@@ -732,7 +732,7 @@ final class TStringInternalNodes {
         @Specialization(guards = {"isUnsupportedEncoding(encoding)", "!is7Or8Bit(codeRangeA)"})
         int unsupported(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, Encoding encoding, int i, ErrorHandling errorHandling) {
             assert isStride0(a);
-            JCodings.Encoding jCoding = JCodings.getInstance().get(encoding);
+            var jCoding = JCodings.getInstance().get(encoding);
             byte[] bytes = JCodings.asByteArray(arrayA);
             return JCodings.getInstance().decode(a, bytes, JCodings.getInstance().codePointIndexToRaw(this, a, bytes, 0, i, false, jCoding), jCoding, errorHandling);
         }
@@ -2226,10 +2226,8 @@ final class TStringInternalNodes {
                         @SuppressWarnings("unused") Encoding sourceEncoding,
                         Encoding targetEncoding,
                         TranscodingErrorHandler errorHandler,
-                        @Shared("outOfMemoryProfile") @Cached InlinedBranchProfile outOfMemoryProfile,
-                        @Exclusive @Cached InlinedConditionProfile nativeProfile,
                         @Cached FromBufferWithStringCompactionNode fromBufferWithStringCompactionNode) {
-            return JCodings.getInstance().transcode(node, a, arrayA, codePointLengthA, targetEncoding, outOfMemoryProfile, nativeProfile, fromBufferWithStringCompactionNode, errorHandler);
+            return JCodings.getInstance().transcode(node, a, arrayA, codePointLengthA, targetEncoding, fromBufferWithStringCompactionNode, errorHandler);
         }
 
         private static byte[] trim(byte[] array, int byteLength) {

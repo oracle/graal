@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -591,7 +591,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 if (Integer.compareUnsigned(codepoint, 0x10ffff) > 0) {
                     throw InternalErrors.invalidCodePoint(codepoint);
                 }
-                JCodings.Encoding jCodingsEnc = JCodings.getInstance().get(sb.encoding);
+                var jCodingsEnc = JCodings.getInstance().get(sb.encoding);
                 int length = JCodings.getInstance().getCodePointLength(jCodingsEnc, codepoint);
                 if (!(sb.encoding.is7BitCompatible() && codepoint <= 0x7f)) {
                     sb.updateCodeRange(TSCodeRange.getValid(JCodings.getInstance().isSingleByte(jCodingsEnc)));
