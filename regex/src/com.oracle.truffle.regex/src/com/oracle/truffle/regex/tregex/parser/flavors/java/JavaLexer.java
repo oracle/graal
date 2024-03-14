@@ -244,6 +244,11 @@ public final class JavaLexer extends RegexLexer {
     }
 
     @Override
+    protected boolean featureEnabledCCRangeWithPredefCharClass() {
+        return true;
+    }
+
+    @Override
     protected boolean featureEnabledNestedCharClasses() {
         return false;
     }

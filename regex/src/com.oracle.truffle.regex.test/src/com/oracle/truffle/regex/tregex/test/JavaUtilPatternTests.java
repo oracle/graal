@@ -1221,7 +1221,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
             test(pattern, flags, input, fromIndex, isMatch, groupBoundaries);
         } catch (PatternSyntaxException javaPatternException) {
             try {
-                compileRegex(pattern, flags, "");
+                compileRegex(pattern, flags, "", getTRegexEncoding());
             } catch (PolyglotException tRegexException) { // TODO why do we need PolyglotException
                 // instead of RegexSyntaxException?
                 Assert.assertTrue(tRegexException.getMessage().contains(javaPatternException.getDescription()));

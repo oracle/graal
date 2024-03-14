@@ -393,6 +393,11 @@ public class Token implements JsonConvertible {
             return isPossessive() ? ret + "+" : isGreedy() ? ret : ret + "?";
         }
 
+        @TruffleBoundary
+        public String toStringNoSuffix() {
+            return minMaxToString();
+        }
+
         private String minMaxToString() {
             if (isSingleChar()) {
                 if (min == 0 && max == 1) {
