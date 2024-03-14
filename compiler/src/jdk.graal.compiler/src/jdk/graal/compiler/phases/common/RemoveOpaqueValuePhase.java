@@ -28,6 +28,7 @@ import java.util.Optional;
 
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.extended.OpaqueValueNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
@@ -38,7 +39,9 @@ import jdk.graal.compiler.phases.BasePhase;
 public class RemoveOpaqueValuePhase extends BasePhase<CoreProviders> {
     @Override
     public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
-        return ALWAYS_APPLICABLE;
+        return NotApplicable.ifAny(
+                        NotApplicable.unlessRunAfter(this, StageFlag.LOW_TIER_LOWERING, graphState),
+                        NotApplicable.ifApplied(this, StageFlag.REMOVE_OPAQUE_VALUES, graphState));
     }
 
     @Override
@@ -51,5 +54,11 @@ public class RemoveOpaqueValuePhase extends BasePhase<CoreProviders> {
         for (OpaqueValueNode opaque : graph.getNodes(OpaqueValueNode.TYPE)) {
             opaque.replaceAtUsagesAndDelete(opaque.getValue());
         }
+    }
+
+    @Override
+    public void updateGraphState(GraphState graphState) {
+        super.updateGraphState(graphState);
+        graphState.setAfterStage(StageFlag.REMOVE_OPAQUE_VALUES);
     }
 }
