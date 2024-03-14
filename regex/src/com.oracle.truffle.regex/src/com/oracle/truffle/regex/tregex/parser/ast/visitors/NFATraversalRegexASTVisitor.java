@@ -294,6 +294,9 @@ public abstract class NFATraversalRegexASTVisitor {
         if (runRoot.isGroup() && runRoot.getParent().isSubtreeRoot()) {
             cur = runRoot;
         } else {
+            if (runRoot.isGroup()) {
+                pushGroupExit(runRoot.asGroup());
+            }
             advanceTerm(runRoot);
         }
         while (!done) {
@@ -318,6 +321,8 @@ public abstract class NFATraversalRegexASTVisitor {
                 insideLoops.clear();
                 insideEmptyGuardGroup.clear();
                 curPath.clear();
+                Arrays.fill(quantifierGuardsLoop, 0);
+                Arrays.fill(quantifierGuardsExited, 0);
                 clearCaptureGroupData();
                 clearQuantifierGuards();
                 quantifierGuardsResult = null;
@@ -573,7 +578,6 @@ public abstract class NFATraversalRegexASTVisitor {
      * @return {@code true} if a successor (the quantified group) was reached in this step
      */
     private boolean advanceEmptyGuard(Term curTerm) {
-        Group parent = curTerm.getParent().getParent().asGroup();
         // We found a zero-width match group with a quantifier.
         // In flavors where we cannot have empty loop iterations (JavaScript), we generate
         // transitions to the special empty-match state only for bounded quantifiers which haven't
@@ -581,7 +585,7 @@ public abstract class NFATraversalRegexASTVisitor {
         // transitions to the empty-match state unconditionally. This ensures that we do not try to
         // generate NFA transitions that span multiple repetitions of the same quantified group,
         // potentially leading to non-terminating NFA generation.
-        if (ast.getOptions().getFlavor().canHaveEmptyLoopIterations() || (parent.hasNotExpandedQuantifier() && parent.getQuantifier().getMin() > 0)) {
+        if (ast.getOptions().getFlavor().canHaveEmptyLoopIterations() || (curTerm.isQuantifiableTerm() && curTerm.asQuantifiableTerm().hasNotExpandedQuantifier() && curTerm.asQuantifiableTerm().getQuantifier().getMin() > 0)) {
             assert curTerm.isGroup();
             // By returning the quantified group itself, we map the transition target to the special
             // empty-match state.

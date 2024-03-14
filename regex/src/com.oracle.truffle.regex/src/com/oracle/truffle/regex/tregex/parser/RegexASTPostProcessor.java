@@ -245,6 +245,9 @@ public class RegexASTPostProcessor {
                 pushGroup();
                 addTerm(copySupplier.get());
                 curTerm.asQuantifiableTerm().setQuantifier(null);
+                curTerm.setExpandedQuantifier(false);
+                curTerm.setUnrolledQuantifer(false);
+                curTerm.setQuantifierExpansionDone(false);
                 popGroup();
                 curTerm.asQuantifiableTerm().setQuantifier(quantifier);
                 curTerm.setExpandedQuantifier(unroll);
@@ -263,10 +266,6 @@ public class RegexASTPostProcessor {
                     return;
                 }
                 pushGroup();
-                curGroup.setQuantifier(quantifier);
-                curGroup.setExpandedQuantifier(unroll);
-                curGroup.setUnrolledQuantifer(unroll);
-                curGroup.setQuantifierExpansionDone(true);
                 if (term.isGroup()) {
                     curGroup.setEnclosedCaptureGroupsLow(term.asGroup().getCaptureGroupsLow());
                     curGroup.setEnclosedCaptureGroupsHigh(term.asGroup().getCaptureGroupsHigh());
