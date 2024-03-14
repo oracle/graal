@@ -119,7 +119,7 @@ public final class Target_java_util_regex_Pattern {
 
         @Specialization(guards = "!context.regexSubstitutionsEnabled()")
         static void doDisabled(StaticObject self, StaticObject p, int f,
-                        @Bind("getContext()") EspressoContext context,
+                        @Bind("getContext()") @SuppressWarnings("unused") EspressoContext context,
                         @Shared("original") @Cached("create(getMeta().java_util_regex_Pattern_init.getCallTargetNoSubstitution())") DirectCallNode original) {
             original.call(self, p, f);
         }
@@ -152,7 +152,7 @@ public final class Target_java_util_regex_Pattern {
 
         @Specialization(guards = "!context.regexSubstitutionsEnabled()")
         static StaticObject doDisabled(StaticObject self,
-                        @Bind("getContext()") EspressoContext context,
+                        @Bind("getContext()") @SuppressWarnings("unused") EspressoContext context,
                         @Shared("original") @Cached("create(getMeta().java_util_regex_Pattern_namedGroups.getCallTargetNoSubstitution())") DirectCallNode original) {
             return (StaticObject) original.call(self);
         }

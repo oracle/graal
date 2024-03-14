@@ -42,6 +42,8 @@ package com.oracle.truffle.regex.tregex.parser.flavors;
 
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.charset.UnicodeProperties;
+import com.oracle.truffle.regex.charset.UnicodePropertyDataVersion;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import com.oracle.truffle.regex.tregex.parser.JSRegexParser;
@@ -53,6 +55,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 public final class ECMAScriptFlavor extends RegexFlavor {
 
     public static final ECMAScriptFlavor INSTANCE = new ECMAScriptFlavor();
+    public static final UnicodeProperties UNICODE = new UnicodeProperties(UnicodePropertyDataVersion.UNICODE_15_1_0, 0);
 
     private ECMAScriptFlavor() {
         super(0);

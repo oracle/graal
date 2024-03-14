@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
 import static com.oracle.truffle.regex.tregex.parser.RegexLexer.isAscii;
+import static com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor.UNICODE;
 
 import java.math.BigInteger;
 import java.util.ArrayDeque;
@@ -65,7 +66,6 @@ import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
-import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.RbErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
@@ -112,12 +112,12 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         UNICODE_CHAR_CLASSES = new HashMap<>(8);
         ASCII_CHAR_CLASSES = new HashMap<>(8);
 
-        CodePointSet alpha = UnicodeProperties.getProperty("Alphabetic");
-        CodePointSet digit = UnicodeProperties.getProperty("General_Category=Decimal_Number");
-        CodePointSet space = UnicodeProperties.getProperty("White_Space");
+        CodePointSet alpha = UNICODE.getProperty("Alphabetic");
+        CodePointSet digit = UNICODE.getProperty("General_Category=Decimal_Number");
+        CodePointSet space = UNICODE.getProperty("White_Space");
         CodePointSet xdigit = CodePointSet.create('0', '9', 'A', 'F', 'a', 'f');
-        CodePointSet word = alpha.union(UnicodeProperties.getProperty("General_Category=Mark")).union(digit).union(UnicodeProperties.getProperty("General_Category=Connector_Punctuation")).union(
-                        UnicodeProperties.getProperty("Join_Control"));
+        CodePointSet word = alpha.union(UNICODE.getProperty("General_Category=Mark")).union(digit).union(UNICODE.getProperty("General_Category=Connector_Punctuation")).union(
+                        UNICODE.getProperty("Join_Control"));
         UNICODE_CHAR_CLASSES.put('d', digit);
         UNICODE_CHAR_CLASSES.put('h', xdigit);
         UNICODE_CHAR_CLASSES.put('s', space);
@@ -136,25 +136,25 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         ASCII_POSIX_CHAR_CLASSES = new HashMap<>(14);
         CompilationBuffer buffer = new CompilationBuffer(Encodings.UTF_32);
 
-        CodePointSet blank = UnicodeProperties.getProperty("General_Category=Space_Separator").union(CodePointSet.create('\t', '\t'));
-        CodePointSet cntrl = UnicodeProperties.getProperty("General_Category=Control");
-        CodePointSet graph = space.union(UnicodeProperties.getProperty("General_Category=Control")).union(UnicodeProperties.getProperty("General_Category=Surrogate")).union(
-                        UnicodeProperties.getProperty("General_Category=Unassigned")).createInverse(Encodings.UTF_32);
+        CodePointSet blank = UNICODE.getProperty("General_Category=Space_Separator").union(CodePointSet.create('\t', '\t'));
+        CodePointSet cntrl = UNICODE.getProperty("General_Category=Control");
+        CodePointSet graph = space.union(UNICODE.getProperty("General_Category=Control")).union(UNICODE.getProperty("General_Category=Surrogate")).union(
+                        UNICODE.getProperty("General_Category=Unassigned")).createInverse(Encodings.UTF_32);
         UNICODE_POSIX_CHAR_CLASSES.put("alpha", alpha);
         UNICODE_POSIX_CHAR_CLASSES.put("alnum", alpha.union(digit));
         UNICODE_POSIX_CHAR_CLASSES.put("blank", blank);
         UNICODE_POSIX_CHAR_CLASSES.put("cntrl", cntrl);
         UNICODE_POSIX_CHAR_CLASSES.put("digit", digit);
         UNICODE_POSIX_CHAR_CLASSES.put("graph", graph);
-        UNICODE_POSIX_CHAR_CLASSES.put("lower", UnicodeProperties.getProperty("Lowercase"));
+        UNICODE_POSIX_CHAR_CLASSES.put("lower", UNICODE.getProperty("Lowercase"));
         UNICODE_POSIX_CHAR_CLASSES.put("print", graph.union(blank).subtract(cntrl, buffer));
-        UNICODE_POSIX_CHAR_CLASSES.put("punct", UnicodeProperties.getProperty("General_Category=Punctuation").union(UnicodeProperties.getProperty("General_Category=Symbol").subtract(alpha, buffer)));
+        UNICODE_POSIX_CHAR_CLASSES.put("punct", UNICODE.getProperty("General_Category=Punctuation").union(UNICODE.getProperty("General_Category=Symbol").subtract(alpha, buffer)));
         UNICODE_POSIX_CHAR_CLASSES.put("space", space);
-        UNICODE_POSIX_CHAR_CLASSES.put("upper", UnicodeProperties.getProperty("Uppercase"));
+        UNICODE_POSIX_CHAR_CLASSES.put("upper", UNICODE.getProperty("Uppercase"));
         UNICODE_POSIX_CHAR_CLASSES.put("xdigit", xdigit);
 
         UNICODE_POSIX_CHAR_CLASSES.put("word", word);
-        UNICODE_POSIX_CHAR_CLASSES.put("ascii", UnicodeProperties.getProperty("ASCII"));
+        UNICODE_POSIX_CHAR_CLASSES.put("ascii", UNICODE.getProperty("ASCII"));
 
         for (Map.Entry<String, CodePointSet> entry : UNICODE_POSIX_CHAR_CLASSES.entrySet()) {
             ASCII_POSIX_CHAR_CLASSES.put(entry.getKey(), asciiRange.createIntersectionSingleRange(entry.getValue()));
@@ -1267,12 +1267,12 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                     CodePointSet property;
                     if (UNICODE_POSIX_CHAR_CLASSES.containsKey(propertySpec.toLowerCase())) {
                         property = getUnicodePosixCharClass(propertySpec.toLowerCase());
-                    } else if (UnicodeProperties.isSupportedGeneralCategory(propertySpec, true)) {
-                        property = trimToEncoding(UnicodeProperties.getProperty("General_Category=" + propertySpec, true));
-                    } else if (UnicodeProperties.isSupportedScript(propertySpec, true)) {
-                        property = trimToEncoding(UnicodeProperties.getProperty("Script=" + propertySpec, true));
-                    } else if (UnicodeProperties.isSupportedProperty(propertySpec, true)) {
-                        property = trimToEncoding(UnicodeProperties.getProperty(propertySpec, true));
+                    } else if (UNICODE.isSupportedGeneralCategory(propertySpec)) {
+                        property = trimToEncoding(UNICODE.getProperty("General_Category=" + propertySpec));
+                    } else if (UNICODE.isSupportedScript(propertySpec)) {
+                        property = trimToEncoding(UNICODE.getProperty("Script=" + propertySpec));
+                    } else if (UNICODE.isSupportedProperty(propertySpec)) {
+                        property = trimToEncoding(UNICODE.getProperty(propertySpec));
                     } else {
                         bailOut("unsupported Unicode property " + propertySpec);
                         // So that the property variable is always written to.

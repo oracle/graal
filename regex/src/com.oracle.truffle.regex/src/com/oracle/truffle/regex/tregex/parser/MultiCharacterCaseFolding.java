@@ -84,7 +84,7 @@ public class MultiCharacterCaseFolding {
         astBuilder.pushGroup();
 
         // We identify segments of the string which are independent, i.e. there is no unfolding
-        // that crosses the boundary of a segment. We the unfold each segment separately, which
+        // that crosses the boundary of a segment. We then unfold each segment separately, which
         // helps to avoid unnecessary combinatorial explosions.
         int start = 0;
         int end = 0;

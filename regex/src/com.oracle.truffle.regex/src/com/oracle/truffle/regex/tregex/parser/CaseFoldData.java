@@ -62,9 +62,10 @@ public class CaseFoldData {
     private static final int DIRECT_SINGLE = 5;
 
     public enum CaseFoldUnfoldAlgorithm {
+        Ascii,
         ECMAScriptNonUnicode,
         ECMAScriptUnicode,
-        PythonAscii,
+        JavaUnicode,
         PythonUnicode;
 
         public BiPredicate<Integer, Integer> getEqualsPredicate() {
@@ -81,13 +82,19 @@ public class CaseFoldData {
     private static CaseFoldEquivalenceTable getTable(CaseFoldUnfoldAlgorithm algorithm) {
         switch (algorithm) {
             case ECMAScriptNonUnicode:
-                return JS_NON_UNICODE;
+                return UNICODE_15_1_0_JS;
             case ECMAScriptUnicode:
                 return UNICODE_15_1_0_SIMPLE;
-            case PythonAscii:
-                return PYTHON_ASCII;
+            case Ascii:
+                return ASCII;
+            case JavaUnicode:
+                // Currently supported JDK versions for the Java flavor are 21, 22 and 23, where 21
+                // uses Unicode version 15.0.0 and the other versions use Unicode 15.1.0. There are
+                // no differences in the case folding table between those two Unicode versions, so
+                // we can use the same table on all supported JDK versions for now.
+                return UNICODE_15_0_0_JAVA;
             case PythonUnicode:
-                return PYTHON_UNICODE;
+                return UNICODE_15_1_0_PY;
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
@@ -98,9 +105,9 @@ public class CaseFoldData {
             case Ruby:
                 return UNICODE_15_1_0_FULL;
             case OracleDB:
-                return ORACLE_DB;
+                return UNICODE_15_0_0_FULL;
             case OracleDBAI:
-                return ORACLE_DB_AI;
+                return UNICODE_15_0_0_ODB_AI;
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
@@ -309,7 +316,7 @@ public class CaseFoldData {
             }
         }
 
-        private void caseFold(Range r, BiConsumer<Integer, int[]> caseFoldItem) {
+        public void caseFold(Range r, BiConsumer<Integer, int[]> caseFoldItem) {
             int search = binarySearch(r.lo);
             if (binarySearchExactMatch(search, r.lo, r.hi)) {
                 apply(search, r.lo, r.hi, caseFoldItem);
@@ -432,14 +439,14 @@ public class CaseFoldData {
         }
     }
 
-    public static final CaseFoldEquivalenceTable PYTHON_ASCII = new CaseFoldEquivalenceTable(null, new CodePointSet[0], new int[]{
+    private static final CaseFoldEquivalenceTable ASCII = new CaseFoldEquivalenceTable(null, new CodePointSet[0], new int[]{
                     0x000041, 0x00005a, INTEGER_OFFSET, 32,
                     0x000061, 0x00007a, INTEGER_OFFSET, -32
     });
 
     /* GENERATED CODE BEGIN - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
 
-    public static final String[] MULTI_CHAR_SEQUENCES = {
+    private static final String[] MULTI_CHAR_SEQUENCES = {
                     "i\u0307",
                     "SS",
                     "FF",
@@ -605,6 +612,7 @@ public class CaseFoldData {
                     "iv",
                     "vi",
                     "vii",
+                    "viii",
                     "ix",
                     "xi",
                     "xii",
@@ -1037,7 +1045,7 @@ public class CaseFoldData {
                     0x01e900, 0x01e921, INTEGER_OFFSET, 34,
                     0x01e922, 0x01e943, INTEGER_OFFSET, -34,
     });
-    private static final CaseFoldEquivalenceTable JS_NON_UNICODE = new CaseFoldEquivalenceTable(UNICODE_15_1_0_SIMPLE, new CodePointSet[]{
+    private static final CaseFoldEquivalenceTable UNICODE_15_1_0_JS = new CaseFoldEquivalenceTable(UNICODE_15_1_0_SIMPLE, new CodePointSet[]{
                     rangeSet(0x000398, 0x000398, 0x0003b8, 0x0003b8, 0x0003d1, 0x0003d1),
     }, new int[]{
                     0x00004b, 0x00005a, INTEGER_OFFSET, 32,
@@ -1094,12 +1102,15 @@ public class CaseFoldData {
                     0x01e900, 0x01e921, INTEGER_OFFSET, 0,
                     0x01e922, 0x01e943, INTEGER_OFFSET, 0,
     });
-    private static final CaseFoldEquivalenceTable PYTHON_UNICODE = new CaseFoldEquivalenceTable(UNICODE_15_1_0_SIMPLE, new CodePointSet[]{
+    private static final CaseFoldEquivalenceTable UNICODE_15_1_0_PY = new CaseFoldEquivalenceTable(UNICODE_15_1_0_SIMPLE, new CodePointSet[]{
                     rangeSet(0x000049, 0x000049, 0x000069, 0x000069, 0x000130, 0x000131),
     }, new int[]{
                     0x000049, 0x000049, DIRECT_MAPPING, 0,
                     0x000069, 0x000069, DIRECT_MAPPING, 0,
                     0x000130, 0x000131, DIRECT_MAPPING, 0,
+    });
+    private static final CaseFoldEquivalenceTable UNICODE_15_0_0_JAVA = new CaseFoldEquivalenceTable(UNICODE_15_1_0_PY, new CodePointSet[]{
+    }, new int[]{
     });
     private static final CaseFoldTable UNICODE_15_1_0_FULL = new CaseFoldTable(null, new int[]{
                     0x000041, 0x00005a, INTEGER_OFFSET, 32,
@@ -1335,19 +1346,9 @@ public class CaseFoldData {
                     0x016e40, 0x016e5f, INTEGER_OFFSET, 32,
                     0x01e900, 0x01e921, INTEGER_OFFSET, 34,
     });
-    private static final CaseFoldTable ORACLE_DB = new CaseFoldTable(UNICODE_15_1_0_FULL, new int[]{
-                    0x002c2f, 0x002c2f, INTEGER_OFFSET, 0,
-                    0x00a7bf, 0x00a7c1, INTEGER_OFFSET, 0,
-                    0x00a7c7, 0x00a7c9, INTEGER_OFFSET, 0,
-                    0x00a7d0, 0x00a7d0, INTEGER_OFFSET, 0,
-                    0x00a7d6, 0x00a7d8, INTEGER_OFFSET, 0,
-                    0x00a7f5, 0x00a7f5, INTEGER_OFFSET, 0,
-                    0x010570, 0x01057a, INTEGER_OFFSET, 0,
-                    0x01057c, 0x01058a, INTEGER_OFFSET, 0,
-                    0x01058c, 0x010592, INTEGER_OFFSET, 0,
-                    0x010594, 0x010595, INTEGER_OFFSET, 0,
+    private static final CaseFoldTable UNICODE_15_0_0_FULL = new CaseFoldTable(UNICODE_15_1_0_FULL, new int[]{
     });
-    private static final CaseFoldTable ORACLE_DB_AI = new CaseFoldTable(null, new int[]{
+    private static final CaseFoldTable UNICODE_15_0_0_ODB_AI = new CaseFoldTable(null, new int[]{
                     0x000041, 0x00005a, INTEGER_OFFSET, 32,
                     0x000084, 0x000084, ALTERNATING_AL, 0,
                     0x0000a9, 0x0000a9, INTEGER_OFFSET, -70,
@@ -1707,20 +1708,18 @@ public class CaseFoldData {
                     0x002160, 0x002160, INTEGER_OFFSET, -8439,
                     0x002161, 0x002163, INTEGER_OFFSET, 1105727,
                     0x002164, 0x002164, INTEGER_OFFSET, -8430,
-                    0x002165, 0x002166, INTEGER_OFFSET, 1105726,
-                    0x002167, 0x002168, INTEGER_OFFSET, 1105725,
+                    0x002165, 0x002168, INTEGER_OFFSET, 1105726,
                     0x002169, 0x002169, INTEGER_OFFSET, -8433,
-                    0x00216a, 0x00216b, INTEGER_OFFSET, 1105724,
+                    0x00216a, 0x00216b, INTEGER_OFFSET, 1105725,
                     0x00216c, 0x00216c, INTEGER_OFFSET, -8448,
                     0x00216d, 0x00216e, INTEGER_OFFSET, -8458,
                     0x00216f, 0x00216f, INTEGER_OFFSET, -8450,
                     0x002170, 0x002170, INTEGER_OFFSET, -8455,
                     0x002171, 0x002173, INTEGER_OFFSET, 1105711,
                     0x002174, 0x002174, INTEGER_OFFSET, -8446,
-                    0x002175, 0x002176, INTEGER_OFFSET, 1105710,
-                    0x002177, 0x002178, INTEGER_OFFSET, 1105709,
+                    0x002175, 0x002178, INTEGER_OFFSET, 1105710,
                     0x002179, 0x002179, INTEGER_OFFSET, -8449,
-                    0x00217a, 0x00217b, INTEGER_OFFSET, 1105708,
+                    0x00217a, 0x00217b, INTEGER_OFFSET, 1105709,
                     0x00217c, 0x00217c, INTEGER_OFFSET, -8464,
                     0x00217d, 0x00217e, INTEGER_OFFSET, -8474,
                     0x00217f, 0x00217f, INTEGER_OFFSET, -8466,
@@ -1827,13 +1826,12 @@ public class CaseFoldData {
                     0x00f8f8, 0x00f8f8, INTEGER_OFFSET, -63631,
                     0x00f8f9, 0x00f8f9, INTEGER_OFFSET, -63618,
                     0x00f8fa, 0x00f8fa, INTEGER_OFFSET, -63633,
-                    0x00fb00, 0x00fb00, INTEGER_OFFSET, 1050024,
+                    0x00fb00, 0x00fb00, INTEGER_OFFSET, 1050025,
                     0x00fb01, 0x00fb05, INTEGER_OFFSET, 1049990,
                     0x00fb06, 0x00fb06, INTEGER_OFFSET, 1049989,
                     0x00ff10, 0x00ff19, INTEGER_OFFSET, -65248,
                     0x00ff21, 0x00ff3a, INTEGER_OFFSET, -65216,
                     0x00ff41, 0x00ff5a, INTEGER_OFFSET, -65248,
-                    0x010400, 0x010425, INTEGER_OFFSET, 40,
     });
     public static final CodePointSet FOLDABLE_CHARACTERS = rangeSet(0x000041, 0x00005a, 0x0000b5, 0x0000b5, 0x0000c0, 0x0000d6, 0x0000d8, 0x0000de, 0x000100, 0x000100, 0x000102, 0x000102, 0x000104,
                     0x000104, 0x000106, 0x000106, 0x000108, 0x000108, 0x00010a, 0x00010a, 0x00010c, 0x00010c, 0x00010e, 0x00010e, 0x000110, 0x000110, 0x000112, 0x000112, 0x000114, 0x000114, 0x000116,
@@ -1908,9 +1906,9 @@ public class CaseFoldData {
 
     /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
 
-    private static final CaseUnfoldingTrie UNFOLDING_TRIE_RUBY = UNICODE_15_1_0_FULL.createCaseUnfoldTrie();
-    private static final CaseUnfoldingTrie UNFOLDING_TRIE_ORACLE_DB = ORACLE_DB.createCaseUnfoldTrie();
-    private static final CaseUnfoldingTrie UNFOLDING_TRIE_ORACLE_DB_AI = ORACLE_DB_AI.createCaseUnfoldTrie();
+    private static final CaseUnfoldingTrie UNFOLDING_TRIE_RUBY = getTable(CaseFoldAlgorithm.Ruby).createCaseUnfoldTrie();
+    private static final CaseUnfoldingTrie UNFOLDING_TRIE_ORACLE_DB = getTable(CaseFoldAlgorithm.OracleDB).createCaseUnfoldTrie();
+    private static final CaseUnfoldingTrie UNFOLDING_TRIE_ORACLE_DB_AI = getTable(CaseFoldAlgorithm.OracleDBAI).createCaseUnfoldTrie();
 
     public static final CodePointSet FOLDED_CHARACTERS = FOLDABLE_CHARACTERS.createInverse(Encodings.UTF_32);
 

@@ -40,341 +40,172 @@
  */
 package com.oracle.truffle.regex.charset;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.string.Encodings;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
+import java.util.List;
 
-import java.util.Locale;
+import org.graalvm.collections.EconomicSet;
+
+import com.oracle.truffle.api.CompilerDirectives;
 
 public class UnicodeProperties {
-    private static final CodePointSet PUNCT = JavaGc.CONNECTOR_PUNCTUATION.union(JavaGc.DASH_PUNCTUATION).union(JavaGc.START_PUNCTUATION).union(JavaGc.END_PUNCTUATION).union(
-                    JavaGc.OTHER_PUNCTUATION).union(JavaGc.INITIAL_QUOTE_PUNCTUATION).union(JavaGc.FINAL_QUOTE_PUNCTUATION);
-    private static final CodePointSet WHITE_SPACE = CodePointSet.createNoDedup(0x9, 0xd, 0x85, 0x85).union(JavaGc.SPACE_SEPARATOR).union(JavaGc.LINE_SEPARATOR).union(JavaGc.PARAGRAPH_SEPARATOR);
 
-    private static final EconomicMap<String, String> javaScriptAliases = normalizeKeys(UnicodePropertyData.SCRIPT_ALIASES);
-    private static final EconomicMap<String, String> javaBlockAliases = normalizeKeys(UnicodePropertyData.BLOCK_ALIASES);
-    public static final CodePointSet GRAPH = JavaGc.SPACE_SEPARATOR.union(JavaGc.LINE_SEPARATOR).union(JavaGc.PARAGRAPH_SEPARATOR).union(JavaGc.CONTROL).union(JavaGc.SURROGATE).union(
-                    JavaGc.UNASSIGNED).createInverse(Encodings.UTF_16);
-    public static final CodePointSet BLANK = JavaGc.SPACE_SEPARATOR.union(CodePointSet.create(0x9));
-
-    private static EconomicMap<String, String> normalizeKeys(EconomicMap<String, String> original) {
-        EconomicMap<String, String> res = EconomicMap.create(original.size());
-        MapCursor<String, String> cur = original.getEntries();
-        while (cur.advance()) {
-            res.put(cur.getKey().toLowerCase(), cur.getValue());
-        }
-        return res;
+    private static final String[] OTHER_PROPERTIES_NAMES = {
+                    "OAlpha",  // Other_Alphabetic
+                    "OLower",  // Other_Lowercase
+                    "OUpper",  // Other_Uppercase
+                    "OIDC",    // Other_ID_Continue
+                    "OIDS"     // Other_ID_Start
+    };
+    /**
+     * These properties are only exposed in the Java flavor.
+     */
+    private static final EconomicSet<String> OTHER_PROPERTIES_NAMES_SET = EconomicSet.create(OTHER_PROPERTIES_NAMES.length);
+    static {
+        OTHER_PROPERTIES_NAMES_SET.addAll(List.of(OTHER_PROPERTIES_NAMES));
     }
 
-    public static CodePointSet getProperty(String propertySpec) {
-        return getProperty(propertySpec, false);
+    /**
+     * Match all unicode property names in case-insensitive mode.
+     */
+    public static final int CASE_INSENSITIVE = 1;
+    /**
+     * Expose {@code blk=} unicode block ranges.
+     */
+    public static final int BLOCKS = 1 << 1;
+    /**
+     * Expose "Other" unicode properties, see {@code OTHER_PROPERTIES_NAMES}.
+     */
+    public static final int OTHER_PROPERTIES = 1 << 2;
+
+    private final UnicodePropertyData data;
+    private final int flags;
+
+    public UnicodeProperties(UnicodePropertyData data, int flags) {
+        this.data = data;
+        this.flags = flags;
     }
 
-    public static CodePointSet getProperty(String propertySpec, boolean caseInsensitive) {
-        return evaluatePropertySpec(normalizePropertySpec(propertySpec, caseInsensitive));
+    private boolean isFlagSet(int flag) {
+        return (flags & flag) != 0;
     }
 
-    public static ClassSetContents getPropertyOfStrings(String propertySpec) {
-        return evaluatePropertySpecStrings(normalizePropertySpec(propertySpec, false));
+    private boolean isCaseInsensitive() {
+        return isFlagSet(CASE_INSENSITIVE);
     }
 
-    public static CodePointSet getBlockJava(String name) {
-        String normalizedName;
-
-        try {
-            normalizedName = Character.UnicodeBlock.forName(name).toString().toLowerCase();
-        } catch (IllegalArgumentException iae) {
-            return null;
-        }
-
-        String alias = javaBlockAliases.get(normalizedName);
-        if (alias == null) {
-            return null;
-        }
-
-        return UnicodePropertyData.retrieveProperty("blk=" + alias);
+    private boolean withBlocks() {
+        return isFlagSet(BLOCKS);
     }
 
-    public static CodePointSet getScriptJava(String name) {
-        String normalizedName;
-
-        try {
-            normalizedName = Character.UnicodeScript.forName(name).toString().toLowerCase();
-        } catch (IllegalArgumentException iae) {
-            return null;
-        }
-
-        String alias = javaScriptAliases.get(normalizedName);
-        if (alias == null) {
-            return null;
-        }
-
-        return UnicodePropertyData.retrieveProperty("sc=" + alias);
+    private boolean withOtherProperties() {
+        return isFlagSet(OTHER_PROPERTIES);
     }
 
-    public static CodePointSet getPropertyJava(String name, boolean caseIns) {
-        // Unicode character property aliases, defined in
-        // http://www.unicode.org/Public/UNIDATA/PropertyValueAliases.txt
-        return switch (name) {
-            case "Cn" -> JavaGc.category("Cn");
-            case "Lu" -> caseIns ? categories("Lu", "Ll", "Lt") : JavaGc.category("Lu");
-            case "Ll" -> caseIns ? categories("Lu", "Ll", "Lt") : JavaGc.category("Ll");
-            case "Lt" -> caseIns ? categories("Lu", "Ll", "Lt") : JavaGc.category("Lt");
-            case "Lm" -> JavaGc.category("Lm");
-            case "Lo" -> JavaGc.category("Lo");
-            case "Mn" -> JavaGc.category("Mn");
-            case "Me" -> JavaGc.category("Me");
-            case "Mc" -> JavaGc.category("Mc");
-            case "Nd" -> JavaGc.category("Nd");
-            case "Nl" -> JavaGc.category("Nl");
-            case "No" -> JavaGc.category("No");
-            case "Zs" -> JavaGc.category("Zs");
-            case "Zl" -> JavaGc.category("Zl");
-            case "Cc" -> JavaGc.category("Cc");
-            case "Cf" -> JavaGc.category("Cf");
-            case "Zp" -> JavaGc.category("Zp");
-            case "Co" -> JavaGc.category("Co");
-            case "Cs" -> JavaGc.category("Cs");
-            case "Pd" -> JavaGc.category("Pd");
-            case "Ps" -> JavaGc.category("Ps");
-            case "Pe" -> JavaGc.category("Pe");
-            case "Pc" -> JavaGc.category("Pc");
-            case "Po" -> JavaGc.category("Po");
-            case "Sm" -> JavaGc.category("Sm");
-            case "Sc" -> JavaGc.category("Sc");
-            case "Sk" -> JavaGc.category("Sk");
-            case "So" -> JavaGc.category("So");
-            case "Pi" -> JavaGc.category("Pi");
-            case "Pf" -> JavaGc.category("Pf");
-            case "L" -> categories("Lu", "Ll", "Lt", "Lm", "Lo");
-            case "M" -> categories("Mn", "Me", "Mc");
-            case "N" -> categories("Nd", "Nl", "No");
-            case "Z" -> categories("Zs", "Zl", "Zp");
-            case "C" -> categories("Cc", "Cf", "Co", "Cs", "Cn");
-            case "P" -> categories("Pd", "Ps", "Pe", "Pc", "Po", "Pi", "Pf");
-            case "S" -> categories("Sm", "Sc", "Sk", "So");
-            case "LC" -> categories("Lu", "Ll", "Lt");
-            case "LD" -> categories("Lu", "Ll", "Lt", "Lm", "Lo", "Nd");
-            case "L1" -> Constants.BYTE_RANGE;
-            case "all" -> Constants.DOT_ALL;
-            // Posix regular expression character classes, defined in
-            // http://www.unix.org/onlinepubs/009695399/basedefs/xbd_chap09.html
-            case "ASCII" -> Constants.ASCII_RANGE;    // ASCII
-            case "Alnum" -> JavaASCII.ALNUM;   // Alphanumeric characters
-            case "Alpha" -> JavaASCII.ALPHA;   // Alphabetic characters
-            case "Blank" -> JavaASCII.BLANK;   // Space and tab characters
-            case "Cntrl" -> JavaASCII.CNTRL;   // Control characters
-            case "Digit" -> CodePointSet.createNoDedup('0', '9');      // Numeric characters
-            case "Graph" -> JavaASCII.GRAPH;   // printable and visible
-            case "Lower" -> caseIns ? JavaASCII.ALPHA : JavaASCII.LOWER; // Lower-case alphabetic
-            case "Print" -> CodePointSet.createNoDedup(0x20, 0x7E);    // Printable characters
-            case "Punct" -> JavaASCII.PUNCT;   // Punctuation characters
-            case "Space" -> JavaASCII.SPACE;   // Space characters
-            case "Upper" -> caseIns ? JavaASCII.ALPHA : JavaASCII.UPPER; // Upper-case alphabetic
-            case "XDigit" -> JavaASCII.HEX; // hexadecimal digits
-
-            // Java character properties, defined by methods in Character.java
-            case "javaLowerCase" -> caseIns ? JavaCharacter.LOWER_CASE.union(JavaCharacter.UPPER_CASE).union(JavaCharacter.TITLE_CASE)
-                            : JavaCharacter.LOWER_CASE;
-            case "javaUpperCase" -> caseIns ? JavaCharacter.LOWER_CASE.union(JavaCharacter.UPPER_CASE).union(JavaCharacter.TITLE_CASE)
-                            : JavaCharacter.UPPER_CASE;
-            case "javaAlphabetic" -> JavaCharacter.ALPHABETIC;
-            case "javaIdeographic" -> JavaCharacter.IDEOGRAPHIC;
-            case "javaTitleCase" -> caseIns ? JavaCharacter.LOWER_CASE.union(JavaCharacter.UPPER_CASE).union(JavaCharacter.TITLE_CASE)
-                            : JavaCharacter.TITLE_CASE;
-            case "javaDigit" -> JavaCharacter.DIGIT;
-            case "javaDefined" -> JavaCharacter.DEFINED;
-            case "javaLetter" -> JavaCharacter.LETTER;
-            case "javaLetterOrDigit" -> JavaCharacter.LETTER_OR_DIGIT;
-            case "javaJavaIdentifierStart" -> JavaCharacter.JAVA_IDENTIFIER_START;
-            case "javaJavaIdentifierPart" -> JavaCharacter.JAVA_IDENTIFIER_PART;
-            case "javaUnicodeIdentifierStart" -> JavaCharacter.UNICODE_IDENTIFIER_START;
-            case "javaUnicodeIdentifierPart" -> JavaCharacter.UNICODE_IDENTIFIER_PART;
-            case "javaIdentifierIgnorable" -> JavaCharacter.IDENTIFIER_IGNORABLE;
-            case "javaSpaceChar" -> JavaCharacter.SPACE_CHAR;
-            case "javaWhitespace" -> JavaCharacter.WHITESPACE;
-            case "javaISOControl" -> JavaCharacter.ISO_CONTROL;
-            case "javaMirrored" -> JavaCharacter.MIRRORED;
-            default -> null;
-        };
+    public CodePointSet getProperty(String propertySpec) {
+        return evaluatePropertySpec(normalizePropertySpec(propertySpec));
     }
 
-    // this corresponds to "POSIX character classes" in java.util.regex.Pattern documentation
-    private static CodePointSet getPosixPredicateJava(String name, boolean caseIns) {
-        return switch (name) {
-            case "ALPHA" -> JavaCharacter.ALPHABETIC;
-            case "LOWER" -> caseIns ? JavaCharacter.UPPER_CASE.union(JavaCharacter.LOWER_CASE).union(JavaCharacter.TITLE_CASE) : JavaCharacter.LOWER_CASE;
-            case "UPPER" -> caseIns ? JavaCharacter.UPPER_CASE.union(JavaCharacter.LOWER_CASE).union(JavaCharacter.TITLE_CASE) : JavaCharacter.UPPER_CASE;
-            case "SPACE" -> WHITE_SPACE;
-            case "PUNCT" -> PUNCT;
-            case "XDIGIT" -> JavaCharacter.DIGIT.union(JavaPropList.HEX_DIGIT);
-            case "ALNUM" -> JavaCharacter.DIGIT.union(JavaCharacter.ALPHABETIC);
-            case "CNTRL" -> JavaGc.CONTROL;
-            case "DIGIT" -> JavaCharacter.DIGIT;
-            case "BLANK" -> BLANK;
-            case "GRAPH" -> GRAPH;
-            case "PRINT" -> GRAPH.union(BLANK).subtract(JavaGc.CONTROL, new CompilationBuffer(Encodings.UTF_16));
-            default -> null;
-        };
-    }
-
-    // this corresponds to "Binary properties" in java.util.regex.Pattern documentation
-    private static CodePointSet getUnicodePredicateJava(String name, boolean caseIns) {
-        return switch (name) {
-            case "ALPHABETIC" -> JavaCharacter.ALPHABETIC;
-            case "ASSIGNED" -> JavaCharacter.DEFINED;
-            case "CONTROL" -> JavaGc.CONTROL;
-            case "EMOJI" -> JavaEmoji.EMOJI;
-            case "EMOJI_PRESENTATION" -> JavaEmoji.EMOJI_PRESENTATION;
-            case "EMOJI_MODIFIER" -> JavaEmoji.EMOJI_MODIFIER;
-            case "EMOJI_MODIFIER_BASE" -> JavaEmoji.EMOJI_MODIFIER_BASE;
-            case "EMOJI_COMPONENT" -> JavaEmoji.EMOJI_COMPONENT;
-            case "EXTENDED_PICTOGRAPHIC" -> JavaEmoji.EXTENDED_PICTOGRAPHIC;
-            case "HEXDIGIT", "HEX_DIGIT" -> JavaCharacter.DIGIT.union(JavaPropList.HEX_DIGIT);
-            case "IDEOGRAPHIC" -> JavaCharacter.IDEOGRAPHIC;
-            case "JOINCONTROL", "JOIN_CONTROL" -> JavaPropList.JOINT_CONTROL;
-            case "LETTER" -> JavaCharacter.LETTER;
-            case "LOWERCASE" -> caseIns ? JavaCharacter.LOWER_CASE.union(JavaCharacter.UPPER_CASE).union(JavaCharacter.TITLE_CASE) : JavaCharacter.LOWER_CASE;
-            case "NONCHARACTERCODEPOINT", "NONCHARACTER_CODE_POINT" -> JavaPropList.NONCHARACTER_CODE_POINT;
-            case "TITLECASE" -> caseIns ? JavaCharacter.LOWER_CASE.union(JavaCharacter.UPPER_CASE).union(JavaCharacter.TITLE_CASE) : JavaCharacter.TITLE_CASE;
-            case "PUNCTUATION" -> PUNCT;
-            case "UPPERCASE" -> caseIns ? JavaCharacter.LOWER_CASE.union(JavaCharacter.UPPER_CASE).union(JavaCharacter.TITLE_CASE) : JavaCharacter.UPPER_CASE;
-            case "WHITESPACE", "WHITE_SPACE" -> WHITE_SPACE;
-            case "WORD" -> JavaCharacter.ALPHABETIC.union(JavaPropList.JOINT_CONTROL).union(JavaGc.NON_SPACING_MARK).union(JavaGc.ENCLOSING_MARK).union(JavaGc.COMBINING_SPACING_MARK).union(
-                            JavaGc.DECIMAL_DIGIT_NUMBER).union(JavaGc.CONNECTOR_PUNCTUATION);
-            default -> null;
-        };
-    }
-
-    public static CodePointSet forUnicodePropertyJava(String propName, boolean caseIns) {
-        String propNameNormalized = propName.toUpperCase(Locale.ROOT);
-        CodePointSet p = getUnicodePredicateJava(propNameNormalized, caseIns);
-        if (p != null) {
-            return p;
-        }
-        return getPosixPredicateJava(propNameNormalized, caseIns);
-    }
-
-    public static CodePointSet forPOSIXNameJava(String propName, boolean caseIns) {
-        return getPosixPredicateJava(propName.toUpperCase(Locale.ENGLISH), caseIns);
-    }
-
-    private static CodePointSet categories(String... name) {
-        CodePointSet res = CodePointSet.getEmpty();
-        for (String n : name) {
-            res = res.union(JavaGc.category(n));
-        }
-        return res;
+    public ClassSetContents getPropertyOfStrings(String propertySpec) {
+        return evaluatePropertySpecStrings(normalizePropertySpec(propertySpec));
     }
 
     /**
      * @param propertySpec *Normalized* Unicode character property specification (i.e. only
      *            abbreviated properties and property values)
      */
-    private static CodePointSet evaluatePropertySpec(String propertySpec) {
-        CodePointSet generalCategory = UnicodeGeneralCategories.getGeneralCategory(propertySpec);
-        if (generalCategory != null) {
-            return generalCategory;
+    private CodePointSet evaluatePropertySpec(String propertySpec) {
+        CodePointSet prop = data.retrieveProperty(propertySpec);
+        if (prop == null) {
+            throw new IllegalArgumentException("Unsupported Unicode character property escape");
         }
-        return UnicodePropertyData.retrieveProperty(propertySpec);
+        return prop;
     }
 
     /**
      * @param propertySpec *Normalized* Unicode character property specification (i.e. only
      *            abbreviated properties and property values)
      */
-    private static ClassSetContents evaluatePropertySpecStrings(String propertySpec) {
-        CodePointSet generalCategory = UnicodeGeneralCategories.getGeneralCategory(propertySpec);
-        if (generalCategory != null) {
-            return ClassSetContents.createCharacterClass(generalCategory);
+    private ClassSetContents evaluatePropertySpecStrings(String propertySpec) {
+        ClassSetContents prop = data.retrievePropertyOfStrings(propertySpec);
+        if (prop == null) {
+            throw new IllegalArgumentException("Unsupported Unicode character property escape");
         }
-        return UnicodePropertyData.retrievePropertyOfStrings(propertySpec);
+        return prop;
     }
 
-    private static String normalizePropertySpec(String propertySpec, boolean caseInsensitive) {
+    private String normalizePropertySpec(String propertySpec) {
         int equals = propertySpec.indexOf('=');
         if (equals >= 0) {
-            String propertyName = normalizePropertyName(propertySpec.substring(0, equals), caseInsensitive);
+            String propertyName = normalizePropertyName(propertySpec.substring(0, equals));
             String propertyValue = propertySpec.substring(equals + 1);
             switch (propertyName) {
+                case "blk":
+                    propertyValue = normalizeBlockName(propertyValue);
+                    break;
                 case "gc":
-                    propertyValue = normalizeGeneralCategoryName(propertyValue, caseInsensitive);
+                    propertyValue = normalizeGeneralCategoryName(propertyValue);
                     break;
                 case "sc":
                 case "scx":
-                    propertyValue = normalizeScriptName(propertyValue, caseInsensitive);
+                    propertyValue = normalizeScriptName(propertyValue);
                     break;
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw new IllegalArgumentException(String.format("Binary property %s cannot appear to the left of '=' in a Unicode property escape", propertySpec.substring(0, equals)));
             }
             return propertyName + "=" + propertyValue;
-        } else if (isSupportedGeneralCategory(propertySpec, caseInsensitive)) {
-            return "gc=" + normalizeGeneralCategoryName(propertySpec, caseInsensitive);
+        } else if (isSupportedGeneralCategory(propertySpec)) {
+            return "gc=" + normalizeGeneralCategoryName(propertySpec);
         } else {
-            return normalizePropertyName(propertySpec, caseInsensitive);
+            return normalizePropertyName(propertySpec);
         }
     }
 
-    private static String normalizePropertyName(String propertyName, boolean caseInsensitive) {
-        String caseCorrectPropertyName = propertyName;
-        if (caseInsensitive) {
-            caseCorrectPropertyName = UnicodePropertyDataRuby.PROPERTY_ALIASES_LOWERCASE.get(propertyName.toLowerCase(), propertyName);
-        }
-        if (!UnicodePropertyData.PROPERTY_ALIASES.containsKey(caseCorrectPropertyName)) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+    private String normalizePropertyName(String propertyName) {
+        String name = returnOrThrow(propertyName, "character property", data.lookupPropertyAlias(propertyName, isCaseInsensitive()));
+        if (!withOtherProperties() && OTHER_PROPERTIES_NAMES_SET.contains(name)) {
             throw new IllegalArgumentException(String.format("Unsupported Unicode character property '%s'", propertyName));
         }
-        return UnicodePropertyData.PROPERTY_ALIASES.get(caseCorrectPropertyName);
+        return name;
     }
 
-    private static String normalizeGeneralCategoryName(String generalCategoryName, boolean caseInsensitive) {
-        String caseCorrectGeneralCategoryName = generalCategoryName;
-        if (caseInsensitive) {
-            caseCorrectGeneralCategoryName = UnicodePropertyDataRuby.GENERAL_CATEGORY_ALIASES_LOWERCASE.get(generalCategoryName.toLowerCase(), generalCategoryName);
+    private String normalizeGeneralCategoryName(String generalCategoryName) {
+        return returnOrThrow(generalCategoryName, "character general category", data.lookupGeneralCategoryAlias(generalCategoryName, isCaseInsensitive()));
+    }
+
+    private String normalizeScriptName(String scriptName) {
+        return returnOrThrow(scriptName, "script name", data.lookupScriptAlias(scriptName, isCaseInsensitive()));
+    }
+
+    private String normalizeBlockName(String blockName) {
+        if (!withBlocks()) {
+            throw new IllegalArgumentException("Unsupported Unicode character property escape");
         }
-        if (!UnicodePropertyData.GENERAL_CATEGORY_ALIASES.containsKey(caseCorrectGeneralCategoryName)) {
+        return returnOrThrow(blockName, "block name", data.lookupBlockAlias(blockName, isCaseInsensitive()));
+    }
+
+    public boolean isSupportedProperty(String propertyName) {
+        return data.lookupPropertyAlias(propertyName, isCaseInsensitive()) != null;
+    }
+
+    public boolean isSupportedGeneralCategory(String generalCategoryName) {
+        return data.lookupGeneralCategoryAlias(generalCategoryName, isCaseInsensitive()) != null;
+    }
+
+    public boolean isSupportedScript(String scriptName) {
+        return data.lookupScriptAlias(scriptName, isCaseInsensitive()) != null;
+    }
+
+    public boolean isSupportedBlock(String blockName) {
+        assert withBlocks();
+        return data.lookupBlockAlias(blockName, isCaseInsensitive()) != null;
+    }
+
+    private static String returnOrThrow(String propertyName, String errorName, String name) {
+        if (name == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalArgumentException(String.format("Unknown Unicode character general category '%s'", generalCategoryName));
+            throw new IllegalArgumentException(String.format("Unsupported Unicode %s '%s'", errorName, propertyName));
         }
-        return UnicodePropertyData.GENERAL_CATEGORY_ALIASES.get(caseCorrectGeneralCategoryName);
+        return name;
     }
 
-    private static String normalizeScriptName(String scriptName, boolean caseInsensitive) {
-        String caseCorrectScriptName = scriptName;
-        if (caseInsensitive) {
-            caseCorrectScriptName = UnicodePropertyDataRuby.SCRIPT_ALIASES_LOWERCASE.get(scriptName.toLowerCase(), scriptName);
-        }
-        if (!UnicodePropertyData.SCRIPT_ALIASES.containsKey(caseCorrectScriptName)) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalArgumentException(String.format("Unkown Unicode script name '%s'", scriptName));
-        }
-        return UnicodePropertyData.SCRIPT_ALIASES.get(caseCorrectScriptName);
-    }
-
-    public static boolean isSupportedProperty(String propertyName, boolean caseInsensitive) {
-        if (caseInsensitive) {
-            return UnicodePropertyDataRuby.PROPERTY_ALIASES_LOWERCASE.containsKey(propertyName.toLowerCase());
-        } else {
-            return UnicodePropertyData.PROPERTY_ALIASES.containsKey(propertyName);
-        }
-    }
-
-    public static boolean isSupportedGeneralCategory(String generalCategoryName, boolean caseInsensitive) {
-        if (caseInsensitive) {
-            return UnicodePropertyDataRuby.GENERAL_CATEGORY_ALIASES_LOWERCASE.containsKey(generalCategoryName.toLowerCase());
-        } else {
-            return UnicodePropertyData.GENERAL_CATEGORY_ALIASES.containsKey(generalCategoryName);
-        }
-    }
-
-    public static boolean isSupportedScript(String scriptName, boolean caseInsensitive) {
-        if (caseInsensitive) {
-            return UnicodePropertyDataRuby.SCRIPT_ALIASES_LOWERCASE.containsKey(scriptName.toLowerCase());
-        } else {
-            return UnicodePropertyData.SCRIPT_ALIASES.containsKey(scriptName);
-        }
-    }
 }

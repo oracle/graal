@@ -40,10 +40,11 @@
  */
 package com.oracle.truffle.regex.charset;
 
+import org.graalvm.collections.EconomicSet;
+
 import com.oracle.truffle.regex.tregex.parser.CaseFoldData;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-import org.graalvm.collections.EconomicSet;
 
 public final class ClassSetContents implements JsonConvertible {
 
@@ -110,6 +111,13 @@ public final class ClassSetContents implements JsonConvertible {
         EconomicSet<String> strings = EconomicSet.create();
         strings.add(string);
         return new ClassSetContents(Kind.POSIXCollationEquivalenceClass, CodePointSet.getEmpty(), strings, true);
+    }
+
+    public ClassSetContents unionUnicodePropertyOfStrings(ClassSetContents other) {
+        EconomicSet<String> unionStrings = EconomicSet.create();
+        unionStrings.addAll(strings);
+        unionStrings.addAll(other.strings);
+        return new ClassSetContents(Kind.Class, codePointSet.union(other.codePointSet), unionStrings, mayContainStrings || other.mayContainStrings);
     }
 
     public ClassSetContents caseFold(CodePointSetAccumulator tmp) {

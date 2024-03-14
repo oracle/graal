@@ -90,7 +90,7 @@ public final class Target_java_util_regex_Matcher {
 
         @Specialization(guards = "isUnsupportedPattern(parent, meta)")
         static void doFallback(StaticObject self, StaticObject parent, StaticObject text,
-                        @Bind("getMeta()") Meta meta,
+                        @Bind("getMeta()") @SuppressWarnings("unused") Meta meta,
                         @Shared("original") @Cached("create(getMeta().java_util_regex_Matcher_init.getCallTargetNoSubstitution())") DirectCallNode original) {
             original.call(self, parent, text);
         }
@@ -125,7 +125,7 @@ public final class Target_java_util_regex_Matcher {
 
         @Specialization(guards = "isUnsupportedMatcher(self, meta)")
         static StaticObject doFallback(StaticObject self, StaticObject text,
-                        @Bind("getMeta()") Meta meta,
+                        @Bind("getMeta()") @SuppressWarnings("unused") Meta meta,
                         @Shared("original") @Cached("create(getMeta().java_util_regex_Matcher_reset.getCallTargetNoSubstitution())") DirectCallNode original) {
             return (StaticObject) original.call(self, text);
         }
@@ -498,7 +498,7 @@ public final class Target_java_util_regex_Matcher {
 
     @TruffleBoundary
     private static Source getSource(String method, String pattern, StaticObject patternObject, Meta meta) {
-        String combined = "Encoding=UTF-16,Flavor=JavaUtilPattern,PythonMethod=" + method;
+        String combined = "Encoding=UTF-16,Flavor=JavaUtilPattern,PythonMethod=" + method + ",JavaJDKVersion=" + meta.getJavaVersion();
         String sourceStr = combined + '/' + pattern + '/' + convertFlags(meta.java_util_regex_Pattern_flags0.getInt(patternObject));
         return Source.newBuilder("regex", sourceStr, "patternExpr").build();
     }

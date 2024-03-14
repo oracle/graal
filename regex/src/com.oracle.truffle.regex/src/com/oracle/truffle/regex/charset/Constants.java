@@ -222,36 +222,12 @@ public final class Constants {
                     0x000d, 0x000d,
                     0x2028, 0x2029);
 
-    // 0x000A, LINE FEED (LF), <LF>
-    // 0x000D, CARRIAGE RETURN (CR), <CR>
-    // 0x0085, NEXT LINE (NEL), <NEL>
-    // 0x2028, LINE SEPARATOR, <LS>
-    // 0x2029, PARAGRAPH SEPARATOR, <PS>
-    public static final CodePointSet JAVA_LINE_TERMINATOR = CodePointSet.createNoDedup(
-                    0x000a, 0x000a,
-                    0x000d, 0x000d,
-                    0x0085, 0x0085,
-                    0x2028, 0x2029);
-
     // inverse of LINE_TERMINATOR
     public static final CodePointSet DOT = CodePointSet.createNoDedup(
                     0x0000, 0x0009,
                     0x000b, 0x000c,
                     0x000e, 0x2027,
                     0x202a, 0x10ffff);
-
-    // inverse of JAVA_LINE_TERMINATOR
-    public static final CodePointSet JAVA_DOT = CodePointSet.createNoDedup(
-                    0x0000, 0x0009,
-                    0x000b, 0x000c,
-                    0x000e, 0x0084,
-                    0x0086, 0x2027,
-                    0x202a, 0x10ffff);
-
-    // all characters except \n
-    public static final CodePointSet JAVA_DOT_UNIX = CodePointSet.createNoDedup(
-                    0x0000, 0x0009,
-                    0x000b, 0x10ffff);
 
     public static final CodePointSet NO_NEWLINE = CodePointSet.createNoDedup(
                     0x0000, 0x0009,
