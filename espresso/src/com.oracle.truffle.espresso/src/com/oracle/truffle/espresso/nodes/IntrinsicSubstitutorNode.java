@@ -31,8 +31,9 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
+import com.oracle.truffle.espresso.vm.VM;
 
-final class IntrinsicSubstitutorNode extends EspressoInstrumentableRootNodeImpl {
+public final class IntrinsicSubstitutorNode extends EspressoInstrumentableRootNodeImpl {
     @Child private JavaSubstitution substitution;
 
     // Truffle does not want to report split on first call. Delay until the second.
@@ -92,8 +93,6 @@ final class IntrinsicSubstitutorNode extends EspressoInstrumentableRootNodeImpl 
 
     @Override
     public int getBci(Frame frame) {
-        // when we intrinsify a Java method, we need to return a non-native
-        // bci, so we just use 0 to signal the beginning of the method
-        return 0;
+        return VM.EspressoStackElement.NATIVE_BCI;
     }
 }
