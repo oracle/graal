@@ -52,8 +52,11 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
+import com.oracle.truffle.api.bytecode.EpilogExceptional;
+import com.oracle.truffle.api.bytecode.EpilogReturn;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.bytecode.Prolog;
 import com.oracle.truffle.api.bytecode.test.BytecodeNodeWithStoredBci.BytecodeAndFrame;
 import com.oracle.truffle.api.bytecode.test.BytecodeNodeWithStoredBci.MyException;
 import com.oracle.truffle.api.dsl.Bind;
@@ -213,7 +216,7 @@ public class ReadBytecodeLocationTest {
             b.emitMakeRootAndFrame();
             b.endStoreLocal();
 
-            b.beginSourceSection(0, 17); // yield foo; return
+            b.beginSourceSection(0, 21); // yield foo; return
             b.beginBlock();
 
             b.beginSourceSection(0, 9); // yield foo
@@ -278,6 +281,28 @@ abstract class BytecodeNodeWithStoredBci extends RootNode implements BytecodeRoo
 
         public String getSourceCharacters() {
             return bytecode.getSourceLocation(frame, node).getCharacters().toString();
+        }
+    }
+
+    @Prolog
+    public static final class DoNothingProlog {
+        @Specialization
+        public static void doNothing() {
+        }
+    }
+
+    @EpilogReturn
+    public static final class DoNothingEpilog {
+        @Specialization
+        public static Object doNothing(Object returnValue) {
+            return returnValue;
+        }
+    }
+
+    @EpilogExceptional
+    public static final class DoNothingEpilogExceptional {
+        @Specialization
+        public static void doNothing(@SuppressWarnings("unused") AbstractTruffleException ex) {
         }
     }
 

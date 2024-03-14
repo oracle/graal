@@ -228,19 +228,19 @@ public @interface GenerateBytecode {
     boolean enableQuickening() default true;
 
     /**
-     * Whether the generated interpreter should always store the bytecode index (bci) in the frame.
+     * Whether the generated interpreter should store the bytecode index (bci) in the frame. This
+     * can be useful to make location computations (e.g., {@link BytecodeNode#getBytecodeLocation}
+     * or {@link BytecodeNode#getSourceLocation}) efficient on the fast path.
      * <p>
-     * When this flag is set, the language can use {@link BytecodeRootNode#readBciFromFrame} to read
-     * the bci from the frame. The interpreter does not always store the bci, so it is undefined
-     * behaviour to invoke {@link BytecodeRootNode#readBciFromFrame} when this flag is
-     * {@code false}. Be forewarned that the bci alone is not enough to identify a bytecode
-     * location; it must be accompanied by the {@link BytecodeNode} it executes on.
+     * By default, the interpreter has to follow {@link Node} parent pointers and scan the bytecode
+     * to find the location for a given node, which is expensive on the fast path. When the bci is
+     * stored in the frame, the interpreter can simply read it from the frame.
      * <p>
-     * Note that this flag can slow down interpreter performance, so it should only be set if the
-     * language needs fast-path access to the bci outside of the current operation (e.g., for
-     * closures or frame introspection). Within the current operation, you can bind the bci as a
-     * parameter {@code @Bind("$bci")} on the fast path; if you only need access to the bci on the
-     * slow path, it can be computed from a stack walk using {@link BytecodeRootNode#findBci}.
+     * Storing the bci in the frame increases frame size and requires many additional frame writes,
+     * so this feature should only be used if locations are needed on the fast path outside of the
+     * current operation (e.g., for closures or frame introspection). For fast path access within
+     * the current operation, you can bind the location or bci as a parameter (e.g.,
+     * {@code @Bind("$location")}).
      *
      * @since 24.1
      */
