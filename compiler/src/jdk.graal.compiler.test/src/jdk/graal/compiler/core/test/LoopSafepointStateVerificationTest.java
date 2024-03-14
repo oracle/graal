@@ -120,8 +120,11 @@ public class LoopSafepointStateVerificationTest extends GraalCompilerTest {
                 LoopBeginNode lb = new LoopBeginNode();
                 lb = graph.add(lb);
 
-                // replace with a new copy of the loop begin node and loop ends that cannot
-                // safepoint
+                /*
+                 * Massage this loop: give it a new header and new loop ends: this mimics a wrong
+                 * optimization that replaces a loop with something manually stitched together with
+                 * different canSafepoint values.
+                 */
                 for (LoopEndNode len : lex.loopBegin().loopEnds().snapshot()) {
                     LoopEndNode lenCopy = new LoopEndNode(lb);
                     FixedWithNextNode fwn = (FixedWithNextNode) len.predecessor();

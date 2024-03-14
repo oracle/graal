@@ -153,7 +153,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     /**
      * Hash code of the {@link LoopBeginNode} this node was cloned from.
      */
-    private int clonedFrom = -1;
+    private int clonedFromHash = -1;
 
     public LoopBeginNode() {
         super(TYPE);
@@ -172,11 +172,11 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         assert other instanceof LoopBeginNode : Assertions.errorMessage("Must be cloned from a previous loop begin", this, other);
         // ideally we would want to verify that cloneFrom==-1 but when we copy a node manually with
         // (addDuplicates) and call afterClone on it we have to override this value
-        this.clonedFrom = other.hashCode();
+        this.clonedFromHash = other.hashCode();
     }
 
-    public int getClonedFrom() {
-        return clonedFrom;
+    public int getClonedFromHash() {
+        return clonedFromHash;
     }
 
     public void checkDisableCountedBySpeculation(int bci, StructuredGraph graph) {

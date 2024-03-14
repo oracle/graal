@@ -56,9 +56,9 @@ public class LoopSafepointVerification {
         /**
          * Determine if there can be a safepoint on any of the loop ends of this loop. If true, it
          * means that there was no explicit phase requesting a complete disabling of all safepoints
-         * on this loop. Safepoints can only be removed, but not added afterwards. This means any
-         * loop that is replaced by loop optimizations with other loops must still retain the same
-         * safepoint rules.
+         * on this loop. Once safepoints have been disabled for a loop, they must not be enabled
+         * again. This means any loop that is replaced by loop optimizations with other loops must
+         * still retain the same safepoint rules.
          */
         boolean canHaveSafepoints;
         LoopBeginNode lb;
@@ -93,7 +93,7 @@ public class LoopSafepointVerification {
             if (otherData.fs == fs) {
                 return true;
             }
-            // not source position must match
+            // node source position must match
             if (this.nsp != null && otherData.nsp != null && !otherData.nsp.equals(nsp)) {
                 return false;
             }
@@ -110,7 +110,7 @@ public class LoopSafepointVerification {
             if (this.outerLoops != otherData.outerLoops) {
                 return false;
             }
-            if (!sameLoopType(this.lb, otherData.lb)) {
+            if (!optimizerRelatedLoops(this.lb, otherData.lb)) {
                 return false;
             }
             return true;
@@ -121,22 +121,22 @@ public class LoopSafepointVerification {
          * a loop from a graph and replace it by something else we try to find the replacement
          * loop(s). Which is not always trivial, thus we need to have a "best" guess as in - the new
          * loop has the same node source position, framestate based on properties and loop general
-         * properties.
+         * properties. Therefore we consider {@code lb1} the "original" loop and try to determine if
+         * {@code lb2} was derived from {@code lb1} via an optimization (unrolling, strip mining,
+         * etc).
          */
-        private static boolean sameLoopType(LoopBeginNode lb1, LoopBeginNode lb2) {
+        private static boolean optimizerRelatedLoops(LoopBeginNode lb1, LoopBeginNode lb2) {
             if (lb1.isCompilerInverted() != lb2.isCompilerInverted()) {
                 return false;
             }
-            // we skip loop type to verify partial unrolling
-
             /*
              * Only if this loop was touched by strip mining already verify the properties, else we
-             * might be verifying during a replace. Note that strip mining is special in that in
+             * might be verifying during a replace. Note that strip mining is special in that it
              * creates a second loop with the same state and the same node source position with an
              * inner/outer mapping. Any other loop optimization is sequential in that it does only
              * copy a loop but never creates new loop nests.
              */
-            boolean isTouchedByStripMining = lb1.isStripMinedInner() || lb1.isStripMinedOuter();
+            final boolean isTouchedByStripMining = lb1.isStripMinedInner() || lb1.isStripMinedOuter();
             if (isTouchedByStripMining) {
                 if (lb1.isStripMinedInner() != lb2.isStripMinedInner()) {
                     return false;
@@ -146,18 +146,19 @@ public class LoopSafepointVerification {
                 }
             }
 
-            if (lb1.getClonedFrom() != -1) {
-                if (lb2.getClonedFrom() != -1) {
-                    if (lb1.getClonedFrom() != lb2.getClonedFrom()) {
-                        // both cloned but from different loops
-                        return false;
-                    }
-                } else {
-                    // one ones cloned the other not, abort
-                    return false;
-                }
-            }
+            final int hashLb1 = lb1.getClonedFromHash();
+            final int hashLb2 = lb2.getClonedFromHash();
 
+            /*
+             * Determine if both loops are descendants of the same original loop based on their
+             * cloned hashes.
+             *
+             * If one of them has been cloned from a loop then compare their original loops, else
+             * continue,
+             */
+            if ((hashLb1 != -1 || hashLb2 != -1)) {
+                return hashLb1 == hashLb2;
+            }
             return true;
         }
     }
@@ -268,13 +269,13 @@ public class LoopSafepointVerification {
          * them, which is a poor mans heuristic but we cannot do much better.
          */
         for (LoopBeginNode lb : loopsToVisit) {
-            assert lb.isDeleted() : Assertions.errorMessage("Thus loop must be deleted since it was not found during iteration", lb);
+            assert lb.isDeleted() : Assertions.errorMessage("This loop must be deleted since it was not found during iteration", lb);
             // lets remove it from the map, either we cant verify and fail or its good and we
             // verified correctly, both ways the loop should be removed from the map
             SafepointData sd = safepointVerifiacationData.removeKey(lb);
             if (sd.canHaveSafepoints) {
-                // the loop was allowed to safepoint, if the new ones (if there are) are allowed
-                // to safepoint or not are not of real interesting, thus we are good
+                // the loop was allowed to safepoint, if the new ones (if there are any) are allowed
+                // to safepoint or not is not of real interest, thus we are good
             } else {
                 // the loop was not allowed to safepoint, any replacement should also not
                 // safepoint
