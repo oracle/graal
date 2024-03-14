@@ -261,6 +261,7 @@ import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.Comparator;
@@ -1205,17 +1206,54 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         return stateAfterStart;
     }
 
-    private static final SpeculationReasonGroup UNRESOLVED = new SpeculationReasonGroup("Unresolved", ResolvedJavaMethod.class, int.class);
+    /**
+     * A standard SpeculationReasonGroup definition that defaults to method and bci as the default
+     * base context. Extra arguments beyond those can be added as necessary.
+     */
+    static class ParserSpeculation {
+        static final Class<?>[] defaultSignature = {ResolvedJavaMethod.class, int.class};
 
-    public static final CounterKey unresolvedSpeculationTaken = DebugContext.counter("BytecodeParser_UnresolvedSpeculation_Taken");
-    public static final CounterKey unresolvedSpeculationNotTaken = DebugContext.counter("BytecodeParser_UnresolvedSpeculation_NotTaken");
+        final SpeculationReasonGroup speculation;
+        final CounterKey taken;
+        final CounterKey notTaken;
+
+        ParserSpeculation(String name, Class<?>... extra) {
+            Class<?>[] signature = defaultSignature;
+            if (extra.length != 0) {
+                Class<?>[] newSignature = Arrays.copyOf(signature, signature.length + extra.length);
+                System.arraycopy(extra, 0, newSignature, signature.length, extra.length);
+                signature = newSignature;
+            }
+            speculation = new SpeculationReasonGroup(name, signature);
+
+            taken = DebugContext.counter("BytecodeParser_" + name + "Speculation_Taken");
+            notTaken = DebugContext.counter("BytecodeParser_" + name + "Speculation_NotTaken");
+        }
+
+        SpeculationLog.SpeculationReason createSpeculationReason(ResolvedJavaMethod method, int bci, Object... extra) {
+            if (extra.length != 0) {
+                Object[] arguments = new Object[2 + extra.length];
+                arguments[0] = method;
+                arguments[1] = bci;
+                System.arraycopy(extra, 0, arguments, 2, extra.length);
+                return speculation.createSpeculationReason(arguments);
+            } else {
+                return speculation.createSpeculationReason(method, bci);
+            }
+        }
+    }
+
+    private static final ParserSpeculation UNRESOLVED = new ParserSpeculation("Unresolved");
+
+    private static final ParserSpeculation UNRESOLVED_CATCH_TYPE = new ParserSpeculation("UnresolvedCatchType", int.class);
 
     /**
      * Returns a speculation object if it's possible to speculate on an unresolved type or field at
      * the current bytecode location.
      */
     protected SpeculationLog.Speculation mayUseUnresolved(int bci) {
-        return mayUseSpeculation(bci, UNRESOLVED, unresolvedSpeculationTaken, unresolvedSpeculationNotTaken);
+        bytecodeMayBeUnresolved();
+        return mayUseSpeculation(bci, UNRESOLVED);
     }
 
     /**
@@ -1256,7 +1294,6 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
          */
         if (currentBlock.isInstructionBlock()) {
             GraalError.guarantee(frameState.stackSize() + Bytecodes.stackEffectOf(stream.currentBC()) >= 0, "Stack underflow at unresolved deopt");
-            bytecodeMayBeUnresolved();
 
             speculation = graphBuilderConfig.usePreciseUnresolvedDeopts() ? null : mayUseUnresolved(bci());
             if (speculation == null) {
@@ -1272,12 +1309,18 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                 StateSplitProxyNode stateSplit = append(new StateSplitProxyNode());
                 stateSplit.setStateAfter(createFrameState(bci(), stateSplit));
             }
-        } else if (currentBlock instanceof ExceptionDispatchBlock) {
+        } else if (currentBlock instanceof ExceptionDispatchBlock dispatchBlock) {
             /*
              * This is part of the exception dispatch path so there is no actual unresolved bytecode
              * so we can't use a precise deopt.
              */
-            speculation = SpeculationLog.NO_SPECULATION;
+            speculation = graphBuilderConfig.usePreciseUnresolvedDeopts() ? null : mayUseSpeculation(dispatchBlock.deoptBci, UNRESOLVED_CATCH_TYPE, dispatchBlock.handlerID);
+            if (speculation == null) {
+                // Disallow guard conversion but don't use a precise FrameState since we're in the
+                // exception dispatch path
+                speculation = SpeculationLog.NO_SPECULATION;
+                mayConvertToGuard = false;
+            }
         } else {
             throw GraalError.shouldNotReachHere("Unexpected block " + currentBlock);
         }
@@ -3137,17 +3180,14 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         state.clearNonLiveLocals(block, liveness, true);
     }
 
-    private static final SpeculationReasonGroup UNREACHED_CODE = new SpeculationReasonGroup("UnreachedCode", ResolvedJavaMethod.class, int.class);
-
-    public static final CounterKey unreachedCodeSpeculationTaken = DebugContext.counter("BytecodeParser_UnreachedCodeSpeculation_Taken");
-    public static final CounterKey unreachedCodeSpeculationNotTaken = DebugContext.counter("BytecodeParser_UnreachedCodeSpeculation_NotTaken");
+    private static final ParserSpeculation UNREACHED_CODE = new ParserSpeculation("UnreachedCode");
 
     /**
      * Returns a speculation object if it's possible to speculate on an unreached code guard at the
      * current bytecode location.
      */
     private SpeculationLog.Speculation mayUseUnreachedCode(int bci) {
-        return mayUseSpeculation(bci, UNREACHED_CODE, unreachedCodeSpeculationTaken, unreachedCodeSpeculationNotTaken);
+        return mayUseSpeculation(bci, UNREACHED_CODE);
     }
 
     private FixedNode createTarget(double probability, BciBlock block, FrameStateBuilder stateAfter) {
@@ -4547,33 +4587,30 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         }
     }
 
-    private static final SpeculationReasonGroup FALLBACK_TYPECHECK = new SpeculationReasonGroup("FallbackTypeCheck", ResolvedJavaMethod.class, int.class);
-
-    public static final CounterKey fallBackSpeculationTaken = DebugContext.counter("BytecodeParser_FallBackSpeculation_Taken");
-    public static final CounterKey fallBackSpeculationNotTaken = DebugContext.counter("BytecodeParser_FallBackSpeculation_NotTaken");
+    private static final ParserSpeculation FALLBACK_TYPECHECK = new ParserSpeculation("FallbackTypeCheck");
 
     /**
      * Returns a speculation object if it's possible to speculate on a type check at the current
      * bytecode location.
      */
     private SpeculationLog.Speculation mayUseTypeProfile() {
-        return mayUseSpeculation(bci(), FALLBACK_TYPECHECK, fallBackSpeculationTaken, fallBackSpeculationNotTaken);
+        return mayUseSpeculation(bci(), FALLBACK_TYPECHECK);
     }
 
     /**
      * Returns a speculation object if it's possible to speculate on the given {@code reason} at the
      * bytecode location indicated by the BCI. Returns {@code null} otherwise.
      */
-    private SpeculationLog.Speculation mayUseSpeculation(int bci, SpeculationReasonGroup reason, CounterKey speculationTaken, CounterKey speculationNotTaken) {
+    private SpeculationLog.Speculation mayUseSpeculation(int bci, ParserSpeculation reason, Object... extra) {
         SpeculationLog speculationLog = graph.getSpeculationLog();
         SpeculationLog.Speculation speculation = null;
         if (speculationLog != null) {
-            SpeculationLog.SpeculationReason speculationReason = reason.createSpeculationReason(getMethod(), bci);
+            SpeculationLog.SpeculationReason speculationReason = reason.createSpeculationReason(getMethod(), bci, extra);
             if (speculationLog.maySpeculate(speculationReason)) {
                 speculation = speculationLog.speculate(speculationReason);
-                speculationTaken.increment(debug);
+                reason.taken.increment(debug);
             } else {
-                speculationNotTaken.increment(debug);
+                reason.notTaken.increment(debug);
             }
         }
         return speculation;
