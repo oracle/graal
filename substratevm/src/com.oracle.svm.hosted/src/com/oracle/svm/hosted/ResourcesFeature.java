@@ -174,11 +174,13 @@ public final class ResourcesFeature implements InternalFeature {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void declareResourceAsRegistered(Module module, String resource, String source) {
-        Resources.ModuleResourceRecord key = createStorageKey(module, resource);
-        synchronized (registeredResources) {
-            registeredResources.computeIfAbsent(key, k -> new ArrayList<>());
-            if (!registeredResources.get(key).contains(source)) {
-                registeredResources.get(key).add(source);
+        if (Options.DumpRegisteredResources.getValue()) {
+            Resources.ModuleResourceRecord key = createStorageKey(module, resource);
+            synchronized (registeredResources) {
+                registeredResources.computeIfAbsent(key, k -> new ArrayList<>());
+                if (!registeredResources.get(key).contains(source)) {
+                    registeredResources.get(key).add(source);
+                }
             }
         }
     }
@@ -217,7 +219,6 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
-            // we don't have source (only module and resourcePath)
             declareResourceAsRegistered(module, resourcePath, "INJECTED RESOURCE");
             Resources.singleton().registerResource(module, resourcePath, resourceContent);
         }
@@ -300,7 +301,6 @@ public final class ResourcesFeature implements InternalFeature {
                     InputStream is = module.getResourceAsStream(resourcePath);
                     registerResource(module, resourcePath, false, is);
                 }
-                // TODO maybe under if as well?
                 declareResourceAsRegistered(module, resourcePath, resourcePath);
             } catch (IOException e) {
                 Resources.singleton().registerIOException(module, resourcePath, e, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(resourcePath));
@@ -339,8 +339,7 @@ public final class ResourcesFeature implements InternalFeature {
                         InputStream is = url.openStream();
                         registerResource(null, resourcePath, fromJar, is);
                     }
-                    // TODO maybe under if as well?
-                    String source = fromJar ? url.toString().split("!")[0] : Paths.get(url.toURI()).toString();
+                    String source = fromJar ? urlToJarPath(url) : Paths.get(url.toURI()).toString();
                     declareResourceAsRegistered(null, resourcePath, source);
                 } catch (IOException e) {
                     Resources.singleton().registerIOException(null, resourcePath, e, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(resourcePath));
@@ -647,7 +646,7 @@ public final class ResourcesFeature implements InternalFeature {
                                         " from module: " + module +
                                         " wasn't register from ResourcesFeature. It should never happen except for NEGATIVE_QUERIES in some cases");
                     }
-                    sources.add(new ResourceReporter.SourceSizePair("NO SOURCE", "NEGATIVE QUERY"));
+                    sources.add(new ResourceReporter.SourceSizePair("-", "NEGATIVE QUERY"));
                 } else {
                     for (int i = 0; i < registeredEntrySources.size(); i++) {
                         String source = registeredEntrySources.get(i);

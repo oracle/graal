@@ -15,23 +15,17 @@ public class ResourceReporter {
 
     public record SourceSizePair(String source, String size) {
         // NOTE: size is string because it could be NEGATIVE QUERY
-        public static Comparator<SourceSizePair> comparator() {
-            return Comparator.comparing(SourceSizePair::source);
-        }
     }
 
     public record ResourceReportEntry(Module module, String resourceName, List<SourceSizePair> entries) {
-        public static Comparator<ResourceReportEntry> comparator() {
-            return Comparator.comparing(ResourceReportEntry::resourceName);
-        }
     }
 
     public static void printReport(Collection<ResourceReportEntry> registeredResources) {
         Path reportLocation = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton()).resolve("registered_resources.json");
         try (JsonWriter writer = new JsonWriter(reportLocation)) {
-            JsonPrinter.printCollection(writer, registeredResources, ResourceReportEntry.comparator(), ResourceReporter::resourceReportElement);
+            JsonPrinter.printCollection(writer, registeredResources, Comparator.comparing(ResourceReportEntry::resourceName), ResourceReporter::resourceReportElement);
         } catch (IOException e) {
-            throw VMError.shouldNotReachHere("Json writer cannot write to: " + reportLocation + "\n Reason: " + e.getMessage());
+            throw VMError.shouldNotReachHere("Json writer cannot write to: " + reportLocation, e);
         }
     }
 
@@ -45,7 +39,7 @@ public class ResourceReporter {
             w.newline();
         }
         w.quote("entries").append(":");
-        JsonPrinter.printCollection(w, p.entries(), SourceSizePair.comparator(), ResourceReporter::sourceElement);
+        JsonPrinter.printCollection(w, p.entries(), Comparator.comparing(SourceSizePair::source), ResourceReporter::sourceElement);
         w.unindent().newline().appendObjectEnd();
     }
 
