@@ -145,6 +145,6 @@ public interface JavaErrorMessages {
 
     @TruffleBoundary
     static String danglingMetaCharacter(Token.Quantifier quantifier) {
-        return "Dangling meta character '" + quantifier + "'";
+        return "Dangling meta character '" + quantifier.toStringNoSuffix() + "'";
     }
 }
