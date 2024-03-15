@@ -274,9 +274,9 @@ public class RegexASTPostProcessor {
                 if (quantifier.isGreedy()) {
                     createOptionalBranch(term, quantifier, unroll, recurse);
                     nextSequence();
-                    curSequence.setExpandedQuantifierEmptySequence(true);
+                    curSequence.setQuantifierPassThroughSequence(true);
                 } else {
-                    curSequence.setExpandedQuantifierEmptySequence(true);
+                    curSequence.setQuantifierPassThroughSequence(true);
                     nextSequence();
                     createOptionalBranch(term, quantifier, unroll, recurse);
                 }

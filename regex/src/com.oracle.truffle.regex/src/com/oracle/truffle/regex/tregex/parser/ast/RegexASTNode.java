@@ -64,7 +64,7 @@ public abstract class RegexASTNode implements JsonConvertible {
     static final int FLAG_GROUP_LOOP = 1 << 10;
     static final int FLAG_GROUP_EXPANDED_QUANTIFIER = 1 << 11;
     static final int FLAG_GROUP_MANDATORY_UNROLLED_QUANTIFIER = 1 << 12;
-    static final int FLAG_GROUP_EXPANDED_QUANTIFIER_EMPTY_SEQUENCE = 1 << 13;
+    static final int FLAG_GROUP_QUANTIFIER_PASS_THROUGH_SEQUENCE = 1 << 13;
     static final int FLAG_GROUP_LOCAL_FLAGS = 1 << 14;
     static final int FLAG_EMPTY_GUARD = 1 << 15;
     static final int FLAG_LOOK_AROUND_NEGATED = 1 << 16;
@@ -415,18 +415,18 @@ public abstract class RegexASTNode implements JsonConvertible {
      * E.g., in the expansion of A{2,4}, which is AA(A(A|_)|_), the two {@code _} characters show
      * the two empty sequences marked with this flag.
      */
-    public boolean isExpandedQuantifierEmptySequence() {
-        return isFlagSet(FLAG_GROUP_EXPANDED_QUANTIFIER_EMPTY_SEQUENCE);
+    public boolean isQuantifierPassThroughSequence() {
+        return isFlagSet(FLAG_GROUP_QUANTIFIER_PASS_THROUGH_SEQUENCE);
     }
 
     /**
      * Marks this empty {@link Sequence} as being inserted into the AST as part of unrolling the
      * optional suffix of a quantified term.
      *
-     * @see #isExpandedQuantifierEmptySequence()
+     * @see #isQuantifierPassThroughSequence()
      */
-    public void setExpandedQuantifierEmptySequence(boolean expandedQuantifierEmptySequence) {
-        setFlag(FLAG_GROUP_EXPANDED_QUANTIFIER_EMPTY_SEQUENCE, expandedQuantifierEmptySequence);
+    public void setQuantifierPassThroughSequence(boolean quantifierPassThroughSequence) {
+        setFlag(FLAG_GROUP_QUANTIFIER_PASS_THROUGH_SEQUENCE, quantifierPassThroughSequence);
     }
 
     public int getMinPath() {
