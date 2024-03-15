@@ -7,4 +7,4 @@ permalink: /reference-manual/native-image/guides/use-graalvm-dashboard/
 
 GraalVM Dashboard was removed in GraalVM for JDK 22.
 Instead, use the [Native Image Build Report tool](../PGO-Build-Report.md). 
-The tool can generate a comprehensive report about your native executable and the build process itself with the visualization, and is  useful for exploring how different methods contribute to overall execution time.
+Build reports provide useful visualizations and comprehensive insights into different metrics of your native executable and the build process itself.
