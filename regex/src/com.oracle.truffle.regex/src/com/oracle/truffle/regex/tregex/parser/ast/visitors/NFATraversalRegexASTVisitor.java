@@ -589,7 +589,8 @@ public abstract class NFATraversalRegexASTVisitor {
         // transitions to the empty-match state unconditionally. This ensures that we do not try to
         // generate NFA transitions that span multiple repetitions of the same quantified group,
         // potentially leading to non-terminating NFA generation.
-        if (ast.getOptions().getFlavor().canHaveEmptyLoopIterations() || (curTerm.isQuantifiableTerm() && curTerm.asQuantifiableTerm().hasNotExpandedQuantifier() && curTerm.asQuantifiableTerm().getQuantifier().getMin() > 0)) {
+        if (ast.getOptions().getFlavor().canHaveEmptyLoopIterations() ||
+                        (curTerm.isQuantifiableTerm() && curTerm.asQuantifiableTerm().hasNotExpandedQuantifier() && curTerm.asQuantifiableTerm().getQuantifier().getMin() > 0)) {
             assert curTerm.isGroup();
             // By returning the quantified group itself, we map the transition target to the special
             // empty-match state.
@@ -837,7 +838,7 @@ public abstract class NFATraversalRegexASTVisitor {
     private boolean isZeroWidthGroup(Group group) {
         group.getSeqIndex();
         return group.hasQuantifier() && group.getQuantifier().hasZeroWidthIndex() && ((ast.getOptions().getFlavor().failingEmptyChecksDontBacktrack() && group.isUnrolledQuantifier()) ||
-                group.getParent().isSequence() && group.getParent().getParent().asGroup().size() == 2 && getOtherSibling(group.getParent().asSequence()).isExpandedQuantifierEmptySequence());
+                        group.getParent().isSequence() && group.getParent().getParent().asGroup().size() == 2 && getOtherSibling(group.getParent().asSequence()).isExpandedQuantifierEmptySequence());
     }
 
     private static Sequence getOtherSibling(Sequence seq) {
