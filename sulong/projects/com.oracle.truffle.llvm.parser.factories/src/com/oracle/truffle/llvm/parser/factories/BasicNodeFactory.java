@@ -98,6 +98,7 @@ import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMI64R
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMI8RetNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMIVarBitRetNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMStructRetNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMTailReturnNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMVectorRetNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMRetNodeFactory.LLVMVoidReturnNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.control.LLVMSwitchNode;
@@ -722,6 +723,11 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMControlFlowNode createRetVoid() {
         return LLVMVoidReturnNodeGen.create();
+    }
+
+    @Override
+    public LLVMControlFlowNode createRetTail(LLVMExpressionNode tailCall) {
+        return LLVMTailReturnNodeGen.create(tailCall);
     }
 
     @Override
