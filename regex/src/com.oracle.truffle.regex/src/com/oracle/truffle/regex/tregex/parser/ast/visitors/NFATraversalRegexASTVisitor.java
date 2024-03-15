@@ -92,7 +92,7 @@ import com.oracle.truffle.regex.util.TBitSet;
  * from the initial node to the successor node, where {@link Group} nodes are treated specially: The
  * path will contain separate entries for <em>entering</em> and <em>leaving</em> a {@link Group},
  * and a special <em>pass-through</em> node for empty sequences marked with
- * {@link Sequence#isExpandedQuantifierEmptySequence()}. Furthermore, the visitor will not descend
+ * {@link Sequence#isQuantifierPassThroughSequence()}. Furthermore, the visitor will not descend
  * into lookaround assertions, it will jump over them and just add their corresponding
  * {@link LookAheadAssertion} or {@link LookBehindAssertion} node to the path.
  *
@@ -293,6 +293,8 @@ public abstract class NFATraversalRegexASTVisitor {
         if (runRoot.isGroup() && runRoot.getParent().isSubtreeRoot()) {
             cur = runRoot;
         } else {
+            // Before we call advanceTerm, we always push a group exit or pass-through to the path.
+            // advanceTerm will when push any further group exits as it walks up the AST.
             if (runRoot.isGroup()) {
                 pushGroupExit(runRoot.asGroup());
             }
@@ -332,6 +334,9 @@ public abstract class NFATraversalRegexASTVisitor {
             quantifierGuardsResult = null;
             retreat();
             foundNextTarget = false;
+            // If we have back-tracked into an empty-match transition, then we must continue by
+            // advancing past the empty-match group using advanceTerm instead of entering the group
+            // again using doAdvance.
             if (cur.isGroup() && cur.hasEmptyGuard()) {
                 foundNextTarget = advanceTerm(cur.asGroup());
             }
@@ -416,7 +421,7 @@ public abstract class NFATraversalRegexASTVisitor {
             final Sequence sequence = (Sequence) cur;
             if (sequence.isEmpty()) {
                 Group parent = sequence.getParent();
-                if (sequence.isExpandedQuantifierEmptySequence()) {
+                if (sequence.isQuantifierPassThroughSequence()) {
                     // this empty sequence was inserted during quantifier expansion, so it is
                     // allowed to pass through the parent quantified group.
                     assert pathGetNode(curPath.peek()) == parent && pathIsGroupEnter(curPath.peek());

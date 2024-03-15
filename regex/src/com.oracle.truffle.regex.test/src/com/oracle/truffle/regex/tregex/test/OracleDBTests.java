@@ -121,6 +121,8 @@ public class OracleDBTests extends RegexTestBase {
         test("x????", "", "xx?", 0, true, 0, 0);
         test("x??????", "", "x?", 0, true, 0, 0);
         test("x??????", "", "xx?", 0, true, 0, 0);
+        test("x????????", "", "x?", 0, true, 0, 0);
+        test("x????????", "", "xx?", 0, true, 0, 0);
         test("x{2}?", "", "xxxxx", 0, true, 0, 2);
         test("x{2}??", "", "xxxxx", 0, true, 0, 2);
         test("x{2}+", "", "xxxxx", 0, true, 0, 4);
