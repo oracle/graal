@@ -312,7 +312,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
         for (int i = offsets.length - 1; i >= 0; i--) {
             long offset = offsets[i];
-            assert ((offset & 0xFF) == offset) : "field offset too large!";
+            assert ((offset & OFFSET_MASK) == offset) : Assertions.errorMessageContext("field offset too large or has low bits set", offset);
             mask <<= NodeClass.NEXT_EDGE;
             mask |= offset;
             if (i >= directCount) {

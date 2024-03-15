@@ -38,7 +38,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 /**
  * Immutable constant pool implementation backed by an array of constants.
  */
-final class ConstantPoolImpl extends ConstantPool {
+public final class ImmutableConstantPool extends ConstantPool {
 
     private final int majorVersion;
     private final int minorVersion;
@@ -48,7 +48,7 @@ final class ConstantPoolImpl extends ConstantPool {
 
     private final int totalPoolBytes;
 
-    ConstantPoolImpl(PoolConstant[] constants, int majorVersion, int minorVersion, int totalPoolBytes) {
+    ImmutableConstantPool(PoolConstant[] constants, int majorVersion, int minorVersion, int totalPoolBytes) {
         this.constants = Objects.requireNonNull(constants);
         this.majorVersion = majorVersion;
         this.minorVersion = minorVersion;
@@ -94,8 +94,7 @@ final class ConstantPoolImpl extends ConstantPool {
         return minorVersion;
     }
 
-    @Override
-    ConstantPool patchForHiddenClass(int thisKlassIndex, Symbol<?> newName) {
+    ImmutableConstantPool patchForHiddenClass(int thisKlassIndex, Symbol<?> newName) {
         int newNamePos = constants.length;
         Utf8Constant newNameConstant = new Utf8Constant(newName);
 
@@ -104,6 +103,6 @@ final class ConstantPoolImpl extends ConstantPool {
         newEntries[thisKlassIndex] = ClassConstant.create(newNamePos);
 
         int rawLengthIncrease = 2 /* u2 length */ + newName.length() /* symbol length */;
-        return new ConstantPoolImpl(newEntries, majorVersion, minorVersion, totalPoolBytes + rawLengthIncrease);
+        return new ImmutableConstantPool(newEntries, majorVersion, minorVersion, totalPoolBytes + rawLengthIncrease);
     }
 }

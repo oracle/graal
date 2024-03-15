@@ -111,10 +111,10 @@ public final class ObjectKlass extends Klass {
         assert hasFinalInstanceField(StaticObject.class);
     }
 
-    private final Klass hostKlass;
+    private final ObjectKlass hostKlass;
 
     @CompilationFinal //
-    private Klass nest;
+    private ObjectKlass nest;
 
     @CompilationFinal //
     private PackageEntry packageEntry;
@@ -438,13 +438,7 @@ public final class ObjectKlass extends Klass {
                 }
             } catch (EspressoException e) {
                 setErroneousInitialization();
-                StaticObject cause = e.getGuestException();
-                Meta meta = getMeta();
-                if (!InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
-                    throw meta.throwExceptionWithCause(meta.java_lang_ExceptionInInitializerError, cause);
-                } else {
-                    throw e;
-                }
+                throw initializationFailed(e);
             } catch (AbstractTruffleException e) {
                 setErroneousInitialization();
                 throw e;
@@ -861,7 +855,7 @@ public final class ObjectKlass extends Klass {
         return getKlassVersion().linkedKlass;
     }
 
-    Klass getHostClassImpl() {
+    ObjectKlass getHostClassImpl() {
         return hostKlass;
     }
 
@@ -874,13 +868,30 @@ public final class ObjectKlass extends Klass {
                 nest = this;
             } else {
                 RuntimeConstantPool thisPool = getConstantPool();
-                Klass host = thisPool.resolvedKlassAt(this, nestHost.hostClassIndex);
-
-                if (!host.nestMembersCheck(this)) {
-                    Meta meta = getMeta();
-                    throw meta.throwException(meta.java_lang_IncompatibleClassChangeError);
+                Klass host;
+                try {
+                    host = thisPool.resolvedKlassAt(this, nestHost.hostClassIndex);
+                } catch (AbstractTruffleException e) {
+                    if (getJavaVersion().java15OrLater()) {
+                        getContext().getLogger().log(Level.FINE, "Exception while loading nest host class for " + this.getExternalName(), e);
+                        // JVMS sect. 5.4.4: Any exception thrown as a result of failure of class or
+                        // interface resolution is not rethrown.
+                        host = this;
+                    } else {
+                        throw e;
+                    }
                 }
-                nest = host;
+                if (host != this && !host.nestMembersCheck(this)) {
+                    if (getJavaVersion().java15OrLater()) {
+                        getContext().getLogger().log(Level.FINE, "Failed nest host class checks for " + this.getExternalName());
+                        host = this;
+                    } else {
+                        Meta meta = getMeta();
+                        throw meta.throwException(meta.java_lang_IncompatibleClassChangeError);
+                    }
+                }
+                // nestMembersCheck fails for non-ObjectKlass
+                nest = (ObjectKlass) host;
             }
         }
         return nest;

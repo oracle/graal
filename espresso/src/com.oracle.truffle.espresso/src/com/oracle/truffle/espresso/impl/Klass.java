@@ -764,7 +764,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
      * <li>C is not public, and C and D are members of the same run-time package.
      * </ul>
      */
-    public static boolean checkAccess(Klass klass, Klass accessingKlass, boolean ignoreMagicAccessor) {
+    public static boolean checkAccess(Klass klass, ObjectKlass accessingKlass, boolean ignoreMagicAccessor) {
         if (accessingKlass == null) {
             return true;
         }
@@ -808,7 +808,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         return (context.getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(accessingKlass));
     }
 
-    public static boolean doModuleAccessChecks(Klass klass, Klass accessingKlass, EspressoContext context) {
+    public static boolean doModuleAccessChecks(Klass klass, ObjectKlass accessingKlass, EspressoContext context) {
         ModuleEntry moduleFrom = accessingKlass.module();
         ModuleEntry moduleTo = klass.module();
         if (moduleFrom == moduleTo) {
@@ -1176,7 +1176,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
      * opposed to the unrelated concept specified by {@link Class#isAnonymousClass()}) or
      * {@code null} if this object does not represent a VM anonymous class.
      */
-    public final Klass getHostClass() {
+    public final ObjectKlass getHostClass() {
         return (this instanceof ObjectKlass)
                         ? ((ObjectKlass) this).getHostClassImpl()
                         : null;
@@ -1303,13 +1303,13 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     }
 
     @HostCompilerDirectives.InliningCutoff
-    private RuntimeException initializationFailed(EspressoException e) {
+    protected final RuntimeException initializationFailed(EspressoException e) {
         StaticObject cause = e.getGuestException();
         Meta meta = getMeta();
-        if (!InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
-            throw throwExceptionInInitializerError(meta, cause);
-        } else {
+        if (InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
             throw e;
+        } else {
+            throw throwExceptionInInitializerError(meta, cause);
         }
     }
 

@@ -79,7 +79,12 @@ import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject.StaticObjectFactory;
+import com.oracle.truffle.espresso.substitutions.JImageExtensions;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
+import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe.CompactGuestFieldOffsetStrategy;
+import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe.GraalGuestFieldOffsetStrategy;
+import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe.GuestFieldOffsetStrategy;
+import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe.SafetyGuestFieldOffsetStrategy;
 
 // TODO: Update website once Espresso has one
 @Registration(id = EspressoLanguage.ID, //
@@ -146,6 +151,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     // endregion Preinit and sharing
 
     @CompilationFinal private volatile boolean fullyInitialized;
+
+    @CompilationFinal private JImageExtensions jImageExtensions;
+
+    @CompilationFinal private GuestFieldOffsetStrategy guestFieldOffsetStrategy;
 
     private final ContextThreadLocal<EspressoThreadLocalState> threadLocalState = locals.createContextThreadLocal((context, thread) -> new EspressoThreadLocalState(context));
 
@@ -221,6 +230,14 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         livenessAnalysisMinimumLocals = env.getOptions().get(EspressoOptions.LivenessAnalysisMinimumLocals);
         previewEnabled = env.getOptions().get(EspressoOptions.EnablePreview);
         whiteBoxEnabled = env.getOptions().get(EspressoOptions.WhiteBoxAPI);
+
+        EspressoOptions.GuestFieldOffsetStrategyEnum strategy = env.getOptions().get(EspressoOptions.GuestFieldOffsetStrategy);
+        guestFieldOffsetStrategy = switch (strategy) {
+            case safety -> new SafetyGuestFieldOffsetStrategy();
+            case compact -> new CompactGuestFieldOffsetStrategy();
+            case graal -> new GraalGuestFieldOffsetStrategy();
+        };
+        assert guestFieldOffsetStrategy.name().equals(strategy.name());
     }
 
     @Override
@@ -306,7 +323,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.LivenessAnalysis) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.LivenessAnalysisMinimumLocals) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.EnablePreview) &&
-                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.WhiteBoxAPI);
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.WhiteBoxAPI) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.GuestFieldOffsetStrategy);
     }
 
     private static boolean isOptionCompatible(OptionValues oldOptions, OptionValues newOptions, OptionKey<?> option) {
@@ -532,12 +550,16 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @SuppressFBWarnings(value = "DC_DOUBLECHECK", //
                     justification = "non-volatile for performance reasons, javaVersion is initialized very early during context creation with an enum value, only benign races expected.")
     public void tryInitializeJavaVersion(JavaVersion version) {
+        Objects.requireNonNull(version);
         JavaVersion ref = this.javaVersion;
         if (ref == null) {
             synchronized (this) {
                 ref = this.javaVersion;
                 if (ref == null) {
-                    this.javaVersion = ref = Objects.requireNonNull(version);
+                    if (!getGuestFieldOffsetStrategy().isAllowed(version)) {
+                        throw EspressoError.fatal("This guest field offset strategy (" + getGuestFieldOffsetStrategy().name() + ") is not allowed with this Java version (" + version + ")");
+                    }
+                    this.javaVersion = ref = version;
                 }
             }
         }
@@ -612,5 +634,13 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         public void close() {
             getThreadLocalState().enableSingleStepping();
         }
+    }
+
+    public JImageExtensions getJImageExtensions() {
+        return jImageExtensions;
+    }
+
+    public GuestFieldOffsetStrategy getGuestFieldOffsetStrategy() {
+        return guestFieldOffsetStrategy;
     }
 }
