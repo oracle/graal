@@ -439,7 +439,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
      * visited in between has other usages except one (so no outside usages) and no fixed node
      * usages we can conclude we found a dead phi cycle that can be removed.
      */
-    private static boolean isDeadLoopPhiCycle(PhiNode thisPhi, NodeFlood nf) {
+    public static boolean isDeadLoopPhiCycle(PhiNode thisPhi, NodeFlood nf) {
         GraalError.guarantee(thisPhi.isLoopPhi(), "Must only process loop phis");
         nf.add(thisPhi);
         int steps = 0;

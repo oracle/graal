@@ -36,6 +36,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.GraalGraphError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeBitMap;
+import jdk.graal.compiler.graph.NodeFlood;
 import jdk.graal.compiler.graph.Position;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractEndNode;
@@ -57,7 +58,9 @@ import jdk.graal.compiler.nodes.StructuredGraph.ScheduleResult;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.VirtualState.NodePositionClosure;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
+import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.graph.ReentrantBlockIterator;
 import jdk.graal.compiler.phases.graph.StatelessPostOrderNodeIterator;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
@@ -164,6 +167,12 @@ public final class GraphOrder {
     }
 
     /**
+     * Maximum number of graph searches to detect dead nodes: this is a heuristic to keep
+     * compilation time reasonable.
+     */
+    private static final int MAX_DEAD_NODE_SEARCHES = 8;
+
+    /**
      * This method schedules the graph and makes sure that, for every node, all inputs are available
      * at the position where it is scheduled. This is a very expensive assertion.
      */
@@ -174,6 +183,52 @@ public final class GraphOrder {
             SchedulePhase.runWithoutContextOptimizations(graph, getSchedulingPolicy(graph), true);
             final EconomicMap<LoopBeginNode, NodeBitMap> loopEntryStates = EconomicMap.create(Equivalence.IDENTITY);
             final ScheduleResult schedule = graph.getLastSchedule();
+
+            /**
+             * We run verification of the graph with schedule.immutableGraph=true because
+             * verification should not have any impact on the graph it verifies (we want
+             * verification to be side effect free).
+             *
+             * There are certain sets of dead nodes that are normally only deleted by the schedule
+             * or the canonicalizer - dead phi cycles.
+             */
+            NodeBitMap deadNodes = graph.createNodeBitMap();
+            for (PhiNode phi : graph.getNodes().filter(PhiNode.class)) {
+                if (!phi.isLoopPhi()) {
+                    continue;
+                }
+                NodeFlood nf = graph.createNodeFlood();
+                if (CanonicalizerPhase.isDeadLoopPhiCycle(phi, nf)) {
+                    for (Node visitedNode : nf.getVisited()) {
+                        if (visitedNode.isAlive()) {
+                            deadNodes.mark(visitedNode);
+                        }
+                    }
+                }
+            }
+
+            // now we collected all dead loop phi nodes, collect all floating node's who's usages
+            // are only in the dead set (transitive)
+            int computes = 0;
+            boolean change = true;
+            while (change && (computes++ <= MAX_DEAD_NODE_SEARCHES)) {
+                change = false;
+
+                inner: for (Node n : graph.getNodes()) {
+                    if (GraphUtil.isFloatingNode(n)) {
+                        if (deadNodes.isMarked(n)) {
+                            continue inner;
+                        }
+                        for (Node usage : n.usages()) {
+                            if (!deadNodes.isMarked(usage)) {
+                                continue inner;
+                            }
+                        }
+                        deadNodes.mark(n);
+                        change = true;
+                    }
+                }
+            }
 
             ReentrantBlockIterator.BlockIteratorClosure<NodeBitMap> closure = new ReentrantBlockIterator.BlockIteratorClosure<>() {
 
@@ -230,6 +285,9 @@ public final class GraphOrder {
                      */
                     FrameState pendingStateAfter = null;
                     for (final Node node : list) {
+                        if (deadNodes.isMarked(node)) {
+                            continue;
+                        }
                         if (node instanceof ValueNode) {
                             FrameState stateAfter = node instanceof StateSplit ? ((StateSplit) node).stateAfter() : null;
                             if (node instanceof FullInfopointNode) {
@@ -295,9 +353,11 @@ public final class GraphOrder {
                             if (node instanceof AbstractEndNode) {
                                 AbstractMergeNode merge = ((AbstractEndNode) node).merge();
                                 for (PhiNode phi : merge.phis()) {
-                                    ValueNode phiValue = phi.valueAt((AbstractEndNode) node);
-                                    assert phiValue == null || currentState.isMarked(phiValue) || phiValue instanceof ConstantNode : phiValue + " not available at phi " + phi + " / end " + node +
-                                                    " in block " + block;
+                                    if (!deadNodes.isMarked(phi)) {
+                                        ValueNode phiValue = phi.valueAt((AbstractEndNode) node);
+                                        assert phiValue == null || currentState.isMarked(phiValue) || phiValue instanceof ConstantNode : phiValue + " not available at phi " + phi + " / end " + node +
+                                                        " in block " + block;
+                                    }
                                 }
                             }
                             if (stateAfter != null) {
