@@ -847,10 +847,15 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
     def get_env(self):
         return {}
 
+    def get_image_env(self):
+        # Use the existing environment by default.
+        return os.environ
+
     def run_stage(self, vm, stage, server_command, out, err, cwd, nonZeroIsFatal):
         if 'image' in stage:
             # For image stages, we just run the given command
-            return super(BaseMicroserviceBenchmarkSuite, self).run_stage(vm, stage, server_command, out, err, cwd, nonZeroIsFatal)
+            with PatchEnv(self.get_image_env()):
+                return super(BaseMicroserviceBenchmarkSuite, self).run_stage(vm, stage, server_command, out, err, cwd, nonZeroIsFatal)
         else:
             if stage == 'run':
                 serverCommandWithTracker = self.apply_command_mapper_hooks(server_command, vm)
@@ -861,7 +866,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
                 # Measure time-to-first-response multiple times (without any command mapper hooks as those affect the measurement significantly)
                 for _ in range(self.NumMeasureTimeToFirstResponse):
-                    with EmptyEnv(self.get_env()):
+                    with PatchEnv(self.get_env()):
                         measurementThread = self.startDaemonThread(target=BaseMicroserviceBenchmarkSuite.testTimeToFirstResponseInBackground, args=[self])
                         returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                         measurementThread.join()
@@ -869,7 +874,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                         mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                 # Measure startup performance (without RSS tracker)
-                with EmptyEnv(self.get_env()):
+                with PatchEnv(self.get_env()):
                     measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, [self])
                     returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                     measurementThread.join()
@@ -877,7 +882,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                     mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                 # Measure peak performance (with all command mapper hooks)
-                with EmptyEnv(self.get_env()):
+                with PatchEnv(self.get_env()):
                     measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, [self])
                     returnCode = mx.run(serverCommandWithTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                     measurementThread.join()
@@ -887,7 +892,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                 if self.measureLatency:
                     if not any([c.get("requests-per-second") for c in self.loadConfiguration("latency")]):
                         # Calibrate for latency measurements (without RSS tracker) if no fixed request rate has been provided in the config
-                        with EmptyEnv(self.get_env()):
+                        with PatchEnv(self.get_env()):
                             measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, [self])
                             returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                             measurementThread.join()
@@ -895,7 +900,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                             mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                     # Measure latency (without RSS tracker)
-                    with EmptyEnv(self.get_env()):
+                    with PatchEnv(self.get_env()):
                         measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testLatencyInBackground, [self])
                         returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                         measurementThread.join()
@@ -905,7 +910,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                 return returnCode
             elif stage == 'agent' or 'instrument-run' in stage:
                 # For the agent and the instrumented run, it is sufficient to run the peak performance workload.
-                with EmptyEnv(self.get_env()):
+                with PatchEnv(self.get_env()):
                     measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, [self, False])
                     returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                     measurementThread.join()
@@ -990,7 +995,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                 # Measure time-to-first-response (without any command mapper hooks as those affect the measurement significantly)
                 mx.disable_command_mapper_hooks()
                 for _ in range(self.NumMeasureTimeToFirstResponse):
-                    with EmptyEnv(self.get_env()):
+                    with PatchEnv(self.get_env()):
                         measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testTimeToFirstResponseInBackground, [self])
                         datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
                         measurementThread.join()
@@ -999,7 +1004,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
             if self.measureStartup:
                 # Measure startup performance (without RSS tracker)
                 mx_benchmark.disable_tracker()
-                with EmptyEnv(self.get_env()):
+                with PatchEnv(self.get_env()):
                     measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, [self])
                     datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
                     measurementThread.join()
@@ -1007,7 +1012,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
             if self.measurePeak:
                 # Measure peak performance (with all command mapper hooks)
-                with EmptyEnv(self.get_env()):
+                with PatchEnv(self.get_env()):
                     measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, [self])
                     datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
                     measurementThread.join()
@@ -1016,13 +1021,13 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                 if not [c.get("requests-per-second") for c in self.loadConfiguration("latency") if c.get("requests-per-second")]:
                     # Calibrate for latency measurements (without RSS tracker) if no fixed request rate has been provided in the config
                     mx_benchmark.disable_tracker()
-                    with EmptyEnv(self.get_env()):
+                    with PatchEnv(self.get_env()):
                         measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, [self])
                         datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
                         measurementThread.join()
 
                 # Measure latency (without RSS tracker)
-                with EmptyEnv(self.get_env()):
+                with PatchEnv(self.get_env()):
                     measurementThread = self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testLatencyInBackground, [self])
                     datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
                     measurementThread.join()
@@ -1052,13 +1057,12 @@ class NativeImageBundleBasedBenchmarkMixin(object):
         executable_jar = self._get_single_file_with_extension_from_dist(".jar")
         return self.vmArgs(bmSuiteArgs) + ["-jar", executable_jar]
 
-    def create_bundle_image_build_arguments(self):
+    def get_bundle_path(self):
         if self.uses_bundles():
-            return [f'--bundle-apply={self._get_single_file_with_extension_from_dist(".nib")}']
-        return []
+            return self._get_single_file_with_extension_from_dist(".nib")
 
 
-class EmptyEnv:
+class PatchEnv:
     def __init__(self, env):
         self.env = env
 

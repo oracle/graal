@@ -25,6 +25,7 @@
 from __future__ import annotations
 
 import datetime
+import glob
 import os
 import re
 import shutil
@@ -45,7 +46,7 @@ import mx_sdk_vm
 import mx_sdk_vm_impl
 from mx_sdk_vm_impl import svm_experimental_options
 from mx_benchmark import DataPoint, DataPoints, BenchmarkSuite
-from mx_sdk_benchmark import StagesInfo, NativeImageBenchmarkMixin
+from mx_sdk_benchmark import StagesInfo, NativeImageBenchmarkMixin, NativeImageBundleBasedBenchmarkMixin
 
 _suite = mx.suite('vm')
 _polybench_vm_registry = mx_benchmark.VmRegistry('PolyBench', 'polybench-vm')
@@ -229,8 +230,10 @@ class NativeImageBenchmarkConfig:
         # Inform the StagesInfo object about removed stages
         bm_suite.stages_info.setup(removed_stages)
 
+        bundle_args = [f'--bundle-apply={self.bundle_path}'] if self.bundle_path else []
         # benchmarks are allowed to use experimental options
-        self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')] + svm_experimental_options(base_image_build_args)
+        # the bundle might also inject experimental options, but they will be appropriately locked/unlocked.
+        self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')] + svm_experimental_options(base_image_build_args) + bundle_args
 
     def check_runnable(self):
         # TODO remove once there is load available for the specified benchmarks
@@ -239,17 +242,12 @@ class NativeImageBenchmarkConfig:
         return True
 
     def get_bundle_path_if_present(self):
-        bundle_apply_arg = "--bundle-apply="
-        for i in range(len(self.extra_image_build_arguments)):
-            if self.extra_image_build_arguments[i].startswith(bundle_apply_arg):
-                # The bundle output is produced next to the bundle file, which in the case of
-                # benchmarks is in the mx cache, so we make a local copy.
-                cached_bundle_path = self.extra_image_build_arguments[i][len(bundle_apply_arg):]
-                bundle_copy_path = os.path.join(self.output_dir, basename(cached_bundle_path))
-                mx_util.ensure_dirname_exists(bundle_copy_path)
-                mx.copyfile(cached_bundle_path, bundle_copy_path)
-                self.extra_image_build_arguments[i] = bundle_apply_arg + bundle_copy_path
-                return bundle_copy_path
+        if isinstance(self.bm_suite, NativeImageBundleBasedBenchmarkMixin):
+            cached_bundle_path = self.bm_suite.get_bundle_path()
+            bundle_copy_path = os.path.join(self.output_dir, basename(cached_bundle_path))
+            mx_util.ensure_dirname_exists(bundle_copy_path)
+            mx.copyfile(cached_bundle_path, bundle_copy_path)
+            return bundle_copy_path
 
         return None
 
@@ -885,7 +883,7 @@ class NativeImageVM(GraalVm):
         return rules
 
     @staticmethod
-    def copy_bundle_output(config):
+    def copy_bundle_output(config, image_name):
         """
         Copies all files from the bundle build into the benchmark build location.
         By default, the bundle output is produced next to the bundle file.
@@ -894,7 +892,18 @@ class NativeImageVM(GraalVm):
         bundle_name = os.path.basename(config.bundle_path)
         bundle_output = os.path.join(bundle_dir, bundle_name[:-len(".nib")] + ".output", "default")
         shutil.copytree(bundle_output, config.output_dir, dirs_exist_ok=True)
+
+        # Quarkus NI bundle builds do not respect the -o flag. We work around this by manually renaming the executable.
+        if not os.path.exists(os.path.join(config.output_dir, image_name)) and ("quarkus" in config.benchmark_suite_name or "tika" in config.benchmark_suite_name):
+            executables = glob.glob(os.path.join(config.output_dir, "*-runner"))
+            assert len(executables) == 1, f"expected one Quarkus executable, found {len(executables)}: {executables}"
+            os.rename(executables[0], os.path.join(config.output_dir, image_name))
         mx.rmtree(bundle_output)
+
+    @staticmethod
+    def _list_executables(path):
+        all_files = [os.path.join(path, f) for f in os.listdir(path)]
+        return [p for p in all_files if os.path.isfile(p) and os.access(p, os.X_OK)]
 
     def run_stage_agent(self):
         hotspot_vm_args = ['-ea', '-esa'] if self.is_gate and not self.config.skip_agent_assertions else []
@@ -937,7 +946,7 @@ class NativeImageVM(GraalVm):
         with self.stages.set_command(self.config.base_image_build_args + executable_name_args + instrument_args) as s:
             s.execute_command()
             if self.config.bundle_path is not None:
-                NativeImageVM.copy_bundle_output(self.config)
+                NativeImageVM.copy_bundle_output(self.config, self.config.instrumentation_executable_name)
             if s.exit_code == 0:
                 image_size = os.stat(os.path.join(self.config.output_dir, self.config.instrumentation_executable_name)).st_size
                 out('Instrumented image size: ' + str(image_size) + ' B')
@@ -1004,7 +1013,7 @@ class NativeImageVM(GraalVm):
         with self.stages.set_command(final_image_command) as s:
             s.execute_command()
             if self.config.bundle_path is not None:
-                NativeImageVM.copy_bundle_output(self.config)
+                NativeImageVM.copy_bundle_output(self.config, self.config.final_image_name)
 
             if s.exit_code == 0:
                 image_path = self.config.image_path

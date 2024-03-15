@@ -162,9 +162,6 @@ class BaseSpringBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBundle
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         return self.create_bundle_command_line_args(benchmarks, bmSuiteArgs)
 
-    def extra_image_build_argument(self, _, args):
-        return super(BaseSpringBenchmarkSuite, self).extra_image_build_argument(_, args) + self.create_bundle_image_build_arguments()
-
     def get_application_startup_regex(self):
         # Example of SpringBoot 3 startup log:
         # 2023-05-16T14:08:54.033+02:00  INFO 24381 --- [           main] o.s.s.petclinic.PetClinicApplication     : Started PetClinicApplication in 3.774 seconds (process running for 4.1)
@@ -172,6 +169,10 @@ class BaseSpringBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBundle
 
     def get_application_startup_units(self):
         return 's'
+
+    def get_image_env(self):
+        # Disable experimental option checking.
+        return {**os.environ, "NATIVE_IMAGE_EXPERIMENTAL_OPTIONS_ARE_FATAL": "false"}
 
     def default_stages(self):
         return ['instrument-image', 'instrument-run', 'image', 'run']
@@ -235,7 +236,6 @@ mx_benchmark.add_bm_suite(SpringHelloWorldWrkBenchmarkSuite())
 
 
 class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
-
     def get_application_startup_regex(self):
         # Example of Quarkus startup log:
         # "2021-03-17 20:03:33,893 INFO  [io.quarkus] (main) tika-quickstart 1.0.0-SNAPSHOT on JVM (powered by Quarkus 1.12.1.Final) started in 1.210s. Listening on: <url>"
@@ -244,45 +244,25 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
     def get_application_startup_units(self):
         return 's'
 
+    def get_image_env(self):
+        # Disable experimental option checking.
+        return {**os.environ, "NATIVE_IMAGE_EXPERIMENTAL_OPTIONS_ARE_FATAL": "false"}
+
     def default_stages(self):
         return ['instrument-image', 'instrument-run', 'image', 'run']
 
-    def extra_image_build_argument(self, benchmark, args):
-        return ['-J-Dsun.nio.ch.maxUpdateArraySize=100',
-                '-J-Djava.util.logging.manager=org.jboss.logmanager.LogManager',
-                '-J-Dvertx.logger-delegate-factory-class-name=io.quarkus.vertx.core.runtime.VertxLogDelegateFactory',
-                '-J-Dvertx.disableDnsResolver=true',
-                '-J-Dio.netty.leakDetection.level=DISABLED',
-                '-J-Dio.netty.allocator.maxOrder=3',
-                '-J-Duser.language=en',
-                '-J-Duser.country=US',
-                '-J-Dfile.encoding=UTF-8',
-                '-J--add-exports=java.security.jgss/sun.security.krb5=ALL-UNNAMED',
-                '-J--add-opens=java.base/java.text=ALL-UNNAMED',
-                '-J-Djava.awt.headless=true',
-                '--no-fallback',
-                '--enable-http',
-                '--add-exports=org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED',
-                '--add-exports=org.graalvm.nativeimage.base/com.oracle.svm.util=ALL-UNNAMED',
-                '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.configure=ALL-UNNAMED',
-                '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk.localization=ALL-UNNAMED',
-                '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
-                '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jni=ALL-UNNAMED',
-                '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.threadlocal=ALL-UNNAMED',
-                '--initialize-at-run-time=io.netty.internal.tcnative.SSL,io.netty.handler.codec.compression.ZstdOptions',
-                '-H:NativeLinkerOption=-no-pie',
-                '-H:+AddAllCharsets',
-                '-H:+ReportExceptionStackTraces',
-        ] + mx_sdk_vm_impl.svm_experimental_options([
-                '-H:+AllowFoldMethods',
-                '-H:-UseServiceLoaderFeature',
-                '-H:+AllowDeprecatedBuilderClassesOnImageClasspath', # needs to be removed once GR-41746 is fixed
-        ]) + super(BaseQuarkusBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
+
+class BaseQuarkusBundleBenchmarkSuite(BaseQuarkusBenchmarkSuite, NativeImageBundleBasedBenchmarkMixin):
+    def uses_bundles(self):
+        return True
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        return self.create_bundle_command_line_args(benchmarks, bmSuiteArgs)
 
 
-class BaseTikaBenchmarkSuite(BaseQuarkusBenchmarkSuite):
+class BaseTikaBenchmarkSuite(BaseQuarkusBundleBenchmarkSuite):
     def version(self):
-        return "1.0.10"
+        return "1.0.11"
 
     def applicationDist(self):
         return mx.library("TIKA_" + self.version(), True).get_path(True)
@@ -298,10 +278,9 @@ class BaseTikaBenchmarkSuite(BaseQuarkusBenchmarkSuite):
         expectedJdkVersion = mx.VersionSpec("11.0.13")
         if mx.get_jdk().version < expectedJdkVersion:
             mx.abort(benchmark + " needs at least JDK version " + str(expectedJdkVersion))
-
         return [
                    # Workaround for wrong class initialization configuration in Quarkus Tika
-                   '--initialize-at-build-time=org.apache.pdfbox.rendering.ImageType,org.apache.pdfbox.rendering.ImageType$1,org.apache.pdfbox.rendering.ImageType$2,org.apache.pdfbox.rendering.ImageType$3,org.apache.pdfbox.rendering.ImageType$4',
+                   '--initialize-at-build-time=org.apache.pdfbox.rendering.ImageType,org.apache.pdfbox.rendering.ImageType$1,org.apache.pdfbox.rendering.ImageType$2,org.apache.pdfbox.rendering.ImageType$3,org.apache.pdfbox.rendering.ImageType$4,org.apache.xmlbeans.XmlObject,org.apache.xmlbeans.metadata.system.sXMLCONFIG.TypeSystemHolder,org.apache.xmlbeans.metadata.system.sXMLLANG.TypeSystemHolder,org.apache.xmlbeans.metadata.system.sXMLSCHEMA.TypeSystemHolder',
                ] + super(BaseTikaBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
 
@@ -320,9 +299,9 @@ class TikaWrkBenchmarkSuite(BaseTikaBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenc
 mx_benchmark.add_bm_suite(TikaWrkBenchmarkSuite())
 
 
-class BaseQuarkusHelloWorldBenchmarkSuite(BaseQuarkusBenchmarkSuite):
+class BaseQuarkusHelloWorldBenchmarkSuite(BaseQuarkusBundleBenchmarkSuite):
     def version(self):
-        return "1.0.5"
+        return "1.0.6"
 
     def applicationDist(self):
         return mx.library("QUARKUS_HW_" + self.version(), True).get_path(True)
@@ -356,7 +335,7 @@ class QuarkusHelloWorldWrkBenchmarkSuite(BaseQuarkusHelloWorldBenchmarkSuite, mx
 mx_benchmark.add_bm_suite(QuarkusHelloWorldWrkBenchmarkSuite())
 
 
-class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBundleBasedBenchmarkMixin):
+class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
     def get_application_startup_regex(self):
         # Example of Micronaut startup log (there can be some formatting in between):
         # "[main] INFO io.micronaut.runtime.Micronaut - Startup completed in 328ms. Server Running: <url>"
@@ -365,29 +344,25 @@ class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBun
     def get_application_startup_units(self):
         return 'ms'
 
+    def get_image_env(self):
+        # Disable experimental option checking.
+        return {**os.environ, "NATIVE_IMAGE_EXPERIMENTAL_OPTIONS_ARE_FATAL": "false"}
+
     def build_assertions(self, benchmark, is_gate):
         # This method overrides NativeImageMixin.build_assertions
         return []  # We are skipping build assertions due to some failed asserts while building Micronaut apps.
 
-    def extra_image_build_argument(self, benchmark, args):
-        return [
-                   '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
-                   # Workaround for wrong class initialization configuration in Micronaut 3.9
-                   '--initialize-at-build-time=io.netty.handler.codec.http.cookie.ServerCookieEncoder',
-                   '--initialize-at-build-time=org.xml.sax.helpers.AttributesImpl,org.xml.sax.helpers.LocatorImpl',
-               ] + super(BaseMicronautBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
-
     def default_stages(self):
         return ['instrument-image', 'instrument-run', 'image', 'run']
 
+
+class BaseMicronautBundleBenchmarkSuite(BaseMicronautBenchmarkSuite, NativeImageBundleBasedBenchmarkMixin):
     def uses_bundles(self):
         return True
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         return self.create_bundle_command_line_args(benchmarks, bmSuiteArgs)
 
-    def extra_image_build_argument(self, _, args):
-        return super(BaseMicronautBenchmarkSuite, self).extra_image_build_argument(_, args) + self.create_bundle_image_build_arguments()
 
 class BaseQuarkusRegistryBenchmark(BaseQuarkusBenchmarkSuite, mx_sdk_benchmark.BaseMicroserviceBenchmarkSuite):
     """
@@ -508,7 +483,8 @@ class BaseMicronautMuShopBenchmark(BaseMicronautBenchmarkSuite, mx_sdk_benchmark
 
 mx_benchmark.add_bm_suite(BaseMicronautMuShopBenchmark())
 
-class BaseShopCartBenchmarkSuite(BaseMicronautBenchmarkSuite):
+
+class BaseShopCartBenchmarkSuite(BaseMicronautBundleBenchmarkSuite):
     def version(self):
         return "0.3.10"
 
@@ -537,7 +513,7 @@ class ShopCartWrkBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.Bas
 mx_benchmark.add_bm_suite(ShopCartWrkBenchmarkSuite())
 
 
-class BaseMicronautHelloWorldBenchmarkSuite(BaseMicronautBenchmarkSuite):
+class BaseMicronautHelloWorldBenchmarkSuite(BaseMicronautBundleBenchmarkSuite):
     def version(self):
         return "1.0.7"
 
