@@ -547,9 +547,6 @@ public abstract class NFATraversalRegexASTVisitor {
         }
         assert curTerm.isGroup();
         assert curTerm.getParent().isSubtreeRoot();
-        if (insideEmptyGuardGroup.contains(curTerm) && !(ast.getOptions().getFlavor().canHaveEmptyLoopIterations() && isBuildingDFA())) {
-            return advanceEmptyGuard(curTerm);
-        }
         cur = curTerm.getSubTreeParent().getMatchFound();
         return false;
     }
