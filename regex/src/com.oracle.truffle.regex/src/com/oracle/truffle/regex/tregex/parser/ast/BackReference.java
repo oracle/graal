@@ -135,7 +135,7 @@ public class BackReference extends QuantifiableTerm {
 
     @Override
     public boolean isUnrollingCandidate() {
-        return hasNotUnrolledQuantifier() && getQuantifier().isUnrollTrivial();
+        return hasQuantifier() && getQuantifier().isUnrollTrivial();
     }
 
     @Override

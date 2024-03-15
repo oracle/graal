@@ -831,7 +831,7 @@ public abstract class NFATraversalRegexASTVisitor {
                         pushQuantifierGuard(QuantifierGuard.createEnter(quantifier));
                     }
                 }
-                if (quantifier.hasZeroWidthIndex() && (ast.getOptions().getFlavor().emptyChecksOnMandatoryLoopIterations() || !group.isMandatoryQuantifier())) {
+                if (quantifier.hasZeroWidthIndex() && (ast.getOptions().getFlavor().emptyChecksOnMandatoryLoopIterations() || !group.isMandatoryUnrolledQuantifier())) {
                     pushQuantifierGuard(QuantifierGuard.createEnterZeroWidth(quantifier));
                 }
             }
@@ -881,7 +881,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 if (quantifier.hasIndex()) {
                     quantifierGuardsLoop[quantifier.getIndex()]++;
                 }
-                if (quantifier.hasZeroWidthIndex() && (ast.getOptions().getFlavor().emptyChecksOnMandatoryLoopIterations() || !group.isMandatoryQuantifier())) {
+                if (quantifier.hasZeroWidthIndex() && (ast.getOptions().getFlavor().emptyChecksOnMandatoryLoopIterations() || !group.isMandatoryUnrolledQuantifier())) {
                     pushQuantifierGuard(QuantifierGuard.createExitZeroWidth(quantifier));
                 }
             }

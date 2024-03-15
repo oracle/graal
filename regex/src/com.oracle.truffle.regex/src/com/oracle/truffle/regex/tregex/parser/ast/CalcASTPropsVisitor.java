@@ -249,7 +249,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
             }
         }
         if (group.hasQuantifier()) {
-            if (!group.isUnrolledQuantifier()) {
+            if (!group.isExpandedQuantifier()) {
                 flags |= RegexASTNode.FLAG_HAS_QUANTIFIERS;
                 setQuantifierIndex(group);
                 if (group.getQuantifier().getMin() == 0) {
@@ -270,8 +270,8 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
             }
             /*
              * If a quantifier can produce a zero-width match, we have to check this in
-             * back-tracking mode. In flavors more complex than JS (where empty loop iterations
-             * can be admitted), we have to check this at all times. In JS, we can afford to only do
+             * back-tracking mode. In flavors more complex than JS (where empty loop iterations can
+             * be admitted), we have to check this at all times. In JS, we can afford to only do
              * this check when the expression contains back-references or lookarounds.
              */
             if (minPath - group.getMinPath() == 0) {
