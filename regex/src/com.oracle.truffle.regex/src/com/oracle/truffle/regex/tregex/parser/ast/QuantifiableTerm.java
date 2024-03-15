@@ -73,7 +73,7 @@ public abstract class QuantifiableTerm extends Term {
      * Returns {@code true} iff this term has a quantifier that was not unrolled by the parser.
      */
     public boolean hasNotUnrolledQuantifier() {
-        return hasQuantifier() && !isUnrolledQuantifier();
+        return hasQuantifier() && !isExpandedQuantifier();
     }
 
     /**

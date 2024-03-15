@@ -129,7 +129,7 @@ public class CharacterClass extends QuantifiableTerm {
 
     @Override
     public boolean isUnrollingCandidate() {
-        return hasNotUnrolledQuantifier() && getQuantifier().isWithinThreshold(TRegexOptions.TRegexQuantifierUnrollThresholdSingleCC);
+        return hasQuantifier() && getQuantifier().isWithinThreshold(TRegexOptions.TRegexQuantifierUnrollThresholdSingleCC);
     }
 
     public void addLookBehindEntry(RegexAST ast, LookBehindAssertion lookBehindEntry) {

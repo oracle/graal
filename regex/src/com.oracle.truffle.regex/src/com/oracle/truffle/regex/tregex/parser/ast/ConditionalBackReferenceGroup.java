@@ -128,7 +128,7 @@ public final class ConditionalBackReferenceGroup extends Group {
         return super.toJson("ConditionalBackReferenceGroup").append(
                         Json.prop("referencedGroupNumber", referencedGroupNumber),
                         Json.prop("isLoop", isLoop()),
-                        Json.prop("isUnrolledLoop", isUnrolledQuantifier()),
+                        Json.prop("isExpandedLoop", isExpandedQuantifier()),
                         Json.prop("alternatives", getAlternatives()));
     }
 }

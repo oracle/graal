@@ -62,8 +62,8 @@ public abstract class RegexASTNode implements JsonConvertible {
     static final int FLAG_BACK_REFERENCE_IS_NESTED_OR_FORWARD = 1 << 8;
     static final int FLAG_BACK_REFERENCE_IS_IGNORE_CASE = 1 << 9;
     static final int FLAG_GROUP_LOOP = 1 << 10;
-    static final int FLAG_GROUP_UNROLLED_QUANTIFIER = 1 << 11;
-    static final int FLAG_GROUP_MANDATORY_QUANTIFIER = 1 << 12;
+    static final int FLAG_GROUP_EXPANDED_QUANTIFIER = 1 << 11;
+    static final int FLAG_GROUP_MANDATORY_UNROLLED_QUANTIFIER = 1 << 12;
     static final int FLAG_GROUP_EXPANDED_QUANTIFIER_EMPTY_SEQUENCE = 1 << 13;
     static final int FLAG_GROUP_LOCAL_FLAGS = 1 << 14;
     static final int FLAG_EMPTY_GUARD = 1 << 15;
@@ -372,41 +372,59 @@ public abstract class RegexASTNode implements JsonConvertible {
      * where (X|Y) is a group with alternatives X and Y and (X|Y)* is a looping group with
      * alternatives X and Y. In the examples above, all of the occurrences of A in the expansions as
      * well as the additional empty {@link Sequence}s would be marked with this flag.
+     */
+    public boolean isExpandedQuantifier() {
+        return isFlagSet(FLAG_GROUP_EXPANDED_QUANTIFIER);
+    }
+
+    /**
+     * Marks this {@link RegexASTNode} as being inserted into the AST as part of expanding
+     * quantifier syntax (*, +, ?, {n,m}).
      *
+     * @see #isExpandedQuantifier()
+     */
+    public void setExpandedQuantifier(boolean expandedQuantifier) {
+        setFlag(FLAG_GROUP_EXPANDED_QUANTIFIER, expandedQuantifier);
+    }
+
+    /**
      * Indicates whether this {@link RegexASTNode} represents a mandatory copy of a quantified term
      * after unrolling.
      *
      * E.g., in the expansion of A{2,4}, which is AA(A(A|)|), the first two occurrences of A are
      * marked with this flag.
      */
-    public boolean isUnrolledQuantifier() {
-        return isFlagSet(FLAG_GROUP_UNROLLED_QUANTIFIER);
+    public boolean isMandatoryUnrolledQuantifier() {
+        return isFlagSet(FLAG_GROUP_MANDATORY_UNROLLED_QUANTIFIER);
     }
 
     /**
-     * Marks this {@link RegexASTNode} as being inserted into the AST as part of expanding
-     * quantifier syntax (*, +, ?, {n,m}).
      * Marks this {@link RegexASTNode} as being inserted into the AST as part of unrolling the
      * mandatory part of a quantified term.
      *
-     * @see #isUnrolledQuantifier()
+     * @see #isMandatoryUnrolledQuantifier()
      */
-    public void setUnrolledQuantifer(boolean unrolledQuantifer) {
-        setFlag(FLAG_GROUP_UNROLLED_QUANTIFIER, unrolledQuantifer);
+    public void setMandatoryUnrolledQuantifier(boolean mandatoryUnrolledQuantifier) {
+        setFlag(FLAG_GROUP_MANDATORY_UNROLLED_QUANTIFIER, mandatoryUnrolledQuantifier);
     }
 
-    public boolean isMandatoryQuantifier() {
-        return isFlagSet(FLAG_GROUP_MANDATORY_QUANTIFIER);
-    }
-
-    public void setMandatoryQuantifier(boolean mandatoryQuantifier) {
-        setFlag(FLAG_GROUP_MANDATORY_QUANTIFIER, mandatoryQuantifier);
-    }
-
+    /**
+     * Indicates whether this node is an empty {@link Sequence} inserted as an early escape
+     * alternative when unrolling a quantifier expression.
+     *
+     * E.g., in the expansion of A{2,4}, which is AA(A(A|_)|_), the two {@code _} characters show
+     * the two empty sequences marked with this flag.
+     */
     public boolean isExpandedQuantifierEmptySequence() {
         return isFlagSet(FLAG_GROUP_EXPANDED_QUANTIFIER_EMPTY_SEQUENCE);
     }
 
+    /**
+     * Marks this empty {@link Sequence} as being inserted into the AST as part of unrolling the
+     * optional suffix of a quantified term.
+     *
+     * @see #isExpandedQuantifierEmptySequence()
+     */
     public void setExpandedQuantifierEmptySequence(boolean expandedQuantifierEmptySequence) {
         setFlag(FLAG_GROUP_EXPANDED_QUANTIFIER_EMPTY_SEQUENCE, expandedQuantifierEmptySequence);
     }

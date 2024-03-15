@@ -287,7 +287,7 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
 
     @Override
     public boolean isUnrollingCandidate() {
-        return hasNotUnrolledQuantifier() && getQuantifier().isWithinThreshold(TRegexOptions.TRegexQuantifierUnrollThresholdGroup);
+        return hasQuantifier() && getQuantifier().isWithinThreshold(TRegexOptions.TRegexQuantifierUnrollThresholdGroup);
     }
 
     /**
@@ -431,7 +431,7 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
                         Json.prop("groupNumber", groupNumber),
                         Json.prop("isCapturing", isCapturing()),
                         Json.prop("isLoop", isLoop()),
-                        Json.prop("isUnrolledLoop", isUnrolledQuantifier()),
+                        Json.prop("isExpandedLoop", isExpandedQuantifier()),
                         Json.prop("alternatives", alternatives));
     }
 }

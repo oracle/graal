@@ -256,8 +256,8 @@ public class RegexASTPostProcessor {
                 // to expect quantifier guards only on group boundaries.
                 addTermCopyWrappedInGroup(term);
                 curTerm.asGroup().setQuantifier(quantifier);
-                curTerm.setUnrolledQuantifer(unroll);
-                curTerm.setMandatoryQuantifier(false);
+                curTerm.setExpandedQuantifier(unroll);
+                curTerm.setMandatoryUnrolledQuantifier(false);
                 curTerm.setEmptyGuard(true);
                 createOptional(term, quantifier, unroll, recurse - 1);
             }
@@ -302,8 +302,8 @@ public class RegexASTPostProcessor {
                     for (int i = 0; i < quantifier.getMin(); i++) {
                         addTermCopyWrappedInGroup(toExpand);
                         curTerm.asGroup().setQuantifier(quantifier);
-                        curTerm.setUnrolledQuantifer(true);
-                        curTerm.setMandatoryQuantifier(true);
+                        curTerm.setExpandedQuantifier(true);
+                        curTerm.setMandatoryUnrolledQuantifier(true);
                     }
                 }
 
