@@ -20,10 +20,10 @@ Among other things, the tool can visualize profiling information recorded by the
 The samples are aggregated into a single _flame graph_. 
 The flame graph is color-coded to show how the inliner made the inlining decisions during the compilation (more on that below).
 
-To generate a comprehensive report with the visualization, pass the `-H:+BuildReport` and `-H:+BuildReportSamplerFlamegraph` options at the step when you build a PGO-optimized native executable.
+To generate a comprehensive report with the visualization, pass the `-H:+BuildReport` and `-H:+BuildReportSamplerFlamegraph` experimental options at the step when you build a PGO-optimized native executable.
 For example:
-``` bash
-native-image -cp . GameOfLife -o gameoflife-pgo --pgo=gameoflife.iprof -H:+BuildReport -H:+BuildReportSamplerFlamegraph
+```bash
+native-image -cp . GameOfLife -o gameoflife-pgo --pgo=gameoflife.iprof -H:+UnlockExperimentalVMOptions -H:+BuildReport -H:+BuildReportSamplerFlamegraph -H:-UnlockExperimentalVMOptions
 ```
 > Refer to [Basic Usage of Profile-Guided Optimization](PGO-Basic-Usage.md) for the step-by-step guide.
 
