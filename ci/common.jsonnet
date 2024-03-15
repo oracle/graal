@@ -64,6 +64,15 @@ local common_json = import "../common.json";
   # We do not want to expose galahad-jdk
   assert std.assertEqual([x for x in std.objectFields(common_json.jdks) if x != "galahad-jdk"], std.objectFields(jdks_data)),
   # Verify oraclejdk-latest and labsjdk-ee-latest versions match
+  assert
+    local _labsjdk = common_json.jdks["labsjdk-ee-latest"];
+    local _oraclejdk = common_json.jdks["oraclejdk-latest"];
+    local _ov = _oraclejdk.build_id;
+    local _lv = std.strReplace(_labsjdk.version, "ee-", "jdk-");
+    # Skip the check if we are not using a labsjdk. This can happen on JDK integration branches.
+    local no_labsjdk = _labsjdk.name != "labsjdk";
+    assert no_labsjdk || std.startsWith(_lv, _ov) : "update oraclejdk-latest to match labsjdk-ee-latest: %s+%s vs %s" % [_oraclejdk.version, _oraclejdk.build_id, _labsjdk.version];
+    true,
 
   # The raw jdk data, the same as common_json.jdks + { jdk_version:: }
   jdks_data: jdks_data,
