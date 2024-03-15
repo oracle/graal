@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,29 +65,10 @@ public interface BooleanLocation {
     boolean getBoolean(DynamicObject store, boolean condition);
 
     /**
-     * @see Location#set(DynamicObject, Object)
-     * @since 0.8 or earlier
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated(since = "22.2")
-    void setBoolean(DynamicObject store, boolean value) throws FinalLocationException;
-
-    /**
      * @see Location#set(DynamicObject, Object, Shape)
      * @since 0.8 or earlier
      */
     @SuppressWarnings("deprecation")
     @Deprecated(since = "22.2")
     void setBoolean(DynamicObject store, boolean value, Shape shape) throws FinalLocationException;
-
-    /**
-     * @see Location#set(DynamicObject, Object, Shape, Shape)
-     * @since 0.8 or earlier
-     */
-    @Deprecated(since = "22.2")
-    void setBoolean(DynamicObject store, boolean value, Shape oldShape, Shape newShape);
-
-    /** @since 0.8 or earlier */
-    @Deprecated(since = "22.2")
-    Class<Boolean> getType();
 }

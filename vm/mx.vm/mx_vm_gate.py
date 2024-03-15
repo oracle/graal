@@ -72,7 +72,9 @@ class VmGateTasks:
     svm_sl_tck = 'svm_sl_tck'
     svm_truffle_tck_js = 'svm-truffle-tck-js'
     svm_truffle_tck_python = 'svm-truffle-tck-python'
-    truffle_unchained = 'truffle-unchained'
+    truffle_jvm = 'truffle-jvm'
+    truffle_native = 'truffle-native'
+    truffle_native_quickbuild = 'truffle-native-quickbuild'
     maven_downloader = 'maven-downloader'
 
 def _get_CountUppercase_vmargs():
@@ -549,15 +551,15 @@ def gate_body(args, tasks):
     else:
         mx.warn("Skipping libgraal tests: suite '{suite}' not found. Did you forget to dynamically import it? (--dynamicimports {suite})".format(suite=libgraal_suite_name))
 
-    gate_substratevm(tasks)
-    gate_substratevm(tasks, quickbuild=True)
     gate_sulong(tasks)
     gate_python(tasks)
     gate_svm_truffle_tck_smoke_test(tasks)
     gate_svm_sl_tck(tasks)
     gate_svm_truffle_tck_js(tasks)
     gate_svm_truffle_tck_python(tasks)
-    gate_truffle_unchained(tasks)
+    gate_truffle_jvm(tasks)
+    gate_truffle_native(tasks)
+    gate_truffle_native(tasks, quickbuild=True)
     gate_maven_downloader(tasks)
 
 def graalvm_svm():
@@ -576,46 +578,26 @@ def graalvm_svm():
             yield native_image
     return native_image_context, svm.extensions
 
-def gate_substratevm(tasks, quickbuild=False):
-    tag = VmGateTasks.substratevm
-    name = 'Run Truffle API tests on SVM'
-    extra_build_args = []
-    if quickbuild:
-        tag = VmGateTasks.substratevm_quickbuild
-        name += ' with quickbuild'
-        extra_build_args = ['-Ob']
-
-    with Task(name, tasks, tags=[tag]) as t:
+def gate_truffle_native(tasks, quickbuild=False):
+    tag = VmGateTasks.truffle_native_quickbuild if quickbuild else VmGateTasks.truffle_native
+    name_suffix = ' with quickbuild' if quickbuild else ''
+    truffle_suite = mx.suite('truffle')
+    with Task('Truffle SL Native Fallback' + name_suffix, tasks, tags=[tag]) as t:
         if t:
-            tests = ['com.oracle.truffle.api.test.polyglot']
-            with NamedTemporaryFile(prefix='blacklist.', mode='w', delete=False) as fp:
-                # ContextPreInitializationNativeImageTest must run in its own image
-                fp.file.writelines([l + '\n' for l in ['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest']])
-                blacklist_args = ["--blacklist", fp.name]
-
-            truffle_with_compilation = [
-                '--verbose',
-                '--macro:truffle',
-                '--language:nfi',
-                '--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
-                '--add-exports=org.graalvm.polyglot/org.graalvm.polyglot.impl=ALL-UNNAMED',
-                '-R:MaxHeapSize=2g',
-                '--enable-url-protocols=jar',
-                '--enable-url-protocols=http',
-                '-H:MaxRuntimeCompileMethods=5000',
-            ]
-            truffle_without_compilation = truffle_with_compilation + [
-                '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime'
-            ]
-            args = ['--build-args'] + truffle_with_compilation + extra_build_args + blacklist_args + ['--'] + tests
-            native_image_context, svm = graalvm_svm()
-            with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
-                svm._native_unittest(native_image, args)
-
-            args = ['--build-args'] + truffle_without_compilation + extra_build_args + blacklist_args + ['--run-args', '--verbose', '-Dpolyglot.engine.WarnInterpreterOnly=false'] + ['--'] + tests
-            native_image_context, svm = graalvm_svm()
-            with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
-                svm._native_unittest(native_image, args)
+            if not truffle_suite:
+                mx.abort("Cannot resolve truffle suite.")
+            mx_truffle.sl_native_fallback_gate_tests(quickbuild)
+    with Task('Truffle SL Native Optimized' + name_suffix, tasks, tags=[tag]) as t:
+        if t:
+            if not truffle_suite:
+                mx.abort("Cannot resolve truffle suite.")
+            mx_truffle.sl_native_optimized_gate_tests(quickbuild)
+    with Task('Truffle API Native Tests' + name_suffix, tasks, tags=[tag]) as t:
+        if t:
+            if not truffle_suite:
+                mx.abort("Cannot resolve truffle suite.")
+            mx_truffle.truffle_native_unit_tests_gate(True, quickbuild)
+            mx_truffle.truffle_native_unit_tests_gate(False, quickbuild)
 
 def gate_sulong(tasks):
     with Task('Run SulongSuite tests as native-image', tasks, tags=[VmGateTasks.sulong]) as t:
@@ -683,7 +665,8 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id, langu
         ] + mx_sdk_vm_impl.svm_experimental_options([
             '-H:ClassInitialization=:build_time',
             '-H:+EnforceMaxRuntimeCompileMethods',
-            '-H:+UseOldMethodHandleIntrinsics',
+            '--add-exports=jdk.graal.compiler/jdk.graal.compiler.graph.iterators=ALL-UNNAMED',
+            '--add-exports=jdk.graal.compiler/jdk.graal.compiler.nodes.spi=ALL-UNNAMED',
             '-cp',
             cp,
             '-H:-FoldSecurityManagerGetter',
@@ -752,33 +735,23 @@ def gate_svm_truffle_tck_python(tasks):
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 _svm_truffle_tck(native_image, svm.suite, py_suite, 'python')
 
-def gate_truffle_unchained(tasks):
+def gate_truffle_jvm(tasks):
     truffle_suite = mx.suite('truffle')
-    with Task('Truffle Unchained Truffle ModulePath Unit Tests', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
+    with Task('Truffle ModulePath Unit Tests', tasks, tags=[VmGateTasks.truffle_jvm]) as t:
         if t:
             if not truffle_suite:
                 mx.abort("Cannot resolve truffle suite.")
             mx_truffle.truffle_jvm_module_path_unit_tests_gate()
-    with Task('Truffle Unchained Truffle ClassPath Unit Tests', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
+    with Task('Truffle ClassPath Unit Tests', tasks, tags=[VmGateTasks.truffle_jvm]) as t:
         if t:
             if not truffle_suite:
                 mx.abort("Cannot resolve truffle suite.")
             mx_truffle.truffle_jvm_class_path_unit_tests_gate()
-    with Task('Truffle Unchained SL JVM', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
+    with Task('Truffle SL JVM', tasks, tags=[VmGateTasks.truffle_jvm]) as t:
         if t:
             if not truffle_suite:
                 mx.abort("Cannot resolve truffle suite.")
             mx_truffle.sl_jvm_gate_tests()
-    with Task('Truffle Unchained SL Native Fallback', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
-        if t:
-            if not truffle_suite:
-                mx.abort("Cannot resolve truffle suite.")
-            mx_truffle.sl_native_fallback_gate_tests()
-    with Task('Truffle Unchained SL Native Optimized', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
-        if t:
-            if not truffle_suite:
-                mx.abort("Cannot resolve truffle suite.")
-            mx_truffle.sl_native_optimized_gate_tests()
 
 def gate_maven_downloader(tasks):
     with Task('Maven Downloader prepare maven repo', tasks, tags=[VmGateTasks.maven_downloader]) as t:

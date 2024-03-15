@@ -165,8 +165,8 @@ Large numbers can cause significant reflection overheads, slow down the build pr
 #### <a name="glossary-jni-access-registrations"></a>JNI Access Registrations
 The number of types, fields, and methods that are registered for [JNI](JNI.md) access.
 
-#### <a name="glossary-foreign-downcall-registrations"></a>Foreign functions stubs
-The number of downcalls registered for [foreign](ForeignInterface.md) function access.
+#### <a name="glossary-foreign-downcall-and-upcall-registrations"></a>Foreign functions stubs
+The number of downcalls and upcalls registered for [foreign](ForeignInterface.md) function access.
 
 #### <a name="glossary-runtime-methods"></a>Runtime Compiled Methods
 The number of methods marked for runtime compilation.
@@ -259,11 +259,11 @@ For more information, see [Inspection Tool](InspectTool.md)
 
 #### <a name="glossary-backwards-edge-cfi"></a>Backwards-Edge Control-Flow Integrity (CFI)
 Control-Flow Integrity (CFI) can be enforced with the experimental `-H:CFI=HW` option.
-This feature is currently only available for Linux AArch64 and leverages pointer authentication codes (PAC) to ensure integrity of a function's return address.
+This feature is currently only available for code compiled by Graal for Linux AArch64 and leverages pointer authentication codes (PAC) to ensure integrity of a function's return address.
 
 #### <a name="glossary-sw-cfi"></a>Software Control-Flow Integrity (CFI)
-Control-Flow Integrity (CFI) can be enforced in software with the experimental `-H:CFI=SW_NONATIVE` or `-H:CFI=SW` option.
-This feature is currently only available for Linux AMD64 and validates targets of indirect branches and method returns.
+Control-Flow Integrity (CFI) can be enforced in software with the experimental `-H:CFI=SW_NONATIVE` option.
+This feature is currently only available for code compiled by Graal for Linux AMD64 and validates targets of indirect branches and method returns.
 
 ## Recommendations
 
@@ -356,7 +356,7 @@ This schema also contains descriptions for each possible artifact type and expla
 
 The build output produced by the `native-image` builder is designed for humans, can evolve with new releases, and should thus not be parsed in any way by tools.
 Instead, use the `-H:BuildOutputJSONFile=<file.json>` option to instruct the builder to produce machine-readable build output in JSON format that can be used, for example, for building monitoring tools.
-Such a JSON file validates against the JSON schema defined in [`build-output-schema-v0.9.2.json`](https://github.com/oracle/graal/tree/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.2.json).
+Such a JSON file validates against the JSON schema defined in [`build-output-schema-v0.9.3.json`](https://github.com/oracle/graal/tree/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.3.json).
 Note that a JSON file is produced if and only if a build succeeds.
 
 The following example illustrates how this could be used in a CI/CD build pipeline to check that the number of reachable methods does not exceed a certain threshold:

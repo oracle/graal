@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.jfr.utils.JfrVisited;
 import com.oracle.svm.core.jfr.utils.JfrVisitedTable;
@@ -90,8 +91,7 @@ public class JfrMethodRepository implements JfrRepository {
             JfrNativeEventWriter.putLong(data, symbolRepo.getSymbolId("()V", false));
             /* Dummy value for modifiers. */
             JfrNativeEventWriter.putShort(data, (short) 0);
-            /* Dummy value for isHidden. */
-            JfrNativeEventWriter.putBoolean(data, false);
+            JfrNativeEventWriter.putBoolean(data, !StackTraceUtils.shouldShowFrame(clazz, methodName));
             if (!JfrNativeEventWriter.commit(data)) {
                 return methodId;
             }

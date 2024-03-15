@@ -1470,8 +1470,17 @@ suite = {
       "vpath" : True,
       "variants" : ["executable-O0"],
       "buildRef" : True,
-      "cmakeConfig" : {
-        "CMAKE_C_FLAGS" : "-Wno-everything",
+      "os" : {
+        "windows" : {
+          "cmakeConfig" : {
+            "CMAKE_C_FLAGS" : "-Wno-everything -include stdio.h",
+          },
+        },
+        "<others>": {
+          "cmakeConfig" : {
+            "CMAKE_C_FLAGS" : "-Wno-everything",
+          },
+        },
       },
       "dependencies" : ["SULONG_TEST"],
       "buildDependencies" : [
@@ -1490,8 +1499,17 @@ suite = {
       "vpath" : True,
       "variants" : ["executable-O0"],
       "buildRef" : True,
-      "cmakeConfig" : {
-        "CMAKE_CXX_FLAGS" : "-Wno-everything",
+      "os" : {
+        "windows" : {
+          "cmakeConfig" : {
+            "CMAKE_CXX_FLAGS" : "-Wno-everything -include stdio.h",
+          },
+        },
+        "<others>": {
+          "cmakeConfig" : {
+            "CMAKE_CXX_FLAGS" : "-Wno-everything",
+          },
+        },
       },
       "dependencies" : ["SULONG_TEST"],
       "buildDependencies" : [

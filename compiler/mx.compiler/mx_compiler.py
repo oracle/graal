@@ -26,6 +26,7 @@
 from __future__ import print_function
 import os
 from os.path import join, exists, basename, dirname, isdir
+import argparse
 from argparse import ArgumentParser, RawDescriptionHelpFormatter, REMAINDER
 import re
 import stat
@@ -50,7 +51,6 @@ import mx_sdk_vm_impl
 
 import mx_benchmark
 
-import argparse
 import shlex
 import json
 
@@ -828,12 +828,12 @@ mx_unittest.register_unittest_config(GraalUnittestConfig())
 
 _use_graalvm = False
 
-class SwitchToGraalVMJDK(mx_unittest.Action):
+class SwitchToGraalVMJDK(argparse.Action):
     def __init__(self, **kwargs):
         global _use_graalvm
         kwargs['required'] = False
         kwargs['nargs'] = 0
-        mx_unittest.Action.__init__(self, **kwargs)
+        argparse.Action.__init__(self, **kwargs)
         _use_graalvm = False
     def __call__(self, parser, namespace, values, option_string=None):
         global _use_graalvm

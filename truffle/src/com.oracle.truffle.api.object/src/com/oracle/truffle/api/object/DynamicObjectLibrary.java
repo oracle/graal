@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -359,8 +359,6 @@ public abstract class DynamicObjectLibrary extends Library {
      *
      * @param type a non-null type identifier defined by the guest language.
      * @return {@code true} if the type (and the object's shape) changed
-     * @throws IllegalArgumentException if the type is not an instance of {@link ObjectType} and the
-     *             object has been created with the legacy layout.
      * @since 20.2.0
      * @see #getDynamicType(DynamicObject)
      */

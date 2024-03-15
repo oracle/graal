@@ -30,11 +30,13 @@ import java.nio.file.Path;
 import java.util.List;
 
 import com.oracle.svm.core.OS;
+import com.oracle.svm.core.util.BasedOnJDKClass;
 
 /**
  * Separated from {@link Target_jdk_internal_foreign_SystemLookup} to allow (forced) runtime
  * initialization.
  */
+@BasedOnJDKClass(jdk.internal.foreign.SystemLookup.class)
 public final class RuntimeSystemLookup {
     static final SymbolLookup INSTANCE = makeSystemLookup();
 

@@ -77,6 +77,17 @@ public class VMThreadFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess config) {
         ImageSingletons.add(VMThreadLocalSupport.class, threadLocalSupport);
+        /*
+         * While technically threadLocalCollector does not replace an object, it does collect
+         * information needed by the invocation plugin used to create VMThreadLocalAccess nodes (and
+         * also remove the original FastThreadLocal constant from the graph).
+         *
+         * It would be possible to create VMThreadLocalAccess nodes via a canonicalization phase
+         * after analysis has completed, which would have the potential benefit of reducing the
+         * number of thread locals instantiated; however, this requires careful coordination with
+         * snippet graphs, especially for runtime compilation, and likely the added complexity would
+         * outweigh the benefits.
+         */
         config.registerObjectReplacer(threadLocalCollector);
     }
 

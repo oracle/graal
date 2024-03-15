@@ -73,6 +73,7 @@ Run `native-image --help` for help on build options.
 * `--shared`: build a shared library
 * `--silent`: silence build output
 * `--static`: build a statically-linked executable (requires `libc` and `zlib` static libraries)
+* `--static-nolibc`: build statically linked executable with libc dynamically linked
 * `--target`: select the compilation target for `native-image` (in the `<OS>-<architecture>` format). It defaults to host's OS-architecture pair.
 * `--trace-class-initialization`: provide a comma-separated list of fully-qualified class names that a class initialization is traced for
 * `--trace-object-instantiation`: provide a comma-separated list of fully-qualified class names that an object instantiation is traced for
@@ -116,7 +117,7 @@ There are some expert level options that a user may find useful or needed. For e
 
 Native Image provides an informative [build output](BuildOutput.md) including various statistics during the build process.
 The build output in a JSON-based, machine-readable format can be requested using the `-H:BuildOutputJSONFile` option, and later processed by a monitoring tool.
-The JSON files validate against the JSON schema defined in [build-output-schema-v0.9.2.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.2.json). 
+The JSON files validate against the JSON schema defined in [build-output-schema-v0.9.3.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/build-output-schema-v0.9.3.json).
 A comprehensive report with additional information can be requested using the `-H:+BuildReport` option.
 
 ### Graph Dumping

@@ -114,13 +114,13 @@ With GraalVM Native Image you can build a mostly-static native executable that s
 To build a mostly-static native executable, use this command:
 
 ```shell
-native-image -H:+StaticExecutableWithDynamicLibC [other arguments] <Class>
+native-image --static-nolibc [other arguments] <Class>
 ```
 
 To build a  a mostly-static native executable for the above `EnvMap` demo, run:
 
 ```shell
-native-image -H:+StaticExecutableWithDynamicLibC EnvMap
+native-image --static-nolibc EnvMap
 ```
 
 This produces a native executable that statically links all involved libraries (including JDK shared libraries) except for `libc`. This includes `zlib`. Also, depending on the user's code, it may link `libstdc+` and `libgcc`.

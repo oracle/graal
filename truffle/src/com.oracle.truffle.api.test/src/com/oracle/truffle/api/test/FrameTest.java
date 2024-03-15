@@ -44,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -119,9 +120,14 @@ public class FrameTest {
                     return materialized;
                 });
                 // at least one frame available
-                assertNotNull(result);
+                assertNotNullBoundary(result.materialize());
 
                 return this;
+            }
+
+            @TruffleBoundary
+            private static void assertNotNullBoundary(MaterializedFrame frame) {
+                assertNotNull(frame);
             }
         }
 

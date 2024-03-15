@@ -82,6 +82,10 @@ public abstract class HostVM {
         this.classReachabilityListeners = new ArrayList<>();
     }
 
+    public ClassLoader getClassLoader() {
+        return classLoader;
+    }
+
     public OptionValues options() {
         return options;
     }
@@ -246,15 +250,7 @@ public abstract class HostVM {
         return true;
     }
 
-    public void installInThread(@SuppressWarnings("unused") Object vmConfig) {
-        Thread.currentThread().setContextClassLoader(classLoader);
-    }
-
     public void clearInThread() {
-    }
-
-    public Object getConfiguration() {
-        return null;
     }
 
     public abstract Comparator<? super ResolvedJavaType> getTypeComparator();

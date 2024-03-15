@@ -44,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.Iterator;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -143,6 +144,7 @@ public class ReplaceTest {
         @Override
         int execute() {
             int intValue = Integer.parseInt(value);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             ResolvedNode newNode = this.replace(new ResolvedNode(intValue));
             return newNode.execute();
         }

@@ -59,7 +59,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.Pair;
@@ -510,11 +509,22 @@ public final class TruffleBaseFeature implements InternalFeature {
         layoutMapField = access.findField("com.oracle.truffle.object.DefaultLayout", "LAYOUT_MAP");
         libraryFactoryCacheField = access.findField("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "CACHE");
         if (Options.TruffleCheckPreinitializedFiles.getValue()) {
-            access.registerObjectReplacer(new TruffleFileCheck(access.getHostVM().getClassInitializationSupport()));
+            var classInitializationSupport = access.getHostVM().getClassInitializationSupport();
+            access.registerObjectReachableCallback(TruffleFile.class, (ignore, file) -> checkTruffleFile(classInitializationSupport, file));
         }
 
         if (needsAllEncodings) {
             RuntimeResourceSupport.singleton().addResources(ConfigurationCondition.alwaysTrue(), "org/graalvm/shadowed/org/jcodings/tables/.*bin$");
+        }
+    }
+
+    static void checkTruffleFile(ClassInitializationSupport classInitializationSupport, TruffleFile file) {
+        if (file.isAbsolute()) {
+            UserError.abort("Detected an absolute TruffleFile %s in the image heap. " +
+                            "Files with an absolute path created during the context pre-initialization may not be valid at the image execution time. " +
+                            "This check can be disabled using -H:-TruffleCheckPreinitializedFiles." +
+                            classInitializationSupport.objectInstantiationTraceMessage(file, "", culprit -> ""),
+                            file.getPath());
         }
     }
 
@@ -854,29 +864,6 @@ public final class TruffleBaseFeature implements InternalFeature {
         }
         for (Field field : config.findAnnotatedFields(dynamicFieldClass.asSubclass(Annotation.class))) {
             config.registerAsUnsafeAccessed(field);
-        }
-    }
-
-    private static final class TruffleFileCheck implements Function<Object, Object> {
-        private final ClassInitializationSupport classInitializationSupport;
-
-        TruffleFileCheck(ClassInitializationSupport classInitializationSupport) {
-            this.classInitializationSupport = classInitializationSupport;
-        }
-
-        @Override
-        public Object apply(Object object) {
-            if (object instanceof TruffleFile) {
-                TruffleFile file = (TruffleFile) object;
-                if (file.isAbsolute()) {
-                    UserError.abort("Detected an absolute TruffleFile %s in the image heap. " +
-                                    "Files with an absolute path created during the context pre-initialization may not be valid at the image execution time. " +
-                                    "This check can be disabled using -H:-TruffleCheckPreinitializedFiles." +
-                                    classInitializationSupport.objectInstantiationTraceMessage(object, "", culprit -> ""),
-                                    file.getPath());
-                }
-            }
-            return object;
         }
     }
 

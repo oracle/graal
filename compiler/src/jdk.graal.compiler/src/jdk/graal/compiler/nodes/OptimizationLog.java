@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -226,7 +226,12 @@ public interface OptimizationLog {
         }
 
         @Override
-        public boolean isOptimizationLogEnabled() {
+        public boolean isStructuredOptimizationLogEnabled() {
+            return false;
+        }
+
+        @Override
+        public boolean isAnyLoggingEnabled() {
             return false;
         }
 
@@ -297,7 +302,7 @@ public interface OptimizationLog {
      * @param optionValues the option values
      * @return whether {@link DebugOptions#OptimizationLog optimization log} is enabled
      */
-    static boolean isOptimizationLogEnabled(OptionValues optionValues) {
+    static boolean isStructuredOptimizationLogEnabled(OptionValues optionValues) {
         EconomicSet<DebugOptions.OptimizationLogTarget> targets = DebugOptions.OptimizationLog.getValue(optionValues);
         return targets != null && !targets.isEmpty();
     }
@@ -307,9 +312,9 @@ public interface OptimizationLog {
      * enabled.
      *
      * @return whether {@link DebugOptions#OptimizationLog the optimization log} is enabled
-     * @see OptimizationLog#isOptimizationLogEnabled(OptionValues)
+     * @see OptimizationLog#isStructuredOptimizationLogEnabled(OptionValues)
      */
-    boolean isOptimizationLogEnabled();
+    boolean isStructuredOptimizationLogEnabled();
 
     /**
      * Returns {@code true} iff at least one logging feature unified by the optimization log is
@@ -322,8 +327,15 @@ public interface OptimizationLog {
         return debugContext.isLogEnabledForMethod() || debugContext.isDumpEnabledForMethod() ||
                         DebugOptions.Count.getValue(debugContext.getOptions()) != null ||
                         debugContext.hasUnscopedCounters() ||
-                        isOptimizationLogEnabled(debugContext.getOptions());
+                        isStructuredOptimizationLogEnabled(debugContext.getOptions());
     }
+
+    /**
+     * Returns {@code true} iff at least one logging feature unified is enabled.
+     *
+     * @see #isAnyLoggingEnabled(DebugContext)
+     */
+    boolean isAnyLoggingEnabled();
 
     /**
      * Returns an instance of the optimization for a given graph. The instance is

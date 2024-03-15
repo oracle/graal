@@ -45,6 +45,8 @@ local sc = (import "ci_common/sulong-common.jsonnet");
 
     sc.gate + $.sulong + sc.labsjdkLatest + sc.windows_amd64 + sc.llvmBundled + sc.gateTags("build,sulongStandalone,interop") + { name: "gate-sulong-standalone-interop-jdk-latest-windows-amd64", timelimit: "30:00" },
     sc.gate + $.sulong + sc.labsjdkLatest + sc.windows_amd64 + sc.llvmBundled + sc.gateTags("build,nwcc,llvm") + { name: "gate-sulong-nwcc-llvm-jdk-latest-windows-amd64" },
+    sc.gate + $.sulong + sc.labsjdkLatest + sc.windows_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,gcc_c") + { name: "gate-sulong-gcc_c-jdk-latest-windows-amd64", timelimit: "45:00" },
+    sc.gate + $.sulong + sc.labsjdkLatest + sc.windows_amd64 + sc.llvmBundled + sc.requireGMP + sc.gateTags("build,gcc_cpp") + { name: "gate-sulong-gcc_cpp-jdk-latest-windows-amd64", timelimit: "45:00" },
   ],
 
   standalone_builds::

@@ -848,6 +848,16 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @Override
     protected void disposeThread(LLVMContext context, Thread thread) {
         getCapability(PlatformCapability.class).disposeThread(context, thread);
+        disposeThreadNoGuestCode(context, thread);
+    }
+
+    /**
+     * Disposes thread-specific resources (e.g. the thread's stack, thread-local storage, etc). This
+     * method may call a native helper function via NFI but will not call arbitrary guest code. It
+     * is therefore safe to run this method while thread-local
+     * {@link com.oracle.truffle.api.TruffleSafepoint} actions are disabled.
+     */
+    protected void disposeThreadNoGuestCode(LLVMContext context, Thread thread) {
         super.disposeThread(context, thread);
         if (context.isInitialized()) {
             context.getThreadingStack().freeStack(getLLVMMemory(), thread);

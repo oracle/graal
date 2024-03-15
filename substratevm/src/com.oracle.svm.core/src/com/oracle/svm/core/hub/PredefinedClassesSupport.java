@@ -184,7 +184,7 @@ public final class PredefinedClassesSupport {
         Class<?> clazz = singleton().predefinedClassesByHash.get(hash);
         if (clazz == null) {
             String name = (expectedName != null) ? expectedName : "(name not specified)";
-            throw VMError.unsupportedFeature("Defining a class from new bytecodes at run time is not supported. Class " + name +
+            throw VMError.unsupportedFeature("Defining a class from new bytecodes at runtime is not supported. Class " + name +
                             " with hash " + hash + " was not provided during the image build. Please see BuildConfiguration.md.");
         }
         if (expectedName != null && !expectedName.equals(clazz.getName())) {

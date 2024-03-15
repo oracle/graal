@@ -85,6 +85,7 @@ import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystem;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.OptionMigrationMessage;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -140,8 +141,8 @@ public final class ResourcesFeature implements InternalFeature {
     static final String MODULE_NAME_ALL_UNNAMED = "ALL-UNNAMED";
 
     public static class Options {
-        @Option(help = {"Regexp to match names of resources to be included in the image.",
-                        "Use a resource-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead."}, type = OptionType.User)//
+        @OptionMigrationMessage("Use a resource-config.json in your META-INF/native-image/<groupID>/<artifactID> directory instead.")//
+        @Option(help = "Regexp to match names of resources to be included in the image.", type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
         @Option(help = "Regexp to match names of resources to be excluded from the image.", type = OptionType.User)//

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import jdk.graal.compiler.replacements.nodes.CStringConstant;
 import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
@@ -546,7 +547,7 @@ public class MethodTypeFlowBuilder {
                 if (input instanceof ConstantNode && !typeFlows.contains((ConstantNode) input)) {
                     ConstantNode node = (ConstantNode) input;
                     Constant constant = node.getValue();
-                    if (node.asJavaConstant() == null && constant instanceof VMConstant) {
+                    if (node.asJavaConstant() == null && (constant instanceof VMConstant || constant instanceof CStringConstant)) {
                         // do nothing
                     } else if (node.asJavaConstant().isNull()) {
                         TypeFlowBuilder<ConstantTypeFlow> sourceBuilder = TypeFlowBuilder.create(bb, node, ConstantTypeFlow.class, () -> {

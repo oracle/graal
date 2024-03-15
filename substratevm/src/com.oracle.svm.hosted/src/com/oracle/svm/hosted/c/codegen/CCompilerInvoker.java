@@ -61,7 +61,8 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.riscv64.RISCV64;
 
 public abstract class CCompilerInvoker {
-    public static final String VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION = "Visual Studio 2022 version 17.1.0";
+    public static final String VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION = "17.6";
+    public static final String VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION_TEXT = "Visual Studio 2022 version %s.0".formatted(VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION);
 
     public final Path tempDirectory;
     public final CompilerInfo compilerInfo;
@@ -193,7 +194,7 @@ public abstract class CCompilerInvoker {
             int minimumMinorVersion = 31;
             if (compilerInfo.versionMajor < minimumMajorVersion || compilerInfo.versionMinor0 < minimumMinorVersion) {
                 UserError.abort("On Windows, GraalVM Native Image for JDK %s requires %s or later (C/C++ Optimizing Compiler Version %s.%s or later).%nCompiler info detected: %s",
-                                JavaVersionUtil.JAVA_SPEC, VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION, minimumMajorVersion, minimumMinorVersion, compilerInfo.getShortDescription());
+                                JavaVersionUtil.JAVA_SPEC, VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION_TEXT, minimumMajorVersion, minimumMinorVersion, compilerInfo.getShortDescription());
             }
         }
 

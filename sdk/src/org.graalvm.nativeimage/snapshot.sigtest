@@ -1077,6 +1077,7 @@ supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeForeignAccess
 meth public !varargs static void registerForDowncall(java.lang.Object,java.lang.Object[])
+meth public !varargs static void registerForUpcall(java.lang.Object,java.lang.Object[])
 supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeJNIAccess

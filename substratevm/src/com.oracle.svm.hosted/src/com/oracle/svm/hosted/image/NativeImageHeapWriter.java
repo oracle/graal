@@ -353,10 +353,10 @@ public final class NativeImageHeapWriter {
                  * is stored in a separate array since it has a variable length.
                  */
                 if (SubstrateOptions.closedTypeWorld()) {
-                    short[] typeIDSlots = (short[]) heap.readInlinedField(dynamicHubLayout.closedWorldTypeCheckSlotsField, con);
+                    short[] typeIDSlots = (short[]) heap.readInlinedField(dynamicHubLayout.closedTypeWorldTypeCheckSlotsField, con);
                     int typeIDSlotsLength = typeIDSlots.length;
                     for (int i = 0; i < typeIDSlotsLength; i++) {
-                        int index = getIndexInBuffer(info, dynamicHubLayout.getClosedWorldTypeCheckSlotsOffset(i));
+                        int index = getIndexInBuffer(info, dynamicHubLayout.getClosedTypeWorldTypeCheckSlotsOffset(i));
                         short value = typeIDSlots[i];
                         bufferBytes.putShort(index, value);
                     }

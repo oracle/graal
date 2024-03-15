@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -360,6 +360,13 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
 
                 // Size of IC check sequence checked with a guarantee below.
                 int inlineCacheCheckSize = 14;
+                if (asm.force4ByteNonZeroDisplacements()) {
+                    /*
+                     * The mov and cmp below each contain a 1-byte displacement that is emitted as 4
+                     * bytes instead, thus we have 3 extra bytes for each of these instructions.
+                     */
+                    inlineCacheCheckSize += 3 + 3;
+                }
                 asm.align(config.codeEntryAlignment, asm.position() + inlineCacheCheckSize);
 
                 int startICCheck = asm.position();

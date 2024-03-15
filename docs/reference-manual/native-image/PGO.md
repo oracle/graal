@@ -92,6 +92,7 @@ For a more detailed usage overview, go to [Basic Usage of Profile-Guided Optimiz
 
 * [Basic Usage of Profile-Guided Optimizations](PGO-Basic-Usage.md)
 * [Inspecting a Profile in a Build Report](PGO-Build-Report.md)
+* [Creating LCOV Coverage Reports](PGO-LCOV.md)
 * [Merging Profiles from Multiple Sources](PGO-Merging-Profiles.md)
 * [Tracking Profile Quality Over Time](PGO-Profile-Quality.md)
 * [Frequently Asked Questions](PGO-FAQ.md)
