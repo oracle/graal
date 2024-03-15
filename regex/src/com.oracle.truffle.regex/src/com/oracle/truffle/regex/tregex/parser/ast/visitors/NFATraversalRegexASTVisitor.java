@@ -299,8 +299,8 @@ public abstract class NFATraversalRegexASTVisitor {
             }
             advanceTerm(runRoot);
         }
+        boolean foundNextTarget = false;
         while (!done) {
-            boolean foundNextTarget = false;
             while (!done && !foundNextTarget) {
                 // advance until we reach the next node to visit
                 foundNextTarget = doAdvance();
@@ -334,6 +334,10 @@ public abstract class NFATraversalRegexASTVisitor {
             }
             quantifierGuardsResult = null;
             retreat();
+            foundNextTarget = false;
+            if (cur.isGroup() && cur.hasEmptyGuard()) {
+                foundNextTarget = advanceTerm(cur.asGroup());
+            }
         }
         if (useQuantifierGuards()) {
             clearQuantifierGuards();
@@ -655,7 +659,9 @@ public abstract class NFATraversalRegexASTVisitor {
                     // When we expand quantifiers, we wrap them in a group. This lets us escape past
                     // the expansion of the quantifier even in cases when we are in the mandatory
                     // prefix (e.g. empty-check fails in the first A in (AA((A)((A)|)|))).
-                    return advanceTerm(group.getParent().getParent().asGroup());
+                    Group parentGroup = group.getParent().getParent().asGroup();
+                    pushGroupExit(parentGroup);
+                    return advanceTerm(parentGroup);
                 } else {
                     if (pathIsGroupExit(lastVisited)) {
                         popGroupExit(group);
