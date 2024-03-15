@@ -85,6 +85,8 @@ public class LowTier extends BaseTier<LowTierContext> {
 
         appendPhase(new DeadCodeEliminationPhase(Required));
 
+        appendPhase(new EnergyProfilingPhase());
+
         appendPhase(new PropagateDeoptimizeProbabilityPhase());
 
         appendPhase(new OptimizeExtendsPhase());
