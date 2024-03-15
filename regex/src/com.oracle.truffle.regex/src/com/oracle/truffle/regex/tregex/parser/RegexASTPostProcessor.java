@@ -300,7 +300,7 @@ public class RegexASTPostProcessor {
                 if (unroll) {
                     // unroll non-optional part ( x{3} -> xxx )
                     for (int i = 0; i < quantifier.getMin(); i++) {
-                        addTerm(copyVisitor.copy(toExpand));
+                        addTermCopyWrappedInGroup(toExpand);
                         curTerm.asGroup().setQuantifier(quantifier);
                         curTerm.setUnrolledQuantifer(true);
                         curTerm.setMandatoryQuantifier(true);
