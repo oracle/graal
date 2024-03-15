@@ -1302,24 +1302,39 @@ public class SubstrateDiagnostics {
 
     @AutomaticallyRegisteredImageSingleton
     public static class Options {
+        @Option(help = "Execute an endless loop before printing diagnostics for a fatal error.", type = OptionType.Debug)//
+        public static final RuntimeOptionKey<Boolean> LoopOnFatalError = new RuntimeOptionKey<>(false, RelevantForCompilationIsolates) {
+            @Override
+            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+                super.onValueUpdate(values, oldValue, newValue);
+
+                /*
+                 * Copy the value to a field in the image heap so that it is safe to access. During
+                 * image build, it can happen that the singleton does not exist yet. In that case,
+                 * the value will be copied to the image heap when executing the constructor of the
+                 * singleton. This is a bit cumbersome but necessary because we can't use a static
+                 * field.
+                 */
+                if (ImageSingletons.contains(Options.class)) {
+                    Options.singleton().loopOnFatalError = newValue;
+                }
+            }
+        };
+
         private volatile boolean loopOnFatalError;
 
-        private static Options singleton() {
+        @Platforms(Platform.HOSTED_ONLY.class)
+        public Options() {
+            this.loopOnFatalError = Options.LoopOnFatalError.getValue();
+        }
+
+        @Fold
+        static Options singleton() {
             return ImageSingletons.lookup(Options.class);
         }
 
         public static boolean shouldLoopOnFatalError() {
             return singleton().loopOnFatalError;
         }
-
-        @Option(help = "Execute an endless loop before printing diagnostics for a fatal error.", type = OptionType.Debug)//
-        public static final RuntimeOptionKey<Boolean> LoopOnFatalError = new RuntimeOptionKey<>(false, RelevantForCompilationIsolates) {
-            @Override
-            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-                super.onValueUpdate(values, oldValue, newValue);
-                /* Copy the value to a field in the image heap so that it is safer to access. */
-                ImageSingletons.lookup(Options.class).loopOnFatalError = newValue;
-            }
-        };
     }
 }
