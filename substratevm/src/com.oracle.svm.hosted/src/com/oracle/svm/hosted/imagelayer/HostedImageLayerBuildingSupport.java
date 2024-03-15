@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
-import static com.oracle.svm.core.SubstrateOptions.LayerUse;
-import static com.oracle.svm.core.SubstrateOptions.LayerCreate;
 import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromModule;
 import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromPath;
+import static com.oracle.svm.core.SubstrateOptions.LayerCreate;
+import static com.oracle.svm.core.SubstrateOptions.LayerUse;
 import static com.oracle.svm.core.SubstrateOptions.imageLayerEnabledHandler;
 import static com.oracle.svm.hosted.imagelayer.LayerArchiveSupport.MODULE_OPTION;
 import static com.oracle.svm.hosted.imagelayer.LayerArchiveSupport.PACKAGE_OPTION;
@@ -131,7 +131,6 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
                 SubstrateOptions.LayeredBaseImageAnalysis.update(values, true);
                 SubstrateOptions.ClosedTypeWorld.update(values, false);
                 SubstrateOptions.StripDebugInfo.update(values, false);
-                SubstrateOptions.AOTTrivialInline.update(values, false);
                 if (imageLayerEnabledHandler != null) {
                     imageLayerEnabledHandler.onOptionEnabled(values);
                 }
@@ -150,9 +149,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
                     throw UserError.abort("Option %s requires a layer file argument, e.g., %s=layer-file.nil.", optionName, optionName);
                 }
                 SubstrateOptions.ClosedTypeWorld.update(values, false);
-                /* Ignore any potential undefined references caused by inlining in base layer. */
-                SubstrateOptions.IgnoreUndefinedReferences.update(values, true);
-                SubstrateOptions.AOTTrivialInline.update(values, false);
+                SubstrateOptions.ParseRuntimeOptions.update(values, false);
                 if (imageLayerEnabledHandler != null) {
                     imageLayerEnabledHandler.onOptionEnabled(values);
                 }
@@ -175,7 +172,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         if (isEnabled(LayerCreate, values)) {
             LayerOption layerOption = LayerOption.parse(LayerCreate.getValue(values).lastValue().orElseThrow());
             writeLayerArchiveSupport = new WriteLayerArchiveSupport(archiveSupport, layerOption.fileName());
-            writer = new SVMImageLayerWriter();
+            writer = new SVMImageLayerWriter(SubstrateOptions.UseSharedLayerGraphs.getValue(values));
         }
         SVMImageLayerLoader loader = null;
         LoadLayerArchiveSupport loadLayerArchiveSupport = null;

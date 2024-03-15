@@ -175,7 +175,7 @@ public class ObjectCopierTest extends SubprocessTest {
         List<Field> externalValues = List.of(ObjectCopier.getField(BaseClass.class, "BASE_SINGLETON"),
                         ObjectCopier.getField(TestObject.class, "TEST_OBJECT_SINGLETON"));
 
-        String encoded = ObjectCopier.encode(root, externalValues);
+        String encoded = ObjectCopier.encode(new ObjectCopier.Encoder(externalValues), root);
         if (DEBUG) {
             System.out.printf("encoded:%n%s%n", encoded);
         }
@@ -184,7 +184,7 @@ public class ObjectCopierTest extends SubprocessTest {
             System.out.printf("root:%n%s%n", root);
             System.out.printf("decoded:%n%s%n", decoded);
         }
-        String reencoded = ObjectCopier.encode(decoded, externalValues);
+        String reencoded = ObjectCopier.encode(new ObjectCopier.Encoder(externalValues), decoded);
         if (DEBUG) {
             System.out.printf("reencoded:%n%s%n", reencoded);
         }

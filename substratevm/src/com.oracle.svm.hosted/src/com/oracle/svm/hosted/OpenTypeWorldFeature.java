@@ -36,6 +36,7 @@ import java.util.Objects;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -153,7 +154,8 @@ public class OpenTypeWorldFeature implements InternalFeature {
 
         public void persistTypeInfo(Collection<HostedType> types) {
             for (HostedType type : types) {
-                if (type.getTypeID() != -1) {
+                AnalysisType analysisType = type.getWrapped();
+                if (type.getTypeID() != -1 && analysisType.isReachable()) {
                     int identifierID = type.getWrapped().getId();
                     int typeID = type.getTypeID();
                     int numClassTypes = type.getNumClassTypes();

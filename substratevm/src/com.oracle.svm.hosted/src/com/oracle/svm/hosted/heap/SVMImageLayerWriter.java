@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.heap;
 
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_ID_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.C_ENTRY_POINT_LITERAL_CODE_POINTER;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.HUB_IDENTITY_HASH_CODE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_KEYS;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_OBJECTS;
@@ -35,6 +36,7 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.STATIC_OBJEC
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.STATIC_PRIMITIVE_FIELDS_TAG;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -42,16 +44,16 @@ import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.function.RelocatedPointer;
+import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageLayerWriter;
-import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -81,34 +83,37 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SVMImageLayerWriter extends ImageLayerWriter {
     private NativeImageHeap nativeImageHeap;
+    private HostedUniverse hUniverse;
 
-    public SVMImageLayerWriter() {
-        super(new SVMImageLayerSnapshotUtil());
+    public SVMImageLayerWriter(boolean useSharedLayerGraphs) {
+        super(useSharedLayerGraphs, new SVMImageLayerSnapshotUtil());
     }
 
     public void setNativeImageHeap(NativeImageHeap nativeImageHeap) {
         this.nativeImageHeap = nativeImageHeap;
     }
 
-    @Override
-    protected void persistHook(Universe universe, AnalysisUniverse analysisUniverse) {
-        HostedUniverse hostedUniverse = (HostedUniverse) universe;
+    public void setHostedUniverse(HostedUniverse hUniverse) {
+        this.hUniverse = hUniverse;
+    }
 
-        ImageHeapConstant staticPrimitiveFields = (ImageHeapConstant) hostedUniverse.getSnippetReflection().forObject(StaticFieldsSupport.getStaticPrimitiveFields());
-        ImageHeapConstant staticObjectFields = (ImageHeapConstant) hostedUniverse.getSnippetReflection().forObject(StaticFieldsSupport.getStaticObjectFields());
+    @Override
+    protected void persistHook() {
+        ImageHeapConstant staticPrimitiveFields = (ImageHeapConstant) hUniverse.getSnippetReflection().forObject(StaticFieldsSupport.getStaticPrimitiveFields());
+        ImageHeapConstant staticObjectFields = (ImageHeapConstant) hUniverse.getSnippetReflection().forObject(StaticFieldsSupport.getStaticObjectFields());
 
         jsonMap.put(STATIC_PRIMITIVE_FIELDS_TAG, getConstantId(staticPrimitiveFields));
         jsonMap.put(STATIC_OBJECT_FIELDS_TAG, getConstantId(staticObjectFields));
     }
 
     @Override
-    protected void persistType(AnalysisType type, AnalysisUniverse analysisUniverse, EconomicMap<String, Object> typeMap) {
-        HostVM hostVM = analysisUniverse.hostVM();
+    protected void persistType(AnalysisType type, EconomicMap<String, Object> typeMap) {
+        HostVM hostVM = aUniverse.hostVM();
         SVMHost svmHost = (SVMHost) hostVM;
         DynamicHub hub = svmHost.dynamicHub(type);
         typeMap.put(HUB_IDENTITY_HASH_CODE_TAG, System.identityHashCode(hub));
 
-        super.persistType(type, analysisUniverse, typeMap);
+        super.persistType(type, typeMap);
     }
 
     @Override
@@ -154,40 +159,30 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     @Override
-    protected void persistField(AnalysisField field, Universe universe, EconomicMap<String, Object> fieldMap) {
-        HostedUniverse hostedUniverse = (HostedUniverse) universe;
-        HostedField hostedField = hostedUniverse.lookup(field);
+    protected void persistField(AnalysisField field, EconomicMap<String, Object> fieldMap) {
+        HostedField hostedField = hUniverse.lookup(field);
         int location = hostedField.getLocation();
         if (hostedField.isStatic() && location > 0) {
             fieldMap.put(LOCATION_TAG, location);
         }
-        super.persistField(field, universe, fieldMap);
+        super.persistField(field, fieldMap);
     }
 
     @Override
-    protected void persistConstant(AnalysisUniverse analysisUniverse, ImageHeapConstant imageHeapConstant, EconomicMap<String, Object> constantMap, EconomicMap<String, Object> constantsMap) {
+    protected void persistConstant(ImageHeapConstant imageHeapConstant, EconomicMap<String, Object> constantMap) {
         ObjectInfo objectInfo = nativeImageHeap.getConstantInfo(imageHeapConstant);
         if (objectInfo != null) {
             constantMap.put(OBJECT_OFFSET_TAG, String.valueOf(objectInfo.getOffset()));
         }
-        super.persistConstant(analysisUniverse, imageHeapConstant, constantMap, constantsMap);
+        super.persistConstant(imageHeapConstant, constantMap);
     }
 
     @Override
     public void persistConstantRelinkingInfo(EconomicMap<String, Object> constantMap, BigBang bb, Class<?> clazz, JavaConstant hostedObject, int id) {
         ResolvedJavaType type = bb.getConstantReflectionProvider().asJavaType(hostedObject);
         if (type instanceof AnalysisType analysisType) {
-            /*
-             * Until another solution for implementing a stable name for $$TypeSwitch classes is
-             * found, the constant containing a DynamicHub corresponding to a $$TypeSwitch class is
-             * not persisted as it would not be possible to relink it. Considering that those
-             * classes are only used as a container for a static method, recreating the constant in
-             * the extension image alongside the class should not cause too much issues.
-             */
-            if (!isTypeSwitch(analysisType)) {
-                constantMap.put(CLASS_ID_TAG, analysisType.getId());
-                constantsToRelink.add(id);
-            }
+            constantMap.put(CLASS_ID_TAG, analysisType.getId());
+            constantsToRelink.add(id);
         } else {
             super.persistConstantRelinkingInfo(constantMap, bb, clazz, hostedObject, id);
         }
@@ -196,14 +191,21 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     @Override
     protected boolean delegateProcessing(List<List<Object>> data, Object constant) {
         if (constant instanceof RelocatableConstant relocatableConstant) {
-            data.add(List.of(METHOD_POINTER_TAG, getRelocatableConstantMethodId(relocatableConstant)));
-            return true;
+            RelocatedPointer pointer = relocatableConstant.getPointer();
+            if (pointer instanceof MethodPointer methodPointer) {
+                data.add(List.of(METHOD_POINTER_TAG, getRelocatableConstantMethodId(methodPointer)));
+                return true;
+            } else if (pointer instanceof CEntryPointLiteralCodePointer cEntryPointLiteralCodePointer) {
+                data.add(List.of(C_ENTRY_POINT_LITERAL_CODE_POINTER, cEntryPointLiteralCodePointer.methodName, cEntryPointLiteralCodePointer.definingClass.getName(),
+                                Arrays.stream(cEntryPointLiteralCodePointer.parameterTypes).map(Class::getName)));
+                return true;
+            }
         }
         return super.delegateProcessing(data, constant);
     }
 
-    private static int getRelocatableConstantMethodId(RelocatableConstant relocatableConstant) {
-        ResolvedJavaMethod method = ((MethodPointer) relocatableConstant.getPointer()).getMethod();
+    private static int getRelocatableConstantMethodId(MethodPointer methodPointer) {
+        ResolvedJavaMethod method = methodPointer.getMethod();
         if (method instanceof HostedMethod hostedMethod) {
             return getMethodId(hostedMethod.wrapped);
         } else {

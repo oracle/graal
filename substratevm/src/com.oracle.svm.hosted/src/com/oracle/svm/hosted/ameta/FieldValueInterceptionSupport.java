@@ -41,6 +41,7 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.BaseLayerField;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
@@ -154,7 +155,7 @@ public final class FieldValueInterceptionSupport {
         field.beforeFieldValueAccess();
 
         ResolvedJavaField oField = OriginalFieldProvider.getOriginalField(field);
-        assert oField == null || oField instanceof HotSpotResolvedJavaField : oField;
+        assert oField == null || oField instanceof HotSpotResolvedJavaField || oField instanceof BaseLayerField : oField;
 
         FieldValueComputer computer = createFieldValueComputer(field);
         Object result;

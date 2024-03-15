@@ -93,7 +93,7 @@ public class AnalysisToHostedGraphTransplanter {
          * The graph in the analysis universe is no longer necessary once it is transplanted into
          * the hosted universe.
          */
-        aMethod.setAnalyzedGraph(null);
+        aMethod.clearAnalyzedGraph();
 
         /*
          * The static analysis always needs NodeSourcePosition. But for AOT compilation, we only
