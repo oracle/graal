@@ -241,20 +241,24 @@ public class RegexASTPostProcessor {
                 curTerm = term;
             }
 
-            private void addTermCopyWrappedInGroup(Term term) {
-                pushGroup();
-                addTerm(copyVisitor.copy(term));
-                popGroup();
+            private void addTermCopyAsGroup(Term term) {
                 if (term.isGroup()) {
-                    curTerm.asGroup().setEnclosedCaptureGroupsLow(term.asGroup().getCaptureGroupsLow());
-                    curTerm.asGroup().setEnclosedCaptureGroupsHigh(term.asGroup().getCaptureGroupsHigh());
+                    addTerm(copyVisitor.copy(term));
+                } else {
+                    pushGroup();
+                    addTerm(copyVisitor.copy(term));
+                    popGroup();
+                    if (term.isGroup()) {
+                        curTerm.asGroup().setEnclosedCaptureGroupsLow(term.asGroup().getCaptureGroupsLow());
+                        curTerm.asGroup().setEnclosedCaptureGroupsHigh(term.asGroup().getCaptureGroupsHigh());
+                    }
                 }
             }
 
             private void createOptionalBranch(QuantifiableTerm term, Token.Quantifier quantifier, boolean unroll, int recurse) {
                 // We wrap the quantified term in a group, as NFATraversalRegexASTVisitor is set up
                 // to expect quantifier guards only on group boundaries.
-                addTermCopyWrappedInGroup(term);
+                addTermCopyAsGroup(term);
                 curTerm.asGroup().setQuantifier(quantifier);
                 curTerm.setExpandedQuantifier(unroll);
                 curTerm.setMandatoryUnrolledQuantifier(false);
@@ -300,7 +304,7 @@ public class RegexASTPostProcessor {
                 if (unroll) {
                     // unroll non-optional part ( x{3} -> xxx )
                     for (int i = 0; i < quantifier.getMin(); i++) {
-                        addTermCopyWrappedInGroup(toExpand);
+                        addTermCopyAsGroup(toExpand);
                         curTerm.asGroup().setQuantifier(quantifier);
                         curTerm.setExpandedQuantifier(true);
                         curTerm.setMandatoryUnrolledQuantifier(true);
