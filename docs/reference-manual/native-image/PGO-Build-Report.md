@@ -13,6 +13,8 @@ further improve application performance.
 It is often useful to visualize the information in a profile.
 This section explains how to inspect parts of a profile using the Native Image **Build Report** tool.
 
+> Note: Native Image Build Reports replaced the [GraalVM Dashboard](https://medium.com/graalvm/making-sense-of-native-image-contents-741a688dab4d) web-based visualization tool that can be still referenced from some places.
+
 ## Generating a Profile Visualization
 
 The Build Report tool displays various data about the generated image and the build process itself.
