@@ -80,10 +80,6 @@ public abstract class QuantifiableTerm extends Term {
         return hasQuantifier() && !isQuantifierExpansionDone();
     }
 
-    public boolean hasNotExpandedQuantifier() {
-        return hasQuantifier() && !isExpandedQuantifier();
-    }
-
     /**
      * Returns {@code true} iff the parser should try to unroll this term's quantifier.
      */
@@ -116,7 +112,7 @@ public abstract class QuantifiableTerm extends Term {
 
     @TruffleBoundary
     protected String quantifierToString() {
-        return hasNotExpandedQuantifier() ? quantifier.toString() : "";
+        return hasNotUnrolledQuantifier() ? quantifier.toString() : "";
     }
 
     @Override

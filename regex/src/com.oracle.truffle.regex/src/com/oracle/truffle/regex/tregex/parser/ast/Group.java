@@ -431,7 +431,7 @@ public class Group extends QuantifiableTerm implements RegexASTVisitorIterable {
                         Json.prop("groupNumber", groupNumber),
                         Json.prop("isCapturing", isCapturing()),
                         Json.prop("isLoop", isLoop()),
-                        Json.prop("isExpandedLoop", isExpandedQuantifier()),
+                        Json.prop("isUnrolledLoop", isUnrolledQuantifier()),
                         Json.prop("alternatives", alternatives));
     }
 }

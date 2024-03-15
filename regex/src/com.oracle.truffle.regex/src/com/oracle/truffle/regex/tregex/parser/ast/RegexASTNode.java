@@ -62,8 +62,8 @@ public abstract class RegexASTNode implements JsonConvertible {
     static final int FLAG_BACK_REFERENCE_IS_NESTED_OR_FORWARD = 1 << 8;
     static final int FLAG_BACK_REFERENCE_IS_IGNORE_CASE = 1 << 9;
     static final int FLAG_GROUP_LOOP = 1 << 10;
-    static final int FLAG_GROUP_EXPANDED_QUANTIFIER = 1 << 11;
-    static final int FLAG_GROUP_UNROLLED_QUANTIFIER = 1 << 12;
+    static final int FLAG_GROUP_UNROLLED_QUANTIFIER = 1 << 11;
+    static final int FLAG_GROUP_MANDATORY_QUANTIFIER = 1 << 12;
     static final int FLAG_GROUP_EXPANDED_QUANTIFIER_EMPTY_SEQUENCE = 1 << 13;
     static final int FLAG_GROUP_QUANTIFIER_EXPANSION_DONE = 1 << 14;
     static final int FLAG_GROUP_LOCAL_FLAGS = 1 << 15;
@@ -373,22 +373,7 @@ public abstract class RegexASTNode implements JsonConvertible {
      * where (X|Y) is a group with alternatives X and Y and (X|Y)* is a looping group with
      * alternatives X and Y. In the examples above, all of the occurrences of A in the expansions as
      * well as the additional empty {@link Sequence}s would be marked with this flag.
-     */
-    public boolean isExpandedQuantifier() {
-        return isFlagSet(FLAG_GROUP_EXPANDED_QUANTIFIER);
-    }
-
-    /**
-     * Marks this {@link RegexASTNode} as being inserted into the AST as part of expanding
-     * quantifier syntax (*, +, ?, {n,m}).
      *
-     * @see #isExpandedQuantifier()
-     */
-    public void setExpandedQuantifier(boolean expandedQuantifier) {
-        setFlag(FLAG_GROUP_EXPANDED_QUANTIFIER, expandedQuantifier);
-    }
-
-    /**
      * Indicates whether this {@link RegexASTNode} represents a mandatory copy of a quantified term
      * after unrolling.
      *
@@ -400,6 +385,8 @@ public abstract class RegexASTNode implements JsonConvertible {
     }
 
     /**
+     * Marks this {@link RegexASTNode} as being inserted into the AST as part of expanding
+     * quantifier syntax (*, +, ?, {n,m}).
      * Marks this {@link RegexASTNode} as being inserted into the AST as part of unrolling the
      * mandatory part of a quantified term.
      *
@@ -407,6 +394,14 @@ public abstract class RegexASTNode implements JsonConvertible {
      */
     public void setUnrolledQuantifer(boolean unrolledQuantifer) {
         setFlag(FLAG_GROUP_UNROLLED_QUANTIFIER, unrolledQuantifer);
+    }
+
+    public boolean isMandatoryQuantifier() {
+        return isFlagSet(FLAG_GROUP_MANDATORY_QUANTIFIER);
+    }
+
+    public void setMandatoryQuantifier(boolean mandatoryQuantifier) {
+        setFlag(FLAG_GROUP_MANDATORY_QUANTIFIER, mandatoryQuantifier);
     }
 
     public boolean isExpandedQuantifierEmptySequence() {

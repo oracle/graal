@@ -45,7 +45,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicSet;
 
@@ -375,26 +374,7 @@ public abstract class NFATraversalRegexASTVisitor {
     protected void calcQuantifierGuards() {
         if (quantifierGuardsResult == null) {
             assert useQuantifierGuards() || quantifierGuards == null;
-            RegexASTNode target = curPath.isEmpty() ? null : pathGetNode(curPath.peek());
-            if (useQuantifierGuards() && !ast.getOptions().getFlavor().canHaveEmptyLoopIterations() && target != null && target.isGroup() && !target.getParent().isSubtreeRoot() &&
-                            target.asGroup().hasQuantifier()) {
-                // In flavors which cannot have empty loop iterations (JavaScript), the transition
-                // to the special empty-match state is annotated with a checkEmptyMatch quantifier
-                // guard. Flavors which can have empty loop iterations ensure empty-check semantics
-                // using the exitZeroWidth/escapeZeroWidth set of quantifier guards.
-                Group emptyMatch = target.asGroup();
-                // If the successor is an empty-match group, we will need to do 2 things:
-                // 1) Add a final checkEmptyMatch guard.
-                pushQuantifierGuard(QuantifierGuard.createCheckEmptyMatch(emptyMatch.getQuantifier()));
-                // 2) Filter out any guards concerning the empty-match group, except for
-                // checkEmptyMatch.
-                quantifierGuardsResult = quantifierGuards.toArray(guard -> guard.getKind() == QuantifierGuard.Kind.checkEmptyMatch || guard.getQuantifier() != emptyMatch.getQuantifier());
-                // 3) Pop the final guard that was introduced in 1).
-                popQuantifierGuard();
-            } else {
-                quantifierGuardsResult = quantifierGuards == null ? QuantifierGuard.NO_GUARDS : quantifierGuards.toArray();
-            }
-
+            quantifierGuardsResult = quantifierGuards == null ? QuantifierGuard.NO_GUARDS : quantifierGuards.toArray();
             if (ast.getOptions().getFlavor().supportsRecursiveBackreferences()) {
                 // Note: Updating the recursive back-reference boundaries before all other
                 // quantifier guards causes back-references to empty matches to fail. This
@@ -590,7 +570,7 @@ public abstract class NFATraversalRegexASTVisitor {
         // generate NFA transitions that span multiple repetitions of the same quantified group,
         // potentially leading to non-terminating NFA generation.
         if (ast.getOptions().getFlavor().canHaveEmptyLoopIterations() ||
-                        (curTerm.isQuantifiableTerm() && curTerm.asQuantifiableTerm().hasNotExpandedQuantifier() && curTerm.asQuantifiableTerm().getQuantifier().getMin() > 0)) {
+                        (curTerm.isQuantifiableTerm() && curTerm.asQuantifiableTerm().hasNotUnrolledQuantifier() && curTerm.asQuantifiableTerm().getQuantifier().getMin() > 0)) {
             assert curTerm.isGroup();
             // By returning the quantified group itself, we map the transition target to the special
             // empty-match state.
@@ -641,7 +621,7 @@ public abstract class NFATraversalRegexASTVisitor {
                         }
                         insideEmptyGuardGroup.remove(group);
                     }
-                } else if (ast.getOptions().getFlavor().failingEmptyChecksDontBacktrack() && pathIsGroupExit(lastVisited) && isZeroWidthGroup(group)) {
+                } else if (ast.getOptions().getFlavor().failingEmptyChecksDontBacktrack() && pathIsGroupExit(lastVisited) && group.hasQuantifier() && group.getQuantifier().hasZeroWidthIndex()) {
                     // In Ruby, Python and OracleDB, when we finish an iteration of a loop, there is
                     // an empty check. If we pass the empty check, we return to the beginning of the
                     // loop where we get to make a non-deterministic choice whether we want to start
@@ -831,26 +811,6 @@ public abstract class NFATraversalRegexASTVisitor {
         }
     }
 
-    /**
-     * Tests whether {@code group} is a group that has an empty-check implemented via
-     * enterZeroWidth/exitZeroWidth.
-     */
-    private boolean isZeroWidthGroup(Group group) {
-        group.getSeqIndex();
-        return group.hasQuantifier() && group.getQuantifier().hasZeroWidthIndex() && ((ast.getOptions().getFlavor().failingEmptyChecksDontBacktrack() && group.isUnrolledQuantifier()) ||
-                        group.getParent().isSequence() && group.getParent().getParent().asGroup().size() == 2 && getOtherSibling(group.getParent().asSequence()).isExpandedQuantifierEmptySequence());
-    }
-
-    private static Sequence getOtherSibling(Sequence seq) {
-        Group parentGroup = seq.getParent().asGroup();
-        assert parentGroup.size() == 2;
-        if (parentGroup.getAlternatives().get(0) == seq) {
-            return parentGroup.getAlternatives().get(1);
-        } else {
-            return parentGroup.getAlternatives().get(0);
-        }
-    }
-
     /// Pushing and popping group elements to and from the path
     private void pushGroupEnter(Group group, int groupAltIndex) {
         curPath.add(createPathElement(group) | (groupAltIndex << PATH_GROUP_ALT_INDEX_OFFSET) | PATH_GROUP_ACTION_ENTER);
@@ -874,7 +834,7 @@ public abstract class NFATraversalRegexASTVisitor {
                         pushQuantifierGuard(QuantifierGuard.createEnter(quantifier));
                     }
                 }
-                if (isZeroWidthGroup(group)) {
+                if (quantifier.hasZeroWidthIndex() && (ast.getOptions().getFlavor().emptyChecksOnMandatoryLoopIterations() || !group.isMandatoryQuantifier())) {
                     pushQuantifierGuard(QuantifierGuard.createEnterZeroWidth(quantifier));
                 }
             }
@@ -924,12 +884,8 @@ public abstract class NFATraversalRegexASTVisitor {
                 if (quantifier.hasIndex()) {
                     quantifierGuardsLoop[quantifier.getIndex()]++;
                 }
-                if (isZeroWidthGroup(group)) {
-                    // exitZeroWidth quantifier guards are primarily used in flavors which can have
-                    // empty loop iterations. Otherwise, checkEmptyMatch is used.
-                    if (ast.getOptions().getFlavor().canHaveEmptyLoopIterations() || !root.isCharacterClass()) {
-                        pushQuantifierGuard(QuantifierGuard.createExitZeroWidth(quantifier));
-                    }
+                if (quantifier.hasZeroWidthIndex() && (ast.getOptions().getFlavor().emptyChecksOnMandatoryLoopIterations() || !group.isMandatoryQuantifier())) {
+                    pushQuantifierGuard(QuantifierGuard.createExitZeroWidth(quantifier));
                 }
             }
             pushRecursiveBackrefUpdates(group);
@@ -1029,7 +985,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 if (quantifier.hasIndex()) {
                     quantifierGuardsExited[quantifier.getIndex()]++;
                 }
-                if (isZeroWidthGroup(group)) {
+                if (quantifier.hasZeroWidthIndex()) {
                     pushQuantifierGuard(QuantifierGuard.createEscapeZeroWidth(quantifier));
                 }
             }
@@ -1337,26 +1293,6 @@ public abstract class NFATraversalRegexASTVisitor {
             QuantifierGuardsLinkedList cur = this;
             for (int i = result.length - 1; i >= 0; i--) {
                 result[i] = cur.getGuard();
-                cur = cur.getPrev();
-            }
-            return result;
-        }
-
-        public QuantifierGuard[] toArray(Predicate<QuantifierGuard> filter) {
-            int resultSize = 0;
-            QuantifierGuardsLinkedList cur = this;
-            while (cur != null) {
-                if (filter.test(cur.getGuard())) {
-                    resultSize++;
-                }
-                cur = cur.getPrev();
-            }
-            QuantifierGuard[] result = new QuantifierGuard[resultSize];
-            cur = this;
-            while (cur != null) {
-                if (filter.test(cur.getGuard())) {
-                    result[--resultSize] = cur.getGuard();
-                }
                 cur = cur.getPrev();
             }
             return result;
