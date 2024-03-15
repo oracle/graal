@@ -201,6 +201,10 @@ public class Graph implements EventCounter {
         return eventCounter;
     }
 
+    public int getCompressions() {
+        return compressions;
+    }
+
     private class NodeSourcePositionScope implements DebugCloseable {
         private final NodeSourcePosition previous;
 

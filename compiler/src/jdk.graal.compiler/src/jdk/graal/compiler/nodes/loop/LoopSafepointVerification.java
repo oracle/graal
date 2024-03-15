@@ -146,18 +146,18 @@ public class LoopSafepointVerification {
                 }
             }
 
-            final int hashLb1 = lb1.getClonedFromHash();
-            final int hashLb2 = lb2.getClonedFromHash();
+            final long cloneFromIdLb1 = lb1.getClonedFromNodeId();
+            final long cloneFromIdLb2 = lb2.getClonedFromNodeId();
 
             /*
              * Determine if both loops are descendants of the same original loop based on their
-             * cloned hashes.
+             * cloned ids.
              *
              * If one of them has been cloned from a loop then compare their original loops, else
              * continue,
              */
-            if ((hashLb1 != -1 || hashLb2 != -1)) {
-                return hashLb1 == hashLb2;
+            if ((cloneFromIdLb1 != -1 || cloneFromIdLb2 != -1)) {
+                return cloneFromIdLb1 == cloneFromIdLb2;
             }
             return true;
         }
