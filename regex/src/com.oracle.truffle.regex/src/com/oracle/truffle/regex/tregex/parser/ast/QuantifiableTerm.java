@@ -76,10 +76,6 @@ public abstract class QuantifiableTerm extends Term {
         return hasQuantifier() && !isUnrolledQuantifier();
     }
 
-    public boolean hasNotFinishedExpandingQuantifier() {
-        return hasQuantifier() && !isQuantifierExpansionDone();
-    }
-
     /**
      * Returns {@code true} iff the parser should try to unroll this term's quantifier.
      */

@@ -41,7 +41,6 @@
 package com.oracle.truffle.regex.tregex.parser;
 
 import java.util.ArrayList;
-import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexFlags;
@@ -146,21 +145,21 @@ public class RegexASTPostProcessor {
 
         @Override
         protected void visit(BackReference backReference) {
-            if (backReference.hasNotFinishedExpandingQuantifier()) {
+            if (backReference.hasQuantifier()) {
                 quantifierExpander.expandQuantifier(backReference, shouldUnroll(backReference));
             }
         }
 
         @Override
         protected void visit(CharacterClass characterClass) {
-            if (characterClass.hasNotFinishedExpandingQuantifier()) {
+            if (characterClass.hasQuantifier()) {
                 quantifierExpander.expandQuantifier(characterClass, shouldUnroll(characterClass));
             }
         }
 
         @Override
         protected void leave(Group group) {
-            if (group.hasNotFinishedExpandingQuantifier()) {
+            if (group.hasQuantifier()) {
                 quantifierExpander.expandQuantifier(group, shouldUnroll(group) && shouldUnrollVisitor.shouldUnroll(group));
             }
         }
@@ -204,13 +203,14 @@ public class RegexASTPostProcessor {
 
             private final RegexAST ast;
 
-            private TermCopySupplier copySupplier;
+            private CopyVisitor copyVisitor;
             private Group curGroup;
             private Sequence curSequence;
             private Term curTerm;
 
             QuantifierExpander(RegexAST ast) {
                 this.ast = ast;
+                this.copyVisitor = new CopyVisitor(ast);
             }
 
             private void pushGroup() {
@@ -241,22 +241,23 @@ public class RegexASTPostProcessor {
                 curTerm = term;
             }
 
-            private void createOptionalBranch(QuantifiableTerm term, Token.Quantifier quantifier, boolean unroll, int recurse) {
+            private void addTermCopyWrappedInGroup(Term term) {
                 pushGroup();
-                addTerm(copySupplier.get());
-                curTerm.asQuantifiableTerm().setQuantifier(null);
-                curTerm.setUnrolledQuantifer(false);
-                curTerm.setQuantifierExpansionDone(false);
-                curTerm.setMandatoryQuantifier(false);
+                addTerm(copyVisitor.copy(term));
                 popGroup();
-                curTerm.asQuantifiableTerm().setQuantifier(quantifier);
-                curTerm.setUnrolledQuantifer(unroll);
-                curTerm.setQuantifierExpansionDone(true);
-                curTerm.setMandatoryQuantifier(false);
                 if (term.isGroup()) {
                     curTerm.asGroup().setEnclosedCaptureGroupsLow(term.asGroup().getCaptureGroupsLow());
                     curTerm.asGroup().setEnclosedCaptureGroupsHigh(term.asGroup().getCaptureGroupsHigh());
                 }
+            }
+
+            private void createOptionalBranch(QuantifiableTerm term, Token.Quantifier quantifier, boolean unroll, int recurse) {
+                // We wrap the quantified term in a group, as NFATraversalRegexASTVisitor is set up
+                // to expect quantifier guards only on group boundaries.
+                addTermCopyWrappedInGroup(term);
+                curTerm.asGroup().setQuantifier(quantifier);
+                curTerm.setUnrolledQuantifer(unroll);
+                curTerm.setMandatoryQuantifier(false);
                 curTerm.setEmptyGuard(true);
                 createOptional(term, quantifier, unroll, recurse - 1);
             }
@@ -283,11 +284,11 @@ public class RegexASTPostProcessor {
             }
 
             private void expandQuantifier(QuantifiableTerm toExpand, boolean unroll) {
-                assert toExpand.hasNotFinishedExpandingQuantifier();
-                Token.Quantifier quantifier = toExpand.getQuantifier();
+                assert toExpand.hasQuantifier();
                 assert !unroll || toExpand.isUnrollingCandidate();
+                Token.Quantifier quantifier = toExpand.getQuantifier();
+                toExpand.setQuantifier(null);
 
-                copySupplier = new TermCopySupplier(ast, toExpand);
                 curTerm = toExpand;
                 curSequence = (Sequence) curTerm.getParent();
                 curGroup = curSequence.getParent();
@@ -299,11 +300,10 @@ public class RegexASTPostProcessor {
                 if (unroll) {
                     // unroll non-optional part ( x{3} -> xxx )
                     for (int i = 0; i < quantifier.getMin(); i++) {
-                        Term term = copySupplier.get();
-                        term.setQuantifierExpansionDone(true);
-                        term.setUnrolledQuantifer(true);
-                        term.setMandatoryQuantifier(true);
-                        addTerm(term);
+                        addTerm(copyVisitor.copy(toExpand));
+                        curTerm.asGroup().setQuantifier(quantifier);
+                        curTerm.setUnrolledQuantifer(true);
+                        curTerm.setMandatoryQuantifier(true);
                     }
                 }
 
@@ -318,33 +318,6 @@ public class RegexASTPostProcessor {
                 createOptional(toExpand, quantifier, unroll, !unroll || quantifier.isInfiniteLoop() ? 0 : (quantifier.getMax() - quantifier.getMin()) - 1);
                 if (!unroll || quantifier.isInfiniteLoop()) {
                     ((Group) curTerm).setLoop(true);
-                }
-            }
-
-            /**
-             * This class implements a stateful closure that produces copies of a given term, but
-             * reuses the original term for the first copy produced.
-             */
-            private static final class TermCopySupplier implements Supplier<Term> {
-
-                private final Term term;
-                private boolean firstCopyIssued;
-                private final CopyVisitor copyVisitor;
-
-                TermCopySupplier(RegexAST ast, Term term) {
-                    this.term = term;
-                    this.firstCopyIssued = false;
-                    this.copyVisitor = new CopyVisitor(ast);
-                }
-
-                @Override
-                public Term get() {
-                    if (!firstCopyIssued) {
-                        firstCopyIssued = true;
-                        return term;
-                    } else {
-                        return copyVisitor.copy(term);
-                    }
                 }
             }
         }
