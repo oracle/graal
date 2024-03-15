@@ -178,10 +178,10 @@ public final class ThreadData extends UnacquiredThreadData {
     private boolean tryToStoreParker(long offset, Parker newEvent) {
         JavaSpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
         try {
-            if (U.getObject(this, offset) != null) {
+            if (U.getReference(this, offset) != null) {
                 return false;
             }
-            U.putObjectVolatile(this, offset, newEvent);
+            U.putReferenceVolatile(this, offset, newEvent);
             return true;
         } finally {
             JavaSpinLockUtils.unlock(this, LOCK_OFFSET);

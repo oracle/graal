@@ -71,38 +71,38 @@ public class UnsafeObjectReplacementsTest extends MethodSubstitutionTest {
     static class Methods {
         public static Object unsafeGetPutObject() {
             Container container = new Container();
-            unsafe.putObject(container, objectOffset, "Hello there");
-            return unsafe.getObject(container, objectOffset);
+            unsafe.putReference(container, objectOffset, "Hello there");
+            return unsafe.getReference(container, objectOffset);
         }
 
         public static Object unsafeGetPutObjectOpaque() {
             Container container = new Container();
-            unsafe.putObjectOpaque(container, objectOffset, "Hello there");
-            return unsafe.getObjectOpaque(container, objectOffset);
+            unsafe.putReferenceOpaque(container, objectOffset, "Hello there");
+            return unsafe.getReferenceOpaque(container, objectOffset);
         }
 
         public static Object unsafeGetPutObjectRA() {
             Container container = new Container();
-            unsafe.putObjectRelease(container, objectOffset, "Hello there");
-            return unsafe.getObjectAcquire(container, objectOffset);
+            unsafe.putReferenceRelease(container, objectOffset, "Hello there");
+            return unsafe.getReferenceAcquire(container, objectOffset);
         }
 
         public static Object unsafeGetPutObjectVolatile() {
             Container container = new Container();
-            unsafe.putObjectVolatile(container, objectOffset, "Hello there");
-            return unsafe.getObjectVolatile(container, objectOffset);
+            unsafe.putReferenceVolatile(container, objectOffset, "Hello there");
+            return unsafe.getReferenceVolatile(container, objectOffset);
         }
 
         public static Object unsafeCompareAndExchangeObject() {
             Container container = new Container();
-            return unsafe.compareAndExchangeObject(container, objectOffset, dummyValue, newDummyValue);
+            return unsafe.compareAndExchangeReference(container, objectOffset, dummyValue, newDummyValue);
         }
 
         public static Object unsafeGetAndSetObject() {
             Container container = new Container();
             container.objectField = null;
             Container other = new Container();
-            return unsafe.getAndSetObject(container, objectOffset, other);
+            return unsafe.getAndSetReference(container, objectOffset, other);
         }
     }
 

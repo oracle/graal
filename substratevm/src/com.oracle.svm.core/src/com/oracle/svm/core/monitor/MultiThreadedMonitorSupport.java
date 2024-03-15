@@ -468,7 +468,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         long startTicks = JfrTicks.elapsedTicks();
         /* Atomically put a new lock in place of the null at the monitorOffset. */
         JavaMonitor newMonitor = newMonitorLock();
-        if (UNSAFE.compareAndSetObject(obj, monitorOffset, null, newMonitor)) {
+        if (UNSAFE.compareAndSetReference(obj, monitorOffset, null, newMonitor)) {
             JavaMonitorInflateEvent.emit(obj, startTicks, cause);
             return newMonitor;
         }
