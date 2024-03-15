@@ -9,13 +9,13 @@
     "openjdk11":          {"name": "openjdk",   "version": "11.0.11+9", "platformspecific": true },
     "oraclejdk11":        {"name": "jpg-jdk",   "version": "11.0.21", "build_id": "9", "release": true, "platformspecific": true, "extrabundles": ["static-libs"] },
     "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.17+5-jvmci-21.3-b23", "platformspecific": true },
-    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.23+6-jvmci-21.3-b51-20240313190310-2a927b0baa+87c4485fbd", "platformspecific": true },
+    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.23+6-jvmci-21.3-b50", "platformspecific": true },
 
     "oraclejdk17":        {"name": "jpg-jdk",   "version": "17.0.9", "build_id": "11", "release": true, "platformspecific": true, "extrabundles": ["static-libs"] },
     "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17.0.5+5-jvmci-21.3-b23", "platformspecific": true },
     "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17.0.5+5-jvmci-21.3-b23-debug", "platformspecific": true },
-    "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.11+7-jvmci-21.3-b51-20240313101158-bee0385ce2+1e26b077cc", "platformspecific": true },
-    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.11+7-jvmci-21.3-b51-20240313101158-bee0385ce2+1e26b077cc-debug", "platformspecific": true }
+    "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.11+7-jvmci-21.3-b51", "platformspecific": true },
+    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.11+7-jvmci-21.3-b51-debug", "platformspecific": true }
   },
 
   "COMMENT" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
