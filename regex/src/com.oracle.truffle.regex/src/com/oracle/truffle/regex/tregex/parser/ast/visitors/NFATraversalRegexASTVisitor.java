@@ -320,8 +320,6 @@ public abstract class NFATraversalRegexASTVisitor {
                 insideLoops.clear();
                 insideEmptyGuardGroup.clear();
                 curPath.clear();
-                Arrays.fill(quantifierGuardsLoop, 0);
-                Arrays.fill(quantifierGuardsExited, 0);
                 clearCaptureGroupData();
                 clearQuantifierGuards();
                 quantifierGuardsResult = null;
