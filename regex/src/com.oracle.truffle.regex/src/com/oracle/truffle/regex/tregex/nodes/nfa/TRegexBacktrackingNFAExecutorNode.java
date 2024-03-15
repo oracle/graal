@@ -760,12 +760,6 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                         return false;
                     }
                     break;
-                case checkEmptyMatch:
-                    // retreat if quantifier count is greater or equal to minimum
-                    if (locals.getQuantifierCount(q) >= q.getMin()) {
-                        return false;
-                    }
-                    break;
                 case checkGroupMatched:
                     if (getBackRefBoundary(locals, transition, Group.groupNumberToBoundaryIndexStart(guard.getIndex()), index) == -1 ||
                                     getBackRefBoundary(locals, transition, Group.groupNumberToBoundaryIndexEnd(guard.getIndex()), index) == -1) {
@@ -833,13 +827,6 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                 case enterZeroWidth:
                     locals.setZeroWidthQuantifierGuardIndex(q);
                     locals.setZeroWidthQuantifierResults(q);
-                    break;
-                case checkEmptyMatch:
-                    if (!transition.hasCaretGuard() && !transition.hasDollarGuard()) {
-                        locals.setQuantifierCount(q, q.getMin());
-                    } else {
-                        locals.incQuantifierCount(q);
-                    }
                     break;
                 default:
                     break;
@@ -960,17 +947,6 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                     if (locals.getZeroWidthQuantifierGuardIndex(q) != index ||
                                     (isMonitorCaptureGroupsInEmptyCheck() && !locals.isResultUnmodifiedByZeroWidthQuantifier(q))) {
                         return false;
-                    }
-                    break;
-                case checkEmptyMatch:
-                    // retreat if quantifier count is greater or equal to minimum
-                    if (locals.getQuantifierCount(q) >= q.getMin()) {
-                        return false;
-                    }
-                    if (!transition.hasCaretGuard() && !transition.hasDollarGuard()) {
-                        locals.setQuantifierCount(q, q.getMin());
-                    } else {
-                        locals.incQuantifierCount(q);
                     }
                     break;
                 case checkGroupMatched:

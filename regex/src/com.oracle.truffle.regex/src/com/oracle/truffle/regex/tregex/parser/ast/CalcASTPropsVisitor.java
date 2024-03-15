@@ -177,7 +177,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
             // TODO: maybe check if the referenced group can produce a zero-width match
             setZeroWidthQuantifierIndex(backReference);
         }
-        if (backReference.hasNotExpandedQuantifier()) {
+        if (backReference.hasNotUnrolledQuantifier()) {
             backReference.getParent().setHasQuantifiers();
             setQuantifierIndex(backReference);
         }
@@ -249,7 +249,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
             }
         }
         if (group.hasQuantifier()) {
-            if (!group.isExpandedQuantifier()) {
+            if (!group.isUnrolledQuantifier()) {
                 flags |= RegexASTNode.FLAG_HAS_QUANTIFIERS;
                 setQuantifierIndex(group);
                 if (group.getQuantifier().getMin() == 0) {
@@ -268,27 +268,14 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                     maxPath = group.getMaxPath() + ((maxPath - group.getMaxPath()) * group.getQuantifier().getMax());
                 }
             }
-            // The optimization below breaks dialects like Python or Ruby, where zero-width guards
-            // on expressions like lookarounds cannot be eliminated statically.
-            if (ast.getOptions().getFlavor().canHaveEmptyLoopIterations() ||
-                            ((flags & (RegexASTNode.FLAG_HAS_BACK_REFERENCES | RegexASTNode.FLAG_HAS_LOOK_AHEADS | RegexASTNode.FLAG_HAS_LOOK_BEHINDS)) != 0)) {
-                /*
-                 * If a quantifier can produce a zero-width match, we have to check this in
-                 * back-tracking mode.
-                 */
-                if (group.getFirstAlternative().isExpandedQuantifierEmptySequence()) {
-                    assert group.size() == 2;
-                    if (group.getLastAlternative().getMinPath() - group.getMinPath() == 0) {
-                        setZeroWidthQuantifierIndex(group);
-                    }
-                } else if (group.getLastAlternative().isExpandedQuantifierEmptySequence()) {
-                    assert group.size() == 2;
-                    if (group.getFirstAlternative().getMinPath() - group.getMinPath() == 0) {
-                        setZeroWidthQuantifierIndex(group);
-                    }
-                } else if (minPath - group.getMinPath() == 0) {
-                    setZeroWidthQuantifierIndex(group);
-                }
+            /*
+             * If a quantifier can produce a zero-width match, we have to check this in
+             * back-tracking mode. In flavors more complex than JS (where empty loop iterations
+             * can be admitted), we have to check this at all times. In JS, we can afford to only do
+             * this check when the expression contains back-references or lookarounds.
+             */
+            if (minPath - group.getMinPath() == 0) {
+                setZeroWidthQuantifierIndex(group);
             }
         }
         if (group.isCapturing()) {
@@ -490,7 +477,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                 ast.getProperties().setLoneSurrogates();
             }
         }
-        if (characterClass.hasNotExpandedQuantifier()) {
+        if (characterClass.hasNotUnrolledQuantifier()) {
             characterClass.getParent().setHasQuantifiers();
             setQuantifierIndex(characterClass);
             characterClass.getParent().incMinPath(characterClass.getQuantifier().getMin());

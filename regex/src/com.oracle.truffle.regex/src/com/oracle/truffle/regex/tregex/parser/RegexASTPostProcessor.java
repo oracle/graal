@@ -160,7 +160,7 @@ public class RegexASTPostProcessor {
 
         @Override
         protected void leave(Group group) {
-            if (group.hasNotFinishedExpandingQuantifier() && !group.getFirstAlternative().isExpandedQuantifierEmptySequence() && !group.getLastAlternative().isExpandedQuantifierEmptySequence()) {
+            if (group.hasNotFinishedExpandingQuantifier()) {
                 quantifierExpander.expandQuantifier(group, shouldUnroll(group) && shouldUnrollVisitor.shouldUnroll(group));
             }
         }
@@ -194,7 +194,7 @@ public class RegexASTPostProcessor {
 
             @Override
             protected void visit(Group group) {
-                if (group != root && group.hasNotExpandedQuantifier()) {
+                if (group != root && group.hasNotUnrolledQuantifier()) {
                     result = false;
                 }
             }
@@ -245,14 +245,14 @@ public class RegexASTPostProcessor {
                 pushGroup();
                 addTerm(copySupplier.get());
                 curTerm.asQuantifiableTerm().setQuantifier(null);
-                curTerm.setExpandedQuantifier(false);
                 curTerm.setUnrolledQuantifer(false);
                 curTerm.setQuantifierExpansionDone(false);
+                curTerm.setMandatoryQuantifier(false);
                 popGroup();
                 curTerm.asQuantifiableTerm().setQuantifier(quantifier);
-                curTerm.setExpandedQuantifier(unroll);
                 curTerm.setUnrolledQuantifer(unroll);
                 curTerm.setQuantifierExpansionDone(true);
+                curTerm.setMandatoryQuantifier(false);
                 if (term.isGroup()) {
                     curTerm.asGroup().setEnclosedCaptureGroupsLow(term.asGroup().getCaptureGroupsLow());
                     curTerm.asGroup().setEnclosedCaptureGroupsHigh(term.asGroup().getCaptureGroupsHigh());
@@ -301,8 +301,8 @@ public class RegexASTPostProcessor {
                     for (int i = 0; i < quantifier.getMin(); i++) {
                         Term term = copySupplier.get();
                         term.setQuantifierExpansionDone(true);
-                        term.setExpandedQuantifier(true);
                         term.setUnrolledQuantifer(true);
+                        term.setMandatoryQuantifier(true);
                         addTerm(term);
                     }
                 }
