@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.strings;
 
-import java.util.ServiceLoader;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.nodes.Node;
@@ -67,20 +65,10 @@ interface JCodings {
     private static <S> Iterable<S> loadService(Class<S> service) {
         Class<?> lookupClass = JCodings.class;
         Module truffleModule = lookupClass.getModule();
-        ModuleLayer moduleLayer = truffleModule.getLayer();
         if (!truffleModule.canUse(service)) {
             truffleModule.addUses(service);
         }
-        Iterable<S> services;
-        if (moduleLayer != null) {
-            services = ServiceLoader.load(moduleLayer, service);
-        } else {
-            services = ServiceLoader.load(service, lookupClass.getClassLoader());
-        }
-        if (!services.iterator().hasNext()) {
-            services = ServiceLoader.load(service);
-        }
-        return services;
+        return TStringAccessor.ACCESSOR.engineSupport().loadServices(service);
     }
 
     static JCodings getInstance() {
