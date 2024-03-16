@@ -391,7 +391,6 @@ suite = {
         "GUAVA",
         "JIMFS",
         "mx:JUNIT",
-        "TRUFFLE_JCODINGS",
       ],
       "requires" : [
         "java.desktop",
@@ -1105,7 +1104,6 @@ suite = {
         "com.oracle.truffle.tck",
         "com.oracle.truffle.sl",
         "mx:JMH_1_21",
-        "TRUFFLE_JCODINGS",
       ],
       "requires" : [
         "java.logging",
@@ -2084,7 +2082,6 @@ suite = {
           "TRUFFLE_TCK",
           "TRUFFLE_SL",
           "TRUFFLE_TCK_TESTS",
-         "TRUFFLE_JCODINGS",
       ],
       "unittestConfig": "truffle",
       "maven" : False,
