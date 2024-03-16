@@ -1285,48 +1285,69 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     }
 
     protected void appendUnresolvedDeopt() {
-        SpeculationLog.Speculation speculation;
-        boolean mayConvertToGuard = true;
-
         /*
          * Make sure we didn't pop something that we shouldn't have from the stack between
          * processing the opcode and emitting the deopt, which could cause an underflow.
          */
-        if (currentBlock.isInstructionBlock()) {
-            GraalError.guarantee(frameState.stackSize() + Bytecodes.stackEffectOf(stream.currentBC()) >= 0, "Stack underflow at unresolved deopt");
+        GraalError.guarantee(!currentBlock.isInstructionBlock() ||
+                        frameState.stackSize() + Bytecodes.stackEffectOf(stream.currentBC()) >= 0, "Stack underflow at unresolved deopt");
 
-            speculation = graphBuilderConfig.usePreciseUnresolvedDeopts() ? null : mayUseUnresolved(bci());
-            if (speculation == null) {
-                /*
-                 * A previous speculation on this unresolved bytecode failed. This means that we
-                 * previously deopted at this position. The interpreter should have resolved the
-                 * item we need here. However, due to inlining and our use of imprecise frame
-                 * states, we may have deopted to and invalidated the callee of this method rather
-                 * than this method itself. Prevent a deopt loop by capturing a precise state.
-                 */
-                speculation = SpeculationLog.NO_SPECULATION;
-                mayConvertToGuard = false;
-                StateSplitProxyNode stateSplit = append(new StateSplitProxyNode());
-                stateSplit.setStateAfter(createFrameState(bci(), stateSplit));
-            }
-        } else if (currentBlock instanceof ExceptionDispatchBlock dispatchBlock) {
-            /*
-             * This is part of the exception dispatch path so there is no actual unresolved bytecode
-             * so we can't use a precise deopt.
-             */
-            speculation = graphBuilderConfig.usePreciseUnresolvedDeopts() ? null : mayUseSpeculation(dispatchBlock.deoptBci, UNRESOLVED_CATCH_TYPE, dispatchBlock.handlerID);
-            if (speculation == null) {
-                // Disallow guard conversion but don't use a precise FrameState since we're in the
-                // exception dispatch path
-                speculation = SpeculationLog.NO_SPECULATION;
-                mayConvertToGuard = false;
-            }
+        SpeculationLog.Speculation speculation;
+        boolean usePreciseFrameState = false;
+        if (graphBuilderConfig.usePreciseUnresolvedDeopts()) {
+            speculation = SpeculationLog.NO_SPECULATION;
+            usePreciseFrameState = currentBlock.isInstructionBlock();
+        } else if (graph.getSpeculationLog() == null) {
+            // Just emit normal deopts for this case. This should really only occur in a test setup
+            speculation = SpeculationLog.NO_SPECULATION;
         } else {
-            throw GraalError.shouldNotReachHere("Unexpected block " + currentBlock);
+            if (currentBlock.isInstructionBlock()) {
+                speculation = mayUseUnresolved(bci());
+                if (speculation == null) {
+                    /*
+                     * A previous speculation on this unresolved bytecode failed. This means that we
+                     * previously deopted at this position. The interpreter should have resolved the
+                     * item we need here. However, due to inlining and our use of imprecise frame
+                     * states, we may have deopted to and invalidated the callee of this method
+                     * rather than this method itself. Prevent a deopt loop by capturing a precise
+                     * state.
+                     */
+                    usePreciseFrameState = true;
+                }
+            } else if (currentBlock instanceof ExceptionDispatchBlock dispatchBlock) {
+                /*
+                 * This is part of the exception dispatch path so there is no actual unresolved
+                 * bytecode so we can't use a precise frame state deopt. In the case where the
+                 * speculation fails mayConvertToGuard will still be set of false to keep the deopt
+                 * point lower in the graph.
+                 */
+                speculation = mayUseSpeculation(dispatchBlock.deoptBci, UNRESOLVED_CATCH_TYPE, dispatchBlock.handlerID);
+            } else {
+                throw GraalError.shouldNotReachHere("Unexpected block " + currentBlock);
+            }
+        }
+
+        if (usePreciseFrameState) {
+            // Only use precise FrameStates for real instruction blocks. The FrameState when parsing
+            // an ExceptionDispatchBlock isn't the correct deopt location.
+            StateSplitProxyNode stateSplit = append(new StateSplitProxyNode());
+            stateSplit.setStateAfter(createFrameState(bci(), stateSplit));
+        }
+
+        if (speculation == null) {
+            speculation = SpeculationLog.NO_SPECULATION;
         }
 
         DeoptimizeNode deopt = append(new DeoptimizeNode(InvalidateRecompile, Unresolved, speculation));
-        deopt.mayConvertToGuard(mayConvertToGuard);
+        if ((graphBuilderConfig.usePreciseUnresolvedDeopts() ||
+                        speculation.equals(SpeculationLog.NO_SPECULATION) && graph.getSpeculationLog() != null)) {
+            /*
+             * If the speculation is no NO_SPECULATION and the graph has a valid speculation log
+             * then the speculation has failed, so don't permit this deopt to be converted into a
+             * guard.
+             */
+            deopt.mayConvertToGuard(false);
+        }
 
         /*
          * Track source position for deopt nodes even if
