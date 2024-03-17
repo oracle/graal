@@ -3,6 +3,7 @@
 local sc = (import "ci_common/sulong-common.jsonnet");
 {
   local common = import "../../ci/ci_common/common.jsonnet",
+  local utils = import '../../ci/ci_common/common-utils.libsonnet',
 
   local linux_amd64 = common.linux_amd64,
 
@@ -98,5 +99,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
       { name: "weekly-sulong-coverage-jdk21-darwin-aarch64", timelimit: "1:00:00" },
     ]),
 
-  builds: [ sc.defBuild(b) for b in self.regular_builds + self.standalone_builds + self.coverage_builds ],
+  local _builds = [ sc.defBuild(b) for b in self.regular_builds + self.standalone_builds + self.coverage_builds ],
+
+  builds: utils.add_defined_in(_builds, std.thisFile),
 }
