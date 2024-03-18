@@ -56,6 +56,10 @@ public final class ExceptionHandler {
         return (int) data[1];
     }
 
+    public boolean isSpecialHandler() {
+        return getHandlerIndex() < 0;
+    }
+
     public int getHandlerIndex() {
         return (int) data[2];
     }
@@ -66,6 +70,16 @@ public final class ExceptionHandler {
 
     @Override
     public String toString() {
-        return String.format("[%04x : %04x] -> %04x ex: local(%d)", getStartIndex(), getEndIndex(), getHandlerIndex(), getExceptionVariableIndex());
+        String description;
+        if (isSpecialHandler()) {
+            if (getHandlerIndex() == -1) {
+                description = String.format("tag.exceptional tagNode(%d)", getExceptionVariableIndex());
+            } else {
+                description = "Unknown";
+            }
+        } else {
+            description = String.format("%04x ex: local(%d)", getHandlerIndex(), getExceptionVariableIndex());
+        }
+        return String.format("[%04x : %04x] -> %s", getStartIndex(), getEndIndex(), description);
     }
 }

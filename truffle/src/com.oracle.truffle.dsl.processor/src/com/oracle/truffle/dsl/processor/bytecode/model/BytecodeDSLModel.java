@@ -356,6 +356,10 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return invalidateInstructions[length - 1];
     }
 
+    public InstructionModel[] getInvalidateInstructions() {
+        return invalidateInstructions;
+    }
+
     private void addInvalidateInstructions() {
         int maxLength = 0;
         for (var entry : instructions.entrySet()) {
@@ -412,6 +416,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                                 getSimpleName(types.Prolog));
                 return null;
             }
+
             prolog = operation;
         } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.EpilogReturn)) {
             op.setInternal();
