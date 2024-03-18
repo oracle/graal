@@ -362,6 +362,18 @@ public final class DebuggerController implements ContextsListener {
         return visibleThreads.toArray(new Object[visibleThreads.size()]);
     }
 
+    void forceResumeAll(boolean sessionClosed) {
+        for (Object thread : getVisibleGuestThreads()) {
+            boolean resumed = false;
+            SimpleLock suspendLock = getSuspendLock(thread);
+            synchronized (suspendLock) {
+                while (!resumed) {
+                    resumed = resume(thread, sessionClosed);
+                }
+            }
+        }
+    }
+
     public void resumeAll(boolean sessionClosed) {
         Object eventThread = null;
 
@@ -369,26 +381,20 @@ public final class DebuggerController implements ContextsListener {
         // sent while performing a stepping request, some debuggers (IntelliJ is a known case) will
         // expect all other threads but the current stepping thread to be resumed first.
         for (Object thread : getVisibleGuestThreads()) {
-            boolean resumed = false;
             SimpleLock suspendLock = getSuspendLock(thread);
             synchronized (suspendLock) {
-                while (!resumed) {
-                    if (isStepping(thread)) {
-                        eventThread = thread;
-                        break;
-                    } else {
-                        resumed = resume(thread, sessionClosed);
-                    }
+                if (isStepping(thread)) {
+                    eventThread = thread;
+                    break;
+                } else {
+                    resume(thread, sessionClosed);
                 }
             }
         }
         if (eventThread != null) {
-            boolean resumed = false;
             SimpleLock suspendLock = getSuspendLock(eventThread);
             synchronized (suspendLock) {
-                while (!resumed) {
-                    resumed = resume(eventThread, sessionClosed);
-                }
+                resume(eventThread, sessionClosed);
             }
         }
     }
