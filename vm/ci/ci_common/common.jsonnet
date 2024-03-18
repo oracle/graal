@@ -4,7 +4,6 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
 local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 local repo_config = import '../../../repo-configuration.libsonnet';
 local devkits = graal_common.devkits;
-local run_spec   = import "../../../ci/ci_common/run-spec.libsonnet";
 
 {
   verify_name(build): {
@@ -507,10 +506,10 @@ local run_spec   = import "../../../ci/ci_common/run-spec.libsonnet";
     else error "os not found: " + os,
 
   deploy_graalvm_base(java_version): vm.check_structure + {
-    run: $.patch_env(self.os, self.arch, 'jdk21') + vm.collect_profiles() + $.build_base_graalvm_image + [
+    run: $.patch_env(self.os, self.arch, java_version) + vm.collect_profiles() + $.build_base_graalvm_image + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
-    ] + $.deploy_sdk_base(self.os) + $.check_base_graalvm_image(self.os, self.arch, 'jdk21'),
+    ] + $.deploy_sdk_base(self.os) + $.check_base_graalvm_image(self.os, self.arch, java_version),
     notify_groups:: ['deploy'],
     timelimit: "1:00:00"
   },

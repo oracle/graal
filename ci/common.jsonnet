@@ -4,10 +4,6 @@
 # Note that using a os-arch mixin like linux_amd64 mixin is required for using common.deps.
 
 local common_json = import "../common.json";
-local run_spec   = import "ci_common/run-spec.libsonnet";
-local task_spec = run_spec.task_spec;
-local platform_spec = run_spec.platform_spec;
-local evaluate_late = run_spec.evaluate_late;
 
 {
   # JDK definitions
@@ -224,9 +220,9 @@ local evaluate_late = run_spec.evaluate_late;
     truffleruby:: {
       packages+: (if self.os == "linux" && self.arch == "amd64" then {
         ruby: "==3.2.2", # Newer version, also used for benchmarking
-      } else if (self.os == "windows") then {
-
-      } else {
+      } else if (self.os == "windows") then
+        error('truffleruby is not supported on windows')
+      else {
         ruby: "==3.0.2",
       }) + (if self.os == "linux" then {
         libyaml: "==0.2.5",
