@@ -213,39 +213,41 @@ local evaluate_late = run_spec.evaluate_late;
     # GR-49566: SpotBugs does not yet run on JDK 22
     spotbugs: code_tools,
 
-    sulong:: task_spec( evaluate_late({'_9_': {
+    sulong:: {
       packages+: {
         cmake: "==3.22.2",
       } + if self.os == "windows" then {
         msvc_source: "==14.0",
       } else {},
-    }})),
+    },
 
-    truffleruby:: task_spec( evaluate_late({'_10_': {
+    truffleruby:: {
       packages+: (if self.os == "linux" && self.arch == "amd64" then {
         ruby: "==3.2.2", # Newer version, also used for benchmarking
+      } else if (self.os == "windows") then {
+
       } else {
         ruby: "==3.0.2",
       }) + (if self.os == "linux" then {
         libyaml: "==0.2.5",
       } else {}),
-    }})),
+    },
 
-    graalnodejs:: task_spec( evaluate_late({'_11_': {
+    graalnodejs:: {
       packages+: if self.os == "linux" then {
         cmake: "==3.22.2",
       } else {},
-    }})),
+    },
 
-    graalpy:: task_spec( evaluate_late({'_12_': {
+    graalpy:: {
       packages+: if (self.os == "linux") then {
         libffi: '>=3.2.1',
         bzip2: '>=1.0.6',
         maven: ">=3.3.9",
       } else {},
-    }})),
+    },
 
-    fastr:: task_spec( evaluate_late({'_13_': {
+    fastr:: {
       # Note: On both Linux and MacOS, FastR depends on the gnur module and on gfortran
       # of a specific version (4.8.5 on Linux, 10.2.0 on MacOS)
       # However, we do not need to load those modules, we only configure specific environment variables to
@@ -294,9 +296,9 @@ local evaluate_late = run_spec.evaluate_late;
         'GNUR_CONFIG_LOG = (?P<filename>.+\\.log)',
         'GNUR_MAKE_LOG = (?P<filename>.+\\.log)',
       ] else [],
-    }})),
+    },
 
-    svm:: task_spec(evaluate_late({'_14_': {
+    svm:: {
       packages+: {
         cmake: "==3.22.2",
       },
@@ -313,7 +315,7 @@ local evaluate_late = run_spec.evaluate_late;
         "*/callgrind.*",
         "*.log",
       ],
-    }})),
+    },
   },
 
   # Job frequencies

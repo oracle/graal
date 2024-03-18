@@ -159,7 +159,7 @@ local run_spec   = import "../../../ci/ci_common/run-spec.libsonnet";
     $.mx_vm_complete + self.artifact_deploy_sdk_components_dry_run(os)
   ],
 
-  ruby_vm_build: self.svm_common + self.sulong + self.truffleruby + run_spec.task_spec(vm.custom_vm),
+  ruby_vm_build: self.svm_common + self.sulong + self.truffleruby + vm.custom_vm,
   ruby_python_vm_build: self.ruby_vm_build + self.graalpy,
   full_vm_build: self.ruby_python_vm_build + graal_common.deps.fastr,
 
@@ -449,15 +449,15 @@ local run_spec   = import "../../../ci/ci_common/run-spec.libsonnet";
     },
   },
 
-  deploy_build: run_spec.task_spec({
+  deploy_build: {
     deploysArtifacts: true
-  }),
+  },
 
-  linux_deploy: self.deploy_build + run_spec.task_spec({
+  linux_deploy: self.deploy_build + {
     packages+: {
       maven: '>=3.3.9',
     },
-  }),
+  },
 
   darwin_deploy: self.deploy_build + self.maven_download_unix + {
     environment+: {
@@ -506,7 +506,7 @@ local run_spec   = import "../../../ci/ci_common/run-spec.libsonnet";
       else error "arch not found: " + arch
     else error "os not found: " + os,
 
-  deploy_graalvm_base: vm.check_structure + {
+  deploy_graalvm_base(java_version): vm.check_structure + {
     run: $.patch_env(self.os, self.arch, 'jdk21') + vm.collect_profiles() + $.build_base_graalvm_image + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
