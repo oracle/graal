@@ -18,8 +18,7 @@ To record JFR events when running a native executable, enable JFR support and JF
 
 To build a native executable with the JFR events support, you first need to add the `--enable-monitoring=jfr` option when invoking the `native-image` tool. 
 Then enable the system, start a recording, and configure logging at native executable run time:
-  * `-XX:+FlightRecorder`: use to enable JFR at run time
-  * `-XX:StartFlightRecording`: use to start a recording on application's startup
+  * `-XX:StartFlightRecording`: use to enable JFR at run time and start a recording on application's startup
   * `-XX:FlightRecorderLogging`: use to configure the log output for the JFR system
 
 Follow the steps below to practice building a native executable with JFR support and recording events at run time.
