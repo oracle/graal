@@ -57,6 +57,7 @@ import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.AbstractBytecodeTruffleException;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
@@ -72,8 +73,10 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -82,6 +85,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
 
 public class TagTest extends AbstractInstructionTest {
@@ -117,6 +121,7 @@ public class TagTest extends AbstractInstructionTest {
     enum EventKind {
         ENTER,
         RETURN_VALUE,
+        UNWIND,
         EXCEPTIONAL,
     }
 
@@ -143,6 +148,13 @@ public class TagTest extends AbstractInstructionTest {
                 public void onReturnValue(VirtualFrame f, Object arg) {
                     events.add(new Event(TagTestLanguage.REF.get(this).threadLocal.get().newEvent(), EventKind.RETURN_VALUE, tree.getStartBci(), tree.getEndBci(), arg,
                                     tree.getTags().toArray(Class[]::new)));
+                }
+
+                @Override
+                protected Object onUnwind(VirtualFrame frame, Object info) {
+                    events.add(new Event(TagTestLanguage.REF.get(this).threadLocal.get().newEvent(), EventKind.UNWIND, tree.getStartBci(), tree.getEndBci(), info,
+                                    tree.getTags().toArray(Class[]::new)));
+                    return null;
                 }
 
                 @Override
@@ -324,7 +336,11 @@ public class TagTest extends AbstractInstructionTest {
                 Event expectedEvent = expectedEvents[i];
 
                 assertEquals("event kind at at index " + i, expectedEvent.kind, actualEvent.kind);
-                assertEquals("event value at at index " + i, expectedEvent.value, actualEvent.value);
+                if (expectedEvent.value instanceof Class) {
+                    assertEquals("event value at at index " + i, expectedEvent.value, actualEvent.value.getClass());
+                } else {
+                    assertEquals("event value at at index " + i, expectedEvent.value, actualEvent.value);
+                }
                 assertEquals("start bci at at index " + i, "0x" + Integer.toHexString(expectedEvent.startBci), "0x" + Integer.toHexString(actualEvent.startBci));
                 assertEquals("end bci at at index " + i, "0x" + Integer.toHexString(expectedEvent.endBci), "0x" + Integer.toHexString(actualEvent.endBci));
                 assertEquals("end bci at at index " + i, Set.of(expectedEvent.tags), Set.of(actualEvent.tags));
@@ -490,11 +506,10 @@ public class TagTest extends AbstractInstructionTest {
                         "trap");
 
         assertFails(() -> node.getCallTarget().call(), TestException.class);
-        // TODO not yet supported
-// assertEvents(node,
-// events,
-// new Event(EventKind.ENTER, 0x0000, 0x000a, null, ExpressionTag.class),
-// new Event(EventKind.RETURN_VALUE, 0x0000, 0x000a, 42, ExpressionTag.class));
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.ENTER, 0x0000, 0x000e, null, RootTag.class),
+                        new Event(EventKind.EXCEPTIONAL, 0x0000, 0x000e, TestException.class, RootTag.class));
 
     }
 
@@ -530,11 +545,107 @@ public class TagTest extends AbstractInstructionTest {
                         "trap");
 
         assertFails(() -> node.getCallTarget().call(), TestException.class);
-// assertEvents(node,
-// events,
-// new Event(EventKind.ENTER, 0x0000, 0x000a, null, ExpressionTag.class),
-// new Event(EventKind.RETURN_VALUE, 0x0000, 0x000a, 42, ExpressionTag.class));
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.ENTER, 0x0002, 0x0006, null, RootBodyTag.class),
+                        new Event(EventKind.EXCEPTIONAL, 0x0002, 0x0006, TestException.class, RootBodyTag.class));
+        System.out.println(node.dump());
+    }
 
+    @Test
+    public void testUnwindInReturn() {
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginReturn();
+            b.beginTag(ExpressionTag.class);
+            b.beginAdd();
+            b.emitLoadConstant(20);
+            b.emitLoadConstant(21);
+            b.endAdd();
+            b.endTag(ExpressionTag.class);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        assertEquals(41, node.getCallTarget().call());
+        assertInstructions(node,
+                        "load.constant",
+                        "load.constant",
+                        "c.Add",
+                        "return");
+
+        instrumenter.attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build(), (e) -> {
+            return new ExecutionEventNode() {
+                @Override
+                public void onReturnValue(VirtualFrame f, Object arg) {
+                    if (arg.equals(41)) {
+                        throw e.createUnwind(42);
+                    }
+                }
+
+                @Override
+                protected Object onUnwind(VirtualFrame frame, Object info) {
+                    return info;
+                }
+            };
+        });
+
+        assertInstructions(node,
+                        "tag.enter",
+                        "load.constant",
+                        "load.constant",
+                        "c.Add",
+                        "tag.leave",
+                        "return");
+
+        assertEquals(42, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testUnwindInEnter() {
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginReturn();
+            b.beginTag(ExpressionTag.class);
+            b.beginAdd();
+            b.emitLoadConstant(20);
+            b.emitLoadConstant(21);
+            b.endAdd();
+            b.endTag(ExpressionTag.class);
+            b.endReturn();
+            b.endRoot();
+        });
+
+        assertEquals(41, node.getCallTarget().call());
+        assertInstructions(node,
+                        "load.constant",
+                        "load.constant",
+                        "c.Add",
+                        "return");
+
+        instrumenter.attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build(), (e) -> {
+            return new ExecutionEventNode() {
+                @Override
+                protected void onEnter(VirtualFrame frame) {
+                    throw e.createUnwind(42);
+                }
+
+                @Override
+                protected Object onUnwind(VirtualFrame frame, Object info) {
+                    return info;
+                }
+            };
+        });
+
+        assertInstructions(node,
+                        "tag.enter",
+                        "load.constant",
+                        "load.constant",
+                        "c.Add",
+                        "tag.leave",
+                        "return");
+
+        assertEquals(42, node.getCallTarget().call());
     }
 
     @Test
@@ -928,6 +1039,18 @@ public class TagTest extends AbstractInstructionTest {
             public static int doInt(int a, int b) {
                 return a + b;
             }
+        }
+
+        public Throwable interceptInternalException(Throwable t, BytecodeNode bytecodeNode, int bci) {
+            return super.interceptInternalException(t, bytecodeNode, bci);
+        }
+
+        public AbstractTruffleException interceptTruffleException(AbstractTruffleException ex, VirtualFrame frame, BytecodeNode bytecodeNode, int bci) {
+            return super.interceptTruffleException(ex, frame, bytecodeNode, bci);
+        }
+
+        public Object interceptControlFlowException(ControlFlowException ex, VirtualFrame frame, BytecodeNode bytecodeNode, int bci) throws Throwable {
+            return super.interceptControlFlowException(ex, frame, bytecodeNode, bci);
         }
 
         @Operation(tags = ExpressionTag.class)

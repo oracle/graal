@@ -1086,7 +1086,6 @@ public final class ProbeNode extends Node {
             if (prevError != null) {
                 throw prevError;
             }
-
             if (unwind != null) {
                 throw unwind;
             }

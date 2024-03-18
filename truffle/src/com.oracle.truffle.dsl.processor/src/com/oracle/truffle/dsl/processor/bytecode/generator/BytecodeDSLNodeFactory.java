@@ -1873,6 +1873,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                     field(context.getType(boolean.class), "producedValue"),
                                     field(context.getType(int.class), "childBci"),
                                     field(context.getType(int.class), "nodeId"),
+                                    field(context.getType(int.class), "startStackHeight"),
                                     field(generic(type(List.class), tagNode.asType()), "children").withInitializer("null"),
                                     field(tagNode.asType(), "node")));
                 }
@@ -3501,7 +3502,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     }
                 }
                 case TAG -> {
-                    yield createOperationData("TagOperationData", "false", UNINIT, "nodeId", "node");
+                    yield createOperationData("TagOperationData", "false", UNINIT, "nodeId", "this.currentStackHeight", "node");
                 }
                 case RETURN -> {
                     yield createOperationData("ReturnOperationData", "false", UNINIT);
@@ -3820,6 +3821,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     }
 
                     buildEmitInstruction(b, model.tagLeaveValueInstruction, args);
+                    b.statement("doCreateExceptionHandler(tagNode.enterBci, bci,  operationData.nodeId, operationData.startStackHeight, -1)");
+
+                    /*
+                     * Leaving the tag leave is always reachable, because probes may decide to
+                     * return at any point and we need a point where we can continue.
+                     */
+                    b.statement("markReachable(true)");
+
                     b.startStatement().startCall("afterChild");
                     b.string("true");
                     b.string("bci - " + model.tagLeaveValueInstruction.getInstructionLength());
@@ -6243,6 +6252,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 type.add(createInstrumentableNodeHasTag());
             }
 
+            type.add(createReadValidBytecode());
+
             continueAt = type.add(new CodeExecutableElement(Set.of(ABSTRACT), type(int.class), "continueAt"));
             continueAt.addParameter(new CodeVariableElement(bytecodeNodeGen.asType(), "$root"));
             continueAt.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
@@ -6480,6 +6491,36 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.getModifiers().add(Modifier.FINAL);
             ex.createBuilder().returnFalse();
             return ex;
+        }
+
+        private CodeExecutableElement createReadValidBytecode() {
+            CodeExecutableElement method = new CodeExecutableElement(
+                            Set.of(FINAL),
+                            type(int.class), "readValidBytecode",
+                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(int.class), "bci"));
+            CodeTreeBuilder b = method.createBuilder();
+            if (model.isBytecodeUpdatable()) {
+                b.declaration(type(int.class), "op", readBc("bci"));
+                b.startSwitch().string("op").end().startBlock();
+                for (InstructionModel instruction : model.getInvalidateInstructions()) {
+                    b.startCase().tree(createInstructionConstant(instruction)).end();
+                }
+                b.startCaseBlock();
+                b.lineComment("While we were processing the exception handler the code invalidated.");
+                b.lineComment("We need to re-read the op from the old bytecodes.");
+                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                b.statement("return oldBytecodes[bci]");
+                b.end(); // case
+                b.caseDefault().startCaseBlock();
+                b.statement("return op");
+                b.end();
+                b.end(); // switch
+            } else {
+                b.lineComment("The bytecode is not updatable so the bytecode is always valid.");
+                b.startReturn().string(readBc("bci")).end();
+            }
+            return method;
         }
 
         private CodeExecutableElement createTransitionState() {
@@ -6925,7 +6966,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn();
             b.startNew(types.Instruction);
-            b.startCall("parseInstruction").string("bci").string("this.bytecodes[bci]").string("null").end();
+            b.startCall("parseInstruction").string("bci").string("readValidBytecode(this.bytecodes, bci)").string("null").end();
             b.end();
             b.end();
             return ex;
@@ -6937,8 +6978,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(type(int.class), "operand"));
             ex.addParameter(new CodeVariableElement(type(int[].class), "nextBci"));
             CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(arrayOf(type(short.class)), "oldBc", "this.oldBytecodes");
-            b.declaration(arrayOf(type(short.class)), "bc", "oldBc != null ? oldBc : this.bytecodes");
+            b.declaration(arrayOf(type(short.class)), "bc", "this.bytecodes");
             b.declaration(arrayOf(types.Node), "cachedNodes", "getCachedNodes()");
             b.declaration(arrayOf(type(int.class)), "branchProfiles", "getBranchProfiles()");
             b.declaration(types.BytecodeLocation, "location", "findLocation(bci)");
@@ -7074,7 +7114,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 type.add(createCopyConstructor());
             }
             type.add(createResolveThrowable());
-            type.add(createResolveExceptionHandler());
+            type.add(createResolveHandler());
+
+            if (model.enableTagInstrumentation) {
+                type.add(createDoTagExceptional());
+            }
 
             if (model.interceptControlFlowException != null) {
                 type.add(createResolveControlFlowException());
@@ -8072,10 +8116,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement(setFrameObject("sp - 1", "mergeVariadic((Object[]) " + getFrameObject("sp - 1") + ")"));
                         break;
                     case INVALIDATE:
-                        if (tier.isCached()) {
-                            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                        }
-                        b.startReturn().string("(sp << 16) | bci").end();
+                        emitInvalidate(b);
                         break;
                     case CUSTOM:
                         results.add(buildCustomInstructionExecute(b, instr));
@@ -8126,31 +8167,62 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.statement("throwable = t");
                 b.end();
                 b.end(); // if
-                b.declaration(types.AbstractTruffleException, "ex", "resolveThrowable($root, frame, bci, throwable)");
+                b.declaration(type(Throwable.class), "ex", "resolveThrowable($root, frame, bci, throwable)");
             } else {
-                b.declaration(types.AbstractTruffleException, "ex", "resolveThrowable($root, frame, bci, originalThrowable)");
+                b.declaration(type(Throwable.class), "ex", "resolveThrowable($root, frame, bci, originalThrowable)");
             }
+            b.declaration(type(int.class), "handler", "-5");
             b.statement("int[] localHandlers = this.handlers");
-            b.statement("int handler = resolveExceptionHandler(localHandlers, bci)");
+            b.startWhile().string("(handler = resolveHandler(bci, handler + 5, localHandlers)) != -1").end().startBlock();
 
-            b.startIf().string("handler != -1").end().startBlock();
+            b.statement("int local = localHandlers[handler + 4]");
+            b.statement("int targetSp");
+            boolean hasSpecialHandler = model.enableTagInstrumentation;
 
-            if (tier.isCached()) {
-                b.startIf().string("!this.exceptionProfiles_[handler / 5]").end().startBlock();
-                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                b.statement("this.exceptionProfiles_[handler / 5] = true");
+            if (hasSpecialHandler) {
+                b.startTryBlock();
+                b.startSwitch().string("local").end().startBlock();
+                b.startCase().string("-1").end().startCaseBlock();
+                b.statement("int result = doTagExceptional($root, frame, bc, bci, ex, localHandlers[handler + 2], localHandlers[handler + 3])");
+                b.statement("targetSp = result >> 16 & 0xFFFF");
+                b.statement("bci = result & 0xFFFF");
+                b.startIf().string("sp < targetSp + $root.numLocals").end().startBlock();
+                b.lineComment("The instrumentation pushed a value on the stack.");
+                b.statement("assert sp == targetSp + $root.numLocals - 1");
+                b.statement("sp++");
+                b.end();
+                b.statement("break");
+                b.end();
+
+                b.caseDefault().startCaseBlock();
+            }
+            b.startIf().string("ex instanceof ").type(type(ThreadDeath.class)).end().startBlock();
+            b.statement("continue");
+            b.end();
+            b.startAssert().string("ex instanceof ").type(types.AbstractTruffleException).end();
+            b.statement("bci = localHandlers[handler + 2]");
+            b.statement("targetSp = localHandlers[handler + 3]");
+            b.statement(setFrameObject(localFrame(), "localHandlers[handler + 4]", "ex"));
+
+            if (hasSpecialHandler) {
+                b.statement("break");
+                b.end(); // case block
+                b.end(); // switch
+                b.end(); // try
+                b.startCatchBlock(type(Throwable.class), "t");
+                b.statement("ex = resolveThrowable($root, frame, bci, t)");
+                b.statement("continue");
                 b.end();
             }
 
-            b.statement("bci = localHandlers[handler + 2]");
-            b.statement("int handlerSp = localHandlers[handler + 3] + $root.numLocals");
+            b.statement("int handlerSp = targetSp + $root.numLocals");
             b.statement("assert sp >= handlerSp");
             b.startWhile().string("sp > handlerSp").end().startBlock();
             b.statement(clearFrame("frame", "--sp"));
             b.end();
-            b.statement(setFrameObject(localFrame(), "localHandlers[handler + 4]", "ex"));
             b.statement("continue loop");
-            b.end();
+
+            b.end(); // while
 
             /**
              * NB: Reporting here ensures loop counts are reported before a guest-language exception
@@ -8158,7 +8230,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
              * avoid complicating the generated code too much).
              */
             emitBeforeReturnProfiling(b);
-            b.statement("throw ex");
+            b.statement("throw sneakyThrow(ex)");
 
             b.end(); // catch
 
@@ -8180,6 +8252,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             results.addAll(doInstructionMethods.values());
             return results;
+        }
+
+        private void emitInvalidate(CodeTreeBuilder b) {
+            if (tier.isCached()) {
+                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+            }
+            b.startReturn().string("(sp << 16) | bci").end();
         }
 
         private CodeExecutableElement createResolveControlFlowException() {
@@ -8213,7 +8292,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createResolveThrowable() {
             CodeExecutableElement method = new CodeExecutableElement(
                             Set.of(PRIVATE),
-                            types.AbstractTruffleException, "resolveThrowable",
+                            type(Throwable.class), "resolveThrowable",
                             new CodeVariableElement(bytecodeNodeGen.asType(), "$root"),
                             new CodeVariableElement(types.VirtualFrame, "frame"),
                             new CodeVariableElement(type(int.class), "bci"),
@@ -8236,6 +8315,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startElseIf().startGroup().string("throwable instanceof ").type(types.ControlFlowException).string(" cfe").end(2).startBlock();
             b.startThrow().string("cfe").end();
             b.end();
+            if (model.enableTagInstrumentation) {
+                b.startElseIf().startGroup().string("throwable instanceof ").type(type(ThreadDeath.class)).string(" cfe").end(2).startBlock();
+                b.startReturn().string("cfe").end();
+                b.end();
+            }
 
             if (model.interceptInternalException == null) {
                 // Special case: no handlers for non-Truffle exceptions. Just rethrow.
@@ -8269,25 +8353,174 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         }
 
-        private CodeExecutableElement createResolveExceptionHandler() {
+        private CodeExecutableElement createResolveHandler() {
             CodeExecutableElement method = new CodeExecutableElement(
-                            Set.of(PRIVATE, STATIC),
-                            type(int.class), "resolveExceptionHandler",
-                            new CodeVariableElement(type(int[].class), "handlers"),
-                            new CodeVariableElement(type(int.class), "bci"));
+                            Set.of(PRIVATE),
+                            type(int.class), "resolveHandler",
+                            new CodeVariableElement(type(int.class), "bci"),
+                            new CodeVariableElement(type(int.class), "handler"),
+                            new CodeVariableElement(type(int[].class), "handlers"));
 
             method.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_InliningCutoff));
             method.addAnnotationMirror(new CodeAnnotationMirror(types.ExplodeLoop));
 
             CodeTreeBuilder b = method.createBuilder();
 
-            b.startFor().string("int i = 0; i < handlers.length; i += 5").end().startBlock();
+            if (tier.isCached()) {
+                b.declaration(type(int.class), "handlerId", "Math.floorDiv(handler, 5)");
+            }
+            if (tier.isCached()) {
+                b.startFor().string("int i = handler; i < handlers.length; i += 5, handlerId++").end().startBlock();
+            } else {
+                b.startFor().string("int i = handler; i < handlers.length; i += 5").end().startBlock();
+            }
             b.startIf().string("handlers[i] > bci").end().startBlock().statement("continue").end();
             b.startIf().string("handlers[i + 1] <= bci").end().startBlock().statement("continue").end();
+
+            if (tier.isCached()) {
+                b.startIf().string("!this.exceptionProfiles_[handlerId]").end().startBlock();
+                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                b.statement("this.exceptionProfiles_[handlerId] = true");
+                b.end();
+            }
+
             b.statement("return i");
+
             b.end();
 
             b.statement("return -1");
+            return method;
+
+        }
+
+        private Collection<List<InstructionModel>> groupInstructionsByKindAndImmediates(InstructionModel.InstructionKind... kinds) {
+            return model.getInstructions().stream().filter((i) -> {
+                for (InstructionKind kind : kinds) {
+                    if (i.kind == kind) {
+                        return true;
+                    }
+                }
+                return false;
+            }).collect(Collectors.groupingBy((i -> {
+                return i.getImmediates();
+            }))).values();
+        }
+
+        private CodeExecutableElement createDoTagExceptional() {
+            CodeExecutableElement method = new CodeExecutableElement(
+                            Set.of(PRIVATE),
+                            type(int.class), "doTagExceptional",
+                            new CodeVariableElement(bytecodeNodeGen.asType(), "$root"),
+                            new CodeVariableElement(types.VirtualFrame, "frame"),
+                            new CodeVariableElement(type(short[].class), "bc"),
+                            new CodeVariableElement(type(int.class), "bci"),
+                            new CodeVariableElement(type(Throwable.class), "exception"),
+                            new CodeVariableElement(type(int.class), "nodeId"),
+                            new CodeVariableElement(type(int.class), "handlerSp"));
+
+            Collection<List<InstructionModel>> groupedInstructions = groupInstructionsByKindAndImmediates(InstructionKind.TAG_LEAVE, InstructionKind.TAG_LEAVE_VOID);
+
+            CodeTreeBuilder b = method.createBuilder();
+            b.declaration(type(boolean.class), "wasOnReturnExecuted");
+            b.declaration(type(int.class), "nextBci");
+            b.declaration(type(int.class), "nextSp");
+
+            b.startSwitch().string("readValidBytecode(bc, bci)").end().startBlock();
+            for (List<InstructionModel> instructions : groupedInstructions) {
+                for (InstructionModel instruction : instructions) {
+                    b.startCase().tree(createInstructionConstant(instruction)).end();
+                }
+                b.startCaseBlock();
+                InstructionImmediate immediate = model.tagLeaveValueInstruction.getImmediate(ImmediateKind.TAG_NODE);
+                b.startAssign("wasOnReturnExecuted").tree(readImmediate("bc", "bci", immediate)).string(" == nodeId").end();
+                b.statement("break");
+                b.end();
+            }
+            b.caseDefault().startCaseBlock();
+            b.statement("wasOnReturnExecuted = false");
+            b.statement("break");
+            b.end(); // case default
+            b.end(); // switch
+
+            b.declaration(tagNode.asType(), "node", "this.tagRoot.tagNodes[nodeId]");
+            b.statement("Object result = node.findProbe().onReturnExceptionalOrUnwind(frame, exception, wasOnReturnExecuted)");
+            b.startIf().string("result == ").staticReference(types.ProbeNode, "UNWIND_ACTION_REENTER").end().startBlock();
+            b.lineComment("Reenter by jumping to the begin bci.");
+            b.statement("return (handlerSp << 16) | node.enterBci");
+            b.end().startElseBlock();
+            b.lineComment("We jump to the return adress which is at sp + 1.");
+
+            b.declaration(type(int.class), "targetSp");
+            b.declaration(type(int.class), "targetBci");
+
+            b.startSwitch().string("readValidBytecode(bc, node.leaveBci)").end().startBlock();
+            for (var entry : model.getInstructions().stream().filter((i) -> i.kind == InstructionKind.TAG_LEAVE).collect(Collectors.groupingBy((i) -> {
+                if (i.isReturnTypeQuickening()) {
+                    return i.signature.returnType;
+                } else {
+                    return type(Object.class);
+                }
+            })).entrySet()) {
+                int length = -1;
+                for (InstructionModel instruction : entry.getValue()) {
+                    b.startCase().tree(createInstructionConstant(instruction)).end();
+                    if (length != -1 && instruction.getInstructionLength() != length) {
+                        throw new AssertionError("Unexpected length.");
+                    }
+                    length = instruction.getInstructionLength();
+                }
+                TypeMirror targetType = entry.getKey();
+                b.startCaseBlock();
+                b.statement("targetBci = node.leaveBci + " + length);
+                b.statement("targetSp = handlerSp + 1 ");
+
+                CodeExecutableElement expectMethod = null;
+                if (!ElementUtils.isObject(targetType)) {
+                    expectMethod = lookupExpectMethod(parserType, targetType);
+                    b.startTryBlock();
+                }
+
+                b.startStatement();
+                startSetFrame(b, targetType).string("frame").string("targetSp - 1 + $root.numLocals");
+                if (expectMethod == null) {
+                    b.string("result");
+                } else {
+                    b.startStaticCall(expectMethod);
+                    b.string("result");
+                    b.end();
+                }
+                b.end(); // setFrame
+                b.end(); // statement
+
+                if (!ElementUtils.isObject(targetType)) {
+                    b.end().startCatchBlock(types.UnexpectedResultException, "e");
+                    b.startStatement();
+                    startSetFrame(b, type(Object.class)).string("frame").string("targetSp - 1 + $root.numLocals").string("e.getResult()").end();
+                    b.end(); // statement
+                    b.end(); // catch
+                }
+
+                b.statement("break");
+                b.end();
+            }
+            for (InstructionModel instruction : model.getInstructions().stream().filter((i) -> i.kind == InstructionKind.TAG_LEAVE_VOID).toList()) {
+                b.startCase().tree(createInstructionConstant(instruction)).end();
+                b.startCaseBlock();
+                b.statement("targetBci = node.leaveBci + " + instruction.getInstructionLength());
+                b.statement("targetSp = handlerSp ");
+                b.lineComment("discard return value");
+                b.statement("break");
+                b.end();
+            }
+            b.caseDefault().startCaseBlock();
+            b.tree(GeneratorUtils.createShouldNotReachHere());
+            b.end(); // case default
+            b.end(); // switch
+
+            b.startAssert().string("targetBci < bc.length : ").doubleQuote("leaveBci must be reachable").end();
+            b.statement("return ((targetSp) << 16) | targetBci");
+            b.end();
+
             return method;
 
         }
