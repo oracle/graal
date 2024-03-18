@@ -115,7 +115,7 @@ Otherwise, this option expects a comma separated list of tag combinations, each 
  This section outlines the JFR features that are supported in Native Image.
 
 ### Method Profiling and Stack Traces
-(Since GraalVM for JDK 17 / 20).
+(Since GraalVM for JDK 17 / 20.)
 Method profiling is implemented by handling the SIGPROF signal to periodically collect method samples. 
 The event `jdk.ExecutionSample` is supported and its flamegraphs can be viewed in applications such as JDK Mission Control and VisualVM to diagnose hot methods.
 In addition, other JFR events that support stacktraces in Java HotSpot VM also support stacktraces in Native Image. This means you can do interesting things such as viewing flamegraphs of `jdk.ObjectAllocationInNewTLAB` to diagnose where object allocations are frequently happening.
