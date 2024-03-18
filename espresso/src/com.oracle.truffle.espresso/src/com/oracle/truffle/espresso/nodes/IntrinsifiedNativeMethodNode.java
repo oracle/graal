@@ -23,7 +23,6 @@
 
 package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
@@ -56,10 +55,5 @@ final class IntrinsifiedNativeMethodNode extends EspressoInstrumentableRootNodeI
             args = newArgs;
         }
         return nativeMethod.invokeDirect(env, args);
-    }
-
-    @Override
-    public int getBci(Frame frame) {
-        return -2;
     }
 }

@@ -37,6 +37,8 @@ public class EspressoThreadLocalState {
     private StaticObject currentPlatformThread;
     private StaticObject currentVirtualThread;
 
+    private int singleSteppingDisabledCounter;
+
     @SuppressWarnings("unused")
     public EspressoThreadLocalState(EspressoContext context) {
         typeStack = new ClassRegistry.TypeStack();
@@ -116,5 +118,18 @@ public class EspressoThreadLocalState {
 
     public VM.PrivilegedStack getPrivilegedStack() {
         return privilegedStack;
+    }
+
+    public void disableSingleStepping() {
+        singleSteppingDisabledCounter++;
+    }
+
+    public void enableSingleStepping() {
+        assert singleSteppingDisabledCounter > 0;
+        singleSteppingDisabledCounter--;
+    }
+
+    public boolean isSteppingDisabled() {
+        return singleSteppingDisabledCounter > 0;
     }
 }
