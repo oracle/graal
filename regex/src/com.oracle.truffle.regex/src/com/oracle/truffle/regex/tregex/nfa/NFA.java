@@ -157,7 +157,7 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
 
     private static int transitionListIndexOfTarget(NFAStateTransition[] transitions, NFAState target) {
         for (int i = 0; i < transitions.length; i++) {
-            if (transitions[i].getTarget() == target) {
+            if (transitions[i] != null && transitions[i].getTarget() == target) {
                 return i;
             }
         }

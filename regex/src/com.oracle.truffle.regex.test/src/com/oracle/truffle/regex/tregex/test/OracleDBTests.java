@@ -121,6 +121,8 @@ public class OracleDBTests extends RegexTestBase {
         test("x????", "", "xx?", 0, true, 0, 0);
         test("x??????", "", "x?", 0, true, 0, 0);
         test("x??????", "", "xx?", 0, true, 0, 0);
+        test("x????????", "", "x?", 0, true, 0, 0);
+        test("x????????", "", "xx?", 0, true, 0, 0);
         test("x{2}?", "", "xxxxx", 0, true, 0, 2);
         test("x{2}??", "", "xxxxx", 0, true, 0, 2);
         test("x{2}+", "", "xxxxx", 0, true, 0, 4);
@@ -926,6 +928,7 @@ public class OracleDBTests extends RegexTestBase {
         test("(|a)b", "", "b", 0, true, 0, 1, 0, 0);
         test("(|a)(|a)(|a)b", "", "aab", 0, true, 0, 3, 0, 0, 0, 1, 1, 2);
         test("(|a)(|a)b", "", "ab", 0, true, 0, 2, 0, 0, 0, 1);
+        test("(|a+?){0,4}b", "", "aaab", 0, true, 0, 4, 3, 3);
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
     }
 
@@ -957,5 +960,10 @@ public class OracleDBTests extends RegexTestBase {
     @Test
     public void gr52397() {
         test("(|[ab]){3,3}b", "", "aab", 0, true, 0, 3, 2, 2);
+    }
+
+    @Test
+    public void gr52472() {
+        test("(|a+?){0,4}b", "", "aaab", 0, true, 0, 4, 3, 3);
     }
 }
