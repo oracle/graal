@@ -39,15 +39,15 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     ],
   },
 
-  notify_releaser_build: vm_common.vm_base('linux', 'amd64', 'daily', deploy=true) + {
-    name: 'daily-deploy-vm-notify-releaser-build-linux-amd64',
+  notify_releaser_indexer: vm_common.vm_base('linux', 'amd64', 'daily', deploy=true) + {
+    name: 'daily-deploy-vm-notify-releaser-indexer-linux-amd64',
     packages+: {
       curl: '>=7.50.1',
       git: '>=1.8.3',
     },
     run+: [
       ['test', ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], '!=', 'master', '||'] + self.ci_resources.infra.notify_releaser_service,
-      ['test', ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], '!=', 'master', '||'] + self.ci_resources.infra.notify_indexer_service,
+      ['test', ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], '!=', 'master', '||'] + self.ci_resources.infra.notify_indexer_service('java-latest', 'ce'),
     ],
     runAfter: [
       'post-merge-deploy-vm-base-java-latest-linux-amd64',
@@ -234,7 +234,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     vm_common.deploy_vm_espresso_java21_windows_amd64,
 
     # Trigger the releaser service
-    self.notify_releaser_build,
+    self.notify_releaser_indexer,
   ],
 
   builds: [vm_common.verify_name(b) for b in vm_common.builds + vm_common_bench.builds + vm_bench.builds + vm_native.builds + utils.add_defined_in(builds, std.thisFile)],
