@@ -73,10 +73,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
-import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -183,13 +181,13 @@ public class TagTest extends AbstractInstructionTest {
             b.endStoreLocal();
             b.endTag(StatementTag.class);
 
-            b.beginTag(StatementTag.class, ExpressionTag.class);
             b.beginReturn();
+            b.beginTag(StatementTag.class, ExpressionTag.class);
             b.beginTag(ExpressionTag.class);
             b.emitLoadLocal(local);
             b.endTag(ExpressionTag.class);
-            b.endReturn();
             b.endTag(StatementTag.class, ExpressionTag.class);
+            b.endReturn();
 
             b.endBlock();
 
@@ -241,8 +239,8 @@ public class TagTest extends AbstractInstructionTest {
                         events,
                         new Event(EventKind.ENTER, 0x0000, 0x0007, null, StatementTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0000, 0x0007, null, StatementTag.class),
-                        new Event(EventKind.ENTER, 0x0009, 0x0011, null, StatementTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0009, 0x00011, 42, StatementTag.class));
+                        new Event(EventKind.ENTER, 0x0009, 0x000d, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0009, 0x0000d, 42, StatementTag.class));
 
         assertStable(counts, node);
 
@@ -264,13 +262,13 @@ public class TagTest extends AbstractInstructionTest {
             b.endStoreLocal();
             b.endTag(StatementTag.class);
 
-            b.beginTag(StatementTag.class, ExpressionTag.class);
             b.beginReturn();
+            b.beginTag(StatementTag.class, ExpressionTag.class);
             b.beginTag(ExpressionTag.class);
             b.emitLoadLocal(local);
             b.endTag(ExpressionTag.class);
-            b.endReturn();
             b.endTag(StatementTag.class, ExpressionTag.class);
+            b.endReturn();
 
             b.endBlock();
 
@@ -322,7 +320,8 @@ public class TagTest extends AbstractInstructionTest {
                         events,
                         new Event(EventKind.ENTER, 0x0000, 0x0007, null, StatementTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0000, 0x0007, null, StatementTag.class),
-                        new Event(EventKind.ENTER, 0x0009, 0x0011, null, StatementTag.class), new Event(EventKind.RETURN_VALUE, 0x0009, 0x0011, 42, StatementTag.class));
+                        new Event(EventKind.ENTER, 0x0009, 0x000d, null, StatementTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0009, 0x000d, 42, StatementTag.class));
 
         assertStable(counts, node);
     }
@@ -371,13 +370,13 @@ public class TagTest extends AbstractInstructionTest {
             b.endStoreLocal();
             b.endTag(StatementTag.class);
 
-            b.beginTag(StatementTag.class, ExpressionTag.class);
             b.beginReturn();
+            b.beginTag(StatementTag.class, ExpressionTag.class);
             b.beginTag(ExpressionTag.class);
             b.emitLoadLocal(local);
             b.endTag(ExpressionTag.class);
-            b.endReturn();
             b.endTag(StatementTag.class, ExpressionTag.class);
+            b.endReturn();
 
             b.endBlock();
 
@@ -438,9 +437,10 @@ public class TagTest extends AbstractInstructionTest {
                         new Event(EventKind.ENTER, 0x0002, 0x0006, null, ExpressionTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0002, 0x0006, 42, ExpressionTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0000, 0x000C, null, StatementTag.class),
-                        new Event(EventKind.ENTER, 0x000e, 0x001b, null, StatementTag.class, ExpressionTag.class),
+                        new Event(EventKind.ENTER, 0x000e, 0x0017, null, StatementTag.class, ExpressionTag.class),
                         new Event(EventKind.ENTER, 0x0010, 0x0014, null, ExpressionTag.class),
-                        new Event(EventKind.RETURN_VALUE, 0x0010, 0x0014, 42, ExpressionTag.class), new Event(EventKind.RETURN_VALUE, 0x000e, 0x001b, 42, StatementTag.class, ExpressionTag.class));
+                        new Event(EventKind.RETURN_VALUE, 0x0010, 0x0014, 42, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x000e, 0x0017, 42, StatementTag.class, ExpressionTag.class));
 
         assertStable(counts, node);
     }
@@ -494,6 +494,46 @@ public class TagTest extends AbstractInstructionTest {
                         "trap");
 
         List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).build());
+        assertInstructions(node,
+                        "tag.enter",
+                        "c.EnterMethod",
+                        "c.Throw",
+                        "branch",
+                        "load.local",
+                        "c.LeaveExceptional",
+                        "throw",
+                        "tag.leaveVoid",
+                        "trap");
+
+        assertFails(() -> node.getCallTarget().call(), TestException.class);
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.ENTER, 0x0000, 0x000e, null, RootTag.class),
+                        new Event(EventKind.EXCEPTIONAL, 0x0000, 0x000e, TestException.class, RootTag.class));
+
+    }
+
+    @Test
+    public void testRootExceptionHandlerReturnValue() {
+        TagInstrumentationTestWithPrologRootNode node = parseProlog((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.emitThrow();
+            b.endRoot();
+        });
+
+        assertFails(() -> node.getCallTarget().call(), TestException.class);
+
+        assertInstructions(node,
+                        "c.EnterMethod",
+                        "c.Throw",
+                        "branch",
+                        "load.local",
+                        "c.LeaveExceptional",
+                        "throw",
+                        "trap");
+
+        List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).build());
+
         assertInstructions(node,
                         "tag.enter",
                         "c.EnterMethod",
@@ -644,6 +684,105 @@ public class TagTest extends AbstractInstructionTest {
                         "c.Add",
                         "tag.leave",
                         "return");
+
+        assertEquals(42, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testUnwindInRootBody() {
+        TagInstrumentationTestWithPrologRootNode node = parseProlog((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginIfThen();
+            b.emitLoadConstant(true);
+            b.emitLoadConstant(true);
+            b.endIfThen();
+            b.endRoot();
+        });
+
+        System.out.println(node.dump());
+
+        assertEquals(41, node.getCallTarget().call());
+        assertInstructions(node,
+                        "c.EnterMethod",
+                        "load.constant",
+                        "c.LeaveValue",
+                        "return",
+                        "load.local",
+                        "c.LeaveExceptional",
+                        "throw");
+
+        instrumenter.attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootBodyTag.class).build(), (e) -> {
+            return new ExecutionEventNode() {
+                @Override
+                protected void onEnter(VirtualFrame frame) {
+                    throw e.createUnwind(42);
+                }
+
+                @Override
+                protected Object onUnwind(VirtualFrame frame, Object info) {
+                    return info;
+                }
+            };
+        });
+        System.out.println(node.dump());
+
+        assertInstructions(node,
+                        "c.EnterMethod",
+                        "tag.enter",
+                        "load.constant",
+                        "tag.leave",
+                        "c.LeaveValue",
+                        "return",
+                        "pop",
+                        "branch",
+                        "load.local",
+                        "c.LeaveExceptional",
+                        "throw",
+                        "trap");
+
+        assertEquals(42, node.getCallTarget().call());
+    }
+
+    @Test
+    public void testUnwindInRoot() {
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginTag(StatementTag.class);
+            b.beginReturn();
+            b.emitLoadConstant(41);
+            b.endReturn();
+            b.endTag(StatementTag.class);
+            b.endRoot();
+        });
+
+        assertEquals(41, node.getCallTarget().call());
+        assertInstructions(node,
+                        "load.constant",
+                        "return");
+
+        instrumenter.attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).build(), (e) -> {
+            return new ExecutionEventNode() {
+                @Override
+                protected void onEnter(VirtualFrame frame) {
+                    throw e.createUnwind(42);
+                }
+
+                @Override
+                protected Object onUnwind(VirtualFrame frame, Object info) {
+                    return info;
+                }
+            };
+        });
+
+        assertInstructions(node,
+                        "tag.enter",
+                        "load.constant",
+                        "tag.leave",
+                        "return",
+                        "pop",
+                        "trap");
+
+        System.out.println(node.dump());
 
         assertEquals(42, node.getCallTarget().call());
     }
