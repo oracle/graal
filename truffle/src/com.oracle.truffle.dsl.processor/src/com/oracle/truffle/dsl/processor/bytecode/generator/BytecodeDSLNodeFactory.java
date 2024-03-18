@@ -8152,9 +8152,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startIf().string("throwable instanceof ").type(types.ControlFlowException).string(" cfe").end().startBlock();
                 b.startTryBlock();
                 if (tier.isUncached()) {
-                    b.statement("return resolveControlFlowException($root, frame, bci, cfe, loopCounter, uncachedExecuteCount)");
+                    b.statement("return resolveControlFlowException($root, " + localFrame() + ", bci, cfe, loopCounter, uncachedExecuteCount)");
                 } else {
-                    b.statement("return resolveControlFlowException($root, frame, bci, cfe, loopCounter)");
+                    b.statement("return resolveControlFlowException($root, " + localFrame() + ", bci, cfe, loopCounter)");
                 }
                 b.end().startCatchBlock(types.ControlFlowException, "rethrownCfe");
                 b.startThrow().string("rethrownCfe").end();
@@ -8165,9 +8165,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.statement("throwable = t");
                 b.end();
                 b.end(); // if
-                b.declaration(type(Throwable.class), "ex", "resolveThrowable($root, frame, bci, throwable)");
+                b.declaration(type(Throwable.class), "ex", "resolveThrowable($root, " + localFrame() + ", bci, throwable)");
             } else {
-                b.declaration(type(Throwable.class), "ex", "resolveThrowable($root, frame, bci, originalThrowable)");
+                b.declaration(type(Throwable.class), "ex", "resolveThrowable($root, " + localFrame() + ", bci, originalThrowable)");
             }
             b.declaration(type(int.class), "handler", "-5");
             b.statement("int[] localHandlers = this.handlers");
@@ -8181,7 +8181,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startTryBlock();
                 b.startSwitch().string("local").end().startBlock();
                 b.startCase().string("-1").end().startCaseBlock();
-                b.statement("int result = doTagExceptional($root, frame, bc, bci, ex, localHandlers[handler + 2], localHandlers[handler + 3])");
+                b.statement("int result = doTagExceptional($root, " + localFrame() + ", bc, bci, ex, localHandlers[handler + 2], localHandlers[handler + 3])");
                 b.statement("targetSp = result >> 16 & 0xFFFF");
                 b.statement("bci = result & 0xFFFF");
                 b.startIf().string("sp < targetSp + $root.numLocals").end().startBlock();
@@ -8208,7 +8208,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end(); // switch
                 b.end(); // try
                 b.startCatchBlock(type(Throwable.class), "t");
-                b.statement("ex = resolveThrowable($root, frame, bci, t)");
+                b.statement("ex = resolveThrowable($root, " + localFrame() + ", bci, t)");
                 b.statement("continue");
                 b.end();
             }
@@ -8344,7 +8344,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             if (model.interceptTruffleException != null) {
-                b.startReturn().startCall("$root", model.interceptTruffleException).string("ex").string(localFrame()).string("this").string("bci").end(2);
+                b.startReturn().startCall("$root", model.interceptTruffleException).string("ex").string("frame").string("this").string("bci").end(2);
             }
 
             return method;
