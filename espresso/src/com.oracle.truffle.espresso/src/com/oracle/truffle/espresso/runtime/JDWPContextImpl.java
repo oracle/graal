@@ -67,7 +67,6 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BciProvider;
 import com.oracle.truffle.espresso.nodes.EspressoInstrumentableRootNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
-import com.oracle.truffle.espresso.nodes.IntrinsicSubstitutorNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
 import com.oracle.truffle.espresso.redefinition.ChangePacket;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
@@ -715,12 +714,7 @@ public final class JDWPContextImpl implements JDWPContext {
         if (bciProvider == null) {
             return -1;
         }
-        int bci = bciProvider.getBci(frame);
-        if (bci == -2) { // native or substituted method
-            // for substituted java methods we're expected to return 0
-            return rawNode instanceof IntrinsicSubstitutorNode ? 0 : -1;
-        }
-        return bci;
+        return bciProvider.getBci(frame);
     }
 
     @Override
