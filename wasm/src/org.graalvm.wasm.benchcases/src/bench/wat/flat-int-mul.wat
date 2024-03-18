@@ -1,5 +1,5 @@
 ;;
-;; Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+;; Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
 ;; DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ;;
 ;; The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 (module
   (type $int_func (func (result i32)))
   (type $proc (func))
+  (type $teardown_func (func (param i32)))
 
   (global $iterations i32 (i32.const 10000000))
 
@@ -48,7 +49,7 @@
 
   (func (export "benchmarkSetupEach") (type $proc))
 
-  (func (export "benchmarkTeardownEach") (type $proc))
+  (func (export "benchmarkTeardownEach") (type $teardown_func))
 
   (func (export "benchmarkRun") (type $int_func)
     (local $i i32)
@@ -56,17 +57,17 @@
     (local $y i32)
     (local $z i32)
     (local $w i32)
-    (local.set $x (i32.const 1))
-    (local.set $y (i32.const 1))
-    (local.set $z (i32.const 1))
-    (local.set $w (i32.const 1))
+    (local.set $x (i32.const 3))
+    (local.set $y (i32.const 5))
+    (local.set $z (i32.const 7))
+    (local.set $w (i32.const 11))
 
     (loop $bench_loop
       ;; Perform four int multiplications
-      (local.set $x (i32.mul (local.get $x) (i32.const 3)))
-      (local.set $y (i32.mul (local.get $y) (i32.const 5)))
-      (local.set $z (i32.mul (local.get $z) (i32.const 7)))
-      (local.set $w (i32.mul (local.get $w) (i32.const 11)))
+      (local.set $x (i32.mul (local.get $x) (local.get $x)))
+      (local.set $y (i32.mul (local.get $y) (local.get $y)))
+      (local.set $z (i32.mul (local.get $z) (local.get $z)))
+      (local.set $w (i32.mul (local.get $w) (local.get $w)))
 
       ;; Increment loop counter and exit loop
       (local.set $i (i32.add (local.get $i) (i32.const 1)))

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.methodhandles;
 
-import static com.oracle.svm.core.util.VMError.unimplemented;
-
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.security.ProtectionDomain;
@@ -53,12 +51,6 @@ final class Target_java_lang_invoke_MethodHandles_Lookup {
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private volatile ProtectionDomain cachedProtectionDomain;
-
-    @SuppressWarnings("static-method")
-    @Substitute
-    public Class<?> defineClass(@SuppressWarnings("unused") byte[] bytes) {
-        throw unimplemented("Defining new classes at runtime is not supported");
-    }
 
     @SuppressWarnings({"static-method", "unused"})
     @Substitute

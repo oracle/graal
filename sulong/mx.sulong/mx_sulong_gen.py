@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2024, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -31,6 +31,7 @@ import os
 from argparse import ArgumentParser
 
 import mx
+import mx_util
 import mx_sulong
 
 _suite = mx.suite('sulong')
@@ -132,7 +133,7 @@ def _write_llvm_config_java(project_name, constants, file_comment=None):
     source_gen_dir = mx.dependency(project_name).source_dirs()[0]
     rel_file = package_name.split(".") + [class_name + ".java"]
     src_file = os.path.join(source_gen_dir, *rel_file)
-    mx.ensure_dir_exists(os.path.dirname(src_file))
+    mx_util.ensure_dir_exists(os.path.dirname(src_file))
     with open(src_file, "w") as fp:
         mx.log("Generating {}".format(src_file))
         fp.write(COPYRIGHT_HEADER_BSD.format("package {package};".format(package=package_name)))
@@ -152,7 +153,7 @@ def _write_llvm_config_java(project_name, constants, file_comment=None):
 def _write_llvm_config_mx(constants, file_comment=None):
     file_name = "mx_sulong_llvm_config.py"
     src_file = os.path.join(_suite.mxDir, file_name)
-    mx.ensure_dir_exists(os.path.dirname(src_file))
+    mx_util.ensure_dir_exists(os.path.dirname(src_file))
     with open(src_file, "w") as fp:
         mx.log("Generating {}".format(src_file))
         fp.write(COPYRIGHT_HEADER_BSD_HASH)

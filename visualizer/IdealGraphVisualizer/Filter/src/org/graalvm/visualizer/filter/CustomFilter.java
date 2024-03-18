@@ -153,7 +153,7 @@ public class CustomFilter extends AbstractFilter {
                     sb.append("\n");
                 }
             } catch (IOException ex) {
-                ScriptException scriptEx = new ScriptException(Bundle.ERR_LoadingEnvironmentScript(sf.getNameExt(), ex.getLocalizedMessage()));
+                ScriptException scriptEx = new ScriptException(Bundle.ERR_LoadingEnvironmentScript(sf.getNameExt(), ex.toString()));
                 scriptEx.initCause(ex);
                 throw scriptEx;
             }

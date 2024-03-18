@@ -575,7 +575,7 @@ public class LibGraalFeature implements InternalFeature {
         AnalysisUniverse universe = ((FeatureImpl.AfterAnalysisAccessImpl) access).getUniverse();
         Map<AnalysisMethod, Object> seen = new LinkedHashMap<>();
         for (AnalysisMethod analysisMethod : universe.getMethods()) {
-            if (analysisMethod.isDirectRootMethod() && analysisMethod.isImplementationInvoked()) {
+            if (analysisMethod.isDirectRootMethod() && analysisMethod.isSimplyImplementationInvoked()) {
                 seen.put(analysisMethod, "direct root");
             }
             if (analysisMethod.isVirtualRootMethod()) {

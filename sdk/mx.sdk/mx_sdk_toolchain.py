@@ -45,6 +45,7 @@ import os.path
 import re
 
 import mx
+import mx_util
 
 class ToolchainTestProject(mx.Project):
     def __init__(self, suite, name, deps, workingSets, theLicense, **kwArgs):
@@ -95,7 +96,7 @@ class ToolchainTestBuildTask(mx.BuildTask):
         return super(ToolchainTestBuildTask, self).cleanForbidden()
 
     def build(self):
-        mx.ensure_dir_exists(self.subject.get_output_root())
+        mx_util.ensure_dir_exists(self.subject.get_output_root())
 
         toolchainPath = mx.distribution('LLVM_TOOLCHAIN').output
         clang = os.path.join(toolchainPath, 'bin', 'clang')

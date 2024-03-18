@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.constant.CEnum;
@@ -58,6 +59,7 @@ import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.replacements.SubstrateGraphKit;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.c.CInterfaceWrapper;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.EnumInfo;
@@ -159,6 +161,10 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
 
         ValueNode[] args = kit.getInitialArguments().toArray(ValueNode.EMPTY_ARRAY);
 
+        if (ImageSingletons.contains(CInterfaceWrapper.class)) {
+            ImageSingletons.lookup(CInterfaceWrapper.class).tagCEntryPointPrologue(kit, method);
+        }
+
         InvokeWithExceptionNode invokePrologue = generatePrologue(kit, parameterLoadTypes, targetMethod.getParameterAnnotations(), args);
         if (invokePrologue != null) {
             ResolvedJavaMethod prologueMethod = invokePrologue.callTarget().targetMethod();
@@ -218,16 +224,21 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         patchNodeSourcePosition(invoke);
         kit.exceptionPart();
         ExceptionObjectNode exception = kit.exceptionObject();
-        generateExceptionHandler(kit, exception, invoke.getStackKind());
+        generateExceptionHandler(method, kit, exception, invoke.getStackKind());
         kit.endInvokeWithException();
 
-        generateEpilogueAndReturn(kit, invoke);
+        generateEpilogueAndReturn(method, kit, invoke);
         return kit.finalizeGraph();
     }
 
-    private void generateEpilogueAndReturn(HostedGraphKit kit, ValueNode value) {
+    private void generateEpilogueAndReturn(ResolvedJavaMethod method, HostedGraphKit kit, ValueNode value) {
         ValueNode returnValue = adaptReturnValue(kit, value);
         generateEpilogue(kit);
+
+        if (ImageSingletons.contains(CInterfaceWrapper.class)) {
+            ImageSingletons.lookup(CInterfaceWrapper.class).tagCEntryPointEpilogue(kit, method);
+        }
+
         kit.createReturn(returnValue, returnValue.getStackKind());
     }
 
@@ -248,6 +259,10 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
                         "@%s method declared as built-in must not have a custom epilogue: %s", CEntryPoint.class.getSimpleName(), aTargetMethod);
         UserError.guarantee(entryPointData.getExceptionHandler() == CEntryPointData.DEFAULT_EXCEPTION_HANDLER,
                         "@%s method declared as built-in must not have a custom exception handler: %s", CEntryPoint.class.getSimpleName(), aTargetMethod);
+
+        if (ImageSingletons.contains(CInterfaceWrapper.class)) {
+            ImageSingletons.lookup(CInterfaceWrapper.class).tagCEntryPointPrologue(kit, method);
+        }
 
         ExecutionContextParameters executionContext = findExecutionContextParameters(kit, aTargetMethod.toParameterList(), aTargetMethod.getParameterAnnotations());
 
@@ -304,8 +319,12 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         kit.exceptionPart();
         ExceptionObjectNode exception = kit.exceptionObject();
 
-        generateExceptionHandler(kit, exception, invoke.getStackKind());
+        generateExceptionHandler(method, kit, exception, invoke.getStackKind());
         kit.endInvokeWithException();
+
+        if (ImageSingletons.contains(CInterfaceWrapper.class)) {
+            ImageSingletons.lookup(CInterfaceWrapper.class).tagCEntryPointEpilogue(kit, method);
+        }
 
         kit.createReturn(invoke, aTargetMethod.getSignature().getReturnKind());
 
@@ -502,7 +521,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         return prologueValues;
     }
 
-    private void generateExceptionHandler(HostedGraphKit kit, ExceptionObjectNode exception, JavaKind returnKind) {
+    private void generateExceptionHandler(ResolvedJavaMethod method, HostedGraphKit kit, ExceptionObjectNode exception, JavaKind returnKind) {
         if (entryPointData.getExceptionHandler() == CEntryPoint.FatalExceptionHandler.class) {
             CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, exception);
             kit.append(leave);
@@ -537,7 +556,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
             }
 
             /* The exception is handled, we can continue with the normal epilogue. */
-            generateEpilogueAndReturn(kit, returnValue);
+            generateEpilogueAndReturn(method, kit, returnValue);
 
             kit.exceptionPart(); // fail-safe for exceptions in exception handler
             kit.append(new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, kit.exceptionObject()));

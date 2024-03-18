@@ -181,7 +181,7 @@ public class BytecodeGen {
      * @param value the {@link Vector128} value
      */
     protected void add16(Vector128 value) {
-        data.addRange(value.asBytes(), 0, 16);
+        data.addRange(value.getBytes(), 0, 16);
     }
 
     /**

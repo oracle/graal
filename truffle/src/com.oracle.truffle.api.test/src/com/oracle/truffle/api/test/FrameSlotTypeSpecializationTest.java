@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.test;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -147,6 +148,7 @@ public class FrameSlotTypeSpecializationTest {
             } else {
                 frame.getFrameDescriptor().setSlotKind(slot, FrameSlotKind.Object);
                 frame.setObject(slot, o);
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.replace(new ObjectAssignLocal(slot, value));
             }
             return null;

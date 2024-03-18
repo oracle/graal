@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,10 +39,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.Map.Entry;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -74,7 +74,9 @@ import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.OptionMigrationMessage;
 import com.oracle.svm.core.option.OptionOrigin;
+import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
@@ -130,6 +132,7 @@ public class ProgressReporter {
     private int numJNIFields = -1;
     private int numJNIMethods = -1;
     private int numForeignDowncalls = -1;
+    private int numForeignUpcalls = -1;
     private Timer debugInfoTimer;
     private boolean creationStageEndCompleted = false;
 
@@ -199,8 +202,9 @@ public class ProgressReporter {
         numJNIMethods = numMethods;
     }
 
-    public void setForeignFunctionsInfo(int numDowncalls) {
-        this.numForeignDowncalls = numDowncalls;
+    public void setForeignFunctionsInfo(int numDowncallStubs, int numUpcallStubs) {
+        this.numForeignDowncalls = numDowncallStubs;
+        this.numForeignUpcalls = numUpcallStubs;
     }
 
     public void printStart(String imageName, NativeImageKind imageKind) {
@@ -354,8 +358,7 @@ public class ProgressReporter {
                 continue;
             }
             String origins = "";
-            /* The first extra help item is used for migration messages of options. */
-            String migrationMessage = descriptor.getExtraHelp().isEmpty() ? "" : descriptor.getExtraHelp().getFirst();
+            String migrationMessage = OptionUtils.getAnnotationsByType(descriptor, OptionMigrationMessage.class).stream().map(a -> a.value()).collect(Collectors.joining(". "));
             String alternatives = "";
 
             if (optionValue instanceof LocatableMultiOptionValue<?> lmov) {
@@ -526,10 +529,12 @@ public class ProgressReporter {
             l().a(typesFieldsMethodFormat, numJNIClasses, numJNIFields, numJNIMethods)
                             .doclink("registered for JNI access", "#glossary-jni-access-registrations").println();
         }
+        String stubsFormat = "%,9d downcalls and %,d upcalls ";
         recordJsonMetric(AnalysisResults.FOREIGN_DOWNCALLS, (numForeignDowncalls >= 0 ? numForeignDowncalls : UNAVAILABLE_METRIC));
-        if (numForeignDowncalls >= 0) {
-            l().a("%,8d ", numForeignDowncalls)
-                            .doclink("foreign downcalls registered", "#glossary-foreign-downcall-registrations").println();
+        recordJsonMetric(AnalysisResults.FOREIGN_UPCALLS, (numForeignUpcalls >= 0 ? numForeignUpcalls : UNAVAILABLE_METRIC));
+        if (numForeignDowncalls >= 0 || numForeignUpcalls >= 0) {
+            l().a(stubsFormat, numForeignDowncalls, numForeignUpcalls)
+                            .doclink("registered for foreign access", "#glossary-foreign-downcall-and-upcall-registrations").println();
         }
         int numLibraries = libraries.size();
         if (numLibraries > 0) {

@@ -149,7 +149,7 @@ public final class RemoveFilterAction extends AbstractAction {
                     }
                 } catch (IOException ex) {
                     NotifyDescriptor.Message msg = new NotifyDescriptor.Message(
-                            Bundle.ERR_ErrorDeletingAssociatedFilter(pname, ex.getLocalizedMessage()), 
+                            Bundle.ERR_ErrorDeletingAssociatedFilter(pname, ex.toString()), 
                             NotifyDescriptor.ERROR_MESSAGE
                     );
                     DialogDisplayer.getDefault().notifyLater(msg);
@@ -182,7 +182,7 @@ public final class RemoveFilterAction extends AbstractAction {
                 }
             } catch (IOException ex) {
                     NotifyDescriptor.Message msg = new NotifyDescriptor.Message(
-                            Bundle.ERR_ErrorDeletingFilter(fname, ex.getLocalizedMessage()), 
+                            Bundle.ERR_ErrorDeletingFilter(fname, ex.toString()), 
                             NotifyDescriptor.ERROR_MESSAGE
                     );
                     DialogDisplayer.getDefault().notifyLater(msg);

@@ -54,6 +54,7 @@ import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.OptionMigrationMessage;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.VMOperationControl;
@@ -150,7 +151,8 @@ public class SubstrateOptions {
         }
     };
 
-    @Option(help = "Builds a statically linked executable with libc dynamically linked", type = Expert, stability = OptionStability.EXPERIMENTAL)//
+    @APIOption(name = "static-nolibc")//
+    @Option(help = "Build statically linked executable with libc dynamically linked", type = Expert, stability = OptionStability.EXPERIMENTAL)//
     public static final HostedOptionKey<Boolean> StaticExecutableWithDynamicLibC = new HostedOptionKey<>(false);
 
     @Option(help = "Builds image with libstdc++ statically linked into the image (if needed)", type = Expert, stability = OptionStability.EXPERIMENTAL)//
@@ -336,7 +338,8 @@ public class SubstrateOptions {
     @Option(help = "Path passed to the linker as the -rpath (list of comma-separated directories)")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LinkerRPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
-    @Option(help = {"Directory of the image file to be generated", "Use the '-o' option instead."}, type = OptionType.User)//
+    @OptionMigrationMessage("Use the '-o' option instead.")//
+    @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
     public static final HostedOptionKey<String> Path = new HostedOptionKey<>(null);
 
     public static final class GCGroup implements APIOptionGroup {
@@ -526,7 +529,7 @@ public class SubstrateOptions {
     @BundleMember(role = BundleMember.Role.Output)//
     @Option(help = "Print build output statistics as JSON to the specified file. " +
                     "The output conforms to the JSON schema located at: " +
-                    "docs/reference-manual/native-image/assets/build-output-schema-v0.9.2.json", type = OptionType.User)//
+                    "docs/reference-manual/native-image/assets/build-output-schema-v0.9.3.json", type = OptionType.User)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Paths> BuildOutputJSONFile = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.build());
 
     public static final String NATIVE_IMAGE_OPTIONS_ENV_VAR = "NATIVE_IMAGE_OPTIONS";
@@ -748,8 +751,12 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0, SubstrateOptions::validateGenerateDebugInfo) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
-            if (OS.WINDOWS.isCurrent()) {
-                /* Keep symbols on Windows. The symbol table is part of the pdb-file. */
+            if (!OS.DARWIN.isCurrent()) {
+                /*
+                 * Keep the symbol table, as it may be used by debugging or profiling tools (e.g.,
+                 * perf). On Windows, the symbol table is included in the pdb-file, while on Linux,
+                 * it is part of the .debug file.
+                 */
                 DeleteLocalSymbols.update(values, newValue == 0);
             }
         }
@@ -1037,7 +1044,7 @@ public class SubstrateOptions {
                     "\"Throw\" (default): Throw a MissingReflectionRegistrationError;",
                     "\"Exit\": Call System.exit() to avoid accidentally catching the error;",
                     "\"Warn\": Print a message to stdout, including a stack trace to see what caused the issue."})//
-    public static final HostedOptionKey<ReportingMode> MissingRegistrationReportingMode = new HostedOptionKey<>(
+    public static final RuntimeOptionKey<ReportingMode> MissingRegistrationReportingMode = new RuntimeOptionKey<>(
                     ReportingMode.Throw);
 
     @Option(help = "Instead of warning, throw IOExceptions for link-at-build-time resources at build time")//

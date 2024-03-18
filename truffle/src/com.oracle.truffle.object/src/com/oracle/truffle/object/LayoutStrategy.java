@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
@@ -83,33 +82,32 @@ public abstract class LayoutStrategy {
     public abstract BaseAllocator createAllocator(ShapeImpl shape);
 
     /** @since 0.17 or earlier */
-    protected ShapeImpl defineProperty(ShapeImpl shape, Object key, Object value, int flags, com.oracle.truffle.api.object.LocationFactory locationFactory) {
-        return defineProperty(shape, key, value, flags, locationFactory, Flags.DEFAULT);
+    protected ShapeImpl defineProperty(ShapeImpl shape, Object key, Object value, int flags) {
+        return defineProperty(shape, key, value, flags, Flags.DEFAULT);
     }
 
-    protected ShapeImpl defineProperty(ShapeImpl shape, Object key, Object value, int flags, com.oracle.truffle.api.object.LocationFactory locationFactory, long putFlags) {
+    protected ShapeImpl defineProperty(ShapeImpl shape, Object key, Object value, int flags, int putFlags) {
         ShapeImpl oldShape = shape;
         if (!oldShape.isValid()) {
             oldShape = ensureValid(oldShape);
         }
         Property existing = oldShape.getProperty(key);
-        return defineProperty(oldShape, key, value, flags, locationFactory, existing, putFlags);
+        return defineProperty(oldShape, key, value, flags, existing, putFlags);
     }
 
-    protected ShapeImpl defineProperty(ShapeImpl oldShape, Object key, Object value, int propertyFlags, com.oracle.truffle.api.object.LocationFactory locationFactory, Property existing,
-                    long putFlags) {
+    protected ShapeImpl defineProperty(ShapeImpl oldShape, Object key, Object value, int propertyFlags, Property existing, int putFlags) {
         if (existing == null) {
             if (Flags.isSeparateShape(putFlags)) {
-                return definePropertySeparateShape(oldShape, key, value, propertyFlags, putFlags, locationFactory);
+                return definePropertySeparateShape(oldShape, key, value, propertyFlags, putFlags);
             } else {
-                return defineNewProperty(oldShape, key, value, propertyFlags, putFlags, locationFactory);
+                return defineNewProperty(oldShape, key, value, propertyFlags, putFlags);
             }
         } else {
             if (existing.getFlags() == propertyFlags) {
                 if (existing.getLocation().canStore(value)) {
                     return oldShape;
                 } else {
-                    return definePropertyGeneralize(oldShape, existing, value, locationFactory, putFlags);
+                    return definePropertyGeneralize(oldShape, existing, value, putFlags);
                 }
             } else {
                 return definePropertyChangeFlags(oldShape, existing, value, propertyFlags, putFlags);
@@ -117,8 +115,8 @@ public abstract class LayoutStrategy {
         }
     }
 
-    private ShapeImpl defineNewProperty(ShapeImpl oldShape, Object key, Object value, int propertyFlags, long putFlags, com.oracle.truffle.api.object.LocationFactory locationFactory) {
-        if (!Flags.isConstant(putFlags) && !Flags.isDeclaration(putFlags) && locationFactory == null) {
+    private ShapeImpl defineNewProperty(ShapeImpl oldShape, Object key, Object value, int propertyFlags, int putFlags) {
+        if (!Flags.isConstant(putFlags) && !Flags.isDeclaration(putFlags)) {
             Class<?> locationType = detectLocationType(value);
             if (locationType != null) {
                 AddPropertyTransition addTransition = new AddPropertyTransition(key, propertyFlags, locationType);
@@ -129,7 +127,7 @@ public abstract class LayoutStrategy {
             }
         }
 
-        Location location = createLocationForValue(oldShape, value, putFlags, locationFactory);
+        Location location = createLocationForValue(oldShape, value, putFlags);
         Property property = Property.create(key, location, propertyFlags);
         return addProperty(oldShape, property);
     }
@@ -148,17 +146,9 @@ public abstract class LayoutStrategy {
         }
     }
 
-    private Location createLocationForValue(ShapeImpl oldShape, Object value, long putFlags, com.oracle.truffle.api.object.LocationFactory locationFactory) {
-        if (locationFactory != null) {
-            return locationFactory.createLocation(oldShape, value);
-        } else {
-            return createLocationForValue(oldShape, value, putFlags);
-        }
-    }
+    protected abstract Location createLocationForValue(ShapeImpl shape, Object value, int putFlags);
 
-    protected abstract Location createLocationForValue(ShapeImpl shape, Object value, long putFlags);
-
-    protected ShapeImpl definePropertyChangeFlags(ShapeImpl oldShape, Property existing, Object value, int propertyFlags, long putFlags) {
+    protected ShapeImpl definePropertyChangeFlags(ShapeImpl oldShape, Property existing, Object value, int propertyFlags, int putFlags) {
         assert existing.getFlags() != propertyFlags;
         oldShape.onPropertyTransition(existing);
         if (existing.getLocation().canStore(value)) {
@@ -169,14 +159,14 @@ public abstract class LayoutStrategy {
         }
     }
 
-    protected ShapeImpl definePropertyGeneralize(ShapeImpl oldShape, Property oldProperty, Object value, com.oracle.truffle.api.object.LocationFactory locationFactory, long putFlags) {
+    protected ShapeImpl definePropertyGeneralize(ShapeImpl oldShape, Property oldProperty, Object value, int putFlags) {
         oldShape.onPropertyTransition(oldProperty);
         if (Flags.isSeparateShape(putFlags)) {
-            Location newLocation = createLocationForValue(oldShape, value, putFlags, locationFactory);
+            Location newLocation = createLocationForValue(oldShape, value, putFlags);
             Property newProperty = ((PropertyImpl) oldProperty).relocate(newLocation);
             return separateReplaceProperty(oldShape, oldProperty, newProperty);
         } else if (oldProperty.getLocation().isValue()) {
-            Location newLocation = createLocationForValue(oldShape, value, putFlags, locationFactory);
+            Location newLocation = createLocationForValue(oldShape, value, putFlags);
             Property newProperty = ((PropertyImpl) oldProperty).relocate(newLocation);
             // Always use direct replace for value locations to avoid shape explosion
             return directReplaceProperty(oldShape, oldProperty, newProperty);
@@ -185,7 +175,7 @@ public abstract class LayoutStrategy {
         }
     }
 
-    protected ShapeImpl generalizeProperty(Property oldProperty, Object value, ShapeImpl currentShape, ShapeImpl nextShape, long putFlags) {
+    protected ShapeImpl generalizeProperty(Property oldProperty, Object value, ShapeImpl currentShape, ShapeImpl nextShape, int putFlags) {
         Location oldLocation = oldProperty.getLocation();
         Location newLocation = currentShape.allocator().locationForValueUpcast(value, oldLocation, putFlags);
         Property newProperty = ((PropertyImpl) oldProperty).relocate(newLocation);
@@ -193,28 +183,15 @@ public abstract class LayoutStrategy {
         return replaceProperty(nextShape, oldProperty, newProperty);
     }
 
-    protected ShapeImpl generalizePropertyWithFlags(ShapeImpl currentShape, Property oldProperty, Object value, int propertyFlags, long putFlags) {
+    protected ShapeImpl generalizePropertyWithFlags(ShapeImpl currentShape, Property oldProperty, Object value, int propertyFlags, int putFlags) {
         assert !oldProperty.getLocation().canStore(value);
         Location newLocation = currentShape.allocator().locationForValueUpcast(value, oldProperty.getLocation(), putFlags);
         Property newProperty = Property.create(oldProperty.getKey(), newLocation, propertyFlags);
         return replaceProperty(currentShape, oldProperty, newProperty);
     }
 
-    /** @since 0.17 or earlier */
-    protected void propertySetFallback(Property property, DynamicObject store, Object value, ShapeImpl currentShape) {
-        ShapeImpl oldShape = currentShape;
-        ShapeImpl newShape = defineProperty(oldShape, property.getKey(), value, property.getFlags(), null, Flags.DEFAULT);
-        Property newProperty = newShape.getProperty(property.getKey());
-        assert store.getShape() == oldShape;
-        try {
-            ((LocationImpl) newProperty.getLocation()).set(store, value, oldShape, newShape);
-        } catch (com.oracle.truffle.api.object.IncompatibleLocationException ex) {
-            throw CompilerDirectives.shouldNotReachHere(ex);
-        }
-    }
-
-    private ShapeImpl definePropertySeparateShape(ShapeImpl oldShape, Object key, Object value, int propertyFlags, long putFlags, com.oracle.truffle.api.object.LocationFactory locationFactory) {
-        Location location = createLocationForValue(oldShape, value, putFlags, locationFactory);
+    private ShapeImpl definePropertySeparateShape(ShapeImpl oldShape, Object key, Object value, int propertyFlags, int putFlags) {
+        Location location = createLocationForValue(oldShape, value, putFlags);
         Property property = Property.create(key, location, propertyFlags);
         return createSeparateShape(oldShape).addProperty(property);
     }

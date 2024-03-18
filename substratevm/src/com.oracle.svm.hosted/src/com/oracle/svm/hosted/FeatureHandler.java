@@ -105,6 +105,10 @@ public class FeatureHandler {
         }
     }
 
+    public boolean containsFeature(Class<?> c) {
+        return registeredFeatures.contains(c);
+    }
+
     @SuppressWarnings("unchecked")
     public void registerFeatures(ImageClassLoader loader, DebugContext debug) {
         IsInConfigurationAccessImpl access = new IsInConfigurationAccessImpl(this, loader, debug);

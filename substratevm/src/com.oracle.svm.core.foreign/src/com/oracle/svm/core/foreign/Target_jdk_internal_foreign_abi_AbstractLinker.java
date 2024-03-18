@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import jdk.internal.foreign.abi.AbstractLinker;
 
 @TargetClass(AbstractLinker.class)
 public final class Target_jdk_internal_foreign_abi_AbstractLinker {
+    // Checkstyle: stop
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.foreign.abi.SoftReferenceCache") //
     private Target_jdk_internal_foreign_abi_SoftReferenceCache DOWNCALL_CACHE;
@@ -39,6 +40,7 @@ public final class Target_jdk_internal_foreign_abi_AbstractLinker {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.foreign.abi.SoftReferenceCache") //
     private Target_jdk_internal_foreign_abi_SoftReferenceCache UPCALL_CACHE;
+    // Checkstyle: resume
 }
 
 @TargetClass(className = "jdk.internal.foreign.abi.SoftReferenceCache")

@@ -78,9 +78,18 @@ public final class KnownOffsets {
         return vtableEntrySize > 0;
     }
 
-    public int getVTableOffset(int vTableIndex) {
+    /**
+     * Returns of the offset of the index either relative to the start of the vtable
+     * ({@code fromDynamicHubStart} == false) or start of the dynamic hub
+     * ({@code fromDynamicHubStart} == true).
+     */
+    public int getVTableOffset(int vTableIndex, boolean fromDynamicHubStart) {
         assert isFullyInitialized();
-        return vtableBaseOffset + vTableIndex * vtableEntrySize;
+        if (fromDynamicHubStart) {
+            return vtableBaseOffset + vTableIndex * vtableEntrySize;
+        } else {
+            return vTableIndex * vtableEntrySize;
+        }
     }
 
     public int getTypeIDSlotsOffset() {

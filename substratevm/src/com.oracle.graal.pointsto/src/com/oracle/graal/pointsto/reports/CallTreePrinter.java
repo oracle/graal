@@ -182,7 +182,7 @@ public final class CallTreePrinter {
         /* Add all the roots to the tree. */
         List<AnalysisMethod> roots = new ArrayList<>();
         for (AnalysisMethod m : bb.getUniverse().getMethods()) {
-            if (m.isDirectRootMethod() && m.isImplementationInvoked()) {
+            if (m.isDirectRootMethod() && m.isSimplyImplementationInvoked()) {
                 roots.add(m);
             }
             if (m.isVirtualRootMethod()) {

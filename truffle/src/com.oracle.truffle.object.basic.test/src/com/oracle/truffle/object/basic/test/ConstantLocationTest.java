@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,7 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
+import com.oracle.truffle.object.LocationImpl;
 
 @SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
@@ -90,18 +91,16 @@ public class ConstantLocationTest extends AbstractParametrizedLibraryTest {
 
         Property property = object.getShape().getProperty("constant");
         Assert.assertEquals(true, property.getLocation().canStore(value));
-        Assert.assertEquals(true, property.getLocation().canSet(value));
         try {
-            property.set(object, value, shapeWithConstant);
+            property.getLocation().set(object, value, shapeWithConstant);
         } catch (com.oracle.truffle.api.object.IncompatibleLocationException | com.oracle.truffle.api.object.FinalLocationException e) {
             Assert.fail(e.getMessage());
         }
 
         Object newValue = new Object();
         Assert.assertEquals(false, property.getLocation().canStore(newValue));
-        Assert.assertEquals(false, property.getLocation().canSet(newValue));
         try {
-            property.set(object, newValue, shapeWithConstant);
+            property.getLocation().set(object, newValue, shapeWithConstant);
             Assert.fail();
         } catch (com.oracle.truffle.api.object.IncompatibleLocationException | com.oracle.truffle.api.object.FinalLocationException e) {
             Assert.assertThat(e, CoreMatchers.instanceOf(com.oracle.truffle.api.object.IncompatibleLocationException.class));
@@ -127,23 +126,22 @@ public class ConstantLocationTest extends AbstractParametrizedLibraryTest {
 
     @SuppressWarnings("deprecation")
     @Test
-    public void testAddConstantLocation() {
+    public void testAddConstantLocation() throws com.oracle.truffle.api.object.IncompatibleLocationException {
         Property property = shapeWithConstant.getProperty("constant");
 
         DynamicObject object = newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
 
-        property.setSafe(object, value, rootShape, shapeWithConstant);
+        ((LocationImpl) property.getLocation()).set(object, value, rootShape, shapeWithConstant);
         Assert.assertSame(shapeWithConstant, object.getShape());
         Assert.assertSame(value, library.getOrDefault(object, "constant", null));
 
         DynamicObject object2 = newInstance();
         Object newValue = new Object();
         Assert.assertEquals(false, property.getLocation().canStore(newValue));
-        Assert.assertEquals(false, property.getLocation().canSet(newValue));
         try {
-            property.getLocation().set(object2, newValue, rootShape, shapeWithConstant);
+            ((LocationImpl) property.getLocation()).set(object2, newValue, rootShape, shapeWithConstant);
             Assert.fail();
         } catch (com.oracle.truffle.api.object.IncompatibleLocationException e) {
             // expected

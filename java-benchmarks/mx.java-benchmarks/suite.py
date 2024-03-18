@@ -32,9 +32,9 @@ suite = {
   "javac.lint.overrides": "none",
 
   "libraries" : {
-    "TIKA_1.0.10": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/tika-1.0.10.zip"],
-      "digest": "sha512:023e3c575c88fa2754538bf9f61a0642f12f34b6239d17df184f92c5708e1b2fdc3b4219c9d658ab88d5f9ed444d2883a500014df3c7942263050da256c6a5a3",
+    "TIKA_1.0.11": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/tika-1.0.11.zip"],
+      "digest": "sha512:0d45935c428bb3226b0d22b8ea8a8f2eb9e145a72225c6320eeb7c7d1cebc644921f6b77d379a9356bfcbdb66e9daf351d2aef18ff47fa67dad2d5cb15def875",
       "packedResource": True,
     },
 
@@ -68,9 +68,9 @@ suite = {
       "packedResource": True,
     },
 
-    "QUARKUS_HW_1.0.5": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/quarkus-hello-world-1.0.5.zip"],
-      "digest": "sha512:682a5dd39c27717d1e96a0c55f531a308f97266cc5abf4a9b7ecf3094a18b4a71cfb9630cb74be29b0580794190e25f538b5587856fa44cd35c34e1cab6ddcff",
+    "QUARKUS_HW_1.0.6": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/quarkus-hello-world-1.0.6.zip"],
+      "digest": "sha512:c7678c9169dc6ba445fff8dbef7bc61579084c74eee4233d3deb3d56e73429b9cd894a3e98f7d8d7fe39b4f181b77ba916afa559a2f91de30a309fb9bdd5c56b",
       "packedResource": True,
     },
 

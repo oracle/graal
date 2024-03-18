@@ -919,7 +919,7 @@ public class BinaryReader implements GraphParser, ModelControl {
             throw new IllegalStateException(ex);
         }
         if (lastName != null) {
-            message = Bundle.MSG_ErrorsWithPreceding(message, lastName);
+            message = Bundle.MSG_ErrorsWithPreceding(message, lastName.get());
         }
         builder.reportLoadingError(message, parents);
     }

@@ -468,14 +468,14 @@ The Native Image agent does not support custom implementations of `ResourceBundl
 
 This mode will be made the default behavior of Native Image in a future release. We encourage you to start transitioning your code as soon as possible.
 The [Native Image agent](AutomaticMetadataCollection.md) outputs JSON files that conform to both the default and strict modes of operation.
-The following options are useful for debugging issues during the transition to the strict mode:
+Native Image also provides some useful options for debugging issues during the transition to the strict mode:
 
-* `-H:ThrowMissingRegistrationErrors=<package list>`: limits `MissingReflectionRegistrationError` to be thrown from a defined list of packages.
-  This is useful when using some library code that has not been ported to the new mode yet;
-* `-H:MissingRegistrationReportingMode`: sets how `MissingReflectionRegistrationError` is reported:
-    * `Throw` is the default. The error is simply thrown as a Java exception;
-    * `Warn` outputs a small stack trace for every error encountered, which results in a report of all the places the tested code is going to throw when the strict mode is enabled;
-    * `Exit` exits the program when encountering the error. This is useful to detect blanket `catch (Throwable t) {` blocks that would otherwise silence the error.
+* To make sure that the reflection for your image is configured correctly you can add `-H:ThrowMissingRegistrationErrors=` to the native-image build arguments.
+  If the resulting image fails in libraries that are not under your control, you can add a package prefix to the option to limit the errors to operations called from classes within the specified packages: `-H:ThrowMissingRegistrationErrors=<package-prefix>`.
+* The default behavior under `-H:ThrowMissingRegistrationErrors=` is to throw an error, which will potentially end the program execution.
+  To get an overview of all places in your code where missing registrations occur, including a small stack trace, without committing to the strict behavior you can add `-XX:MissingRegistrationReportingMode=Warn` to the program invocation.
+  To detect places where the application accidentally swallows a missing registration error (such as with blanket `catch (Throwable t)` blocks), you can add `-XX:MissingRegistrationReportingMode=Exit` to the program invocation.
+  The application will then unconditionally print the error message and stack trace and exit immediately without throwing.
 
 ### Further Reading
 

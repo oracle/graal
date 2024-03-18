@@ -58,6 +58,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.configure.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationFile;
@@ -499,10 +500,23 @@ public class JNIAccessFeature implements Feature {
         AnalysisUniverse aUniverse = access.getUniverse().getBigBang().getUniverse();
         HostedMethod hTarget = hUniverse.lookup(aUniverse.lookup(method.targetMethod));
         int vtableOffset;
-        if (hTarget.canBeStaticallyBound()) {
-            vtableOffset = JNIAccessibleMethod.STATICALLY_BOUND_METHOD;
+        int interfaceTypeID;
+        if (SubstrateOptions.closedTypeWorld()) {
+            interfaceTypeID = JNIAccessibleMethod.INTERFACE_TYPEID_UNNEEDED;
+            if (hTarget.canBeStaticallyBound()) {
+                vtableOffset = JNIAccessibleMethod.STATICALLY_BOUND_METHOD;
+            } else {
+                vtableOffset = KnownOffsets.singleton().getVTableOffset(hTarget.getVTableIndex(), true);
+            }
         } else {
-            vtableOffset = KnownOffsets.singleton().getVTableOffset(hTarget.getVTableIndex());
+            if (hTarget.canBeStaticallyBound()) {
+                vtableOffset = JNIAccessibleMethod.STATICALLY_BOUND_METHOD;
+                interfaceTypeID = JNIAccessibleMethod.INTERFACE_TYPEID_UNNEEDED;
+            } else {
+                vtableOffset = KnownOffsets.singleton().getVTableOffset(hTarget.getVTableIndex(), false);
+                HostedType declaringClass = hTarget.getDeclaringClass();
+                interfaceTypeID = declaringClass.isInterface() ? declaringClass.getTypeID() : JNIAccessibleMethod.INTERFACE_TYPEID_CLASS_TABLE;
+            }
         }
         CodePointer nonvirtualTarget = new MethodPointer(hTarget);
         PointerBase newObjectTarget = null;
@@ -525,7 +539,7 @@ public class JNIAccessFeature implements Feature {
             valistNonvirtual = new MethodPointer(hUniverse.lookup(aUniverse.lookup(method.nonvirtualVariantWrappers.valist)));
         }
         EconomicSet<Class<?>> hidingSubclasses = findHidingSubclasses(hTarget.getDeclaringClass(), sub -> anyMethodMatchesIgnoreReturnType(sub, method.descriptor));
-        method.jniMethod.finishBeforeCompilation(hidingSubclasses, vtableOffset, nonvirtualTarget, newObjectTarget, callWrapper,
+        method.jniMethod.finishBeforeCompilation(hidingSubclasses, vtableOffset, interfaceTypeID, nonvirtualTarget, newObjectTarget, callWrapper,
                         varargs, array, valist, varargsNonvirtual, arrayNonvirtual, valistNonvirtual);
     }
 

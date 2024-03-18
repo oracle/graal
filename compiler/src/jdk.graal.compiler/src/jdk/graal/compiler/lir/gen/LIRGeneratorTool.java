@@ -569,6 +569,24 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
      */
     void emitSpeculationFence();
 
+    /**
+     * Write value to the protection key register.
+     *
+     * @param value to be written
+     */
+    default void emitProtectionKeyRegisterWrite(Value value) {
+        throw new GraalError("Emitting code to write a value to the protection key register is not currently supported on %s", target().arch);
+    }
+
+    /**
+     * Read contents of the protection key register.
+     *
+     * @return value read from the register
+     */
+    default Value emitProtectionKeyRegisterRead() {
+        throw new GraalError("Emitting code to read the contents of the protection key register is not currently supported on %s", target().arch);
+    }
+
     default VirtualStackSlot allocateStackMemory(int sizeInBytes, int alignmentInBytes) {
         return getResult().getFrameMapBuilder().allocateStackMemory(sizeInBytes, alignmentInBytes);
     }

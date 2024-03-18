@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.code;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.constant.CEnumLookup;
 
@@ -37,6 +38,7 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
+import com.oracle.svm.hosted.c.CInterfaceWrapper;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.EnumInfo;
@@ -75,7 +77,17 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
         AnalysisType[] paramTypes = method.toParameterList().toArray(AnalysisType[]::new);
         var signature = adaptSignatureAndConvertArguments(nativeLibraries, kit, method, method.getSignature().getReturnType(), paramTypes, arguments);
         state.clearLocals();
+
+        if (ImageSingletons.contains(CInterfaceWrapper.class)) {
+            ImageSingletons.lookup(CInterfaceWrapper.class).tagCFunctionCallPrologue(kit, method);
+        }
+
         ValueNode returnValue = kit.createCFunctionCall(callAddress, arguments, signature, newThreadStatus, deoptimizationTarget);
+
+        if (ImageSingletons.contains(CInterfaceWrapper.class)) {
+            ImageSingletons.lookup(CInterfaceWrapper.class).tagCFunctionCallEpilogue(kit, method);
+        }
+
         returnValue = adaptReturnValue(method, nativeLibraries, kit, returnValue);
         kit.createReturn(returnValue, signature.getReturnKind());
 

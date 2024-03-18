@@ -24,7 +24,8 @@ Shared arenas are currently not supported.
 The FFM API enables Java code to call _down_ to native functions, and conversely allows native code to call _up_ to invoke Java code via method handles.
 These two kinds of calls are referred to as "downcalls" and "upcalls" respectively, and are collectively referred to as "foreign calls".
 
-> Note: Currently, only downcalls are supported, and only on the x64 architecture.
+> Note: Currently, foreign calls are supported on the x64 architecture.
+> Specifically, downcalls are supported on x64 Linux, Windows and MacOS, while upcalls are supported only on x64 Linux.
 
 ### Looking Up Native Functions
 
@@ -43,8 +44,10 @@ import static java.lang.foreign.ValueLayout.*;
 class ForeignRegistrationFeature implements Feature { 
   public void duringSetup(DuringSetupAccess access) {
     RuntimeForeignAccess.registerForDowncall(FunctionDescriptor.ofVoid());
-    RuntimeForeignAccess.registerForDowncall(FunctionDescriptor.ofVoid(), Linker.Option.isTrivial());
-    RuntimeForeignAccess.registerForDowncall(FunctionDescriptor.of(JAVA_INT, JAVA_INT, JAVA_INT));
+    RuntimeForeignAccess.registerForUpcall(FunctionDescriptor.ofVoid());
+    RuntimeForeignAccess.registerForDowncall(FunctionDescriptor.ofVoid(), Linker.Option.critical(false));
+    RuntimeForeignAccess.registerForUpcall(FunctionDescriptor.of(JAVA_INT, JAVA_INT));
+    RuntimeForeignAccess.registerForUpcall(FunctionDescriptor.of(JAVA_INT, JAVA_INT, JAVA_INT));
     RuntimeForeignAccess.registerForDowncall(FunctionDescriptor.of(ADDRESS, JAVA_INT, JAVA_INT), Linker.Option.firstVariadicArg(1));
     RuntimeForeignAccess.registerForDowncall(FunctionDescriptor.ofVoid(JAVA_INT), Linker.Option.captureCallState("errno"));
   }
@@ -52,10 +55,6 @@ class ForeignRegistrationFeature implements Feature {
 ```
 To activate the custom feature, pass the `--features=com.example.ForeignRegistrationFeature` option (the fully-qualified name of the feature class) to `native-image`.
 It is recommended to do so [with a _native-image.properties_ file](BuildConfiguration.md#embed-a-configuration-file).
-
-### Upcalls
-
-Upcalls are not yet supported.
 
 ### Related Documentation
 

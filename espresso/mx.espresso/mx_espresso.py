@@ -149,11 +149,11 @@ The registration of the Espresso library ('lib:javavm') is skipped. Please run t
 
             for header in ['libjavavm_dynamic.h', 'graal_isolate_dynamic.h']:
                 committed_header = join(mokapot_dir, header)
-                if not mx.exists(committed_header):
+                if not os.path.exists(committed_header):
                     mx.abort("Cannot locate '{}'. Was the file moved or renamed?".format(committed_header))
 
                 generated_header = join(libjavavm_dir, header)
-                if not mx.exists(generated_header):
+                if not os.path.exists(generated_header):
                     mx.abort("Cannot locate '{}'. Did you forget to build? Example:\n'mx --dynamicimports=/substratevm --native-images=lib:javavm build'".format(generated_header))
 
                 committed_header_copyright = []

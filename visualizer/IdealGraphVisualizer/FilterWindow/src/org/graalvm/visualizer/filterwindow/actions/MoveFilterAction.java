@@ -84,7 +84,7 @@ public class MoveFilterAction extends AbstractAction {
             return;
         }
         NotifyDescriptor.Message msg = new NotifyDescriptor.Message(
-                        Bundle.FILTER_MoveFailed1(exceptions.get(0).getLocalizedMessage()),
+                        Bundle.FILTER_MoveFailed1(exceptions.get(0).toString()),
                         NotifyDescriptor.ERROR_MESSAGE);
         DialogDisplayer.getDefault().notifyLater(msg);
     }

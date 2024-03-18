@@ -87,11 +87,11 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
     private static String getErrnoGetterFunctionName() {
         if (Platform.includedIn(Platform.LINUX.class)) {
             return "__errno_location";
-        }
-        if (Platform.includedIn(Platform.DARWIN.class)) {
+        } else if (Platform.includedIn(Platform.DARWIN.class)) {
             return "__error";
+        } else {
+            throw VMError.unsupportedFeature("PosixTruffleNFISupport.getErrnoGetterFunctionName() on unexpected OS: " + ImageSingletons.lookup(Platform.class).getOS());
         }
-        throw VMError.unsupportedFeature("unsupported platform for TruffleNFIFeature");
     }
 
     @Override

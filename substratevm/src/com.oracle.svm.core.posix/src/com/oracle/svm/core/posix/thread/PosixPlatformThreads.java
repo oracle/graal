@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.thread;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
@@ -184,7 +185,7 @@ public final class PosixPlatformThreads extends PlatformThreads {
                 assert thread == Thread.currentThread() : "Darwin only allows setting the name of the current thread";
                 DarwinPthread.pthread_setname_np(threadNameHolder.get());
             } else {
-                VMError.unsupportedFeature("PosixPlatformThreads.setNativeName on unknown OS");
+                VMError.unsupportedFeature("PosixPlatformThreads.setNativeName() on unexpected OS: " + ImageSingletons.lookup(Platform.class).getOS());
             }
         }
     }

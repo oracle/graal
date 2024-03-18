@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.toolchain.launchers.common;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.home.Version;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -39,6 +40,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class Driver {
 
@@ -204,7 +206,7 @@ public class Driver {
         } catch (IOException ioe) {
             // can only occur on ProcessBuilder#start, no destroying necessary
             if (isBundledTool) {
-                printMissingToolMessage();
+                printMissingToolMessage(Optional.ofNullable(new File(this.exe).toPath().getParent()).map(Path::getParent).map(Path::toString).orElse("<invalid>"));
             }
             throw ioe;
         } catch (Exception e) {
@@ -231,8 +233,8 @@ public class Driver {
         return pb.inheritIO();
     }
 
-    public static void printMissingToolMessage() {
-        System.err.println("Tool execution failed. Are you sure the toolchain is available at " + getLLVMBinDir().getParent());
+    public static void printMissingToolMessage(String llvmRoot) {
+        System.err.println("Tool execution failed. Are you sure the toolchain is available at " + llvmRoot);
         System.err.println();
         System.err.println("More infos: https://www.graalvm.org/docs/reference-manual/languages/llvm/");
     }

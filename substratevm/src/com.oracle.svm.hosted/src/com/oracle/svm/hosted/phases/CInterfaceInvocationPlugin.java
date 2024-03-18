@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput
 
 import java.util.Arrays;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
@@ -44,6 +45,7 @@ import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
 import com.oracle.svm.core.graal.nodes.CInterfaceWriteNode;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.CInterfaceError;
+import com.oracle.svm.hosted.c.CInterfaceWrapper;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo;
 import com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind;
@@ -88,7 +90,6 @@ import jdk.graal.compiler.nodes.extended.JavaReadNode;
 import jdk.graal.compiler.nodes.extended.JavaWriteNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
-import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -181,7 +182,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                 } else if (readKind.getBitCount() > resultKind.getBitCount() && !readKind.isNumericFloat() && resultKind != JavaKind.Boolean) {
                     readKind = resultKind;
                 }
-                AddressNode offsetAddress = makeOffsetAddress(graph, args, accessorInfo, base, displacement, elementSize);
+                OffsetAddressNode offsetAddress = makeOffsetAddress(graph, args, accessorInfo, base, displacement, elementSize);
                 LocationIdentity locationIdentity = makeLocationIdentity(b, method, args, accessorInfo);
                 final Stamp stamp;
                 if (readKind == JavaKind.Object) {
@@ -195,7 +196,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                 if (isPinnedObject) {
                     node = b.add(new JavaReadNode(stamp, readKind, offsetAddress, locationIdentity, BarrierType.NONE, MemoryOrderMode.PLAIN, true));
                 } else {
-                    ValueNode read = readPrimitive(b, offsetAddress, locationIdentity, stamp, accessorInfo);
+                    ValueNode read = readPrimitive(b, offsetAddress, locationIdentity, stamp, accessorInfo, method);
                     node = adaptPrimitiveType(graph, read, readKind, resultKind == JavaKind.Boolean ? resultKind : resultKind.getStackKind(), isUnsigned);
                 }
                 b.push(pushKind(method), node);
@@ -205,13 +206,13 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                 ValueNode value = args[accessorInfo.valueParameterNumber(true)];
                 JavaKind valueKind = value.getStackKind();
                 JavaKind writeKind = kindFromSize(elementSize, valueKind);
-                AddressNode offsetAddress = makeOffsetAddress(graph, args, accessorInfo, base, displacement, elementSize);
+                OffsetAddressNode offsetAddress = makeOffsetAddress(graph, args, accessorInfo, base, displacement, elementSize);
                 LocationIdentity locationIdentity = makeLocationIdentity(b, method, args, accessorInfo);
                 if (isPinnedObject) {
                     b.add(new JavaWriteNode(writeKind, offsetAddress, locationIdentity, value, BarrierType.NONE, true));
                 } else {
                     ValueNode adaptedValue = adaptPrimitiveType(graph, value, valueKind, writeKind, isUnsigned);
-                    writePrimitive(b, offsetAddress, locationIdentity, adaptedValue, accessorInfo);
+                    writePrimitive(b, offsetAddress, locationIdentity, adaptedValue, accessorInfo, method);
                 }
                 return true;
             }
@@ -280,10 +281,10 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
          * Read the memory location. This is also necessary for writes, since we need to keep the
          * bits around the written bitfield unchanged.
          */
-        AddressNode address = makeOffsetAddress(graph, args, accessorInfo, base, byteOffset, -1);
+        OffsetAddressNode address = makeOffsetAddress(graph, args, accessorInfo, base, byteOffset, -1);
         LocationIdentity locationIdentity = makeLocationIdentity(b, method, args, accessorInfo);
         Stamp stamp = IntegerStamp.create(memoryKind.getBitCount());
-        ValueNode cur = readPrimitive(b, address, locationIdentity, stamp, accessorInfo);
+        ValueNode cur = readPrimitive(b, address, locationIdentity, stamp, accessorInfo, method);
         cur = adaptPrimitiveType(graph, cur, memoryKind, computeKind, true);
 
         switch (accessorInfo.getAccessorKind()) {
@@ -328,7 +329,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                 /* Narrow value to the number of bits we need to write. */
                 cur = adaptPrimitiveType(graph, cur, computeKind, memoryKind, true);
                 /* Perform the write (bitcount is taken from the stamp of the written value). */
-                writePrimitive(b, address, locationIdentity, cur, accessorInfo);
+                writePrimitive(b, address, locationIdentity, cur, accessorInfo, method);
                 return true;
             }
             default:
@@ -336,7 +337,14 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         }
     }
 
-    private static ValueNode readPrimitive(GraphBuilderContext b, AddressNode address, LocationIdentity locationIdentity, Stamp stamp, AccessorInfo accessorInfo) {
+    private static ValueNode readPrimitive(GraphBuilderContext b, OffsetAddressNode address, LocationIdentity locationIdentity, Stamp stamp, AccessorInfo accessorInfo, ResolvedJavaMethod method) {
+        if (ImageSingletons.contains(CInterfaceWrapper.class)) {
+            ValueNode replaced = ImageSingletons.lookup(CInterfaceWrapper.class).replacePrimitiveRead(b, address, stamp, method);
+            if (replaced != null) {
+                return replaced;
+            }
+        }
+
         CInterfaceReadNode read = b.add(new CInterfaceReadNode(address, locationIdentity, stamp, BarrierType.NONE, MemoryOrderMode.PLAIN, accessName(accessorInfo)));
         /*
          * The read must not float outside its block otherwise it may float above an explicit zero
@@ -346,7 +354,14 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         return read;
     }
 
-    private static void writePrimitive(GraphBuilderContext b, AddressNode address, LocationIdentity locationIdentity, ValueNode value, AccessorInfo accessorInfo) {
+    private static void writePrimitive(GraphBuilderContext b, OffsetAddressNode address, LocationIdentity locationIdentity, ValueNode value, AccessorInfo accessorInfo, ResolvedJavaMethod method) {
+        if (ImageSingletons.contains(CInterfaceWrapper.class)) {
+            boolean replaced = ImageSingletons.lookup(CInterfaceWrapper.class).replacePrimitiveWrite(b, address, value, method);
+            if (replaced) {
+                return;
+            }
+        }
+
         b.add(new CInterfaceWriteNode(address, locationIdentity, value, BarrierType.NONE, MemoryOrderMode.PLAIN, accessName(accessorInfo)));
     }
 
@@ -373,7 +388,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         return offset;
     }
 
-    private static AddressNode makeOffsetAddress(StructuredGraph graph, ValueNode[] args, AccessorInfo accessorInfo, ValueNode base, int displacement, int indexScaling) {
+    private static OffsetAddressNode makeOffsetAddress(StructuredGraph graph, ValueNode[] args, AccessorInfo accessorInfo, ValueNode base, int displacement, int indexScaling) {
         return graph.addOrUniqueWithInputs(new OffsetAddressNode(base, makeOffset(graph, args, accessorInfo, displacement, indexScaling)));
     }
 

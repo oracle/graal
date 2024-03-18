@@ -59,15 +59,13 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     protected HostedType[] subTypes;
     protected HostedField[] staticFields;
 
-    protected HostedMethod[] vtable;
-
     protected int typeID;
     protected HostedType uniqueConcreteImplementation;
     protected HostedMethod[] allDeclaredMethods;
 
-    /*
-     * ### Start closed-world only fields ###
-     */
+    // region closed-world only fields
+
+    protected HostedMethod[] closedTypeWorldVTable;
 
     /**
      * Start of type check range check. See {@link DynamicHub}.typeCheckStart
@@ -89,15 +87,15 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     /**
      * Array used within type checks. See {@link DynamicHub}.typeCheckSlots
      */
-    protected short[] closedWorldTypeCheckSlots;
+    protected short[] closedTypeWorldTypeCheckSlots;
 
-    /*
-     * ### End closed-world only fields ###
-     */
+    // endregion closed-world only fields
 
-    /*
-     * ### Start open-world only fields ###
-     */
+    // region open-world only fields
+
+    protected HostedType[] typeCheckInterfaceOrder;
+    protected HostedMethod[] openTypeWorldDispatchTables;
+    protected int[] itableStartingOffsets;
 
     /**
      * Instance class depth. Due to single-inheritance a parent class will be at the same depth in
@@ -106,19 +104,17 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     protected int typeIDDepth;
 
     /*
-     * Since we store interfaces within the openWorldTypeIDSlots, we must know both the number of
-     * class and interface types to ensure we read from the correct locations.
+     * Since we store interfaces within the openTypeWorldTypeCheckSlots, we must know both the
+     * number of class and interface types to ensure we read from the correct locations.
      */
 
     protected int numClassTypes;
 
     protected int numInterfaceTypes;
 
-    protected int[] openWorldTypeIDSlots;
+    protected int[] openTypeWorldTypeCheckSlots;
 
-    /*
-     * ### End open-world only fields ###
-     */
+    // endregion open-world only fields
 
     /**
      * A more precise subtype that can replace this type as the declared type of values. Null if
@@ -147,11 +143,21 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
         return subTypes;
     }
 
-    public HostedMethod[] getVTable() {
-        assert vtable != null;
-        return vtable;
+    protected HostedMethod[] getClosedTypeWorldVTable() {
+        assert closedTypeWorldVTable != null;
+        return closedTypeWorldVTable;
     }
 
+    protected HostedMethod[] getOpenTypeWorldDispatchTables() {
+        assert openTypeWorldDispatchTables != null;
+        return openTypeWorldDispatchTables;
+    }
+
+    public HostedMethod[] getVTable() {
+        return SubstrateOptions.closedTypeWorld() ? getClosedTypeWorldVTable() : getOpenTypeWorldDispatchTables();
+    }
+
+    @Override
     public int getTypeID() {
         assert typeID != -1;
         return typeID;
@@ -168,9 +174,9 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
         this.typeCheckSlot = typeCheckSlot;
     }
 
-    public void setClosedWorldTypeCheckSlots(short[] closedWorldTypeCheckSlots) {
+    public void setClosedTypeWorldTypeCheckSlots(short[] closedTypeWorldTypeCheckSlots) {
         assert SubstrateOptions.closedTypeWorld();
-        this.closedWorldTypeCheckSlots = closedWorldTypeCheckSlots;
+        this.closedTypeWorldTypeCheckSlots = closedTypeWorldTypeCheckSlots;
     }
 
     public short getTypeCheckStart() {
@@ -188,10 +194,10 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
         return typeCheckSlot;
     }
 
-    public short[] getClosedWorldTypeCheckSlots() {
+    public short[] getClosedTypeWorldTypeCheckSlots() {
         assert SubstrateOptions.closedTypeWorld();
-        assert closedWorldTypeCheckSlots != null;
-        return closedWorldTypeCheckSlots;
+        assert closedTypeWorldTypeCheckSlots != null;
+        return closedTypeWorldTypeCheckSlots;
     }
 
     public void setTypeIDDepth(int typeIDDepth) {
@@ -209,9 +215,9 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
         this.numInterfaceTypes = numInterfaceTypes;
     }
 
-    public void setOpenWorldTypeIDSlots(int[] openWorldTypeIDSlots) {
+    public void setOpenTypeWorldTypeCheckSlots(int[] openTypeWorldTypeCheckSlots) {
         assert !SubstrateOptions.closedTypeWorld();
-        this.openWorldTypeIDSlots = openWorldTypeIDSlots;
+        this.openTypeWorldTypeCheckSlots = openTypeWorldTypeCheckSlots;
     }
 
     public int getTypeIDDepth() {
@@ -229,10 +235,10 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
         return numInterfaceTypes;
     }
 
-    public int[] getOpenWorldTypeIDSlots() {
+    public int[] getOpenTypeWorldTypeCheckSlots() {
         assert !SubstrateOptions.closedTypeWorld();
-        assert openWorldTypeIDSlots != null : this;
-        return openWorldTypeIDSlots;
+        assert openTypeWorldTypeCheckSlots != null : this;
+        return openTypeWorldTypeCheckSlots;
     }
 
     /**

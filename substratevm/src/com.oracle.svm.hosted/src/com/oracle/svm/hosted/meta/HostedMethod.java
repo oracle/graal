@@ -96,6 +96,13 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     private final ResolvedSignature<HostedType> signature;
     private final ConstantPool constantPool;
     private final ExceptionHandler[] handlers;
+    /**
+     * Contains the index of the method within the appropriate table.
+     *
+     * Within the closed type world, there exists a single table which describes all methods.
+     * However, within the open type world, each type and interface has a unique table, so this
+     * index is relative to the start of the appropriate table.
+     */
     int vtableIndex = -1;
 
     /**

@@ -119,7 +119,7 @@ public class OptimizationLogTest extends GraalCompilerTest {
     public void buildOptimizationTreeWhenEnabled() {
         StructuredGraph graph = parseGraph("addSnippet", true);
         OptimizationLogImpl optimizationLog = (OptimizationLogImpl) graph.getOptimizationLog();
-        Assert.assertTrue(optimizationLog.isOptimizationLogEnabled());
+        Assert.assertTrue(optimizationLog.isStructuredOptimizationLogEnabled());
 
         new ReportNodePhase(() -> 43).apply(graph, getProviders());
 
@@ -158,7 +158,7 @@ public class OptimizationLogTest extends GraalCompilerTest {
     public void noReportingWhenDisabled() {
         StructuredGraph graph = parseGraph("addSnippet", false);
         OptimizationLog optimizationLog = graph.getOptimizationLog();
-        Assert.assertFalse(optimizationLog.isOptimizationLogEnabled());
+        Assert.assertFalse(optimizationLog.isStructuredOptimizationLogEnabled());
 
         Providers providers = getProviders();
         ReportNodePhase reportNodePhase = new ReportNodePhase(() -> {

@@ -27,6 +27,9 @@ package jdk.graal.compiler.nodes;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import java.util.List;
+
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
@@ -240,7 +243,10 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         }
     }
 
+    @SuppressFBWarnings(value = {"NP"}, justification = "We null check it before")
     public static ValueNode canonical(ValueNode object, Stamp piStamp, GuardingNode guard, ValueNode self) {
+        GraalError.guarantee(piStamp != null && object != null, "Invariant piStamp=%s object=%s guard=%s self=%s", piStamp, object, guard, self);
+
         // Use most up to date stamp.
         Stamp computedStamp = piStamp.improveWith(object.stamp(NodeView.DEFAULT));
 
@@ -320,7 +326,9 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         if (guardNode.hasNoUsages()) {
             return;
         }
-        for (PiNode pi : guardNode.usages().filter(PiNode.class).snapshot()) {
+
+        List<PiNode> pis = guardNode.usages().filter(PiNode.class).snapshot();
+        for (PiNode pi : pis) {
             if (!pi.isAlive()) {
                 continue;
             }
@@ -330,6 +338,8 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
             }
 
             /*
+             * RECURSE CALL
+             *
              * If there are PiNodes still anchored at this guard then either they must simplify away
              * because they are no longer necessary or this node must be replaced with a
              * ValueAnchorNode because the type injected by the PiNode is only true at this point in
@@ -342,6 +352,16 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
                 if (otherGuard != null) {
                     tryEvacuate(tool, otherGuard, false);
                 }
+            }
+            /*
+             * A note on the RECURSE CALL above: When we have pis with input pis on the same guard
+             * (which should actually be combined) it can be that the recurse call (processing the
+             * same pis again) already deletes this node (very special stamp setups necessary).
+             * Thus, it can be that pi is dead at this point already, so we have to check for this
+             * again.
+             */
+            if (!pi.isAlive()) {
+                continue;
             }
             Node canonical = pi.canonical(tool);
             if (canonical != pi) {
