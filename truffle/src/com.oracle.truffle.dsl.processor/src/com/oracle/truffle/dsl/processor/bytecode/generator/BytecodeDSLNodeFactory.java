@@ -1873,6 +1873,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                     field(context.getType(boolean.class), "producedValue"),
                                     field(context.getType(int.class), "childBci"),
                                     field(context.getType(int.class), "nodeId"),
+                                    field(context.getType(boolean.class), "handlerReachable"),
                                     field(context.getType(int.class), "startStackHeight"),
                                     field(generic(type(List.class), tagNode.asType()), "children").withInitializer("null"),
                                     field(tagNode.asType(), "node")));
@@ -3493,7 +3494,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     }
                 }
                 case TAG -> {
-                    yield createOperationData("TagOperationData", "false", UNINIT, "nodeId", "this.currentStackHeight", "node");
+                    yield createOperationData("TagOperationData", "false", UNINIT, "nodeId", "this.reachable", "this.currentStackHeight", "node");
                 }
                 case RETURN -> {
                     yield createOperationData("ReturnOperationData", "false", UNINIT);
@@ -3810,6 +3811,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     }
 
                     buildEmitInstruction(b, model.tagLeaveValueInstruction, args);
+
+                    b.startIf().string("operationData.handlerReachable").end().startBlock();
                     b.statement("doCreateExceptionHandler(tagNode.enterBci, bci,  operationData.nodeId, operationData.startStackHeight, -1)");
 
                     /*
@@ -3817,6 +3820,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                      * return at any point and we need a point where we can continue.
                      */
                     b.statement("markReachable(true)");
+                    b.end();
 
                     b.startStatement().startCall("afterChild");
                     b.string("true");
@@ -3825,6 +3829,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                     b.end().startElseBlock();
                     buildEmitInstruction(b, model.tagLeaveVoidInstruction, "operationData.nodeId");
+
+                    b.startIf().string("operationData.handlerReachable").end().startBlock();
+                    b.statement("doCreateExceptionHandler(tagNode.enterBci, bci,  operationData.nodeId, operationData.startStackHeight, -1)");
+
+                    /*
+                     * Leaving the tag leave is always reachable, because probes may decide to
+                     * return at any point and we need a point where we can continue.
+                     */
+                    b.statement("markReachable(true)");
+                    b.end();
+
                     b.startStatement().startCall("afterChild");
                     b.string("false");
                     b.string("-1");
@@ -8414,6 +8429,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             new CodeVariableElement(type(int.class), "nodeId"),
                             new CodeVariableElement(type(int.class), "handlerSp"));
 
+            method.getThrownTypes().add(type(Throwable.class));
+
             Collection<List<InstructionModel>> groupedInstructions = groupInstructionsByKindAndImmediates(InstructionKind.TAG_LEAVE, InstructionKind.TAG_LEAVE_VOID);
 
             CodeTreeBuilder b = method.createBuilder();
@@ -8440,7 +8457,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.declaration(tagNode.asType(), "node", "this.tagRoot.tagNodes[nodeId]");
             b.statement("Object result = node.findProbe().onReturnExceptionalOrUnwind(frame, exception, wasOnReturnExecuted)");
-            b.startIf().string("result == ").staticReference(types.ProbeNode, "UNWIND_ACTION_REENTER").end().startBlock();
+            b.startIf().string("result == null").end().startBlock();
+            b.startThrow().string("exception").end();
+            b.end();
+            b.startElseIf().string("result == ").staticReference(types.ProbeNode, "UNWIND_ACTION_REENTER").end().startBlock();
             b.lineComment("Reenter by jumping to the begin bci.");
             b.statement("return (handlerSp << 16) | node.enterBci");
             b.end().startElseBlock();
