@@ -66,8 +66,6 @@ jobs:
     steps:
     - name: Checkout oracle/graal
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
     - name: Build GraalVM JDK
       uses: ./.github/actions/build-graalvm
       with:
@@ -76,7 +74,6 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: spring-projects/spring-petclinic
-        fetch-depth: 1
         path: ${{ env.SPRING_PETCLINIC_PATH }}
     - name: Run nativeTest in spring-petclinic
       run: |
