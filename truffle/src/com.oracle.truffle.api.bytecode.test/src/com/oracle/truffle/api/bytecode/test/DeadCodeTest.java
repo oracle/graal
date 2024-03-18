@@ -535,6 +535,33 @@ public class DeadCodeTest extends AbstractInstructionTest {
         assertEquals(42, node.getCallTarget().call(42));
     }
 
+    @Test
+    public void testUnreachableFinallyWithLabel() {
+        DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.emitLoadConstant(42);
+            b.endReturn();
+
+            b.beginFinallyTry(b.createLocal());
+
+            b.emitLoadArgument(0);
+
+            b.beginBlock();
+            b.emitLabel(b.createLabel());
+            b.endBlock();
+
+            b.endFinallyTry();
+
+            b.endRoot();
+        }).getRootNode();
+
+        assertInstructions(node,
+                        "load.constant",
+                        "return");
+    }
+
     private static void emitUnreachableCode(Builder b) {
         // custom operation
         b.beginAdd();

@@ -1926,14 +1926,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                 field(context.getType(int.class), "tryEndBci"),
                                 field(context.getType(int.class), "catchStartBci"),
                                 field(context.getType(int.class), "endBranchFixupBci"),
-                                field(context.getType(boolean.class), "initialReachable"),
+                                field(context.getType(boolean.class), "handlerReachable"),
                                 field(context.getType(boolean.class), "tryReachable"),
                                 field(context.getType(boolean.class), "catchReachable")));
 
                 result.add(createDataClass("FinallyTryData",
                                 field(types.BytecodeLocal, "exceptionLocal").asFinal(),
                                 field(context.getDeclaredType(Object.class), "finallyTryContext").asFinal(),
-                                field(context.getType(boolean.class), "initialReachable"),
+                                field(context.getType(boolean.class), "handlerReachable"),
                                 field(context.getType(boolean.class), "finallyReachable"),
                                 field(context.getType(boolean.class), "tryReachable")));
 
@@ -3704,12 +3704,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("BytecodeLocalImpl exceptionLocal = (BytecodeLocalImpl) operationData.exceptionLocal");
                     b.statement("FinallyTryContext ctx = (FinallyTryContext) operationData.finallyTryContext");
 
-                    b.startIf().string("operationData.initialReachable").end().startBlock();
+                    b.startIf().string("operationData.handlerReachable").end().startBlock();
                     b.lineComment("exception handler may be reachable");
                     b.statement("exceptionIndex = (short) exceptionLocal.index");
                     b.statement("exHandlerIndex = doCreateExceptionHandler(ctx.bci, bci, " + UNINIT + " /* handler start */, currentStackHeight, exceptionIndex)");
-                    b.end().startElseBlock();
-                    b.statement("assert !operationData.tryReachable");
                     b.end();
 
                     b.declaration(type(int.class), "endBranchIndex", UNINIT);
@@ -4767,7 +4765,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case TRY_CATCH:
                         emitCastOperationData(b, "TryCatchData", "operationSp - 1");
                         b.startIf().string("childIndex == 0").end().startBlock();
-                        b.startIf().string("operationData.initialReachable").end().startBlock();
+                        b.startIf().string("operationData.handlerReachable").end().startBlock();
                         b.statement("operationData.tryEndBci = bci");
 
                         b.startIf().string("operationData.tryReachable").end().startBlock();
@@ -4777,7 +4775,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.end(); // if tryReachable
                         b.statement("operationData.catchStartBci = bci");
 
-                        b.end(); // if initialReachable
+                        b.end(); // if handlerReachable
                         b.end();
 
                         b.startElseIf().string("childIndex == 1").end().startBlock();
@@ -4785,7 +4783,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.startIf().string("toUpdate != ", UNINIT).end().startBlock();
                         b.statement(writeBc("toUpdate", "(short) bci"));
                         b.end();
-                        b.startIf().string("operationData.initialReachable").end().startBlock();
+                        b.startIf().string("operationData.handlerReachable").end().startBlock();
                         b.statement("doCreateExceptionHandler(operationData.tryStartBci, operationData.tryEndBci, operationData.catchStartBci, operationData.startStackHeight, operationData.exceptionLocalIndex)");
                         b.end();
                         b.end();
