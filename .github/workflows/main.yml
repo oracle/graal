@@ -172,7 +172,6 @@ jobs:
       with:
         repository: graalvm/mx.git
         ref: ${{ env.MX_VERSION }}
-        fetch-depth: 1
         path: ${{ env.MX_PATH }}
     - name: Set up Python
       uses: actions/setup-python@v5

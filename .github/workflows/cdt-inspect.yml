@@ -62,13 +62,11 @@ jobs:
     - name: Checkout oracle/graal
       uses: actions/checkout@v4
       with:
-        fetch-depth: 1
         path: ${{ github.workspace }}/graal
     - name: Checkout oracle/graaljs
       uses: actions/checkout@v4
       with:
         repository: oracle/graaljs
-        fetch-depth: 1
         sparse-checkout: |
           graal-js
         path: ${{ github.workspace }}/js
@@ -76,7 +74,6 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: graalvm/mx.git
-        fetch-depth: 1
         ref: master
         path: ${{ env.MX_PATH }}
     - name: Set up Python

@@ -33,7 +33,6 @@ runs:
       uses: actions/checkout@v4
       with:
         repository: graalvm/mx
-        fetch-depth: 1
         ref: ${{ env.MX_VERSION }}
         path: ${{ env.MX_PATH }}
     - name: Set up Python
