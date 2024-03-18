@@ -89,7 +89,7 @@ permissions:
   contents: read # to fetch code (actions/checkout)
 
 jobs:
-  build-graalvm:
+  build-graalvm-linux:
     name: /${{ matrix.env.PRIMARY }} ${{ matrix.env.GATE_TAGS }} JDK${{ matrix.env.JDK_VERSION }}
     runs-on: ubuntu-20.04
     strategy:
@@ -222,3 +222,47 @@ jobs:
       env: ${{ matrix.env }}
       run: ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode ${{ matrix.env.GATE_OPTS }}
       if: ${{ matrix.env.GATE_TAGS == '' }}
+  build-graalvm-windows:
+    name: /substratevm on Windows
+    runs-on: windows-2022
+    env:
+      MX_PYTHON: 'python'
+    steps:
+    - name: Checkout oracle/graal
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.ref }} # Lock ref to current branch to avoid fetching others
+    - name: Determine mx version
+      shell: bash
+      run: echo "MX_VERSION=$(jq -r '.mx_version' common.json)" >> ${GITHUB_ENV}
+    - name: Checkout graalvm/mx
+      uses: actions/checkout@v4
+      with:
+        repository: graalvm/mx.git
+        ref: ${{ env.MX_VERSION }}
+        path: ${{ env.MX_PATH }}
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.8'
+    - name: Fetch LabsJDK
+      shell: bash
+      run: |
+        mkdir jdk-dl
+        ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id labsjdk-ce-latest --to jdk-dl --alias ${JAVA_HOME}
+    - name: Build GraalVM via cmd.exe
+      shell: cmd
+      run: |
+        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+        call ${{ env.MX_PATH }}\mx.cmd -p substratevm --native-images=native-image --components="Native Image" build
+        call ${{ env.MX_PATH }}\mx.cmd -p substratevm --native-images=native-image --components="Native Image" graalvm-home > graalvm-home-with-forward-slashes.txt
+        set /p GRAALVM_HOME=<graalvm-home-with-forward-slashes.txt
+        setlocal enabledelayedexpansion
+        set "GRAALVM_HOME=%GRAALVM_HOME:/=\%"
+        echo %GRAALVM_HOME%\bin>>%GITHUB_PATH%
+        echo GRAALVM_HOME=%GRAALVM_HOME%>>%GITHUB_ENV%
+    - name: Test GraalVM
+      run: |
+        native-image --version
+        native-image -m jdk.httpserver
+    
