@@ -85,7 +85,7 @@ class WindowsBuildEnvironmentUtil {
         } catch (IOException | InterruptedException e) {
             throw fail("Failed to detect variables of Windows build environment.", e);
         }
-        if (!environment.containsKey("VSINSTALLDIR_ENV")) {
+        if (!environment.containsKey("VSINSTALLDIR")) {
             throw fail("Failed to automatically set up Windows build environment.");
         }
     }
