@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.nodes;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.Method;
@@ -93,6 +94,10 @@ public final class IntrinsicSubstitutorNode extends EspressoInstrumentableRootNo
 
     @Override
     public int getBci(Frame frame) {
-        return VM.EspressoStackElement.NATIVE_BCI;
+        if (getMethodVersion().isMethodNative()) {
+            return VM.EspressoStackElement.NATIVE_BCI;
+        } else {
+            return 0;
+        }
     }
 }
