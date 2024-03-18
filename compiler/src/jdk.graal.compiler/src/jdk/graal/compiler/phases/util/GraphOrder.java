@@ -46,6 +46,7 @@ import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.FullInfopointNode;
+import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.GraphState.GuardsStage;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.LoopBeginNode;
@@ -179,56 +180,13 @@ public final class GraphOrder {
     @SuppressWarnings("try")
     private static boolean assertScheduleableBeforeFSA(final StructuredGraph graph) {
         assert graph.getGuardsStage() != GuardsStage.AFTER_FSA : "Cannot use the BlockIteratorClosure after FrameState Assignment, HIR Loop Data Structures are no longer valid.";
+
         try (DebugContext.Scope s = graph.getDebug().scope("AssertSchedulableGraph")) {
             SchedulePhase.runWithoutContextOptimizations(graph, getSchedulingPolicy(graph), true);
             final EconomicMap<LoopBeginNode, NodeBitMap> loopEntryStates = EconomicMap.create(Equivalence.IDENTITY);
             final ScheduleResult schedule = graph.getLastSchedule();
 
-            /**
-             * We run verification of the graph with schedule.immutableGraph=true because
-             * verification should not have any impact on the graph it verifies (we want
-             * verification to be side effect free).
-             *
-             * There are certain sets of dead nodes that are normally only deleted by the schedule
-             * or the canonicalizer - dead phi cycles.
-             */
-            NodeBitMap deadNodes = graph.createNodeBitMap();
-            for (PhiNode phi : graph.getNodes().filter(PhiNode.class)) {
-                if (!phi.isLoopPhi()) {
-                    continue;
-                }
-                NodeFlood nf = graph.createNodeFlood();
-                if (CanonicalizerPhase.isDeadLoopPhiCycle(phi, nf)) {
-                    for (Node visitedNode : nf.getVisited()) {
-                        if (visitedNode.isAlive()) {
-                            deadNodes.mark(visitedNode);
-                        }
-                    }
-                }
-            }
-
-            // now we collected all dead loop phi nodes, collect all floating node's who's usages
-            // are only in the dead set (transitive)
-            int computes = 0;
-            boolean change = true;
-            while (change && (computes++ <= MAX_DEAD_NODE_SEARCHES)) {
-                change = false;
-
-                inner: for (Node n : graph.getNodes()) {
-                    if (GraphUtil.isFloatingNode(n)) {
-                        if (deadNodes.isMarked(n)) {
-                            continue inner;
-                        }
-                        for (Node usage : n.usages()) {
-                            if (!deadNodes.isMarked(usage)) {
-                                continue inner;
-                            }
-                        }
-                        deadNodes.mark(n);
-                        change = true;
-                    }
-                }
-            }
+            final NodeBitMap deadNodes = computeDeadFloatingNodes(graph);
 
             ReentrantBlockIterator.BlockIteratorClosure<NodeBitMap> closure = new ReentrantBlockIterator.BlockIteratorClosure<>() {
 
@@ -409,6 +367,59 @@ public final class GraphOrder {
             graph.getDebug().handle(t);
         }
         return true;
+    }
+
+    /**
+     * We run verification of the graph with schedule.immutableGraph=true because verification
+     * should not have any impact on the graph it verifies (we want verification to be side effect
+     * free).
+     *
+     * There are certain sets of dead nodes that are normally only deleted by the schedule or the
+     * canonicalizer - dead phi cycles (and floating nodes that are kept alive by such dead cycles).
+     */
+    private static NodeBitMap computeDeadFloatingNodes(final StructuredGraph graph) {
+        NodeBitMap deadNodes = graph.createNodeBitMap();
+        for (PhiNode phi : graph.getNodes().filter(PhiNode.class)) {
+            if (!phi.isLoopPhi()) {
+                continue;
+            }
+            NodeFlood nf = graph.createNodeFlood();
+            if (CanonicalizerPhase.isDeadLoopPhiCycle(phi, nf)) {
+                for (Node visitedNode : nf.getVisited()) {
+                    if (visitedNode.isAlive()) {
+                        deadNodes.mark(visitedNode);
+                    }
+                }
+            }
+        }
+
+        // now we collected all dead loop phi nodes, collect all floating nodes whose usages
+        // are only in the dead set (transitive)
+        int computes = 0;
+        boolean change = true;
+        while (change && (computes++ <= MAX_DEAD_NODE_SEARCHES)) {
+            change = false;
+
+            inner: for (Node n : graph.getNodes()) {
+                if (GraphUtil.isFloatingNode(n) && !isNeverDeadFloatingNode(n)) {
+                    if (deadNodes.isMarked(n)) {
+                        continue inner;
+                    }
+                    for (Node usage : n.usages()) {
+                        if (!deadNodes.isMarked(usage)) {
+                            continue inner;
+                        }
+                    }
+                    deadNodes.mark(n);
+                    change = true;
+                }
+            }
+        }
+        return deadNodes;
+    }
+
+    private static boolean isNeverDeadFloatingNode(Node n) {
+        return n instanceof GuardNode || n instanceof ProxyNode;
     }
 
     /*
