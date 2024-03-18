@@ -240,7 +240,7 @@ final class HostClassDesc {
                     }
                 }
                 if (hostAccess.isArrayAccess() && type.isArray()) {
-                    SingleMethod arrayCloneMethod = SingleMethod.SyntheticArrayCloneMethod.SINGLETON;
+                    SingleMethod arrayCloneMethod = new SingleMethod.SyntheticArrayCloneMethod(type);
                     methodMap.put(arrayCloneMethod.getName(), arrayCloneMethod);
                 }
             }

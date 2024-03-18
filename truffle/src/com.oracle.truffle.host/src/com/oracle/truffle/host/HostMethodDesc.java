@@ -43,6 +43,7 @@ package com.oracle.truffle.host;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
@@ -473,10 +474,22 @@ abstract class HostMethodDesc {
         }
 
         static final class SyntheticArrayCloneMethod extends SingleMethod {
-            static final SyntheticArrayCloneMethod SINGLETON = new SyntheticArrayCloneMethod();
 
-            private SyntheticArrayCloneMethod() {
+            private final Class<?> arrayClass;
+            private final MethodHandle cloneMethodHandle;
+
+            SyntheticArrayCloneMethod(Class<?> arrayClass) {
                 super(false, new Class<?>[0], new Type[0], EMTPY_SCOPED_PARAMETERS, 0);
+                assert arrayClass.isArray() : arrayClass;
+                this.arrayClass = arrayClass;
+
+                try {
+                    this.cloneMethodHandle = TruffleOptions.AOT ? null
+                                    : MethodHandles.publicLookup().findVirtual(arrayClass, "clone",
+                                                    MethodType.methodType(Object.class)).asType(MethodType.methodType(Object.class, Object.class));
+                } catch (NoSuchMethodException | IllegalAccessException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
+                }
             }
 
             @Override
@@ -486,7 +499,7 @@ abstract class HostMethodDesc {
 
             @Override
             String getDeclaringClassName() {
-                return null;
+                return arrayClass.getName();
             }
 
             @Override
@@ -496,12 +509,15 @@ abstract class HostMethodDesc {
 
             @Override
             public Executable getReflectionMethod() {
-                throw CompilerDirectives.shouldNotReachHere();
+                try {
+                    return Object.class.getDeclaredMethod("clone");
+                } catch (NoSuchMethodException | SecurityException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
+                }
             }
 
             @Override
             public Object invoke(Object receiver, Object[] arguments) {
-                assert receiver != null && receiver.getClass().isArray() && arguments.length == 0;
                 // Object#clone() is protected so clone the array via reflection.
                 int length = Array.getLength(receiver);
                 Object copy = Array.newInstance(receiver.getClass().getComponentType(), length);
@@ -509,9 +525,24 @@ abstract class HostMethodDesc {
                 return copy;
             }
 
+            private Object invokeHandle(Object receiver) {
+                try {
+                    return cloneMethodHandle.invokeExact(receiver);
+                } catch (Throwable e) {
+                    throw HostInteropReflect.rethrow(e);
+                }
+            }
+
             @Override
-            public Object invokeGuestToHost(Object receiver, Object[] arguments, GuestToHostCodeCache cache, HostContext context, Node node) {
-                return HostObject.forObject(invoke(receiver, arguments), context);
+            public Object invokeGuestToHost(Object receiver, Object[] arguments, GuestToHostCodeCache cache, HostContext hostContext, Node node) {
+                assert receiver != null && receiver.getClass().isArray() && arguments.length == 0;
+                Object result;
+                if (TruffleOptions.AOT) {
+                    result = invoke(receiver, arguments);
+                } else {
+                    result = invokeHandle(receiver);
+                }
+                return HostObject.forObject(result, hostContext);
             }
         }
     }
