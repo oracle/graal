@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import java.lang.annotation.Annotation;
 import java.util.Arrays;
 import java.util.Iterator;
 
+import com.oracle.svm.hosted.c.CInterfaceWrapper;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
@@ -46,6 +47,7 @@ import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.constant.CEnum;
@@ -153,6 +155,10 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
 
         ValueNode[] args = kit.loadArguments(parameterLoadTypes).toArray(ValueNode.EMPTY_ARRAY);
 
+        if (ImageSingletons.contains(CInterfaceWrapper.class)) {
+            ImageSingletons.lookup(CInterfaceWrapper.class).tagCEntryPointPrologue(kit, method);
+        }
+
         InvokeWithExceptionNode invokePrologue = generatePrologue(providers, kit, parameterLoadTypes, targetMethod.getParameterAnnotations(), args);
         if (invokePrologue != null) {
             ResolvedJavaMethod prologueMethod = invokePrologue.callTarget().targetMethod();
@@ -222,6 +228,11 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
     private void generateEpilogueAndReturn(ResolvedJavaMethod method, HostedProviders providers, Purpose purpose, HostedGraphKit kit, ValueNode value) {
         ValueNode returnValue = adaptReturnValue(method, providers, purpose, kit, value);
         generateEpilogue(providers, kit);
+
+        if (ImageSingletons.contains(CInterfaceWrapper.class)) {
+            ImageSingletons.lookup(CInterfaceWrapper.class).tagCEntryPointEpilogue(kit, method);
+        }
+
         kit.createReturn(returnValue, returnValue.getStackKind());
     }
 
@@ -244,6 +255,10 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
 
         UniverseMetaAccess metaAccess = (UniverseMetaAccess) providers.getMetaAccess();
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
+
+        if (ImageSingletons.contains(CInterfaceWrapper.class)) {
+            ImageSingletons.lookup(CInterfaceWrapper.class).tagCEntryPointPrologue(kit, method);
+        }
 
         ExecutionContextParameters executionContext = findExecutionContextParameters(providers, universeTargetMethod.toParameterTypes(), universeTargetMethod.getParameterAnnotations());
 
@@ -302,6 +317,10 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
 
         generateExceptionHandler(method, providers, purpose, kit, exception, invoke.getStackKind());
         kit.endInvokeWithException();
+
+        if (ImageSingletons.contains(CInterfaceWrapper.class)) {
+            ImageSingletons.lookup(CInterfaceWrapper.class).tagCEntryPointEpilogue(kit, method);
+        }
 
         kit.createReturn(invoke, universeTargetMethod.getSignature().getReturnKind());
 
