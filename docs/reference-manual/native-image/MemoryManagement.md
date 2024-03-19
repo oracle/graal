@@ -164,7 +164,7 @@ Here is a small subset of the options that can be specified when doing performan
 
 ```shell
 # Build and execute a native image that uses the G1 GC with a region size of 2MB and a maximum pause time goal of 100ms
-native-image --gc=G1 -H:G1RegionSize=2m -R:MaxGCPauseMillis=100 HelloWorld
+native-image --gc=G1 -H:G1HeapRegionSize=2m -R:MaxGCPauseMillis=100 HelloWorld
 ./helloworld
 
 # Execute the native image from above and override the maximum pause time goal
