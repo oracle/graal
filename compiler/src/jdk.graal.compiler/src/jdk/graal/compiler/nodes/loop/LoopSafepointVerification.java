@@ -24,8 +24,6 @@
  */
 package jdk.graal.compiler.nodes.loop;
 
-import java.util.ArrayList;
-
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -50,7 +48,7 @@ public class LoopSafepointVerification {
 
     public static final boolean PRINT_SAFEPOINT_NOT_FOUND = false;
 
-    private EconomicMap<Node, SafepointData> safepointVerifiacationData;
+    private EconomicMap<Node, SafepointData> safepointVerificationData;
 
     static class SafepointData {
         /**
@@ -78,13 +76,20 @@ public class LoopSafepointVerification {
             return sd;
         }
 
-        boolean assertNotWeaker(SafepointData other) {
+        /**
+         * Assert that the {@code newData} is not weaker with respect to safepoint invariants than
+         * {@code this} loop. For this to make "sense" {@code newData} is supposed to be a
+         * new/different/optimized version of {@code this} loop. The use case is that over the
+         * course of compilation {@code this} loop was replaced by {@code newData} via a loop
+         * optimization for example.
+         */
+        boolean assertNotWeaker(SafepointData newData) {
             if (this.canHaveSafepoints) {
                 // all good, other can do what it wants
             } else {
                 // this cannot safepoint -> ensure other also cannot safepoint
-                assert !other.canHaveSafepoints : Assertions.errorMessage("Safepoint verification cannot become weaker", lb,
-                                "previously the loop had canHaveSafepoints=false but now it has canHaveSafepoints=true", other.lb);
+                assert !newData.canHaveSafepoints : Assertions.errorMessage("Safepoint verification cannot become weaker", lb,
+                                "previously the loop had canHaveSafepoints=false but now it has canHaveSafepoints=true", newData.lb);
             }
             return true;
         }
@@ -125,6 +130,7 @@ public class LoopSafepointVerification {
          * {@code lb2} was derived from {@code lb1} via an optimization (unrolling, strip mining,
          * etc).
          */
+        @SuppressWarnings("deprecation")
         private static boolean optimizerRelatedLoops(LoopBeginNode lb1, LoopBeginNode lb2) {
             if (lb1.isCompilerInverted() != lb2.isCompilerInverted()) {
                 return false;
@@ -149,15 +155,22 @@ public class LoopSafepointVerification {
             final long cloneFromIdLb1 = lb1.getClonedFromNodeId();
             final long cloneFromIdLb2 = lb2.getClonedFromNodeId();
 
-            /*
-             * Determine if both loops are descendants of the same original loop based on their
-             * cloned ids.
-             *
-             * If one of them has been cloned from a loop then compare their original loops, else
-             * continue,
-             */
             if ((cloneFromIdLb1 != -1 || cloneFromIdLb2 != -1)) {
-                return cloneFromIdLb1 == cloneFromIdLb2;
+                assert lb2.isAlive() : Assertions.errorMessage("When verifying loops the second one must be alive always", lb1, lb2);
+                if (lb1.isDeleted() && cloneFromIdLb2 != -1) {
+                    /*
+                     * The original loop is deleted - the new one not: if the new one is cloned from
+                     * another loop determine if it was cloned from lb1.
+                     */
+                    long lb1IdBeforeDeletion = lb1.getIdBeforeDeletion();
+                    return lb1IdBeforeDeletion == cloneFromIdLb2;
+                } else {
+                    /*
+                     * Both loops are alive and either one of them (or both) have been cloned from
+                     * another loop. Assure they are cloned from the same one.
+                     */
+                    return cloneFromIdLb1 == cloneFromIdLb2;
+                }
             }
             return true;
         }
@@ -180,11 +193,39 @@ public class LoopSafepointVerification {
             }
         }
 
+        /**
+         * Process the dominated parts of the {@code graph} reachable from the given loop begin node
+         * {@code lb}. This method will be called for all loops in a graph. It will incrementally
+         * build a data structure presenting all loops of a graph and their nesting.
+         *
+         * The algorithm behind this logic works the following way:
+         *
+         * <ul>
+         * <li>Call {@link #getLoopRelations(LoopBeginNode, StructuredGraph, EconomicMap)} for all
+         * {@link LoopBeginNode} nodes of a graph. While doing so build a side data structure
+         * capturing all {@code LoopContext} for each loop in the graph. This data structure is
+         * given as an in/out parameter to
+         * {@link #getLoopRelations(LoopBeginNode, StructuredGraph, EconomicMap)}:
+         * {@code contexts}.</li>
+         * <li>For each loop begin start iterating the graph backwards until the
+         * {@link StructuredGraph#start()} is found.</li>
+         * <li>During iteration record all loops that are found: for loop exits skip the entire loop
+         * of the exit and record it as an inner loop. For loop begins visited: attribute all
+         * current inner loops to the loop begin's loop inner loops. This way
+         * {@link #getLoopRelations(LoopBeginNode, StructuredGraph, EconomicMap)} incrementally
+         * builds a full set of inner/outer loop relations in form of the loop context map.</li>
+         * <li>When a regular control flow merge is visited then pick an arbitrary (we take the
+         * first one for simplicity) predecessor and continue from there. If there are other inner
+         * loops in other predecessors of a merge they will be visited by other calls to
+         * {@link #getLoopRelations(LoopBeginNode, StructuredGraph, EconomicMap)}</li>
+         * </ul>
+         */
         static void getLoopRelations(LoopBeginNode lb, StructuredGraph graph, EconomicMap<LoopBeginNode, LoopContext> contexts) {
             if (!contexts.containsKey(lb)) {
                 contexts.put(lb, new LoopContext(lb));
             }
 
+            // the set of inner loops reachable from the starting point
             EconomicSet<LoopBeginNode> innerLoops = EconomicSet.create();
             innerLoops.add(lb);
 
@@ -212,6 +253,10 @@ public class LoopSafepointVerification {
                     cur = (FixedNode) cur.predecessor();
                     continue;
                 } else {
+                    /*
+                     * Pick an arbitrary branch. If another branch contains an inner loop, we will
+                     * collect that loop when this method is called with on that loop's begin node.
+                     */
                     if (cur instanceof AbstractMergeNode am) {
                         cur = am.forwardEndAt(0);
                         continue;
@@ -238,28 +283,28 @@ public class LoopSafepointVerification {
             }
         }
 
-        if (safepointVerifiacationData == null) {
-            safepointVerifiacationData = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+        if (safepointVerificationData == null) {
+            safepointVerificationData = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
         }
 
-        ArrayList<LoopBeginNode> loopsToVisit = new ArrayList<>();
-        ArrayList<LoopBeginNode> originalLoopsInTheGraph = new ArrayList<>();
-        for (Node lb : safepointVerifiacationData.getKeys()) {
+        EconomicSet<LoopBeginNode> loopsToVisit = EconomicSet.create();
+        EconomicSet<LoopBeginNode> originalLoopsInTheGraph = EconomicSet.create();
+        for (Node lb : safepointVerificationData.getKeys()) {
             loopsToVisit.add((LoopBeginNode) lb);
             originalLoopsInTheGraph.add((LoopBeginNode) lb);
         }
         for (LoopBeginNode lb : g.getNodes(LoopBeginNode.TYPE)) {
             final SafepointData newData = SafepointData.fromLoopBegin(lb, contexts.get(lb).innerLoopBegins.size(), contexts.get(lb).depth);
-            if (safepointVerifiacationData.containsKey(lb)) {
+            if (safepointVerificationData.containsKey(lb)) {
                 assert loopsToVisit.contains(lb);
                 // all loops that are still in the graph just need verification, no replacement
                 // verification
                 loopsToVisit.remove(lb);
-                assert safepointVerifiacationData.get(lb).assertNotWeaker(newData);
+                assert safepointVerificationData.get(lb).assertNotWeaker(newData);
             }
             // now overwrite (or propagate new data) to the map, if it was a faulty loop it
             // would have hit the assertions above
-            safepointVerifiacationData.put(lb, newData);
+            safepointVerificationData.put(lb, newData);
         }
         /*
          * Now we cleaned up all the loops that are in the graph. What remains is to cleanup the old
@@ -272,20 +317,20 @@ public class LoopSafepointVerification {
             assert lb.isDeleted() : Assertions.errorMessage("This loop must be deleted since it was not found during iteration", lb);
             // lets remove it from the map, either we cant verify and fail or its good and we
             // verified correctly, both ways the loop should be removed from the map
-            SafepointData sd = safepointVerifiacationData.removeKey(lb);
+            SafepointData sd = safepointVerificationData.removeKey(lb);
             if (sd.canHaveSafepoints) {
                 // the loop was allowed to safepoint, if the new ones (if there are any) are allowed
                 // to safepoint or not is not of real interest, thus we are good
             } else {
                 // the loop was not allowed to safepoint, any replacement should also not
                 // safepoint
-                inner: for (Node n : safepointVerifiacationData.getKeys()) {
+                inner: for (Node n : safepointVerificationData.getKeys()) {
                     LoopBeginNode other = (LoopBeginNode) n;
                     if (originalLoopsInTheGraph.contains(other)) {
                         // only compare old deleted loops with newly added ones
                         continue inner;
                     }
-                    SafepointData otherData = safepointVerifiacationData.get(other);
+                    SafepointData otherData = safepointVerificationData.get(other);
                     assert otherData != null : Assertions.errorMessage("Must be in map as map was propagated previously", other);
                     assert other != lb : Assertions.errorMessage("Must be different nodes since one was deleted and the other is in the graph", lb, other);
                     if (sd.sameStateOrNsp(otherData)) {

@@ -183,7 +183,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         // (addDuplicates) and call afterClone on it we have to override this value
 
         final int otherNodeId = other.getId();
-        this.cloneFromNodeId = other.graph() != null ? other.graph().getCompressions() << 32 | otherNodeId : otherNodeId;
+        this.cloneFromNodeId = other.graph() != null ? ((long) other.graph().getCompressions() << 32L | otherNodeId) : otherNodeId;
     }
 
     public long getClonedFromNodeId() {
