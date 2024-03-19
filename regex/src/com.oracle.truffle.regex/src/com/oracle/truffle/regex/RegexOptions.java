@@ -132,7 +132,7 @@ public final class RegexOptions {
     private static final int GENERATE_DFA_IMMEDIATELY = 1 << 8;
     private static final String GENERATE_DFA_IMMEDIATELY_NAME = "GenerateDFAImmediately";
     private static final int BOOLEAN_MATCH = 1 << 9;
-    private static final String BOOLEAN_MATCH_NAME = "BooleanMatch";
+    public static final String BOOLEAN_MATCH_NAME = "BooleanMatch";
     private static final int MUST_ADVANCE = 1 << 10;
     public static final String MUST_ADVANCE_NAME = "MustAdvance";
     private static final int GENERATE_INPUT = 1 << 11;
@@ -509,10 +509,15 @@ public final class RegexOptions {
                         }
                         break;
                     case 'P':
-                        if (src.regionMatches(i, PYTHON_METHOD_NAME, 0, PYTHON_METHOD_NAME.length())) {
-                            pythonMethod = parsePythonMethod();
-                        } else {
-                            pythonLocale = parseStringOption(PYTHON_LOCALE_NAME, "expected a python locale name");
+                        switch (lookAheadInKey("Python".length())) {
+                            case 'M':
+                                pythonMethod = parsePythonMethod();
+                                break;
+                            case 'L':
+                                pythonLocale = parseStringOption(PYTHON_LOCALE_NAME, "expected a python locale name");
+                                break;
+                            default:
+                                throw optionsSyntaxErrorUnexpectedKey();
                         }
                         break;
                     case 'R':
@@ -575,10 +580,10 @@ public final class RegexOptions {
             if (src.regionMatches(i, "true", 0, "true".length())) {
                 options |= flag;
                 i += "true".length();
-            } else if (!src.regionMatches(i, "false", 0, "false".length())) {
-                throw optionsSyntaxErrorUnexpectedValue("true", "false");
-            } else {
+            } else if (src.regionMatches(i, "false", 0, "false".length())) {
                 i += "false".length();
+            } else {
+                throw optionsSyntaxErrorUnexpectedValue("true", "false");
             }
         }
 
@@ -651,10 +656,7 @@ public final class RegexOptions {
                 case 'L':
                     return expectEncodingValue(Encodings.LATIN_1);
                 case 'U':
-                    if (i + 4 >= src.length()) {
-                        throw optionsSyntaxErrorUnexpectedValue(FLAVOR_OPTIONS);
-                    }
-                    switch (src.charAt(i + 4)) {
+                    switch (lookAheadInKey(4)) {
                         case '8':
                             return expectEncodingValue(Encodings.UTF_8);
                         case '1':
