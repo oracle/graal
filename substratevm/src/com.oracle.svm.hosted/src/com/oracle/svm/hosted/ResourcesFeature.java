@@ -50,6 +50,7 @@ import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -301,7 +302,12 @@ public final class ResourcesFeature implements InternalFeature {
                     InputStream is = module.getResourceAsStream(resourcePath);
                     registerResource(module, resourcePath, false, is);
                 }
-                declareResourceAsRegistered(module, resourcePath, resourcePath);
+
+                var resolvedModule = module.getLayer().configuration().findModule(module.getName());
+                if (resolvedModule.isPresent()) {
+                    Optional<URI> location = resolvedModule.get().reference().location();
+                    location.ifPresent(uri -> declareResourceAsRegistered(module, resourcePath, uri.toString()));
+                }
             } catch (IOException e) {
                 Resources.singleton().registerIOException(module, resourcePath, e, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(resourcePath));
             }
@@ -339,7 +345,7 @@ public final class ResourcesFeature implements InternalFeature {
                         InputStream is = url.openStream();
                         registerResource(null, resourcePath, fromJar, is);
                     }
-                    String source = fromJar ? urlToJarPath(url) : Paths.get(url.toURI()).toString();
+                    String source = fromJar ? url.toURI().toString() : Path.of(url.getPath()).toUri().toString();
                     declareResourceAsRegistered(null, resourcePath, source);
                 } catch (IOException e) {
                     Resources.singleton().registerIOException(null, resourcePath, e, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(resourcePath));
@@ -587,7 +593,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void registerNegativeQuery(Module module, String resourceName) {
-            declareResourceAsRegistered(module, resourceName, resourceName);
+            declareResourceAsRegistered(module, resourceName, "-");
             Resources.singleton().registerNegativeQuery(module, resourceName);
         }
     }
