@@ -1318,7 +1318,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                 /*
                  * This is part of the exception dispatch path so there is no actual unresolved
                  * bytecode so we can't use a precise frame state deopt. In the case where the
-                 * speculation fails mayConvertToGuard will still be set of false to keep the deopt
+                 * speculation fails mayConvertToGuard will still be set to false to keep the deopt
                  * point lower in the graph.
                  */
                 speculation = mayUseSpeculation(dispatchBlock.deoptBci, UNRESOLVED_CATCH_TYPE, dispatchBlock.handlerID);
