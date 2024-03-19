@@ -1079,6 +1079,9 @@ public abstract class NFATraversalRegexASTVisitor {
                 boolean keptAliveByCaptureGroups = false;
                 // Search for the last enterZeroWidth guard of the same group.
                 QuantifierGuardsLinkedList curGuard = quantifierGuards;
+                if (curGuard != null && curGuard.getGuard().equals(guard)) {
+                    return;
+                }
                 while (curGuard != null && (!(curGuard.getGuard().getKind() == QuantifierGuard.Kind.enterZeroWidth &&
                                 curGuard.getGuard().getQuantifier().getZeroWidthIndex() == guard.getQuantifier().getZeroWidthIndex()))) {
                     if (ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() && curGuard.getGuard().getKind() == QuantifierGuard.Kind.updateCG) {

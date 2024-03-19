@@ -69,11 +69,6 @@ unzip -d dat dat/ucd.nounihan.flat.zip
 
 rm -r ./dat
 
-pushd casefolding
-cargo build --release && ./target/release/tregex-casefolding
-rm -r ./tmp
-popd
-
 mx build
 mx java -cp `mx paths regex:TREGEX`:`mx paths truffle:TRUFFLE_API`:`mx paths sdk:COLLECTIONS` com.oracle.truffle.regex.charset.UnicodeGeneralCategoriesGenerator > ../src/com/oracle/truffle/regex/charset/UnicodeGeneralCategories.java
 
