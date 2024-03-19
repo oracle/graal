@@ -198,11 +198,9 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     static final class ThrowOperation {
         @Specialization
         public static Object perform(long value,
-                        // TODO passing the actual bci breaks compiler tests because of how we
-                        // instantiate a location node from the bci
-                        @SuppressWarnings("unused") @Bind("$location") BytecodeLocation bci,
-                        @Bind("$root") Node node) {
-            throw new TestException("fail", node, -1, value);
+                        @Bind("$root") Node node,
+                        @Bind("$bci") int bci) {
+            throw new TestException("fail", node, bci, value);
         }
     }
 
@@ -305,6 +303,14 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
 
         protected static boolean callTargetMatches(CallTarget left, CallTarget right) {
             return left == right;
+        }
+    }
+
+    @Operation
+    public static final class MaterializeFrame {
+        @Specialization
+        public static MaterializedFrame materialize(VirtualFrame frame) {
+            return frame.materialize();
         }
     }
 
