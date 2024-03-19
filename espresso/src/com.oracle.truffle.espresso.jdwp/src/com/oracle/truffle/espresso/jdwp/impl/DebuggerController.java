@@ -362,39 +362,23 @@ public final class DebuggerController implements ContextsListener {
         return visibleThreads.toArray(new Object[visibleThreads.size()]);
     }
 
-    void forceResumeAll(boolean sessionClosed) {
+    void forceResumeAll() {
         for (Object thread : getVisibleGuestThreads()) {
             boolean resumed = false;
             SimpleLock suspendLock = getSuspendLock(thread);
             synchronized (suspendLock) {
                 while (!resumed) {
-                    resumed = resume(thread, sessionClosed);
+                    resumed = resume(thread, true);
                 }
             }
         }
     }
 
-    public void resumeAll(boolean sessionClosed) {
-        Object eventThread = null;
-
-        // The order of which to resume threads is not specified, however when RESUME_ALL command is
-        // sent while performing a stepping request, some debuggers (IntelliJ is a known case) will
-        // expect all other threads but the current stepping thread to be resumed first.
+    public void resumeAll() {
         for (Object thread : getVisibleGuestThreads()) {
             SimpleLock suspendLock = getSuspendLock(thread);
             synchronized (suspendLock) {
-                if (isStepping(thread)) {
-                    eventThread = thread;
-                    break;
-                } else {
-                    resume(thread, sessionClosed);
-                }
-            }
-        }
-        if (eventThread != null) {
-            SimpleLock suspendLock = getSuspendLock(eventThread);
-            synchronized (suspendLock) {
-                resume(eventThread, sessionClosed);
+                resume(thread, false);
             }
         }
     }

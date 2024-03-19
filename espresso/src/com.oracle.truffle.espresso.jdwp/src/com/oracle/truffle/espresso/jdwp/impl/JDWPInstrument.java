@@ -104,7 +104,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         controller.endSession();
 
         // resume all threads
-        controller.forceResumeAll(true);
+        controller.forceResumeAll();
 
         if (prepareForReconnect) {
             // replace the controller instance
