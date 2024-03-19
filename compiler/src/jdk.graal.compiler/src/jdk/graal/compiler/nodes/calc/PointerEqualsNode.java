@@ -28,6 +28,8 @@ import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -47,12 +49,14 @@ import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.TriState;
+import jdk.vm.ci.services.Services;
 
 @NodeInfo(shortName = "==")
 public class PointerEqualsNode extends CompareNode implements Canonicalizable.BinaryCommutative<ValueNode> {
@@ -199,14 +203,66 @@ public class PointerEqualsNode extends CompareNode implements Canonicalizable.Bi
                 if (boxX.getBoxingKind() != boxY.getBoxingKind()) {
                     return LogicConstantNode.contradiction();
                 }
-                if (boxX.getValue().asConstant().equals(boxY.getValue().asConstant())) {
-                    return LogicConstantNode.tautology();
-                } else {
-                    return LogicConstantNode.contradiction();
+
+                /**
+                 * Just because two constants are boxed does not mean they both will be the same
+                 * object. Boxing in the JDK comes with object identity depending on the size of the
+                 * constants involved, thus use the primitive constants, box them manually and see
+                 * what the vm thinks.
+                 */
+                JavaConstant xConst = boxX.getValue().asJavaConstant();
+                JavaConstant yConst = boxY.getValue().asJavaConstant();
+
+                // non integer primitives are never cached
+                if (xConst.getJavaKind().isNumericInteger() && yConst.getJavaKind().isNumericInteger()) {
+
+                    /**
+                     * Ideally we would just want to ask the VM to perform the box and then compare
+                     * the constants but this may incur Java upcalls which are generally not
+                     * supported in libgraal as it can lead to deadlock and other problems due to
+                     * Java code running on threads the VM does not expect to.
+                     */
+                    long xL = xConst.asLong();
+                    long yL = yConst.asLong();
+
+                    assert xConst.getJavaKind() == yConst.getJavaKind() : Assertions.errorMessage("Kinds must match", xConst, yConst, boxX, boxY);
+
+                    // if x is cached and x==y then y must also be cached by induction
+                    if (isCached(xL, xConst.getJavaKind()) && xL == yL) {
+                        return LogicConstantNode.tautology();
+                    } else {
+                        return LogicConstantNode.contradiction();
+                    }
                 }
             }
         }
         return null;
+    }
+
+    @SuppressWarnings("fallthrough")
+    private static boolean isCached(long l, JavaKind kind) {
+        switch (kind) {
+            case Boolean:
+            case Byte:
+                return true;
+            case Short:
+                return l >= -128 && l <= 127;
+            case Char:
+                assert l >= 0 : Assertions.errorMessage("Char constant must not be negative", l, kind);
+                return l <= 127;
+            case Int:
+                long low = -128;
+                String arg = Services.getSavedProperty("java.lang.Integer.IntegerCache.high");
+                long high = arg == null ? 127 : Integer.parseInt(arg);
+                return l >= low && l <= high;
+            case Long:
+                return l >= -128 && l <= 127;
+            case Float:
+            case Double:
+                throw GraalError.shouldNotReachHere("Unexpected value: " + kind + " that is not a numeric integer");
+            default:
+                throw GraalError.shouldNotReachHere("Unexpected value: " + kind);
+        }
     }
 
     private static LogicNode nullSynonym(ValueNode nonNullValue, ValueNode nullValue) {
