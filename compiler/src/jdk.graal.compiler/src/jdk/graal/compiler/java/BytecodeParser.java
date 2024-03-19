@@ -2934,8 +2934,13 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         monitorEnter.setStateAfter(createFrameState(bci, monitorEnter));
     }
 
-    protected void genMonitorExit(ValueNode x, ValueNode escapedValue, int bci) {
-        if (frameState.lockDepth(false) == 0) {
+    protected void genMonitorExit(ValueNode x, ValueNode escapedValue, int bci, boolean epilogue) {
+        // If a bytecode attempts to pop the last lock in a synchronized method then this method
+        // doesn't having properly matching locks so we should bailout. Normally this is detected by
+        // the final exit underflowing the lock stack but there is no guarantee that the exit is
+        // ever parsed so we should bailout here instead.
+        int expectedDepth = frameState.getMethod().isSynchronized() && !epilogue ? 1 : 0;
+        if (frameState.lockDepth(false) == expectedDepth) {
             throw bailout("unbalanced monitors: too many exits");
         }
         MonitorIdNode monitorId = frameState.peekMonitorId();
@@ -3431,7 +3436,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                     // push the return value on the stack
                     frameState.push(currentReturnValueKind, currentReturnValue);
                 }
-                genMonitorExit(methodSynchronizedObject, currentReturnValue, bci);
+                genMonitorExit(methodSynchronizedObject, currentReturnValue, bci, true);
                 assert !frameState.rethrowException();
             }
             if (frameState.lockDepth(false) != 0) {
@@ -5582,7 +5587,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             case CHECKCAST      : genCheckCast(stream.readCPI()); break;
             case INSTANCEOF     : genInstanceOf(stream.readCPI()); break;
             case MONITORENTER   : genMonitorEnter(frameState.pop(JavaKind.Object), stream.nextBCI()); break;
-            case MONITOREXIT    : genMonitorExit(frameState.pop(JavaKind.Object), null, stream.nextBCI()); break;
+            case MONITOREXIT    : genMonitorExit(frameState.pop(JavaKind.Object), null, stream.nextBCI(), false); break;
             case MULTIANEWARRAY : genNewMultiArray(stream.readCPI()); break;
             case IFNULL         : genIfNull(Condition.EQ); break;
             case IFNONNULL      : genIfNull(Condition.NE); break;
