@@ -7964,7 +7964,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("sp += 1");
                         break;
                     case LOAD_LOCAL_MATERIALIZED:
-                        String materializedFrame = "((VirtualFrame) " + getFrameObject("sp - 2)");
+                        String materializedFrame = "((VirtualFrame) " + getFrameObject("sp - 1)");
                         if (instr.isQuickening() || tier.isUncached() || !model.usesBoxingElimination()) {
                             b.startStatement();
                             b.startCall(lookupDoLoadLocal(instr).getSimpleName().toString());
@@ -9005,7 +9005,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             b.startStatement();
-            startSetFrame(b, inputType).string(needsStackFrame ? "stackFrame" : "frame").string("sp");
+            startSetFrame(b, inputType).string(needsStackFrame ? "stackFrame" : "frame");
+            if (instr.kind == InstructionKind.LOAD_LOCAL_MATERIALIZED) {
+                b.string("sp - 1"); // overwrite the materialized frame
+            } else {
+                b.string("sp");
+            }
             if (generic) {
                 startRequireFrame(b, slotType).string("frame").tree(readSlot).end();
             } else {
@@ -9125,7 +9130,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             emitQuickening(b, "$this", "bc", "bci", null, "newInstruction");
             b.startStatement();
-            startSetFrame(b, type(Object.class)).string(stackFrame).string("sp").string("value").end();
+            startSetFrame(b, type(Object.class)).string(stackFrame);
+            if (instr.kind == InstructionKind.LOAD_LOCAL_MATERIALIZED) {
+                b.string("sp - 1"); // overwrite the materialized frame
+            } else {
+                b.string("sp");
+            }
+            b.string("value").end();
             b.end();
 
             doInstructionMethods.put(instr, method);

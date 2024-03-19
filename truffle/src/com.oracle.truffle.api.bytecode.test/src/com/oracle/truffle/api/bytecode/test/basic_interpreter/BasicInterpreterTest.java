@@ -511,6 +511,50 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testMaterializedFrameAccesses() {
+        // x = 41
+        // f = materialize()
+        // f.x = f.x + 1
+        // return x
+
+        RootCallTarget root = parse("materializedFrameAccesses", b -> {
+            b.beginRoot(LANGUAGE);
+
+            BytecodeLocal x = b.createLocal();
+            BytecodeLocal f = b.createLocal();
+
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(41L);
+            b.endStoreLocal();
+
+            b.beginStoreLocal(f);
+            b.emitMaterializeFrame();
+            b.endStoreLocal();
+
+            b.beginStoreLocalMaterialized(x);
+
+            b.emitLoadLocal(f);
+
+            b.beginAddOperation();
+            b.beginLoadLocalMaterialized(x);
+            b.emitLoadLocal(f);
+            b.endLoadLocalMaterialized();
+            b.emitLoadConstant(1L);
+            b.endAddOperation();
+
+            b.endStoreLocalMaterialized();
+
+            b.beginReturn();
+            b.emitLoadLocal(x);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals(42L, root.call());
+    }
+
+    @Test
     @Ignore
     public void testLocalsNonlocalRead() {
         // todo this test fails when boxing elimination is enabled
