@@ -86,7 +86,7 @@ public final class Argument {
     }
 
     public int getInteger() {
-        if (getKind() != ArgumentType.CONSTANT) {
+        if (getKind() != ArgumentType.INTEGER) {
             throw new UnsupportedOperationException(String.format("Not supported for argument type %s.", getKind()));
         }
         return (short) data[2];

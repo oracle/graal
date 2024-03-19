@@ -3424,29 +3424,20 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return switch (operation.kind) {
                 case STORE_LOCAL, STORE_LOCAL_MATERIALIZED -> {
                     if (model.usesBoxingElimination()) {
-
                         yield createOperationData("StoreLocalData", "(BytecodeLocalImpl)" + operation.getOperationArgumentName(0), UNINIT);
-                    } else
-
-                    {
+                    } else {
                         yield CodeTreeBuilder.singleString(operation.getOperationArgumentName(0));
                     }
                 }
-                case LOAD_LOCAL_MATERIALIZED ->
-
-                {
+                case LOAD_LOCAL_MATERIALIZED -> {
                     yield CodeTreeBuilder.singleString(operation.getOperationArgumentName(0));
                 }
                 case IF_THEN -> createOperationData("IfThenData", UNINIT, "this.reachable");
                 case IF_THEN_ELSE -> createOperationData("IfThenElseData", UNINIT, UNINIT, "this.reachable", "this.reachable");
                 case CONDITIONAL -> {
                     if (model.usesBoxingElimination()) {
-
                         yield createOperationData("ConditionalData", UNINIT, UNINIT, "this.reachable", "this.reachable", UNINIT, UNINIT);
-                    } else
-
-                    {
-
+                    } else {
                         yield createOperationData("ConditionalData", UNINIT, UNINIT, "this.reachable", "this.reachable");
                     }
                 }
@@ -4155,12 +4146,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.end();
                     // Mark the branch target as uninitialized. Add this location to a work list to
                     // be processed once the label is defined.
+
+                    b.startIf().string("this.reachable").end().startBlock();
                     b.startStatement().startCall("registerUnresolvedLabel");
                     b.string("labelImpl");
                     b.string("bci + 1");
                     b.string("currentStackHeight");
                     b.end(2);
                     b.newLine();
+                    b.end();
 
                     // Branches inside finally handlers can only be relative to the handler,
                     // otherwise a finally handler emitted before a "return" could branch out of the
@@ -4171,8 +4165,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     emitThrowIllegalStateException(b, "\"Branches inside finally handlers can only target labels defined in the same handler.\"");
                     b.end();
 
+                    b.startIf().string("this.reachable").end().startBlock();
                     b.lineComment("We need to track branch targets inside finally handlers so that they can be adjusted each time the handler is emitted.");
                     b.statement("finallyTryContext.finallyRelativeBranches.add(bci + 1)");
+                    b.end();
 
                     b.end();
                     yield new String[]{UNINIT};

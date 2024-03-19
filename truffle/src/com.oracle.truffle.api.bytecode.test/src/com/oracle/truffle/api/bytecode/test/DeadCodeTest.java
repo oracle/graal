@@ -41,12 +41,14 @@
 package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.AbstractBytecodeTruffleException;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
@@ -560,6 +562,73 @@ public class DeadCodeTest extends AbstractInstructionTest {
         assertInstructions(node,
                         "load.constant",
                         "return");
+    }
+
+    @Test
+    public void testUnreachableBranchIsNotPatched() {
+        /**
+         * This is a regression test for a branch fix-up bug. The branch instruction below is dead,
+         * but its location was included in the list of "fix up" locations. When the label was
+         * emitted, we would "fix up" that location, overwriting the load_argument (from the
+         * exception handler) that happened to be at that location.
+         *
+         * @formatter:off
+         * try {
+         *   return throw();
+         *   branch lbl;  // dead
+         * } finally {
+         *   load_argument(0);
+         * }
+         * lbl:
+         * @formatter:on
+         */
+        DeadCodeTestRootNode node = (DeadCodeTestRootNode) parse(b -> {
+            b.beginRoot(LANGUAGE);
+            b.beginBlock();
+
+            BytecodeLabel lbl = b.createLabel();
+            b.beginFinallyTry(b.createLocal());
+
+            b.emitLoadArgument(0); // finally
+
+            b.beginBlock(); // begin try
+
+            b.beginReturn();
+            b.emitThrow();
+            b.endReturn();
+
+            b.emitBranch(lbl);
+
+            b.endBlock(); // end try
+
+            b.endFinallyTry();
+
+            b.emitLabel(lbl);
+
+            b.endBlock();
+            b.endRoot();
+        }).getRootNode();
+
+        assertInstructions(node,
+                        "c.Throw",
+                        "load.argument",
+                        "pop",
+                        "return",
+                        "load.argument",
+                        "pop",
+                        "throw",
+                        "trap");
+        node.getIntrospectionData().getInstructions().stream() //
+                        .filter(insn -> insn.getName().equals("load.argument")) //
+                        .forEach(insn -> assertEquals(0, insn.getArgumentValues().get(0).getInteger()));
+        try {
+            node.getCallTarget().call(42);
+            fail("exception expected");
+        } catch (TestException ex) {
+            // pass
+        } catch (Exception ex) {
+            fail("Wrong exception encountered: " + ex.getMessage());
+        }
     }
 
     private static void emitUnreachableCode(Builder b) {
