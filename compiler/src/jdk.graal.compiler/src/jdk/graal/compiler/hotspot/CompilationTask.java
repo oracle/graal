@@ -250,7 +250,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                     HotSpotCompilationRequest request,
                     boolean useProfilingInfo,
                     boolean installAsDefault) {
-        this(jvmciRuntime, compiler, request, useProfilingInfo, false, false, installAsDefault);
+        this(jvmciRuntime, compiler, request, useProfilingInfo, false, false, false, installAsDefault);
     }
 
     public CompilationTask(HotSpotJVMCIRuntime jvmciRuntime,

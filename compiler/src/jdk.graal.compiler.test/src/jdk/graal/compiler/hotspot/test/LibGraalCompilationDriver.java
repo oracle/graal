@@ -564,7 +564,7 @@ public class LibGraalCompilationDriver {
      */
     protected CompilationTask createCompilationTask(HotSpotJVMCIRuntime runtime, HotSpotGraalCompiler graalCompiler,
                     HotSpotCompilationRequest request, boolean useProfilingInfo, boolean installAsDefault) {
-        return new CompilationTask(runtime, graalCompiler, request, useProfilingInfo, false, eagerResolving, installAsDefault);
+        return new CompilationTask(runtime, graalCompiler, request, useProfilingInfo, false, false, eagerResolving, installAsDefault);
     }
 
     /**
