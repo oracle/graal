@@ -465,10 +465,6 @@ public final class DebuggerController implements ContextsListener {
         return getContext().getThreadName(thread);
     }
 
-    private boolean isStepping(Object thread) {
-        return commandRequestIds.get(thread) != null;
-    }
-
     public void disposeDebugger(boolean prepareReconnect) {
         if (!prepareReconnect) {
             // OK, we're closing down the context which is equivalent
