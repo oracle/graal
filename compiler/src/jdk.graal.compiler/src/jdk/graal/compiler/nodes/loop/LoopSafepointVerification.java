@@ -165,6 +165,12 @@ public class LoopSafepointVerification {
                     long lb1IdBeforeDeletion = lb1.getIdBeforeDeletion();
                     return lb1IdBeforeDeletion == cloneFromIdLb2;
                 } else {
+                    if (lb1.getId() == cloneFromIdLb2) {
+                        /*
+                         * lb2 was cloned from lb1 - ensure they match
+                         */
+                        return true;
+                    }
                     /*
                      * Both loops are alive and either one of them (or both) have been cloned from
                      * another loop. Assure they are cloned from the same one.
