@@ -26,6 +26,7 @@ package jdk.graal.compiler.util.json;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,9 +34,11 @@ import org.graalvm.collections.EconomicMap;
 
 public class JSONParser {
 
-    private final String source;
-    private final int length;
+    private final Reader source;
     private int pos = 0;
+    private int line = 0;
+    private int beginningOfLine = 0;
+    private int next;
 
     private static final int EOF = -1;
 
@@ -47,20 +50,31 @@ public class JSONParser {
     private static final int STATE_ELEMENT_PARSED = 1;
     private static final int STATE_COMMA_PARSED = 2;
 
-    public JSONParser(String source) {
-        this.source = source;
-        this.length = source.length();
+    public JSONParser(String source) throws IOException {
+        this(new StringReader(source));
     }
 
     public JSONParser(Reader source) throws IOException {
-        this(readFully(source));
+        this.source = source;
+        next = source.read();
     }
 
     /**
      * @return retrieves the length of the source (e.g. file) received by the JSON parser.
      */
     public int getSourceLength() {
-        return length;
+        try {
+            source.reset();
+            int length = 0;
+            while (next() != -1) {
+                length++;
+            }
+            source.reset();
+            source.skip(pos);
+            return length;
+        } catch (IOException e) {
+            throw new RuntimeException("Could not compute size of source", e);
+        }
     }
 
     /**
@@ -68,10 +82,10 @@ public class JSONParser {
      *
      * @return the parsed JSON Object
      */
-    public Object parse() {
+    public Object parse() throws IOException {
         final Object value = parseLiteral();
         skipWhiteSpace();
-        if (pos < length) {
+        if (next != -1) {
             throw expectedError(pos, "eof", toString(peek()));
         }
         return value;
@@ -86,10 +100,10 @@ public class JSONParser {
      * @param allowedKeys the list of allowed keys
      * @return the parsed JSON map containing only values for (not necessarily all) allowed keys
      */
-    public EconomicMap<String, Object> parseAllowedKeys(List<String> allowedKeys) {
+    public EconomicMap<String, Object> parseAllowedKeys(List<String> allowedKeys) throws IOException {
         EconomicMap<String, Object> result = EconomicMap.create();
         if (allowedKeys.isEmpty()) {
-            pos = length;
+            next = -1;
             return result;
         }
         skipWhiteSpace();
@@ -102,9 +116,9 @@ public class JSONParser {
         if (c != '{') {
             throw expectedError(pos, "{", toString(c));
         }
-        pos++;
+        next();
 
-        while (pos < length) {
+        while (next != -1) {
             skipWhiteSpace();
             c = peek();
 
@@ -120,7 +134,7 @@ public class JSONParser {
                         result.put(id, value);
                     }
                     if (result.size() == allowedKeys.size()) {
-                        pos = length;
+                        next = -1;
                         return result;
                     }
                     state = STATE_ELEMENT_PARSED;
@@ -130,13 +144,13 @@ public class JSONParser {
                         throw error("Trailing comma is not allowed in JSON", pos);
                     }
                     state = STATE_COMMA_PARSED;
-                    pos++;
+                    next();
                     break;
                 case '}':
                     if (state == STATE_COMMA_PARSED) {
                         throw error("Trailing comma is not allowed in JSON", pos);
                     }
-                    pos++;
+                    next();
                     return result;
                 default:
                     throw expectedError(pos, ", or }", toString(c));
@@ -152,12 +166,12 @@ public class JSONParser {
     }
 
     @SuppressWarnings("unchecked")
-    public static EconomicMap<String, Object> parseDict(String input) {
+    public static EconomicMap<String, Object> parseDict(String input) throws IOException {
         JSONParser parser = new JSONParser(input);
         return (EconomicMap<String, Object>) parser.parse();
     }
 
-    private Object parseLiteral() {
+    private Object parseLiteral() throws IOException {
         skipWhiteSpace();
 
         final int c = peek();
@@ -188,15 +202,15 @@ public class JSONParser {
         }
     }
 
-    private Object parseObject() {
+    private Object parseObject() throws IOException {
         EconomicMap<String, Object> result = EconomicMap.create();
         int state = STATE_EMPTY;
 
         int p = peek();
         assert p == '{' : "Must be } but was " + p;
-        pos++;
+        next();
 
-        while (pos < length) {
+        while (next != -1) {
             skipWhiteSpace();
             final int c = peek();
 
@@ -217,13 +231,13 @@ public class JSONParser {
                         throw error("Trailing comma is not allowed in JSON", pos);
                     }
                     state = STATE_COMMA_PARSED;
-                    pos++;
+                    next();
                     break;
                 case '}':
                     if (state == STATE_COMMA_PARSED) {
                         throw error("Trailing comma is not allowed in JSON", pos);
                     }
-                    pos++;
+                    next();
                     return result;
                 default:
                     throw expectedError(pos, ", or }", toString(c));
@@ -232,7 +246,7 @@ public class JSONParser {
         throw expectedError(pos, ", or }", "eof");
     }
 
-    private void expectColon() {
+    private void expectColon() throws IOException {
         skipWhiteSpace();
         final int n = next();
         if (n != ':') {
@@ -240,15 +254,15 @@ public class JSONParser {
         }
     }
 
-    private Object parseArray() {
+    private Object parseArray() throws IOException {
         List<Object> result = new ArrayList<>();
         int state = STATE_EMPTY;
 
         int p = peek();
         assert p == '[' : "Must be [ but was " + p;
-        pos++;
+        next();
 
-        while (pos < length) {
+        while (next != -1) {
             skipWhiteSpace();
             final int c = peek();
 
@@ -258,13 +272,13 @@ public class JSONParser {
                         throw error("Trailing comma is not allowed in JSON", pos);
                     }
                     state = STATE_COMMA_PARSED;
-                    pos++;
+                    next();
                     break;
                 case ']':
                     if (state == STATE_COMMA_PARSED) {
                         throw error("Trailing comma is not allowed in JSON", pos);
                     }
-                    pos++;
+                    next();
                     return result;
                 default:
                     if (state == STATE_ELEMENT_PARSED) {
@@ -279,68 +293,50 @@ public class JSONParser {
         throw expectedError(pos, ", or ]", "eof");
     }
 
-    private String parseString() {
+    private String parseString() throws IOException {
         // String buffer is only instantiated if string contains escape sequences.
-        int start = ++pos;
-        StringBuilder sb = null;
+        next();
+        StringBuilder sb = new StringBuilder();
 
-        while (pos < length) {
+        while (next != -1) {
             final int c = next();
             if (c <= 0x1f) {
                 // Characters < 0x1f are not allowed in JSON strings.
                 throw syntaxError(pos, "String contains control character");
 
             } else if (c == '\\') {
-                if (sb == null) {
-                    sb = new StringBuilder(pos - start + 16);
-                }
-                sb.append(source, start, pos - 1);
                 sb.append(parseEscapeSequence());
-                start = pos;
-
             } else if (c == '"') {
-                if (sb != null) {
-                    sb.append(source, start, pos - 1);
-                    return sb.toString();
-                }
-                return source.substring(start, pos - 1);
+                return sb.toString();
+            } else {
+                sb.append((char) c);
             }
         }
 
         throw error("Missing close quote", pos);
     }
 
-    private char parseEscapeSequence() {
+    private char parseEscapeSequence() throws IOException {
         final int c = next();
-        switch (c) {
-            case '"':
-                return '"';
-            case '\\':
-                return '\\';
-            case '/':
-                return '/';
-            case 'b':
-                return '\b';
-            case 'f':
-                return '\f';
-            case 'n':
-                return '\n';
-            case 'r':
-                return '\r';
-            case 't':
-                return '\t';
-            case 'u':
-                return parseUnicodeEscape();
-            default:
-                throw error("Invalid escape character", pos - 1);
-        }
+        return switch (c) {
+            case '"' -> '"';
+            case '\\' -> '\\';
+            case '/' -> '/';
+            case 'b' -> '\b';
+            case 'f' -> '\f';
+            case 'n' -> '\n';
+            case 'r' -> '\r';
+            case 't' -> '\t';
+            case 'u' -> parseUnicodeEscape();
+            default -> throw error("Invalid escape character", pos - 1);
+        };
     }
 
-    private char parseUnicodeEscape() {
+    private char parseUnicodeEscape() throws IOException {
         return (char) (parseHexDigit() << 12 | parseHexDigit() << 8 | parseHexDigit() << 4 | parseHexDigit());
     }
 
-    private int parseHexDigit() {
+    private int parseHexDigit() throws IOException {
         final int c = next();
         if (c >= '0' && c <= '9') {
             return c - '0';
@@ -356,57 +352,67 @@ public class JSONParser {
         return c >= '0' && c <= '9';
     }
 
-    private void skipDigits() {
-        while (pos < length) {
+    private void skipDigits(StringBuilder sb) throws IOException {
+        while (next != -1) {
             final int c = peek();
             if (!isDigit(c)) {
                 break;
             }
-            pos++;
+            next();
+            sb.append((char) c);
         }
     }
 
-    private Number parseNumber() {
+    private Number parseNumber() throws IOException {
         boolean isFloating = false;
         final int start = pos;
+        StringBuilder sb = new StringBuilder();
         int c = next();
+        sb.append((char) c);
 
         if (c == '-') {
             c = next();
+            sb.append((char) c);
         }
         if (!isDigit(c)) {
             throw numberError(start);
         }
         // no more digits allowed after 0
         if (c != '0') {
-            skipDigits();
+            skipDigits(sb);
         }
 
         // fraction
         if (peek() == '.') {
             isFloating = true;
-            pos++;
-            if (!isDigit(next())) {
+            int ch = next();
+            sb.append((char) ch);
+            ch = next();
+            sb.append((char) ch);
+            if (!isDigit(ch)) {
                 throw numberError(pos - 1);
             }
-            skipDigits();
+            skipDigits(sb);
         }
 
         // exponent
         c = peek();
         if (c == 'e' || c == 'E') {
-            pos++;
+            next();
+            sb.append((char) c);
             c = next();
+            sb.append((char) c);
             if (c == '-' || c == '+') {
                 c = next();
+                sb.append((char) c);
             }
             if (!isDigit(c)) {
                 throw numberError(pos - 1);
             }
-            skipDigits();
+            skipDigits(sb);
         }
 
-        String literalValue = source.substring(start, pos);
+        String literalValue = sb.toString();
         if (isFloating) {
             return Double.parseDouble(literalValue);
         } else {
@@ -419,35 +425,50 @@ public class JSONParser {
         }
     }
 
-    private Object parseKeyword(final String keyword, final Object value) {
-        if (!source.regionMatches(pos, keyword, 0, keyword.length())) {
+    private Object parseKeyword(final String keyword, final Object value) throws IOException {
+        if (!read(keyword.length()).equals(keyword)) {
             throw expectedError(pos, "json literal", "ident");
         }
-        pos += keyword.length();
         return value;
     }
 
     private int peek() {
-        if (pos >= length) {
-            return -1;
-        }
-        return source.charAt(pos);
-    }
-
-    private int next() {
-        final int next = peek();
-        pos++;
         return next;
     }
 
-    private void skipWhiteSpace() {
-        while (pos < length) {
+    private int next() throws IOException {
+        int cur = next;
+        next = source.read();
+        pos++;
+        return cur;
+    }
+
+    private String read(int length) throws IOException {
+        char[] buffer = new char[length];
+
+        buffer[0] = (char) peek();
+        source.read(buffer, 1, length - 1);
+        pos += length - 1;
+        next();
+
+        return String.valueOf(buffer);
+    }
+
+    private void skipWhiteSpace() throws IOException {
+        while (next != -1) {
             switch (peek()) {
-                case '\t':
-                case '\r':
                 case '\n':
+                    line++;
+                    beginningOfLine = pos + 1;
+                    next();
+                    break;
+                case '\r':
+                    beginningOfLine = pos + 1;
+                    next();
+                    break;
+                case '\t':
                 case ' ':
-                    pos++;
+                    next();
                     break;
                 default:
                     return;
@@ -459,67 +480,10 @@ public class JSONParser {
         return c == EOF ? "eof" : String.valueOf((char) c);
     }
 
-    private JSONParserException error(final String message, final int start) {
-        final int lineNum = getLine(start);
-        final int columnNum = getColumn(start);
-        final String formatted = format(message, lineNum, columnNum);
+    private JSONParserException error(final String message, final int position) {
+        final int columnNum = position - beginningOfLine;
+        final String formatted = format(message, line, columnNum);
         return new JSONParserException(formatted);
-    }
-
-    /**
-     * Return line number of character position.
-     *
-     * <p>
-     * This method can be expensive for large sources as it iterates through all characters up to
-     * {@code position}.
-     * </p>
-     *
-     * @param position Position of character in source content.
-     * @return Line number.
-     */
-    private int getLine(final int position) {
-        final CharSequence d = source;
-        // Line count starts at 1.
-        int line = 1;
-
-        for (int i = 0; i < position; i++) {
-            final char ch = d.charAt(i);
-            // Works for both \n and \r\n.
-            if (ch == '\n') {
-                line++;
-            }
-        }
-
-        return line;
-    }
-
-    /**
-     * Return column number of character position.
-     *
-     * @param position Position of character in source content.
-     * @return Column number.
-     */
-    private int getColumn(final int position) {
-        return position - findBOLN(position);
-    }
-
-    /**
-     * Find the beginning of the line containing position.
-     *
-     * @param position Index to offending token.
-     * @return Index of first character of line.
-     */
-    private int findBOLN(final int position) {
-        final CharSequence d = source;
-        for (int i = position - 1; i > 0; i--) {
-            final char ch = d.charAt(i);
-
-            if (ch == '\n' || ch == '\r') {
-                return i + 1;
-            }
-        }
-
-        return 0;
     }
 
     /**
@@ -544,25 +508,5 @@ public class JSONParser {
 
     private JSONParserException syntaxError(final int start, final String reason) {
         return error("Invalid JSON: " + reason, start);
-    }
-
-    /**
-     * Utility function to read all contents of a {@link Reader}, because the JSON parser does not
-     * support streaming yet.
-     */
-    private static String readFully(final Reader reader) throws IOException {
-        final char[] arr = new char[1024];
-        final StringBuilder sb = new StringBuilder();
-
-        try {
-            int numChars;
-            while ((numChars = reader.read(arr, 0, arr.length)) >= 0) {
-                sb.append(arr, 0, numChars);
-            }
-        } finally {
-            reader.close();
-        }
-
-        return sb.toString();
     }
 }
