@@ -396,10 +396,20 @@ public final class GraphOrder {
         // are only in the dead set (transitive)
         int computes = 0;
         boolean change = true;
+        NodeBitMap toProcess = graph.createNodeBitMap();
         while (change && (computes++ <= MAX_DEAD_NODE_SEARCHES)) {
+            toProcess.clearAll();
             change = false;
 
-            inner: for (Node n : graph.getNodes()) {
+            for (Node dead : deadNodes) {
+                for (Node input : dead.inputs()) {
+                    if (!deadNodes.contains(input)) {
+                        toProcess.mark(input);
+                    }
+                }
+            }
+
+            inner: for (Node n : toProcess) {
                 if (GraphUtil.isFloatingNode(n) && !isNeverDeadFloatingNode(n)) {
                     if (deadNodes.isMarked(n)) {
                         continue inner;
