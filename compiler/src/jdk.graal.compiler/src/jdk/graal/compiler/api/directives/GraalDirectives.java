@@ -161,6 +161,22 @@ public final class GraalDirectives {
     }
 
     /**
+     * A call to this method will force the compiler to assume from this position on that the given
+     * argument is a positive number.
+     */
+    public static int positivePi(int n) {
+        return n;
+    }
+
+    /**
+     * A call to this method will force the compiler to assume from this position on that the given
+     * argument is a positive number.
+     */
+    public static long positivePi(long n) {
+        return n;
+    }
+
+    /**
      * Injects a probability for the given condition into the profiling information of a branch
      * instruction. The probability must be a value between 0.0 and 1.0 (inclusive). This directive
      * should only be used for the condition of an if statement. The parameter condition should also
