@@ -46,9 +46,9 @@ import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.FullInfopointNode;
-import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.GraphState.GuardsStage;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
+import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.LoopExitNode;
 import jdk.graal.compiler.nodes.PhiNode;
@@ -57,6 +57,7 @@ import jdk.graal.compiler.nodes.StateSplit;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.ScheduleResult;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.VirtualState;
 import jdk.graal.compiler.nodes.VirtualState.NodePositionClosure;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.util.GraphUtil;
@@ -386,9 +387,7 @@ public final class GraphOrder {
             NodeFlood nf = graph.createNodeFlood();
             if (CanonicalizerPhase.isDeadLoopPhiCycle(phi, nf)) {
                 for (Node visitedNode : nf.getVisited()) {
-                    if (visitedNode.isAlive()) {
-                        deadNodes.mark(visitedNode);
-                    }
+                    deadNodes.mark(visitedNode);
                 }
             }
         }
@@ -419,7 +418,7 @@ public final class GraphOrder {
     }
 
     private static boolean isNeverDeadFloatingNode(Node n) {
-        return n instanceof GuardNode || n instanceof ProxyNode;
+        return n instanceof GuardNode || n instanceof ProxyNode || n instanceof VirtualState;
     }
 
     /*
