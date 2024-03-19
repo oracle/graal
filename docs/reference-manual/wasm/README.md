@@ -13,10 +13,10 @@ The support for WebAssembly is in the early stages of its development.
 
 ## Getting Started
 
-As of GraalVM for JDK 21, the GraalVM WebAssembly runtime (known as Wasm) is available as a standalone distribution. 
+The GraalVM WebAssembly runtime (known as Wasm) is available as a standalone distribution.
 You can download a standalone based on Oracle GraalVM or GraalVM Community Edition. 
 
-1. Download the Wasm 23.1 standalone for your operating system:
+1. Download the Wasm 24.0 standalone for your operating system:
    - Native standalone
       * [Linux x64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.0.0-linux-amd64.tar.gz)
       * [Linux AArch64](https://gds.oracle.com/download/wasm/archive/graalwasm-24.0.0-linux-aarch64.tar.gz)
