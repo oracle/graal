@@ -213,7 +213,7 @@ public final class JDWP {
                 controller.fine(() -> "Resume all packet");
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                controller.resumeAll(false);
+                controller.resumeAll();
                 return new CommandResult(reply);
             }
         }
