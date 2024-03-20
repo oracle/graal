@@ -147,51 +147,53 @@ Specifically, old object tracking is possible, but the path to the GC root infor
 
 ### Built-In Events
 Many of the VM-level built-in events found in OpenJDK are available in Native Image. Java-level events implemented by bytecode instrumentation in the Java HotSpot VM are not yet supported in Native Image. 
-Such events include file IO, exception, and network IO built-in events. Support for them is in progress. See the following table for a list of supported events.
+Such events include file IO and exception built-in events. Support for them is in progress. See the following table for a list of supported events.
 
-| Event Name                     | Since GraalVM Version |
-| ------------------------------ |-----------------------|
-| jdk.ActiveRecording            | 22.1                  |
-| jdk.ActiveSetting              | 22.1                  |
-| jdk.AllocationRequiringGC      | GraalVM for JDK 22    |
-| jdk.ClassLoadingStatistics     | 22.1                  |
-| jdk.ContainerCPUThrottling     | GraalVM for JDK 17    |
-| jdk.ContainerCPUUsage          | GraalVM for JDK 17    |
-| jdk.ContainerConfiguration     | GraalVM for JDK 17    |
-| jdk.ContainerIOUsage           | GraalVM for JDK 17    |
-| jdk.ContainerMemoryUsage       | GraalVM for JDK 17    |
-| jdk.DataLoss                   | 22.1                  |
-| jdk.ExecutionSample            | GraalVM for JDK 17    |
-| jdk.ExecuteVMOperation         | 22.2                  |
-| jdk.GarbageCollection          | 22.1                  |
-| jdk.GCHeapSummary              | GraalVM for JDK 21    |
-| jdk.GCPhasePause               | 22.1                  |
-| jdk.GCPhasePauseLevel1         | 22.1                  |
-| jdk.GCPhasePauseLevel2         | 22.1                  |
-| jdk.GCPhasePauseLevel3         | 22.1                  |
-| jdk.GCPhasePauseLevel4         | 22.1                  |
-| jdk.InitialEnvironmentVariable | 22.1                  |
-| jdk.InitialSystemProperty      | 22.1                  |
-| jdk.JavaMonitorEnter           | 22.3                  |
-| jdk.JavaMonitorInflate         | GraalVM for JDK 17    |
-| jdk.JavaMonitorWait            | 22.3                  |
-| jdk.JavaThreadStatistics       | 22.1                  |
-| jdk.JVMInformation             | 22.1                  |
-| jdk.ObjectAllocationInNewTLAB  | GraalVM for JDK 17    |
-| jdk.OSInformation              | 22.1                  |
-| jdk.PhysicalMemory             | 22.1                  |
-| jdk.SafepointBegin             | 22.1                  |
-| jdk.SafepointEnd               | 22.1                  |
-| jdk.SystemGC                   | GraalVM for JDK 22    |
-| jdk.ThreadAllocationStatistics | GraalVM for JDK 22    |
-| jdk.ThreadCPULoad              | GraalVM for JDK 21    |
-| jdk.ThreadEnd                  | 22.1                  |
-| jdk.ThreadPark                 | GraalVM for JDK 17    |
-| jdk.ThreadSleep                | 22.3                  |
-| jdk.ThreadStart                | 22.1                  |
-| jdk.VirtualThreadEnd           | GraalVM for JDK 21    |
-| jdk.VirtualThreadPinned        | GraalVM for JDK 21    |
-| jdk.VirtualThreadStart         | GraalVM for JDK 21    |
+| Event Name                     |
+|--------------------------------|
+| jdk.ActiveRecording            |
+| jdk.ActiveSetting              |
+| jdk.AllocationRequiringGC      |
+| jdk.ClassLoadingStatistics     |
+| jdk.ContainerCPUThrottling     |
+| jdk.ContainerCPUUsage          |
+| jdk.ContainerConfiguration     |
+| jdk.ContainerIOUsage           |
+| jdk.ContainerMemoryUsage       |
+| jdk.DataLoss                   |
+| jdk.ExecutionSample            |
+| jdk.ExecuteVMOperation         |
+| jdk.GarbageCollection          |
+| jdk.GCHeapSummary              |
+| jdk.GCPhasePause               |
+| jdk.GCPhasePauseLevel1         |
+| jdk.GCPhasePauseLevel2         |
+| jdk.GCPhasePauseLevel3         |
+| jdk.GCPhasePauseLevel4         |
+| jdk.InitialEnvironmentVariable |
+| jdk.InitialSystemProperty      |
+| jdk.JavaMonitorEnter           |
+| jdk.JavaMonitorInflate         |
+| jdk.JavaMonitorWait            |
+| jdk.JavaThreadStatistics       |
+| jdk.JVMInformation             |
+| jdk.ObjectAllocationInNewTLAB  |
+| jdk.OSInformation              |
+| jdk.PhysicalMemory             |
+| jdk.SafepointBegin             |
+| jdk.SafepointEnd               |
+| jdk.SocketRead                 |
+| jdk.SocketWrite                |
+| jdk.SystemGC                   |
+| jdk.ThreadAllocationStatistics |
+| jdk.ThreadCPULoad              |
+| jdk.ThreadEnd                  |
+| jdk.ThreadPark                 |
+| jdk.ThreadSleep                |
+| jdk.ThreadStart                |
+| jdk.VirtualThreadEnd           |
+| jdk.VirtualThreadPinned        |
+| jdk.VirtualThreadStart         |
 
 Note: GraalVM's version naming scheme changed. Version 22.1 is older than 22.2, while 22.3 is older than GraalVM for JDK17.  Version 22.1 - 22.3 supported both JDK 11 and JDK 17.
 
