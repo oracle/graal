@@ -394,13 +394,13 @@ public class UninterruptibleUtils {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean compareAndSet(T expected, T update) {
-            return UNSAFE.compareAndSetObject(this, VALUE_OFFSET, expected, update);
+            return UNSAFE.compareAndSetReference(this, VALUE_OFFSET, expected, update);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         @SuppressWarnings("unchecked")
         public final T getAndSet(T newValue) {
-            return (T) UNSAFE.getAndSetObject(this, VALUE_OFFSET, newValue);
+            return (T) UNSAFE.getAndSetReference(this, VALUE_OFFSET, newValue);
         }
     }
 
