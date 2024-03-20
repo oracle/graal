@@ -43,6 +43,7 @@ package org.graalvm.wasm.api;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.ExactMath;
+import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import org.graalvm.wasm.constants.Bytecode;
 
@@ -50,20 +51,22 @@ import java.util.Arrays;
 
 public class Vector128Ops {
 
+    private static final ByteArraySupport byteArraySupport = ByteArraySupport.littleEndian();
+
     public static byte[] unary(byte[] x, int vectorOpcode) {
         return switch (vectorOpcode) {
             case Bytecode.VECTOR_V128_NOT -> v128_not(x);
             case Bytecode.VECTOR_I8X16_ABS, Bytecode.VECTOR_I8X16_NEG, Bytecode.VECTOR_I8X16_POPCNT -> i8x16_unop(x, vectorOpcode);
-            case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_S, Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_U, Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_S, Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_S,
-                            Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_U, Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_U ->
-                i16x8_extend_i8x16(x, vectorOpcode);
+            case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_S, Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_U -> i16x8_extadd_pairwise_i8x16(x, vectorOpcode);
+            case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_S, Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_U -> i16x8_extend_low_i8x16(x, vectorOpcode);
+            case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_S, Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_U -> i16x8_extend_high_i8x16(x, vectorOpcode);
             case Bytecode.VECTOR_I16X8_ABS, Bytecode.VECTOR_I16X8_NEG -> i16x8_unop(x, vectorOpcode);
-            case Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_S, Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_U, Bytecode.VECTOR_I32X4_EXTEND_LOW_I16X8_S, Bytecode.VECTOR_I32X4_EXTEND_HIGH_I16X8_S,
-                            Bytecode.VECTOR_I32X4_EXTEND_LOW_I16X8_U, Bytecode.VECTOR_I32X4_EXTEND_HIGH_I16X8_U ->
-                i32x4_extend_i16x8(x, vectorOpcode);
+            case Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_S, Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_U -> i32x4_extadd_pairwise_i16x8(x, vectorOpcode);
+            case Bytecode.VECTOR_I32X4_EXTEND_LOW_I16X8_S, Bytecode.VECTOR_I32X4_EXTEND_LOW_I16X8_U -> i32x4_extend_low_i16x8(x, vectorOpcode);
+            case Bytecode.VECTOR_I32X4_EXTEND_HIGH_I16X8_S, Bytecode.VECTOR_I32X4_EXTEND_HIGH_I16X8_U -> i32x4_extend_high_i16x8(x, vectorOpcode);
             case Bytecode.VECTOR_I32X4_ABS, Bytecode.VECTOR_I32X4_NEG -> i32x4_unop(x, vectorOpcode);
-            case Bytecode.VECTOR_I64X2_EXTEND_LOW_I32X4_S, Bytecode.VECTOR_I64X2_EXTEND_HIGH_I32X4_S, Bytecode.VECTOR_I64X2_EXTEND_LOW_I32X4_U, Bytecode.VECTOR_I64X2_EXTEND_HIGH_I32X4_U ->
-                i64x2_extend_i32x4(x, vectorOpcode);
+            case Bytecode.VECTOR_I64X2_EXTEND_LOW_I32X4_S, Bytecode.VECTOR_I64X2_EXTEND_LOW_I32X4_U -> i64x2_extend_low_i32x4(x, vectorOpcode);
+            case Bytecode.VECTOR_I64X2_EXTEND_HIGH_I32X4_S, Bytecode.VECTOR_I64X2_EXTEND_HIGH_I32X4_U -> i64x2_extend_high_i32x4(x, vectorOpcode);
             case Bytecode.VECTOR_I64X2_ABS, Bytecode.VECTOR_I64X2_NEG -> i64x2_unop(x, vectorOpcode);
             case Bytecode.VECTOR_F32X4_ABS, Bytecode.VECTOR_F32X4_NEG, Bytecode.VECTOR_F32X4_SQRT, Bytecode.VECTOR_F32X4_CEIL, Bytecode.VECTOR_F32X4_FLOOR, Bytecode.VECTOR_F32X4_TRUNC,
                             Bytecode.VECTOR_F32X4_NEAREST ->
@@ -110,17 +113,17 @@ public class Vector128Ops {
                             Bytecode.VECTOR_I16X8_SUB_SAT_S, Bytecode.VECTOR_I16X8_SUB_SAT_U, Bytecode.VECTOR_I16X8_MUL, Bytecode.VECTOR_I16X8_MIN_S, Bytecode.VECTOR_I16X8_MIN_U,
                             Bytecode.VECTOR_I16X8_MAX_S, Bytecode.VECTOR_I16X8_MAX_U, Bytecode.VECTOR_I16X8_AVGR_U ->
                 i16x8_binop(x, y, vectorOpcode);
-            case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_S, Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8X16_S, Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_U, Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8X16_U ->
-                i16x8_binop_extend_i8x16(x, y, vectorOpcode);
+            case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_S, Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_U -> i16x8_binop_extend_low_i8x16(x, y, vectorOpcode);
+            case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8X16_S, Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8X16_U -> i16x8_binop_extend_high_i8x16(x, y, vectorOpcode);
             case Bytecode.VECTOR_I32X4_ADD, Bytecode.VECTOR_I32X4_SUB, Bytecode.VECTOR_I32X4_MUL, Bytecode.VECTOR_I32X4_MIN_S, Bytecode.VECTOR_I32X4_MIN_U, Bytecode.VECTOR_I32X4_MAX_S,
                             Bytecode.VECTOR_I32X4_MAX_U ->
                 i32x4_binop(x, y, vectorOpcode);
-            case Bytecode.VECTOR_I32X4_DOT_I16X8_S, Bytecode.VECTOR_I32X4_EXTMUL_LOW_I16X8_S, Bytecode.VECTOR_I32X4_EXTMUL_HIGH_I16X8_S, Bytecode.VECTOR_I32X4_EXTMUL_LOW_I16X8_U,
-                            Bytecode.VECTOR_I32X4_EXTMUL_HIGH_I16X8_U ->
-                i32x4_binop_extend_i16x8(x, y, vectorOpcode);
+            case Bytecode.VECTOR_I32X4_DOT_I16X8_S -> i32x4_dot_i16x8_s(x, y);
+            case Bytecode.VECTOR_I32X4_EXTMUL_LOW_I16X8_S, Bytecode.VECTOR_I32X4_EXTMUL_LOW_I16X8_U -> i32x4_binop_extend_low_i16x8(x, y, vectorOpcode);
+            case Bytecode.VECTOR_I32X4_EXTMUL_HIGH_I16X8_S, Bytecode.VECTOR_I32X4_EXTMUL_HIGH_I16X8_U -> i32x4_binop_extend_high_i16x8(x, y, vectorOpcode);
             case Bytecode.VECTOR_I64X2_ADD, Bytecode.VECTOR_I64X2_SUB, Bytecode.VECTOR_I64X2_MUL -> i64x2_binop(x, y, vectorOpcode);
-            case Bytecode.VECTOR_I64X2_EXTMUL_LOW_I32X4_S, Bytecode.VECTOR_I64X2_EXTMUL_HIGH_I32X4_S, Bytecode.VECTOR_I64X2_EXTMUL_LOW_I32X4_U, Bytecode.VECTOR_I64X2_EXTMUL_HIGH_I32X4_U ->
-                i64x2_binop_extend_i32x4(x, y, vectorOpcode);
+            case Bytecode.VECTOR_I64X2_EXTMUL_LOW_I32X4_S, Bytecode.VECTOR_I64X2_EXTMUL_LOW_I32X4_U -> i64x2_binop_extend_low_i32x4(x, y, vectorOpcode);
+            case Bytecode.VECTOR_I64X2_EXTMUL_HIGH_I32X4_S, Bytecode.VECTOR_I64X2_EXTMUL_HIGH_I32X4_U -> i64x2_binop_extend_high_i32x4(x, y, vectorOpcode);
             case Bytecode.VECTOR_F32X4_ADD, Bytecode.VECTOR_F32X4_SUB, Bytecode.VECTOR_F32X4_MUL, Bytecode.VECTOR_F32X4_DIV, Bytecode.VECTOR_F32X4_MIN, Bytecode.VECTOR_F32X4_MAX,
                             Bytecode.VECTOR_F32X4_PMIN, Bytecode.VECTOR_F32X4_PMAX ->
                 f32x4_binop(x, y, vectorOpcode);
@@ -193,72 +196,58 @@ public class Vector128Ops {
     }
 
     public static int i16x8_extract_lane(byte[] vec, int laneIndex, int vectorOpcode) {
-        short[] shorts = Vector128.fromBytesToShorts(vec);
-        CompilerDirectives.ensureVirtualized(shorts);
+        short x = byteArraySupport.getShort(vec, laneIndex * 2);
         return switch (vectorOpcode) {
-            case Bytecode.VECTOR_I16X8_EXTRACT_LANE_S -> shorts[laneIndex];
-            case Bytecode.VECTOR_I16X8_EXTRACT_LANE_U -> Short.toUnsignedInt(shorts[laneIndex]);
+            case Bytecode.VECTOR_I16X8_EXTRACT_LANE_S -> x;
+            case Bytecode.VECTOR_I16X8_EXTRACT_LANE_U -> Short.toUnsignedInt(x);
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
     }
 
     public static byte[] i16x8_replace_lane(byte[] vec, int laneIndex, short value) {
-        short[] result = Vector128.fromBytesToShorts(vec);
-        CompilerDirectives.ensureVirtualized(result);
-        result[laneIndex] = value;
-        return Vector128.fromShortsToBytes(result);
+        byte[] result = Arrays.copyOf(vec, 16);
+        byteArraySupport.putShort(result, laneIndex * 2, value);
+        return result;
     }
 
     public static int i32x4_extract_lane(byte[] vec, int laneIndex) {
-        int[] ints = Vector128.fromBytesToInts(vec);
-        CompilerDirectives.ensureVirtualized(ints);
-        return ints[laneIndex];
+        return byteArraySupport.getInt(vec, laneIndex * 4);
     }
 
     public static byte[] i32x4_replace_lane(byte[] vec, int laneIndex, int value) {
-        int[] result = Vector128.fromBytesToInts(vec);
-        CompilerDirectives.ensureVirtualized(result);
-        result[laneIndex] = value;
-        return Vector128.fromIntsToBytes(result);
+        byte[] result = Arrays.copyOf(vec, 16);
+        byteArraySupport.putInt(result, laneIndex * 4, value);
+        return result;
     }
 
     public static long i64x2_extract_lane(byte[] vec, int laneIndex) {
-        long[] longs = Vector128.fromBytesToLongs(vec);
-        CompilerDirectives.ensureVirtualized(longs);
-        return longs[laneIndex];
+        return byteArraySupport.getLong(vec, laneIndex * 8);
     }
 
     public static byte[] i64x2_replace_lane(byte[] vec, int laneIndex, long value) {
-        long[] result = Vector128.fromBytesToLongs(vec);
-        CompilerDirectives.ensureVirtualized(result);
-        result[laneIndex] = value;
-        return Vector128.fromLongsToBytes(result);
+        byte[] result = Arrays.copyOf(vec, 16);
+        byteArraySupport.putLong(result, laneIndex * 8, value);
+        return result;
     }
 
     public static float f32x4_extract_lane(byte[] vec, int laneIndex) {
-        float[] floats = Vector128.fromBytesToFloats(vec);
-        CompilerDirectives.ensureVirtualized(floats);
-        return floats[laneIndex];
+        return byteArraySupport.getFloat(vec, laneIndex * 4);
     }
 
     public static byte[] f32x4_replace_lane(byte[] vec, int laneIndex, float value) {
-        float[] result = Vector128.fromBytesToFloats(vec);
-        CompilerDirectives.ensureVirtualized(result);
-        result[laneIndex] = value;
-        return Vector128.fromFloatsToBytes(result);
+        byte[] result = Arrays.copyOf(vec, 16);
+        byteArraySupport.putFloat(result, laneIndex * 4, value);
+        return result;
     }
 
     public static double f64x2_extract_lane(byte[] vec, int laneIndex) {
-        double[] doubles = Vector128.fromBytesToDoubles(vec);
-        CompilerDirectives.ensureVirtualized(doubles);
-        return doubles[laneIndex];
+        return byteArraySupport.getDouble(vec, laneIndex * 8);
     }
 
     public static byte[] f64x2_replace_lane(byte[] vec, int laneIndex, double value) {
-        double[] result = Vector128.fromBytesToDoubles(vec);
-        CompilerDirectives.ensureVirtualized(result);
-        result[laneIndex] = value;
-        return Vector128.fromDoublesToBytes(result);
+        byte[] result = Arrays.copyOf(vec, 16);
+        byteArraySupport.putDouble(result, laneIndex * 8, value);
+        return result;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
@@ -278,38 +267,43 @@ public class Vector128Ops {
     }
 
     public static byte[] i16x8_splat(short x) {
-        short[] result = new short[8];
-        CompilerDirectives.ensureVirtualized(result);
-        Arrays.fill(result, x);
-        return Vector128.fromShortsToBytes(result);
+        byte[] result = new byte[16];
+        for (int i = 0; i < 8; i++) {
+            byteArraySupport.putShort(result, i * 2, x);
+        }
+        return result;
     }
 
     public static byte[] i32x4_splat(int x) {
-        int[] result = new int[4];
-        CompilerDirectives.ensureVirtualized(result);
-        Arrays.fill(result, x);
-        return Vector128.fromIntsToBytes(result);
+        byte[] result = new byte[16];
+        for (int i = 0; i < 4; i++) {
+            byteArraySupport.putInt(result, i * 4, x);
+        }
+        return result;
     }
 
     public static byte[] i64x2_splat(long x) {
-        long[] result = new long[2];
-        CompilerDirectives.ensureVirtualized(result);
-        Arrays.fill(result, x);
-        return Vector128.fromLongsToBytes(result);
+        byte[] result = new byte[16];
+        for (int i = 0; i < 2; i++) {
+            byteArraySupport.putLong(result, i * 8, x);
+        }
+        return result;
     }
 
     public static byte[] f32x4_splat(float x) {
-        float[] result = new float[4];
-        CompilerDirectives.ensureVirtualized(result);
-        Arrays.fill(result, x);
-        return Vector128.fromFloatsToBytes(result);
+        byte[] result = new byte[16];
+        for (int i = 0; i < 4; i++) {
+            byteArraySupport.putFloat(result, i * 4, x);
+        }
+        return result;
     }
 
     public static byte[] f64x2_splat(double x) {
-        double[] result = new double[2];
-        CompilerDirectives.ensureVirtualized(result);
-        Arrays.fill(result, x);
-        return Vector128.fromDoublesToBytes(result);
+        byte[] result = new byte[16];
+        for (int i = 0; i < 2; i++) {
+            byteArraySupport.putDouble(result, i * 8, x);
+        }
+        return result;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
@@ -380,120 +374,110 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] i16x8_relop(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        short[] x = Vector128.fromBytesToShorts(vecX);
-        short[] y = Vector128.fromBytesToShorts(vecY);
-        short[] result = new short[8];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(y);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I16X8_EQ -> x[i] == y[i];
-                case Bytecode.VECTOR_I16X8_NE -> x[i] != y[i];
-                case Bytecode.VECTOR_I16X8_LT_S -> x[i] < y[i];
-                case Bytecode.VECTOR_I16X8_LT_U -> Short.compareUnsigned(x[i], y[i]) < 0;
-                case Bytecode.VECTOR_I16X8_GT_S -> x[i] > y[i];
-                case Bytecode.VECTOR_I16X8_GT_U -> Short.compareUnsigned(x[i], y[i]) > 0;
-                case Bytecode.VECTOR_I16X8_LE_S -> x[i] <= y[i];
-                case Bytecode.VECTOR_I16X8_LE_U -> Short.compareUnsigned(x[i], y[i]) <= 0;
-                case Bytecode.VECTOR_I16X8_GE_S -> x[i] >= y[i];
-                case Bytecode.VECTOR_I16X8_GE_U -> Short.compareUnsigned(x[i], y[i]) >= 0;
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 8; i++) {
+            short x = byteArraySupport.getShort(vecX, i * 2);
+            short y = byteArraySupport.getShort(vecY, i * 2);
+            short result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I16X8_EQ -> x == y;
+                case Bytecode.VECTOR_I16X8_NE -> x != y;
+                case Bytecode.VECTOR_I16X8_LT_S -> x < y;
+                case Bytecode.VECTOR_I16X8_LT_U -> Short.compareUnsigned(x, y) < 0;
+                case Bytecode.VECTOR_I16X8_GT_S -> x > y;
+                case Bytecode.VECTOR_I16X8_GT_U -> Short.compareUnsigned(x, y) > 0;
+                case Bytecode.VECTOR_I16X8_LE_S -> x <= y;
+                case Bytecode.VECTOR_I16X8_LE_U -> Short.compareUnsigned(x, y) <= 0;
+                case Bytecode.VECTOR_I16X8_GE_S -> x >= y;
+                case Bytecode.VECTOR_I16X8_GE_U -> Short.compareUnsigned(x, y) >= 0;
                 default -> throw CompilerDirectives.shouldNotReachHere();
             } ? (short) 0xffff : (short) 0x0000;
+            byteArraySupport.putShort(vecResult, i * 2, result);
         }
-        return Vector128.fromShortsToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] i32x4_relop(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        int[] x = Vector128.fromBytesToInts(vecX);
-        int[] y = Vector128.fromBytesToInts(vecY);
-        int[] result = new int[4];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(y);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I32X4_EQ -> x[i] == y[i];
-                case Bytecode.VECTOR_I32X4_NE -> x[i] != y[i];
-                case Bytecode.VECTOR_I32X4_LT_S -> x[i] < y[i];
-                case Bytecode.VECTOR_I32X4_LT_U -> Integer.compareUnsigned(x[i], y[i]) < 0;
-                case Bytecode.VECTOR_I32X4_GT_S -> x[i] > y[i];
-                case Bytecode.VECTOR_I32X4_GT_U -> Integer.compareUnsigned(x[i], y[i]) > 0;
-                case Bytecode.VECTOR_I32X4_LE_S -> x[i] <= y[i];
-                case Bytecode.VECTOR_I32X4_LE_U -> Integer.compareUnsigned(x[i], y[i]) <= 0;
-                case Bytecode.VECTOR_I32X4_GE_S -> x[i] >= y[i];
-                case Bytecode.VECTOR_I32X4_GE_U -> Integer.compareUnsigned(x[i], y[i]) >= 0;
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 4; i++) {
+            int x = byteArraySupport.getInt(vecX, i * 4);
+            int y = byteArraySupport.getInt(vecY, i * 4);
+            int result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I32X4_EQ -> x == y;
+                case Bytecode.VECTOR_I32X4_NE -> x != y;
+                case Bytecode.VECTOR_I32X4_LT_S -> x < y;
+                case Bytecode.VECTOR_I32X4_LT_U -> Integer.compareUnsigned(x, y) < 0;
+                case Bytecode.VECTOR_I32X4_GT_S -> x > y;
+                case Bytecode.VECTOR_I32X4_GT_U -> Integer.compareUnsigned(x, y) > 0;
+                case Bytecode.VECTOR_I32X4_LE_S -> x <= y;
+                case Bytecode.VECTOR_I32X4_LE_U -> Integer.compareUnsigned(x, y) <= 0;
+                case Bytecode.VECTOR_I32X4_GE_S -> x >= y;
+                case Bytecode.VECTOR_I32X4_GE_U -> Integer.compareUnsigned(x, y) >= 0;
                 default -> throw CompilerDirectives.shouldNotReachHere();
             } ? 0xffff_ffff : 0x0000_0000;
+            byteArraySupport.putInt(vecResult, i * 4, result);
         }
-        return Vector128.fromIntsToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] i64x2_relop(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        long[] x = Vector128.fromBytesToLongs(vecX);
-        long[] y = Vector128.fromBytesToLongs(vecY);
-        long[] result = new long[2];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(y);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I64X2_EQ -> x[i] == y[i];
-                case Bytecode.VECTOR_I64X2_NE -> x[i] != y[i];
-                case Bytecode.VECTOR_I64X2_LT_S -> x[i] < y[i];
-                case Bytecode.VECTOR_I64X2_GT_S -> x[i] > y[i];
-                case Bytecode.VECTOR_I64X2_LE_S -> x[i] <= y[i];
-                case Bytecode.VECTOR_I64X2_GE_S -> x[i] >= y[i];
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 2; i++) {
+            long x = byteArraySupport.getLong(vecX, i * 8);
+            long y = byteArraySupport.getLong(vecY, i * 8);
+            long result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I64X2_EQ -> x == y;
+                case Bytecode.VECTOR_I64X2_NE -> x != y;
+                case Bytecode.VECTOR_I64X2_LT_S -> x < y;
+                case Bytecode.VECTOR_I64X2_GT_S -> x > y;
+                case Bytecode.VECTOR_I64X2_LE_S -> x <= y;
+                case Bytecode.VECTOR_I64X2_GE_S -> x >= y;
                 default -> throw CompilerDirectives.shouldNotReachHere();
             } ? 0xffff_ffff_ffff_ffffL : 0x0000_0000_0000_0000l;
+            byteArraySupport.putLong(vecResult, i * 8, result);
         }
-        return Vector128.fromLongsToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] f32x4_relop(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        float[] x = Vector128.fromBytesToFloats(vecX);
-        float[] y = Vector128.fromBytesToFloats(vecY);
-        int[] result = new int[4];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(y);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_F32X4_EQ -> x[i] == y[i];
-                case Bytecode.VECTOR_F32X4_NE -> x[i] != y[i];
-                case Bytecode.VECTOR_F32X4_LT -> x[i] < y[i];
-                case Bytecode.VECTOR_F32X4_GT -> x[i] > y[i];
-                case Bytecode.VECTOR_F32X4_LE -> x[i] <= y[i];
-                case Bytecode.VECTOR_F32X4_GE -> x[i] >= y[i];
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 4; i++) {
+            float x = byteArraySupport.getFloat(vecX, i * 4);
+            float y = byteArraySupport.getFloat(vecY, i * 4);
+            int result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_F32X4_EQ -> x == y;
+                case Bytecode.VECTOR_F32X4_NE -> x != y;
+                case Bytecode.VECTOR_F32X4_LT -> x < y;
+                case Bytecode.VECTOR_F32X4_GT -> x > y;
+                case Bytecode.VECTOR_F32X4_LE -> x <= y;
+                case Bytecode.VECTOR_F32X4_GE -> x >= y;
                 default -> throw CompilerDirectives.shouldNotReachHere();
             } ? 0xffff_ffff : 0x0000_0000;
+            byteArraySupport.putInt(vecResult, i * 4, result);
         }
-        return Vector128.fromIntsToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] f64x2_relop(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        double[] x = Vector128.fromBytesToDoubles(vecX);
-        double[] y = Vector128.fromBytesToDoubles(vecY);
-        long[] result = new long[2];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(y);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_F64X2_EQ -> x[i] == y[i];
-                case Bytecode.VECTOR_F64X2_NE -> x[i] != y[i];
-                case Bytecode.VECTOR_F64X2_LT -> x[i] < y[i];
-                case Bytecode.VECTOR_F64X2_GT -> x[i] > y[i];
-                case Bytecode.VECTOR_F64X2_LE -> x[i] <= y[i];
-                case Bytecode.VECTOR_F64X2_GE -> x[i] >= y[i];
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 2; i++) {
+            double x = byteArraySupport.getDouble(vecX, i * 8);
+            double y = byteArraySupport.getDouble(vecY, i * 8);
+            long result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_F64X2_EQ -> x == y;
+                case Bytecode.VECTOR_F64X2_NE -> x != y;
+                case Bytecode.VECTOR_F64X2_LT -> x < y;
+                case Bytecode.VECTOR_F64X2_GT -> x > y;
+                case Bytecode.VECTOR_F64X2_LE -> x <= y;
+                case Bytecode.VECTOR_F64X2_GE -> x >= y;
                 default -> throw CompilerDirectives.shouldNotReachHere();
             } ? 0xffff_ffff_ffff_ffffL : 0x0000_0000_0000_0000L;
+            byteArraySupport.putLong(vecResult, i * 8, result);
         }
-        return Vector128.fromLongsToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
@@ -535,17 +519,14 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] i8x16_narrow_i16x8(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        short[] x = Vector128.fromBytesToShorts(vecX);
-        short[] y = Vector128.fromBytesToShorts(vecY);
         byte[] result = new byte[16];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(y);
         for (int i = 0; i < result.length; i++) {
-            short[] src = i < 8 ? x : y;
+            byte[] src = i < 8 ? vecX : vecY;
             int index = i < 8 ? i : i - 8;
+            short srcValue = byteArraySupport.getShort(src, index * 2);
             result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I8X16_NARROW_I16X8_S -> satS8(src[index]);
-                case Bytecode.VECTOR_I8X16_NARROW_I16X8_U -> satU8(src[index]);
+                case Bytecode.VECTOR_I8X16_NARROW_I16X8_S -> satS8(srcValue);
+                case Bytecode.VECTOR_I8X16_NARROW_I16X8_U -> satU8(srcValue);
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
         }
@@ -590,46 +571,72 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static byte[] i16x8_extend_i8x16(byte[] x, int vectorOpcode) {
-        short[] result = new short[8];
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = (short) switch (vectorOpcode) {
-                case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_S -> x[2 * i] + x[2 * i + 1];
-                case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_U -> Byte.toUnsignedInt(x[2 * i]) + Byte.toUnsignedInt(x[2 * i + 1]);
-                case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_S -> x[i];
-                case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_S -> x[i + result.length];
-                case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_U -> Byte.toUnsignedInt(x[i]);
-                case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_U -> Byte.toUnsignedInt(x[i + result.length]);
+    private static byte[] i16x8_extadd_pairwise_i8x16(byte[] vecX, int vectorOpcode) {
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 8; i++) {
+            byte x1 = vecX[2 * i];
+            byte x2 = vecX[2 * i + 1];
+            short result = (short) switch (vectorOpcode) {
+                case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_S -> x1 + x2;
+                case Bytecode.VECTOR_I16X8_EXTADD_PAIRWISE_I8X16_U -> Byte.toUnsignedInt(x1) + Byte.toUnsignedInt(x2);
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putShort(vecResult, i * 2, result);
         }
-        return Vector128.fromShortsToBytes(result);
+        return vecResult;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    private static byte[] i16x8_extend_low_i8x16(byte[] vecX, int vectorOpcode) {
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 8; i++) {
+            byte x = vecX[i];
+            short result = (short) switch (vectorOpcode) {
+                case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_S -> x;
+                case Bytecode.VECTOR_I16X8_EXTEND_LOW_I8X16_U -> Byte.toUnsignedInt(x);
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+            byteArraySupport.putShort(vecResult, i * 2, result);
+        }
+        return vecResult;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    private static byte[] i16x8_extend_high_i8x16(byte[] vecX, int vectorOpcode) {
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 8; i++) {
+            byte x = vecX[i + 8];
+            short result = (short) switch (vectorOpcode) {
+                case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_S -> x;
+                case Bytecode.VECTOR_I16X8_EXTEND_HIGH_I8X16_U -> Byte.toUnsignedInt(x);
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+            byteArraySupport.putShort(vecResult, i * 2, result);
+        }
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] i16x8_unop(byte[] vecX, int vectorOpcode) {
-        short[] x = Vector128.fromBytesToShorts(vecX);
-        short[] result = new short[8];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = (short) switch (vectorOpcode) {
-                case Bytecode.VECTOR_I16X8_ABS -> Math.abs(x[i]);
-                case Bytecode.VECTOR_I16X8_NEG -> -x[i];
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 8; i++) {
+            short x = byteArraySupport.getShort(vecX, i * 2);
+            short result = (short) switch (vectorOpcode) {
+                case Bytecode.VECTOR_I16X8_ABS -> Math.abs(x);
+                case Bytecode.VECTOR_I16X8_NEG -> -x;
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putShort(vecResult, i * 2, result);
         }
-        return Vector128.fromShortsToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static int i16x8_all_true(byte[] vec) {
-        short[] shorts = Vector128.fromBytesToShorts(vec);
-        CompilerDirectives.ensureVirtualized(shorts);
         int result = 1;
-        for (int i = 0; i < shorts.length; i++) {
-            if (shorts[i] == 0) {
+        for (int i = 0; i < 8; i++) {
+            short x = byteArraySupport.getShort(vec, i * 2);
+            if (x == 0) {
                 result = 0;
                 break;
             }
@@ -639,11 +646,10 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static int i16x8_bitmask(byte[] vec) {
-        short[] shorts = Vector128.fromBytesToShorts(vec);
-        CompilerDirectives.ensureVirtualized(shorts);
         int result = 0;
-        for (int i = 0; i < shorts.length; i++) {
-            if (shorts[i] < 0) {
+        for (int i = 0; i < 8; i++) {
+            short x = byteArraySupport.getShort(vec, i * 2);
+            if (x < 0) {
                 result |= 1 << i;
             }
         }
@@ -652,130 +658,164 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] i16x8_narrow_i32x4(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        int[] x = Vector128.fromBytesToInts(vecX);
-        int[] y = Vector128.fromBytesToInts(vecY);
-        short[] result = new short[8];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(y);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            int[] src = i < 4 ? x : y;
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 8; i++) {
+            byte[] src = i < 4 ? vecX : vecY;
             int index = i < 4 ? i : i - 4;
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I16X8_NARROW_I32X4_S -> satS16(src[index]);
-                case Bytecode.VECTOR_I16X8_NARROW_I32X4_U -> satU16(src[index]);
+            int srcValue = byteArraySupport.getInt(src, index * 4);
+            short result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I16X8_NARROW_I32X4_S -> satS16(srcValue);
+                case Bytecode.VECTOR_I16X8_NARROW_I32X4_U -> satU16(srcValue);
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putShort(vecResult, i * 2, result);
         }
-        return Vector128.fromShortsToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] i16x8_shiftop(byte[] vecX, int shift, int vectorOpcode) {
-        short[] x = Vector128.fromBytesToShorts(vecX);
-        short[] result = new short[8];
+        byte[] vecResult = new byte[16];
         int shiftMod = shift % 16;
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = (short) switch (vectorOpcode) {
-                case Bytecode.VECTOR_I16X8_SHL -> x[i] << shiftMod;
-                case Bytecode.VECTOR_I16X8_SHR_S -> x[i] >> shiftMod;
-                case Bytecode.VECTOR_I16X8_SHR_U -> Short.toUnsignedInt(x[i]) >>> shiftMod;
+        for (int i = 0; i < 8; i++) {
+            short x = byteArraySupport.getShort(vecX, i * 2);
+            short result = (short) switch (vectorOpcode) {
+                case Bytecode.VECTOR_I16X8_SHL -> x << shiftMod;
+                case Bytecode.VECTOR_I16X8_SHR_S -> x >> shiftMod;
+                case Bytecode.VECTOR_I16X8_SHR_U -> Short.toUnsignedInt(x) >>> shiftMod;
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putShort(vecResult, i * 2, result);
         }
-        return Vector128.fromShortsToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] i16x8_binop(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        short[] x = Vector128.fromBytesToShorts(vecX);
-        short[] y = Vector128.fromBytesToShorts(vecY);
-        short[] result = new short[8];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(y);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = (short) switch (vectorOpcode) {
-                case Bytecode.VECTOR_I16X8_Q15MULR_SAT_S -> satS16((x[i] * y[i] + (1 << 14)) >> 15);
-                case Bytecode.VECTOR_I16X8_ADD -> x[i] + y[i];
-                case Bytecode.VECTOR_I16X8_ADD_SAT_S -> satS16(x[i] + y[i]);
-                case Bytecode.VECTOR_I16X8_ADD_SAT_U -> satU16(Short.toUnsignedInt(x[i]) + Short.toUnsignedInt(y[i]));
-                case Bytecode.VECTOR_I16X8_SUB -> x[i] - y[i];
-                case Bytecode.VECTOR_I16X8_SUB_SAT_S -> satS16(x[i] - y[i]);
-                case Bytecode.VECTOR_I16X8_SUB_SAT_U -> satU16(Short.toUnsignedInt(x[i]) - Short.toUnsignedInt(y[i]));
-                case Bytecode.VECTOR_I16X8_MUL -> x[i] * y[i];
-                case Bytecode.VECTOR_I16X8_MIN_S -> Math.min(x[i], y[i]);
-                case Bytecode.VECTOR_I16X8_MIN_U -> Short.compareUnsigned(x[i], y[i]) <= 0 ? x[i] : y[i];
-                case Bytecode.VECTOR_I16X8_MAX_S -> Math.max(x[i], y[i]);
-                case Bytecode.VECTOR_I16X8_MAX_U -> Short.compareUnsigned(x[i], y[i]) >= 0 ? x[i] : y[i];
-                case Bytecode.VECTOR_I16X8_AVGR_U -> (Short.toUnsignedInt(x[i]) + Short.toUnsignedInt(y[i]) + 1) / 2;
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 8; i++) {
+            short x = byteArraySupport.getShort(vecX, i * 2);
+            short y = byteArraySupport.getShort(vecY, i * 2);
+            short result = (short) switch (vectorOpcode) {
+                case Bytecode.VECTOR_I16X8_Q15MULR_SAT_S -> satS16((x * y + (1 << 14)) >> 15);
+                case Bytecode.VECTOR_I16X8_ADD -> x + y;
+                case Bytecode.VECTOR_I16X8_ADD_SAT_S -> satS16(x + y);
+                case Bytecode.VECTOR_I16X8_ADD_SAT_U -> satU16(Short.toUnsignedInt(x) + Short.toUnsignedInt(y));
+                case Bytecode.VECTOR_I16X8_SUB -> x - y;
+                case Bytecode.VECTOR_I16X8_SUB_SAT_S -> satS16(x - y);
+                case Bytecode.VECTOR_I16X8_SUB_SAT_U -> satU16(Short.toUnsignedInt(x) - Short.toUnsignedInt(y));
+                case Bytecode.VECTOR_I16X8_MUL -> x * y;
+                case Bytecode.VECTOR_I16X8_MIN_S -> Math.min(x, y);
+                case Bytecode.VECTOR_I16X8_MIN_U -> Short.compareUnsigned(x, y) <= 0 ? x : y;
+                case Bytecode.VECTOR_I16X8_MAX_S -> Math.max(x, y);
+                case Bytecode.VECTOR_I16X8_MAX_U -> Short.compareUnsigned(x, y) >= 0 ? x : y;
+                case Bytecode.VECTOR_I16X8_AVGR_U -> (Short.toUnsignedInt(x) + Short.toUnsignedInt(y) + 1) / 2;
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putShort(vecResult, i * 2, result);
         }
-        return Vector128.fromShortsToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static byte[] i16x8_binop_extend_i8x16(byte[] x, byte[] y, int vectorOpcode) {
-        short[] result = new short[8];
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = (short) switch (vectorOpcode) {
-                case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_S -> x[i] * y[i];
-                case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8X16_S -> x[i + result.length] * y[i + result.length];
-                case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_U -> Byte.toUnsignedInt(x[i]) * Byte.toUnsignedInt(y[i]);
-                case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8X16_U -> Byte.toUnsignedInt(x[i + result.length]) * Byte.toUnsignedInt(y[i + result.length]);
+    private static byte[] i16x8_binop_extend_low_i8x16(byte[] vecX, byte[] vecY, int vectorOpcode) {
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 8; i++) {
+            byte x = vecX[i];
+            byte y = vecY[i];
+            short result = (short) switch (vectorOpcode) {
+                case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_S -> x * y;
+                case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_U -> Byte.toUnsignedInt(x) * Byte.toUnsignedInt(y);
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putShort(vecResult, i * 2, result);
         }
-        return Vector128.fromShortsToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static byte[] i32x4_extend_i16x8(byte[] vecX, int vectorOpcode) {
-        short[] x = Vector128.fromBytesToShorts(vecX);
-        int[] result = new int[4];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_S -> x[2 * i] + x[2 * i + 1];
-                case Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_U -> Short.toUnsignedInt(x[2 * i]) + Short.toUnsignedInt(x[2 * i + 1]);
-                case Bytecode.VECTOR_I32X4_EXTEND_LOW_I16X8_S -> x[i];
-                case Bytecode.VECTOR_I32X4_EXTEND_HIGH_I16X8_S -> x[i + result.length];
-                case Bytecode.VECTOR_I32X4_EXTEND_LOW_I16X8_U -> Short.toUnsignedInt(x[i]);
-                case Bytecode.VECTOR_I32X4_EXTEND_HIGH_I16X8_U -> Short.toUnsignedInt(x[i + result.length]);
+    private static byte[] i16x8_binop_extend_high_i8x16(byte[] vecX, byte[] vecY, int vectorOpcode) {
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 8; i++) {
+            byte x = vecX[i + 8];
+            byte y = vecY[i + 8];
+            short result = (short) switch (vectorOpcode) {
+                case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8X16_S -> x * y;
+                case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8X16_U -> Byte.toUnsignedInt(x) * Byte.toUnsignedInt(y);
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putShort(vecResult, i * 2, result);
         }
-        return Vector128.fromIntsToBytes(result);
+        return vecResult;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    private static byte[] i32x4_extadd_pairwise_i16x8(byte[] vecX, int vectorOpcode) {
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 4; i++) {
+            short x1 = byteArraySupport.getShort(vecX, (i * 2) * 2);
+            short x2 = byteArraySupport.getShort(vecX, (i * 2 + 1) * 2);
+            int result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_S -> x1 + x2;
+                case Bytecode.VECTOR_I32X4_EXTADD_PAIRWISE_I16X8_U -> Short.toUnsignedInt(x1) + Short.toUnsignedInt(x2);
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+            byteArraySupport.putInt(vecResult, i * 4, result);
+        }
+        return vecResult;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    private static byte[] i32x4_extend_low_i16x8(byte[] vecX, int vectorOpcode) {
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 4; i++) {
+            short x = byteArraySupport.getShort(vecX, i * 2);
+            int result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I32X4_EXTEND_LOW_I16X8_S -> x;
+                case Bytecode.VECTOR_I32X4_EXTEND_LOW_I16X8_U -> Short.toUnsignedInt(x);
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+            byteArraySupport.putInt(vecResult, i * 4, result);
+        }
+        return vecResult;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    private static byte[] i32x4_extend_high_i16x8(byte[] vecX, int vectorOpcode) {
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 4; i++) {
+            short x = byteArraySupport.getShort(vecX, (i + 4) * 2);
+            int result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I32X4_EXTEND_HIGH_I16X8_S -> x;
+                case Bytecode.VECTOR_I32X4_EXTEND_HIGH_I16X8_U -> Short.toUnsignedInt(x);
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+            byteArraySupport.putInt(vecResult, i * 4, result);
+        }
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] i32x4_unop(byte[] vecX, int vectorOpcode) {
-        int[] x = Vector128.fromBytesToInts(vecX);
-        int[] result = new int[4];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I32X4_ABS -> Math.abs(x[i]);
-                case Bytecode.VECTOR_I32X4_NEG -> -x[i];
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 4; i++) {
+            int x = byteArraySupport.getInt(vecX, i * 4);
+            int result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I32X4_ABS -> Math.abs(x);
+                case Bytecode.VECTOR_I32X4_NEG -> -x;
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putInt(vecResult, i * 4, result);
         }
-        return Vector128.fromIntsToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static int i32x4_all_true(byte[] vec) {
-        int[] ints = Vector128.fromBytesToInts(vec);
-        CompilerDirectives.ensureVirtualized(ints);
         int result = 1;
-        for (int i = 0; i < ints.length; i++) {
-            if (ints[i] == 0) {
+        for (int i = 0; i < 4; i++) {
+            int x = byteArraySupport.getInt(vec, i * 4);
+            if (x == 0) {
                 result = 0;
                 break;
             }
@@ -785,11 +825,10 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static int i32x4_bitmask(byte[] vec) {
-        int[] ints = Vector128.fromBytesToInts(vec);
-        CompilerDirectives.ensureVirtualized(ints);
         int result = 0;
-        for (int i = 0; i < ints.length; i++) {
-            if (ints[i] < 0) {
+        for (int i = 0; i < 4; i++) {
+            int x = byteArraySupport.getInt(vec, i * 4);
+            if (x < 0) {
                 result |= 1 << i;
             }
         }
@@ -798,106 +837,138 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] i32x4_shiftop(byte[] vecX, int shift, int vectorOpcode) {
-        int[] x = Vector128.fromBytesToInts(vecX);
-        int[] result = new int[4];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I32X4_SHL -> x[i] << shift;
-                case Bytecode.VECTOR_I32X4_SHR_S -> x[i] >> shift;
-                case Bytecode.VECTOR_I32X4_SHR_U -> x[i] >>> shift;
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 4; i++) {
+            int x = byteArraySupport.getInt(vecX, i * 4);
+            int result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I32X4_SHL -> x << shift;
+                case Bytecode.VECTOR_I32X4_SHR_S -> x >> shift;
+                case Bytecode.VECTOR_I32X4_SHR_U -> x >>> shift;
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putInt(vecResult, i * 4, result);
         }
-        return Vector128.fromIntsToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] i32x4_binop(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        int[] x = Vector128.fromBytesToInts(vecX);
-        int[] y = Vector128.fromBytesToInts(vecY);
-        int[] result = new int[4];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(y);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I32X4_ADD -> x[i] + y[i];
-                case Bytecode.VECTOR_I32X4_SUB -> x[i] - y[i];
-                case Bytecode.VECTOR_I32X4_MUL -> x[i] * y[i];
-                case Bytecode.VECTOR_I32X4_MIN_S -> Math.min(x[i], y[i]);
-                case Bytecode.VECTOR_I32X4_MIN_U -> Integer.compareUnsigned(x[i], y[i]) <= 0 ? x[i] : y[i];
-                case Bytecode.VECTOR_I32X4_MAX_S -> Math.max(x[i], y[i]);
-                case Bytecode.VECTOR_I32X4_MAX_U -> Integer.compareUnsigned(x[i], y[i]) >= 0 ? x[i] : y[i];
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 4; i++) {
+            int x = byteArraySupport.getInt(vecX, i * 4);
+            int y = byteArraySupport.getInt(vecY, i * 4);
+            int result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I32X4_ADD -> x + y;
+                case Bytecode.VECTOR_I32X4_SUB -> x - y;
+                case Bytecode.VECTOR_I32X4_MUL -> x * y;
+                case Bytecode.VECTOR_I32X4_MIN_S -> Math.min(x, y);
+                case Bytecode.VECTOR_I32X4_MIN_U -> Integer.compareUnsigned(x, y) <= 0 ? x : y;
+                case Bytecode.VECTOR_I32X4_MAX_S -> Math.max(x, y);
+                case Bytecode.VECTOR_I32X4_MAX_U -> Integer.compareUnsigned(x, y) >= 0 ? x : y;
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putInt(vecResult, i * 4, result);
         }
-        return Vector128.fromIntsToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static byte[] i32x4_binop_extend_i16x8(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        short[] x = Vector128.fromBytesToShorts(vecX);
-        short[] y = Vector128.fromBytesToShorts(vecY);
-        int[] result = new int[4];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(y);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I32X4_DOT_I16X8_S -> x[2 * i] * y[2 * i] + x[2 * i + 1] * y[2 * i + 1];
-                case Bytecode.VECTOR_I32X4_EXTMUL_LOW_I16X8_S -> x[i] * y[i];
-                case Bytecode.VECTOR_I32X4_EXTMUL_HIGH_I16X8_S -> x[i + result.length] * y[i + result.length];
-                case Bytecode.VECTOR_I32X4_EXTMUL_LOW_I16X8_U -> Short.toUnsignedInt(x[i]) * Short.toUnsignedInt(y[i]);
-                case Bytecode.VECTOR_I32X4_EXTMUL_HIGH_I16X8_U -> Short.toUnsignedInt(x[i + result.length]) * Short.toUnsignedInt(y[i + result.length]);
-                default -> throw CompilerDirectives.shouldNotReachHere();
-            };
+    private static byte[] i32x4_dot_i16x8_s(byte[] vecX, byte[] vecY) {
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 4; i++) {
+            short x1 = byteArraySupport.getShort(vecX, (i * 2) * 2);
+            short x2 = byteArraySupport.getShort(vecX, (i * 2 + 1) * 2);
+            short y1 = byteArraySupport.getShort(vecY, (i * 2) * 2);
+            short y2 = byteArraySupport.getShort(vecY, (i * 2 + 1) * 2);
+            int result = x1 * y1 + x2 * y2;
+            byteArraySupport.putInt(vecResult, i * 4, result);
         }
-        return Vector128.fromIntsToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static byte[] i64x2_extend_i32x4(byte[] vecX, int vectorOpcode) {
-        int[] x = Vector128.fromBytesToInts(vecX);
-        long[] result = new long[2];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I64X2_EXTEND_LOW_I32X4_S -> x[i];
-                case Bytecode.VECTOR_I64X2_EXTEND_HIGH_I32X4_S -> x[i + result.length];
-                case Bytecode.VECTOR_I64X2_EXTEND_LOW_I32X4_U -> Integer.toUnsignedLong(x[i]);
-                case Bytecode.VECTOR_I64X2_EXTEND_HIGH_I32X4_U -> Integer.toUnsignedLong(x[i + result.length]);
+    private static byte[] i32x4_binop_extend_low_i16x8(byte[] vecX, byte[] vecY, int vectorOpcode) {
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 4; i++) {
+            short x = byteArraySupport.getShort(vecX, i * 2);
+            short y = byteArraySupport.getShort(vecY, i * 2);
+            int result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I32X4_EXTMUL_LOW_I16X8_S -> x * y;
+                case Bytecode.VECTOR_I32X4_EXTMUL_LOW_I16X8_U -> Short.toUnsignedInt(x) * Short.toUnsignedInt(y);
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putInt(vecResult, i * 4, result);
         }
-        return Vector128.fromLongsToBytes(result);
+        return vecResult;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    private static byte[] i32x4_binop_extend_high_i16x8(byte[] vecX, byte[] vecY, int vectorOpcode) {
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 4; i++) {
+            short x = byteArraySupport.getShort(vecX, (i + 4) * 2);
+            short y = byteArraySupport.getShort(vecY, (i + 4) * 2);
+            int result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I32X4_EXTMUL_HIGH_I16X8_S -> x * y;
+                case Bytecode.VECTOR_I32X4_EXTMUL_HIGH_I16X8_U -> Short.toUnsignedInt(x) * Short.toUnsignedInt(y);
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+            byteArraySupport.putInt(vecResult, i * 4, result);
+        }
+        return vecResult;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    private static byte[] i64x2_extend_low_i32x4(byte[] vecX, int vectorOpcode) {
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 2; i++) {
+            int x = byteArraySupport.getInt(vecX, i * 4);
+            long result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I64X2_EXTEND_LOW_I32X4_S -> x;
+                case Bytecode.VECTOR_I64X2_EXTEND_LOW_I32X4_U -> Integer.toUnsignedLong(x);
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+            byteArraySupport.putLong(vecResult, i * 8, result);
+        }
+        return vecResult;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    private static byte[] i64x2_extend_high_i32x4(byte[] vecX, int vectorOpcode) {
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 2; i++) {
+            int x = byteArraySupport.getInt(vecX, (i + 2) * 4);
+            long result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I64X2_EXTEND_HIGH_I32X4_S -> x;
+                case Bytecode.VECTOR_I64X2_EXTEND_HIGH_I32X4_U -> Integer.toUnsignedLong(x);
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+            byteArraySupport.putLong(vecResult, i * 8, result);
+        }
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] i64x2_unop(byte[] vecX, int vectorOpcode) {
-        long[] x = Vector128.fromBytesToLongs(vecX);
-        long[] result = new long[2];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I64X2_ABS -> Math.abs(x[i]);
-                case Bytecode.VECTOR_I64X2_NEG -> -x[i];
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 2; i++) {
+            long x = byteArraySupport.getLong(vecX, i * 8);
+            long result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I64X2_ABS -> Math.abs(x);
+                case Bytecode.VECTOR_I64X2_NEG -> -x;
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putLong(vecResult, i * 8, result);
         }
-        return Vector128.fromLongsToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static int i64x2_all_true(byte[] vec) {
-        long[] longs = Vector128.fromBytesToLongs(vec);
-        CompilerDirectives.ensureVirtualized(longs);
         int result = 1;
-        for (int i = 0; i < longs.length; i++) {
-            if (longs[i] == 0) {
+        for (int i = 0; i < 2; i++) {
+            long x = byteArraySupport.getLong(vec, i * 8);
+            if (x == 0) {
                 result = 0;
                 break;
             }
@@ -907,11 +978,10 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static int i64x2_bitmask(byte[] vec) {
-        long[] longs = Vector128.fromBytesToLongs(vec);
-        CompilerDirectives.ensureVirtualized(longs);
         int result = 0;
-        for (int i = 0; i < longs.length; i++) {
-            if (longs[i] < 0) {
+        for (int i = 0; i < 2; i++) {
+            long x = byteArraySupport.getLong(vec, i * 8);
+            if (x < 0) {
                 result |= 1 << i;
             }
         }
@@ -920,236 +990,233 @@ public class Vector128Ops {
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] i64x2_shiftop(byte[] vecX, int shift, int vectorOpcode) {
-        long[] x = Vector128.fromBytesToLongs(vecX);
-        long[] result = new long[2];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I64X2_SHL -> x[i] << shift;
-                case Bytecode.VECTOR_I64X2_SHR_S -> x[i] >> shift;
-                case Bytecode.VECTOR_I64X2_SHR_U -> x[i] >>> shift;
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 2; i++) {
+            long x = byteArraySupport.getLong(vecX, i * 8);
+            long result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I64X2_SHL -> x << shift;
+                case Bytecode.VECTOR_I64X2_SHR_S -> x >> shift;
+                case Bytecode.VECTOR_I64X2_SHR_U -> x >>> shift;
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putLong(vecResult, i * 8, result);
         }
-        return Vector128.fromLongsToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] i64x2_binop(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        long[] x = Vector128.fromBytesToLongs(vecX);
-        long[] y = Vector128.fromBytesToLongs(vecY);
-        long[] result = new long[2];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(y);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I64X2_ADD -> x[i] + y[i];
-                case Bytecode.VECTOR_I64X2_SUB -> x[i] - y[i];
-                case Bytecode.VECTOR_I64X2_MUL -> x[i] * y[i];
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 2; i++) {
+            long x = byteArraySupport.getLong(vecX, i * 8);
+            long y = byteArraySupport.getLong(vecY, i * 8);
+            long result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I64X2_ADD -> x + y;
+                case Bytecode.VECTOR_I64X2_SUB -> x - y;
+                case Bytecode.VECTOR_I64X2_MUL -> x * y;
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putLong(vecResult, i * 8, result);
         }
-        return Vector128.fromLongsToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static byte[] i64x2_binop_extend_i32x4(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        int[] x = Vector128.fromBytesToInts(vecX);
-        int[] y = Vector128.fromBytesToInts(vecY);
-        long[] result = new long[2];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(y);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I64X2_EXTMUL_LOW_I32X4_S -> (long) x[i] * (long) y[i];
-                case Bytecode.VECTOR_I64X2_EXTMUL_HIGH_I32X4_S -> (long) x[i + result.length] * (long) y[i + result.length];
-                case Bytecode.VECTOR_I64X2_EXTMUL_LOW_I32X4_U -> Integer.toUnsignedLong(x[i]) * Integer.toUnsignedLong(y[i]);
-                case Bytecode.VECTOR_I64X2_EXTMUL_HIGH_I32X4_U -> Integer.toUnsignedLong(x[i + result.length]) * Integer.toUnsignedLong(y[i + result.length]);
+    private static byte[] i64x2_binop_extend_low_i32x4(byte[] vecX, byte[] vecY, int vectorOpcode) {
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 2; i++) {
+            int x = byteArraySupport.getInt(vecX, i * 4);
+            int y = byteArraySupport.getInt(vecY, i * 4);
+            long result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I64X2_EXTMUL_LOW_I32X4_S -> (long) x * (long) y;
+                case Bytecode.VECTOR_I64X2_EXTMUL_LOW_I32X4_U -> Integer.toUnsignedLong(x) * Integer.toUnsignedLong(y);
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putLong(vecResult, i * 8, result);
         }
-        return Vector128.fromLongsToBytes(result);
+        return vecResult;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    private static byte[] i64x2_binop_extend_high_i32x4(byte[] vecX, byte[] vecY, int vectorOpcode) {
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 2; i++) {
+            int x = byteArraySupport.getInt(vecX, (i + 2) * 4);
+            int y = byteArraySupport.getInt(vecY, (i + 2) * 4);
+            long result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I64X2_EXTMUL_HIGH_I32X4_S -> (long) x * (long) y;
+                case Bytecode.VECTOR_I64X2_EXTMUL_HIGH_I32X4_U -> Integer.toUnsignedLong(x) * Integer.toUnsignedLong(y);
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+            byteArraySupport.putLong(vecResult, i * 8, result);
+        }
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] f32x4_unop(byte[] vecX, int vectorOpcode) {
-        float[] x = Vector128.fromBytesToFloats(vecX);
-        float[] result = new float[4];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_F32X4_ABS -> Math.abs(x[i]);
-                case Bytecode.VECTOR_F32X4_NEG -> -x[i];
-                case Bytecode.VECTOR_F32X4_SQRT -> (float) Math.sqrt(x[i]);
-                case Bytecode.VECTOR_F32X4_CEIL -> (float) Math.ceil(x[i]);
-                case Bytecode.VECTOR_F32X4_FLOOR -> (float) Math.floor(x[i]);
-                case Bytecode.VECTOR_F32X4_TRUNC -> ExactMath.truncate(x[i]);
-                case Bytecode.VECTOR_F32X4_NEAREST -> (float) Math.rint(x[i]);
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 4; i++) {
+            float x = byteArraySupport.getFloat(vecX, i * 4);
+            float result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_F32X4_ABS -> Math.abs(x);
+                case Bytecode.VECTOR_F32X4_NEG -> -x;
+                case Bytecode.VECTOR_F32X4_SQRT -> (float) Math.sqrt(x);
+                case Bytecode.VECTOR_F32X4_CEIL -> (float) Math.ceil(x);
+                case Bytecode.VECTOR_F32X4_FLOOR -> (float) Math.floor(x);
+                case Bytecode.VECTOR_F32X4_TRUNC -> ExactMath.truncate(x);
+                case Bytecode.VECTOR_F32X4_NEAREST -> (float) Math.rint(x);
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putFloat(vecResult, i * 4, result);
         }
-        return Vector128.fromFloatsToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] f32x4_binop(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        float[] x = Vector128.fromBytesToFloats(vecX);
-        float[] y = Vector128.fromBytesToFloats(vecY);
-        float[] result = new float[4];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(y);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_F32X4_ADD -> x[i] + y[i];
-                case Bytecode.VECTOR_F32X4_SUB -> x[i] - y[i];
-                case Bytecode.VECTOR_F32X4_MUL -> x[i] * y[i];
-                case Bytecode.VECTOR_F32X4_DIV -> x[i] / y[i];
-                case Bytecode.VECTOR_F32X4_MIN -> Math.min(x[i], y[i]);
-                case Bytecode.VECTOR_F32X4_MAX -> Math.max(x[i], y[i]);
-                case Bytecode.VECTOR_F32X4_PMIN -> y[i] < x[i] ? y[i] : x[i];
-                case Bytecode.VECTOR_F32X4_PMAX -> x[i] < y[i] ? y[i] : x[i];
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 4; i++) {
+            float x = byteArraySupport.getFloat(vecX, i * 4);
+            float y = byteArraySupport.getFloat(vecY, i * 4);
+            float result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_F32X4_ADD -> x + y;
+                case Bytecode.VECTOR_F32X4_SUB -> x - y;
+                case Bytecode.VECTOR_F32X4_MUL -> x * y;
+                case Bytecode.VECTOR_F32X4_DIV -> x / y;
+                case Bytecode.VECTOR_F32X4_MIN -> Math.min(x, y);
+                case Bytecode.VECTOR_F32X4_MAX -> Math.max(x, y);
+                case Bytecode.VECTOR_F32X4_PMIN -> y < x ? y : x;
+                case Bytecode.VECTOR_F32X4_PMAX -> x < y ? y : x;
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putFloat(vecResult, i * 4, result);
         }
-        return Vector128.fromFloatsToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] f64x2_unop(byte[] vecX, int vectorOpcode) {
-        double[] x = Vector128.fromBytesToDoubles(vecX);
-        double[] result = new double[2];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_F64X2_ABS -> Math.abs(x[i]);
-                case Bytecode.VECTOR_F64X2_NEG -> -x[i];
-                case Bytecode.VECTOR_F64X2_SQRT -> Math.sqrt(x[i]);
-                case Bytecode.VECTOR_F64X2_CEIL -> Math.ceil(x[i]);
-                case Bytecode.VECTOR_F64X2_FLOOR -> Math.floor(x[i]);
-                case Bytecode.VECTOR_F64X2_TRUNC -> ExactMath.truncate(x[i]);
-                case Bytecode.VECTOR_F64X2_NEAREST -> Math.rint(x[i]);
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 2; i++) {
+            double x = byteArraySupport.getDouble(vecX, i * 8);
+            double result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_F64X2_ABS -> Math.abs(x);
+                case Bytecode.VECTOR_F64X2_NEG -> -x;
+                case Bytecode.VECTOR_F64X2_SQRT -> Math.sqrt(x);
+                case Bytecode.VECTOR_F64X2_CEIL -> Math.ceil(x);
+                case Bytecode.VECTOR_F64X2_FLOOR -> Math.floor(x);
+                case Bytecode.VECTOR_F64X2_TRUNC -> ExactMath.truncate(x);
+                case Bytecode.VECTOR_F64X2_NEAREST -> Math.rint(x);
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putDouble(vecResult, i * 8, result);
         }
-        return Vector128.fromDoublesToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] f64x2_binop(byte[] vecX, byte[] vecY, int vectorOpcode) {
-        double[] x = Vector128.fromBytesToDoubles(vecX);
-        double[] y = Vector128.fromBytesToDoubles(vecY);
-        double[] result = new double[2];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(y);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_F64X2_ADD -> x[i] + y[i];
-                case Bytecode.VECTOR_F64X2_SUB -> x[i] - y[i];
-                case Bytecode.VECTOR_F64X2_MUL -> x[i] * y[i];
-                case Bytecode.VECTOR_F64X2_DIV -> x[i] / y[i];
-                case Bytecode.VECTOR_F64X2_MIN -> Math.min(x[i], y[i]);
-                case Bytecode.VECTOR_F64X2_MAX -> Math.max(x[i], y[i]);
-                case Bytecode.VECTOR_F64X2_PMIN -> y[i] < x[i] ? y[i] : x[i];
-                case Bytecode.VECTOR_F64X2_PMAX -> x[i] < y[i] ? y[i] : x[i];
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 2; i++) {
+            double x = byteArraySupport.getDouble(vecX, i * 8);
+            double y = byteArraySupport.getDouble(vecY, i * 8);
+            double result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_F64X2_ADD -> x + y;
+                case Bytecode.VECTOR_F64X2_SUB -> x - y;
+                case Bytecode.VECTOR_F64X2_MUL -> x * y;
+                case Bytecode.VECTOR_F64X2_DIV -> x / y;
+                case Bytecode.VECTOR_F64X2_MIN -> Math.min(x, y);
+                case Bytecode.VECTOR_F64X2_MAX -> Math.max(x, y);
+                case Bytecode.VECTOR_F64X2_PMIN -> y < x ? y : x;
+                case Bytecode.VECTOR_F64X2_PMAX -> x < y ? y : x;
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putDouble(vecResult, i * 8, result);
         }
-        return Vector128.fromDoublesToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] i32x4_trunc_sat_f32x4(byte[] vecX, int vectorOpcode) {
-        float[] x = Vector128.fromBytesToFloats(vecX);
-        int[] result = new int[4];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S -> (int) x[i];
-                case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U -> truncSatU32(x[i]);
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 4; i++) {
+            float x = byteArraySupport.getFloat(vecX, i * 4);
+            int result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S -> (int) x;
+                case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U -> truncSatU32(x);
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putInt(vecResult, i * 4, result);
         }
-        return Vector128.fromIntsToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] f32x4_convert_i32x4(byte[] vecX, int vectorOpcode) {
-        int[] x = Vector128.fromBytesToInts(vecX);
-        float[] result = new float[4];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_F32X4_CONVERT_I32X4_S -> x[i];
-                case Bytecode.VECTOR_F32X4_CONVERT_I32X4_U -> Integer.toUnsignedLong(x[i]);
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 4; i++) {
+            int x = byteArraySupport.getInt(vecX, i * 4);
+            float result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_F32X4_CONVERT_I32X4_S -> x;
+                case Bytecode.VECTOR_F32X4_CONVERT_I32X4_U -> Integer.toUnsignedLong(x);
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putFloat(vecResult, i * 4, result);
         }
-        return Vector128.fromFloatsToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] i32x4_trunc_sat_f64x2_zero(byte[] vecX, int vectorOpcode) {
-        double[] x = Vector128.fromBytesToDoubles(vecX);
-        int[] result = new int[4];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < x.length; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO -> (int) x[i];
-                case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO -> truncSatU32(x[i]);
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 2; i++) {
+            double x = byteArraySupport.getDouble(vecX, i * 8);
+            int result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO -> (int) x;
+                case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO -> truncSatU32(x);
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putInt(vecResult, i * 4, result);
         }
-        return Vector128.fromIntsToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] f64x2_convert_low_i32x4(byte[] vecX, int vectorOpcode) {
-        int[] x = Vector128.fromBytesToInts(vecX);
-        double[] result = new double[2];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = switch (vectorOpcode) {
-                case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_S -> x[i];
-                case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_U -> Integer.toUnsignedLong(x[i]);
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 2; i++) {
+            int x = byteArraySupport.getInt(vecX, i * 4);
+            double result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_S -> x;
+                case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_U -> Integer.toUnsignedLong(x);
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putDouble(vecResult, i * 8, result);
         }
-        return Vector128.fromDoublesToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] f32x4_demote_f64x2_zero(byte[] vecX) {
-        double[] x = Vector128.fromBytesToDoubles(vecX);
-        float[] result = new float[4];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < x.length; i++) {
-            result[i] = (float) x[i];
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 2; i++) {
+            double x = byteArraySupport.getDouble(vecX, i * 8);
+            float result = (float) x;
+            byteArraySupport.putFloat(vecResult, i * 4, result);
         }
-        return Vector128.fromFloatsToBytes(result);
+        return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] f64x2_promote_low_f32x4(byte[] vecX) {
-        float[] x = Vector128.fromBytesToFloats(vecX);
-        double[] result = new double[2];
-        CompilerDirectives.ensureVirtualized(x);
-        CompilerDirectives.ensureVirtualized(result);
-        for (int i = 0; i < result.length; i++) {
-            result[i] = x[i];
+        byte[] vecResult = new byte[16];
+        for (int i = 0; i < 2; i++) {
+            float x = byteArraySupport.getFloat(vecX, i * 4);
+            double result = x;
+            byteArraySupport.putDouble(vecResult, i * 8, result);
         }
-        return Vector128.fromDoublesToBytes(result);
+        return vecResult;
     }
 
     // Checkstyle: resume method name check

@@ -3150,16 +3150,17 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 byte[] bytes = new byte[8];
                 CompilerDirectives.ensureVirtualized(bytes);
                 ByteArraySupport.littleEndian().putLong(bytes, 0, value);
-                short[] result = new short[8];
-                CompilerDirectives.ensureVirtualized(result);
-                for (int i = 0; i < result.length; i++) {
-                    result[i] = (short) switch (vectorOpcode) {
-                        case Bytecode.VECTOR_V128_LOAD8X8_S -> bytes[i];
-                        case Bytecode.VECTOR_V128_LOAD8X8_U -> Byte.toUnsignedInt(bytes[i]);
+                byte[] resultBytes = new byte[16];
+                for (int i = 0; i < 8; i++) {
+                    byte x = bytes[i];
+                    short result = (short) switch (vectorOpcode) {
+                        case Bytecode.VECTOR_V128_LOAD8X8_S -> x;
+                        case Bytecode.VECTOR_V128_LOAD8X8_U -> Byte.toUnsignedInt(x);
                         default -> throw CompilerDirectives.shouldNotReachHere();
                     };
+                    ByteArraySupport.littleEndian().putShort(resultBytes, i * 2, result);
                 }
-                final Vector128 vec = Vector128.fromShorts(result);
+                final Vector128 vec = new Vector128(resultBytes);
                 pushVector128(frame, stackPointer, vec);
                 break;
             }
@@ -3169,17 +3170,17 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 byte[] bytes = new byte[8];
                 CompilerDirectives.ensureVirtualized(bytes);
                 ByteArraySupport.littleEndian().putLong(bytes, 0, value);
-                int[] result = new int[4];
-                CompilerDirectives.ensureVirtualized(result);
-                for (int i = 0; i < result.length; i++) {
+                byte[] resultBytes = new byte[16];
+                for (int i = 0; i < 4; i++) {
                     short x = ByteArraySupport.littleEndian().getShort(bytes, i * 2);
-                    result[i] = switch (vectorOpcode) {
+                    int result = switch (vectorOpcode) {
                         case Bytecode.VECTOR_V128_LOAD16X4_S -> x;
                         case Bytecode.VECTOR_V128_LOAD16X4_U -> Short.toUnsignedInt(x);
                         default -> throw CompilerDirectives.shouldNotReachHere();
                     };
+                    ByteArraySupport.littleEndian().putInt(resultBytes, i * 4, result);
                 }
-                final Vector128 vec = Vector128.fromInts(result);
+                final Vector128 vec = new Vector128(resultBytes);
                 pushVector128(frame, stackPointer, vec);
                 break;
             }
@@ -3189,65 +3190,71 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 byte[] bytes = new byte[8];
                 CompilerDirectives.ensureVirtualized(bytes);
                 ByteArraySupport.littleEndian().putLong(bytes, 0, value);
-                long[] result = new long[2];
-                CompilerDirectives.ensureVirtualized(result);
-                for (int i = 0; i < result.length; i++) {
+                byte[] resultBytes = new byte[16];
+                for (int i = 0; i < 2; i++) {
                     int x = ByteArraySupport.littleEndian().getInt(bytes, i * 4);
-                    result[i] = switch (vectorOpcode) {
+                    long result = switch (vectorOpcode) {
                         case Bytecode.VECTOR_V128_LOAD32X2_S -> x;
                         case Bytecode.VECTOR_V128_LOAD32X2_U -> Integer.toUnsignedLong(x);
                         default -> throw CompilerDirectives.shouldNotReachHere();
                     };
+                    ByteArraySupport.littleEndian().putLong(resultBytes, i * 8, result);
                 }
-                final Vector128 vec = Vector128.fromLongs(result);
+                final Vector128 vec = new Vector128(resultBytes);
                 pushVector128(frame, stackPointer, vec);
                 break;
             }
             case Bytecode.VECTOR_V128_LOAD8_SPLAT: {
                 final byte value = (byte) memory.load_i32_8s(this, address);
-                byte[] bytes = new byte[16];
-                Arrays.fill(bytes, value);
-                final Vector128 vec = new Vector128(bytes);
+                byte[] resultBytes = new byte[16];
+                Arrays.fill(resultBytes, value);
+                final Vector128 vec = new Vector128(resultBytes);
                 pushVector128(frame, stackPointer, vec);
                 break;
             }
             case Bytecode.VECTOR_V128_LOAD16_SPLAT: {
                 final short value = (short) memory.load_i32_16s(this, address);
-                short[] shorts = new short[8];
-                Arrays.fill(shorts, value);
-                final Vector128 vec = Vector128.fromShorts(shorts);
+                byte[] resultBytes = new byte[16];
+                for (int i = 0; i < 8; i++) {
+                    ByteArraySupport.littleEndian().putShort(resultBytes, i * 2, value);
+                }
+                final Vector128 vec = new Vector128(resultBytes);
                 pushVector128(frame, stackPointer, vec);
                 break;
             }
             case Bytecode.VECTOR_V128_LOAD32_SPLAT: {
                 final int value = memory.load_i32(this, address);
-                int[] ints = new int[4];
-                Arrays.fill(ints, value);
-                final Vector128 vec = Vector128.fromInts(ints);
+                byte[] resultBytes = new byte[16];
+                for (int i = 0; i < 4; i++) {
+                    ByteArraySupport.littleEndian().putInt(resultBytes, i * 4, value);
+                }
+                final Vector128 vec = new Vector128(resultBytes);
                 pushVector128(frame, stackPointer, vec);
                 break;
             }
             case Bytecode.VECTOR_V128_LOAD64_SPLAT: {
                 final long value = memory.load_i64(this, address);
-                long[] longs = new long[2];
-                Arrays.fill(longs, value);
-                final Vector128 vec = Vector128.fromLongs(longs);
+                byte[] resultBytes = new byte[16];
+                for (int i = 0; i < 2; i++) {
+                    ByteArraySupport.littleEndian().putLong(resultBytes, i * 8, value);
+                }
+                final Vector128 vec = new Vector128(resultBytes);
                 pushVector128(frame, stackPointer, vec);
                 break;
             }
             case Bytecode.VECTOR_V128_LOAD32_ZERO: {
                 final int value = memory.load_i32(this, address);
-                int[] ints = new int[4];
-                ints[0] = value;
-                final Vector128 vec = Vector128.fromInts(ints);
+                byte[] resultBytes = new byte[16];
+                ByteArraySupport.littleEndian().putInt(resultBytes, 0, value);
+                final Vector128 vec = new Vector128(resultBytes);
                 pushVector128(frame, stackPointer, vec);
                 break;
             }
             case Bytecode.VECTOR_V128_LOAD64_ZERO: {
                 final long value = memory.load_i64(this, address);
-                long[] longs = new long[2];
-                longs[0] = value;
-                final Vector128 vec = Vector128.fromLongs(longs);
+                byte[] resultBytes = new byte[16];
+                ByteArraySupport.littleEndian().putLong(resultBytes, 0, value);
+                final Vector128 vec = new Vector128(resultBytes);
                 pushVector128(frame, stackPointer, vec);
                 break;
             }
@@ -3264,30 +3271,30 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         switch (vectorOpcode) {
             case Bytecode.VECTOR_V128_LOAD8_LANE: {
                 final byte value = (byte) memory.load_i32_8s(this, address);
-                byte[] bytes = Arrays.copyOf(vec.getBytes(), 16);
-                bytes[laneIndex] = value;
-                pushVector128(frame, stackPointer, new Vector128(bytes));
+                byte[] resultBytes = Arrays.copyOf(vec.getBytes(), 16);
+                resultBytes[laneIndex] = value;
+                pushVector128(frame, stackPointer, new Vector128(resultBytes));
                 break;
             }
             case Bytecode.VECTOR_V128_LOAD16_LANE: {
                 final short value = (short) memory.load_i32_16s(this, address);
-                short[] shorts = vec.toShorts();
-                shorts[laneIndex] = value;
-                pushVector128(frame, stackPointer, Vector128.fromShorts(shorts));
+                byte[] resultBytes = Arrays.copyOf(vec.getBytes(), 16);
+                ByteArraySupport.littleEndian().putShort(resultBytes, laneIndex * 2, value);
+                pushVector128(frame, stackPointer, new Vector128(resultBytes));
                 break;
             }
             case Bytecode.VECTOR_V128_LOAD32_LANE: {
                 final int value = memory.load_i32(this, address);
-                int[] ints = vec.toInts();
-                ints[laneIndex] = value;
-                pushVector128(frame, stackPointer, Vector128.fromInts(ints));
+                byte[] resultBytes = Arrays.copyOf(vec.getBytes(), 16);
+                ByteArraySupport.littleEndian().putInt(resultBytes, laneIndex * 4, value);
+                pushVector128(frame, stackPointer, new Vector128(resultBytes));
                 break;
             }
             case Bytecode.VECTOR_V128_LOAD64_LANE: {
                 final long value = memory.load_i64(this, address);
-                long[] longs = vec.toLongs();
-                longs[laneIndex] = value;
-                pushVector128(frame, stackPointer, Vector128.fromLongs(longs));
+                byte[] resultBytes = Arrays.copyOf(vec.getBytes(), 16);
+                ByteArraySupport.littleEndian().putLong(resultBytes, laneIndex * 8, value);
+                pushVector128(frame, stackPointer, new Vector128(resultBytes));
                 break;
             }
             default:
@@ -3297,18 +3304,26 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     private void storeVectorLane(WasmMemory memory, int vectorOpcode, long address, int laneIndex, Vector128 vec) {
         switch (vectorOpcode) {
-            case Bytecode.VECTOR_V128_STORE8_LANE:
-                memory.store_i32_8(this, address, vec.getBytes()[laneIndex]);
+            case Bytecode.VECTOR_V128_STORE8_LANE: {
+                byte value = vec.getBytes()[laneIndex];
+                memory.store_i32_8(this, address, value);
                 break;
-            case Bytecode.VECTOR_V128_STORE16_LANE:
-                memory.store_i32_16(this, address, vec.toShorts()[laneIndex]);
+            }
+            case Bytecode.VECTOR_V128_STORE16_LANE: {
+                short value = ByteArraySupport.littleEndian().getShort(vec.getBytes(), laneIndex * 2);
+                memory.store_i32_16(this, address, value);
                 break;
-            case Bytecode.VECTOR_V128_STORE32_LANE:
-                memory.store_i32(this, address, vec.toInts()[laneIndex]);
+            }
+            case Bytecode.VECTOR_V128_STORE32_LANE: {
+                int value = ByteArraySupport.littleEndian().getInt(vec.getBytes(), laneIndex * 4);
+                memory.store_i32(this, address, value);
                 break;
-            case Bytecode.VECTOR_V128_STORE64_LANE:
-                memory.store_i64(this, address, vec.toLongs()[laneIndex]);
+            }
+            case Bytecode.VECTOR_V128_STORE64_LANE: {
+                long value = ByteArraySupport.littleEndian().getLong(vec.getBytes(), laneIndex * 8);
+                memory.store_i64(this, address, value);
                 break;
+            }
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
