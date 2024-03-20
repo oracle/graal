@@ -42,6 +42,7 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.MemUseTrackerKey;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
@@ -221,6 +222,44 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
      */
     public void updateCachedLocalLoopFrequency(LoopBeginNode lb, Function<LoopFrequencyData, LoopFrequencyData> updater) {
         localLoopFrequencyData.put(lb, updater.apply(localLoopFrequencyData.get(lb)));
+    }
+
+    /**
+     * Debug only decorator for {@link RecursiveVisitor} to log all basic blocks how they are
+     * visited one by one.
+     */
+    public static class LoggingCFGDecorator implements ControlFlowGraph.RecursiveVisitor<HIRBlock> {
+        private final ControlFlowGraph.RecursiveVisitor<HIRBlock> visitor;
+        private String indent = "";
+
+        public LoggingCFGDecorator(ControlFlowGraph.RecursiveVisitor<HIRBlock> visitor, ControlFlowGraph cfg) {
+            this.visitor = visitor;
+            TTY.printf("DomTree for %s%n", cfg.graph);
+            printDomTree(cfg.getStartBlock(), "");
+        }
+
+        private static void printDomTree(HIRBlock cur, String indent) {
+            TTY.printf("%s%s [dom %s, post dom %s]%n", indent, cur, cur.getDominator(), cur.getPostdominator());
+            HIRBlock dominated = cur.getFirstDominated();
+            while (dominated != null) {
+                printDomTree(dominated, indent + "\t");
+                dominated = dominated.getDominatedSibling();
+            }
+        }
+
+        @Override
+        public HIRBlock enter(HIRBlock b) {
+            TTY.printf("%sEnter block %s for %s%n", indent, b, visitor);
+            indent += "\t";
+            return visitor.enter(b);
+        }
+
+        @Override
+        public void exit(HIRBlock b, HIRBlock value) {
+            indent = indent.substring(0, indent.length() - 1);
+            TTY.printf("%sExit block %s with value %s for %s%n", indent, b, value, visitor);
+            visitor.exit(b, value);
+        }
     }
 
     @SuppressWarnings("unchecked")

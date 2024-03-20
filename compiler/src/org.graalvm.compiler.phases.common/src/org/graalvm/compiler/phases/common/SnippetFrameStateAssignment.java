@@ -184,43 +184,43 @@ public class SnippetFrameStateAssignment {
              * in its return values. If such a snippet is encountered the subsequent logic will
              * assign an invalid state to the merge.
              */
-            NodeStateAssignment bci = null;
+            NodeStateAssignment mergeAssignment = null;
             forAllStates: for (int i = 0; i < states.size(); i++) {
                 NodeStateAssignment assignment = states.get(i);
                 switch (assignment) {
                     case BEFORE_BCI:
                         /* If we only see BEFORE_BCI, the result will be BEFORE_BCI. */
-                        if (bci == null) {
-                            bci = NodeStateAssignment.BEFORE_BCI;
+                        if (mergeAssignment == null) {
+                            mergeAssignment = NodeStateAssignment.BEFORE_BCI;
                         }
                         break;
                     case AFTER_BCI:
                     case AFTER_BCI_INVALID_FOR_DEOPTIMIZATION:
                         /* If we see at least one kind of AFTER_BCI, the result will be the same. */
-                        if (bci == NodeStateAssignment.AFTER_BCI || bci == NodeStateAssignment.AFTER_BCI_INVALID_FOR_DEOPTIMIZATION) {
-                            GraalError.guarantee(bci == assignment, "Cannot mix valid and invalid AFTER_BCI versions");
+                        if (mergeAssignment == NodeStateAssignment.AFTER_BCI || mergeAssignment == NodeStateAssignment.AFTER_BCI_INVALID_FOR_DEOPTIMIZATION) {
+                            GraalError.guarantee(mergeAssignment == assignment, "Cannot mix valid and invalid AFTER_BCI versions");
                         }
-                        bci = assignment;
+                        mergeAssignment = assignment;
                         break;
                     case AFTER_EXCEPTION_BCI:
                         /* AFTER_EXCEPTION_BCI can only be merged with itself. */
-                        if (bci == null || bci == NodeStateAssignment.AFTER_EXCEPTION_BCI) {
-                            bci = NodeStateAssignment.AFTER_EXCEPTION_BCI;
+                        if (mergeAssignment == null || mergeAssignment == NodeStateAssignment.AFTER_EXCEPTION_BCI) {
+                            mergeAssignment = NodeStateAssignment.AFTER_EXCEPTION_BCI;
                             break;
                         }
                         /* Cannot merge AFTER_EXCEPTION_BCI with anything else. */
-                        bci = NodeStateAssignment.INVALID;
+                        mergeAssignment = NodeStateAssignment.INVALID;
                         break forAllStates;
                     case INVALID:
-                        bci = NodeStateAssignment.INVALID;
+                        mergeAssignment = NodeStateAssignment.INVALID;
                         break forAllStates;
                     default:
                         throw GraalError.shouldNotReachHere("Unhandled node state assignment: " + assignment + " at merge " + merge); // ExcludeFromJacocoGeneratedReport
                 }
             }
-            assert bci != null;
-            stateMapping.put(merge, bci);
-            return bci;
+            assert mergeAssignment != null;
+            stateMapping.put(merge, mergeAssignment);
+            return mergeAssignment;
         }
 
         @Override
