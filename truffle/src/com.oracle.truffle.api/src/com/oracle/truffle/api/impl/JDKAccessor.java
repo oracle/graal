@@ -55,4 +55,8 @@ public abstract class JDKAccessor {
         return false;
     }
 
+    public static Thread newVirtualThread(@SuppressWarnings("unused") String name, @SuppressWarnings("unused") Runnable runnable) {
+        throw new UnsupportedOperationException("VirtualThread is not supported on this JDK");
+    }
+
 }
