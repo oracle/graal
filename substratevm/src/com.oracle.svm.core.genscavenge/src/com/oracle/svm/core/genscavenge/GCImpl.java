@@ -325,7 +325,7 @@ public final class GCImpl implements GC {
             Timer verifyBeforeTimer = timers.verifyBefore.open();
             try {
                 boolean success = true;
-                success &= HeapVerifier.verify(HeapVerifier.Occasion.BEFORE_COLLECTION);
+                success &= HeapVerifier.singleton().verify(HeapVerifier.Occasion.BEFORE_COLLECTION);
                 success &= StackVerifier.verifyAllThreads();
 
                 if (!success) {
@@ -344,7 +344,7 @@ public final class GCImpl implements GC {
             Timer verifyAfterTime = timers.verifyAfter.open();
             try {
                 boolean success = true;
-                success &= HeapVerifier.verify(HeapVerifier.Occasion.AFTER_COLLECTION);
+                success &= HeapVerifier.singleton().verify(HeapVerifier.Occasion.AFTER_COLLECTION);
                 success &= StackVerifier.verifyAllThreads();
 
                 if (!success) {
