@@ -1791,7 +1791,7 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register(new InvocationPlugin("positivePi", int.class) {
+        r.register(new RequiredInlineOnlyInvocationPlugin("positivePi", int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, Receiver receiver, ValueNode n) {
                 BeginNode begin = b.add(new BeginNode());
@@ -1799,7 +1799,7 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register(new InvocationPlugin("positivePi", long.class) {
+        r.register(new RequiredInlineOnlyInvocationPlugin("positivePi", long.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, Receiver receiver, ValueNode n) {
                 BeginNode begin = b.add(new BeginNode());
