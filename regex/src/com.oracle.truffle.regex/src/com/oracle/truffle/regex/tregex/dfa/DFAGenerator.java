@@ -131,7 +131,7 @@ public final class DFAGenerator implements JsonConvertible {
 
     private short nextID = 1;
     private final DFAStateNodeBuilder lookupDummyState;
-    private final Counter transitionIDCounter = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxDFATransitions, "too many transitions");
+    private final Counter transitionIDCounter;
     private final Counter cgPartialTransitionIDCounter = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxDFACGPartialTransitions, "too many partial transitions");
     private int maxNumberOfNfaStates = 1;
     private boolean hasAmbiguousStates = false;
@@ -154,6 +154,7 @@ public final class DFAGenerator implements JsonConvertible {
     private final List<TruffleString.CodePointSet> indexOfParams = new ArrayList<>();
 
     public DFAGenerator(TRegexCompilationRequest compilationRequest, NFA nfa, TRegexDFAExecutorProperties executorProps, CompilationBuffer compilationBuffer) {
+        transitionIDCounter = new Counter.ThresholdCounter(nfa.getAst().getOptions().getMaxDFASize(), "too many transitions");
         this.compilationRequest = compilationRequest;
         this.nfa = nfa;
         this.executorProps = executorProps;
