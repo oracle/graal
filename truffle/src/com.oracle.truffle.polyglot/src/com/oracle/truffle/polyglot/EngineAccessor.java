@@ -74,6 +74,7 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
+import com.oracle.truffle.api.impl.JDKAccessor;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionKey;
@@ -129,7 +130,7 @@ import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
-import com.oracle.truffle.polyglot.PolyglotThread.ThreadSpawnRootNode;
+import com.oracle.truffle.polyglot.PolyglotThreadTask.ThreadSpawnRootNode;
 import com.oracle.truffle.polyglot.SystemThread.InstrumentSystemThread;
 import com.oracle.truffle.polyglot.SystemThread.LanguageSystemThread;
 
@@ -834,7 +835,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object[] enterContextAsPolyglotThread(Object polyglotContext) {
             PolyglotContextImpl context = ((PolyglotContextImpl) polyglotContext);
-            return context.enterThreadChanged(false, true, false, true, false);
+            return context.enterThreadChanged(false, true, false, PolyglotThreadTask.ISOLATE_POLYGLOT_THREAD, false);
         }
 
         @Override
@@ -1157,7 +1158,8 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Thread createThread(Object polyglotLanguageContext, Runnable runnable, Object innerContextImpl, ThreadGroup group, long stackSize, Runnable beforeEnter, Runnable afterLeave) {
+        public Thread createThread(Object polyglotLanguageContext, Runnable runnable, Object innerContextImpl, ThreadGroup group, long stackSize, Runnable beforeEnter, Runnable afterLeave,
+                        boolean virtual) {
             if (!isCreateThreadAllowed(polyglotLanguageContext)) {
                 throw PolyglotEngineException.illegalState("Creating threads is not allowed.");
             }
@@ -1166,7 +1168,17 @@ final class EngineAccessor extends Accessor {
                 PolyglotContextImpl innerContext = (PolyglotContextImpl) innerContextImpl;
                 threadContext = innerContext.getContext(threadContext.language);
             }
-            PolyglotThread newThread = new PolyglotThread(threadContext, runnable, group, stackSize, beforeEnter, afterLeave);
+
+            String name = PolyglotThreadTask.createDefaultName(threadContext);
+            PolyglotThreadTask task = new PolyglotThreadTask(threadContext, runnable, beforeEnter, afterLeave);
+            Thread newThread;
+            if (virtual) {
+                newThread = JDKAccessor.newVirtualThread(name, task);
+            } else {
+                newThread = new Thread(group, task, name, stackSize);
+            }
+            newThread.setUncaughtExceptionHandler(threadContext.getPolyglotExceptionHandler());
+
             threadContext.context.checkMultiThreadedAccess(newThread);
             return newThread;
         }
@@ -1977,8 +1989,9 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public boolean isPolyglotThread(Thread thread) {
-            return thread instanceof PolyglotThread;
+        public boolean isCurrentThreadPolyglotThread() {
+            PolyglotThreadInfo info = PolyglotFastThreadLocals.getCurrentThread(null);
+            return info != null && info.isPolyglotThread();
         }
 
         @Override

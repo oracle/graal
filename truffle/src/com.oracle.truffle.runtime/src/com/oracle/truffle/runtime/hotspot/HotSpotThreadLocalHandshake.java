@@ -44,18 +44,25 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.Node;
+import jdk.internal.access.JavaLangAccess;
+import jdk.internal.access.SharedSecrets;
 
 final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
 
     private static final sun.misc.Unsafe UNSAFE = HotSpotTruffleRuntime.UNSAFE;
+    private static final JavaLangAccess JAVA_LANG_ACCESS = SharedSecrets.getJavaLangAccess();
+
     static final HotSpotThreadLocalHandshake SINGLETON = new HotSpotThreadLocalHandshake();
-    private static final ThreadLocal<TruffleSafepointImpl> STATE = ThreadLocal.withInitial(() -> SINGLETON.getThreadState(Thread.currentThread()));
+    private static final ThreadLocal<TruffleSafepointImpl> STATE = new ThreadLocal<>();
 
     private static final int PENDING_OFFSET = HotSpotTruffleRuntime.getRuntime().getJVMCIReservedLongOffset0();
     private static final long THREAD_EETOP_OFFSET;
+    private static final long THREAD_CARRIER_THREAD_OFFSET;
     static {
         try {
             THREAD_EETOP_OFFSET = HotSpotTruffleRuntime.getObjectFieldOffset(Thread.class.getDeclaredField("eetop"));
+            Class<?> virtualThreadClass = Class.forName("java.lang.VirtualThread");
+            THREAD_CARRIER_THREAD_OFFSET = HotSpotTruffleRuntime.getObjectFieldOffset(virtualThreadClass.getDeclaredField("carrierThread"));
         } catch (Exception e) {
             throw new InternalError(e);
         }
@@ -71,11 +78,19 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
     }
 
     @Override
+    public void ensureThreadInitialized() {
+        if (handshakeSupported()) {
+            STATE.set(getThreadState(Thread.currentThread()));
+        }
+    }
+
+    // This is only used in interpreter, PE uses HotSpotTruffleSafepointLoweringSnippet.pollSnippet
+    @Override
     public void poll(Node enclosingNode) {
         if (handshakeSupported()) {
-            long eetop = UNSAFE.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
-            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY,
-                            UNSAFE.getInt(null, eetop + PENDING_OFFSET) != 0)) {
+            Thread carrierThread = JAVA_LANG_ACCESS.currentCarrierThread();
+            long eetop = UNSAFE.getLong(carrierThread, THREAD_EETOP_OFFSET);
+            if (UNSAFE.getInt(null, eetop + PENDING_OFFSET) != 0) {
                 processHandshake(enclosingNode);
             }
         }
@@ -90,34 +105,78 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
     protected void setFastPending(Thread t) {
         assert handshakeSupported() : "must not call setFastPending if handshake is not supported.";
         if (handshakeSupported()) {
-            setVolatile(t, PENDING_OFFSET, 1);
+            setVolatile(t, 1);
         }
     }
 
     @Override
     @TruffleBoundary
     public TruffleSafepointImpl getCurrent() {
-        return STATE.get();
+        TruffleSafepointImpl state = STATE.get();
+        if (state == null) {
+            throw CompilerDirectives.shouldNotReachHere("Thread local handshake is not initialized for this thread. " +
+                            "Did you call getCurrent() outside while a polyglot context not entered?");
+        }
+        return state;
     }
 
     @Override
     protected void clearFastPending() {
         assert handshakeSupported() : "must not call clearFastPending if handshake is not supported.";
         if (handshakeSupported()) {
-            setVolatile(Thread.currentThread(), PENDING_OFFSET, 0);
+            setVolatile(Thread.currentThread(), 0);
         }
     }
 
-    private static void setVolatile(Thread t, int offset, int value) {
+    private static void setVolatile(Thread thread, int value) {
         /*
          * The thread will not go away here because the Truffle implementation ensures that this
          * method is no longer used if the thread is no longer active. It only sets this state for
          * contexts that are currently entered on a thread. Being entered implies that the thread is
          * active.
          */
-        assert t.isAlive() : "thread must remain alive while setting fast pending";
-        long eetop = UNSAFE.getLong(t, THREAD_EETOP_OFFSET);
-        UNSAFE.putIntVolatile(null, eetop + offset, value);
+        assert thread.isAlive() : "thread must remain alive while setting fast pending";
+
+        long eetop = UNSAFE.getLongVolatile(thread, THREAD_EETOP_OFFSET);
+        if (eetop != 0) {
+            UNSAFE.putIntVolatile(null, eetop + PENDING_OFFSET, value);
+        } else { // only the case for VirtualThreads
+            Object carrierThread = UNSAFE.getObjectVolatile(thread, THREAD_CARRIER_THREAD_OFFSET);
+            if (carrierThread == null) {
+                /*
+                 * The carrierThread of the VirtualThread is null, which means the VirtualThread was
+                 * suspended (e.g. Thread.yield(), some blocking call, etc). In that case we will
+                 * set the pending flag when the VirtualThread resumes, thanks to
+                 * setPendingFlagForVirtualThread() below called on VirtualThread#mount().
+                 */
+                return;
+            }
+            eetop = UNSAFE.getLongVolatile(carrierThread, THREAD_EETOP_OFFSET);
+            UNSAFE.putIntVolatile(null, eetop + PENDING_OFFSET, value);
+            /*
+             * If the VirtualThread moves to another carrier thread after this method returns, the
+             * pending flag will still be set correctly thanks to setPendingFlagForVirtualThread()
+             * below called on VirtualThread#mount().
+             */
+
+        }
+    }
+
+    static void setPendingFlagForVirtualThread() {
+        if (handshakeSupported()) {
+            TruffleSafepointImpl safepoint = STATE.get();
+            if (safepoint != null) {
+                boolean pending = safepoint.isFastPendingSet();
+
+                // VirtualThread#carrierThread is not set yet, it set after this hook is called.
+                // However, Thread.currentCarrierThread() is already set so we can use that.
+                // We could also get the carrier thread from the hook arguments but that seems more
+                // expensive.
+                Thread carrierThread = JAVA_LANG_ACCESS.currentCarrierThread();
+                long eetop = UNSAFE.getLongVolatile(carrierThread, THREAD_EETOP_OFFSET);
+                UNSAFE.putIntVolatile(null, eetop + PENDING_OFFSET, pending ? 1 : 0);
+            }
+        }
     }
 
 }

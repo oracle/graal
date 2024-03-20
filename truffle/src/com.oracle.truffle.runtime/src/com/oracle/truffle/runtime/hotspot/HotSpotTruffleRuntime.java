@@ -55,6 +55,7 @@ import java.util.function.Consumer;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -71,6 +72,8 @@ import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 import com.oracle.truffle.runtime.TruffleCallBoundary;
 import com.oracle.truffle.runtime.hotspot.libgraal.LibGraalTruffleCompilationSupport;
 
+import jdk.internal.access.JavaLangAccess;
+import jdk.internal.access.SharedSecrets;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.common.JVMCIError;
@@ -102,6 +105,15 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
     static final int JAVA_SPEC = Runtime.version().feature();
 
     static final sun.misc.Unsafe UNSAFE = getUnsafe();
+    private static final JavaLangAccess JAVA_LANG_ACCESS = SharedSecrets.getJavaLangAccess();
+    private static final long THREAD_EETOP_OFFSET;
+    static {
+        try {
+            THREAD_EETOP_OFFSET = HotSpotTruffleRuntime.getObjectFieldOffset(Thread.class.getDeclaredField("eetop"));
+        } catch (Exception e) {
+            throw new InternalError(e);
+        }
+    }
 
     private static Unsafe getUnsafe() {
         try {
@@ -140,6 +152,7 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
         }
     }
 
+    private int pendingTransferToInterpreterOffset = -1;
     private boolean traceTransferToInterpreter;
     private Boolean profilingEnabled;
 
@@ -323,6 +336,9 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
                 HotSpotTruffleCompiler compiler = (HotSpotTruffleCompiler) newTruffleCompiler();
                 compiler.initialize(initCallTarget, true);
                 this.initializeCallTarget = initCallTarget;
+
+                pendingTransferToInterpreterOffset = compiler.pendingTransferToInterpreterOffset(callTarget);
+                assert pendingTransferToInterpreterOffset != -1;
 
                 installCallBoundaryMethods(compiler);
                 if (jvmciReservedReference0Offset != -1) {
@@ -571,7 +587,23 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
     private void traceTransferToInterpreter() {
         TruffleCompiler compiler = truffleCompiler;
         assert compiler != null;
-        TraceTransferToInterpreterHelper.traceTransferToInterpreter(this, (HotSpotTruffleCompiler) compiler);
+        assert pendingTransferToInterpreterOffset != -1;
+
+        long threadStruct = UNSAFE.getLong(JAVA_LANG_ACCESS.currentCarrierThread(), THREAD_EETOP_OFFSET);
+        long pendingTransferToInterpreterAddress = threadStruct + pendingTransferToInterpreterOffset;
+        boolean deoptimized = UNSAFE.getByte(pendingTransferToInterpreterAddress) != 0;
+        if (deoptimized) {
+            logTransferToInterpreter(pendingTransferToInterpreterAddress);
+        }
+    }
+
+    private void logTransferToInterpreter(long pendingTransferToInterpreterAddress) {
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) iterateFrames(FrameInstance::getCallTarget);
+        if (callTarget == null) {
+            return;
+        }
+        StackTraceHelper.logHostAndGuestStacktrace("transferToInterpreter", callTarget);
+        UNSAFE.putByte(pendingTransferToInterpreterAddress, (byte) 0);
     }
 
     @Override
@@ -659,15 +691,10 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
 
     @Override
     public long getStackOverflowLimit() {
-        try {
-            int stackOverflowLimitOffset = vmConfigAccess.getFieldOffset(JAVA_SPEC >= 16 ? "JavaThread::_stack_overflow_state._stack_overflow_limit" : "JavaThread::_stack_overflow_limit",
-                            Integer.class, "address");
-            long threadEETopOffset = getObjectFieldOffset(Thread.class.getDeclaredField("eetop"));
-            long eetop = UNSAFE.getLong(Thread.currentThread(), threadEETopOffset);
-            return UNSAFE.getLong(eetop + stackOverflowLimitOffset);
-        } catch (NoSuchFieldException e) {
-            throw new RuntimeException(e);
-        }
+        int stackOverflowLimitOffset = vmConfigAccess.getFieldOffset(JAVA_SPEC >= 16 ? "JavaThread::_stack_overflow_state._stack_overflow_limit" : "JavaThread::_stack_overflow_limit",
+                        Integer.class, "address");
+        long eetop = UNSAFE.getLong(JAVA_LANG_ACCESS.currentCarrierThread(), THREAD_EETOP_OFFSET);
+        return UNSAFE.getLong(eetop + stackOverflowLimitOffset);
     }
 
     @SuppressWarnings("deprecation" /* JDK-8277863 */)
@@ -691,32 +718,6 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
         } else {
             // fallback to default thread local
             return null;
-        }
-    }
-
-    private static class TraceTransferToInterpreterHelper {
-        private static final long THREAD_EETOP_OFFSET;
-
-        static {
-            try {
-                THREAD_EETOP_OFFSET = getObjectFieldOffset(Thread.class.getDeclaredField("eetop"));
-            } catch (Exception e) {
-                throw new InternalError(e);
-            }
-        }
-
-        static void traceTransferToInterpreter(HotSpotTruffleRuntime runtime, HotSpotTruffleCompiler compiler) {
-            OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.iterateFrames((f) -> f.getCallTarget());
-            if (callTarget == null) {
-                return;
-            }
-            long thread = UNSAFE.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
-            long pendingTransferToInterpreterAddress = thread + compiler.pendingTransferToInterpreterOffset(callTarget);
-            boolean deoptimized = UNSAFE.getByte(pendingTransferToInterpreterAddress) != 0;
-            if (deoptimized) {
-                StackTraceHelper.logHostAndGuestStacktrace("transferToInterpreter", callTarget);
-                UNSAFE.putByte(pendingTransferToInterpreterAddress, (byte) 0);
-            }
         }
     }
 

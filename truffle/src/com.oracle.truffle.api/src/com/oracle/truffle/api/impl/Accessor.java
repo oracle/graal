@@ -475,7 +475,8 @@ public abstract class Accessor {
 
         public abstract boolean isCreateThreadAllowed(Object polyglotLanguageContext);
 
-        public abstract Thread createThread(Object polyglotLanguageContext, Runnable runnable, Object innerContextImpl, ThreadGroup group, long stackSize, Runnable beforeEnter, Runnable afterLeave);
+        public abstract Thread createThread(Object polyglotLanguageContext, Runnable runnable, Object innerContextImpl, ThreadGroup group, long stackSize, Runnable beforeEnter, Runnable afterLeave,
+                        boolean virtual);
 
         public abstract RuntimeException wrapHostException(Node callNode, Object languageContext, Throwable exception);
 
@@ -739,7 +740,7 @@ public abstract class Accessor {
 
         public abstract String getFormatKind(LogRecord logRecord);
 
-        public abstract boolean isPolyglotThread(Thread thread);
+        public abstract boolean isCurrentThreadPolyglotThread();
 
         public abstract Object getHostNull();
 

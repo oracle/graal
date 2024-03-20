@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.polyglot;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ThreadScope;
 
 import com.oracle.truffle.api.CallTarget;
@@ -50,48 +51,43 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 
-final class PolyglotThread extends Thread {
+/**
+ * Information about a polyglot thread, that is a Thread created through
+ * {@link TruffleLanguage.Env#newTruffleThreadBuilder}.build().
+ */
+final class PolyglotThreadTask implements Runnable {
+
+    public static final PolyglotThreadTask ISOLATE_POLYGLOT_THREAD = new PolyglotThreadTask();
+
+    private static final AtomicInteger THREAD_INIT_NUMBER = new AtomicInteger(0);
 
     private final PolyglotLanguageContext languageContext;
-
-    private final CallTarget callTarget;
-
+    private final Runnable userRunnable;
+    final Thread parentThread;
     final Runnable beforeEnter;
     final Runnable afterLeave;
+    private final CallTarget callTarget;
 
-    volatile boolean hardExitNotificationThread;
-    private boolean enterAllowed = true;
-
-    PolyglotThread(PolyglotLanguageContext languageContext, Runnable runnable, ThreadGroup group, long stackSize, Runnable beforeEnter, Runnable afterLeave) {
-        super(group, runnable, createDefaultName(languageContext), stackSize);
+    PolyglotThreadTask(PolyglotLanguageContext languageContext, Runnable runnable, Runnable beforeEnter, Runnable afterLeave) {
         this.languageContext = languageContext;
-        setUncaughtExceptionHandler(languageContext.getPolyglotExceptionHandler());
-        this.callTarget = ThreadSpawnRootNode.lookup(languageContext.getLanguageInstance());
+        this.userRunnable = runnable;
+        this.parentThread = Thread.currentThread();
         this.beforeEnter = beforeEnter;
         this.afterLeave = afterLeave;
+        this.callTarget = ThreadSpawnRootNode.lookup(languageContext.getLanguageInstance());
     }
 
-    private static String createDefaultName(PolyglotLanguageContext creator) {
+    private PolyglotThreadTask() {
+        this.languageContext = null;
+        this.userRunnable = null;
+        this.parentThread = null;
+        this.beforeEnter = null;
+        this.afterLeave = null;
+        this.callTarget = null;
+    }
+
+    static String createDefaultName(PolyglotLanguageContext creator) {
         return "Polyglot-" + creator.language.getId() + "-" + THREAD_INIT_NUMBER.getAndIncrement();
-    }
-
-    PolyglotContextImpl getOwnerContext() {
-        return languageContext.context;
-    }
-
-    @Override
-    public synchronized void start() {
-        PolyglotContextImpl polyglotContext = languageContext.context;
-        Thread hardExitTriggeringThread = polyglotContext.closeExitedTriggerThread;
-        if (hardExitTriggeringThread != null) {
-            Thread currentThread = currentThread();
-            if (hardExitTriggeringThread == currentThread ||
-                            (currentThread instanceof PolyglotThread && ((PolyglotThread) currentThread).getOwnerContext() == polyglotContext &&
-                                            ((PolyglotThread) currentThread).hardExitNotificationThread)) {
-                hardExitNotificationThread = true;
-            }
-        }
-        super.start();
     }
 
     @Override
@@ -99,24 +95,10 @@ final class PolyglotThread extends Thread {
         // always call through a HostToGuestRootNode so that stack/frame
         // walking can determine in which context the frame was executed
         try {
-            callTarget.call(null, languageContext, this, new PolyglotThreadRunnable() {
-                @Override
-                @TruffleBoundary
-                public void execute() {
-                    PolyglotThread.super.run();
-                }
-            });
+            callTarget.call(null, languageContext, this, userRunnable);
         } catch (Throwable t) {
             throw PolyglotImpl.engineToLanguageException(t);
         }
-    }
-
-    private static final AtomicInteger THREAD_INIT_NUMBER = new AtomicInteger(0);
-
-    // replacing Runnable with dedicated interface to avoid having Runnable.run() on the fast path,
-    // since SVM will otherwise pull in all Runnable implementations as runtime compiled methods
-    private interface PolyglotThreadRunnable {
-        void execute();
     }
 
     static final class ThreadSpawnRootNode extends RootNode {
@@ -128,16 +110,16 @@ final class PolyglotThread extends Thread {
         @Override
         public Object execute(VirtualFrame frame) {
             Object[] args = frame.getArguments();
-            return executeImpl((PolyglotLanguageContext) args[0], (PolyglotThread) args[1], (PolyglotThreadRunnable) args[2]);
+            return executeImpl((PolyglotLanguageContext) args[0], (PolyglotThreadTask) args[1], (Runnable) args[2]);
         }
 
         @TruffleBoundary
         @SuppressWarnings("try")
-        private static Object executeImpl(PolyglotLanguageContext languageContext, PolyglotThread thread, PolyglotThreadRunnable run) {
-            Object[] prev = languageContext.enterThread(thread);
+        private static Object executeImpl(PolyglotLanguageContext languageContext, PolyglotThreadTask polyglotThreadTask, Runnable runnable) {
+            Object[] prev = languageContext.enterThread(polyglotThreadTask);
             assert prev == null; // is this assertion correct?
             try (ThreadScope scope = languageContext.getImpl().getRootImpl().createThreadScope()) {
-                run.execute();
+                runnable.run();
             } catch (CancelExecution cancel) {
                 if (PolyglotEngineOptions.TriggerUncaughtExceptionHandlerForCancel.getValue(languageContext.context.engine.getEngineOptionValues())) {
                     throw cancel;
@@ -145,7 +127,7 @@ final class PolyglotThread extends Thread {
                     return null;
                 }
             } finally {
-                languageContext.leaveAndDisposePolyglotThread(prev, thread);
+                languageContext.leaveAndDisposePolyglotThread(prev, polyglotThreadTask);
             }
             return null;
         }
@@ -164,13 +146,4 @@ final class PolyglotThread extends Thread {
         }
     }
 
-    boolean isEnterAllowed() {
-        assert Thread.currentThread() == this;
-        return enterAllowed;
-    }
-
-    void setEnterAllowed(boolean enterAllowed) {
-        assert Thread.currentThread() == this;
-        this.enterAllowed = enterAllowed;
-    }
 }

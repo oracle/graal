@@ -198,7 +198,11 @@ public abstract class ThreadLocalHandshake {
             this.sideEffecting = sideEffecting;
             this.syncStartOfEvent = syncStartOfEvent;
             this.syncEndOfEvent = syncEndOfEvent;
-            this.phaser = new Phaser(numberOfThreads);
+            try {
+                this.phaser = new Phaser(numberOfThreads);
+            } catch (IllegalArgumentException e) {
+                throw new UnsupportedOperationException("Truffle does not currently support more than 65535 threads concurrently entered in the same context due to Phaser limitations");
+            }
             /*
              * Mark the handshake for all initial threads as active (not deactivated).
              */
@@ -311,6 +315,7 @@ public abstract class ThreadLocalHandshake {
         return SAFEPOINTS.computeIfAbsent(thread, (t) -> new TruffleSafepointImpl(this));
     }
 
+    /** One per {@link Thread}, see {@link #SAFEPOINTS}. */
     protected static final class TruffleSafepointImpl extends TruffleSafepoint {
 
         private final ReentrantLock lock = new ReentrantLock();
@@ -504,6 +509,10 @@ public abstract class ThreadLocalHandshake {
             } finally {
                 lock.unlock();
             }
+        }
+
+        public boolean isFastPendingSet() {
+            return fastPendingSet;
         }
 
         private void resetPending() {

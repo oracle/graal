@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
@@ -56,6 +57,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleOptions;
+import org.graalvm.home.Version;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.PolyglotException;
@@ -252,31 +256,43 @@ public abstract class AbstractPolyglotTest {
                     int threads,
                     int iterations,
                     int objectCount) throws InterruptedException {
-        return assertInParallel(() -> {
+        var nodes = assertInParallel(() -> {
             T node = objectFactory.get();
             new TestRootNode(language, node).getCallTarget();
             return node;
-        }, assertions, threadPools, threads, iterations, objectCount);
+        }, assertions, threadPools, threads, iterations, objectCount, false);
+
+        if (canCreateVirtualThreads()) {
+            nodes.addAll(assertInParallel(() -> {
+                T node = objectFactory.get();
+                new TestRootNode(language, node).getCallTarget();
+                return node;
+            }, assertions, threadPools, threads, iterations, objectCount, true));
+        }
+
+        return nodes;
     }
 
     /**
      * Runs assertions for a node in parallel. This method aims to maximize races for each
      * assertions consumer running in parallel.
      *
+     * @param iterations number of iterations per thread pool
+     * @param objectCount number of objects created through the factory per iteration.
      * @param threadPools number of thread pools
      * @param threads number of threads in parallel for each iteration
-     * @param number of iterations per thread pool
-     * @param number of objects created through the factory per iteration.
+     * @param vthreads whether to use virtual threads
      */
     @SuppressWarnings({"unchecked", "static-method"})
     protected final <T> List<T> assertInParallel(Supplier<T> objectFactory, ParallelObjectConsumer<T> assertions,
                     int threadPools,
                     int threads,
                     int iterations,
-                    int objectCount) throws InterruptedException {
+                    int objectCount,
+                    boolean vthreads) throws InterruptedException {
         List<T> createdObjects = new ArrayList<>();
         for (int poolIndex = 0; poolIndex < threadPools; poolIndex++) {
-            ExecutorService executorService = Executors.newFixedThreadPool(threads);
+            ExecutorService executorService = threadPool(threads, vthreads);
             try {
                 Semaphore semaphore = new Semaphore(0);
                 AtomicReference<T[]> node = new AtomicReference<>();
@@ -370,6 +386,7 @@ public abstract class AbstractPolyglotTest {
         ProxyInstrument.setDelegate(new ProxyInstrument());
     }
 
+    // also known as assertThrows
     public static void assertFails(Runnable callable, Class<?> exceptionType) {
         assertFails((Callable<?>) () -> {
             callable.run();
@@ -389,7 +406,14 @@ public abstract class AbstractPolyglotTest {
         fail("expected " + exceptionType.getName() + " but no exception was thrown");
     }
 
-    public static <T> void assertFails(Runnable run, Class<T> exceptionType, Consumer<T> verifier) {
+    public static <T extends Throwable> void assertFails(Runnable callable, Class<T> exceptionType, String message) {
+        assertFails((Callable<?>) () -> {
+            callable.run();
+            return null;
+        }, exceptionType, e -> assertEquals(message, e.getMessage()));
+    }
+
+    public static <T extends Throwable> void assertFails(Runnable run, Class<T> exceptionType, Consumer<T> verifier) {
         try {
             run.run();
         } catch (Throwable t) {
@@ -402,7 +426,7 @@ public abstract class AbstractPolyglotTest {
         fail("expected " + exceptionType.getName() + " but no exception was thrown");
     }
 
-    public static <T> void assertFails(Callable<?> callable, Class<T> exceptionType, Consumer<T> verifier) {
+    public static <T extends Throwable> void assertFails(Callable<?> callable, Class<T> exceptionType, Consumer<T> verifier) {
         try {
             callable.call();
         } catch (Throwable t) {
@@ -417,6 +441,32 @@ public abstract class AbstractPolyglotTest {
 
     public static boolean isGraalRuntime() {
         return Truffle.getRuntime().getName().contains("Graal");
+    }
+
+    /*
+     * This is useful to cause more thread switching. It is essential to meaningfully test on
+     * VirtualThreads, which can only reuse the same carrier thread on such explicit yields or
+     * blocking calls. Also note VirtualThreads do not use time slicing, so without a blocking call
+     * or Thread.yield() they will keep a carrier thread busy and prevent other virtual threads to
+     * run at all.
+     */
+    @TruffleBoundary
+    public static void reschedule() {
+        Thread.yield();
+    }
+
+    /**
+     * GR-48489: GraalVM 23.1.x Native Image does not support creating VirtualThreads when Truffle
+     * JIT compilation is enabled. More recent Native Image support it fine by using platform
+     * threads to back virtual threads (through BoundVirtualThread and
+     * ContinuationSupport.isSupported() = false).
+     * <p>
+     * Using isolated polyglot contexts together with Java virtual threads is currently not
+     * supported.
+     */
+    public static boolean canCreateVirtualThreads() {
+        return !(TruffleOptions.AOT && isGraalRuntime() && Version.getCurrent().compareTo(24, 0) < 0) &&
+                        !TruffleTestAssumptions.isIsolateEncapsulation();
     }
 
     private static class TestRootNode extends RootNode {
@@ -435,6 +485,28 @@ public abstract class AbstractPolyglotTest {
             return null;
         }
 
+    }
+
+    // When using this method, the caller test should use:
+    // Assume.assumeFalse(vthreads && !canCreateVirtualThreads());
+    // at the start of the test to avoid extra unnecessary work.
+    public static ExecutorService threadPool(int threads, boolean vthreads) {
+        return vthreads ? Executors.newVirtualThreadPerTaskExecutor() : Executors.newFixedThreadPool(threads);
+    }
+
+    public static void runInVirtualThread(Runnable runnable) throws Throwable {
+        Throwable[] error = new Throwable[1];
+        Thread thread = Thread.startVirtualThread(() -> {
+            try {
+                runnable.run();
+            } catch (Throwable t) {
+                error[0] = t;
+            }
+        });
+        thread.join();
+        if (error[0] != null) {
+            throw error[0];
+        }
     }
 
     public static FrameDescriptor createFrameDescriptor(int count) {

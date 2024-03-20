@@ -44,9 +44,11 @@ import java.lang.reflect.Method;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.JDKAccessor;
 import com.oracle.truffle.api.nodes.Node;
 
 import jdk.vm.ci.code.stack.InspectedFrame;
@@ -87,6 +89,13 @@ public class OptimizedFrameInstance implements FrameInstance {
     @TruffleBoundary
     protected Frame getFrameFrom(InspectedFrame inspectedFrame, FrameAccess access) {
         if (access == FrameAccess.READ_WRITE || access == FrameAccess.MATERIALIZE) {
+            if (!TruffleOptions.AOT && JDKAccessor.isVirtualThread(Thread.currentThread())) {
+                // We throw even if the frame is not virtual to have a deterministic error
+                throw new UnsupportedOperationException(
+                                "OptimizedFrameInstance#getFrame(READ_WRITE|MATERIALIZE) is not yet supported on virtual threads on HotSpot, " +
+                                                "use the default runtime or native mode or avoid using the guest code leading to caller frames access in write/materialize mode.");
+            }
+
             if (inspectedFrame.isVirtual(FRAME_INDEX)) {
                 final OptimizedCallTarget callTarget = (OptimizedCallTarget) getCallTarget();
                 if (callTarget.engine.traceDeoptimizeFrame) {
