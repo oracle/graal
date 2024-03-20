@@ -40,12 +40,14 @@
  */
 package com.oracle.truffle.api.strings;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.provider.JCodingsProvider;
-import com.oracle.truffle.api.strings.provider.JCodingsProvider.Encoding;
 
 interface JCodings {
 
@@ -82,54 +84,48 @@ interface JCodings {
         return (byte[]) array;
     }
 
-    Encoding get(String encodingName);
-
-    Encoding get(TruffleString.Encoding encoding);
-
-    String name(Encoding jCoding);
+    /**
+     * No TruffleBoundary because this method is a final getter in the Encoding base class.
+     */
+    int minLength(TruffleString.Encoding encoding);
 
     /**
      * No TruffleBoundary because this method is a final getter in the Encoding base class.
      */
-    int minLength(Encoding enc);
+    int maxLength(TruffleString.Encoding encoding);
 
     /**
      * No TruffleBoundary because this method is a final getter in the Encoding base class.
      */
-    int maxLength(Encoding e);
+    boolean isFixedWidth(TruffleString.Encoding encoding);
 
     /**
      * No TruffleBoundary because this method is a final getter in the Encoding base class.
      */
-    boolean isFixedWidth(Encoding enc);
-
-    /**
-     * No TruffleBoundary because this method is a final getter in the Encoding base class.
-     */
-    boolean isSingleByte(Encoding enc);
+    boolean isSingleByte(TruffleString.Encoding encoding);
 
     @TruffleBoundary
-    int getCodePointLength(Encoding jCoding, int codepoint);
+    int getCodePointLength(TruffleString.Encoding encoding, int codepoint);
 
     @TruffleBoundary
-    int getPreviousCodePointIndex(Encoding jCoding, byte[] array, int arrayBegin, int index, int arrayEnd);
+    int getPreviousCodePointIndex(TruffleString.Encoding encoding, byte[] array, int arrayBegin, int index, int arrayEnd);
 
     @TruffleBoundary
-    int getCodePointLength(Encoding jCoding, byte[] array, int index, int arrayLength);
+    int getCodePointLength(TruffleString.Encoding encoding, byte[] array, int index, int arrayLength);
 
     @TruffleBoundary
-    int readCodePoint(Encoding jCoding, byte[] array, int index, int arrayEnd, DecodingErrorHandler errorHandler);
+    int readCodePoint(TruffleString.Encoding encoding, byte[] array, int index, int arrayEnd, DecodingErrorHandler errorHandler);
 
     @TruffleBoundary
-    boolean isValidCodePoint(Encoding jCoding, int codepoint);
+    boolean isValidCodePoint(TruffleString.Encoding encoding, int codepoint);
 
     @TruffleBoundary
-    int writeCodePoint(Encoding jCoding, int codepoint, byte[] array, int index);
+    int writeCodePoint(TruffleString.Encoding encoding, int codepoint, byte[] array, int index);
 
     @TruffleBoundary
-    int codePointIndexToRaw(Node location, AbstractTruffleString a, byte[] arrayA, int extraOffsetRaw, int index, boolean isLength, Encoding jCoding);
+    int codePointIndexToRaw(Node location, AbstractTruffleString a, byte[] arrayA, int extraOffsetRaw, int index, boolean isLength, TruffleString.Encoding encoding);
 
-    int decode(AbstractTruffleString a, byte[] arrayA, int rawIndex, Encoding jCoding, TruffleString.ErrorHandling errorHandling);
+    int decode(AbstractTruffleString a, byte[] arrayA, int rawIndex, TruffleString.Encoding encoding, TruffleString.ErrorHandling errorHandling);
 
     long calcStringAttributes(Node location, Object array, int offset, int length, TruffleString.Encoding encoding, int fromIndex, InlinedConditionProfile validCharacterProfile,
                     InlinedConditionProfile fixedWidthProfile);
@@ -137,4 +133,25 @@ interface JCodings {
     TruffleString transcode(Node location, AbstractTruffleString a, Object arrayA, int codePointLengthA, TruffleString.Encoding targetEncoding,
                     TStringInternalNodes.FromBufferWithStringCompactionNode fromBufferWithStringCompactionNode,
                     TranscodingErrorHandler errorHandler);
+
+    static TruffleString.Encoding fromJCodingsName(String jCodingsName) {
+        // This mapping does not actually require JCodings to be present to work.
+        final class Lazy {
+            static final Map<String, TruffleString.Encoding> JCODINGS_NAME_MAP;
+
+            static {
+                final var encodingValues = TruffleString.Encoding.values();
+                // Java 17 compatible version of (Java 19) newHashMap(encodingValues.length)
+                Map<String, TruffleString.Encoding> jcodingsNameMap = new HashMap<>(encodingValues.length + encodingValues.length / 3);
+                for (var encoding : encodingValues) {
+                    jcodingsNameMap.put(encoding.jCodingName, encoding);
+                }
+                JCODINGS_NAME_MAP = Map.copyOf(jcodingsNameMap);
+            }
+
+            private Lazy() {
+            }
+        }
+        return Lazy.JCODINGS_NAME_MAP.get(jCodingsName);
+    }
 }

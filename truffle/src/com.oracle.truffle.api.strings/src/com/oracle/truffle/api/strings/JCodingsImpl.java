@@ -50,6 +50,7 @@ import static com.oracle.truffle.api.strings.TStringGuards.isUTF16Or32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF8;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
@@ -62,66 +63,67 @@ final class JCodingsImpl implements JCodings {
 
     private final JCodingsProvider provider;
 
+    @CompilationFinal(dimensions = 1) private final JCodingsProvider.Encoding[] jcodingsEncodings;
+
     JCodingsImpl(JCodingsProvider provider) {
         this.provider = provider;
+
+        final var encodingValues = TruffleString.Encoding.values();
+        this.jcodingsEncodings = new JCodingsProvider.Encoding[encodingValues.length];
+        for (var e : encodingValues) {
+            var jcodingsEncoding = provider.get(e.jCodingName);
+            jcodingsEncodings[e.id] = jcodingsEncoding;
+            assert jcodingsEncoding.isSingleByte() == e.isSingleByte() : e;
+        }
+    }
+
+    private Encoding get(TruffleString.Encoding encoding) {
+        return jcodingsEncodings[encoding.id];
     }
 
     @Override
-    public JCodingsProvider.Encoding get(String encodingName) {
-        return provider.get(encodingName);
+    public int minLength(TruffleString.Encoding encoding) {
+        return get(encoding).minLength();
     }
 
     @Override
-    public Encoding get(TruffleString.Encoding encoding) {
-        return encoding.jCoding;
+    public int maxLength(TruffleString.Encoding encoding) {
+        return get(encoding).maxLength();
     }
 
     @Override
-    public String name(Encoding jCoding) {
-        return jCoding.getCharsetName();
+    public boolean isFixedWidth(TruffleString.Encoding encoding) {
+        var jCoding = get(encoding);
+        return jCoding.isFixedWidth() && jCoding.isSingleByte();
     }
 
     @Override
-    public int minLength(Encoding jCoding) {
-        return jCoding.minLength();
-    }
-
-    @Override
-    public int maxLength(Encoding jCoding) {
-        return jCoding.maxLength();
-    }
-
-    @Override
-    public boolean isFixedWidth(Encoding jCoding) {
-        return jCoding.isFixedWidth() && isSingleByte(jCoding);
-    }
-
-    @Override
-    public boolean isSingleByte(Encoding jCoding) {
-        return jCoding.isSingleByte();
-    }
-
-    @Override
-    @TruffleBoundary
-    public int getCodePointLength(Encoding jCoding, int codepoint) {
-        return jCoding.codeToMbcLength(codepoint);
+    public boolean isSingleByte(TruffleString.Encoding encoding) {
+        return get(encoding).isSingleByte();
     }
 
     @Override
     @TruffleBoundary
-    public int getPreviousCodePointIndex(Encoding jCoding, byte[] array, int arrayBegin, int index, int arrayEnd) {
-        return jCoding.prevCharHead(array, arrayBegin, index, arrayEnd);
+    public int getCodePointLength(TruffleString.Encoding encoding, int codepoint) {
+        return get(encoding).codeToMbcLength(codepoint);
     }
 
     @Override
     @TruffleBoundary
-    public int getCodePointLength(Encoding jCoding, byte[] array, int index, int arrayLength) {
-        return jCoding.length(array, index, arrayLength);
+    public int getPreviousCodePointIndex(TruffleString.Encoding encoding, byte[] array, int arrayBegin, int index, int arrayEnd) {
+        return get(encoding).prevCharHead(array, arrayBegin, index, arrayEnd);
     }
 
     @Override
     @TruffleBoundary
-    public int readCodePoint(Encoding jCoding, byte[] array, int index, int arrayEnd, DecodingErrorHandler errorHandler) {
+    public int getCodePointLength(TruffleString.Encoding encoding, byte[] array, int index, int arrayLength) {
+        return get(encoding).length(array, index, arrayLength);
+    }
+
+    @Override
+    @TruffleBoundary
+    public int readCodePoint(TruffleString.Encoding encoding, byte[] array, int index, int arrayEnd, DecodingErrorHandler errorHandler) {
+        var jCoding = get(encoding);
         int codePoint = jCoding.mbcToCode(array, index, arrayEnd);
         if (jCoding.isUnicode() && Encodings.isUTF16Surrogate(codePoint)) {
             return isReturnNegative(errorHandler) ? -1 : Encodings.invalidCodepoint();
@@ -131,21 +133,23 @@ final class JCodingsImpl implements JCodings {
 
     @Override
     @TruffleBoundary
-    public boolean isValidCodePoint(Encoding jCoding, int codepoint) {
-        return !jCoding.isUnicode() || !Encodings.isUTF16Surrogate(codepoint);
+    public boolean isValidCodePoint(TruffleString.Encoding encoding, int codepoint) {
+        return !get(encoding).isUnicode() || !Encodings.isUTF16Surrogate(codepoint);
     }
 
     @Override
     @TruffleBoundary
-    public int writeCodePoint(Encoding jCoding, int codepoint, byte[] array, int index) {
-        return jCoding.codeToMbc(codepoint, array, index);
+    public int writeCodePoint(TruffleString.Encoding encoding, int codepoint, byte[] array, int index) {
+        return get(encoding).codeToMbc(codepoint, array, index);
     }
 
     @Override
     @TruffleBoundary
-    public int codePointIndexToRaw(Node location, AbstractTruffleString a, byte[] arrayA, int extraOffsetRaw, int index, boolean isLength, Encoding jCoding) {
+    public int codePointIndexToRaw(Node location, AbstractTruffleString a, byte[] arrayA, int extraOffsetRaw, int index, boolean isLength, TruffleString.Encoding encoding) {
+        var jCoding = get(encoding);
+        int minLength = jCoding.minLength();
         if (jCoding.isFixedWidth()) {
-            return index * minLength(jCoding);
+            return index * minLength;
         }
         int offset = a.byteArrayOffset() + extraOffsetRaw;
         int end = a.byteArrayOffset() + a.length();
@@ -165,7 +169,7 @@ final class JCodingsImpl implements JCodings {
                         throw InternalErrors.indexOutOfBounds();
                     }
                 } else {
-                    i += minLength(jCoding);
+                    i += minLength;
                 }
             } else {
                 i += length;
@@ -177,14 +181,14 @@ final class JCodingsImpl implements JCodings {
     }
 
     @Override
-    public int decode(AbstractTruffleString a, byte[] arrayA, int rawIndex, Encoding jCoding, ErrorHandling errorHandling) {
+    public int decode(AbstractTruffleString a, byte[] arrayA, int rawIndex, TruffleString.Encoding encoding, ErrorHandling errorHandling) {
         int p = a.byteArrayOffset() + rawIndex;
         int end = a.byteArrayOffset() + a.length();
-        int length = getCodePointLength(jCoding, arrayA, p, end);
+        int length = getCodePointLength(encoding, arrayA, p, end);
         if (length < 1) {
             return Encodings.invalidCodepointReturnValue(errorHandling);
         }
-        return readCodePoint(jCoding, arrayA, p, end, errorHandling.errorHandler);
+        return readCodePoint(encoding, arrayA, p, end, errorHandling.errorHandler);
     }
 
     @Override
@@ -196,24 +200,24 @@ final class JCodingsImpl implements JCodings {
         byte[] bytes = JCodings.asByteArray(array);
         int offsetBytes = array instanceof AbstractTruffleString.NativePointer ? fromIndex : offset + fromIndex;
         Encoding enc = get(encoding);
-        int codeRange = TSCodeRange.getValid(isSingleByte(enc));
+        int codeRange = TSCodeRange.getValid(enc.isSingleByte());
         int characters = 0;
         int p = offsetBytes;
         final int end = offsetBytes + length;
         int loopCount = 0;
         for (; p < end; characters++) {
-            final int lengthOfCurrentCharacter = getCodePointLength(enc, bytes, p, end);
+            final int lengthOfCurrentCharacter = enc.length(bytes, p, end);
             if (validCharacterProfile.profile(location, lengthOfCurrentCharacter > 0 && p + lengthOfCurrentCharacter <= end)) {
                 p += lengthOfCurrentCharacter;
             } else {
-                codeRange = TSCodeRange.getBroken(isSingleByte(enc));
+                codeRange = TSCodeRange.getBroken(enc.isSingleByte());
                 // If a string is detected as broken, and we already know the character length
                 // due to a fixed width encoding, we can break here.
                 if (fixedWidthProfile.profile(location, enc.isFixedWidth())) {
-                    characters = (length + minLength(enc) - 1) / minLength(enc);
+                    characters = (length + enc.minLength() - 1) / enc.minLength();
                     return StringAttributes.create(characters, codeRange);
                 } else {
-                    p += minLength(enc);
+                    p += enc.minLength();
                 }
             }
             TStringConstants.truffleSafePointPoll(location, ++loopCount);
@@ -238,12 +242,13 @@ final class JCodingsImpl implements JCodings {
     }
 
     private static Encoding getBytesEncoding(AbstractTruffleString a) {
+        JCodingsImpl impl = (JCodingsImpl) JCodings.getInstance();
         if (isUTF16Or32(a.encoding()) && isStride0(a)) {
-            return TruffleString.Encoding.ISO_8859_1.jCoding;
+            return impl.get(TruffleString.Encoding.ISO_8859_1);
         } else if (isUTF32(a.encoding()) && isStride1(a)) {
-            return TruffleString.Encoding.UTF_16.jCoding;
+            return impl.get(TruffleString.Encoding.UTF_16);
         } else {
-            return JCodings.getInstance().get(TruffleString.Encoding.get(a.encoding()));
+            return impl.get(TruffleString.Encoding.get(a.encoding()));
         }
     }
 
@@ -252,7 +257,7 @@ final class JCodingsImpl implements JCodings {
                     TStringInternalNodes.FromBufferWithStringCompactionNode fromBufferWithStringCompactionNode,
                     TranscodingErrorHandler errorHandler) {
         final Encoding jCodingSrc = getBytesEncoding(a);
-        final Encoding jCodingDst = JCodings.getInstance().get(targetEncoding);
+        final Encoding jCodingDst = get(targetEncoding);
         final byte[] replacement = getConversionReplacement(targetEncoding);
         TranscodeResult result = provider.transcode(a, codePointLengthA, a.byteArrayOffset(), a.length() << a.stride(),
                         targetEncoding, jCodingSrc, jCodingDst,

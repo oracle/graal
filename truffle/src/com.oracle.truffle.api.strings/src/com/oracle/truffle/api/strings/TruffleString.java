@@ -67,8 +67,6 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -93,7 +91,6 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedIntValueProfile;
 import com.oracle.truffle.api.strings.TStringInternalNodesFactory.CalcStringAttributesNodeGen;
-import com.oracle.truffle.api.strings.provider.JCodingsProvider;
 
 /**
  * Represents a primitive String type, which can be reused across languages. Language implementers
@@ -1008,7 +1005,6 @@ public final class TruffleString extends AbstractTruffleString {
 
         final byte id;
         final String jCodingName;
-        final JCodingsProvider.Encoding jCoding;
         final byte maxCompatibleCodeRange;
         final byte naturalStride;
         final boolean fixedWidth;
@@ -1018,7 +1014,6 @@ public final class TruffleString extends AbstractTruffleString {
          */
         Encoding(int id, String jCodingName, boolean fixedWidth) {
             this(id, jCodingName, 0, fixedWidth);
-            assert !JCodings.ENABLED || fixedWidth == JCodings.getInstance().isFixedWidth(JCodings.getInstance().get(jCodingName)) : jCodingName;
         }
 
         /**
@@ -1029,7 +1024,6 @@ public final class TruffleString extends AbstractTruffleString {
             assert Stride.isStride(naturalStride) : naturalStride;
             this.id = (byte) id;
             this.jCodingName = jCodingName;
-            this.jCoding = JCodings.ENABLED ? JCodings.getInstance().get(jCodingName) : null;
             if (is16BitCompatible()) {
                 maxCompatibleCodeRange = (byte) (TSCodeRange.get16Bit() + 1);
             } else if (is8BitCompatible()) {
@@ -1046,35 +1040,26 @@ public final class TruffleString extends AbstractTruffleString {
         @CompilationFinal(dimensions = 1) private static final Encoding[] ENCODINGS_TABLE;
         @CompilationFinal(dimensions = 1) private static final byte[] MAX_COMPATIBLE_CODE_RANGE;
         @CompilationFinal(dimensions = 1) private static final TruffleString[] EMPTY_STRINGS;
-        private static final Map<String, Encoding> JCODINGS_NAME_MAP;
 
         static {
             final Encoding[] encodingValues = Encoding.values();
             ENCODINGS_TABLE = new Encoding[encodingValues.length];
             MAX_COMPATIBLE_CODE_RANGE = new byte[encodingValues.length];
-            EMPTY_STRINGS = new TruffleString[encodingValues.length];
-            // Java 17 compatible version of (Java 19) newHashMap(encodingValues.length)
-            Map<String, Encoding> jcodingsNameMap = new HashMap<>(encodingValues.length + encodingValues.length / 3);
 
             for (Encoding e : encodingValues) {
                 assert ENCODINGS_TABLE[e.id] == null;
                 ENCODINGS_TABLE[e.id] = e;
                 MAX_COMPATIBLE_CODE_RANGE[e.id] = e.maxCompatibleCodeRange;
-                if (JCodings.ENABLED) {
-                    jcodingsNameMap.put(e.jCodingName, e);
-                }
             }
-            JCODINGS_NAME_MAP = Map.copyOf(jcodingsNameMap);
 
             assert UTF_16.naturalStride == 1;
             assert UTF_32.naturalStride == 2;
+            EMPTY_STRINGS = new TruffleString[encodingValues.length];
             EMPTY_STRINGS[US_ASCII.id] = createConstant(new byte[0], 0, 0, US_ASCII, 0, TSCodeRange.get7Bit());
             for (Encoding e : encodingValues) {
                 if (e != US_ASCII) {
                     assert EMPTY_STRINGS[e.id] == null;
-                    if (e.isSupported() || JCodings.ENABLED) {
-                        EMPTY_STRINGS[e.id] = createEmpty(e);
-                    }
+                    EMPTY_STRINGS[e.id] = createEmpty(e);
                 }
             }
         }
@@ -1095,10 +1080,7 @@ public final class TruffleString extends AbstractTruffleString {
          */
         public TruffleString getEmpty() {
             TruffleString emptyString = EMPTY_STRINGS[id];
-            if (emptyString == null) {
-                assert !isSupported() : this;
-                throw InternalErrors.unknownEncoding(this.name());
-            }
+            assert emptyString != null : this;
             return emptyString;
         }
 
@@ -1110,7 +1092,7 @@ public final class TruffleString extends AbstractTruffleString {
          */
         @TruffleBoundary
         public static Encoding fromJCodingName(String name) {
-            Encoding encoding = JCODINGS_NAME_MAP.get(name);
+            Encoding encoding = JCodings.fromJCodingsName(name);
             if (encoding == null) {
                 throw InternalErrors.unknownEncoding(name);
             }
@@ -1171,6 +1153,10 @@ public final class TruffleString extends AbstractTruffleString {
 
         static boolean isFixedWidth(int encoding) {
             return get(encoding).isFixedWidth();
+        }
+
+        boolean isSingleByte() {
+            return fixedWidth && naturalStride == 0;
         }
     }
 
@@ -1704,18 +1690,17 @@ public final class TruffleString extends AbstractTruffleString {
                 }
             } else if (exoticProfile.profile(this, !isSupportedEncoding(enc))) {
                 assert !isBytes(enc);
-                var jCodingsEnc = JCodings.getInstance().get(enc);
-                length = JCodings.getInstance().getCodePointLength(jCodingsEnc, c);
+                length = JCodings.getInstance().getCodePointLength(enc, c);
                 stride = 0;
-                codeRange = TSCodeRange.getValid(JCodings.getInstance().isSingleByte(jCodingsEnc));
+                codeRange = TSCodeRange.getValid(JCodings.getInstance().isSingleByte(enc));
                 if (length < 1) {
                     invalidCodePoint.enter(this);
                     return null;
                 }
                 bytes = new byte[length];
-                int ret = JCodings.getInstance().writeCodePoint(jCodingsEnc, c, bytes, 0);
-                if (ret != length || JCodings.getInstance().getCodePointLength(jCodingsEnc, bytes, 0, length) != ret ||
-                                JCodings.getInstance().readCodePoint(jCodingsEnc, bytes, 0, length, DecodingErrorHandler.RETURN_NEGATIVE) != c) {
+                int ret = JCodings.getInstance().writeCodePoint(enc, c, bytes, 0);
+                if (ret != length || JCodings.getInstance().getCodePointLength(enc, bytes, 0, length) != ret ||
+                                JCodings.getInstance().readCodePoint(enc, bytes, 0, length, DecodingErrorHandler.RETURN_NEGATIVE) != c) {
                     invalidCodePoint.enter(this);
                     return null;
                 }

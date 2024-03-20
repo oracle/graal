@@ -132,7 +132,7 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
         assert isByte(stride);
         assert isByte(flags);
         assert validateCodeRange(encoding, codeRange);
-        assert isSupportedEncoding(encoding) || JCodings.ENABLED;
+        assert isSupportedEncoding(encoding) || length == 0 || JCodings.ENABLED;
         this.data = data;
         this.encoding = encoding.id;
         this.offset = offset;
