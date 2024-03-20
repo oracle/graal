@@ -26,9 +26,11 @@
 
 package com.oracle.svm.core.nmt;
 
+import com.oracle.svm.core.c.struct.PinnedObjectField;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 
 @RawStructure
 public interface NmtMemoryRegion extends PointerBase {
@@ -45,14 +47,16 @@ public interface NmtMemoryRegion extends PointerBase {
     void setBaseAddr(PointerBase value);
 
     @RawField
-    long getSize();
+    UnsignedWord getSize();
 
     @RawField
-    void setSize(long value);
+    void setSize(UnsignedWord value);
 
+    @PinnedObjectField
     @RawField
-    int getCategory();
+    NmtCategory getCategory();
 
+    @PinnedObjectField
     @RawField
-    void setCategory(int value);
+    void setCategory(NmtCategory category);
 }

@@ -85,12 +85,12 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer allocateAlignedChunk(UnsignedWord nbytes, UnsignedWord alignment) {
-        return allocate(nbytes, alignment, false, NmtCategory.mtJavaHeap);
+        return allocate(nbytes, alignment, false, NmtCategory.JavaHeap);
     }
 
     @Override
     public Pointer allocateUnalignedChunk(UnsignedWord nbytes) {
-        return allocate(nbytes, getAlignmentForUnalignedChunks(), false, NmtCategory.mtJavaHeap);
+        return allocate(nbytes, getAlignmentForUnalignedChunks(), false, NmtCategory.JavaHeap);
     }
 
     @Override

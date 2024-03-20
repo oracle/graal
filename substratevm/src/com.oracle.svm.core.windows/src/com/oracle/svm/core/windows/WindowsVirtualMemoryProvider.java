@@ -47,7 +47,7 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.nmt.NmtCategory;
-import com.oracle.svm.core.nmt.NmtVirtualMemoryData;
+import com.oracle.svm.core.nmt.NmtPreImageHeapData;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -125,15 +125,10 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     /** Sentinel value indicating that no special alignment is required. */
     private static final UnsignedWord UNALIGNED = WordFactory.zero();
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable) {
-        return reserve0(nbytes, alignment, executable, WordFactory.nullPointer(), NmtCategory.Internal);
-    }
-
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable, NmtVirtualMemoryData nmtData) {
-        return reserve0(nbytes, alignment, executable, nmtData, NmtCategory.Internal);
+    public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable, NmtPreImageHeapData nmtData) {
+        return reserve0(nbytes, alignment, executable, nmtData, NmtCategory.ImageHeap);
     }
 
     @Override
@@ -143,7 +138,8 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private Pointer reserve0(UnsignedWord nbytes, UnsignedWord alignment, boolean executable, NmtVirtualMemoryData nmtData, NmtCategory category) {
+    @SuppressWarnings("unused")
+    private static Pointer reserve0(UnsignedWord nbytes, UnsignedWord alignment, boolean executable, NmtPreImageHeapData nmtData, NmtCategory category) {
         if (nbytes.equal(0)) {
             return WordFactory.nullPointer();
         }
@@ -301,14 +297,8 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access) {
-        return mapFile0(start, nbytes, fileHandle, offset, access, WordFactory.nullPointer(), NmtCategory.Internal);
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access, NmtVirtualMemoryData nmtData) {
-        return mapFile0(start, nbytes, fileHandle, offset, access, nmtData, NmtCategory.Internal);
+    public Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access, NmtPreImageHeapData nmtData) {
+        return mapFile0(start, nbytes, fileHandle, offset, access, nmtData, NmtCategory.ImageHeap);
     }
 
     @Override
@@ -318,7 +308,8 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private Pointer mapFile0(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access, NmtVirtualMemoryData nmtData, NmtCategory category) {
+    @SuppressWarnings("unused")
+    private Pointer mapFile0(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access, NmtPreImageHeapData nmtData, NmtCategory category) {
         if ((start.isNonNull() && !isAligned(start)) || nbytes.equal(0)) {
             return WordFactory.nullPointer();
         }
@@ -386,14 +377,8 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer commit(PointerBase start, UnsignedWord nbytes, int access) {
-        return commit0(start, nbytes, access, WordFactory.nullPointer(), NmtCategory.Internal);
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer commit(PointerBase start, UnsignedWord nbytes, int access, NmtVirtualMemoryData nmtData) {
-        return commit0(start, nbytes, access, nmtData, NmtCategory.Internal);
+    public Pointer commit(PointerBase start, UnsignedWord nbytes, int access, NmtPreImageHeapData nmtData) {
+        return commit0(start, nbytes, access, nmtData, NmtCategory.ImageHeap);
     }
 
     @Override
@@ -403,7 +388,8 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private Pointer commit0(PointerBase start, UnsignedWord nbytes, int access, NmtVirtualMemoryData nmtData, NmtCategory category) {
+    @SuppressWarnings("unused")
+    private Pointer commit0(PointerBase start, UnsignedWord nbytes, int access, NmtPreImageHeapData nmtData, NmtCategory category) {
         if ((start.isNonNull() && !isAligned(start)) || nbytes.equal(0)) {
             return WordFactory.nullPointer();
         }
@@ -441,6 +427,12 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int free(PointerBase start, UnsignedWord nbytes) {
+        return free(start, nbytes, WordFactory.nullPointer());
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public int free(PointerBase start, UnsignedWord nbytes, NmtPreImageHeapData nmtData) {
         if (start.isNull() || !isAligned(start) || nbytes.equal(0)) {
             return -1;
         }

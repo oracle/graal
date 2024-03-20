@@ -29,9 +29,12 @@ package com.oracle.svm.core.nmt;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 
+/**
+ * Reserved regions maintain a list of committed regions within themselves. The list is sorted by
+ * base address.
+ */
 @RawStructure
 public interface NmtReservedRegion extends NmtMemoryRegion {
-    /** This is the head of a list of sorted committed regions. Sorted by base address. */
     @RawField
     NmtMemoryRegion getCommittedRegions();
 

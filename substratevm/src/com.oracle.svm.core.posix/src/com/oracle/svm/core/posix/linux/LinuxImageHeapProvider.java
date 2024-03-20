@@ -57,7 +57,7 @@ import com.oracle.svm.core.code.DynamicMethodAddressResolutionHeapSupport;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.nmt.NmtVirtualMemoryData;
+import com.oracle.svm.core.nmt.NmtPreImageHeapData;
 import com.oracle.svm.core.os.AbstractImageHeapProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
@@ -104,7 +104,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
 
     @Override
     @Uninterruptible(reason = "Called during isolate initialization.")
-    public int initialize(Pointer reservedAddressSpace, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer, NmtVirtualMemoryData nmtData) {
+    public int initialize(Pointer reservedAddressSpace, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer, NmtPreImageHeapData nmtData) {
         Pointer selfReservedMemory = WordFactory.nullPointer();
         UnsignedWord requiredSize = getTotalRequiredAddressSpaceSize();
         if (reservedAddressSpace.isNull()) {
@@ -133,13 +133,13 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
 
             int error = DynamicMethodAddressResolutionHeapSupport.get().initialize();
             if (error != CEntryPointErrors.NO_ERROR) {
-                freeImageHeap(selfReservedHeapBase);
+                freeImageHeap(selfReservedHeapBase, nmtData);
                 return error;
             }
 
             error = DynamicMethodAddressResolutionHeapSupport.get().install(heapBase);
             if (error != CEntryPointErrors.NO_ERROR) {
-                freeImageHeap(selfReservedHeapBase);
+                freeImageHeap(selfReservedHeapBase, nmtData);
                 return error;
             }
         } else {
@@ -157,7 +157,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
                         IMAGE_HEAP_RELOCATABLE_BEGIN.get(), IMAGE_HEAP_A_RELOCATABLE_POINTER.get(), IMAGE_HEAP_RELOCATABLE_END.get(),
                         IMAGE_HEAP_WRITABLE_BEGIN.get(), IMAGE_HEAP_WRITABLE_END.get(), nmtData);
         if (result != CEntryPointErrors.NO_ERROR) {
-            freeImageHeap(selfReservedHeapBase);
+            freeImageHeap(selfReservedHeapBase, nmtData);
         }
         return result;
     }
@@ -165,7 +165,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
     @Uninterruptible(reason = "Called during isolate initialization.")
     private static int initializeImageHeap(Pointer imageHeap, UnsignedWord reservedSize, WordPointer endPointer, WordPointer cachedFd, WordPointer cachedOffsetInFile,
                     Pointer magicAddress, Word heapBeginSym, Word heapEndSym, Word heapRelocsSym, Pointer heapAnyRelocPointer, Word heapRelocsEndSym, Word heapWritableSym, Word heapWritableEndSym,
-                    NmtVirtualMemoryData nmtData) {
+                    NmtPreImageHeapData nmtData) {
         assert heapBeginSym.belowOrEqual(heapWritableSym) && heapWritableSym.belowOrEqual(heapWritableEndSym) && heapWritableEndSym.belowOrEqual(heapEndSym);
         assert heapBeginSym.belowOrEqual(heapRelocsSym) && heapRelocsSym.belowOrEqual(heapRelocsEndSym) && heapRelocsEndSym.belowOrEqual(heapEndSym);
         assert heapAnyRelocPointer.isNull() || (heapRelocsSym.belowOrEqual(heapAnyRelocPointer) && heapAnyRelocPointer.belowThan(heapRelocsEndSym));
@@ -257,7 +257,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
 
     @Uninterruptible(reason = "Called during isolate initialization.")
     private static int initializeImageHeapByCopying(Pointer imageHeap, UnsignedWord imageHeapSize, UnsignedWord pageSize, Word heapBeginSym, Word heapWritableSym, Word heapWritableEndSym,
-                    NmtVirtualMemoryData nmtData) {
+                    NmtPreImageHeapData nmtData) {
         Pointer committedBegin = VirtualMemoryProvider.get().commit(imageHeap, imageHeapSize, Access.READ | Access.WRITE, nmtData);
         if (committedBegin.isNull()) {
             return CEntryPointErrors.MAP_HEAP_FAILED;
@@ -351,6 +351,11 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
     @Override
     @Uninterruptible(reason = "Called during isolate tear-down.")
     public int freeImageHeap(PointerBase heapBase) {
+        return freeImageHeap(heapBase, WordFactory.nullPointer());
+    }
+
+    @Uninterruptible(reason = "Called during isolate tear-down.")
+    private int freeImageHeap(PointerBase heapBase, NmtPreImageHeapData nmtData) {
         if (heapBase.isNull()) { // no memory allocated
             return CEntryPointErrors.NO_ERROR;
         }
@@ -360,7 +365,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
         if (DynamicMethodAddressResolutionHeapSupport.isEnabled()) {
             addressSpaceStart = addressSpaceStart.subtract(getPreHeapAlignedSizeForDynamicMethodAddressResolver());
         }
-        if (VirtualMemoryProvider.get().free(addressSpaceStart, getTotalRequiredAddressSpaceSize()) != 0) {
+        if (VirtualMemoryProvider.get().free(addressSpaceStart, getTotalRequiredAddressSpaceSize(), nmtData) != 0) {
             return CEntryPointErrors.FREE_IMAGE_HEAP_FAILED;
         }
         return CEntryPointErrors.NO_ERROR;

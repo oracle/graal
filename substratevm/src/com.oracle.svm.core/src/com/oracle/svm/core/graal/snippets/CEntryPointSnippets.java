@@ -33,7 +33,6 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 
 import java.util.Map;
 
-import com.oracle.svm.core.VMInspectionOptions;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -79,9 +78,8 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.nmt.NmtCategory;
-import com.oracle.svm.core.nmt.NmtVirtualMemoryData;
-import com.oracle.svm.core.nmt.NativeMemoryTracking;
+import com.oracle.svm.core.nmt.NmtPreImageHeapData;
+import com.oracle.svm.core.nmt.NmtPreImageHeapDataAccess;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
@@ -242,12 +240,8 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
 
         WordPointer isolatePtr = StackValue.get(WordPointer.class);
-        NmtVirtualMemoryData nmtData = WordFactory.nullPointer();
-        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
-            nmtData = StackValue.get(NmtVirtualMemoryData.class);
-            nmtData.setCommitted(WordFactory.zero());
-            nmtData.setReserved(WordFactory.zero());
-        }
+        NmtPreImageHeapData nmtData = NmtPreImageHeapDataAccess.create();
+
         int error = Isolates.create(isolatePtr, parameters, nmtData);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
@@ -257,16 +251,8 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             setHeapBase(Isolates.getHeapBase(isolate));
         }
 
-        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
-            // Must be faithful to the ordering
-            // TODO is it possible I'll need more than 1 data? (multiple reserved happpen before
-            // heap is mapped?) Shouldn't be a problem if I miss some, as long as no dead regions
-            // linger
-            // TODO should be fine bc the single nmt data is an accumulation of multiple reserves
-            // (its a sum)
-            NativeMemoryTracking.trackReserve(nmtData.getBaseAddr(), nmtData.getReserved(), NmtCategory.mtImageHeap);
-            NativeMemoryTracking.trackCommit(nmtData.getBaseAddr(), nmtData.getCommitted(), NmtCategory.mtImageHeap);
-        }
+        NmtPreImageHeapDataAccess.trackAndTeardown(nmtData);
+
         return createIsolate0(isolate, parameters, parsedArgs);
     }
 

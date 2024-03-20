@@ -59,7 +59,7 @@ public class NativeMemoryTracking {
     private static final int MAGIC = 0xF0F1F2F3;
     private final NmtMallocMemorySnapshot mallocMemorySnapshot = new NmtMallocMemorySnapshot();
     private final NmtVirtualMemorySnapshot virtualMemorySnapshot = new NmtVirtualMemorySnapshot();
-    private final NmtVirtualMemoryTracker virtualMemoryTracker = new NmtVirtualMemoryTracker(virtualMemorySnapshot);
+    private final NmtVirtualMemoryTracker virtualMemoryTracker = new NmtVirtualMemoryTracker();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public NativeMemoryTracking() {
@@ -127,18 +127,53 @@ public class NativeMemoryTracking {
         return header;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void untrack(UnsignedWord size, int category) {
+        mallocMemorySnapshot.getInfoByCategory(category).untrack(size);
+        mallocMemorySnapshot.getInfoByCategory(NmtCategory.NMT).untrack(sizeOfNmtHeader());
+        mallocMemorySnapshot.getTotalInfo().untrack(size.add(sizeOfNmtHeader()));
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static NmtMallocHeader getHeader(PointerBase innerPtr) {
+        NmtMallocHeader result = (NmtMallocHeader) ((Pointer) innerPtr).subtract(sizeOfNmtHeader());
+        assert result.getMagic() == MAGIC : "bad NMT malloc header";
+        return result;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static Pointer getInnerPointer(NmtMallocHeader mallocHeader) {
+        return ((Pointer) mallocHeader).add(sizeOfNmtHeader());
+    }
+
+    public long getUsedMemory(NmtCategory category) {
+        return mallocMemorySnapshot.getInfoByCategory(category).getUsed();
+    }
+
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void trackReserve(PointerBase baseAddr, UnsignedWord size, NmtCategory category) {
         if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
             NativeMemoryTracking.singleton().virtualMemoryTracker.trackReserve(baseAddr, size, category);
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static void recordReserve(UnsignedWord size, NmtCategory category) {
+        NativeMemoryTracking.singleton().virtualMemorySnapshot.getInfoByCategory(category).trackReserved(size);
+        NativeMemoryTracking.singleton().virtualMemorySnapshot.getTotalInfo().trackReserved(size);
+    }
+
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void trackCommit(PointerBase baseAddr, UnsignedWord size, NmtCategory category) {
         if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
             NativeMemoryTracking.singleton().virtualMemoryTracker.trackCommit(baseAddr, size, category);
         }
+    }
+
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static void recordCommit(UnsignedWord size, NmtCategory category) {
+        NativeMemoryTracking.singleton().virtualMemorySnapshot.getInfoByCategory(category).trackCommitted(size);
+        NativeMemoryTracking.singleton().virtualMemorySnapshot.getTotalInfo().trackCommitted(size);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -148,11 +183,23 @@ public class NativeMemoryTracking {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void trackFree(PointerBase baseAddr, UnsignedWord size) {
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static void recordUncommit(UnsignedWord size, NmtCategory category) {
+        NativeMemoryTracking.singleton().virtualMemorySnapshot.getInfoByCategory(category).trackUncommit(size);
+        NativeMemoryTracking.singleton().virtualMemorySnapshot.getTotalInfo().trackUncommit(size);
+    }
+
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void trackFree(PointerBase baseAddr) {
         if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
-            NativeMemoryTracking.singleton().virtualMemoryTracker.trackFree(baseAddr, size);
+            NativeMemoryTracking.singleton().virtualMemoryTracker.trackFree(baseAddr);
         }
+    }
+
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static void recordFree(UnsignedWord size, NmtCategory category) {
+        NativeMemoryTracking.singleton().virtualMemorySnapshot.getInfoByCategory(category).trackFree(size);
+        NativeMemoryTracking.singleton().virtualMemorySnapshot.getTotalInfo().trackFree(size);
     }
 
     public static long getReservedByCategory(NmtCategory category) {
@@ -181,29 +228,6 @@ public class NativeMemoryTracking {
             return NativeMemoryTracking.singleton().virtualMemorySnapshot.getInfoByCategory(category).getPeakReservedSize();
         }
         return -1;
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public void untrack(UnsignedWord size, int category) {
-        mallocMemorySnapshot.getInfoByCategory(category).untrack(size);
-        mallocMemorySnapshot.getInfoByCategory(NmtCategory.NMT).untrack(sizeOfNmtHeader());
-        mallocMemorySnapshot.getTotalInfo().untrack(size.add(sizeOfNmtHeader()));
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static NmtMallocHeader getHeader(PointerBase innerPtr) {
-        NmtMallocHeader result = (NmtMallocHeader) ((Pointer) innerPtr).subtract(sizeOfNmtHeader());
-        assert result.getMagic() == MAGIC : "bad NMT malloc header";
-        return result;
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static Pointer getInnerPointer(NmtMallocHeader mallocHeader) {
-        return ((Pointer) mallocHeader).add(sizeOfNmtHeader());
-    }
-
-    public long getUsedMemory(NmtCategory category) {
-        return mallocMemorySnapshot.getInfoByCategory(category).getUsed();
     }
 
     public static RuntimeSupport.Hook shutdownHook() {

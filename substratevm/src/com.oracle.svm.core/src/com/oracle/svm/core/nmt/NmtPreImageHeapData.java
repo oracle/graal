@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,25 +29,20 @@ package com.oracle.svm.core.nmt;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.UnsignedWord;
 
+/** This is only used before the image heap is mapped. */
 @RawStructure
-public interface NmtVirtualMemoryData extends PointerBase {
-    @RawField
-    PointerBase getBaseAddr();
+public interface NmtPreImageHeapData extends PointerBase {
 
     @RawField
-    void setBaseAddr(PointerBase value);
+    NmtMemoryRegion getReservedListHead();
 
     @RawField
-    UnsignedWord getReserved();
+    void setReservedListHead(NmtMemoryRegion reservedListHead);
 
     @RawField
-    void setReserved(UnsignedWord value);
+    NmtMemoryRegion getCommittedListHead();
 
     @RawField
-    UnsignedWord getCommitted();
-
-    @RawField
-    void setCommitted(UnsignedWord value);
+    void setCommittedListHead(NmtMemoryRegion committedListHead);
 }

@@ -39,7 +39,7 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
-import com.oracle.svm.core.nmt.NmtVirtualMemoryData;
+import com.oracle.svm.core.nmt.NmtPreImageHeapData;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.util.VMError;
 
@@ -138,7 +138,7 @@ public class Isolates {
     }
 
     @Uninterruptible(reason = "Thread state not yet set up.")
-    public static int create(WordPointer isolatePointer, CEntryPointCreateIsolateParameters parameters, NmtVirtualMemoryData nmtData) {
+    public static int create(WordPointer isolatePointer, CEntryPointCreateIsolateParameters parameters, NmtPreImageHeapData nmtData) {
         WordPointer heapBasePointer = StackValue.get(WordPointer.class);
         int result = CommittedMemoryProvider.get().initialize(heapBasePointer, parameters, nmtData);
         if (result != CEntryPointErrors.NO_ERROR) {

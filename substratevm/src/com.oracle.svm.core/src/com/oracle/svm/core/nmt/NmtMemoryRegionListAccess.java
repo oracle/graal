@@ -32,8 +32,11 @@ import com.oracle.svm.core.memory.NullableNativeMemory;
 
 /** Static methods for operating on memory region lists. */
 public class NmtMemoryRegionListAccess {
-    /** Adds to list, returns list head. Maintains sorted nature of list. */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    /**
+     * Adds a region to the provided list, returns the new list head. Maintains sorted nature of
+     * list.
+     */
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static NmtMemoryRegion addSorted(NmtMemoryRegion listHead, NmtMemoryRegion newRegion) {
         // If adding an invalid region, do nothing.
         if (newRegion.isNull()) {
@@ -44,16 +47,10 @@ public class NmtMemoryRegionListAccess {
         NmtMemoryRegion prev = WordFactory.nullPointer();
         while (current.isNonNull()) {
             if (newRegion.getBaseAddr().rawValue() < current.getBaseAddr().rawValue()) {
-                 if (NmtMemoryRegionAccess.isOverlapping(newRegion, current)){
-                 fail42(newRegion, current);
-                 }
                 assert !NmtMemoryRegionAccess.isOverlapping(newRegion, current);
                 newRegion.setNext(current);
                 if (prev.isNonNull()) {
                     // New region is in middle of the list
-                     if (NmtMemoryRegionAccess.isOverlapping(newRegion, prev)){
-                     fail42(newRegion, prev);
-                     }
                     assert !NmtMemoryRegionAccess.isOverlapping(newRegion, prev);
                     prev.setNext(newRegion);
                     return listHead;
@@ -68,9 +65,6 @@ public class NmtMemoryRegionListAccess {
         // New region is the new tail of the list
         if (prev.isNonNull()) {
             assert !NmtMemoryRegionAccess.isEqual(newRegion, prev);
-            if (NmtMemoryRegionAccess.isOverlapping(newRegion, prev)){
-            fail42(newRegion, prev);
-            }
             assert !NmtMemoryRegionAccess.isOverlapping(newRegion, prev);
             prev.setNext(newRegion);
             return listHead;
@@ -80,23 +74,16 @@ public class NmtMemoryRegionListAccess {
         return newRegion;
     }
 
-     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-     private static void fail42(NmtMemoryRegion newRegion, NmtMemoryRegion prev){
-         long size = NmtMemoryRegionAccess.getOverlapSize(newRegion, prev);
-         int flag = prev.getCategory();
-         int flagMult = flag*flag;
-         long mult = size*size;
-         assert mult <0;
-         assert flag<100;
-     }
-
-    /** Assumes list is sorted (since it relies on findPrecedingRegion). Returns new head. */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    /**
+     * Removes a region from the provided list. Assumes the list is sorted (since it relies on
+     * findPrecedingRegion). Returns the new list head.
+     */
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static NmtMemoryRegion remove(NmtMemoryRegion listHead, NmtMemoryRegion targetRegion) {
-        assert listHead.isNonNull(); // There must be at least one node to remove
+        assert listHead.isNonNull();
         NmtMemoryRegion prev = findPrecedingRegion(listHead, targetRegion);
 
-        // Are we removing the head?
+        /* Handle removing the head. */
         if (prev.isNull()) {
             assert NmtMemoryRegionAccess.isEqual(listHead, targetRegion);
             NmtMemoryRegion newHead = listHead.getNext();
@@ -104,10 +91,9 @@ public class NmtMemoryRegionListAccess {
             return newHead;
         }
 
-        // We are removing a node that is not head.
+        /* We are removing a node that is not head. */
         NmtMemoryRegion current = prev.getNext();
-// assert NmtMemoryRegionAccess.isEqual(current, targetRegion);
-        assert current.getBaseAddr() == targetRegion.getBaseAddr();
+        assert NmtMemoryRegionAccess.isEqual(current, targetRegion);
         assert !NmtMemoryRegionAccess.isEqual(listHead, targetRegion);
         prev.setNext(current.getNext());
         NullableNativeMemory.free(current);
@@ -115,10 +101,9 @@ public class NmtMemoryRegionListAccess {
     }
 
     /**
-     * Finds the region that contains or matches the target region. Or nullPtr
-     * if unsuccessful.
+     * Finds the region that contains or matches the target region. Or nullPointer if unsuccessful.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static NmtMemoryRegion findContainingRegion(NmtMemoryRegion listHead, NmtMemoryRegion targetRegion) {
         NmtMemoryRegion current = listHead;
         while (current.isNonNull()) {
@@ -130,8 +115,8 @@ public class NmtMemoryRegionListAccess {
         return WordFactory.nullPointer();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static NmtMemoryRegion findRegionMatchingBase(NmtMemoryRegion listHead, org.graalvm.word.PointerBase baseAddr ) {
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static NmtMemoryRegion findRegionMatchingBase(NmtMemoryRegion listHead, org.graalvm.word.PointerBase baseAddr) {
         NmtMemoryRegion current = listHead;
         while (current.isNonNull()) {
             if (current.getBaseAddr().rawValue() == baseAddr.rawValue()) {
@@ -142,28 +127,24 @@ public class NmtMemoryRegionListAccess {
         return WordFactory.nullPointer();
     }
 
-    /** Assumes list is sorted. */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    /** Assumes the list is sorted. */
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static NmtMemoryRegion findPrecedingRegion(NmtMemoryRegion listHead, NmtMemoryRegion targetRegion) {
         NmtMemoryRegion current = listHead;
         NmtMemoryRegion preceding = WordFactory.nullPointer();
         while (current.isNonNull()) {
-            long currentEnd = current.getBaseAddr().rawValue() + current.getSize();
-            if (currentEnd > targetRegion.getBaseAddr().rawValue()) { // *** should this be
-                                                                             // >=??? [NO. Since end
-                                                                             // is non-inclusive.
-                                                                             // draw it out. This
-                                                                             // fails!]
+            long currentEnd = current.getBaseAddr().rawValue() + current.getSize().rawValue();
+            if (currentEnd > targetRegion.getBaseAddr().rawValue()) {
                 return preceding;
             }
             preceding = current;
             current = current.getNext();
         }
-        // tail of the list preceeds the target region
+        // tail of the list precedes the target region
         return preceding;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void teardown(NmtMemoryRegion listHead) {
         NmtMemoryRegion current = listHead;
         while (current.isNonNull()) {
@@ -172,24 +153,4 @@ public class NmtMemoryRegionListAccess {
             current = next;
         }
     }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean verifyReservedList(NmtMemoryRegion listHead) {
-        if (listHead.isNull()) {
-            return false;
-        }
-        NmtMemoryRegion current = listHead;
-        NmtMemoryRegion prev = WordFactory.nullPointer();
-        while (current.isNonNull()) {
-            if (prev.isNonNull()) {
-                if (prev.getBaseAddr().rawValue() >= current.getBaseAddr().rawValue() || NmtMemoryRegionAccess.isOverlapping(prev, current)) {
-                    return false;
-                }
-            }
-            prev = current;
-            current = current.getNext();
-        }
-        return true;
-    }
-
 }

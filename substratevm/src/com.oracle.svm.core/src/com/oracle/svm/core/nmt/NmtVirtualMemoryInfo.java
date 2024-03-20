@@ -63,15 +63,15 @@ class NmtVirtualMemoryInfo {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void trackUncommit(long size) {
-        long lastSize = committedSize.addAndGet(-size);
+    void trackUncommit(UnsignedWord size) {
+        long lastSize = committedSize.addAndGet(-size.rawValue());
         assert lastSize >= 0;
 
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void trackFree(long size) {
-        long lastSize = reservedSize.addAndGet(-size);
+    void trackFree(UnsignedWord size) {
+        long lastSize = reservedSize.addAndGet(-size.rawValue());
         assert lastSize >= 0;
     }
 
@@ -79,14 +79,7 @@ class NmtVirtualMemoryInfo {
     private void updatePeakReserved(long newValue) {
         long expectedPeak = peakReservedSize;
         while (expectedPeak < newValue) {
-            if (U.compareAndSetLong(this, PEAK_RESERVED_OFFSET, expectedPeak, newValue)) { // TODO
-                                                                                           // use
-                                                                                           // compare
-                                                                                           // and
-                                                                                           // set in
-                                                                                           // other
-                                                                                           // PR
-                                                                                           // too!
+            if (U.compareAndSetLong(this, PEAK_RESERVED_OFFSET, expectedPeak, newValue)) {
                 return;
             }
             expectedPeak = peakReservedSize;

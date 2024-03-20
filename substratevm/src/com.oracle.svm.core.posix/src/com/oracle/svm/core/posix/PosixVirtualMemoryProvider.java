@@ -56,7 +56,8 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.nmt.NmtCategory;
-import com.oracle.svm.core.nmt.NmtVirtualMemoryData;
+import com.oracle.svm.core.nmt.NmtPreImageHeapData;
+import com.oracle.svm.core.nmt.NmtPreImageHeapDataAccess;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.PointerUtils;
@@ -112,14 +113,8 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable) {
-        return reserve0(nbytes, alignment, executable, WordFactory.nullPointer(), NmtCategory.Internal);
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable, NmtVirtualMemoryData nmtData) {
-        return reserve0(nbytes, alignment, executable, nmtData, NmtCategory.Internal);
+    public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable, NmtPreImageHeapData nmtData) {
+        return reserve0(nbytes, alignment, executable, nmtData, NmtCategory.ImageHeap);
     }
 
     @Override
@@ -129,7 +124,7 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private Pointer reserve0(UnsignedWord nbytes, UnsignedWord alignment, boolean executable, NmtVirtualMemoryData nmtData, NmtCategory category) {
+    private Pointer reserve0(UnsignedWord nbytes, UnsignedWord alignment, boolean executable, NmtPreImageHeapData nmtData, NmtCategory category) {
         if (nbytes.equal(0)) {
             return WordFactory.nullPointer();
         }
@@ -151,8 +146,7 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
             if (nmtData.isNull()) {
                 NativeMemoryTracking.trackReserve(mappingBegin, mappingSize, category);
             } else {
-                nmtData.setReserved(nmtData.getReserved().add(mappingSize));
-                nmtData.setBaseAddr(mappingBegin);
+                NmtPreImageHeapDataAccess.enqueueReserve(nmtData, mappingBegin, mappingSize, category);
             }
             return mappingBegin;
         }
@@ -173,24 +167,16 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
         }
         if (nmtData.isNull()) {
             NativeMemoryTracking.trackReserve(begin, mappingSize.subtract(unmappedSize), category);
-//            NativeMemoryTracking.trackReserve(begin, nbytes, category); // *** didn't fix problem.
         } else {
-            nmtData.setReserved(nmtData.getReserved().add(mappingSize.subtract(unmappedSize)));
-            nmtData.setBaseAddr(begin);
+            NmtPreImageHeapDataAccess.enqueueReserve(nmtData, begin, mappingSize.subtract(unmappedSize), category);
         }
         return begin;
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access) {
-        return mapFile0(start, nbytes, fileHandle, offset, access, WordFactory.nullPointer(), NmtCategory.Internal);
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access, NmtVirtualMemoryData nmtData) {
-        return mapFile0(start, nbytes, fileHandle, offset, access, nmtData, NmtCategory.Internal);
+    public Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access, NmtPreImageHeapData nmtData) {
+        return mapFile0(start, nbytes, fileHandle, offset, access, nmtData, NmtCategory.ImageHeap);
     }
 
     @Override
@@ -200,7 +186,7 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private Pointer mapFile0(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access, NmtVirtualMemoryData nmtData, NmtCategory category) {
+    private Pointer mapFile0(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access, NmtPreImageHeapData nmtData, NmtCategory category) {
         if ((start.isNonNull() && !isAligned(start)) || nbytes.equal(0)) {
             return WordFactory.nullPointer();
         }
@@ -212,7 +198,7 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
         int fd = (int) fileHandle.rawValue();
         Pointer result = mmap(start, nbytes, accessAsProt(access), flags, fd, offset.rawValue());
         if (result.notEqual(MAP_FAILED())) {
-            commitAndMaybeReserve(result, start, nbytes, nmtData, category);
+            trackCommitAndMaybeReserve(result, start, nbytes, nmtData, category);
             return result;
         }
         return WordFactory.nullPointer();
@@ -220,14 +206,8 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer commit(PointerBase start, UnsignedWord nbytes, int access) {
-        return commit0(start, nbytes, access, WordFactory.nullPointer(), NmtCategory.Internal);
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Pointer commit(PointerBase start, UnsignedWord nbytes, int access, NmtVirtualMemoryData nmtData) {
-        return commit0(start, nbytes, access, nmtData, NmtCategory.Internal);
+    public Pointer commit(PointerBase start, UnsignedWord nbytes, int access, NmtPreImageHeapData nmtData) {
+        return commit0(start, nbytes, access, nmtData, NmtCategory.ImageHeap);
     }
 
     @Override
@@ -237,7 +217,7 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private Pointer commit0(PointerBase start, UnsignedWord nbytes, int access, NmtVirtualMemoryData nmtData, NmtCategory category) {
+    private Pointer commit0(PointerBase start, UnsignedWord nbytes, int access, NmtPreImageHeapData nmtData, NmtCategory category) {
         if ((start.isNonNull() && !isAligned(start)) || nbytes.equal(0)) {
             return WordFactory.nullPointer();
         }
@@ -253,28 +233,26 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
         /* The memory returned by mmap is guaranteed to be zeroed. */
         final Pointer result = mmap(start, nbytes, accessAsProt(access), flags, NO_FD, NO_FD_OFFSET);
         if (result.notEqual(MAP_FAILED())) {
-            commitAndMaybeReserve(result, start, nbytes, nmtData, category);
+            trackCommitAndMaybeReserve(result, start, nbytes, nmtData, category);
             return result;
         }
         return nullPointer();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private void commitAndMaybeReserve(PointerBase baseAddr, PointerBase start, UnsignedWord nbytes, NmtVirtualMemoryData nmtData, NmtCategory category) {
+    private static void trackCommitAndMaybeReserve(PointerBase baseAddr, PointerBase start, UnsignedWord nbytes, NmtPreImageHeapData nmtData, NmtCategory category) {
         // Account for possible reserve before commit
         if (start.isNull()) {
             if (nmtData.isNull()) {
                 NativeMemoryTracking.trackReserve(baseAddr, nbytes, category);
             } else {
-                nmtData.setReserved(nmtData.getReserved().add(nbytes));
-                nmtData.setBaseAddr(baseAddr);
+                NmtPreImageHeapDataAccess.enqueueReserve(nmtData, baseAddr, nbytes, category);
             }
         }
         if (nmtData.isNull()) {
             NativeMemoryTracking.trackCommit(baseAddr, nbytes, category);
         } else {
-            nmtData.setCommitted(nmtData.getCommitted().add(nbytes));
-            nmtData.setBaseAddr(baseAddr);
+            NmtPreImageHeapDataAccess.enqueueCommit(nmtData, baseAddr, nbytes, category);
         }
     }
 
@@ -305,6 +283,12 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int free(PointerBase start, UnsignedWord nbytes) {
+        return free(start, nbytes, WordFactory.nullPointer());
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public int free(PointerBase start, UnsignedWord nbytes, NmtPreImageHeapData nmtData) {
         if (start.isNull() || !isAligned(start) || nbytes.equal(0)) {
             return -1;
         }
@@ -313,9 +297,8 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
         Pointer mappingBegin = PointerUtils.roundDown(start, granularity);
         UnsignedWord mappingSize = UnsignedUtils.roundUp(nbytes, granularity);
         int ret = munmap(mappingBegin, mappingSize);
-        if (ret == 0) {
-            NativeMemoryTracking.trackFree(start, mappingSize); // *** use start here, not
-                                                                // mappingBegin
+        if (ret == 0 && nmtData.isNull()) {
+            NativeMemoryTracking.trackFree(start);
         }
         return ret;
     }

@@ -37,6 +37,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.heap.OutOfMemoryUtil;
+import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.util.VMError;
 
@@ -112,7 +113,7 @@ final class TrampolineSet {
         VirtualMemoryProvider memoryProvider = VirtualMemoryProvider.get();
         UnsignedWord pageSize = allocationSize();
         /* We request a specific alignment to guarantee correctness of getAllocationBase */
-        Pointer page = memoryProvider.commit(WordFactory.nullPointer(), pageSize, VirtualMemoryProvider.Access.WRITE | VirtualMemoryProvider.Access.FUTURE_EXECUTE);
+        Pointer page = memoryProvider.commit(WordFactory.nullPointer(), pageSize, VirtualMemoryProvider.Access.WRITE | VirtualMemoryProvider.Access.FUTURE_EXECUTE, NmtCategory.Internal);
         if (page.isNull()) {
             throw OutOfMemoryUtil.reportOutOfMemoryError(new OutOfMemoryError("Could not allocate memory for trampolines."));
         }

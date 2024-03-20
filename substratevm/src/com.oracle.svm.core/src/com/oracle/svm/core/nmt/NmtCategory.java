@@ -37,6 +37,8 @@ public enum NmtCategory {
     GC("GC"),
     /** Heap dumping infrastructure. */
     HeapDump("Heap Dump"),
+    ImageHeap("Image Heap"),
+    JavaHeap("Java Heap"),
     /** Java Flight Recorder. */
     JFR("JFR"),
     /** Java Native Interface. */
@@ -51,8 +53,6 @@ public enum NmtCategory {
     Threading("Threading"),
     /** Memory allocated via Unsafe. */
     Unsafe("Unsafe"),
-    mtJavaHeap("Java Heap"),
-    mtImageHeap("Image Heap"),
 
     /** Some other, VM internal reason - avoid if possible, better to add a new category. */
     Internal("Internal");

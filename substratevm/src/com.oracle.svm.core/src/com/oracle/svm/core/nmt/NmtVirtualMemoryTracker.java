@@ -28,22 +28,23 @@ package com.oracle.svm.core.nmt;
 
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.util.UnsignedUtils;
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import org.graalvm.nativeimage.StackValue;
 import com.oracle.svm.core.thread.JavaSpinLockUtils;
-import com.oracle.svm.core.memory.NullableNativeMemory;
 
 import jdk.internal.misc.Unsafe;
 
+/**
+ * {@link com.oracle.svm.core.nmt.NativeMemoryTracking} delegates virtual memory accounting to this
+ * class. This class maintains a model of used virtual memory. The tracker maintains a sorted list
+ * of reserved regions, and each reserved region maintains its own sorted list of internal committed
+ * regions.
+ */
 public class NmtVirtualMemoryTracker {
     private static final Unsafe U = Unsafe.getUnsafe();
     /*
@@ -57,52 +58,15 @@ public class NmtVirtualMemoryTracker {
      * It may be possible that virtual memory is freed after the teardown is run. We should avoid
      * accounting in that case.
      */
-    private volatile boolean tornDown = false;
+    private boolean tornDown = false;
 
-    private NmtVirtualMemorySnapshot virtualMemorySnapshot;
-    /** The list of reserved regions is unsorted. */
-    private volatile NmtReservedRegion reservedRegionListHead;
+    private NmtReservedRegion reservedRegionListHead;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    NmtVirtualMemoryTracker(NmtVirtualMemorySnapshot virtualMemorySnapshot) {
-        this.virtualMemorySnapshot = virtualMemorySnapshot;
+    NmtVirtualMemoryTracker() {
     }
 
-    @Fold
-    static UnsignedWord getReservedRegionSize() {
-        return UnsignedUtils.roundUp(SizeOf.unsigned(NmtReservedRegion.class), WordFactory.unsigned(ConfigurationValues.getTarget().wordSize));
-    }
-
-    @Fold
-    static UnsignedWord getCommittedRegionSize() {
-        return UnsignedUtils.roundUp(SizeOf.unsigned(NmtMemoryRegion.class), WordFactory.unsigned(ConfigurationValues.getTarget().wordSize));
-    }
-
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static NmtReservedRegion createReservedRegion(PointerBase baseAddr, UnsignedWord size, NmtCategory category) {
-        NmtReservedRegion result = NullableNativeMemory.malloc(getReservedRegionSize(), NmtCategory.NMT);
-        if (result.isNonNull()) {
-            result.setCommittedRegions(WordFactory.nullPointer());
-            result.setCategory(category.ordinal());
-            result.setNext(WordFactory.nullPointer());
-            result.setSize(size.rawValue());
-            result.setBaseAddr(baseAddr);
-        }
-        return result;
-    }
-
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static NmtMemoryRegion createCommittedRegion(PointerBase baseAddr, long size, int category) {
-        NmtMemoryRegion result = NullableNativeMemory.malloc(getCommittedRegionSize(), NmtCategory.NMT);
-        if (result.isNonNull()) {
-            result.setCategory(category);
-            result.setNext(WordFactory.nullPointer());
-            result.setSize(size);
-            result.setBaseAddr(baseAddr);
-        }
-        return result;
-    }
-
+    /** Track a new reserved region. This region will not overlap existing reserved regions. */
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     void trackReserve(PointerBase baseAddr, UnsignedWord size, NmtCategory category) {
         lockNoTransition();
@@ -110,15 +74,22 @@ public class NmtVirtualMemoryTracker {
             if (tornDown) {
                 return;
             }
-            virtualMemorySnapshot.getInfoByCategory(category).trackReserved(size);
-            virtualMemorySnapshot.getTotalInfo().trackReserved(size);
-            reservedRegionListHead = (NmtReservedRegion) NmtMemoryRegionListAccess.addSorted(reservedRegionListHead, createReservedRegion(baseAddr, size, category));
-            assert NmtMemoryRegionListAccess.verifyReservedList(reservedRegionListHead);
+            NmtReservedRegion newReservedRegion = NmtReservedRegionAccess.createReservedRegion(baseAddr, size, category);
+            if (newReservedRegion.isNull()) {
+                return;
+            }
+            reservedRegionListHead = (NmtReservedRegion) NmtMemoryRegionListAccess.addSorted(reservedRegionListHead, newReservedRegion);
+            assert NmtReservedRegionAccess.verifyReservedList(reservedRegionListHead);
+            NativeMemoryTracking.recordReserve(size, category);
         } finally {
             unlock();
         }
     }
 
+    /**
+     * Track a new committed region. This region may overlap multiple or zero existing committed
+     * regions. The regions must be entirely within a single existing reserved region.
+     */
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+13/src/hotspot/share/nmt/virtualMemoryTracker.cpp#L434-L453")
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     void trackCommit(PointerBase baseAddr, UnsignedWord size, NmtCategory category) {
@@ -127,84 +98,21 @@ public class NmtVirtualMemoryTracker {
             if (tornDown) {
                 return;
             }
-            // Find the reserved region the committed region belongs to.
-            NmtMemoryRegion targetRegion = StackValue.get(NmtMemoryRegion.class);
-            targetRegion.setSize(size.rawValue());
-            targetRegion.setBaseAddr(baseAddr);
-            NmtReservedRegion reservedRegion = (NmtReservedRegion) NmtMemoryRegionListAccess.findContainingRegion(reservedRegionListHead, targetRegion);
-            assert reservedRegion.isNonNull();
-            if (addCommittedRegion(reservedRegion, targetRegion, baseAddr, size, category)) {
-                trackCommit0(size, category);
-            }
+            /* Find the reserved region the committed region belongs to. */
+            NmtMemoryRegion targetRegionOnStack = StackValue.get(NmtMemoryRegion.class);
+            targetRegionOnStack.setSize(size);
+            targetRegionOnStack.setBaseAddr(baseAddr);
+            targetRegionOnStack.setCategory(category);
+            NmtReservedRegion reservedRegion = (NmtReservedRegion) NmtMemoryRegionListAccess.findContainingRegion(reservedRegionListHead, targetRegionOnStack);
+
+            /* Update the reserved region to include the new committed region. */
+            NmtReservedRegionAccess.addCommittedRegion(reservedRegion, targetRegionOnStack);
         } finally {
             unlock();
         }
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+13/src/hotspot/share/nmt/virtualMemoryTracker.cpp#L116-L167")
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private boolean addCommittedRegion(NmtReservedRegion reservedRegion, NmtMemoryRegion targetRegion, PointerBase baseAddr, UnsignedWord size, NmtCategory category) {
-        NmtMemoryRegion prev = NmtMemoryRegionListAccess.findPrecedingRegion(reservedRegion.getCommittedRegions(), targetRegion);
-        NmtMemoryRegion next = prev.isNonNull() ? prev.getNext() : reservedRegion.getCommittedRegions();
-
-        /* Deal with overlap if target is before last region in list. */
-        if (next.isNonNull()) {
-            /* Do nothing if the region already exists. */
-            if (NmtMemoryRegionAccess.isEqual(targetRegion, next)) {
-                return false;
-            }
-            /* Remove overlap so we can later add the full committed region. */
-            if (NmtMemoryRegionAccess.isOverlapping(next, targetRegion)) {
-                removeUncommittedRegion(reservedRegion, targetRegion);
-                /* Refresh prev and next pointers */
-                prev = NmtMemoryRegionListAccess.findPrecedingRegion(reservedRegion.getCommittedRegions(), targetRegion);
-                next = prev.isNonNull() ? prev.getNext() : reservedRegion.getCommittedRegions();
-            }
-        }
-
-        /*
-         * Now the new region should not overlap any existing regions. Record the full committed
-         * region.
-         */
-        assert NmtMemoryRegionListAccess.findContainingRegion(reservedRegion.getCommittedRegions(), targetRegion).isNull();
-
-        /* Try to coalesce prev, target, and next. Update committed list regions. */
-        if (NmtMemoryRegionAccess.isAdjacent(prev, targetRegion)) {
-            NmtMemoryRegionAccess.expandRegion(prev, baseAddr.rawValue(), size.rawValue());
-            /* Try to further coalesce prev with next. */
-            if (NmtMemoryRegionAccess.isAdjacent(prev, next)) {
-                NmtMemoryRegionAccess.expandRegion(prev, next.getBaseAddr().rawValue(), next.getSize());
-                /* prev has absorbed target and next. Remove next from the committed region list. */
-                removeCommittedRegion(reservedRegion, next);
-            }
-            return true;
-        }
-
-        /* We can't coalesce with prev, but maybe we can coalesce with next. */
-        if (NmtMemoryRegionAccess.isAdjacent(targetRegion, next)) {
-            NmtMemoryRegionAccess.expandRegion(next, baseAddr.rawValue(), size.rawValue());
-            return true;
-        }
-
-        /* Unable to simply expand/coalesce existing regions. So insert a new one. */
-        NmtMemoryRegion newCommittedRegion = createCommittedRegion(baseAddr, size.rawValue(), category.ordinal());
-        /* Add region to committed region list maintaining sorted ordering. */
-        if (prev.isNull()) {
-            /* Set new head. We may be replacing the old head, or the list may be empty. */
-            reservedRegion.setCommittedRegions(newCommittedRegion);
-        } else {
-            prev.setNext(newCommittedRegion);
-        }
-        newCommittedRegion.setNext(next);
-        return true;
-    }
-
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private void trackCommit0(UnsignedWord size, NmtCategory category) {
-        virtualMemorySnapshot.getInfoByCategory(category).trackCommitted(size);
-        virtualMemorySnapshot.getTotalInfo().trackCommitted(size);
-    }
-
+    /** Uncommit a region that may overlap multiple or zero committed regions. */
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+13/src/hotspot/share/nmt/virtualMemoryTracker.cpp#L455-L469")
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     void trackUncommit(PointerBase baseAddr, UnsignedWord size) {
@@ -215,161 +123,51 @@ public class NmtVirtualMemoryTracker {
             }
             /* Find the reserved region we are uncommitting from. */
             NmtMemoryRegion targetRegion = StackValue.get(NmtMemoryRegion.class);
-            targetRegion.setSize(size.rawValue());
+            targetRegion.setSize(size);
             targetRegion.setBaseAddr(baseAddr);
             NmtReservedRegion reservedRegion = (NmtReservedRegion) NmtMemoryRegionListAccess.findContainingRegion(reservedRegionListHead, targetRegion);
+
             /* Uncommit the specified region from that reserved region. */
-            removeUncommittedRegion(reservedRegion, targetRegion);
+            NmtReservedRegionAccess.removeUncommittedRegion(reservedRegion, targetRegion);
         } finally {
             unlock();
         }
     }
 
     /**
-     * This method removes a region from a reserved region's committed list. The target region may
-     * span multiple existing committed regions. The boundaries of the target region may not align
-     * with the boundaries of any existing committed region. Any committed memory that is
-     * uncommitted, will be recorded.
-     */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+13/src/hotspot/share/nmt/virtualMemoryTracker.cpp#L202-L257")
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private void removeUncommittedRegion(NmtReservedRegion reservedRegion, NmtMemoryRegion targetRegionOnStack) {
-        NmtMemoryRegion current = reservedRegion.getCommittedRegions();
-        while (current.isNonNull()) {
-            long currentStart = current.getBaseAddr().rawValue();
-            long currentEnd = currentStart + current.getSize();
-            long targetStart = targetRegionOnStack.getBaseAddr().rawValue();
-            long targetEnd = targetStart + targetRegionOnStack.getSize();
-
-            if (NmtMemoryRegionAccess.isEqual(current, targetRegionOnStack)) {
-                /* Exact match. */
-                removeCommittedRegion(reservedRegion, current);
-                trackUncommit0(current.getSize(), current.getCategory());
-                return;
-            } else if (NmtMemoryRegionAccess.contains(targetRegionOnStack, current)) {
-                /* Target region contains current region. */
-                NmtMemoryRegion next = current.getNext();
-                removeCommittedRegion(reservedRegion, current);
-                trackUncommit0(current.getSize(), current.getCategory());
-                current = next;
-                continue;
-            } else if (NmtMemoryRegionAccess.contains(current, targetRegionOnStack)) {
-                /* Target region is contained by current region. */
-                removeRegionFromExistingCommittedRegion(current, targetRegionOnStack);
-                trackUncommit0(targetRegionOnStack.getSize(), current.getCategory());
-                return;
-            } else if (NmtMemoryRegionAccess.containsAddress(current, targetStart)) {
-                /* Only start of target region is contained in current region. */
-                long exclusionSize = currentEnd - targetStart;
-                NmtMemoryRegionAccess.excludeRegion(current, targetStart, exclusionSize);
-                trackUncommit0(exclusionSize, current.getCategory());
-            } else if (NmtMemoryRegionAccess.containsAddress(current, targetEnd - 1)) {
-                /* Only end of target region is contained in current region. */
-                long exclusionSize = targetEnd - currentStart;
-                NmtMemoryRegionAccess.excludeRegion(current, currentStart, exclusionSize);
-                trackUncommit0(exclusionSize, current.getCategory());
-                return;
-            }
-            current = current.getNext();
-        }
-    }
-
-    /**
-     * Only remove an entire existing committed region from the list and update the list head. No
-     * NMT accounting.
-     */
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static void removeCommittedRegion(NmtReservedRegion reservedRegion, NmtMemoryRegion targetRegionOnStack) {
-        NmtMemoryRegion newHead = NmtMemoryRegionListAccess.remove(reservedRegion.getCommittedRegions(), targetRegionOnStack);
-        reservedRegion.setCommittedRegions(newHead);
-    }
-
-    /**
-     * This removes an uncommitted region from within an existing committed region. No NMT
-     * accounting.
-     */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+13/src/hotspot/share/nmt/virtualMemoryTracker.cpp#L169-L200")
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static void removeRegionFromExistingCommittedRegion(NmtMemoryRegion outerRegion, NmtMemoryRegion innerRegionOnStack) {
-        assert NmtMemoryRegionAccess.isOverlapping(outerRegion, innerRegionOnStack);
-        long outerEnd = outerRegion.getBaseAddr().rawValue() + outerRegion.getSize();
-        long innerStart = innerRegionOnStack.getBaseAddr().rawValue();
-        long innerEnd = innerStart + innerRegionOnStack.getSize();
-
-        /* Try to shorten the outer region. */
-        if (outerRegion.getBaseAddr() == innerRegionOnStack.getBaseAddr() || outerEnd == innerEnd) {
-            NmtMemoryRegionAccess.excludeRegion(outerRegion, innerStart, innerRegionOnStack.getSize());
-            return;
-        }
-        /* Hollow out and split the outer region. */
-
-        /* Exclude the whole upper part, only keeping the lower part. */
-        long exclusionSize = outerEnd - innerStart;
-        NmtMemoryRegionAccess.excludeRegion(outerRegion, innerStart, exclusionSize);
-
-        /*
-         * Add the upper part we intend to keep as a new committed region, effectively splitting the
-         * original region.
-         */
-        long highBase = innerEnd;
-        long highSize = outerEnd - innerEnd;
-        NmtMemoryRegion newCommittedRegion = createCommittedRegion(WordFactory.pointer(highBase), highSize, outerRegion.getCategory());
-        /*
-         * Add region to committed region list maintaining sorted ordering. List head remains the
-         * same.
-         */
-        NmtMemoryRegion oldNext = outerRegion.getNext();
-        outerRegion.setNext(newCommittedRegion);
-        newCommittedRegion.setNext(oldNext);
-    }
-
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private void trackUncommit0(long size, int category) {
-        virtualMemorySnapshot.getInfoByCategory(category).trackUncommit(size);
-        virtualMemorySnapshot.getTotalInfo().trackUncommit(size);
-    }
-
-    /**
-     * It is guaranteed that exactly the entire reserved region is requested to be freed. See
+     * Untrack a reserved region and all committed regions contained within. The entire reserved
+     * region must be requested to be freed. See
      * {@link com.oracle.svm.core.os.VirtualMemoryProvider#free(PointerBase, UnsignedWord)}.
      */
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+13/src/hotspot/share/nmt/virtualMemoryTracker.cpp#L491-L533")
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    void trackFree(PointerBase baseAddr, UnsignedWord size) {
+    void trackFree(PointerBase baseAddr) {
         lockNoTransition();
         try {
             if (tornDown) {
                 return;
             }
-            NmtMemoryRegion targetRegion = StackValue.get(NmtMemoryRegion.class);
-            targetRegion.setSize(size.rawValue());
-            targetRegion.setBaseAddr(baseAddr);
 
-            /* Find the reserved region so we can access its committed list. */
+            /* Find the reserved region, so we can access its committed list. */
             NmtReservedRegion reservedRegion = (NmtReservedRegion) NmtMemoryRegionListAccess.findRegionMatchingBase(reservedRegionListHead, baseAddr);
-//            NmtReservedRegion reservedRegion = (NmtReservedRegion) NmtMemoryRegionListAccess.findContainingRegion(reservedRegionListHead, targetRegion);//TODO uncomment
 
-            assert reservedRegion.isNonNull(); // *** This still sometimes fails!!!
-//            assert NmtMemoryRegionAccess.isEqual(reservedRegion, targetRegion); //TODO uncomment
-            assert targetRegion.getBaseAddr().rawValue() == reservedRegion.getBaseAddr().rawValue(); //TODO uncomment
+            /*
+             * It's possible that malloc failed to initially create the reserved region.
+             */
+            if (reservedRegion.isNull()) {
+                return;
+            }
+            assert baseAddr == reservedRegion.getBaseAddr();
 
-            removeUncommittedRegion(reservedRegion, reservedRegion);
-//            removeUncommittedRegion(reservedRegion, targetRegion);//TODO uncomment fails when applied
+            NmtReservedRegionAccess.removeUncommittedRegion(reservedRegion, reservedRegion);
 
-            trackFree0(size.rawValue(), reservedRegion.getCategory());
-//            reservedRegionListHead = (NmtReservedRegion) NmtMemoryRegionListAccess.remove(reservedRegionListHead, targetRegion);//TODO uncomment
+            NativeMemoryTracking.recordFree(reservedRegion.getSize(), reservedRegion.getCategory());
             reservedRegionListHead = (NmtReservedRegion) NmtMemoryRegionListAccess.remove(reservedRegionListHead, reservedRegion);
-            assert NmtMemoryRegionListAccess.verifyReservedList(reservedRegionListHead);
+            assert NmtReservedRegionAccess.verifyReservedList(reservedRegionListHead);
 
         } finally {
             unlock();
         }
-    }
-
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private void trackFree0(long size, int category) {
-        virtualMemorySnapshot.getInfoByCategory(category).trackFree(size);
-        virtualMemorySnapshot.getTotalInfo().trackFree(size);
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", callerMustBe = true)
