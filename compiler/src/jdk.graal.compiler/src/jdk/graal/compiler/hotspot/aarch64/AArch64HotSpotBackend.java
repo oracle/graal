@@ -100,7 +100,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
     }
 
     @Override
-    protected FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
+    protected FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig, Stub stub) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
         FrameMap frameMap = new AArch64FrameMap(getCodeCache(), registerConfigNonNull, this);
         return new AArch64FrameMapBuilder(frameMap, getCodeCache(), registerConfigNonNull);
@@ -189,7 +189,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         }
     }
 
-    public static void rawEnter(CompilationResultBuilder crb, FrameMap frameMap, AArch64MacroAssembler masm, GraalHotSpotVMConfig config) {
+    public static void rawEnter(CompilationResultBuilder crb, FrameMap frameMap, AArch64MacroAssembler masm, GraalHotSpotVMConfig config, boolean isStub) {
         // based on HotSpot's macroAssembler_aarch64.cpp MacroAssembler::build_frame
         try (ScratchRegister sc = masm.getScratchRegister()) {
             if (config.ropProtection) {
@@ -205,13 +205,13 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
             if (AArch64Address.isValidImmediateAddress(64, addressingMode, frameSize)) {
                 masm.sub(64, sp, sp, totalFrameSize);
                 masm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, addressingMode, sp, frameSize));
-                if (config.preserveFramePointer) {
+                if (config.preserveFramePointer(isStub)) {
                     masm.add(64, fp, sp, frameSize);
                 }
             } else {
                 int frameRecordSize = 2 * wordSize;
                 masm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_PRE_INDEXED, sp, -frameRecordSize));
-                if (config.preserveFramePointer) {
+                if (config.preserveFramePointer(isStub)) {
                     masm.mov(64, fp, sp);
                 }
                 masm.sub(64, sp, sp, totalFrameSize - frameRecordSize, scratch);
@@ -221,11 +221,9 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
 
     class HotSpotFrameContext implements FrameContext {
         final boolean isStub;
-        final boolean preserveFramePointer;
 
-        HotSpotFrameContext(boolean isStub, boolean preserveFramePointer) {
+        HotSpotFrameContext(boolean isStub) {
             this.isStub = isStub;
-            this.preserveFramePointer = preserveFramePointer;
         }
 
         @Override
@@ -236,7 +234,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                 emitStackOverflowCheck(crb);
             }
             crb.blockComment("[method prologue]");
-            rawEnter(crb, frameMap, masm, config);
+            rawEnter(crb, frameMap, masm, config, isStub);
 
             crb.recordMark(HotSpotMarkId.FRAME_COMPLETE);
             if (!isStub && config.nmethodEntryBarrier != 0) {
@@ -331,7 +329,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
 
         Stub stub = gen.getStub();
         AArch64MacroAssembler masm = new AArch64HotSpotMacroAssembler(getTarget(), config);
-        HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null, config.preserveFramePointer);
+        HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null);
 
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());
         CompilationResultBuilder crb = factory.createBuilder(getProviders(), frameMap, masm, dataBuilder, frameContext, lir.getOptions(), lir.getDebug(), compilationResult,
@@ -521,8 +519,8 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
     }
 
     @Override
-    public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo) {
+    public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo, Object stub) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
-        return new AArch64HotSpotRegisterAllocationConfig(registerConfigNonNull, allocationRestrictedTo, config.preserveFramePointer);
+        return new AArch64HotSpotRegisterAllocationConfig(registerConfigNonNull, allocationRestrictedTo, config.preserveFramePointer(stub != null));
     }
 }

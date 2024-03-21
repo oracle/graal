@@ -46,7 +46,7 @@ public class HotSpotLIRGenerationResult extends LIRGenerationResult {
      * deoptimization stub.
      */
     private StackSlot deoptimizationRescueSlot;
-    protected final Object stub;
+    protected final Stub stub;
     private final boolean requiresReservedStackAccessCheck;
 
     private int maxInterpreterFrameSize;
@@ -58,7 +58,7 @@ public class HotSpotLIRGenerationResult extends LIRGenerationResult {
     private EconomicMap<LIRFrameState, SaveRegistersOp> calleeSaveInfo = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
 
     public HotSpotLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, RegisterAllocationConfig registerAllocationConfig,
-                    CallingConvention callingConvention, Object stub, boolean requiresReservedStackAccessCheck) {
+                    CallingConvention callingConvention, Stub stub, boolean requiresReservedStackAccessCheck) {
         super(compilationId, lir, frameMapBuilder, registerAllocationConfig, callingConvention);
         this.stub = stub;
         this.requiresReservedStackAccessCheck = requiresReservedStackAccessCheck;
@@ -69,7 +69,7 @@ public class HotSpotLIRGenerationResult extends LIRGenerationResult {
     }
 
     public Stub getStub() {
-        return (Stub) stub;
+        return stub;
     }
 
     public StackSlot getDeoptimizationRescueSlot() {

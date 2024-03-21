@@ -170,9 +170,10 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
          * Replaces this operation with the appropriate move for saving rbp.
          *
          * @param useStack specifies if rbp must be saved to the stack
+         * @param isStub specifies if the compilation is a stub compilation
          */
-        public AllocatableValue finalize(boolean useStack) {
-            assert !config.preserveFramePointer : "rbp has been pushed onto the stack";
+        public AllocatableValue finalize(boolean useStack, boolean isStub) {
+            assert !config.preserveFramePointer(isStub) : "rbp has been pushed onto the stack";
             AllocatableValue dst;
             if (useStack) {
                 dst = ((AMD64HotSpotFrameMapBuilder) getResult().getFrameMapBuilder()).getRBPSpillSlot();
@@ -485,10 +486,10 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         super.beforeRegisterAllocation();
         boolean hasDebugInfo = getResult().getLIR().hasDebugInfo();
 
-        if (config.preserveFramePointer) {
+        if (config.preserveFramePointer(getStub() != null)) {
             saveRbp.remove();
         } else {
-            AllocatableValue savedRbp = saveRbp.finalize(hasDebugInfo);
+            AllocatableValue savedRbp = saveRbp.finalize(hasDebugInfo, getStub() != null);
             for (AMD64HotSpotRestoreRbpOp op : epilogueOps) {
                 op.setSavedRbp(savedRbp);
             }

@@ -111,7 +111,7 @@ public class AArch64HotSpotZBarrierSetLIRGenerator extends AArch64BarrierSetLIRG
                 masm.bind(entryPoint);
 
                 if (frameMap != null) {
-                    AArch64HotSpotBackend.rawEnter(crb, frameMap, masm, config);
+                    AArch64HotSpotBackend.rawEnter(crb, frameMap, masm, config, false);
                 }
 
                 CallingConvention cc = callTarget.getOutgoingCallingConvention();

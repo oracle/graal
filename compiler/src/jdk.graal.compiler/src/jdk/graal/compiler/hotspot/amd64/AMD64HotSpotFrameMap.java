@@ -95,8 +95,8 @@ public class AMD64HotSpotFrameMap extends AMD64FrameMap {
     private StackSlot deoptimizationRescueSlot;
 
     @SuppressWarnings("this-escape")
-    public AMD64HotSpotFrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory, GraalHotSpotVMConfig config) {
-        super(codeCache, registerConfig, referenceMapFactory, config.preserveFramePointer);
+    public AMD64HotSpotFrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory, boolean preserveFramePointer) {
+        super(codeCache, registerConfig, referenceMapFactory, preserveFramePointer);
         // HotSpot is picky about the frame layout in the presence of nmethod entry barriers, so
         // always allocate the space for rbp and the deoptimization rescue slot. If we don't
         // allocate rbp the rbp spill slot will never be written.
