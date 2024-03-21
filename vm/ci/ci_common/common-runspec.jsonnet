@@ -1,7 +1,6 @@
 local vm = import '../ci_includes/vm.jsonnet';
 local run_spec   = import "../../../ci/ci_common/run-spec.libsonnet";
 local exclude    = run_spec.exclude;
-local common = import "common.jsonnet";
 local graal_common = import '../../../ci/ci_common/common.jsonnet';
 local graal_c = import '../../../ci/common.jsonnet';
 
@@ -9,6 +8,88 @@ local task_spec = run_spec.task_spec;
 local platform_spec = run_spec.platform_spec;
 local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}));
 {
+  local vm_c = {
+    common_vm: graal_common.build_base + vm.vm_setup + {
+      python_version: "3",
+      logs+: [
+        '*/mxbuild/dists/stripped/*.map',
+        '**/install.packages.R.log',
+      ],
+      environment+: if(self.os == 'darwin') then {
+        LANG: 'en_US.UTF-8'
+      } else if(self.os == 'windows') then {
+        PATH: '$MAVEN_HOME\\bin;$JAVA_HOME\\bin;$PATH',
+      } else {},
+      downloads+: if(self.os == 'darwin') then {
+        MAVEN_HOME: {name: 'maven', version: '3.3.9', platformspecific: false},
+      } else {},
+    },
+
+    common_vm_linux: self.common_vm,
+
+    common_vm_darwin: self.common_vm + {
+      environment+: {
+        LANG: 'en_US.UTF-8'
+      },
+    },
+
+    common_vm_windows: self.common_vm + {
+      downloads+: {
+        MAVEN_HOME: {name: 'maven', version: '3.3.9', platformspecific: false},
+      },
+      environment+: {
+        PATH: '$MAVEN_HOME\\bin;$JAVA_HOME\\bin;$PATH',
+      },
+    },
+
+    common_vm_windows_jdk21: self.common_vm_windows + graal_common.devkits['windows-jdk21'],
+    common_vm_windows_jdkLatest: self.common_vm_windows + graal_common.devkits['windows-jdkLatest'],
+    vm_linux_amd64_common: graal_common.deps.svm {
+      capabilities+: ['manycores', 'ram16gb', 'fast'],
+    },
+
+    vm_linux_amd64: graal_common.linux_amd64 + self.common_vm + self.vm_linux_amd64_common,
+
+    vm_linux_amd64_ol9: graal_common.linux_amd64_ol9 + self.common_vm + self.vm_linux_amd64_common,
+    vm_ol9_amd64: self.vm_linux_amd64_ol9,
+
+    vm_linux_amd64_ubuntu: graal_common.linux_amd64_ubuntu + self.common_vm + self.vm_linux_amd64_common,
+    vm_ununtu_amd64: self.vm_linux_amd64_ubuntu,
+
+    vm_linux_aarch64: self.common_vm + graal_common.linux_aarch64,
+
+    vm_linux_aarch64_ol9: self.common_vm + graal_common.linux_aarch64_ol9,
+    vm_ol9_aarch64: self.vm_linux_aarch64_ol9,
+
+    vm_darwin_amd64: self.common_vm + graal_common.darwin_amd64 + {
+      capabilities+: ['darwin_bigsur', 'ram16gb'],
+      packages+: {
+        gcc: '==4.9.2',
+      },
+      environment+: {
+        # for compatibility with macOS BigSur
+        MACOSX_DEPLOYMENT_TARGET: '11.0',
+      },
+    },
+
+    vm_darwin_amd64_jdkLatest: self.vm_darwin_amd64,
+
+    vm_darwin_aarch64: self.common_vm + graal_common.darwin_aarch64 + {
+      capabilities+: ['darwin_bigsur'],
+      environment+: {
+        # for compatibility with macOS BigSur
+        MACOSX_DEPLOYMENT_TARGET: '11.0',
+      },
+    },
+
+    vm_windows: self.common_vm_windows + graal_common.windows_server_2016_amd64,
+    vm_windows_jdk21: self.common_vm_windows_jdk21 + graal_common.windows_server_2016_amd64,
+    vm_windows_jdkLatest: self.common_vm_windows_jdkLatest + graal_common.windows_server_2016_amd64,
+    vm_windows_amd64: self.vm_windows,
+    vm_windows_amd64_jdk21: self.vm_windows_jdk21,
+    vm_windows_amd64_jdkLatest: self.vm_windows_jdkLatest,
+  },
+
   local record_file_sizes = ['benchmark', 'file-size:*', '--results-file', 'sizes.json'],
   local upload_file_sizes = ['bench-uploader.py', 'sizes.json'],
   local common_os_deploy = task_spec({
@@ -98,21 +179,10 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     },
   ),
 
-  local vm_base(os, arch, main_target, deploy=false, bench=false, os_distro=null, jdk_hint=null) = task_spec(
-      vm.default_diskspace_required(os, arch, large=deploy)
-      + common['vm_' + os + '_' + arch + (if (os_distro != null) then '_' + os_distro else '') + (if (jdk_hint != null) then '_jdk' + jdk_hint else '')]  # examples: `self.vm_linux_amd64_ubuntu`, `self.vm_windows_amd64_jdkLatest`
-      + { targets+: [main_target] + (if (deploy) then ['deploy'] else []) + (if (bench) then ['bench'] else []) }
-      + (if (bench) then { capabilities+: ['no_frequency_scaling'] } else {})),
-
-//  option 1
-//  local name = task_spec({ // to replace task_spec({name: 'post-merge-deploy-vm-base-java-latest-linux-amd64'}) // option 1
-//    java_version:: 'java-' + if self.jdk_name == "jdk-latest" then "latest"
-//                   else std.substr(self.jdk_name, 3, std.length(self.jdk_name) - 3),
-//    name: std.join('-', self.targets + [self.task_name, std.toString(self.java_version), self.os, self.arch])
-//  }),
-
   local name = task_spec({
-    name: self.task_name
+    java_version:: 'java' + if self.jdk_name == "jdk-latest" then "-latest"
+                   else std.substr(self.jdk_name, 3, std.length(self.jdk_name) - 3),
+    name: std.join('-', self.targets + [self.task_name, std.toString(self.java_version), self.os, self.arch])
   }),
 
   local timelimit(t) = evaluate_late('999_time_limit',{ // the key starts with 999 to be the last one evaluated
@@ -121,6 +191,10 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
 
   local notify_groups(group) = task_spec({
     notify_groups:: group
+  }),
+
+  local diskspace_required(diskspace) = task_spec({
+    diskspace_required: diskspace
   }),
 
   local capabilities(caps) = task_spec({
@@ -157,50 +231,99 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     } else {},
   }),
 
-  local platform(os, arch, jdk, main_target, deploy=false, bench=false, os_distro=null, jdk_hint=null, use_llvm=false) = mx_env + platform_spec(no_jobs) + platform_spec({
-    // std.join(":", [os, arch, "jdk-latest"]) to get a stucture accepted by platform spec that is os:arch:jdk
-    [std.join(":", [os, arch, "jdk" + if (jdk == "latest") then "-latest" else jdk])]: vm_base(os, arch, main_target, deploy, bench, os_distro, jdk_hint) + task_spec(vm['vm_java_' + (if (jdk == "latest") then "Latest" else jdk) + (if (use_llvm) then '_llvm' else '')]),
-  }) + common_os_deploy,
-
-  local deploy_common_vm_base(os, arch, jdk, main_target, deploy=false, bench=false, os_distro=null, jdk_hint=null, use_llvm=false) = platform(os, arch, jdk, main_target, deploy, bench, os_distro, jdk_hint, use_llvm) + name + deploy_graalvm_base + notify_groups('deploy') + (if os != 'windows' then full_vm_build else (js_windows_common + svm_common)) ,
-
-  // linux base
-  local deploy_vm_base_java21_linux_amd64 = deploy_common_vm_base('linux', 'amd64', '21', 'weekly', deploy = true),
-  local deploy_vm_base_javaLatest_linux_amd64 = deploy_common_vm_base('linux', 'amd64', 'latest', 'post-merge', deploy = true),
-  local deploy_vm_base_java21_linux_aarch64 = deploy_common_vm_base('linux', 'aarch64', '21', 'weekly', deploy = true) + capabilities('!xgene3') + timelimit('1:30:00'),
-  local deploy_vm_base_javaLatest_linux_aarch64 = deploy_common_vm_base('linux', 'aarch64', 'latest', 'daily', deploy = true) + capabilities('!xgene3') + timelimit('1:30:00'),
-
-  // windows base
-  local deploy_vm_base_java21_windows_amd64 = deploy_common_vm_base('windows', 'amd64', '21', 'weekly', deploy=true, jdk_hint='21') + timelimit('1:30:00'),
-  local deploy_vm_base_javaLatest_windows_amd64 = deploy_common_vm_base('windows', 'amd64', 'latest', 'daily', deploy=true, jdk_hint='Latest') + timelimit('1:30:00'),
-
-  // darwin base
-  local deploy_vm_base_java21_darwin_amd64 = deploy_common_vm_base('darwin', 'amd64', '21', 'weekly', deploy=true) + timelimit('1:45:00'),
-  local deploy_vm_base_javaLatest_darwin_amd64 = deploy_common_vm_base('darwin', 'amd64', 'latest', 'daily', deploy=true) + timelimit('1:45:00'),
-  local deploy_vm_base_java21_darwin_aarch64 = deploy_common_vm_base('darwin', 'aarch64', '21', 'weekly', deploy=true) + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
-  local deploy_vm_base_javaLatest_darwin_aarch64 = deploy_common_vm_base('darwin', 'aarch64', 'latest', 'daily', deploy=true) + timelimit('1:45:00') + notify_emails(['bernhard.urban-forster@oracle.com']),
-
-  #
-  # Deploy the GraalVM Espresso artifact (GraalVM Base + espresso - native image)
-  #
-
-  local deploy_vm_espresso_common(os, arch, jdk, main_target, deploy=false, bench=false, os_distro=null, jdk_hint=null, use_llvm=false) = platform(os, arch, jdk, main_target, deploy, bench, os_distro, jdk_hint, use_llvm) + deploy_graalvm_espresso + name + (if os != 'windows' then full_vm_build else (sulong + svm_common)) + notify_groups('deploy'),
-
-  local deploy_vm_espresso_java21_linux_amd64 = deploy_vm_espresso_common('linux', 'amd64', '21', 'weekly', deploy=true, use_llvm=true),
-  local deploy_vm_espresso_java21_linux_aarch64 = deploy_vm_espresso_common('linux', 'aarch64', '21', 'weekly', deploy=true, use_llvm=false),
-  local deploy_vm_espresso_java21_darwin_amd64 = deploy_vm_espresso_common('darwin', 'amd64', '21', 'weekly', deploy=true, use_llvm=true),
-  local deploy_vm_espresso_java21_darwin_aarch64 = deploy_vm_espresso_common('darwin', 'aarch64', '21', 'weekly', deploy=true, use_llvm=false),
-  local deploy_vm_espresso_java21_windows_amd64 = deploy_vm_espresso_common('windows', 'amd64', '21', 'weekly', deploy=true, jdk_hint='21', use_llvm=false),
-
-  //evaluation of
-  local task_dict = {
-    // "vm-base": deploy_vm_base_java('linux', 'amd64', 'latest'), can be used with option 1
-    "daily-deploy-vm-base-java-latest-windows-amd64": deploy_vm_base_java21_windows_amd64,
+  local feature_map = {
+    os_distro: {
+      ubuntu: no_jobs {
+        "linux:amd64:jdk21"+: task_spec(vm_c.vm_linux_amd64_ubuntu + vm.vm_java_21),
+        "linux:amd64:jdk-latest"+: task_spec(vm_c.vm_linux_amd64_ubuntu + vm.vm_java_Latest)
+      },
+      linux_ol9: no_jobs {
+        "linux:amd64:jdk21"+: task_spec(vm_c.vm_linux_amd64_ol9 + vm.vm_java_21),
+        "linux:amd64:jdk-latest"+: task_spec(vm_c.vm_linux_amd64_ol9 + vm.vm_java_Latest),
+        "linux:aarch64:jdk21"+: task_spec(vm_c.vm_linux_aarch64_ol9 + vm.vm_java_21),
+        "linux:aarch64:jdk-latest"+: task_spec(vm_c.vm_linux_aarch64_ol9 + vm.vm_java_Latest),
+      },
+      linux: no_jobs {
+        "linux:amd64:jdk21"+: task_spec(vm_c.vm_linux_amd64 + vm.vm_java_21),
+        "linux:amd64:jdk-latest"+: task_spec(vm_c.vm_linux_amd64 + vm.vm_java_Latest),
+        "linux:aarch64:jdk21"+: task_spec(vm_c.vm_linux_aarch64 + vm.vm_java_21),
+        "linux:aarch64:jdk-latest"+: task_spec(vm_c.vm_linux_aarch64 + vm.vm_java_Latest),
+      },
+      windows: no_jobs {
+        "windows:amd64:jdk21"+: task_spec(vm_c.vm_windows_amd64_jdk21 + vm.vm_java_21),
+        "windows:amd64:jdk-latest"+: task_spec(vm_c.vm_windows_amd64_jdkLatest + vm.vm_java_Latest),
+      },
+      darwin: no_jobs {
+        "darwin:amd64:jdk21"+: task_spec(vm_c.vm_darwin_amd64 + vm.vm_java_21),
+        "darwin:amd64:jdk-latest"+: task_spec(vm_c.vm_darwin_amd64 + vm.vm_java_Latest),
+        "darwin:aarch64:jdk21"+: task_spec(vm_c.vm_darwin_aarch64 + vm.vm_java_21),
+        "darwin:aarch64:jdk-latest"+: task_spec(vm_c.vm_darwin_aarch64 + vm.vm_java_Latest),
+      },
+      espresso: no_jobs {
+        "linux:amd64:jdk21"+: task_spec(vm_c.vm_linux_amd64 + vm.vm_java_21_llvm),
+        "linux:aarch64:jdk21"+: task_spec(vm_c.vm_linux_aarch64 + vm.vm_java_21),
+        "windows:amd64:jdk21"+: task_spec(vm_c.vm_windows_amd64_jdk21 + vm.vm_java_21),
+        "darwin:amd64:jdk21"+: task_spec(vm_c.vm_darwin_amd64 + vm.vm_java_21_llvm),
+        "darwin:aarch64:jdk21"+: task_spec(vm_c.vm_darwin_aarch64 + vm.vm_java_21),
+      }
+    }
   },
 
+  local extras(main_target, deploy, bench=false) = diskspace_required(vm.default_diskspace_required(self.os, self.arch, deploy).diskspace_required) + task_spec({ targets+: [main_target] + (if (deploy) then ['deploy'] else []) + (if (bench) then ['bench'] else []) }+ (if (bench) then { capabilities+: ['no_frequency_scaling'] } else {})),
+  local deploy_vm_common(main_target, deploy, bench) = extras(main_target, deploy, bench) + deploy_graalvm_base + common_os_deploy + name + notify_groups('deploy'),
+  local deploy_vm_espresso_common(main_target, deploy, bench=false) = extras(main_target, deploy, bench) + deploy_graalvm_espresso + common_os_deploy + name + notify_groups('deploy'),
+
+  local variants(s) = run_spec.generate_variants(s, feature_map),
+
+  local task_dict = {
+
+      #
+      # Deploy GraalVM Base
+      # NOTE: After adding or removing deploy jobs, please make sure you modify ce-release-artifacts.json accordingly.
+      #
+
+      "vm-base": platform_spec(no_jobs) + mx_env + variants({
+
+        // Linux
+        "os_distro:linux": {
+          "linux:amd64:jdk21": deploy_vm_common('weekly', true, false) + full_vm_build,
+          "linux:amd64:jdk-latest": deploy_vm_common('post-merge', true, false) + full_vm_build,
+          "linux:aarch64:jdk21": deploy_vm_common('weekly', true, false) + full_vm_build + capabilities('!xgene3') + timelimit('1:30:00'),
+          "linux:aarch64:jdk-latest": deploy_vm_common('daily', true, false) + full_vm_build + capabilities('!xgene3') + timelimit('1:30:00'),
+        },
+
+        // Windows
+        "os_distro:windows": {
+          "windows:amd64:jdk21": deploy_vm_common('weekly', true, false) + js_windows_common + svm_common + timelimit('1:30:00'),
+          "windows:amd64:jdk-latest": deploy_vm_common('daily', true, false) + js_windows_common + svm_common + timelimit('1:30:00'),
+        },
+
+        //darwin
+        "os_distro:darwin": {
+          "darwin:amd64:jdk21": deploy_vm_common('weekly', true, false) + full_vm_build,
+          "darwin:amd64:jdk-latest": deploy_vm_common('daily', true, false) + full_vm_build,
+          "darwin:aarch64:jdk21": deploy_vm_common('weekly', true, false) + full_vm_build + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
+          "darwin:aarch64:jdk-latest": deploy_vm_common('daily', true, false) + full_vm_build + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
+        }
+      }),
+
+      #
+      # Deploy the GraalVM Espresso artifact (GraalVM Base + espresso - native image)
+      #
+
+      "vm-espresso": platform_spec(no_jobs) + mx_env + variants({
+        "os_distro:espresso": {
+          "linux:amd64:jdk21": deploy_vm_espresso_common('weekly', true, false) + full_vm_build,
+          "linux:aarch64:jdk21": deploy_vm_espresso_common('weekly', true, false) + full_vm_build,
+          "windows:amd64:jdk21": deploy_vm_espresso_common('weekly', true, false) + sulong + svm_common,
+          "darwin:amd64:jdk21": deploy_vm_espresso_common('weekly', true, false) + full_vm_build,
+          "darwin:aarch64:jdk21": deploy_vm_espresso_common('weekly', true, false) + full_vm_build,
+        }
+      }),
+
+    },
 
   processed_builds::run_spec.process(task_dict),
   builds: self.processed_builds.list,
   assert std.length(self.builds) > 0,
-//  assert std.length(self.builds[0].run) > 0
 }
