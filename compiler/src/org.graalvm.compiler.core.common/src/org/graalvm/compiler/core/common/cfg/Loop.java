@@ -196,4 +196,15 @@ public abstract class Loop<T extends AbstractBlockBase<T>> {
     public boolean equals(Object obj) {
         return super.equals(obj);
     }
+
+    public boolean isAncestorOrSelf(Loop<?> potentialAncestor) {
+        Loop<?> p = this;
+        while (p != null) {
+            if (p == potentialAncestor) {
+                return true;
+            }
+            p = p.getParent();
+        }
+        return false;
+    }
 }
