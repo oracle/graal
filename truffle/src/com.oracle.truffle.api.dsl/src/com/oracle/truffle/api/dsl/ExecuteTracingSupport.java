@@ -63,7 +63,7 @@ public interface ExecuteTracingSupport {
     /**
      * Invoked by the generated code to determine whether tracing is enabled. If tracing is
      * disabled, no other methods in this interface will be invoked.
-     * 
+     *
      * @return {@code true} if tracing is enabled
      * @since 21.3
      */
@@ -73,7 +73,7 @@ public interface ExecuteTracingSupport {
      * Invoked by the generated {@code execute} methods before any {@link Specialization} is called,
      * but after all {@link NodeChildren} are evaluated. Called only if {@link #isTracingEnabled()}
      * returns {@code true}.
-     * 
+     *
      * @param arguments the arguments of the specialization except the frame, if any
      * @since 21.3
      */

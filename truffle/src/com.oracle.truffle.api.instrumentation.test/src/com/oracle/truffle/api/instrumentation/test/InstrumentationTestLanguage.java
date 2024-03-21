@@ -61,12 +61,16 @@ import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
 import org.junit.Assert;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
@@ -190,6 +194,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     public static final String NAME = "Instrumentation Test Language";
     public static final String FILENAME_EXTENSION = ".titl";
 
+    @Option(help = "", category = OptionCategory.INTERNAL) //
+    static final OptionKey<Boolean> InlineProbes = new OptionKey<>(false);
+
     @Identifier("DEFINE")
     static class DefineTag extends Tag {
 
@@ -254,7 +261,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             runInitAfterExec = (Boolean) envConfig.get("runInitAfterExec");
         }
         env.registerService(new SpecialServiceImpl());
-        return new InstrumentContext(env, initSource, runInitAfterExec);
+        boolean useInlinedProbes = false;
+        if (this.getClass() == InstrumentationTestLanguage.class) {
+            useInlinedProbes = env.getOptions().get(InlineProbes);
+        }
+        return new InstrumentContext(env, initSource, runInitAfterExec, useInlinedProbes);
     }
 
     private CallTarget lastParsed;
@@ -268,6 +279,15 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
     public static CallTarget getLastParsedCalltarget() {
         return InstrumentationTestLanguage.get(null).lastParsed;
+    }
+
+    @Override
+    protected OptionDescriptors getOptionDescriptors() {
+        if (this.getClass() == InstrumentationTestLanguage.class) {
+            // we can only use options if the language is not subclassed
+            return new InstrumentationTestLanguageOptionDescriptors();
+        }
+        return null;
     }
 
     @Override
@@ -797,9 +817,37 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
     public static class InstrumentedBaseNode extends BaseNode implements InstrumentableNode {
 
+        final boolean inlineProbes = isInlineProbes();
+
+        private boolean isInlineProbes() {
+            if (this instanceof WrapperNode) {
+                return false;
+            }
+            InstrumentContext context = InstrumentContext.get(null);
+            if (context == null) {
+                return false;
+            }
+            return context.useInlinedProbes;
+        }
+
+        @Child volatile ProbeNode currentProbe;
+
         @Override
         public boolean isInstrumentable() {
             return true;
+        }
+
+        public ProbeNode findProbe() {
+            if (inlineProbes) {
+                if (!isInstrumentable()) {
+                    throw CompilerDirectives.shouldNotReachHere("findProbe should only be called if instrumentable.");
+                }
+                if (currentProbe == null) {
+                    currentProbe = createProbe(getSourceSection());
+                }
+                return currentProbe;
+            }
+            return InstrumentableNode.super.findProbe();
         }
 
         public WrapperNode createWrapper(ProbeNode probe) {
@@ -837,6 +885,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @Override
         public InstrumentableNode.WrapperNode createWrapper(ProbeNode probe) {
+            if (inlineProbes) {
+                throw CompilerDirectives.shouldNotReachHere("should not be called with inlineProbes");
+            }
             return new InstrumentedNodeWrapper(this, probe);
         }
 
@@ -3706,11 +3757,13 @@ class InstrumentContext {
     final boolean runInitAfterExec;
     RootCallTarget afterTarget;
     final Set<Thread> spawnedThreads = new WeakSet<>();
+    final boolean useInlinedProbes;
 
-    InstrumentContext(Env env, Source initSource, Boolean runInitAfterExec) {
+    InstrumentContext(Env env, Source initSource, Boolean runInitAfterExec, boolean useInlinedProbes) {
         this.env = env;
         this.out = env.out();
         this.err = env.err();
+        this.useInlinedProbes = useInlinedProbes;
         this.allocationReporter = env.lookup(AllocationReporter.class);
         this.initSource = initSource;
         this.runInitAfterExec = runInitAfterExec != null && runInitAfterExec;

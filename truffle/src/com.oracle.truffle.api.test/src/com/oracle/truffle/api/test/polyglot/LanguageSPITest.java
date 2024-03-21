@@ -486,7 +486,7 @@ public class LanguageSPITest {
 
         @ExportMessage(name = "getSourceLocation")
         @TruffleBoundary
-        SourceSection getSourceSection() throws UnsupportedMessageException {
+        SourceSection getSourceLocation() throws UnsupportedMessageException {
             if (source == null) {
                 throw UnsupportedMessageException.create();
             }

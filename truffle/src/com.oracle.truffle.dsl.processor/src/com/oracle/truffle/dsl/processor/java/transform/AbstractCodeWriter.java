@@ -234,13 +234,25 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
             }
         }
 
+        if (e.getKind() == ElementKind.INTERFACE || e.getKind() == ElementKind.CLASS) {
+            if (e.getModifiers().contains(Modifier.SEALED)) {
+                write(" permits ");
+                String sep = "";
+                for (TypeMirror permitSubclass : e.getPermittedSubclasses()) {
+                    write(sep);
+                    write(useImport(e, permitSubclass, false));
+                    sep = ", ";
+                }
+            }
+        }
+
         write(" {").writeLn();
         writeEmptyLn();
         indent(1);
 
         List<VariableElement> staticFields = getStaticFields(e);
-        List<VariableElement> instanceFields = getInstanceFields(e);
 
+        boolean hasStaticFields = false;
         for (int i = 0; i < staticFields.size(); i++) {
             VariableElement field = staticFields.get(i);
             field.accept(this, null);
@@ -251,18 +263,22 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
                 write(";");
                 writeLn();
             }
+            hasStaticFields = true;
         }
 
-        if (staticFields.size() > 0) {
+        if (hasStaticFields) {
             writeEmptyLn();
         }
 
-        for (VariableElement field : instanceFields) {
+        boolean hasInstanceFields = false;
+        for (VariableElement field : getInstanceFields(e)) {
             field.accept(this, null);
             write(";");
             writeLn();
+            hasInstanceFields = true;
         }
-        if (instanceFields.size() > 0) {
+
+        if (hasInstanceFields) {
             writeEmptyLn();
         }
 
@@ -845,7 +861,6 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
                 linePrefix = null;
                 lineWrappingAtWords = false;
                 maxLineLength = prevMaxLineLength;
-                writeLn();
                 indentLineWrapping = true;
                 write(" */");
                 writeLn();

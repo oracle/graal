@@ -105,6 +105,7 @@ def javadoc(args, vm=None):
         'org.graalvm.polyglot',
         'com.oracle.svm.core.annotate',
         'com.oracle.truffle.api',
+        'com.oracle.truffle.api.bytecode',
         'com.oracle.truffle.api.dsl',
         'com.oracle.truffle.api.profiles',
         'com.oracle.truffle.api.utilities',
@@ -1088,7 +1089,7 @@ def create_dsl_parser(args=None, out=None):
 
 def create_sl_parser(args=None, out=None):
     """create the SimpleLanguage parser using antlr"""
-    create_parser("com.oracle.truffle.sl", "com.oracle.truffle.sl.parser", "SimpleLanguage", None, args, out)
+    create_parser("com.oracle.truffle.sl", "com.oracle.truffle.sl.parser", "SimpleLanguageBytecode", None, ['-visitor'] + args, out)
 
 def create_parser(grammar_project, grammar_package, grammar_name, copyright_template=None, args=None, out=None, postprocess=None, shaded=False):
     """create the DSL expression parser using antlr"""
@@ -1412,6 +1413,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
         'truffle:TRUFFLE_API',
         'truffle:TRUFFLE_RUNTIME',
         'truffle:TRUFFLE_JCODINGS',
+        'truffle:TRUFFLE_JSON',
     ],
     stability="supported",
 ))

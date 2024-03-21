@@ -52,6 +52,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.bytecode.tracing.BytecodeStatistics;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.SpecializationStatistics;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
@@ -79,6 +80,7 @@ final class PolyglotThreadInfo {
     private Object originalContextClassLoader = NULL_CLASS_LOADER;
     private ClassLoaderEntry prevContextClassLoader;
     private SpecializationStatisticsEntry executionStatisticsEntry;
+    private OperationsStatisticsEntry operationsStatisticsEntry;
 
     private boolean safepointActive; // only accessed from current thread
     @CompilationFinal(dimensions = 1) Object[] contextThreadLocals;
@@ -256,6 +258,10 @@ final class PolyglotThreadInfo {
         if (engine.specializationStatistics != null) {
             enterStatistics(engine.specializationStatistics);
         }
+
+        if (engine.bytecodeStatistics != null) {
+            operationsStatisticsEntry = new OperationsStatisticsEntry(engine.bytecodeStatistics.enter(), operationsStatisticsEntry);
+        }
     }
 
     boolean isPolyglotThread(PolyglotContextImpl c) {
@@ -276,6 +282,10 @@ final class PolyglotThreadInfo {
             }
             if (engine.specializationStatistics != null) {
                 leaveStatistics(engine.specializationStatistics);
+            }
+            if (engine.bytecodeStatistics != null) {
+                engine.bytecodeStatistics.exit(operationsStatisticsEntry.statistics);
+                operationsStatisticsEntry = operationsStatisticsEntry.next;
             }
         }
     }
@@ -406,6 +416,16 @@ final class PolyglotThreadInfo {
         final SpecializationStatisticsEntry next;
 
         SpecializationStatisticsEntry(SpecializationStatistics statistics, SpecializationStatisticsEntry next) {
+            this.statistics = statistics;
+            this.next = next;
+        }
+    }
+
+    private static final class OperationsStatisticsEntry {
+        final BytecodeStatistics statistics;
+        final OperationsStatisticsEntry next;
+
+        OperationsStatisticsEntry(BytecodeStatistics statistics, OperationsStatisticsEntry next) {
             this.statistics = statistics;
             this.next = next;
         }

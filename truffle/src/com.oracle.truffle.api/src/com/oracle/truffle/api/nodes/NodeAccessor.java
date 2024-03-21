@@ -133,6 +133,11 @@ final class NodeAccessor extends Accessor {
         }
 
         @Override
+        public void prepareForInstrumentation(RootNode root, Set<Class<?>> tags) {
+            root.prepareForInstrumentation(tags);
+        }
+
+        @Override
         public int getRootNodeBits(RootNode root) {
             return root.instrumentationBits;
         }

@@ -73,6 +73,10 @@ public class CodeAnnotationMirror implements AnnotationMirror {
         values.put(method, value);
     }
 
+    public void setElementValue(String methodName, AnnotationValue value) {
+        setElementValue(findExecutableElement(methodName), value);
+    }
+
     public ExecutableElement findExecutableElement(String name) {
         return ElementUtils.findExecutableElement(annotationType, name);
     }

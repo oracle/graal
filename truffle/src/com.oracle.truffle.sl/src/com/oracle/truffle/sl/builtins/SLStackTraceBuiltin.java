@@ -42,6 +42,7 @@ package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -69,6 +70,7 @@ public abstract class SLStackTraceBuiltin extends SLBuiltinNode {
     public static final TruffleString FRAME = SLStrings.constant("Frame: root ");
     public static final TruffleString SEPARATOR = SLStrings.constant(", ");
     public static final TruffleString EQUALS = SLStrings.constant("=");
+    public static final TruffleString UNKNOWN = SLStrings.constant("Unknown");
 
     @Specialization
     public TruffleString trace() {
@@ -100,11 +102,18 @@ public abstract class SLStackTraceBuiltin extends SLBuiltinNode {
                 }
                 str.appendStringUncached(FRAME);
                 str.appendStringUncached(getRootNodeName(rn));
+                boolean isOperation = rn instanceof BytecodeRootNode;
                 FrameDescriptor frameDescriptor = frame.getFrameDescriptor();
                 int count = frameDescriptor.getNumberOfSlots();
                 for (int i = 0; i < count; i++) {
+                    TruffleString slotName = (TruffleString) frameDescriptor.getSlotName(i);
+                    if (isOperation && slotName == null) {
+                        // The operation interpreter allocates space for its own locals. We can
+                        // ignore those.
+                        continue;
+                    }
                     str.appendStringUncached(SEPARATOR);
-                    str.appendStringUncached((TruffleString) frameDescriptor.getSlotName(i));
+                    str.appendStringUncached(slotName == null ? UNKNOWN : slotName);
                     str.appendStringUncached(EQUALS);
                     str.appendStringUncached(SLStrings.fromObject(frame.getValue(i)));
                 }

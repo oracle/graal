@@ -166,6 +166,18 @@ public final class ProbeNode extends Node {
         ASSERT_ENTER_RETURN_PARITY = assertsOn;
     }
 
+    ProbeNode(InstrumentableNode node, SourceSection sourceSection) {
+        this(findInstrumentationHandler(node), sourceSection);
+    }
+
+    private static InstrumentationHandler findInstrumentationHandler(InstrumentableNode node) {
+        RootNode root = ((Node) node).getRootNode();
+        if (root == null) {
+            throw new IllegalArgumentException("Unadopted nodes cannot be used to create probes.");
+        }
+        return (InstrumentationHandler) InstrumentAccessor.ENGINE.getInstrumentationHandler(root);
+    }
+
     /** Instantiated by the instrumentation framework. */
     ProbeNode(InstrumentationHandler handler, SourceSection sourceSection) {
         this.handler = handler;
@@ -399,7 +411,7 @@ public final class ProbeNode extends Node {
 
     WrapperNode findWrapper() throws AssertionError {
         Node parent = getParent();
-        if (!(parent instanceof WrapperNode)) {
+        if (!(parent instanceof WrapperNode wrapper)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             if (parent == null) {
                 throw new AssertionError("Probe node disconnected from AST.");
@@ -407,7 +419,20 @@ public final class ProbeNode extends Node {
                 throw new AssertionError("ProbeNodes must have a parent Node that implements NodeWrapper.");
             }
         }
-        return (WrapperNode) parent;
+        return wrapper;
+    }
+
+    InstrumentableNode findInstrumentableNode() throws AssertionError {
+        Node parent = getParent();
+        while (parent != null) {
+            if (parent instanceof WrapperNode n) {
+                return (InstrumentableNode) n.getDelegateNode();
+            } else if (parent instanceof InstrumentableNode n) {
+                return n;
+            }
+            parent = parent.getParent();
+        }
+        throw CompilerDirectives.shouldNotReachHere("Instrumentable node not found.");
     }
 
     synchronized void invalidate() {
@@ -1072,7 +1097,6 @@ public final class ProbeNode extends Node {
             if (prevError != null) {
                 throw prevError;
             }
-
             if (unwind != null) {
                 throw unwind;
             }
