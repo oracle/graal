@@ -41,7 +41,6 @@
 package com.oracle.truffle.regex.tregex.parser;
 
 import java.util.ArrayList;
-import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexFlags;
@@ -146,21 +145,21 @@ public class RegexASTPostProcessor {
 
         @Override
         protected void visit(BackReference backReference) {
-            if (backReference.hasNotUnrolledQuantifier()) {
+            if (backReference.hasQuantifier()) {
                 quantifierExpander.expandQuantifier(backReference, shouldUnroll(backReference));
             }
         }
 
         @Override
         protected void visit(CharacterClass characterClass) {
-            if (characterClass.hasNotUnrolledQuantifier()) {
+            if (characterClass.hasQuantifier()) {
                 quantifierExpander.expandQuantifier(characterClass, shouldUnroll(characterClass));
             }
         }
 
         @Override
         protected void leave(Group group) {
-            if (group.hasNotUnrolledQuantifier() && !group.getFirstAlternative().isExpandedQuantifier() && !group.getLastAlternative().isExpandedQuantifier()) {
+            if (group.hasQuantifier()) {
                 quantifierExpander.expandQuantifier(group, shouldUnroll(group) && shouldUnrollVisitor.shouldUnroll(group));
             }
         }
@@ -204,13 +203,14 @@ public class RegexASTPostProcessor {
 
             private final RegexAST ast;
 
-            private TermCopySupplier copySupplier;
+            private CopyVisitor copyVisitor;
             private Group curGroup;
             private Sequence curSequence;
             private Term curTerm;
 
             QuantifierExpander(RegexAST ast) {
                 this.ast = ast;
+                this.copyVisitor = new CopyVisitor(ast);
             }
 
             private void pushGroup() {
@@ -241,10 +241,27 @@ public class RegexASTPostProcessor {
                 curTerm = term;
             }
 
+            private void addTermCopyAsGroup(Term term) {
+                if (term.isGroup()) {
+                    addTerm(copyVisitor.copy(term));
+                } else {
+                    pushGroup();
+                    addTerm(copyVisitor.copy(term));
+                    popGroup();
+                    if (term.isGroup()) {
+                        curTerm.asGroup().setEnclosedCaptureGroupsLow(term.asGroup().getCaptureGroupsLow());
+                        curTerm.asGroup().setEnclosedCaptureGroupsHigh(term.asGroup().getCaptureGroupsHigh());
+                    }
+                }
+            }
+
             private void createOptionalBranch(QuantifiableTerm term, Token.Quantifier quantifier, boolean unroll, int recurse) {
-                addTerm(copySupplier.get());
-                curTerm.setUnrolledQuantifer(false);
-                ((QuantifiableTerm) curTerm).setQuantifier(null);
+                // We wrap the quantified term in a group, as NFATraversalRegexASTVisitor is set up
+                // to expect quantifier guards only on group boundaries.
+                addTermCopyAsGroup(term);
+                curTerm.asGroup().setQuantifier(quantifier);
+                curTerm.setExpandedQuantifier(unroll);
+                curTerm.setMandatoryUnrolledQuantifier(false);
                 curTerm.setEmptyGuard(true);
                 createOptional(term, quantifier, unroll, recurse - 1);
             }
@@ -254,8 +271,6 @@ public class RegexASTPostProcessor {
                     return;
                 }
                 pushGroup();
-                curGroup.setExpandedQuantifier(unroll);
-                curGroup.setQuantifier(quantifier);
                 if (term.isGroup()) {
                     curGroup.setEnclosedCaptureGroupsLow(term.asGroup().getCaptureGroupsLow());
                     curGroup.setEnclosedCaptureGroupsHigh(term.asGroup().getCaptureGroupsHigh());
@@ -263,9 +278,9 @@ public class RegexASTPostProcessor {
                 if (quantifier.isGreedy()) {
                     createOptionalBranch(term, quantifier, unroll, recurse);
                     nextSequence();
-                    curSequence.setExpandedQuantifier(true);
+                    curSequence.setQuantifierPassThroughSequence(true);
                 } else {
-                    curSequence.setExpandedQuantifier(true);
+                    curSequence.setQuantifierPassThroughSequence(true);
                     nextSequence();
                     createOptionalBranch(term, quantifier, unroll, recurse);
                 }
@@ -273,11 +288,11 @@ public class RegexASTPostProcessor {
             }
 
             private void expandQuantifier(QuantifiableTerm toExpand, boolean unroll) {
-                assert toExpand.hasNotUnrolledQuantifier();
-                Token.Quantifier quantifier = toExpand.getQuantifier();
+                assert toExpand.hasQuantifier();
                 assert !unroll || toExpand.isUnrollingCandidate();
+                Token.Quantifier quantifier = toExpand.getQuantifier();
+                toExpand.setQuantifier(null);
 
-                copySupplier = new TermCopySupplier(ast, toExpand);
                 curTerm = toExpand;
                 curSequence = (Sequence) curTerm.getParent();
                 curGroup = curSequence.getParent();
@@ -289,10 +304,10 @@ public class RegexASTPostProcessor {
                 if (unroll) {
                     // unroll non-optional part ( x{3} -> xxx )
                     for (int i = 0; i < quantifier.getMin(); i++) {
-                        Term term = copySupplier.get();
-                        term.setExpandedQuantifier(true);
-                        term.setUnrolledQuantifer(true);
-                        addTerm(term);
+                        addTermCopyAsGroup(toExpand);
+                        curTerm.asGroup().setQuantifier(quantifier);
+                        curTerm.setExpandedQuantifier(true);
+                        curTerm.setMandatoryUnrolledQuantifier(true);
                     }
                 }
 
@@ -307,33 +322,6 @@ public class RegexASTPostProcessor {
                 createOptional(toExpand, quantifier, unroll, !unroll || quantifier.isInfiniteLoop() ? 0 : (quantifier.getMax() - quantifier.getMin()) - 1);
                 if (!unroll || quantifier.isInfiniteLoop()) {
                     ((Group) curTerm).setLoop(true);
-                }
-            }
-
-            /**
-             * This class implements a stateful closure that produces copies of a given term, but
-             * reuses the original term for the first copy produced.
-             */
-            private static final class TermCopySupplier implements Supplier<Term> {
-
-                private final Term term;
-                private boolean firstCopyIssued;
-                private final CopyVisitor copyVisitor;
-
-                TermCopySupplier(RegexAST ast, Term term) {
-                    this.term = term;
-                    this.firstCopyIssued = false;
-                    this.copyVisitor = new CopyVisitor(ast);
-                }
-
-                @Override
-                public Term get() {
-                    if (!firstCopyIssued) {
-                        firstCopyIssued = true;
-                        return term;
-                    } else {
-                        return copyVisitor.copy(term);
-                    }
                 }
             }
         }
@@ -448,8 +436,8 @@ public class RegexASTPostProcessor {
                     if (innerPositionAssertion >= 0) {
                         Sequence removed = group.getAlternatives().remove(innerPositionAssertion);
                         Group wrapGroup = ast.createGroup();
-                        wrapGroup.setEnclosedCaptureGroupsLow(group.getEnclosedCaptureGroupsLow());
-                        wrapGroup.setEnclosedCaptureGroupsHigh(group.getEnclosedCaptureGroupsHigh());
+                        wrapGroup.setEnclosedCaptureGroupsLow(group.getCaptureGroupsLow());
+                        wrapGroup.setEnclosedCaptureGroupsHigh(group.getCaptureGroupsHigh());
                         wrapGroup.add(removed);
                         Sequence wrapSeq = wrapGroup.addSequence(ast);
                         wrapSeq.add(lookaround);

@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.classfile.constantpool;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -35,7 +36,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -59,7 +60,7 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
         return false;
     }
 
-    CallSiteLink link(RuntimeConstantPool pool, Klass accessingKlass, int thisIndex);
+    CallSiteLink link(RuntimeConstantPool pool, ObjectKlass accessingKlass, int thisIndex, Method method, int bci);
 
     final class Indexes extends BootstrapMethodConstant.Indexes implements InvokeDynamicConstant, Resolvable {
         Indexes(int bootstrapMethodAttrIndex, int nameAndTypeIndex) {
@@ -83,9 +84,9 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
         }
 
         @Override
-        public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass) {
+        public ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, ObjectKlass accessingKlass) {
             CompilerAsserts.neverPartOfCompilation();
-            BootstrapMethodsAttribute bms = (BootstrapMethodsAttribute) ((ObjectKlass) accessingKlass).getAttribute(BootstrapMethodsAttribute.NAME);
+            BootstrapMethodsAttribute bms = (BootstrapMethodsAttribute) accessingKlass.getAttribute(BootstrapMethodsAttribute.NAME);
             BootstrapMethodsAttribute.Entry bsEntry = bms.at(getBootstrapMethodAttrIndex());
 
             Meta meta = accessingKlass.getMeta();
@@ -100,7 +101,7 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
         }
 
         @Override
-        public CallSiteLink link(RuntimeConstantPool pool, Klass accessingKlass, int thisIndex) {
+        public CallSiteLink link(RuntimeConstantPool pool, ObjectKlass accessingKlass, int thisIndex, Method method, int bci) {
             throw EspressoError.shouldNotReachHere("Not resolved yet");
         }
     }
@@ -109,6 +110,7 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
         private final BootstrapMethodsAttribute.Entry bootstrapMethod;
         private final Symbol<Type>[] parsedInvokeSignature;
         private final Symbol<Name> nameSymbol;
+        private volatile InvokeDynamicConstant.CallSiteLink[] callSiteLinks;
 
         public Resolved(BootstrapMethodsAttribute.Entry bootstrapMethod, Symbol<Type>[] parsedInvokeSignature, Symbol<Name> name) {
             this.bootstrapMethod = bootstrapMethod;
@@ -147,10 +149,50 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
          *     4: invokedynamic #1 // Immediately fails without calling MHN.linkCallSite
          * </pre>
          * 
-         * @see RuntimeConstantPool#linkInvokeDynamic(Klass, int)
+         * @see RuntimeConstantPool#linkInvokeDynamic(ObjectKlass, int, int,
+         *      com.oracle.truffle.espresso.impl.Method)
          */
         @Override
-        public CallSiteLink link(RuntimeConstantPool pool, Klass accessingKlass, int thisIndex) {
+        public CallSiteLink link(RuntimeConstantPool pool, ObjectKlass accessingKlass, int thisIndex, Method method, int bci) {
+            int existingIndex = findCallSiteLinkIndex(method, bci);
+            if (existingIndex >= 0) {
+                return getCallSiteLink(existingIndex);
+            }
+            // The call site linking must not happen under the lock, it is racy
+            // However insertion should be done under a lock
+            // see JVMS sect. 5.4.3.6 & ConstantPoolCache::set_dynamic_call
+            InvokeDynamicConstant.CallSiteLink newLink = createCallSiteLink(pool, accessingKlass, thisIndex, method, bci);
+            synchronized (this) {
+                InvokeDynamicConstant.CallSiteLink[] existingLinks = callSiteLinks;
+                if (existingLinks == null) {
+                    InvokeDynamicConstant.CallSiteLink[] newLinks = new InvokeDynamicConstant.CallSiteLink[1];
+                    newLinks[0] = newLink;
+                    callSiteLinks = newLinks;
+                    return newLink;
+                } else {
+                    int i = 0;
+                    for (; i < existingLinks.length; i++) {
+                        InvokeDynamicConstant.CallSiteLink link = existingLinks[i];
+                        if (link == null) {
+                            existingLinks[i] = newLink;
+                            return existingLinks[i];
+                        }
+                        if (link.matchesCallSite(method, bci)) {
+                            return link;
+                        }
+                    }
+                    // we didn't find an existing link nor an available slot
+                    // the array growth is limited by the max number of possible bcis for a method
+                    // (which is a power of 2).
+                    InvokeDynamicConstant.CallSiteLink[] newLinks = Arrays.copyOf(existingLinks, existingLinks.length * 2);
+                    newLinks[i] = newLink;
+                    callSiteLinks = newLinks;
+                    return newLink;
+                }
+            }
+        }
+
+        private CallSiteLink createCallSiteLink(RuntimeConstantPool pool, ObjectKlass accessingKlass, int thisIndex, Method method, int bci) {
             // Per-callsite linking
             CompilerAsserts.neverPartOfCompilation();
             Meta meta = accessingKlass.getMeta();
@@ -188,10 +230,31 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
                 }
                 StaticObject unboxedAppendix = appendix.get(meta.getLanguage(), 0);
 
-                return new CallSiteLink(memberName, unboxedAppendix, parsedInvokeSignature);
+                return new CallSiteLink(method, bci, memberName, unboxedAppendix, parsedInvokeSignature);
             } catch (EspressoException e) {
                 throw new CallSiteLinkingFailure(e);
             }
+        }
+
+        public int findCallSiteLinkIndex(Method method, int bci) {
+            InvokeDynamicConstant.CallSiteLink[] existingLinks = callSiteLinks;
+            if (existingLinks == null) {
+                return -1;
+            }
+            for (int i = 0; i < existingLinks.length; i++) {
+                InvokeDynamicConstant.CallSiteLink link = existingLinks[i];
+                if (link == null) {
+                    break;
+                }
+                if (link.matchesCallSite(method, bci)) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        public InvokeDynamicConstant.CallSiteLink getCallSiteLink(int index) {
+            return callSiteLinks[index];
         }
 
         @Override
@@ -220,11 +283,15 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
     }
 
     final class CallSiteLink {
+        private final Method method;
+        private final int bci;
         final StaticObject memberName;
         final StaticObject unboxedAppendix;
         @CompilerDirectives.CompilationFinal(dimensions = 1) final Symbol<Type>[] parsedSignature;
 
-        public CallSiteLink(StaticObject memberName, StaticObject unboxedAppendix, Symbol<Type>[] parsedSignature) {
+        public CallSiteLink(Method method, int bci, StaticObject memberName, StaticObject unboxedAppendix, Symbol<Type>[] parsedSignature) {
+            this.method = method;
+            this.bci = bci;
             this.memberName = memberName;
             this.unboxedAppendix = unboxedAppendix;
             this.parsedSignature = parsedSignature;
@@ -240,6 +307,10 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
 
         public Symbol<Type>[] getParsedSignature() {
             return parsedSignature;
+        }
+
+        public boolean matchesCallSite(Method siteMethod, int siteBci) {
+            return bci == siteBci && method == siteMethod;
         }
     }
 
@@ -271,7 +342,7 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
         }
 
         @Override
-        public CallSiteLink link(RuntimeConstantPool pool, Klass accessingKlass, int thisIndex) {
+        public CallSiteLink link(RuntimeConstantPool pool, ObjectKlass accessingKlass, int thisIndex, Method method, int bci) {
             throw failure;
         }
 

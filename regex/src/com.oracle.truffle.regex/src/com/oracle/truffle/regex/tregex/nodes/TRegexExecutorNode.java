@@ -51,7 +51,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexExecNode;
 import com.oracle.truffle.regex.RegexSource;
-import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
+import com.oracle.truffle.regex.tregex.nodes.input.InputOps;
 import com.oracle.truffle.regex.tregex.nodes.input.InputReadNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.string.Encodings;
@@ -67,8 +67,7 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
     private final RegexSource source;
     private final int numberOfCaptureGroups;
     private final int numberOfTransitions;
-    private @Child InputLengthNode lengthNode;
-    private @Child InputReadNode charAtNode;
+    private @Child InputReadNode charAtNode = InputReadNode.create();
     private final BranchProfile bmpProfile = BranchProfile.create();
     private final BranchProfile astralProfile = BranchProfile.create();
 
@@ -116,11 +115,7 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
      *         {@link RegexExecNode#execute(VirtualFrame)}.
      */
     public int getInputLength(TRegexExecutorLocals locals) {
-        if (lengthNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            lengthNode = insert(InputLengthNode.create());
-        }
-        return lengthNode.execute(this, locals.getInput(), getEncoding());
+        return InputOps.length(locals.getInput(), getEncoding());
     }
 
     /**
@@ -269,10 +264,6 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
     }
 
     public int inputReadRaw(TRegexExecutorLocals locals, int index, boolean forward) {
-        if (charAtNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            charAtNode = insert(InputReadNode.create());
-        }
         return charAtNode.execute(this, locals.getInput(), forward ? index : index - 1, getEncoding());
     }
 

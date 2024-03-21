@@ -1,5 +1,6 @@
 local graal_common = import "../../ci/ci_common/common.jsonnet";
 local wasm_common = import 'ci_common/common.jsonnet';
+local utils = import "../../ci/ci_common/common-utils.libsonnet";
 
 local jdks = {
   jdk21::     graal_common.labsjdk21,
@@ -18,7 +19,7 @@ jdks + wasm_common +
 
   graal_suite_root:: '/compiler',
 
-  builds: [
+  local _builds = [
     # Gates.
     $.jdk21     + $.linux_amd64     + $.gate         + $.gate_graalwasm_style                                                                      + {name: 'gate-graalwasm-style-fullbuild' + self.name_suffix},
     $.jdkLatest + $.linux_amd64     + $.gate         + $.gate_graalwasm_style       + extra_java_homes                                             + {name: 'gate-graalwasm-style-fullbuild' + self.name_suffix},
@@ -43,4 +44,6 @@ jdks + wasm_common +
       },
     },
   ],
+
+  builds: utils.add_defined_in(_builds, std.thisFile),
 }

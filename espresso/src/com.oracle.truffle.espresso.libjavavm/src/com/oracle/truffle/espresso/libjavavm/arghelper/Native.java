@@ -217,6 +217,6 @@ class Native {
     }
 
     private static Arguments.ArgumentException unknownOption(String key) {
-        throw abort("Unknown native option: " + key + "." + "Use --help:vm to list available options.");
+        throw abort("Unknown native option: " + key + ". Use --help:vm to list available options.");
     }
 }

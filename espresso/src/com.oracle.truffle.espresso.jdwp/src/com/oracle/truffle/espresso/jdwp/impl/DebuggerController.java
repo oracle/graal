@@ -362,33 +362,23 @@ public final class DebuggerController implements ContextsListener {
         return visibleThreads.toArray(new Object[visibleThreads.size()]);
     }
 
-    public void resumeAll(boolean sessionClosed) {
-        Object eventThread = null;
-
-        // The order of which to resume threads is not specified, however when RESUME_ALL command is
-        // sent while performing a stepping request, some debuggers (IntelliJ is a known case) will
-        // expect all other threads but the current stepping thread to be resumed first.
+    void forceResumeAll() {
         for (Object thread : getVisibleGuestThreads()) {
             boolean resumed = false;
             SimpleLock suspendLock = getSuspendLock(thread);
             synchronized (suspendLock) {
                 while (!resumed) {
-                    if (isStepping(thread)) {
-                        eventThread = thread;
-                        break;
-                    } else {
-                        resumed = resume(thread, sessionClosed);
-                    }
+                    resumed = resume(thread, true);
                 }
             }
         }
-        if (eventThread != null) {
-            boolean resumed = false;
-            SimpleLock suspendLock = getSuspendLock(eventThread);
+    }
+
+    public void resumeAll() {
+        for (Object thread : getVisibleGuestThreads()) {
+            SimpleLock suspendLock = getSuspendLock(thread);
             synchronized (suspendLock) {
-                while (!resumed) {
-                    resumed = resume(eventThread, sessionClosed);
-                }
+                resume(thread, false);
             }
         }
     }
@@ -473,10 +463,6 @@ public final class DebuggerController implements ContextsListener {
 
     private String getThreadName(Object thread) {
         return getContext().getThreadName(thread);
-    }
-
-    private boolean isStepping(Object thread) {
-        return commandRequestIds.get(thread) != null;
     }
 
     public void disposeDebugger(boolean prepareReconnect) {

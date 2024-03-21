@@ -1,5 +1,6 @@
 local graal_common = import '../../../ci/ci_common/common.jsonnet';
 local base = import '../ci.jsonnet';
+local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
 local devkits = graal_common.devkits;
 
@@ -268,8 +269,10 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   # exclude scalatest, which goes into deopt loop and becomes slower on every subsequent operation
   scala_dacapo_fast: 'scala-dacapo:*[apparat,factorie,kiama,scalac,scaladoc,scalap,scalariform,scalaxb,tmt]',
 
-  builds: [
+  local _builds = [
     // Gates
     that.jdk21_gate_linux_amd64 + that.eclipse + that.jdt + that.predicates(false, false, false) + that.espresso_gate(allow_warnings=false, tags='style,fullbuild', timelimit='35:00', name='gate-espresso-style-jdk21-linux-amd64'),
   ],
+
+  builds: utils.add_defined_in(_builds, std.thisFile),
 }

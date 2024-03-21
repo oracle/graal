@@ -272,6 +272,20 @@ def _jdk_license(home):
         return "GPLv2-CPE"
 
 
+_espresso_input_jdk_value = None
+
+
+def _espresso_input_jdk():
+    global _espresso_input_jdk_value
+    if not _espresso_input_jdk_value:
+        espresso_java_home = mx.get_env('ESPRESSO_JAVA_HOME')
+        if espresso_java_home:
+            _espresso_input_jdk_value = mx.JDKConfig(espresso_java_home)
+        else:
+            _espresso_input_jdk_value = mx_sdk_vm.base_jdk()
+    return _espresso_input_jdk_value
+
+
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
     """
     :type register_project: (mx.Project) -> None
@@ -297,8 +311,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     else:
         llvm_runtime_dir = []
 
-    espresso_java_home = mx.get_env('ESPRESSO_JAVA_HOME') or mx_sdk_vm.base_jdk().home
-    register_project(JavaHomeDependency(_suite, "JAVA_HOME", espresso_java_home))
+    register_project(JavaHomeDependency(_suite, "JAVA_HOME", _espresso_input_jdk().home))
     if mx.is_windows():
         platform_specific_excludes = [
             "bin/<exe:*>",

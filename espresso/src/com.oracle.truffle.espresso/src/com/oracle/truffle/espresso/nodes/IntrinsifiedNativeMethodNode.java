@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,9 +23,11 @@
 
 package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
+import com.oracle.truffle.espresso.vm.VM;
 
 final class IntrinsifiedNativeMethodNode extends EspressoInstrumentableRootNodeImpl {
     @Child private CallableFromNative nativeMethod;
@@ -55,5 +57,10 @@ final class IntrinsifiedNativeMethodNode extends EspressoInstrumentableRootNodeI
             args = newArgs;
         }
         return nativeMethod.invokeDirect(env, args);
+    }
+
+    @Override
+    public int getBci(Frame frame) {
+        return VM.EspressoStackElement.NATIVE_BCI;
     }
 }

@@ -74,8 +74,6 @@ jobs:
     steps:
     - name: Checkout oracle/graal
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
     - name: Build GraalVM JDK
       uses: ./.github/actions/build-graalvm
       with:
@@ -93,10 +91,10 @@ jobs:
         key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
         restore-keys: |
           ${{ runner.os }}-maven-
-    - name: Tar GraalVM
+    - name: Tar GraalVM JDK
       shell: bash
       run: tar -czvhf graalvm.tgz -C $(dirname ${GRAALVM_HOME}) $(basename ${GRAALVM_HOME})
-    - name: Persist GraalVM build
+    - name: Persist GraalVM JDK build
       uses: actions/upload-artifact@v4
       with:
         name: graalvm
@@ -133,13 +131,13 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJson(needs.build-quarkus-and-graalvm.outputs.matrix) }}
     steps:
-      - name: Download GraalVM build
+      - name: Download GraalVM JDK build
         if: startsWith(matrix.os-name, 'ubuntu')
         uses: actions/download-artifact@v4
         with:
           name: graalvm
           path: .
-      - name: Extract GraalVM build
+      - name: Extract GraalVM JDK build
         if: startsWith(matrix.os-name, 'ubuntu')
         shell: bash
         run: tar -xzvf graalvm.tgz -C $(dirname ${GRAALVM_HOME})

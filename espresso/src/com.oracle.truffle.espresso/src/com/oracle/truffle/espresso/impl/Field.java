@@ -943,6 +943,46 @@ public class Field extends Member<Type> implements FieldRef {
         return null;
     }
 
+    @TruffleBoundary
+    public StaticObject makeMirror(Meta meta) {
+        StaticObject instance = meta.java_lang_reflect_Field.allocateInstance(meta.getContext());
+
+        Attribute rawRuntimeVisibleAnnotations = getAttribute(Name.RuntimeVisibleAnnotations);
+        StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
+                        ? StaticObject.wrap(rawRuntimeVisibleAnnotations.getData(), meta)
+                        : StaticObject.NULL;
+
+        Attribute rawRuntimeVisibleTypeAnnotations = getAttribute(Name.RuntimeVisibleTypeAnnotations);
+        StaticObject runtimeVisibleTypeAnnotations = rawRuntimeVisibleTypeAnnotations != null
+                        ? StaticObject.wrap(rawRuntimeVisibleTypeAnnotations.getData(), meta)
+                        : StaticObject.NULL;
+        if (meta.getJavaVersion().java15OrLater()) {
+            meta.java_lang_reflect_Field_init.invokeDirect(
+                            /* this */ instance,
+                            /* declaringKlass */ getDeclaringKlass().mirror(),
+                            /* name */ meta.getStrings().intern(getName()),
+                            /* type */ resolveTypeKlass().mirror(),
+                            /* modifiers */ getModifiers(),
+                            /* trustedFinal */ isTrustedFinal(),
+                            /* slot */ getSlot(),
+                            /* signature */ meta.toGuestString(getGenericSignature()),
+                            /* annotations */ runtimeVisibleAnnotations);
+        } else {
+            meta.java_lang_reflect_Field_init.invokeDirect(
+                            /* this */ instance,
+                            /* declaringKlass */ getDeclaringKlass().mirror(),
+                            /* name */ meta.getStrings().intern(getName()),
+                            /* type */ resolveTypeKlass().mirror(),
+                            /* modifiers */ getModifiers(),
+                            /* slot */ getSlot(),
+                            /* signature */ meta.toGuestString(getGenericSignature()),
+                            /* annotations */ runtimeVisibleAnnotations);
+        }
+        meta.HIDDEN_FIELD_KEY.setHiddenObject(instance, this);
+        meta.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
+        return instance;
+    }
+
     /**
      * Helper class that uses an assumption to switch between two "stable" states efficiently.
      * Copied from DebuggerSession with modifications to the set method to make it thread safe (but

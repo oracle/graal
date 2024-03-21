@@ -129,7 +129,18 @@ public class StandardPathUtilitiesProvider implements PathUtilitiesProvider {
             }
             buf.append('_');
         }
-        return buf.toString();
+
+        /*
+         * On Windows, the original path might contain "/" as well (both "\" and "/" are equally
+         * valid path separators on Windows). Since File.separatorChar only reports "\" on Windows,
+         * we might have missed it during the previous sanitization. Paths.get should work now
+         * because we have removed all illegal characters and on Windows it canonicalizes the path
+         * to contain only "\". We thus replace any "/" that were converted to "\" here.
+         */
+        String pathString = buf.toString();
+        String sanitizedPathString = Paths.get(pathString).toString();
+        sanitizedPathString = sanitizedPathString.replace(File.separatorChar, '_');
+        return sanitizedPathString;
     }
 
     @Override

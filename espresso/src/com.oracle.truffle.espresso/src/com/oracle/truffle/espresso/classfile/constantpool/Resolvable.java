@@ -25,12 +25,12 @@ package com.oracle.truffle.espresso.classfile.constantpool;
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
-import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 public interface Resolvable extends PoolConstant {
 
-    ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, Klass accessingKlass);
+    ResolvedConstant resolve(RuntimeConstantPool pool, int thisIndex, ObjectKlass accessingKlass);
 
     interface ResolvedConstant extends PoolConstant {
         Object value();

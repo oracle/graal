@@ -133,15 +133,15 @@ public class SnippetParameterInfo {
                 }
             }
         } else {
-            int slotIdx = 0;
+            int slotIdx = offset;
             LocalVariableTable localVariableTable = method.getLocalVariableTable();
             if (localVariableTable != null) {
-                for (int i = 0; i < names.length; i++) {
+                for (int i = offset; i < names.length; i++) {
                     Local local = localVariableTable.getLocal(slotIdx, 0);
                     if (local != null) {
                         names[i] = local.getName();
                     }
-                    JavaKind kind = method.getSignature().getParameterKind(i);
+                    JavaKind kind = method.getSignature().getParameterKind(i - offset);
                     slotIdx += kind.getSlotCount();
                 }
             }

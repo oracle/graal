@@ -23,21 +23,30 @@
 
 package com.oracle.truffle.espresso.meta;
 
+import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
+
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
 import sun.misc.Unsafe;
 
-public abstract class StringConversion {
+public final class StringConversion {
     private static final Unsafe UNSAFE = UnsafeAccess.get();
 
-    private static final class Offsets {
+    private static final class HostConstants {
         static final long hostValueOffset;
         static final long hostHashOffset;
         static final long hostCoderOffset;
+
+        // Static field COMPACT_STRINGS to check for host usage of compact strings.
+        static final boolean hostCompactStrings;
+        static final byte LATIN1;
+        static final byte UTF16;
 
         @SuppressWarnings("deprecation")
         private static long getStringFieldOffset(String name) throws NoSuchFieldException {
@@ -45,34 +54,72 @@ public abstract class StringConversion {
             return UNSAFE.objectFieldOffset(String.class.getDeclaredField(name));
         }
 
+        @SuppressWarnings("deprecation")
+        private static boolean hostUsesCompact() {
+            try {
+                Field compactStringsField = String.class.getDeclaredField("COMPACT_STRINGS");
+                return UNSAFE.getBoolean(UNSAFE.staticFieldBase(compactStringsField), UNSAFE.staticFieldOffset(compactStringsField));
+            } catch (NoSuchFieldException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            }
+        }
+
+        @SuppressWarnings("deprecation")
+        private static byte hostCoderValue(String name) {
+            try {
+                Field compactStringsField = String.class.getDeclaredField(name);
+                return UNSAFE.getByte(UNSAFE.staticFieldBase(compactStringsField), UNSAFE.staticFieldOffset(compactStringsField));
+            } catch (NoSuchFieldException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            }
+        }
+
         static {
             try {
                 hostValueOffset = getStringFieldOffset("value");
                 hostHashOffset = getStringFieldOffset("hash");
                 hostCoderOffset = getStringFieldOffset("coder");
+
+                hostCompactStrings = hostUsesCompact();
+                LATIN1 = hostCoderValue("LATIN1");
+                UTF16 = hostCoderValue("UTF16");
             } catch (NoSuchFieldException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
     }
 
-    public abstract String toHost(StaticObject str, EspressoLanguage language, Meta meta);
+    private final MaybeCopy maybeCopy;
+    private final FromGuest fromGuest;
+    private final ToHost toHost;
+    private final ToGuest toGuest;
 
-    public abstract StaticObject toGuest(String str, Meta meta);
+    public StringConversion(MaybeCopy maybeCopy, FromGuest fromGuest, ToGuest toGuest, ToHost toHost) {
+        this.maybeCopy = maybeCopy;
+        this.fromGuest = fromGuest;
+        this.toHost = toHost;
+        this.toGuest = toGuest;
+    }
 
-    private StringConversion() {
+    public String toHost(StaticObject str, EspressoLanguage language, Meta meta) {
+        return fromGuest.extract(str, language, meta, maybeCopy) /*- Unpacks guest string into (bytes, hash, coder), copying if necessary. */
+                        .toHost(toHost); /*- Repacks, taking care whether host has compact strings enabled. */
+    }
+
+    public StaticObject toGuest(String str, Meta meta) {
+        return toGuest.hostToGuest(str, meta, maybeCopy);
     }
 
     static StringConversion select(EspressoContext context) {
-        if (context.getJavaVersion().compactStringsEnabled()) {
-            if (context.getEnv().getOptions().get(EspressoOptions.StringSharing)) {
-                return CompactToCompact.INSTANCE;
-            } else {
-                return CopyingCompactToCompact.INSTANCE;
-            }
-        } else {
-            return CharGuestCompactHost.INSTANCE;
-        }
+        boolean sharing = context.getEnv().getOptions().get(EspressoOptions.StringSharing);
+        boolean compactGuest = context.getJavaVersion().compactStringsEnabled();
+        boolean compactHost = HostConstants.hostCompactStrings;
+
+        return new StringConversion(
+                        sharing ? MaybeCopy.SHARING : MaybeCopy.NO_SHARING,
+                        compactGuest ? FromGuest.FROM_COMPACT : FromGuest.FROM_NOT_COMPACT,
+                        compactGuest ? ToGuest.TO_COMPACT : ToGuest.TO_NOT_COMPACT,
+                        compactHost ? ToHost.COMPACT_ENABLED : ToHost.COMPACT_DISABLED);
     }
 
     private static String allocateHost() {
@@ -100,15 +147,15 @@ public abstract class StringConversion {
     }
 
     private static byte[] extractHostBytes(String str) {
-        return (byte[]) UNSAFE.getObject(str, Offsets.hostValueOffset);
+        return (byte[]) UNSAFE.getObject(str, HostConstants.hostValueOffset);
     }
 
     private static int extractHostHash(String str) {
-        return UNSAFE.getInt(str, Offsets.hostHashOffset);
+        return UNSAFE.getInt(str, HostConstants.hostHashOffset);
     }
 
     private static byte extractHostCoder(String str) {
-        return UNSAFE.getByte(str, Offsets.hostCoderOffset);
+        return UNSAFE.getByte(str, HostConstants.hostCoderOffset);
     }
 
     private static StaticObject produceGuestString8(Meta meta, char[] value, int hash) {
@@ -128,53 +175,72 @@ public abstract class StringConversion {
 
     private static String produceHostString(byte[] value, int hash, byte coder) {
         String res = allocateHost();
-        UNSAFE.putInt(res, Offsets.hostHashOffset, hash);
-        UNSAFE.putByte(res, Offsets.hostCoderOffset, coder);
-        UNSAFE.putObjectVolatile(res, Offsets.hostValueOffset, value);
+        UNSAFE.putInt(res, HostConstants.hostHashOffset, hash);
+        UNSAFE.putByte(res, HostConstants.hostCoderOffset, coder);
+        UNSAFE.putObjectVolatile(res, HostConstants.hostValueOffset, value);
         return res;
     }
 
-    private static final class CompactToCompact extends StringConversion {
+    // Helper classes. These help with not having to create 2^3 implementations of StringConversion.
 
-        private static final StringConversion INSTANCE = new CompactToCompact();
+    private interface FromGuest {
+        FromGuest FROM_COMPACT = (guest, language, meta, maybeCopy) -> new AlmostString(maybeCopy.maybeCopy(
+                        extractGuestBytes11(language, meta, guest)),
+                        extractGuestHash(meta, guest),
+                        extractGuestCoder(meta, guest));
 
-        @Override
-        public String toHost(StaticObject str, EspressoLanguage language, Meta meta) {
-            return produceHostString(extractGuestBytes11(language, meta, str), extractGuestHash(meta, str), extractGuestCoder(meta, str));
-        }
+        FromGuest FROM_NOT_COMPACT = (guest, language, meta, maybeCopy) -> {
+            /*
+             * Use host string building from char, then extract internals to obtain the intermediate
+             * structure.
+             *
+             * It will be used to create a new string again later, but PEA should be able to
+             * optimize that away, both for host and guest compilations.
+             */
+            String host = new String(extractGuestChars8(language, meta, guest));
+            return new AlmostString(extractHostBytes(host), extractHostHash(host), extractHostCoder(host));
+        };
 
-        @Override
-        public StaticObject toGuest(String str, Meta meta) {
-            return produceGuestString11(meta, extractHostBytes(str), extractHostHash(str), extractHostCoder(str));
-        }
+        AlmostString extract(StaticObject guest, EspressoLanguage language, Meta meta, MaybeCopy maybeCopy);
     }
 
-    private static final class CopyingCompactToCompact extends StringConversion {
+    private interface MaybeCopy {
+        MaybeCopy NO_SHARING = byte[]::clone;
+        MaybeCopy SHARING = bytes -> bytes;
 
-        private static final StringConversion INSTANCE = new CopyingCompactToCompact();
-
-        @Override
-        public String toHost(StaticObject str, EspressoLanguage language, Meta meta) {
-            return produceHostString(extractGuestBytes11(language, meta, str).clone(), extractGuestHash(meta, str), extractGuestCoder(meta, str));
-        }
-
-        @Override
-        public StaticObject toGuest(String str, Meta meta) {
-            return produceGuestString11(meta, extractHostBytes(str).clone(), extractHostHash(str), extractHostCoder(str));
-        }
+        byte[] maybeCopy(byte[] bytes);
     }
 
-    private static final class CharGuestCompactHost extends StringConversion {
-        private static final StringConversion INSTANCE = new CharGuestCompactHost();
+    @SuppressFBWarnings(value = {"UCF"}, justification = "javac introduces a jump to next instruction in <clinit>")
+    private interface ToHost {
+        ToHost COMPACT_ENABLED = (almostString) -> produceHostString(almostString.bytes, almostString.hash, almostString.coder);
+        ToHost COMPACT_DISABLED = (almostString) -> {
+            if (almostString.coder == HostConstants.UTF16) {
+                // We already have an inflated string, we can re-use it as-is.
+                return produceHostString(almostString.bytes, almostString.hash, almostString.coder);
+            } else {
+                assert almostString.coder == HostConstants.LATIN1;
+                // Have to inflate from LATIN1.
+                return new String(almostString.bytes, StandardCharsets.ISO_8859_1 /*- LATIN1 */);
+            }
+        };
 
-        @Override
-        public String toHost(StaticObject str, EspressoLanguage language, Meta meta) {
-            return new String(StringConversion.extractGuestChars8(language, meta, str));
-        }
+        String toHost(AlmostString almostString);
+    }
 
-        @Override
-        public StaticObject toGuest(String str, Meta meta) {
-            return produceGuestString8(meta, str.toCharArray(), StringConversion.extractHostHash(str));
+    private interface ToGuest {
+        // Caveat here: if host is compact disabled, this may produce inflated guest string that
+        // could have been compacted.
+        ToGuest TO_COMPACT = (host, meta, maybeCopy) -> produceGuestString11(meta, maybeCopy.maybeCopy(extractHostBytes(host)), extractHostHash(host), extractHostCoder(host));
+
+        ToGuest TO_NOT_COMPACT = (host, meta, maybeCopy) -> produceGuestString8(meta, host.toCharArray(), extractHostHash(host));
+
+        StaticObject hostToGuest(String host, Meta meta, MaybeCopy maybeCopy);
+    }
+
+    private record AlmostString(byte[] bytes, int hash, byte coder) {
+        public String toHost(ToHost toHost) {
+            return toHost.toHost(this);
         }
     }
 }

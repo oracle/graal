@@ -2279,7 +2279,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 // class file, regardless of the actual value of the flag in the class file and the
                 // version of the class file.
                 if (!resolved.isConstructor()) {
-                    Klass declaringKlass = getMethod().getDeclaringKlass();
+                    ObjectKlass declaringKlass = getMethod().getDeclaringKlass();
                     Klass symbolicRef = ((MethodRefConstant.Indexes) getConstantPool().methodAt(cpi)).getResolvedHolderKlass(declaringKlass, getConstantPool());
                     if (!symbolicRef.isInterface() &&
                                     symbolicRef != declaringKlass &&
@@ -2362,7 +2362,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             return quick.execute(frame) - Bytecodes.stackEffectOf(opcode);
         }
         // Resolution should happen outside of the bytecode patching lock.
-        InvokeDynamicConstant.CallSiteLink link = pool.linkInvokeDynamic(getMethod().getDeclaringKlass(), indyIndex);
+        InvokeDynamicConstant.CallSiteLink link = pool.linkInvokeDynamic(getMethod().getDeclaringKlass(), indyIndex, curBCI, getMethod());
 
         // re-lock to check if someone did the job for us, since this was a heavy operation.
         quick = atomic(() -> {
