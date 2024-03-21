@@ -39,6 +39,7 @@ import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.spi.SwitchFoldable;
+import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -77,14 +78,15 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
         if (getCondition() instanceof LogicConstantNode) {
             LogicConstantNode c = (LogicConstantNode) getCondition();
             if (c.getValue() == isNegated()) {
-                FixedNode currentNext = this.next();
-                if (currentNext != null) {
-                    tool.deleteBranch(currentNext);
-                }
-
+                /*
+                 * The guard will always deoptimize. Replace the guard and the remaining branch with
+                 * the corresponding deopt.
+                 */
                 DeoptimizeNode deopt = graph().add(new DeoptimizeNode(getAction(), getReason(), getSpeculation()));
                 deopt.setStateBefore(stateBefore());
-                setNext(deopt);
+                predecessor().replaceFirstSuccessor(this, deopt);
+                GraphUtil.killCFG(this);
+                return;
             }
             if (hasUsages()) {
                 /*
