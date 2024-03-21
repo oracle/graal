@@ -42,6 +42,9 @@ package com.oracle.truffle.api.bytecode.introspection;
 
 public final class ExceptionHandler {
 
+    private static final int HANDLER_EPILOG_EXCEPTIONAL = -1;
+    private static final int HANDLER_TAG_EXCEPTIONAL = -2;
+
     private final Object[] data;
 
     ExceptionHandler(Object[] data) {
@@ -52,30 +55,50 @@ public final class ExceptionHandler {
         return (int) data[0];
     }
 
+    public boolean isEpilogExceptionalHandler() {
+        return (int) data[4] == HANDLER_EPILOG_EXCEPTIONAL;
+    }
+
+    public boolean isTagExceptionalHandler() {
+        return (int) data[4] == HANDLER_TAG_EXCEPTIONAL;
+    }
+
     public int getEndIndex() {
         return (int) data[1];
     }
 
-    public boolean isSpecialHandler() {
-        return getHandlerIndex() < 0;
+    private boolean isSpecialHandler() {
+        return (int) data[4] < 0;
     }
 
     public int getHandlerIndex() {
+        if (isSpecialHandler()) {
+            return -1;
+        }
         return (int) data[2];
     }
 
     public int getExceptionVariableIndex() {
-        return (int) data[3];
+        if (isSpecialHandler()) {
+            return -1;
+        }
+        return (int) data[4];
     }
 
     @Override
     public String toString() {
         String description;
         if (isSpecialHandler()) {
-            if (getHandlerIndex() == -1) {
-                description = String.format("tag.exceptional tagNode(%d)", getExceptionVariableIndex());
-            } else {
-                description = "Unknown";
+            switch ((int) data[4]) {
+                case HANDLER_TAG_EXCEPTIONAL:
+                    description = String.format("tag.exceptional tag(%d)", (int) data[3]);
+                    break;
+                case HANDLER_EPILOG_EXCEPTIONAL:
+                    description = String.format("epilog.exceptional");
+                    break;
+                default:
+                    description = "Unknown Special Handler";
+                    break;
             }
         } else {
             description = String.format("%04x ex: local(%d)", getHandlerIndex(), getExceptionVariableIndex());

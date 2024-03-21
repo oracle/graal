@@ -67,9 +67,11 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
-import com.oracle.truffle.api.bytecode.EpilogReturn;
 import com.oracle.truffle.api.bytecode.EpilogExceptional;
+import com.oracle.truffle.api.bytecode.EpilogReturn;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.LocalSetter;
+import com.oracle.truffle.api.bytecode.LocalSetterRange;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.Prolog;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
@@ -749,6 +751,39 @@ abstract class BadExceptionalEpilogErrorNode3 extends RootNode implements Byteco
         @SuppressWarnings("unused")
         public static int doObject(AbstractTruffleException exception) {
             return 42;
+        }
+    }
+}
+
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+abstract class BadExceptionalEpilogInvalidFeatureNode1 extends RootNode implements BytecodeRootNode {
+    protected BadExceptionalEpilogInvalidFeatureNode1(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        super(language, frameDescriptor);
+    }
+
+    @ExpectError("An @EpilogReturn operation cannot use LocalSetter as this is currently unsupported. Remove the usage to resolve this.")
+    @EpilogExceptional
+    public static final class BadEpilog {
+        @Specialization
+        @SuppressWarnings("unused")
+        public static void doObject(AbstractTruffleException exception, LocalSetter s) {
+
+        }
+    }
+}
+
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+abstract class BadExceptionalEpilogInvalidFeatureNode2 extends RootNode implements BytecodeRootNode {
+    protected BadExceptionalEpilogInvalidFeatureNode2(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        super(language, frameDescriptor);
+    }
+
+    @ExpectError("An @EpilogReturn operation cannot use LocalSetterRange as this is currently unsupported. Remove the usage to resolve this.")
+    @EpilogExceptional
+    public static final class BadEpilog {
+        @Specialization
+        @SuppressWarnings("unused")
+        public static void doObject(AbstractTruffleException exception, LocalSetterRange s) {
         }
     }
 }

@@ -260,11 +260,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
 
         operation.childrenMustBeValues = new boolean[signature.valueCount];
-        if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.EpilogReturn)) {
-            Arrays.fill(operation.childrenMustBeValues, false);
-        } else {
-            Arrays.fill(operation.childrenMustBeValues, true);
-        }
+        Arrays.fill(operation.childrenMustBeValues, true);
 
         customOperation.operation.setInstruction(createCustomInstruction(customOperation, typeElement, generatedNode, signature, name));
 
@@ -314,6 +310,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                             "Update all specializations to return a value to resolve this.",
                             getSimpleName(types.EpilogReturn)));
         }
+
     }
 
     private void validateEpilogExceptionalSignature(CustomOperationModel customOperation, Signature signature, List<ExecutableElement> specializations, List<Signature> allSignatures) {
@@ -322,6 +319,16 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                             "Update all specializations to take one operand to resolve this.",
                             getSimpleName(types.EpilogExceptional)));
             return;
+        } else if (signature.localSetterCount > 0) {
+            customOperation.addError(String.format("An @%s operation cannot use %s as this is currently unsupported. " +
+                            "Remove the usage to resolve this.",
+                            getSimpleName(types.EpilogReturn),
+                            getSimpleName(types.LocalSetter)));
+        } else if (signature.localSetterRangeCount > 0) {
+            customOperation.addError(String.format("An @%s operation cannot use %s as this is currently unsupported. " +
+                            "Remove the usage to resolve this.",
+                            getSimpleName(types.EpilogReturn),
+                            getSimpleName(types.LocalSetterRange)));
         }
 
         for (int i = 0; i < allSignatures.size(); i++) {
