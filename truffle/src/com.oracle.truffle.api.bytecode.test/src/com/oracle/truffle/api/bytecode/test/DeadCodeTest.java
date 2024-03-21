@@ -341,7 +341,8 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "branch.false",
                         "load.constant",
                         "return",
-                        "trap");
+                        "load.constant",
+                        "return");
 
         assertEquals(42, node.getCallTarget().call(42));
     }
@@ -617,7 +618,8 @@ public class DeadCodeTest extends AbstractInstructionTest {
                         "load.argument",
                         "pop",
                         "throw",
-                        "trap");
+                        "load.constant",
+                        "return");
         node.getIntrospectionData().getInstructions().stream() //
                         .filter(insn -> insn.getName().equals("load.argument")) //
                         .forEach(insn -> assertEquals(0, insn.getArgumentValues().get(0).getInteger()));

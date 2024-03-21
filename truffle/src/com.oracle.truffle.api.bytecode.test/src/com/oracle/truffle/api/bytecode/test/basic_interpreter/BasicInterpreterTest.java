@@ -42,6 +42,7 @@ package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -54,14 +55,14 @@ import org.junit.runners.Parameterized;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.introspection.BytecodeIntrospection;
+import com.oracle.truffle.api.bytecode.introspection.ExceptionHandler;
 import com.oracle.truffle.api.bytecode.introspection.Instruction;
 import com.oracle.truffle.api.bytecode.introspection.SourceInformation;
 import com.oracle.truffle.api.bytecode.test.AbstractInstructionTest;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.bytecode.introspection.BytecodeIntrospection;
-import com.oracle.truffle.api.bytecode.introspection.ExceptionHandler;
 
 /**
  * Tests basic features of the Bytecode DSL. Serves as a catch-all for functionality we just need a
@@ -933,9 +934,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        thrown.expect(AssertionError.class);
-        thrown.expectMessage("Control reached past the end of the bytecode.");
-        root.call();
+        assertNull(root.call());
     }
 
     @Test
@@ -959,10 +958,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         });
 
         assertEquals(42L, root.call(true));
-
-        thrown.expect(AssertionError.class);
-        thrown.expectMessage("Control reached past the end of the bytecode.");
-        root.call(false);
+        assertNull(root.call(false));
     }
 
     @Test
@@ -985,9 +981,7 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endRoot();
         });
 
-        thrown.expect(AssertionError.class);
-        thrown.expectMessage("Control reached past the end of the bytecode.");
-        root.call(false);
+        assertNull(root.call(false));
     }
 
     @Test

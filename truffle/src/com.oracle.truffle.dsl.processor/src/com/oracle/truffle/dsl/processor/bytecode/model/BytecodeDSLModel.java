@@ -131,14 +131,21 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public OperationModel blockOperation;
     public OperationModel rootOperation;
     public OperationModel conditionalOperation;
+    public OperationModel whileOperation;
     public OperationModel tryCatchOperation;
+    public OperationModel finallyTryOperation;
     public OperationModel loadConstantOperation;
     public OperationModel loadLocalOperation;
     public OperationModel tagOperation;
+    public OperationModel storeLocalOperation;
+    public OperationModel ifThenOperation;
+    public OperationModel ifThenElseOperation;
+    public OperationModel returnOperation;
     public CustomOperationModel prolog = null;
     public CustomOperationModel epilogReturn = null;
     public CustomOperationModel epilogExceptional = null;
 
+    public InstructionModel nullInstruction;
     public InstructionModel popInstruction;
     public InstructionModel dupInstruction;
     public InstructionModel trapInstruction;
@@ -155,7 +162,6 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel tagEnterInstruction;
     public InstructionModel tagLeaveValueInstruction;
     public InstructionModel tagLeaveVoidInstruction;
-    public InstructionModel leaveTagInstruction;
 
     public final List<CustomOperationModel> instrumentations = new ArrayList<>();
 
@@ -222,14 +228,14 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                         .setChildrenMustBeValues(false);
         rootOperation = operation(OperationKind.ROOT, "Root") //
                         .setVariadic(0) //
-                        .setVoid(true) //
+                        .setTransparent(true) //
                         .setChildrenMustBeValues(false) //
                         .setOperationArguments(new OperationArgument(types.TruffleLanguage, "language", "the language to associate with the root node"));
-        operation(OperationKind.IF_THEN, "IfThen") //
+        ifThenOperation = operation(OperationKind.IF_THEN, "IfThen") //
                         .setVoid(true) //
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(true, false);
-        operation(OperationKind.IF_THEN_ELSE, "IfThenElse") //
+        ifThenElseOperation = operation(OperationKind.IF_THEN_ELSE, "IfThenElse") //
                         .setVoid(true) //
                         .setNumChildren(3) //
                         .setChildrenMustBeValues(true, false, false);
@@ -237,7 +243,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                         .setNumChildren(3) //
                         .setChildrenMustBeValues(true, true, true);
 
-        operation(OperationKind.WHILE, "While") //
+        whileOperation = operation(OperationKind.WHILE, "While") //
                         .setVoid(true) //
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(true, false);
@@ -246,7 +252,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(false, false) //
                         .setOperationArguments(new OperationArgument(types.BytecodeLocal, "exceptionLocal", "the local to bind the caught exception to"));
-        operation(OperationKind.FINALLY_TRY, "FinallyTry") //
+        finallyTryOperation = operation(OperationKind.FINALLY_TRY, "FinallyTry") //
                         .setVoid(true) //
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(false, false) //
@@ -284,7 +290,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                         .setOperationArguments(new OperationArgument(types.BytecodeLocal, "local", "the local to load")) //
                         .setInstruction(instruction(InstructionKind.LOAD_LOCAL_MATERIALIZED, "load.local.mat", signature(Object.class, Object.class)) //
                                         .addImmediate(ImmediateKind.INTEGER, "index"));
-        operation(OperationKind.STORE_LOCAL, "StoreLocal") //
+        storeLocalOperation = operation(OperationKind.STORE_LOCAL, "StoreLocal") //
                         .setNumChildren(1) //
                         .setChildrenMustBeValues(true) //
                         .setVoid(true) //
@@ -299,7 +305,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                         .setInstruction(instruction(InstructionKind.STORE_LOCAL_MATERIALIZED, "store.local.mat",
                                         signature(void.class, Object.class, Object.class)) //
                                                         .addImmediate(ImmediateKind.INTEGER, "index"));
-        operation(OperationKind.RETURN, "Return") //
+        returnOperation = operation(OperationKind.RETURN, "Return") //
                         .setNumChildren(1) //
                         .setChildrenMustBeValues(true) //
                         .setInstruction(returnInstruction);
@@ -341,7 +347,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
             popVariadicInstruction[i].variadicPopCount = i;
         }
         mergeVariadicInstruction = instruction(InstructionKind.MERGE_VARIADIC, "merge.variadic", signature(Object.class, Object.class));
-        storeNullInstruction = instruction(InstructionKind.STORE_NULL, "store.variadic_end", signature(Object.class));
+        storeNullInstruction = instruction(InstructionKind.STORE_NULL, "constant_null", signature(Object.class));
 
     }
 
@@ -421,7 +427,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         } else if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.EpilogReturn)) {
             op.setInternal();
             op.setTransparent(true);
-
+            op.setChildrenMustBeValues(false);
             if (epilogReturn != null) {
                 addError(typeElement, "%s is already annotated with @%s. A Bytecode DSL class can only declare one return epilog.", getSimpleName(epilogReturn.getTemplateType()),
                                 getSimpleName(types.EpilogReturn));
