@@ -61,11 +61,6 @@ from argparse import ArgumentParser
 
 from mx_javamodules import as_java_module, JavaModuleDescriptor
 
-# This can be incremented if a new GraalVM release needs to be built on exactly the same JDK as a previous GraalVM release.
-# It will be appended after a dot to the JDK build number an appear in the java.vendor.version.
-# This should be brought back down to 1 when the JDK version is updated (feature, interim, patch, or even build, see java.lang.Runtime.Version).
-release_build = '1'
-
 _suite = mx.suite('sdk')
 _graalvm_components = dict()  # By short_name
 _graalvm_components_by_name = dict()
