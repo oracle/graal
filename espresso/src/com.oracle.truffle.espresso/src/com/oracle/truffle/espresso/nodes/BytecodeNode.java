@@ -548,7 +548,13 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     @Override
     void initializeFrame(VirtualFrame frame) {
+        // Before arguments are set up, the frame is in a weird spot in which inspecting the frame
+        // is pretty meaningless. Return the 'Unknown bci' value to signify that.
+        setBCI(frame, -1);
+        // Push frame arguments into locals.
         initArguments(frame);
+        // Initialize the BCI slot.
+        setBCI(frame, 0);
     }
 
     // region OSR support

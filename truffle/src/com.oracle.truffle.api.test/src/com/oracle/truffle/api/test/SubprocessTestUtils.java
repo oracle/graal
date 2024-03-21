@@ -67,19 +67,20 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import com.sun.tools.attach.VirtualMachine;
-import com.sun.tools.attach.VirtualMachineDescriptor;
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
-
 import javax.management.MBeanServerConnection;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
+
+import org.graalvm.nativeimage.ImageInfo;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
+
+import com.sun.tools.attach.VirtualMachine;
+import com.sun.tools.attach.VirtualMachineDescriptor;
 
 /**
  * Support for executing Truffle tests in a sub-process with filtered compilation failure options.
@@ -167,6 +168,31 @@ public final class SubprocessTestUtils {
         AtomicReference<Subprocess> process = new AtomicReference<>();
         newBuilder(testClass, action).failOnNonZeroExit(failOnNonZeroExitCode).prefixVmOption(prependedVmOptions).onExit((p) -> process.set(p)).run();
         return process.get();
+    }
+
+    /**
+     * Executes action in a sub-process with filtered compilation failure options. Also disables
+     * assertions for the classes in {@code daClasses}
+     *
+     * @param testClass the test enclosing class.
+     * @param action the test to execute.
+     * @param daClasses the classes whose assertions should be disabled.
+     * @param additionalVmOptions additional vm option added to java arguments. Prepend
+     *            {@link #TO_REMOVE_PREFIX} to remove item from existing vm options.
+     * @return {@link Subprocess} if it's called by a test that is not executing in a sub-process.
+     *         Returns {@code null} for a caller run in a sub-process.
+     * @see SubprocessTestUtils
+     */
+    public static Subprocess executeInSubprocessWithAssertionsDisabled(Class<?> testClass, Runnable action, boolean failOnNonZeroExitCode, List<Class<?>> daClasses, String... additionalVmOptions)
+                    throws IOException, InterruptedException {
+        String[] vmOptionsWithAssertionsDisabled = getAssertionsDisabledOptions(daClasses);
+        AtomicReference<Subprocess> process = new AtomicReference<>();
+        newBuilder(testClass, action).failOnNonZeroExit(failOnNonZeroExitCode).prefixVmOption(additionalVmOptions).postfixVmOption(vmOptionsWithAssertionsDisabled).onExit((p) -> process.set(p)).run();
+        return process.get();
+    }
+
+    private static String[] getAssertionsDisabledOptions(List<Class<?>> daClasses) {
+        return daClasses.stream().map((c) -> "-da:" + c.getName()).toArray(String[]::new);
     }
 
     /**

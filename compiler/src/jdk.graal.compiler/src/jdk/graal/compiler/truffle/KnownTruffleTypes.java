@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -104,7 +104,6 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaField FrameDescriptor_materializeCalled = findField(FrameDescriptor, "materializeCalled");
     public final ResolvedJavaField FrameDescriptor_indexedSlotTags = findField(FrameDescriptor, "indexedSlotTags");
     public final ResolvedJavaField FrameDescriptor_auxiliarySlotCount = findField(FrameDescriptor, "auxiliarySlotCount");
-    public final ResolvedJavaField FrameDescriptor_staticMode = findField(FrameDescriptor, "staticMode");
 
     public final ResolvedJavaType FrameSlotKind = lookupTypeCached("com.oracle.truffle.api.frame.FrameSlotKind");
     public final ResolvedJavaField FrameSlotKind_Object = findField(FrameSlotKind, "Object");
