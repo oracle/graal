@@ -165,6 +165,12 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
     }
 
     @Override
+    public boolean shouldApply(StructuredGraph graph) {
+        ScheduleResult prev = graph.getLastSchedule();
+        return prev == null || prev.edgeModCount != graph.getEdgeModificationCount() || prev.strategy != this.selectedStrategy;
+    }
+
+    @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders context) {
         try (NodeEventScope scope = verifyImmutableGraph(graph)) {
@@ -185,14 +191,23 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         runWithoutContextOptimizations(graph, strategy, ControlFlowGraph.computeForSchedule(graph), immutable);
     }
 
+    private static boolean shouldApply(StructuredGraph graph, SchedulingStrategy strategy) {
+        ScheduleResult prev = graph.getLastSchedule();
+        return prev == null || prev.edgeModCount != graph.getEdgeModificationCount() || prev.strategy != strategy;
+    }
+
     public static void runWithoutContextOptimizations(StructuredGraph graph, SchedulingStrategy strategy, ControlFlowGraph cfg, boolean immutable) {
-        Instance inst = new Instance(cfg, false);
-        inst.run(graph, strategy, immutable);
+        if (shouldApply(graph, strategy)) {
+            Instance inst = new Instance(cfg, false);
+            inst.run(graph, strategy, immutable);
+        }
     }
 
     public static void run(StructuredGraph graph, SchedulingStrategy strategy, ControlFlowGraph cfg, CoreProviders context, boolean immutable) {
-        Instance inst = new Instance(cfg, context.getLowerer().supportsImplicitNullChecks());
-        inst.run(graph, strategy, immutable);
+        if (shouldApply(graph, strategy)) {
+            Instance inst = new Instance(cfg, context.getLowerer().supportsImplicitNullChecks());
+            inst.run(graph, strategy, immutable);
+        }
     }
 
     public static class Instance {
@@ -248,7 +263,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             }
             cfg.setNodeToBlock(currentNodeMap);
 
-            graph.setLastSchedule(new ScheduleResult(this.cfg, this.nodeToBlockMap, this.blockToNodesMap));
+            graph.setLastSchedule(new ScheduleResult(this.cfg, this.nodeToBlockMap, this.blockToNodesMap, selectedStrategy, graph.getEdgeModificationCount()));
         }
 
         @SuppressFBWarnings(value = "RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE", justification = "false positive found by findbugs")
