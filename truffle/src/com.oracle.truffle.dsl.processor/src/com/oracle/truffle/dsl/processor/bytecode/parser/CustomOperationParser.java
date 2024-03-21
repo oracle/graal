@@ -663,7 +663,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             instr.addImmediate(ImmediateKind.LOCAL_SETTER_RANGE_LENGTH, "local_setter_range_length" + i);
         }
 
-        // NB: Node-to-bci lookups rely on the node being the last immediate.
         instr.addImmediate(ImmediateKind.NODE_PROFILE, "node");
 
         return instr;

@@ -1933,7 +1933,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 result.add(createDataClass("FinallyTryData",
                                 field(types.BytecodeLocal, "exceptionLocal").asFinal(),
                                 field(context.getDeclaredType(Object.class), "finallyTryContext").asFinal(),
-                                field(context.getType(boolean.class), "handlerReachable"),
+                                field(context.getType(boolean.class), "handlerReachable").asFinal(),
                                 field(context.getType(boolean.class), "finallyReachable"),
                                 field(context.getType(boolean.class), "tryReachable")));
 
@@ -7435,7 +7435,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             Map<Boolean, List<InstructionModel>> instructionsGroupedByHasNode = model.getInstructions().stream().collect(Collectors.partitioningBy(InstructionModel::hasNodeImmediate));
             Map<Integer, List<InstructionModel>> nodelessGroupedByLength = instructionsGroupedByHasNode.get(false).stream().collect(Collectors.groupingBy(InstructionModel::getInstructionLength));
-            Map<Integer, List<InstructionModel>> nodedGroupedByLength = instructionsGroupedByHasNode.get(true).stream().collect(Collectors.groupingBy(InstructionModel::getInstructionLength));
+
+            record LengthAndNodeIndex(int length, int nodeIndex) {
+            }
+            Map<LengthAndNodeIndex, List<InstructionModel>> nodedGroupedByLengthAndNodeIndex = instructionsGroupedByHasNode.get(true).stream() //
+                            .collect(Collectors.groupingBy(insn -> new LengthAndNodeIndex(insn.getInstructionLength(), insn.getImmediate(ImmediateKind.NODE_PROFILE).offset())));
 
             // Skip the nodeless instructions. We group them by size to simplify the generated code.
             for (Map.Entry<Integer, List<InstructionModel>> entry : nodelessGroupedByLength.entrySet()) {
@@ -7449,13 +7453,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             // For each noded instruction, read its node index and continue after the switch.
-            // We group them by size to simplify the generated code.
-            for (Map.Entry<Integer, List<InstructionModel>> entry : nodedGroupedByLength.entrySet()) {
+            // We group them by size and node index to simplify the generated code.
+            for (Map.Entry<LengthAndNodeIndex, List<InstructionModel>> entry : nodedGroupedByLengthAndNodeIndex.entrySet()) {
                 for (InstructionModel instr : entry.getValue()) {
                     b.startCase().tree(createInstructionConstant(instr)).end();
                 }
-                // NB: this relies on all custom instructions encoding their node as the last
-                // immediate.
                 InstructionModel representativeInstruction = entry.getValue().get(0);
                 InstructionImmediate imm = representativeInstruction.getImmediate(ImmediateKind.NODE_PROFILE);
                 b.startBlock();
