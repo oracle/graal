@@ -71,6 +71,7 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.internal.misc.Unsafe;
 
 public class SubstrateOptions {
@@ -233,7 +234,8 @@ public class SubstrateOptions {
         O1("Basic optimizations", "1"),
         O2("Advanced optimizations", "2"),
         O3("All optimizations for best performance", "3"),
-        BUILD_TIME("Optimize for fastest build time", "b");
+        BUILD_TIME("Optimize for fastest build time", "b"),
+        SIZE("Optimize for size", "s");
 
         private final String description;
         private final String optionSwitch;
@@ -268,7 +270,7 @@ public class SubstrateOptions {
     }
 
     @APIOption(name = "-O", valueSeparator = APIOption.NO_SEPARATOR)//
-    @Option(help = "Control code optimizations: b - optimize for fastest build time, " +
+    @Option(help = "Control code optimizations: b - optimize for fastest build time, s - optimize for size, " +
                     "0 - no optimizations, 1 - basic optimizations, 2 - advanced optimizations, 3 - all optimizations for best performance.", type = OptionType.User)//
     public static final HostedOptionKey<String> Optimize = new HostedOptionKey<>("2") {
 
@@ -290,6 +292,11 @@ public class SubstrateOptions {
             SubstrateOptions.ReduceImplicitExceptionStackTraceInformation.update(values, newLevel == OptimizationLevel.O3);
 
             GraalOptions.OptimizeLongJumps.update(values, !newLevel.isOneOf(OptimizationLevel.O0, OptimizationLevel.BUILD_TIME));
+
+            if (newLevel == OptimizationLevel.SIZE) {
+                configureOs(values);
+            }
+
             if (optimizeValueUpdateHandler != null) {
                 optimizeValueUpdateHandler.onValueUpdate(values, newLevel);
             }
@@ -297,12 +304,64 @@ public class SubstrateOptions {
         }
     };
 
+    public static void configureOs(EconomicMap<OptionKey<?>, Object> values) {
+        enable(GraalOptions.ReduceCodeSize, values);
+        enable(ReduceImplicitExceptionStackTraceInformation, values);
+        enable(GraalOptions.OptimizeLongJumps, values);
+
+        /*
+         * Remove all loop optimizations that can increase code size, i.e., duplicate a loop body
+         * somehow.
+         */
+        disable(GraalOptions.LoopPeeling, values);
+        disable(GraalOptions.LoopUnswitch, values);
+        disable(GraalOptions.FullUnroll, values);
+        disable(GraalOptions.PartialUnroll, values);
+
+        /*
+         * Do not align loop headers to further reduce code size.
+         */
+        GraalOptions.LoopHeaderAlignment.update(values, 0);
+        GraalOptions.IsolatedLoopHeaderAlignment.update(values, 0);
+
+        /*
+         * Do not run PEA - it can fan out allocations too much.
+         */
+        disable(GraalOptions.PartialEscapeAnalysis, values);
+
+        /*
+         * Do not fan out division.
+         */
+        disable(GraalOptions.OptimizeDiv, values);
+
+        /*
+         * Do more conditional elimination.
+         */
+        GraalOptions.ConditionalEliminationMaxIterations.update(values, 10);
+
+        /*
+         * Every dead code elimination should be non-optional
+         */
+        disable(DeadCodeEliminationPhase.Options.ReduceDCE, values);
+    }
+
+    public static void disable(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
+        key.update(values, false);
+    }
+
+    public static void enable(OptionKey<Boolean> key, EconomicMap<OptionKey<?>, Object> values) {
+        key.update(values, true);
+    }
+
     /**
      * Only allows 'b' or positive numeric optimization levels, throws a user error otherwise.
      */
     private static OptimizationLevel parseOptimizationLevel(String value) {
         if (value.equals("b")) {
             return OptimizationLevel.BUILD_TIME;
+        }
+        if (value.equals("s")) {
+            return OptimizationLevel.SIZE;
         }
 
         int intLevel;
@@ -335,9 +394,18 @@ public class SubstrateOptions {
         return "b".equals(Optimize.getValue(options));
     }
 
+    public static boolean useCodeSizeCompilerConfig(OptionValues options) {
+        return "s".equals(Optimize.getValue(options));
+    }
+
     @Fold
     public static boolean useEconomyCompilerConfig() {
         return useEconomyCompilerConfig(HostedOptionValues.singleton());
+    }
+
+    @Fold
+    public static boolean useCodeSizeCompilerConfig() {
+        return useCodeSizeCompilerConfig(HostedOptionValues.singleton());
     }
 
     @Fold

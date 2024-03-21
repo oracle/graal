@@ -1581,15 +1581,19 @@ public class NativeImageGenerator {
         return true;
     }
 
-    public static Suites createSuites(FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, boolean hosted) {
+    public static Suites createSuites(FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, boolean hosted, OptionValues optionsToUse) {
         SubstrateBackend backend = runtimeConfig.getBackendForNormalMethod();
         Suites suites;
         if (hosted) {
-            suites = GraalConfiguration.hostedInstance().createSuites(HostedOptionValues.singleton(), hosted, ConfigurationValues.getTarget().arch);
+            suites = GraalConfiguration.hostedInstance().createSuites(optionsToUse == null ? HostedOptionValues.singleton() : optionsToUse, hosted, ConfigurationValues.getTarget().arch);
         } else {
-            suites = GraalConfiguration.runtimeInstance().createSuites(RuntimeOptionValues.singleton(), hosted, ConfigurationValues.getTarget().arch);
+            suites = GraalConfiguration.runtimeInstance().createSuites(optionsToUse == null ? RuntimeOptionValues.singleton() : optionsToUse, hosted, ConfigurationValues.getTarget().arch);
         }
         return modifySuites(backend, suites, featureHandler, hosted, false);
+    }
+
+    public static Suites createSuites(FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, boolean hosted) {
+        return createSuites(featureHandler, runtimeConfig, hosted, null);
     }
 
     public static Suites createFirstTierSuites(FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, boolean hosted) {

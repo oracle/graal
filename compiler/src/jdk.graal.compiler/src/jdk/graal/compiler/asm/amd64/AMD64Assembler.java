@@ -131,14 +131,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public AMD64Assembler(TargetDescription target, OptionValues optionValues) {
         super(target);
-        useBranchesWithin32ByteBoundary = Options.UseBranchesWithin32ByteBoundary.getValue(optionValues);
+        useBranchesWithin32ByteBoundary = !GraalOptions.ReduceCodeSize.getValue(optionValues) && Options.UseBranchesWithin32ByteBoundary.getValue(optionValues);
         optimizeLongJumps = GraalOptions.OptimizeLongJumps.getValue(optionValues);
     }
 
     public AMD64Assembler(TargetDescription target, OptionValues optionValues, boolean hasIntelJccErratum) {
         super(target);
         if (Options.UseBranchesWithin32ByteBoundary.hasBeenSet(optionValues)) {
-            useBranchesWithin32ByteBoundary = Options.UseBranchesWithin32ByteBoundary.getValue(optionValues);
+            useBranchesWithin32ByteBoundary = !GraalOptions.ReduceCodeSize.getValue(optionValues) && Options.UseBranchesWithin32ByteBoundary.getValue(optionValues);
         } else {
             useBranchesWithin32ByteBoundary = hasIntelJccErratum;
         }

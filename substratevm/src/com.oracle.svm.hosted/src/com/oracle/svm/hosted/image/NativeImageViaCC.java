@@ -47,6 +47,7 @@ import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.InterruptImageBuilding;
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -138,6 +139,11 @@ public abstract class NativeImageViaCC extends NativeImage {
 
             List<String> lines;
             try (InputStream inputStream = linkerProcess.getInputStream()) {
+                /*
+                 * The linker can be slow, record activity just before so that we have the full
+                 * watchdog interval available.
+                 */
+                DeadlockWatchdog.singleton().recordActivity();
                 lines = FileUtils.readAllLines(inputStream);
                 FileUtils.traceCommandOutput(lines);
             }
