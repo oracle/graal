@@ -573,7 +573,6 @@ public class TagTest extends AbstractInstructionTest {
                         events,
                         new Event(EventKind.ENTER, 0x0002, 0x0008, null, RootBodyTag.class),
                         new Event(EventKind.EXCEPTIONAL, 0x0002, 0x0008, TestException.class, RootBodyTag.class));
-        System.out.println(node.dump());
     }
 
     @Test

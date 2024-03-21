@@ -1995,14 +1995,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                 field(arrayOf(context.getType(int.class)), "childBcis").asFinal(),
                                 field(arrayOf(context.getDeclaredType(Object.class)), "locals").asFinal().asVarArgs()));
 
-                if (model.isBoxingEliminated(type(boolean.class))) {
-                    result.add(createDataClass("CustomShortCircuitOperationData",
-                                    field(context.getType(int.class), "childBci"),
-                                    field(generic(List.class, Integer.class), "branchFixupBcis").withInitializer("new ArrayList<>(4)")));
-                } else {
-                    result.add(createDataClass("CustomShortCircuitOperationData",
-                                    field(generic(List.class, Integer.class), "branchFixupBcis").withInitializer("new ArrayList<>(4)")));
-                }
+                result.add(createDataClass("CustomShortCircuitOperationData",
+                                field(context.getType(int.class), "childBci"),
+                                field(generic(List.class, Integer.class), "branchFixupBcis").withInitializer("new ArrayList<>(4)")));
 
                 return result;
             }
@@ -3546,11 +3541,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     yield createOperationData("CustomOperationData", args);
                 }
                 case CUSTOM_SHORT_CIRCUIT -> {
-                    if (model.isBoxingEliminated(type(boolean.class))) {
-                        yield createOperationData("CustomShortCircuitOperationData", UNINIT);
-                    } else {
-                        yield createOperationData("CustomShortCircuitOperationData");
-                    }
+                    yield createOperationData("CustomShortCircuitOperationData", UNINIT);
                 }
                 case TAG -> {
                     yield createOperationData("TagOperationData", "false", UNINIT, "nodeId", "this.reachable", "this.currentStackHeight", "node");
@@ -3928,6 +3919,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startStatement().startCall("afterChild");
                 b.string("operationData.producedValue");
                 b.string("operationData.childBci");
+                b.end(2);
+            } else if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
+                b.startStatement().startCall("afterChild");
+                b.string("true");
+                if (operation.instruction.shortCircuitModel.returnConvertedBoolean()) {
+                    // child bci is location of boolean converter instruction
+                    b.string("bci - " + operation.instruction.shortCircuitModel.booleanConverterInstruction().getInstructionLength());
+                } else {
+                    // child bci is location of instruction producing "fall through" value
+                    b.string("operationData.childBci");
+                }
                 b.end(2);
             } else {
                 b.startStatement().startCall("afterChild");
@@ -4936,11 +4938,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         }
                         break;
                     case CUSTOM_SHORT_CIRCUIT:
-                        ShortCircuitInstructionModel shortCircuitInstruction = op.instruction.shortCircuitModel;
-                        if (model.isBoxingEliminated(type(boolean.class)) && shortCircuitInstruction.booleanConverterInstruction().needsBoxingElimination(model, 0)) {
-                            emitCastOperationData(b, op, "operationSp - 1");
-                            b.statement("operationData.childBci = childBci");
-                        }
+                        emitCastOperationData(b, op, "operationSp - 1");
+                        b.statement("operationData.childBci = childBci");
                         break;
                 }
 
