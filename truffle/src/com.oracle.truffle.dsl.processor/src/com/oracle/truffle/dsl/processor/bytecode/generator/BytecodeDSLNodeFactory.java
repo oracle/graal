@@ -371,6 +371,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         // Define helpers for locals.
         bytecodeNodeGen.add(createGetLocalIndex());
         bytecodeNodeGen.add(createGetLocal());
+        bytecodeNodeGen.add(createSetLocal());
         bytecodeNodeGen.add(createGetLocals());
         bytecodeNodeGen.add(createGetLocalNames());
         bytecodeNodeGen.add(createGetLocalInfos());
@@ -1202,6 +1203,38 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(); // catch
         } else {
             b.startReturn().string("frame.getObject(" + index + ")").end();
+        }
+
+        return ex;
+    }
+
+    private CodeExecutableElement createSetLocal() {
+        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNode, "setLocal");
+
+        CodeTreeBuilder b = ex.createBuilder();
+
+        String index = "localIndex + " + USER_LOCALS_START_IDX;
+
+        if (model.usesBoxingElimination()) {
+            boolean elseIf = false;
+            for (TypeMirror boxingType : model.boxingEliminatedTypes) {
+                elseIf = b.startIf(elseIf);
+                String primitiveValue = boxingType.toString().toLowerCase() + "Value";
+                b.instanceOf("value", ElementUtils.boxType(boxingType), primitiveValue).end().startBlock();
+                b.startStatement();
+                b.startCall("frame", getSetMethod(boxingType)).string(index).string(primitiveValue).end();
+                b.end(3);
+            }
+
+            b.end().startElseBlock();
+            b.startStatement();
+            b.startCall("frame", getSetMethod(type(Object.class))).string(index).string("value").end();
+            b.end();
+            b.end();
+        } else {
+            b.startStatement();
+            b.startCall("frame", getSetMethod(type(Object.class))).string(index).string("value").end();
+            b.end();
         }
 
         return ex;
@@ -10650,35 +10683,24 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return b;
     }
 
-    static CodeTreeBuilder startSetFrame(CodeTreeBuilder b, TypeMirror type) {
-        String methodName;
+    static String getSetMethod(TypeMirror type) {
         if (type == null) {
-            methodName = "setValue";
+            return "setValue";
         } else {
-            switch (type.getKind()) {
-                case BOOLEAN:
-                    methodName = "setBoolean";
-                    break;
-                case BYTE:
-                    methodName = "setByte";
-                    break;
-                case INT:
-                    methodName = "setInt";
-                    break;
-                case LONG:
-                    methodName = "setLong";
-                    break;
-                case FLOAT:
-                    methodName = "setFloat";
-                    break;
-                case DOUBLE:
-                    methodName = "setDouble";
-                    break;
-                default:
-                    methodName = "setObject";
-                    break;
-            }
+            return switch (type.getKind()) {
+                case BOOLEAN -> "setBoolean";
+                case BYTE -> "setByte";
+                case INT -> "setInt";
+                case LONG -> "setLong";
+                case FLOAT -> "setFloat";
+                case DOUBLE -> "setDouble";
+                default -> "setObject";
+            };
         }
+    }
+
+    static CodeTreeBuilder startSetFrame(CodeTreeBuilder b, TypeMirror type) {
+        String methodName = getSetMethod(type);
         b.startCall("ACCESS", methodName);
         return b;
     }

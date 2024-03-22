@@ -173,8 +173,8 @@ public class LocalHelpersTest {
         /* @formatter:off
          *
          * foo = 42
-         * bar = arg0
-         * return getLocal(arg1)
+         * bar = arg1
+         * return getLocal(reservedLocalIndex)
          *
          * @formatter:on
          */
@@ -186,7 +186,7 @@ public class LocalHelpersTest {
             BytecodeLocal bar = makeLocal(b, "bar");
 
             b.beginStoreLocal(foo);
-            b.emitLoadConstant(0);
+            b.emitLoadConstant(42);
             b.endStoreLocal();
 
             b.beginStoreLocal(bar);
@@ -408,6 +408,107 @@ public class LocalHelpersTest {
     }
 
     @Test
+    public void testSetLocalSimple() {
+        /* @formatter:off
+         *
+         * foo = 42
+         * bar = 123
+         * setLocal(arg0, arg1)
+         * return makePair(foo, bar)
+         *
+         * @formatter:on
+         */
+        BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
+            b.beginRoot(null);
+
+            b.beginBlock();
+            BytecodeLocal foo = makeLocal(b, "foo");
+            BytecodeLocal bar = makeLocal(b, "bar");
+
+            b.beginStoreLocal(foo);
+            b.emitLoadConstant(42L);
+            b.endStoreLocal();
+
+            b.beginStoreLocal(bar);
+            b.emitLoadConstant(123L);
+            b.endStoreLocal();
+
+            b.beginSetLocal();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.endSetLocal();
+
+            b.beginReturn();
+            b.beginMakePair();
+            b.emitLoadLocal(foo);
+            b.emitLoadLocal(bar);
+            b.endMakePair();
+            b.endReturn();
+
+            b.endBlock();
+
+            b.endRoot();
+        });
+
+        assertEquals(new Pair(777L, 123L), root.getCallTarget().call(0, 777L));
+        assertEquals(new Pair(42L, 777L), root.getCallTarget().call(1, 777L));
+        // If BE enabled, local reads should succeed even if the type changes.
+        assertEquals(new Pair(true, 123L), root.getCallTarget().call(0, true));
+        assertEquals(new Pair(42L, false), root.getCallTarget().call(1, false));
+        assertEquals(new Pair("dog", 123L), root.getCallTarget().call(0, "dog"));
+        assertEquals(new Pair(42L, "cat"), root.getCallTarget().call(1, "cat"));
+    }
+
+    @Test
+    public void testSetLocalUsingBytecodeLocalIndex() {
+        /* @formatter:off
+         *
+         * foo = 42
+         * bar = 123
+         * setLocal(reservedLocalIndex, arg0)
+         * return makePair(foo, bar)
+         *
+         * @formatter:on
+         */
+        BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
+            b.beginRoot(null);
+
+            b.beginBlock();
+            BytecodeLocal foo = makeLocal(b, "foo");
+            BytecodeLocal bar = makeLocal(b, "bar");
+
+            b.beginStoreLocal(foo);
+            b.emitLoadConstant(42L);
+            b.endStoreLocal();
+
+            b.beginStoreLocal(bar);
+            b.emitLoadConstant(123L);
+            b.endStoreLocal();
+
+            b.beginSetLocalUsingBytecodeLocalIndex();
+            b.emitLoadArgument(0);
+            b.endSetLocalUsingBytecodeLocalIndex();
+
+            b.beginReturn();
+            b.beginMakePair();
+            b.emitLoadLocal(foo);
+            b.emitLoadLocal(bar);
+            b.endMakePair();
+            b.endReturn();
+
+            b.endBlock();
+
+            BytecodeNodeWithLocalIntrospection rootNode = b.endRoot();
+            rootNode.reservedLocalIndex = rootNode.getLocalIndex(bar);
+        });
+
+        assertEquals(new Pair(42L, 777L), root.getCallTarget().call(777L));
+        // If BE enabled, local reads should succeed even if the type changes.
+        assertEquals(new Pair(42L, false), root.getCallTarget().call(false));
+        assertEquals(new Pair(42L, "cat"), root.getCallTarget().call("cat"));
+    }
+
+    @Test
     public void testGetLocalsSimpleStacktrace() {
         /* @formatter:off
          *
@@ -626,7 +727,6 @@ public class LocalHelpersTest {
                 @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableUncachedInterpreter = true))
 })
 abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode implements BytecodeRootNode {
-    // Used for testGetLocalUsingBytecodeLocalIndex
     public int reservedLocalIndex = -1;
 
     protected BytecodeNodeWithLocalIntrospection(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
@@ -666,6 +766,23 @@ abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode 
         public static Object perform(VirtualFrame frame, @Bind("$root") BytecodeNodeWithLocalIntrospection bytecodeRootNode) {
             assert bytecodeRootNode.reservedLocalIndex != -1;
             return bytecodeRootNode.getLocal(frame, bytecodeRootNode.reservedLocalIndex);
+        }
+    }
+
+    @Operation
+    public static final class SetLocal {
+        @Specialization
+        public static void perform(VirtualFrame frame, int i, Object value, @Bind("$root") BytecodeNodeWithLocalIntrospection bytecodeRootNode) {
+            bytecodeRootNode.setLocal(frame, i, value);
+        }
+    }
+
+    @Operation
+    public static final class SetLocalUsingBytecodeLocalIndex {
+        @Specialization
+        public static void perform(VirtualFrame frame, Object value, @Bind("$root") BytecodeNodeWithLocalIntrospection bytecodeRootNode) {
+            assert bytecodeRootNode.reservedLocalIndex != -1;
+            bytecodeRootNode.setLocal(frame, bytecodeRootNode.reservedLocalIndex, value);
         }
     }
 
@@ -715,4 +832,15 @@ abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode 
             return callNode.call(result.getContinuationCallTarget(), result.getFrame(), value);
         }
     }
+
+    @Operation
+    public static final class MakePair {
+        @Specialization
+        public static Pair doMakePair(Object left, Object right) {
+            return new Pair(left, right);
+        }
+    }
+}
+
+record Pair(Object left, Object right) {
 }

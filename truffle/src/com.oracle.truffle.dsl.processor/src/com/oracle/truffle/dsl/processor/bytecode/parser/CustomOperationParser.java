@@ -221,7 +221,8 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                 customOperation.implicitTags.addAll(tags);
                 if (!parent.enableTagInstrumentation) {
                     customOperation.addError(tagsValue,
-                                    "Tag instrumentation is not enabled. The tags attribute can only be used if tag instrumentation is enabled for the parent root node.  Enable tag instrumentation using @%s(... enableTagInstrumentation = true) to resolve this or remove the tags attribute.",
+                                    "Tag instrumentation is not enabled. The tags attribute can only be used if tag instrumentation is enabled for the parent root node. " +
+                                                    "Enable tag instrumentation using @%s(... enableTagInstrumentation = true) to resolve this or remove the tags attribute.",
                                     getSimpleName(types.GenerateBytecode));
                 } else {
                     List<TypeMirror> provided = customOperation.bytecode.getProvidedTags();
