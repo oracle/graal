@@ -332,7 +332,7 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler im
                  * We are in the prologue or epilogue. Frame pointer and return address are on top
                  * of the stack.
                  */
-                callerSP = sp.add(FrameAccess.wordSize()).add(FrameAccess.singleton().savedBasePointerSize());
+                callerSP = sp.add(FrameAccess.wordSize()).add(FrameAccess.wordSize());
             }
         } else {
             /* We are in the prologue or epilogue. Return address is at the top of the stack. */
