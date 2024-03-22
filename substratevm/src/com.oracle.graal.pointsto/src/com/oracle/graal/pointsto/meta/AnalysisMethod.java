@@ -775,6 +775,9 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public boolean canBeInlined() {
+        if (isInBaseLayer) {
+            return false;
+        }
         return !hasNeverInlineDirective();
     }
 
