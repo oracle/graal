@@ -158,7 +158,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                        "all successors of a basic block share a common guard condition.", type = OptionType.Expert)
         public static final OptionKey<Boolean> MoveGuardsUpwards = new OptionKey<>(true);
         @Option(help = "", type = OptionType.Debug)
-         public static final OptionKey<Boolean> FieldAccessSkipPreciseTypes = new OptionKey<>(false);
+         public static final OptionKey<Boolean> FieldAccessSkipPreciseTypes = new OptionKey<>(true);
         // @formatter:on
     }
 
