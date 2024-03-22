@@ -351,8 +351,11 @@ def _sl_command(jdk, vm_args, sl_args, use_optimized_runtime=True, use_enterpris
 
 def slnative(args):
     """build a native image of an SL program"""
+    parser = ArgumentParser(prog='mx slnative', description='Builds and executes native SL image.', usage='mx slnative [--target-folder <folder>|SL args|@VM options]')
+    parser.add_argument('--target-folder', help='Folder where the SL executable will be generated.', default=None)
+    parsed_args, args = parser.parse_known_args(args)
     vm_args, sl_args = mx.extract_VM_args(args)
-    target_dir = tempfile.mkdtemp()
+    target_dir = parsed_args.target_folder if parsed_args.target_folder else tempfile.mkdtemp()
     jdk = mx.get_jdk(tag='graalvm')
     image = _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, force_cp=False, hosted_assertions=False)
     mx.log("Image build completed. Running {}".format(" ".join([image] + sl_args)))
@@ -807,7 +810,7 @@ mx_gate.add_gate_runner(_suite, _truffle_gate_runner)
 mx.update_commands(_suite, {
     'javadoc' : [javadoc, '[SL args|@VM options]'],
     'sl' : [sl, '[SL args|@VM options]'],
-    'slnative' : [slnative, '[SL args|@VM options]'],
+    'slnative': [slnative, '[--target-folder <folder>|SL args|@VM options]'],
 })
 
 def _is_graalvm(jdk):
