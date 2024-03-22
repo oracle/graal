@@ -146,6 +146,18 @@ public class PermissionsFeature implements Feature {
         safePackages.add("com.oracle.truffle.host.");
         safePackages.add("com.oracle.truffle.nfi.");
         safePackages.add("com.oracle.truffle.object.");
+        safePackages.add("com.oracle.truffle.runtime.");
+        safePackages.add("com.oracle.truffle.runtime.debug.");
+        safePackages.add("com.oracle.truffle.runtime.jfr.");
+        safePackages.add("com.oracle.truffle.runtime.jfr.impl.");
+        safePackages.add("com.oracle.truffle.runtime.hotspot.");
+        safePackages.add("com.oracle.truffle.runtime.hotspot.libgraal.");
+        safePackages.add("com.oracle.truffle.runtime.enterprise.");
+        safePackages.add("com.oracle.truffle.sandbox.enterprise.");
+        safePackages.add("com.oracle.truffle.polyglot.enterprise.");
+        safePackages.add("com.oracle.truffle.object.enterprise.");
+        safePackages.add("com.oracle.svm.truffle.isolated.");
+        safePackages.add("com.oracle.svm.enterprise.truffle.");
     }
 
     private static final Set<ClassLoader> systemClassLoaders;
@@ -519,7 +531,7 @@ public class PermissionsFeature implements Feature {
                     if (!callers.isEmpty()) {
                         numReports = collectViolations(report, callers.iterator().next(), maxDepth, maxReports, callGraph, contextFiltersParam, currentPath, visited, depth + 1, numReports);
                     }
-                } else if (!isSystemClass(mNode)) {
+                } else if (!isSystemOrSafeClass(mNode)) {
                     List<BaseMethodNode> callPath = new ArrayList<>(currentPath);
                     report.add(callPath);
                     numReports++;

@@ -4,11 +4,11 @@
     "Jsonnet files should not include this file directly but use ci/common.jsonnet instead."
   ],
 
-  "mx_version": "7.14.3",
+  "mx_version": "7.16.1",
 
   "COMMENT.jdks": "When adding or removing JDKs keep in sync with JDKs in ci/common.jsonnet",
   "jdks": {
-    "galahad-jdk":        {"name": "jpg-jdk",   "version": "23",      "build_id": "jdk-23+14-1010", "platformspecific": true, "extrabundles": ["static-libs"]},
+    "galahad-jdk":        {"name": "jpg-jdk",   "version": "23",      "build_id": "jdk-23+15", "platformspecific": true, "extrabundles": ["static-libs"]},
 
     "oraclejdk11":        {"name": "jpg-jdk",   "version": "11.0.11", "build_id": "jdk-11.0.11+9", "platformspecific": true, "extrabundles": ["static-libs"] },
 
