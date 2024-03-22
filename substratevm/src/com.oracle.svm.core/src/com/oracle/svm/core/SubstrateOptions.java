@@ -1066,7 +1066,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeAllFromPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
     public static boolean includeAll() {
-        return IncludeAllFromPath.hasBeenSet() || IncludeAllFromPath.hasBeenSet();
+        return IncludeAllFromModule.hasBeenSet() || IncludeAllFromPath.hasBeenSet();
     }
 
     @Option(help = "Run layered image base layer open-world analysis. Includes all public types and methods that can be reached using normal Java access rules.")//
