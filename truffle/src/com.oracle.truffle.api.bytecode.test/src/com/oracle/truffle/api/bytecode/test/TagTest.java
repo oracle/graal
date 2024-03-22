@@ -1470,7 +1470,7 @@ public class TagTest extends AbstractInstructionTest {
             super(language, frameDescriptor);
         }
 
-        @ExpectError("Tag instrumentation is not enabled. The tags attribute can only be used if tag instrumentation is enabled for the parent root node.  Enable tag instrumentation using @GenerateBytecode(... enableTagInstrumentation = true) to resolve this or remove the tags attribute.")
+        @ExpectError("Tag instrumentation is not enabled. The tags attribute can only be used if tag instrumentation is enabled for the parent root node. Enable tag instrumentation using @GenerateBytecode(... enableTagInstrumentation = true) to resolve this or remove the tags attribute.")
         @Operation(tags = ExpressionTag.class)
         static final class Is {
 
