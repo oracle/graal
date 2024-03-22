@@ -1037,6 +1037,7 @@ public final class TruffleString extends AbstractTruffleString {
             this.fixedWidth = fixedWidth;
         }
 
+        @CompilationFinal(dimensions = 1) static final byte[] EMPTY_BYTES = new byte[0];
         @CompilationFinal(dimensions = 1) private static final Encoding[] ENCODINGS_TABLE;
         @CompilationFinal(dimensions = 1) private static final byte[] MAX_COMPATIBLE_CODE_RANGE;
         @CompilationFinal(dimensions = 1) private static final TruffleString[] EMPTY_STRINGS;
@@ -1055,7 +1056,7 @@ public final class TruffleString extends AbstractTruffleString {
             assert UTF_16.naturalStride == 1;
             assert UTF_32.naturalStride == 2;
             EMPTY_STRINGS = new TruffleString[encodingValues.length];
-            EMPTY_STRINGS[US_ASCII.id] = createConstant(new byte[0], 0, 0, US_ASCII, 0, TSCodeRange.get7Bit());
+            EMPTY_STRINGS[US_ASCII.id] = createConstant(EMPTY_BYTES, 0, 0, US_ASCII, 0, TSCodeRange.get7Bit());
             for (Encoding e : encodingValues) {
                 if (e != US_ASCII) {
                     assert EMPTY_STRINGS[e.id] == null;
@@ -1068,7 +1069,7 @@ public final class TruffleString extends AbstractTruffleString {
             if (encoding.is7BitCompatible() && !AbstractTruffleString.DEBUG_STRICT_ENCODING_CHECKS || encoding == Encoding.US_ASCII) {
                 return EMPTY_STRINGS[US_ASCII.id];
             }
-            TruffleString ret = createConstant(new byte[0], 0, 0, encoding, 0, TSCodeRange.getAsciiCodeRange(encoding), false);
+            TruffleString ret = createConstant(EMPTY_BYTES, 0, 0, encoding, 0, TSCodeRange.getAsciiCodeRange(encoding), false);
             EMPTY_STRINGS[US_ASCII.id].cacheInsert(ret);
             return ret;
         }
