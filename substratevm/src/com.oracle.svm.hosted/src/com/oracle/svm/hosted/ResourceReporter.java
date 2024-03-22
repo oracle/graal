@@ -17,7 +17,7 @@ public class ResourceReporter {
         // NOTE: size is string because it could be NEGATIVE QUERY
     }
 
-    public record ResourceReportEntry(Module module, String resourceName, List<SourceSizePair> entries) {
+    public record ResourceReportEntry(Module module, String resourceName, List<SourceSizePair> entries, Boolean isDirectory) {
     }
 
     public static void printReport(Collection<ResourceReportEntry> registeredResources) {
@@ -36,6 +36,10 @@ public class ResourceReporter {
         w.newline();
         if (p.module() != null) {
             w.appendKeyValue("module", p.module().getName()).appendSeparator();
+            w.newline();
+        }
+        if (p.isDirectory() != null) {
+            w.appendKeyValue("directory", p.isDirectory()).appendSeparator();
             w.newline();
         }
         w.quote("entries").append(":");

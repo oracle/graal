@@ -220,7 +220,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
-            declareResourceAsRegistered(module, resourcePath, "INJECTED RESOURCE");
+            declareResourceAsRegistered(module, resourcePath, "INJECTED");
             Resources.singleton().registerResource(module, resourcePath, resourceContent);
         }
 
@@ -593,7 +593,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void registerNegativeQuery(Module module, String resourceName) {
-            declareResourceAsRegistered(module, resourceName, "-");
+            declareResourceAsRegistered(module, resourceName, "n/a");
             Resources.singleton().registerNegativeQuery(module, resourceName);
         }
     }
@@ -652,7 +652,7 @@ public final class ResourcesFeature implements InternalFeature {
                                         " from module: " + module +
                                         " wasn't register from ResourcesFeature. It should never happen except for NEGATIVE_QUERIES in some cases");
                     }
-                    sources.add(new ResourceReporter.SourceSizePair("-", "NEGATIVE QUERY"));
+                    sources.add(new ResourceReporter.SourceSizePair("n/a", "NEGATIVE QUERY"));
                 } else {
                     for (int i = 0; i < registeredEntrySources.size(); i++) {
                         String source = registeredEntrySources.get(i);
@@ -661,7 +661,8 @@ public final class ResourcesFeature implements InternalFeature {
                     }
                 }
 
-                resourceInfoList.add(new ResourceReporter.ResourceReportEntry(module, resourceName, sources));
+                Boolean isDirectory = storageEntry == NEGATIVE_QUERY_MARKER ? null : storageEntry.isDirectory();
+                resourceInfoList.add(new ResourceReporter.ResourceReportEntry(module, resourceName, sources, isDirectory));
             });
 
             ResourceReporter.printReport(resourceInfoList);
