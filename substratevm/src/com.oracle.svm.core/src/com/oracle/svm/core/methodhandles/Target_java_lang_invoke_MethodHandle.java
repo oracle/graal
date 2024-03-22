@@ -28,9 +28,11 @@ import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
@@ -45,10 +47,12 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.invoke.MethodHandleUtils;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
+import com.oracle.svm.core.reflect.SubstrateAccessor;
+import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_AccessibleObject;
+import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Constructor;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Method;
-import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_MethodAccessor;
 import com.oracle.svm.core.util.VMError;
 
 import sun.invoke.util.ValueConversions;
@@ -118,22 +122,22 @@ final class Target_java_lang_invoke_MethodHandle {
 
     @Substitute(polymorphicSignature = true)
     static Object linkToVirtual(Object... args) throws Throwable {
-        return Util_java_lang_invoke_MethodHandle.linkTo(true, args);
+        return Util_java_lang_invoke_MethodHandle.linkTo(args);
     }
 
     @Substitute(polymorphicSignature = true)
     static Object linkToStatic(Object... args) throws Throwable {
-        return Util_java_lang_invoke_MethodHandle.linkTo(false, args);
+        return Util_java_lang_invoke_MethodHandle.linkTo(args);
     }
 
     @Substitute(polymorphicSignature = true)
     static Object linkToInterface(Object... args) throws Throwable {
-        return Util_java_lang_invoke_MethodHandle.linkTo(true, args);
+        return Util_java_lang_invoke_MethodHandle.linkTo(args);
     }
 
     @Substitute(polymorphicSignature = true)
     static Object linkToSpecial(Object... args) throws Throwable {
-        return Util_java_lang_invoke_MethodHandle.linkTo(true, args);
+        return Util_java_lang_invoke_MethodHandle.linkTo(args);
     }
 
     @Substitute(polymorphicSignature = true)
@@ -158,13 +162,10 @@ final class Target_java_lang_invoke_MethodHandle {
 }
 
 final class Util_java_lang_invoke_MethodHandle {
-    static Object linkTo(boolean hasReceiver, Object... args) throws Throwable {
+    static Object linkTo(Object... args) throws Throwable {
         assert args.length > 0;
         Target_java_lang_invoke_MemberName memberName = (Target_java_lang_invoke_MemberName) args[args.length - 1];
-        MethodType methodType = memberName.getMethodType();
-        if (hasReceiver) {
-            methodType = methodType.insertParameterTypes(0, memberName.getDeclaringClass());
-        }
+        MethodType methodType = memberName.getInvocationType();
         return MethodHandleUtils.cast(invokeInternal(memberName, methodType, Arrays.copyOf(args, args.length - 1)), methodType.returnType());
     }
 
@@ -179,95 +180,129 @@ final class Util_java_lang_invoke_MethodHandle {
         }
 
         if (memberName.intrinsic != null) { /* Intrinsic call */
-            assert memberName.reflectAccess == null;
+            VMError.guarantee(memberName.reflectAccess == null);
             return memberName.intrinsic.execute(args);
-        } else if (memberName.isField()) { /* Field access */
-            Target_java_lang_reflect_AccessibleObject executable = SubstrateUtil.cast(memberName.reflectAccess, Target_java_lang_reflect_AccessibleObject.class);
+        }
 
-            /* Access control was already performed by the JDK code calling invokeBasic */
-            boolean oldOverride = executable.override;
-            executable.override = true;
-            try {
-                Field field = (Field) memberName.reflectAccess;
-                byte refKind = memberName.getReferenceKind();
-                if (Modifier.isStatic(field.getModifiers())) {
-                    if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getStatic) {
-                        assert (args == null || args.length == 0) && field.canAccess(null);
-                        return field.get(null);
-                    } else if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_putStatic) {
-                        assert args.length == 1 && field.canAccess(null);
-                        Object value = args[0];
-                        field.set(null, value);
-                        return null;
-                    } else {
-                        throw VMError.shouldNotReachHere("Wrong reference kind for static field access: " + memberName.getReferenceKind());
-                    }
-                } else {
-                    if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getField) {
-                        assert args.length == 1 && field.canAccess(args[0]);
-                        Object receiver = args[0];
-                        return field.get(receiver);
-                    } else if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_putField) {
-                        assert args.length == 2 && field.canAccess(args[0]);
-                        Object receiver = args[0];
-                        Object value = args[1];
-                        field.set(receiver, value);
-                        return null;
-                    } else {
-                        throw VMError.shouldNotReachHere("Wrong reference kind for instance field access: " + memberName.getReferenceKind());
-                    }
-                }
-            } finally {
-                executable.override = oldOverride;
+        Target_java_lang_reflect_AccessibleObject reflectAccess = SubstrateUtil.cast(memberName.reflectAccess, Target_java_lang_reflect_AccessibleObject.class);
+
+        /* Access control was already performed by the JDK code calling invokeBasic */
+        boolean oldOverride = reflectAccess.override;
+        reflectAccess.override = true;
+        try {
+            byte refKind = memberName.getReferenceKind();
+            /* This cannot be a switch as the REF_ aliases are not declared as final. */
+            if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getField) {
+                checkArgs(args, 1, "getField");
+                Object receiver = args[0];
+                Field field = asField(memberName, receiver);
+                return field.get(receiver);
+            } else if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_getStatic) {
+                checkArgs(args, 0, "getStatic");
+                Field field = asField(memberName, null);
+                return field.get(null);
+            } else if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_putField) {
+                checkArgs(args, 2, "putField");
+                Object receiver = args[0];
+                Object value = args[1];
+                Field field = asField(memberName, receiver);
+                field.set(receiver, value);
+                return null;
+            } else if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_putStatic) {
+                checkArgs(args, 1, "putStatic");
+                Object value = args[0];
+                Field field = asField(memberName, null);
+                field.set(null, value);
+                return null;
+            } else if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeVirtual ||
+                            refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeInterface) {
+                convertArgs(args, methodType);
+                Object receiver = args[0];
+                Object[] invokeArgs = Arrays.copyOfRange(args, 1, args.length);
+                Method method = asMethod(memberName, receiver);
+                return method.invoke(receiver, invokeArgs);
+            } else if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeStatic) {
+                convertArgs(args, methodType);
+                Method method = asMethod(memberName, null);
+                return method.invoke(null, args);
+            } else if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeSpecial) {
+                convertArgs(args, methodType);
+                Object receiver = args[0];
+                Object[] invokeArgs = Arrays.copyOfRange(args, 1, args.length);
+                SubstrateAccessor accessor = getAccessor(memberName);
+                Object returnValue = accessor.invokeSpecial(receiver, invokeArgs);
+                return methodType.returnType() == void.class ? null : returnValue;
+            } else if (refKind == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_newInvokeSpecial) {
+                convertArgs(args, methodType);
+                Constructor<?> constructor = asConstructor(memberName);
+                return constructor.newInstance(args);
+            } else {
+                throw VMError.shouldNotReachHere("Unknown method handle reference kind: " + refKind);
             }
-        } else { /* Method or constructor invocation */
-            assert args.length == methodType.parameterCount();
-            for (int i = 0; i < args.length; ++i) {
-                Class<?> expectedParamType = methodType.parameterType(i);
-                if (expectedParamType.isPrimitive()) {
-                    Wrapper destWrapper = Wrapper.forPrimitiveType(expectedParamType);
-                    Wrapper srcWrapper = Wrapper.forWrapperType(args[i].getClass());
-                    if (destWrapper != srcWrapper) {
-                        /* We can't rely on automatic casting for the argument */
-                        Target_java_lang_invoke_MethodHandle typeConverter = SubstrateUtil.cast(ValueConversions.convertPrimitive(srcWrapper, destWrapper),
-                                        Target_java_lang_invoke_MethodHandle.class);
-                        args[i] = typeConverter.invokeBasic(args[i]);
-                    }
-                }
-            }
+        } catch (InvocationTargetException e) {
+            /* Exceptions are thrown unchanged from method handles */
+            throw e.getCause();
+        } finally {
+            reflectAccess.override = oldOverride;
+        }
+    }
 
-            Target_java_lang_reflect_AccessibleObject executable = SubstrateUtil.cast(memberName.reflectAccess, Target_java_lang_reflect_AccessibleObject.class);
+    private static Field asField(Target_java_lang_invoke_MemberName memberName, Object receiver) {
+        VMError.guarantee(memberName.isField(), "Cannot perform field operations on an executable");
+        Field field = (Field) memberName.reflectAccess;
+        checkMember(field, receiver);
+        return field;
+    }
 
-            /* Access control was already performed by the JDK code calling invokeBasic */
-            boolean oldOverride = executable.override;
-            executable.override = true;
-            try {
-                if (memberName.isConstructor()) {
-                    Constructor<?> constructor = (Constructor<?>) memberName.reflectAccess;
-                    assert constructor.canAccess(null);
-                    return constructor.newInstance(args);
-                } else {
-                    Method method = (Method) memberName.reflectAccess;
-                    if (Modifier.isStatic(method.getModifiers())) {
-                        assert method.canAccess(null);
-                        return method.invoke(null, args);
-                    } else {
-                        assert method.canAccess(args[0]);
-                        Object receiver = args[0];
-                        Object[] invokeArgs = Arrays.copyOfRange(args, 1, args.length);
-                        if (memberName.getReferenceKind() == Target_java_lang_invoke_MethodHandleNatives_Constants.REF_invokeSpecial) {
-                            Target_jdk_internal_reflect_MethodAccessor accessor = SubstrateUtil.cast(method, Target_java_lang_reflect_Method.class).acquireMethodAccessor();
-                            return SubstrateUtil.cast(accessor, SubstrateMethodAccessor.class).invokeSpecial(receiver, invokeArgs);
-                        } else {
-                            return method.invoke(receiver, invokeArgs);
-                        }
-                    }
+    private static Method asMethod(Target_java_lang_invoke_MemberName memberName, Object receiver) {
+        VMError.guarantee(memberName.isMethod(), "Cannot perform method operations on a field or constructor");
+        Method method = (Method) memberName.reflectAccess;
+        checkMember(method, receiver);
+        return method;
+    }
+
+    private static Constructor<?> asConstructor(Target_java_lang_invoke_MemberName memberName) {
+        VMError.guarantee(memberName.isConstructor(), "Cannot perform constructor operations on a field or constructor");
+        Constructor<?> constructor = (Constructor<?>) memberName.reflectAccess;
+        checkMember(constructor, null);
+        return constructor;
+    }
+
+    private static <T extends AccessibleObject & Member> void checkMember(T member, Object receiver) {
+        if (!(member instanceof Constructor<?>)) {
+            boolean isStatic = receiver == null;
+            VMError.guarantee(Modifier.isStatic(member.getModifiers()) == isStatic,
+                            "Cannot perform %s operation on a %s member".formatted(isStatic ? "static" : "non-static", isStatic ? "non-static" : "static"));
+        }
+        VMError.guarantee(member.canAccess(receiver), "The member should have been made accessible by the method handle implementation");
+    }
+
+    private static SubstrateAccessor getAccessor(Target_java_lang_invoke_MemberName memberName) {
+        VMError.guarantee(memberName.isInvocable(), "Cannot perform invokeSpecial on a field");
+        if (memberName.isMethod()) {
+            return SubstrateUtil.cast(SubstrateUtil.cast(memberName.reflectAccess, Target_java_lang_reflect_Method.class).acquireMethodAccessor(), SubstrateMethodAccessor.class);
+        } else {
+            return SubstrateUtil.cast(SubstrateUtil.cast(memberName.reflectAccess, Target_java_lang_reflect_Constructor.class).acquireConstructorAccessor(), SubstrateConstructorAccessor.class);
+        }
+    }
+
+    private static void checkArgs(Object[] args, int expectedLength, String methodName) {
+        VMError.guarantee((expectedLength == 0 && args == null) || args.length == expectedLength, "%s requires exactly %d arguments".formatted(methodName, expectedLength));
+    }
+
+    private static void convertArgs(Object[] args, MethodType methodType) throws Throwable {
+        assert args.length == methodType.parameterCount();
+        for (int i = 0; i < args.length; ++i) {
+            Class<?> expectedParamType = methodType.parameterType(i);
+            if (expectedParamType.isPrimitive()) {
+                Wrapper destWrapper = Wrapper.forPrimitiveType(expectedParamType);
+                Wrapper srcWrapper = Wrapper.forWrapperType(args[i].getClass());
+                if (destWrapper != srcWrapper) {
+                    /* We can't rely on automatic casting for the argument */
+                    Target_java_lang_invoke_MethodHandle typeConverter = SubstrateUtil.cast(ValueConversions.convertPrimitive(srcWrapper, destWrapper),
+                                    Target_java_lang_invoke_MethodHandle.class);
+                    args[i] = typeConverter.invokeBasic(args[i]);
                 }
-            } catch (InvocationTargetException e) {
-                /* Exceptions are thrown unchanged from method handles */
-                throw e.getCause();
-            } finally {
-                executable.override = oldOverride;
             }
         }
     }
