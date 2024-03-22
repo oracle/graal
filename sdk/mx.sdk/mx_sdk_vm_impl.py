@@ -2384,7 +2384,6 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
         output_file = self.subject.output_file()
         mx_util.ensure_dir_exists(dirname(output_file))
 
-        # Disable build server (different Java properties on each build prevent server reuse)
         self.svm_support.native_image(build_args, output_file)
 
         with open(self._get_command_file(), 'w') as f:
