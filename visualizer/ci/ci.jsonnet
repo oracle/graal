@@ -8,11 +8,9 @@
     run: [
       ["cd", "./visualizer"],
       ["mx", "pylint" ],
-      # temporarily disabled until GR-52034 is closed ["mx", "verify-graal-graphio" ],
+      ["mx", "verify-graal-graphio" ],
       ["mx", "build" ],
       ["mx", "clean" ],
-      ["mx", "build-release" ],
-      ["mx", "spotbugs" ],
       ["mx", "unittest" ],
       ["mx", "igv", "-J-Dnetbeans.close=true", "--nosplash"],
     ]
@@ -22,7 +20,7 @@
     timelimit : "30:00",
     targets: [ "gate" ],
     downloads+: {
-      "VISUALIZER_JAVA_HOME": common.jdks_data["oraclejdk11"]
+      "VISUALIZER_JAVA_HOME": common.jdks_data["oraclejdk17"]
     },
     run: [
       ["cd", "./visualizer"],
@@ -35,9 +33,15 @@
     ]
   },
 
+  linux_maven: {
+    packages+: {
+      maven: '>=3.3.9',
+    },
+  },
+
   local _builds = [
-    common.linux_amd64 + common.oraclejdk11 + self.Gate + { name: "gate-visualizer-linux-amd64-oraclejdk-11" },
-    common.linux_amd64 + common.labsjdkLatestCE + self.Integration + { name: "gate-visualizer-integration-linux-amd64-labsjdk-latest" },
+    common.linux_amd64 + self.linux_maven + common.oraclejdk17 + self.Gate + { name: "gate-visualizer-linux-amd64-oraclejdk-17" },
+    common.linux_amd64 + self.linux_maven + common.labsjdkLatestCE + self.Integration + { name: "gate-visualizer-integration-linux-amd64-oraclejdk-17" },
   ],
 
   builds: utils.add_defined_in(_builds, std.thisFile),

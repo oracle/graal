@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE filesystem PUBLIC "-//NetBeans//DTD Filesystem 1.2//EN" "http://www.netbeans.org/dtds/filesystem-1_2.dtd">
+<filesystem>
+    <folder name="IGV">
+        <folder name="GraphTypes">
+            <attr name="SystemFileSystem.localizingBundle" bundlevalue="org.graalvm.visualizer.util.resources.Bundle"/>
+            <file name="defaultType">
+                <attr name="displayName" bundlevalue="org.graalvm.visualizer.util.Bundle#DefaultGraphType"/>
+                <attr name="iconBase" stringvalue="org/graalvm/visualizer/util/resources/graph_default.png"/>
+                <attr name="defaultMode" stringvalue="mainArea"/>
+            </file>
+        </folder>
+    </folder>
+</filesystem>

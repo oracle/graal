@@ -44,8 +44,6 @@ local common_json = import "../common.json";
     _version_build_id[1]
     ,
   local jdks_data = {
-    oraclejdk11: jdk_base + common_json.jdks["oraclejdk11"] + { jdk_version:: 11 },
-  } + {
     [name]: jdk_base + common_json.jdks[name] + { jdk_version:: 17 }
     for name in ["oraclejdk17"] + variants("labsjdk-ce-17") + variants("labsjdk-ee-17")
   } + {
