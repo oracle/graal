@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,9 @@
  */
 package jdk.graal.compiler.truffle.test;
 
-import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.nodes.FieldLocationIdentity;
-import jdk.graal.compiler.nodes.NamedLocationIdentity;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.memory.ReadNode;
+import java.io.IOException;
+import java.util.List;
+
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Test;
@@ -36,6 +34,13 @@ import org.junit.Test;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.impl.FrameWithoutBoxing;
+import com.oracle.truffle.api.test.SubprocessTestUtils;
+
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.nodes.FieldLocationIdentity;
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.memory.ReadNode;
 
 /**
  * Tests that we can move frame array reads out of the loop even if there is a side-effect in the
@@ -59,11 +64,23 @@ public class FrameHostReadsTest extends TruffleCompilerImplTest {
     }
 
     @Test
-    public void test0() {
+    public void test0() throws IOException, InterruptedException {
+        // Run in subprocess to disable assertions in FrameWithoutBoxing.
+        // Assertion checking requires additional checks in the frame descriptor for handling of
+        // static slots.
+        SubprocessTestUtils.executeInSubprocessWithAssertionsDisabled(FrameHostReadsTest.class, () -> {
+            compileAndCheck();
+        },
+                        true,
+                        List.of(FrameWithoutBoxing.class));
+    }
+
+    private void compileAndCheck() {
         getTruffleCompiler();
         initAssertionError();
         Assert.assertSame("New frame implementation detected. Make sure to update this test.", FrameWithoutBoxing.class,
                         Truffle.getRuntime().createVirtualFrame(new Object[0], FrameDescriptor.newBuilder().build()).getClass());
+        Assert.assertTrue("Frame assertions should be disabled.", !FrameAssertionsChecker.areFrameAssertionsEnabled());
 
         StructuredGraph graph = getFinalGraph("snippet0");
 
@@ -86,25 +103,21 @@ public class FrameHostReadsTest extends TruffleCompilerImplTest {
         }
 
         /*
-         * Frame read for FrameWithoutBoxing.indexedTags and
-         * FrameWithoutBoxing.indexedPrimitiveLocals.
-         *
-         * Note we expect two reads here as assertions are enabled.
+         * Frame read for FrameWithoutBoxing.indexedPrimitiveLocals.
          */
-        Assert.assertEquals(2, fieldReads);
+        Assert.assertEquals(1, fieldReads);
 
         /*
          * Array reads inside of the loop. We expect the loop to get unrolled, so we expect 5 times
          * the number of reads. It is important that the loop does not contain reads to
          * FrameWithoutBoxing.indexedTags or FrameWithoutBoxing.indexedPrimitiveLocals.
          */
-        Assert.assertEquals(10, arrayReads);
+        Assert.assertEquals(5, arrayReads);
 
         /*
-         * Array.length reads. We also read two because we have assertions enabled. one for
-         * FrameWithoutBoxing.indexedTags and one for FrameWithoutBoxing.indexedPrimitiveLocals.
+         * Array.length reads. We read one for FrameWithoutBoxing.indexedPrimitiveLocals.
          */
-        Assert.assertEquals(2, arrayLengthReads);
+        Assert.assertEquals(1, arrayLengthReads);
         Assert.assertEquals(0, otherReads);
     }
 
@@ -118,5 +131,4 @@ public class FrameHostReadsTest extends TruffleCompilerImplTest {
             }
         };
     }
-
 }

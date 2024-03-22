@@ -91,6 +91,7 @@ import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.ContinuationSupport;
+import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
@@ -765,6 +766,14 @@ public class SVMHost extends HostVM {
          * run time
          */
         if (field.getType().equals(CGlobalData.class)) {
+            return false;
+        }
+        /*
+         * Including this field makes ThreadLocalAllocation.getTlabDescriptorSize reachable through
+         * ThreadLocalAllocation.regularTLAB which is accessed with
+         * FastThreadLocalBytes.getSizeSupplier
+         */
+        if (field.equals(ReflectionUtil.lookupField(VMThreadLocalInfo.class, "sizeSupplier"))) {
             return false;
         }
         /* This field cannot be written to (see documentation) */

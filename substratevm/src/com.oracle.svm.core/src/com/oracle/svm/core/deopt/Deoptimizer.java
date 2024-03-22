@@ -774,10 +774,9 @@ public final class Deoptimizer {
         int length = Math.min(entry.length, MAX_DEOPTIMIZATION_EVENT_PRINT_LENGTH);
         for (int i = 0; i < length; i++) {
             char c = entry[i];
+            log.character(c);
             if (c == '\n') {
-                log.newline();
-            } else {
-                log.character(c);
+                log.spaces(log.getIndentation());
             }
         }
 
