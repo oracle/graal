@@ -1,0 +1,16 @@
+image:
+  file: .gitpod.Dockerfile
+
+tasks:
+  - init: >
+      git clone https://github.com/graalvm/mx.git /mx &&
+      chmod +x /mx/mx
+    command: echo 'MX Tool ready and PATH updated.'
+
+vscode:
+  extensions:
+    - ms-python.python
+
+ports:
+  - port: 8080
+    onOpen: ignore
