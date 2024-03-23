@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.core.configure;
 
+import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TreatAllReachableConditionsAsReached;
+import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHABLE_KEY;
+import static org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition.TYPE_REACHED_KEY;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,6 +41,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
@@ -61,9 +66,8 @@ public abstract class ConfigurationParser {
     }
 
     public static final String CONDITIONAL_KEY = "condition";
-    public static final String TYPE_REACHABLE_KEY = "typeReachable";
-
-    public static final String TYPE_REACHED_KEY = "typeReached";
+    public static final String NAME_KEY = "name";
+    public static final String TYPE_KEY = "type";
     private final Map<String, Set<String>> seenUnknownAttributesByType = new HashMap<>();
     private final boolean strictSchema;
 
@@ -155,7 +159,7 @@ public abstract class ConfigurationParser {
      */
     protected void warnOrFailOnSchemaError(String message) {
         if (strictSchema) {
-            throw new JSONParserException(message);
+            failOnSchemaError(message);
         } else {
             LogUtils.warning(message);
         }
@@ -204,15 +208,53 @@ public abstract class ConfigurationParser {
         Object conditionData = data.get(CONDITIONAL_KEY);
         if (conditionData != null) {
             EconomicMap<String, Object> conditionObject = asMap(conditionData, "Attribute 'condition' must be an object");
+            if (conditionObject.containsKey(TYPE_REACHABLE_KEY) && conditionObject.containsKey(TYPE_REACHED_KEY)) {
+                failOnSchemaError("condition can not have both '" + TYPE_REACHED_KEY + "' and '" + TYPE_REACHABLE_KEY + "' set.");
+            }
 
-            Object conditionType = conditionObject.get(TYPE_REACHABLE_KEY);
-            if (conditionType instanceof String) {
-                return UnresolvedConfigurationCondition.create((String) conditionType);
-            } else {
-                warnOrFailOnSchemaError("'" + TYPE_REACHABLE_KEY + "' should be of type string");
+            if (conditionObject.containsKey(TYPE_REACHED_KEY)) {
+                Object object = conditionObject.get(TYPE_REACHED_KEY);
+                var condition = parseTypeContents(object);
+                if (condition.isPresent()) {
+                    return UnresolvedConfigurationCondition.create(condition.get(), true);
+                }
+            } else if (conditionObject.containsKey(TYPE_REACHABLE_KEY)) {
+                Object object = conditionObject.get(TYPE_REACHABLE_KEY);
+                var condition = parseTypeContents(object);
+                if (condition.isPresent()) {
+                    return UnresolvedConfigurationCondition.create(condition.get(), TreatAllReachableConditionsAsReached.getValue());
+                }
             }
         }
         return UnresolvedConfigurationCondition.alwaysTrue();
     }
 
+    private static JSONParserException failOnSchemaError(String message) {
+        throw new JSONParserException(message);
+    }
+
+    protected static Optional<String> parseType(EconomicMap<String, Object> data) {
+        Object typeObject = data.get(TYPE_KEY);
+        Object name = data.get(NAME_KEY);
+        if (typeObject != null) {
+            return parseTypeContents(typeObject);
+        } else if (name != null) {
+            return Optional.of(asString(name));
+        } else {
+            throw failOnSchemaError("must have type or name specified for an element");
+        }
+    }
+
+    protected static Optional<String> parseTypeContents(Object typeObject) {
+        if (typeObject instanceof String stringValue) {
+            return Optional.of(stringValue);
+        } else {
+            /*
+             * We return if we find a future version of a type descriptor (as a JSON object) instead
+             * of failing parsing.
+             */
+            asMap(typeObject, "type descriptor should be a string or object");
+            return Optional.empty();
+        }
+    }
 }

@@ -350,9 +350,8 @@ public class RuntimeCompiledMethodSupport {
 
     static class RuntimeCompilationReflectionProvider extends AnalysisConstantReflectionProvider {
 
-        @SuppressWarnings("unused")
         RuntimeCompilationReflectionProvider(BigBang bb, ClassInitializationSupport classInitializationSupport) {
-            super(bb.getUniverse(), bb.getMetaAccess());
+            super(bb.getUniverse(), bb.getMetaAccess(), classInitializationSupport);
         }
 
         @Override

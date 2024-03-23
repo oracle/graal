@@ -79,7 +79,7 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
 
     @Override
     protected ConstantReflectionProvider createConstantReflectionProvider() {
-        return new HostedConstantReflectionProvider(universe, (HostedMetaAccess) metaAccess);
+        return new HostedConstantReflectionProvider(universe, (HostedMetaAccess) metaAccess, classInitializationSupport);
     }
 
     @Override

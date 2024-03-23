@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,9 +50,9 @@ import jdk.internal.reflect.Reflection;
 
 /**
  * Information about the runtime class initialization state of a {@link DynamicHub class}, and
- * {@link #initialize implementation} of class initialization according to the Java VM
- * specification.
- *
+ * {@link #slowPath(ClassInitializationInfo, DynamicHub)} implementation} of class initialization
+ * according to the Java VM specification.
+ * <p>
  * The information is not directly stored in {@link DynamicHub} because 1) the class initialization
  * state is mutable while {@link DynamicHub} must be immutable, and 2) few classes require
  * initialization at runtime so factoring out the information reduces image size.
@@ -60,20 +60,56 @@ import jdk.internal.reflect.Reflection;
 @InternalVMMethod
 public final class ClassInitializationInfo {
 
-    /**
-     * Singleton for classes that are already initialized during image building and do not need
-     * class initialization at runtime, but have {@code <clinit>} methods.
+    /*
+     * The singletons are here to reduce image size for build-time initialized classes that are
+     * UNTRACKED for type reached.
      */
-    public static final ClassInitializationInfo INITIALIZED_INFO_SINGLETON = new ClassInitializationInfo(InitState.FullyInitialized, true);
+    private static final ClassInitializationInfo NO_INITIALIZER_NO_TRACKING = new ClassInitializationInfo(InitState.FullyInitialized, false, true, false, false);
+
+    public static final ClassInitializationInfo NO_INITIALIZER_REACHED = new ClassInitializationInfo(InitState.FullyInitialized, false, true, true, true);
+    private static final ClassInitializationInfo INITIALIZED_NO_TRACKING = new ClassInitializationInfo(InitState.FullyInitialized, true, true, false, false);
+    private static final ClassInitializationInfo INITIALIZED_REACHED = new ClassInitializationInfo(InitState.FullyInitialized, true, true, true, true);
+    private static final ClassInitializationInfo FAILED_NO_TRACKING = new ClassInitializationInfo(InitState.InitializationError, false, false);
+
+    public static ClassInitializationInfo forFailedInfo(boolean typeReachedTracked, boolean alwaysReached) {
+        if (typeReachedTracked || alwaysReached) {
+            return new ClassInitializationInfo(InitState.InitializationError, typeReachedTracked, alwaysReached);
+        } else {
+            return FAILED_NO_TRACKING;
+        }
+    }
 
     /**
      * Singleton for classes that are already initialized during image building and do not need
      * class initialization at runtime, and don't have {@code <clinit>} methods.
      */
-    public static final ClassInitializationInfo NO_INITIALIZER_INFO_SINGLETON = new ClassInitializationInfo(InitState.FullyInitialized, false);
+    public static ClassInitializationInfo forNoInitializerInfo(boolean typeReachedTracked, boolean alwaysReached) {
+        if (alwaysReached) {
+            return NO_INITIALIZER_REACHED;
+        } else if (typeReachedTracked) {
+            return new ClassInitializationInfo(InitState.FullyInitialized, false, true, typeReachedTracked, false);
+        } else {
+            return NO_INITIALIZER_NO_TRACKING;
+        }
+    }
 
-    /** Singleton for classes that failed to link during image building. */
-    public static final ClassInitializationInfo FAILED_INFO_SINGLETON = new ClassInitializationInfo(InitState.InitializationError);
+    /**
+     * For classes that are already initialized during image building and do not need class
+     * initialization at runtime, but have {@code <clinit>} methods.
+     */
+    public static ClassInitializationInfo forInitializedInfo(boolean typeReachedTracked, boolean alwaysReached) {
+        if (alwaysReached) {
+            return INITIALIZED_REACHED;
+        } else if (typeReachedTracked) {
+            return new ClassInitializationInfo(InitState.FullyInitialized, true, true, typeReachedTracked, false);
+        } else {
+            return INITIALIZED_NO_TRACKING;
+        }
+    }
+
+    public boolean requiresSlowPath() {
+        return slowPathRequired;
+    }
 
     enum InitState {
         /**
@@ -89,6 +125,12 @@ public final class ClassInitializationInfo {
         InitializationError
     }
 
+    enum TypeReached {
+        UNTRACKED,
+        NOT_REACHED,
+        REACHED
+    }
+
     interface ClassInitializerFunctionPointer extends CFunctionPointer {
         @InvokeJavaFunctionPointer
         void invoke();
@@ -101,15 +143,27 @@ public final class ClassInitializationInfo {
     private final FunctionPointerHolder classInitializer;
 
     /**
+     * Marks that this class has been reached at run time.
+     */
+    private TypeReached typeReached;
+
+    /**
      * The current initialization state.
      */
     private InitState initState;
+
+    /**
+     * Requires one less check after lowering {@link EnsureClassInitializedNode}. <code>true</code>
+     * if class is not build-time initialized or <code>typeReached != TypeReached.UNTRACKED</code>.
+     */
+    private boolean slowPathRequired;
+
     /**
      * The thread that is currently initializing the class. We use the platform thread instead of a
      * potential virtual thread because initializers like that of {@code sun.nio.ch.Poller} can
      * switch to the carrier thread and encounter the class that is being initialized again and
      * would wait for its initialization in the virtual thread to complete and therefore deadlock.
-     *
+     * <p>
      * We also pin the virtual thread because it must not continue initialization on a different
      * platform thread, and also because if the platform thread switches to a different virtual
      * thread which encounters the class being initialized, it would wrongly be considered reentrant
@@ -133,25 +187,35 @@ public final class ClassInitializationInfo {
      * at native image's build time or run time.
      */
     private boolean hasInitializer;
+    private boolean buildTimeInitialized;
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private ClassInitializationInfo(InitState initState, boolean hasInitializer) {
-        this(initState);
-        this.hasInitializer = hasInitializer;
+    public boolean isTypeReached() {
+        return typeReached == TypeReached.REACHED;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private ClassInitializationInfo(InitState initState) {
+    private ClassInitializationInfo(InitState initState, boolean hasInitializer, boolean buildTimeInitialized, boolean typeReachedTracked, boolean alwaysReached) {
+        this(initState, typeReachedTracked, alwaysReached);
+        this.hasInitializer = hasInitializer;
+        this.buildTimeInitialized = buildTimeInitialized;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private ClassInitializationInfo(InitState initState, boolean typeReachedTracked, boolean alwaysReached) {
         this.classInitializer = null;
+        this.typeReached = alwaysReached ? TypeReached.REACHED : typeReachedTracked ? TypeReached.NOT_REACHED : TypeReached.UNTRACKED;
         this.initState = initState;
+        this.slowPathRequired = typeReached != TypeReached.UNTRACKED || initState != InitState.FullyInitialized;
         this.initLock = initState == InitState.FullyInitialized ? null : new ReentrantLock();
         this.hasInitializer = true;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public ClassInitializationInfo(CFunctionPointer classInitializer) {
+    public ClassInitializationInfo(CFunctionPointer classInitializer, boolean typeReachedTracked, boolean alwaysReached) {
         this.classInitializer = classInitializer == null || classInitializer.isNull() ? null : new FunctionPointerHolder(classInitializer);
         this.initState = InitState.Linked;
+        this.typeReached = alwaysReached ? TypeReached.REACHED : typeReachedTracked ? TypeReached.NOT_REACHED : TypeReached.UNTRACKED;
+        this.slowPathRequired = true;
         this.initLock = new ReentrantLock();
         this.hasInitializer = classInitializer != null;
     }
@@ -162,6 +226,14 @@ public final class ClassInitializationInfo {
 
     public boolean isInitialized() {
         return initState == InitState.FullyInitialized;
+    }
+
+    public boolean isInitializationError() {
+        return initState == InitState.InitializationError;
+    }
+
+    public boolean isBuildTimeInitialized() {
+        return buildTimeInitialized;
     }
 
     private boolean isBeingInitialized() {
@@ -177,15 +249,72 @@ public final class ClassInitializationInfo {
     }
 
     /**
+     * Marks the hierarchy of <code>hub</code> as reached.
+     * <p>
+     * Locking is not needed as the whole type hierarchy (up until
+     * <code>TypeReached.UNTRACKED</code> types) is marked as reached every time we enter the class
+     * initialization slow path. The hierarchy of a type can be marked as reached multiple times in
+     * following cases:
+     * <ul>
+     * <li>Every time we reach type initialization when the type is in the
+     * {@link InitState#InitializationError} state</li>
+     * <li>Multiple times by different threads while the type is being initialized by one
+     * thread.</li>
+     * </ul>
+     * 
+     */
+    private static void markReached(DynamicHub hub) {
+        var current = hub;
+        do {
+            ClassInitializationInfo clinitInfo = current.getClassInitializationInfo();
+            if (clinitInfo.typeReached == TypeReached.UNTRACKED) {
+                break;
+            }
+            clinitInfo.typeReached = TypeReached.REACHED;
+            if (clinitInfo.isInitialized()) {
+                clinitInfo.slowPathRequired = false;
+            }
+            reachInterfaces(current);
+
+            current = current.getSuperHub();
+        } while (current != null);
+    }
+
+    private static void reachInterfaces(DynamicHub hub) {
+        for (DynamicHub superInterface : hub.getInterfaces()) {
+            if (superInterface.getClassInitializationInfo().typeReached == TypeReached.REACHED) {
+                return;
+            }
+
+            if (hub.getClassInitializationInfo().typeReached != TypeReached.UNTRACKED) {
+                superInterface.getClassInitializationInfo().typeReached = TypeReached.REACHED;
+            }
+            reachInterfaces(superInterface);
+        }
+    }
+
+    /**
      * Perform class initialization. This is the slow-path that should only be called after checking
      * {@link #isInitialized}.
-     *
-     * Steps refer to the JVM specification for class initialization:
-     * https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-5.html#jvms-5.5
+     * </p>
+     * Steps refer to the
+     * <a href="https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-5.html#jvms-5.5">JVM
+     * specification for class initialization</a>.
      */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
-    private static void initialize(ClassInitializationInfo info, DynamicHub hub) {
+    private static void slowPath(ClassInitializationInfo info, DynamicHub hub) {
         IsolateThread self = CurrentIsolate.getCurrentThread();
+
+        /*
+         * Types are marked as reached before any initialization is performed. Reason: the results
+         * should be visible in class initializers of the whole hierarchy as they could use
+         * reflection.
+         */
+        markReached(hub);
+
+        if (info.isInitialized()) {
+            return;
+        }
 
         /*
          * GR-43118: If a predefined class is not loaded, and the caller class is loaded, set the
@@ -386,6 +515,9 @@ public final class ClassInitializationInfo {
         initLock.lock();
         try {
             this.initState = state;
+            if (initState == InitState.FullyInitialized) {
+                this.slowPathRequired = false;
+            }
             this.initThread = WordFactory.nullPointer();
             /* Make sure previous stores are all done, notably the initState. */
             Unsafe.getUnsafe().storeFence();

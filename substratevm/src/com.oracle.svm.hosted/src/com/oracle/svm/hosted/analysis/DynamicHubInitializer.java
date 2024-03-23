@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -49,6 +50,7 @@ import com.oracle.svm.hosted.BootLoaderSupport;
 import com.oracle.svm.hosted.ClassLoaderFeature;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -191,16 +193,19 @@ public class DynamicHubInitializer {
         AnalysisError.guarantee(hub.getClassInitializationInfo() == null, "Class initialization info already computed for %s.", type.toJavaName(true));
         boolean initializedAtBuildTime = SimulateClassInitializerSupport.singleton().trySimulateClassInitializer(bb, type);
         ClassInitializationInfo info;
+        boolean typeReachedTracked = ClassInitializationSupport.singleton().requiresInitializationNodeForTypeReached(type);
+        boolean alwaysReached = ClassInitializationSupport.singleton().isAlwaysReached(OriginalClassProvider.getJavaClass(type));
         if (initializedAtBuildTime) {
-            info = type.getClassInitializer() == null ? ClassInitializationInfo.NO_INITIALIZER_INFO_SINGLETON : ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;
+            info = type.getClassInitializer() == null ? ClassInitializationInfo.forNoInitializerInfo(typeReachedTracked, alwaysReached)
+                            : ClassInitializationInfo.forInitializedInfo(typeReachedTracked, alwaysReached);
         } else {
-            info = buildRuntimeInitializationInfo(type);
+            info = buildRuntimeInitializationInfo(type, typeReachedTracked, alwaysReached);
         }
         hub.setClassInitializationInfo(info);
         heapScanner.rescanField(hub, dynamicHubClassInitializationInfoField);
     }
 
-    private ClassInitializationInfo buildRuntimeInitializationInfo(AnalysisType type) {
+    private ClassInitializationInfo buildRuntimeInitializationInfo(AnalysisType type, boolean typeReachedTracked, boolean alwaysReached) {
         assert !type.isInitialized();
         try {
             /*
@@ -213,13 +218,13 @@ public class DynamicHubInitializer {
             /* Synthesize a VerifyError to be thrown at run time. */
             AnalysisMethod throwVerifyError = metaAccess.lookupJavaMethod(ExceptionSynthesizer.throwExceptionMethod(VerifyError.class));
             bb.addRootMethod(throwVerifyError, true, "Class initialization error, registered in " + DynamicHubInitializer.class);
-            return new ClassInitializationInfo(new MethodPointer(throwVerifyError));
+            return new ClassInitializationInfo(new MethodPointer(throwVerifyError), typeReachedTracked, alwaysReached);
         } catch (Throwable t) {
             /*
              * All other linking errors will be reported as NoClassDefFoundError when initialization
              * is attempted at run time.
              */
-            return ClassInitializationInfo.FAILED_INFO_SINGLETON;
+            return ClassInitializationInfo.forFailedInfo(typeReachedTracked, alwaysReached);
         }
 
         /*
@@ -234,7 +239,7 @@ public class DynamicHubInitializer {
             bb.addRootMethod(classInitializer, true, "Class initialization, registered in " + DynamicHubInitializer.class);
             classInitializerFunction = new MethodPointer(classInitializer);
         }
-        return new ClassInitializationInfo(classInitializerFunction);
+        return new ClassInitializationInfo(classInitializerFunction, typeReachedTracked, alwaysReached);
     }
 
     class InterfacesEncodingKey {

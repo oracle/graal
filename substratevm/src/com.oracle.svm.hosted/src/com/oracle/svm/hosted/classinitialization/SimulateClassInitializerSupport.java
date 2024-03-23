@@ -607,4 +607,8 @@ public class SimulateClassInitializerSupport {
             return String.valueOf(reason);
         }
     }
+
+    public ClassInitializationSupport getClassInitializationSupport() {
+        return classInitializationSupport;
+    }
 }

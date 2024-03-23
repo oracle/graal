@@ -45,10 +45,12 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
 
 import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
+import com.oracle.svm.core.classinitialization.TypeReachedProvider;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -59,17 +61,19 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-public class AnalysisConstantReflectionProvider implements ConstantReflectionProvider, IdentityHashCodeProvider {
+public class AnalysisConstantReflectionProvider implements ConstantReflectionProvider, IdentityHashCodeProvider, TypeReachedProvider {
     private final AnalysisUniverse universe;
     protected final UniverseMetaAccess metaAccess;
     private final AnalysisMethodHandleAccessProvider methodHandleAccess;
+    private final ClassInitializationSupport classInitializationSupport;
     private SimulateClassInitializerSupport simulateClassInitializerSupport;
     private final FieldValueInterceptionSupport fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
 
-    public AnalysisConstantReflectionProvider(AnalysisUniverse universe, UniverseMetaAccess metaAccess) {
+    public AnalysisConstantReflectionProvider(AnalysisUniverse universe, UniverseMetaAccess metaAccess, ClassInitializationSupport classInitializationSupport) {
         this.universe = universe;
         this.metaAccess = metaAccess;
         this.methodHandleAccess = new AnalysisMethodHandleAccessProvider(universe);
+        this.classInitializationSupport = classInitializationSupport;
     }
 
     @Override
@@ -310,6 +314,11 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
             return JavaConstant.NULL_POINTER;
         }
         return universe.getHeapScanner().createImageHeapConstant(value, ObjectScanner.OtherReason.UNKNOWN);
+    }
+
+    @Override
+    public boolean initializationCheckRequired(ResolvedJavaType type) {
+        return classInitializationSupport.requiresInitializationNodeForTypeReached(type);
     }
 
     private SVMHost getHostVM() {

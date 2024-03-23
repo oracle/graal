@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.classinitialization;
 
 import static com.oracle.svm.core.SubstrateOptions.TraceObjectInstantiation;
+import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TreatAllTypesAsTrackedForReachability;
 
 import java.lang.reflect.Proxy;
 import java.util.Comparator;
@@ -75,6 +76,17 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
      * ground truth about what got initialized during image building.
      */
     final ConcurrentMap<Class<?>, InitKind> classInitKinds = new ConcurrentHashMap<>();
+
+    /**
+     * We need always reached types to avoid users injecting class initialization checks in our VM
+     * implementation and hot paths and to prevent users from making the whole class hierarchy
+     * require initialization nodes.
+     */
+    private static final Set<Class<?>> alwaysReachedTypes = Set.of(
+                    Object.class, String.class,
+                    Character.class, Byte.class, Short.class, Integer.class, Long.class, Float.class, Double.class, Boolean.class);
+
+    final Set<Class<?>> typesRequiringReachability = ConcurrentHashMap.newKeySet();
 
     boolean configurationSealed;
 
@@ -449,5 +461,46 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
                 addAllInterfaces(interf, result);
             }
         }
+    }
+
+    public void addForTypeReachedTracking(Class<?> clazz) {
+        if (!alwaysReachedTypes.contains(clazz)) {
+            UserError.guarantee(!configurationSealed, "It is not possible to register types for reachability tracking after the analysis has started.");
+            typesRequiringReachability.add(clazz);
+        }
+    }
+
+    public boolean isAlwaysReached(Class<?> jClass) {
+        return jClass.isPrimitive() || alwaysReachedTypes.contains(jClass);
+    }
+
+    /**
+     * If any type in the type hierarchy was marked as "type reached", we have to track
+     * initialization for all its subtypes. Otherwise, marking the supertype as reached could be
+     * missed when the initializer of the subtype is computed at build time.
+     */
+    public boolean requiresInitializationNodeForTypeReached(ResolvedJavaType type) {
+        if (type == null) {
+            return false;
+        }
+        var jClass = OriginalClassProvider.getJavaClass(type);
+        if (isAlwaysReached(jClass)) {
+            return false;
+        }
+        if (TreatAllTypesAsTrackedForReachability.getValue() &&
+                        jClass.getModule() != ClassInitializationSupport.class.getModule()) {
+            System.out.println("Debugging: " + type.toJavaName());
+            return true;
+        }
+        if (typesRequiringReachability.contains(jClass) ||
+                        requiresInitializationNodeForTypeReached(type.getSuperclass())) {
+            return true;
+        }
+        for (ResolvedJavaType anInterface : type.getInterfaces()) {
+            if (requiresInitializationNodeForTypeReached(anInterface)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

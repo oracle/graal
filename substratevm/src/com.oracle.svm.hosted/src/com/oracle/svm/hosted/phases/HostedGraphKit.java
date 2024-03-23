@@ -35,6 +35,7 @@ import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
 import com.oracle.svm.core.graal.replacements.SubstrateGraphKit;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -73,7 +74,9 @@ public class HostedGraphKit extends SubstrateGraphKit {
     }
 
     public void emitEnsureInitializedCall(ResolvedJavaType type) {
-        if (EnsureClassInitializedNode.needsRuntimeInitialization(graph.method().getDeclaringClass(), type)) {
+        boolean requiresInitializationForTypeReached = ClassInitializationSupport.singleton().requiresInitializationNodeForTypeReached(type);
+        if (requiresInitializationForTypeReached ||
+                        EnsureClassInitializedNode.needsRuntimeInitialization(graph.method().getDeclaringClass(), type)) {
             ValueNode hub = createConstant(getConstantReflection().asJavaClass(type), JavaKind.Object);
             appendWithUnwind(new EnsureClassInitializedNode(hub));
         }

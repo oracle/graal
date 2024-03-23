@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,15 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 
 import java.util.Map;
 
+import org.graalvm.word.LocationIdentity;
+
+import com.oracle.svm.core.graal.nodes.ForeignCallWithExceptionNode;
+import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
+
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node;
@@ -43,20 +52,12 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
-import org.graalvm.word.LocationIdentity;
-
-import com.oracle.svm.core.graal.nodes.ForeignCallWithExceptionNode;
-import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 
 public final class EnsureClassInitializedSnippets extends SubstrateTemplates implements Snippets {
-    private static final SubstrateForeignCallDescriptor INITIALIZE = SnippetRuntime.findForeignCall(ClassInitializationInfo.class, "initialize", HAS_SIDE_EFFECT, LocationIdentity.any());
+    private static final SubstrateForeignCallDescriptor SLOW_PATH = SnippetRuntime.findForeignCall(ClassInitializationInfo.class, "slowPath", HAS_SIDE_EFFECT, LocationIdentity.any());
 
     public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{
-                    INITIALIZE,
+                    SLOW_PATH,
     };
 
     /**
@@ -72,13 +73,13 @@ public final class EnsureClassInitializedSnippets extends SubstrateTemplates imp
          */
         ClassInitializationInfo infoNonNull = (ClassInitializationInfo) PiNode.piCastNonNull(info, SnippetAnchorNode.anchor());
 
-        if (BranchProbabilityNode.probability(BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY, !infoNonNull.isInitialized())) {
-            callInitialize(INITIALIZE, infoNonNull, DynamicHub.toClass(hub));
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY, infoNonNull.requiresSlowPath())) {
+            callSlowPath(SLOW_PATH, infoNonNull, DynamicHub.toClass(hub));
         }
     }
 
     @NodeIntrinsic(value = ForeignCallWithExceptionNode.class)
-    private static native void callInitialize(@ConstantNodeParameter ForeignCallDescriptor descriptor, ClassInitializationInfo info, Class<?> clazz);
+    private static native void callSlowPath(@ConstantNodeParameter ForeignCallDescriptor descriptor, ClassInitializationInfo info, Class<?> clazz);
 
     @SuppressWarnings("unused")
     public static void registerLowerings(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {

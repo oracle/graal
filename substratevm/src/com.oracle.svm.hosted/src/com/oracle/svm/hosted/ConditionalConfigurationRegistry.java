@@ -45,7 +45,7 @@ public abstract class ConditionalConfigurationRegistry {
             consumer.accept(condition);
         } else {
             Collection<Runnable> handlers = pendingReachabilityHandlers.computeIfAbsent(condition.getType(), key -> new ConcurrentLinkedQueue<>());
-            ConfigurationCondition runtimeCondition = ConfigurationCondition.alwaysTrue();
+            ConfigurationCondition runtimeCondition = condition.isRuntimeChecked() ? condition : ConfigurationCondition.alwaysTrue();
             handlers.add(() -> consumer.accept(runtimeCondition));
         }
 

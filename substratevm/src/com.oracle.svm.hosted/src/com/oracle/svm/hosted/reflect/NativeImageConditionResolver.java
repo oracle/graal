@@ -46,7 +46,13 @@ public class NativeImageConditionResolver implements ConfigurationConditionResol
     public TypeResult<ConfigurationCondition> resolveCondition(UnresolvedConfigurationCondition unresolvedCondition) {
         String canonicalizedName = RegistryAdapter.canonicalizeTypeName(unresolvedCondition.getTypeName());
         TypeResult<Class<?>> clazz = classLoader.findClass(canonicalizedName);
-        return clazz.map(ConfigurationCondition::create);
+        var result = clazz.map(type -> ConfigurationCondition.create(type, unresolvedCondition.isRuntimeChecked()));
+        result.ifPresent(t -> {
+            if (t.isRuntimeChecked()) {
+                classInitializationSupport.addForTypeReachedTracking(t.getType());
+            }
+        });
+        return result;
     }
 
     @Override
