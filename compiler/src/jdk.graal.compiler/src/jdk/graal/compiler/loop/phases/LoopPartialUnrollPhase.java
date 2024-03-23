@@ -28,6 +28,7 @@ import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.nodes.GraphState;
@@ -42,6 +43,7 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.util.EconomicSetNodeEventListener;
+import jdk.graal.compiler.phases.common.util.LoopUtility;
 
 public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
 
@@ -69,6 +71,7 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
                             if (loop.loopBegin().isSimpleLoop()) {
                                 // First perform the pre/post transformation and do the partial
                                 // unroll when we come around again.
+                                LoopUtility.preserveCounterStampsForDivAfterUnroll(loop);
                                 LoopTransformations.insertPrePostLoops(loop);
                                 prePostInserted = true;
                                 changed = true;
