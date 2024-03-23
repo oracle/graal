@@ -913,7 +913,7 @@ public abstract class PlatformThreads {
         return vmOp.result;
     }
 
-    static Thread[] getAllThreads() {
+    public static Thread[] getAllThreads() {
         GetAllThreadsOperation vmOp = new GetAllThreadsOperation();
         vmOp.enqueue();
         return vmOp.result.toArray(new Thread[0]);
@@ -1081,8 +1081,10 @@ public abstract class PlatformThreads {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void setThreadStatus(Thread thread, int threadStatus) {
         assert !isVirtual(thread);
-        assert toTarget(thread).holder.threadStatus != ThreadStatus.TERMINATED : "once a thread is marked as terminated, its status must not change";
-        toTarget(thread).holder.threadStatus = threadStatus;
+        Target_java_lang_Thread targetThread = toTarget(thread);
+        assert targetThread.holder.threadStatus != ThreadStatus.TERMINATED : "once a thread is marked as terminated, its status must not change";
+        JavaThreads.JMXMonitoring.handleContentionMonitoring(targetThread, threadStatus);
+        targetThread.holder.threadStatus = threadStatus;
     }
 
     static boolean compareAndSetThreadStatus(Thread thread, int expectedStatus, int newStatus) {
