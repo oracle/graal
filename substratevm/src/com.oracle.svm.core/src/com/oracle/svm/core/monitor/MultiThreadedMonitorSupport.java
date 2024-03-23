@@ -256,6 +256,8 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
                 if (monitor == null) { // successful
                     JavaMonitorInflateEvent.emit(obj, startTicks, MonitorInflationCause.MONITOR_ENTER);
                     newMonitor.latestJfrTid = current;
+                    newMonitor.blockedObject = obj;
+                    JavaThreads.JMXMonitoring.addThreadMonitor(obj);
                     return;
                 }
             }
@@ -263,6 +265,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
             monitor = getOrCreateMonitor(obj, cause);
         }
         monitor.monitorEnter(obj);
+        JavaThreads.JMXMonitoring.addThreadMonitor(obj);
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
@@ -314,6 +317,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
             monitor = getOrCreateMonitor(obj, cause);
         }
         monitor.monitorExit();
+        JavaThreads.JMXMonitoring.removeThreadMonitor();
     }
 
     @Override
@@ -495,6 +499,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
             JavaMonitor previousEntry = additionalMonitors.put(obj, newMonitor);
             VMError.guarantee(previousEntry == null, "Replaced monitor in secondary storage map");
             JavaMonitorInflateEvent.emit(obj, startTicks, cause);
+            newMonitor.blockedObject = obj;
             return newMonitor;
         } finally {
             additionalMonitorsLock.unlock();

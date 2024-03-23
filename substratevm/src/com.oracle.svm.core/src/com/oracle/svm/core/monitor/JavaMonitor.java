@@ -73,8 +73,11 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
             acquire(1);
             JavaMonitorEnterEvent.emit(obj, latestJfrTid, startTicks);
         }
-
         latestJfrTid = SubstrateJVM.getCurrentThreadId();
+    }
+
+    public Object getBlockedObject() {
+        return blockedObject;
     }
 
     public void monitorExit() {
@@ -216,6 +219,10 @@ public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
     // see ReentrantLock.Sync.isLocked()
     boolean isLocked() {
         return getState() != 0;
+    }
+
+    public long getOwnerThreadId() {
+        return getState();
     }
 
     /**

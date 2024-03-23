@@ -31,6 +31,9 @@ import java.security.AccessControlContext;
 import java.util.Map;
 import java.util.Objects;
 
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.locks.AbstractOwnableSynchronizer;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -90,6 +93,42 @@ public final class Target_java_lang_Thread {
     @Inject //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ThreadData.class)//
     UnacquiredThreadData threadData;
+
+    @Inject //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    long lastStartedWaiting = -1;
+
+    @Inject //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    long lastStartedBlocked = -1;
+
+    @Inject //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    long timeWaited = 0;
+
+    @Inject //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    long timeBlocked = 0;
+
+    @Inject //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    long blockedCount = 0;
+
+    @Inject //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    long waitedCount = 0;
+
+    /**
+     * If the thread owns a lock or a monitor, it can't be updated by any other thread before the
+     * owner of that lock resets itself.
+     */
+    @Inject //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    EconomicSet<AbstractOwnableSynchronizer> locks;
+
+    @Inject //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    ConcurrentLinkedDeque<JavaThreads.JMXMonitoring.MonitorInfo> monitors;
 
     @Alias//
     ClassLoader contextClassLoader;

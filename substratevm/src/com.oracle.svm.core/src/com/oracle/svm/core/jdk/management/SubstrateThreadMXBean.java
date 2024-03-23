@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jdk.management;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
 import java.util.Arrays;
@@ -36,6 +38,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.jdk.ThreadMXUtils;
+import com.oracle.svm.core.jdk.ThreadMXUtils.ThreadInfoConstructionUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicLong;
 import com.oracle.svm.core.thread.PlatformThreads;
@@ -55,9 +59,9 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
     private final AtomicInteger peakThreadCount = new AtomicInteger(0);
     private final AtomicInteger threadCount = new AtomicInteger(0);
     private final AtomicInteger daemonThreadCount = new AtomicInteger(0);
-
     private boolean allocatedMemoryEnabled;
     private boolean cpuTimeEnabled;
+    private boolean contentionMonitoringEnabled;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     SubstrateThreadMXBean() {
@@ -150,45 +154,62 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
         return daemonThreadCount.get();
     }
 
-    /* All remaining methods are unsupported on Substrate VM. */
-
     @Override
     public long[] getAllThreadIds() {
-        return new long[0];
+        return Arrays.stream(PlatformThreads.getAllThreads())
+                        .mapToLong(Thread::threadId)
+                        .toArray();
+    }
+
+    public static Thread getThreadById(long id) {
+        return Arrays.stream(PlatformThreads.getAllThreads())
+                        .filter(thread -> thread.threadId() == id)
+                        .findAny().orElse(null);
     }
 
     @Override
     public ThreadInfo getThreadInfo(long id) {
-        return null;
+        return getThreadInfo(id, -1);
     }
 
     @Override
     public ThreadInfo[] getThreadInfo(long[] ids) {
-        return new ThreadInfo[0];
+        return getThreadInfo(ids, -1);
     }
 
     @Override
     public ThreadInfo getThreadInfo(long id, int maxDepth) {
-        return null;
+        return getThreadInfo(id, maxDepth, false, false);
+    }
+
+    private static ThreadInfo getThreadInfo(long id, int maxDepth, boolean lockedMonitors, boolean lockedSynchronizers) {
+        Thread thread = getThreadById(id);
+        return getThreadInfo(thread, maxDepth, lockedMonitors, lockedSynchronizers);
+    }
+
+    private static ThreadInfo getThreadInfo(Thread thread, int maxDepth, boolean lockedMonitors, boolean lockedSynchronizers) {
+        return thread == null ? null : ThreadInfoConstructionUtils.getThreadInfo(thread, maxDepth, lockedMonitors, lockedSynchronizers);
     }
 
     @Override
     public ThreadInfo[] getThreadInfo(long[] ids, int maxDepth) {
-        return new ThreadInfo[0];
+        return (ThreadInfo[]) Arrays.stream(ids).mapToObj(id -> getThreadInfo(id, maxDepth)).toArray();
     }
 
     @Override
     public boolean isThreadContentionMonitoringSupported() {
-        return false;
+        return true;
     }
 
     @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean isThreadContentionMonitoringEnabled() {
-        return false;
+        return contentionMonitoringEnabled;
     }
 
     @Override
-    public void setThreadContentionMonitoringEnabled(boolean enable) {
+    public void setThreadContentionMonitoringEnabled(boolean value) {
+        contentionMonitoringEnabled = value;
     }
 
     @Override
@@ -256,32 +277,36 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
 
     @Override
     public long[] findMonitorDeadlockedThreads() {
-        return new long[0];
+        ThreadInfo[] threadInfos = dumpAllThreads(true, false);
+        return ThreadMXUtils.DeadlockDetectionUtils.findDeadlockedThreads(threadInfos, true);
     }
 
     @Override
     public long[] findDeadlockedThreads() {
-        return new long[0];
+        ThreadInfo[] threadInfos = dumpAllThreads(true, true);
+        return ThreadMXUtils.DeadlockDetectionUtils.findDeadlockedThreads(threadInfos, false);
     }
 
     @Override
     public boolean isObjectMonitorUsageSupported() {
-        return false;
+        return true;
     }
 
     @Override
     public boolean isSynchronizerUsageSupported() {
-        return false;
+        return true;
     }
 
     @Override
     public ThreadInfo[] getThreadInfo(long[] ids, boolean lockedMonitors, boolean lockedSynchronizers) {
-        return new ThreadInfo[0];
+        return Arrays.stream(ids).mapToObj(id -> getThreadInfo(id, -1, lockedMonitors, lockedSynchronizers))
+                        .toArray(ThreadInfo[]::new);
     }
 
     @Override
     public ThreadInfo[] dumpAllThreads(boolean lockedMonitors, boolean lockedSynchronizers) {
-        return new ThreadInfo[0];
+        return Arrays.stream(PlatformThreads.getAllThreads()).map(thread -> getThreadInfo(thread, -1, lockedMonitors, lockedSynchronizers))
+                        .toArray(ThreadInfo[]::new);
     }
 
     @Override
@@ -290,7 +315,6 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
         if (!valid) {
             return -1;
         }
-
         return PlatformThreads.getThreadAllocatedBytes(id);
     }
 
@@ -324,8 +348,8 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
     }
 
     private static void verifyThreadIds(long[] ids) {
-        for (int i = 0; i < ids.length; i++) {
-            verifyThreadId(ids[i]);
+        for (long id : ids) {
+            verifyThreadId(id);
         }
     }
 
