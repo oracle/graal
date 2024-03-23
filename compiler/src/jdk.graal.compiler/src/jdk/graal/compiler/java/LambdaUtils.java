@@ -148,6 +148,10 @@ public final class LambdaUtils {
         Matcher m = lambdaMatcher(lambdaName);
         StringBuilder sb = new StringBuilder();
         targetMethods.forEach((targetMethod) -> sb.append(targetMethod.format("%H.%n(%P)%R")));
+        // Take parameter types of constructor into consideration, see GR-52837
+        for (ResolvedJavaMethod ctor : lambdaType.getDeclaredConstructors()) {
+            sb.append(ctor.format("%P"));
+        }
         return m.replaceFirst(Matcher.quoteReplacement(LAMBDA_CLASS_NAME_SUBSTRING + ADDRESS_PREFIX + digest(sb.toString()) + ";"));
     }
 
