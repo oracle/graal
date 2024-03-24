@@ -125,15 +125,13 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     ['set-export', 'GRAALVM_HOME', self.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
   ]}),
 
-  local deploy_artifacts_sdk(base_dist_name=null) = task_spec({ run +:
-    (if base_dist_name != null then ['--base-dist-name=' + base_dist_name] else []) + ['--suite', 'sdk', 'deploy-artifacts', '--uploader', if self.os == 'windows' then 'artifact_uploader.cmd' else 'artifact_uploader']
+  local deploy_sdk_base(base_dist_name=null) = task_spec({
+    local deploy_artifacts_sdk = (if base_dist_name != null then ['--base-dist-name=' + base_dist_name] else []) + ['--suite', 'sdk', 'deploy-artifacts', '--uploader', if self.os == 'windows' then 'artifact_uploader.cmd' else 'artifact_uploader'],
+    local artifact_deploy_sdk_base = deploy_artifacts_sdk + ['--tags', 'graalvm'],
+
+    run +:
+    [self.mx_vm_common + vm.vm_profiles + maven_deploy_sdk_base, self.mx_vm_common + vm.vm_profiles + artifact_deploy_sdk_base] //if(self.os_distro == null) then null else self.os_distro
   }),
-
-  local artifact_deploy_sdk_base(base_dist_name=null) = deploy_artifacts_sdk(base_dist_name) + task_spec({ run +:['--tags', 'graalvm']}),
-
-  local deploy_sdk_base(base_dist_name=null) = task_spec({run +:
-    [self.mx_vm_common + vm.vm_profiles + maven_deploy_sdk_base, self.mx_vm_common + vm.vm_profiles] //if(self.os_distro == null) then null else self.os_distro
-  }) + artifact_deploy_sdk_base(base_dist_name),
 
   local patch_env = task_spec({ run +:
       # linux
@@ -169,15 +167,15 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
     ] + vm.check_graalvm_base_build('$GRAALVM_DIST', self.os, self.arch, self.jdk_version)
   }),
 
-  local deploy_graalvm_base = task_spec(vm.check_structure) + patch_env + check_base_graalvm_image + deploy_sdk_base() + build_base_graalvm_image + task_spec({
-      run+: vm.collect_profiles() + [
+  local deploy_graalvm_base = task_spec(vm.check_structure) + patch_env + build_base_graalvm_image + task_spec({
+      run +: vm.collect_profiles() + [
         self.mx_vm_common + vm.vm_profiles + record_file_sizes,
         upload_file_sizes,
       ],
       notify_groups:: ['deploy'],
       timelimit: "1:00:00"
     },
-  ),
+  ) + deploy_sdk_base() + check_base_graalvm_image,
 
   local name = task_spec({
     java_version:: 'java' + if self.jdk_name == "jdk-latest" then "-latest"
@@ -212,14 +210,16 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
       ] else [
         ['set-export', 'VM_ENV', "${VM_ENV}-espresso"],
       ]
-    )  + [
+    ),
+    notify_groups:: ['deploy'],
+    timelimit: '1:45:00',
+  }) + build_base_graalvm_image + deploy_sdk_base(base_dist_name='espresso') + task_spec({
+    run +:[
       ['set-export', 'GRAALVM_HOME', self.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
       ['set-export', 'DACAPO_JAR', self.mx_vm_common + ['--quiet', '--no-warning', 'paths', '--download', 'DACAPO_MR1_2baec49']],
       ['${GRAALVM_HOME}/bin/java', '-jar', '${DACAPO_JAR}', 'luindex'],
     ],
-    notify_groups:: ['deploy'],
-    timelimit: '1:45:00',
-  }) + build_base_graalvm_image + deploy_sdk_base('espresso'),
+  }),
 
   local js_windows_common = task_spec({
     environment+: if(self.os == 'windows') then local devkits_version = std.filterMap(function(p) std.startsWith(p, 'devkit:VS'), function(p) std.substr(p, std.length('devkit:VS'), 4), std.objectFields(self.packages))[0];
