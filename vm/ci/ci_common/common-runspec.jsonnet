@@ -113,7 +113,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
   local full_vm_build = ruby_python_vm_build + task_spec(graal_common.deps.fastr),
 
   local mx_env = task_spec({
-    mx_vm_cmd_suffix:: ['--sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM', '--debuginfo-dists', '--base-jdk-info=' + self.jdk_name + ':' + self.jdk_version],
+    mx_vm_cmd_suffix:: ['--sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM', '--debuginfo-dists', '--base-jdk-info=' + self.jdk_name + ':' + std.toString(self.jdk_version)],
     mx_env:: vm.edition,
     mx_vm_common:: vm.mx_cmd_base_no_env + ['--env', self.mx_env] + self.mx_vm_cmd_suffix,
   }),
@@ -164,7 +164,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
 
   local check_base_graalvm_image = task_spec({ run +: [
       ['set-export', 'GRAALVM_DIST', self.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'paths', self.mx_vm_common + vm.vm_profiles + ['graalvm-dist-name']]]
-    ] + vm.check_graalvm_base_build('$GRAALVM_DIST', self.os, self.arch, self.jdk_version)
+    ] + vm.check_graalvm_base_build('$GRAALVM_DIST', self.os, self.arch, std.toString(self.jdk_version))
   }),
 
   local deploy_graalvm_base = task_spec(vm.check_structure) + patch_env + build_base_graalvm_image + task_spec({
@@ -188,7 +188,7 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
   }),
 
   local notify_groups(group) = task_spec({
-    notify_groups:: group
+    notify_groups+: if(std.type(group) == 'string') then [group] else group
   }),
 
   local diskspace_required(diskspace) = task_spec({
@@ -270,12 +270,12 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
   },
 
   local extras(main_target, deploy, bench=false) = diskspace_required(vm.default_diskspace_required(self.os, self.arch, deploy).diskspace_required) + task_spec({ targets+: [main_target] + (if (deploy) then ['deploy'] else []) + (if (bench) then ['bench'] else []) }+ (if (bench) then { capabilities+: ['no_frequency_scaling'] } else {})),
-  local deploy_vm_common(main_target, deploy, bench) = extras(main_target, deploy, bench) + deploy_graalvm_base + common_os_deploy + name + notify_groups('deploy'),
-  local deploy_vm_espresso_common(main_target, deploy, bench=false) = extras(main_target, deploy, bench) + deploy_graalvm_espresso + common_os_deploy + name + notify_groups('deploy'),
+  local deploy_vm_common(main_target, deploy, bench) = extras(main_target, deploy, bench) + deploy_graalvm_base + common_os_deploy + name,
+  local deploy_vm_espresso_common(main_target, deploy, bench=false) = extras(main_target, deploy, bench) + deploy_graalvm_espresso + common_os_deploy + name,
 
   local variants(s) = run_spec.generate_variants(s, feature_map),
 
-  local task_dict = {
+  local deploy_vm_base_task_dict = {
 
       #
       # Deploy GraalVM Base
@@ -306,24 +306,26 @@ local evaluate_late(key, object) = task_spec(run_spec.evaluate_late({key:object}
           "darwin:aarch64:jdk-latest": deploy_vm_common('daily', true, false) + full_vm_build + timelimit('1:45:00') + notify_emails('bernhard.urban-forster@oracle.com'),
         }
       }),
-
-      #
-      # Deploy the GraalVM Espresso artifact (GraalVM Base + espresso - native image)
-      #
-
-      "vm-espresso": platform_spec(no_jobs) + mx_env + variants({
-        "os_distro:espresso": {
-          "linux:amd64:jdk21": deploy_vm_espresso_common('weekly', true, false) + full_vm_build,
-          "linux:aarch64:jdk21": deploy_vm_espresso_common('weekly', true, false) + full_vm_build,
-          "windows:amd64:jdk21": deploy_vm_espresso_common('weekly', true, false) + sulong + svm_common,
-          "darwin:amd64:jdk21": deploy_vm_espresso_common('weekly', true, false) + full_vm_build,
-          "darwin:aarch64:jdk21": deploy_vm_espresso_common('weekly', true, false) + full_vm_build,
-        }
-      }),
-
     },
 
-  processed_builds::run_spec.process(task_dict),
-  builds: self.processed_builds.list,
-  assert std.length(self.builds) > 0,
+  processed_vm_base_builds::run_spec.process(deploy_vm_base_task_dict),
+  deploy_vm_base: self.processed_vm_base_builds.list,
+
+  local deploy_vm_espresso_task_dict = {
+    #
+    # Deploy the GraalVM Espresso artifact (GraalVM Base + espresso - native image)
+    #
+    "vm-espresso": platform_spec(no_jobs) + mx_env + variants({
+      "os_distro:espresso": {
+        "linux:amd64:jdk21": deploy_vm_espresso_common('weekly', true, false) + full_vm_build,
+        "linux:aarch64:jdk21": deploy_vm_espresso_common('weekly', true, false) + full_vm_build,
+        "windows:amd64:jdk21": deploy_vm_espresso_common('weekly', true, false) + sulong + svm_common,
+        "darwin:amd64:jdk21": deploy_vm_espresso_common('weekly', true, false) + full_vm_build,
+        "darwin:aarch64:jdk21": deploy_vm_espresso_common('weekly', true, false) + full_vm_build,
+      }
+    }),
+  },
+
+  processed_vm_espresso_builds::run_spec.process(deploy_vm_espresso_task_dict),
+  deploy_vm_espresso: self.processed_vm_espresso_builds.list,
 }
