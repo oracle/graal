@@ -755,6 +755,9 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                 case exitZeroWidth:
                     if (locals.getZeroWidthQuantifierGuardIndex(q) == index &&
                                     (!isMonitorCaptureGroupsInEmptyCheck() || locals.isResultUnmodifiedByZeroWidthQuantifier(q)) &&
+                                    // In JS, we allow this guard to pass if we are still in the
+                                    // optional part of the quantifier. This allows JS to fast-
+                                    // forward past all the empty mandatory iterations.
                                     (isEmptyChecksOnMandatoryLoopIterations() || !q.hasIndex() || locals.getQuantifierCount(q) > q.getMin())) {
                         return false;
                     }
@@ -838,6 +841,21 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                                     (!isMonitorCaptureGroupsInEmptyCheck() || locals.isResultUnmodifiedByZeroWidthQuantifier(q));
                     boolean advancePastOptionalIterations = !isEmptyChecksOnMandatoryLoopIterations() && q.hasIndex() && locals.getQuantifierCount(q) < q.getMin();
                     if (emptyCheckFailed && advancePastOptionalIterations && !transition.hasCaretGuard() && !transition.hasDollarGuard()) {
+                        // We advance the counter to min - 1 to skip past all but one mandatory
+                        // iteration. We do not skip the last mandatory iteration and set the
+                        // counter to min, because of the way JavaScript regexes are executed. The
+                        // JavaScript flavor does not set matchesTransitionStepByStep and therefore
+                        // all guards are tested against the same original state. In the case of the
+                        // last mandatory iteration, we would like it to be possible to match the
+                        // exitZeroWidth guard followed by the exit guard, so that it is possible to
+                        // hit the exact minimum number of iterations. However, this relies on first
+                        // updating the state with exitZeroWidth and then testing this new state
+                        // with the exit guard. This would mean having to enable
+                        // matchesTransitionStepByStep for JavaScript and implementing this logic in
+                        // tryUpdateState instead, which would lead to degraded performance for JS
+                        // regexps. Instead, we choose to advance the counter to just before the
+                        // last mandatory iteration so that this fast-forwarding behavior does not
+                        // coincide with an exit guard that should pass.
                         locals.setQuantifierCount(q, q.getMin() - 1);
                     }
                     break;
