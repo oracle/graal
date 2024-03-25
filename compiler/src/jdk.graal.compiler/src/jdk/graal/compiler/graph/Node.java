@@ -1632,6 +1632,12 @@ public abstract class Node implements Cloneable, Formattable {
         return id;
     }
 
+    @Deprecated
+    public int getIdBeforeDeletion() {
+        assert isDeleted();
+        return (id - DELETED_ID_START) * -1;
+    }
+
     @Override
     public void formatTo(Formatter formatter, int flags, int width, int precision) {
         if ((flags & FormattableFlags.ALTERNATE) == FormattableFlags.ALTERNATE) {
