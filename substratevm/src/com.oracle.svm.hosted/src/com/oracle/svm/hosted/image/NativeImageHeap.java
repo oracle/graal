@@ -356,7 +356,7 @@ public final class NativeImageHeap implements ImageHeap {
                  * image that the static analysis has not seen - so this check actually protects
                  * against much more than just missing class initialization information.
                  */
-                throw reportIllegalType(hUniverse.getSnippetReflection().asObject(Object.class, constant), reason);
+                throw reportIllegalType(hub, reason, "Missing class initialization info for " + hub.getName() + " type.");
             }
         }
 
@@ -599,15 +599,24 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     private static HostedType requireType(Optional<HostedType> optionalType, Object object, Object reason) {
-        if (!optionalType.isPresent() || !optionalType.get().isInstantiated()) {
-            throw reportIllegalType(object, reason);
+        if (optionalType.isEmpty()) {
+            throw reportIllegalType(object, reason, "Analysis type is missing for hosted object of " + object.getClass().getTypeName() + " class.");
         }
-        return optionalType.get();
+        HostedType hostedType = optionalType.get();
+        if (!hostedType.isInstantiated()) {
+            throw reportIllegalType(object, reason, "Type " + hostedType.toJavaName() + " was not marked instantiated.");
+        }
+        return hostedType;
     }
 
     static RuntimeException reportIllegalType(Object object, Object reason) {
+        throw reportIllegalType(object, reason, "");
+    }
+
+    static RuntimeException reportIllegalType(Object object, Object reason, String problem) {
         StringBuilder msg = new StringBuilder();
-        msg.append("Image heap writing found a class not seen during static analysis. ");
+        msg.append("Problem during heap layout: ").append(problem).append(" ");
+        msg.append("The static analysis may have missed a type. ");
         msg.append("Did a static field or an object referenced from a static field change during native image generation? ");
         msg.append("For example, a lazily initialized cache could have been initialized during image generation, in which case ");
         msg.append("you need to force eager initialization of the cache before static analysis or reset the cache using a field ");

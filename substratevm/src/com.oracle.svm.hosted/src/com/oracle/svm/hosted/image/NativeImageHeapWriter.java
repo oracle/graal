@@ -136,7 +136,7 @@ public final class NativeImageHeapWriter {
 
     private static void verifyTargetDidNotChange(Object target, Object reason, Object targetInfo) {
         if (targetInfo == null) {
-            throw NativeImageHeap.reportIllegalType(target, reason);
+            throw NativeImageHeap.reportIllegalType(target, reason, "Inconsistent image heap.");
         }
     }
 
