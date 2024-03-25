@@ -25,7 +25,6 @@
 
 package com.oracle.svm.hosted;
 
-import static com.oracle.svm.core.jdk.Resources.NEGATIVE_QUERY_MARKER;
 import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATOR;
 import static com.oracle.svm.core.jdk.Resources.createStorageKey;
 
@@ -64,7 +63,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -89,12 +87,13 @@ import com.oracle.svm.core.jdk.resources.NativeImageResourceFileAttributes;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileAttributesView;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystem;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider;
-import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionMigrationMessage;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
@@ -155,9 +154,10 @@ public final class ResourcesFeature implements InternalFeature {
         @Option(help = "Regexp to match names of resources to be excluded from the image.", type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ExcludeResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
-        @Option(help = "Create a Native Image registered resources json", type = OptionType.Debug) //
-        public static final HostedOptionKey<Boolean> DumpRegisteredResources = new HostedOptionKey<>(false);
-
+        public static final String EMBEDDED_RESOURCES_FILE_NAME = "embedded-resources.json";
+        @Option(help = "Create a " + EMBEDDED_RESOURCES_FILE_NAME + " file in the build directory. The output conforms to the JSON schema located at: " +
+                        "docs/reference-manual/native-image/assets/embedded-resources-schema-v0.1.0.json", type = OptionType.User)//
+        public static final HostedOptionKey<Boolean> GenerateEmbeddedResourcesFile = new HostedOptionKey<>(false);
     }
 
     private boolean sealed = false;
@@ -175,7 +175,7 @@ public final class ResourcesFeature implements InternalFeature {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void declareResourceAsRegistered(Module module, String resource, String source) {
-        if (Options.DumpRegisteredResources.getValue()) {
+        if (Options.GenerateEmbeddedResourcesFile.getValue()) {
             Resources.ModuleResourceRecord key = createStorageKey(module, resource);
             synchronized (registeredResources) {
                 registeredResources.computeIfAbsent(key, k -> new ArrayList<>());
@@ -634,38 +634,16 @@ public final class ResourcesFeature implements InternalFeature {
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         sealed = true;
-        if (Options.DumpRegisteredResources.getValue()) {
-            List<ResourceReporter.ResourceReportEntry> resourceInfoList = new ArrayList<>();
-            EconomicMap<Resources.ModuleResourceRecord, ResourceStorageEntryBase> resourceStorage = Resources.singleton().getResourceStorage();
-            resourceStorage.getKeys().forEach(key -> {
-                Module module = key.module();
-                String resourceName = key.resource();
+        if (Options.GenerateEmbeddedResourcesFile.getValue()) {
+            Path reportLocation = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton()).resolve("embedded-resources.json");
+            EmbeddedResourceExporter resourceExporter = new EmbeddedResourceExporter(registeredResources);
+            ImageSingletons.add(EmbeddedResourceExporter.class, resourceExporter);
 
-                ResourceStorageEntryBase storageEntry = resourceStorage.get(key);
-                List<String> registeredEntrySources = registeredResources.get(key);
-                List<ResourceReporter.SourceSizePair> sources = new ArrayList<>();
-
-                // if registeredEntrySource is null we are processing
-                if (registeredEntrySources == null) {
-                    if (storageEntry != NEGATIVE_QUERY_MARKER) {
-                        VMError.shouldNotReachHere("Resource: " + resourceName +
-                                        " from module: " + module +
-                                        " wasn't register from ResourcesFeature. It should never happen except for NEGATIVE_QUERIES in some cases");
-                    }
-                    sources.add(new ResourceReporter.SourceSizePair("n/a", "NEGATIVE QUERY"));
-                } else {
-                    for (int i = 0; i < registeredEntrySources.size(); i++) {
-                        String source = registeredEntrySources.get(i);
-                        String size = storageEntry == NEGATIVE_QUERY_MARKER ? "NEGATIVE QUERY" : String.valueOf(storageEntry.getData().get(i).length);
-                        sources.add(new ResourceReporter.SourceSizePair(source, size));
-                    }
-                }
-
-                Boolean isDirectory = storageEntry == NEGATIVE_QUERY_MARKER ? null : storageEntry.isDirectory();
-                resourceInfoList.add(new ResourceReporter.ResourceReportEntry(module, resourceName, sources, isDirectory));
-            });
-
-            ResourceReporter.printReport(resourceInfoList);
+            try (JsonWriter writer = new JsonWriter(reportLocation)) {
+                EmbeddedResourceExporter.singleton().printReport(writer);
+            } catch (IOException e) {
+                throw VMError.shouldNotReachHere("Json writer cannot write to: " + reportLocation, e);
+            }
         }
     }
 
