@@ -51,6 +51,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleOptions;
 
 /**
  * A factory class that generates host adapter classes.
@@ -100,6 +101,12 @@ final class HostAdapterFactory {
         CompilerAsserts.neverPartOfCompilation();
 
         AbstractHostAccess polyglotAccess = hostClassCache.polyglotHostAccess;
+        if (TruffleOptions.AOT) {
+            throw HostEngineException.unsupported(polyglotAccess, String.format(
+                            "Cannot create host adapter class to extend %s. Generating new classes at run time is not supported on Native Image.",
+                            types.length == 1 ? types[0] : Arrays.toString(types)));
+        }
+
         Class<?> superClass = null;
         final List<Class<?>> interfaces = new ArrayList<>();
         for (final Class<?> t : types) {
