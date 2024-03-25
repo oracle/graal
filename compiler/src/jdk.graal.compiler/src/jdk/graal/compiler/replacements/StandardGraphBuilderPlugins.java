@@ -1791,6 +1791,22 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
+        r.register(new RequiredInlineOnlyInvocationPlugin("positivePi", int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, Receiver receiver, ValueNode n) {
+                BeginNode begin = b.add(new BeginNode());
+                b.addPush(JavaKind.Int, PiNode.create(n, StampFactory.positiveInt().improveWith(n.stamp(NodeView.DEFAULT)), begin));
+                return true;
+            }
+        });
+        r.register(new RequiredInlineOnlyInvocationPlugin("positivePi", long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, Receiver receiver, ValueNode n) {
+                BeginNode begin = b.add(new BeginNode());
+                b.addPush(JavaKind.Long, PiNode.create(n, IntegerStamp.create(64, 0, Long.MAX_VALUE).improveWith(n.stamp(NodeView.DEFAULT)), begin));
+                return true;
+            }
+        });
         r.register(new RequiredInlineOnlyInvocationPlugin("trustedBox", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a) {
