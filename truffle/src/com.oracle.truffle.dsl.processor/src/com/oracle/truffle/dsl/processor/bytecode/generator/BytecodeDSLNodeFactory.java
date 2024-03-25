@@ -7023,8 +7023,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.BytecodeIntrospection, "getIntrospectionData");
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.declaration(arrayOf(type(short.class)), "oldBc", "this.oldBytecodes");
-            b.declaration(arrayOf(type(short.class)), "bc", "oldBc != null ? oldBc : this.bytecodes");
+            if (model.isBytecodeUpdatable()) {
+                b.declaration(arrayOf(type(short.class)), "oldBc", "this.oldBytecodes");
+                b.declaration(arrayOf(type(short.class)), "bc", "oldBc != null ? oldBc : this.bytecodes");
+            } else {
+                b.declaration(arrayOf(type(short.class)), "bc", "this.bytecodes");
+            }
             b.declaration(generic(type(List.class), type(Object[].class)), "instructions", "new ArrayList<>()");
 
             b.declaration(type(int[].class), "bci", "new int[1]");
