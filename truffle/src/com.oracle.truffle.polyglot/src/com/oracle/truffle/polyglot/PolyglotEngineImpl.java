@@ -612,9 +612,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     Object logger = EngineAccessor.LANGUAGE.getLoggerCache(result);
                     LoggerCache loggerCache = (LoggerCache) EngineAccessor.LANGUAGE.getLoggersSPI(logger);
                     loggerCache.setOwner(this);
-                    if (!logLevels.isEmpty()) {
-                        EngineAccessor.LANGUAGE.configureLoggers(this, logLevels, logger);
-                    }
+                    EngineAccessor.LANGUAGE.configureLoggers(this, logLevels, logger);
                     this.engineLogger = result;
                 }
             }
@@ -631,12 +629,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     LoggerCache loggerCache = PolyglotLoggers.LoggerCache.newEngineLoggerCache(this);
                     loggerCache.setOwner(this);
                     res = LANGUAGE.createEngineLoggers(loggerCache);
-                    if (!logLevels.isEmpty()) {
-                        EngineAccessor.LANGUAGE.configureLoggers(this, logLevels, res);
-                    }
+                    EngineAccessor.LANGUAGE.configureLoggers(this, logLevels, res);
                     for (ContextWeakReference contextRef : contexts) {
                         PolyglotContextImpl context = contextRef.get();
-                        if (context != null && !context.config.logLevels.isEmpty()) {
+                        if (context != null) {
                             LANGUAGE.configureLoggers(context, context.config.logLevels, res);
                         }
                     }
