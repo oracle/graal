@@ -131,7 +131,7 @@ final class HostAdapterFactory {
                 throw HostEngineException.illegalArgument(polyglotAccess, String.format("Class not public: %s.", t.getCanonicalName()));
             }
             if (!HostInteropReflect.isExtensibleType(t) || !hostClassCache.allowsImplementation(t)) {
-                throw HostEngineException.illegalArgument(polyglotAccess, "Implementation not allowed for " + t);
+                throw HostEngineException.illegalArgument(polyglotAccess, String.format("Implementation not allowed for %s", t));
             }
         }
         superClass = superClass != null ? superClass : Object.class;
@@ -141,7 +141,7 @@ final class HostAdapterFactory {
 
         // Fail early if the class loader cannot load all supertypes.
         if (!classLoaderCanSee(commonLoader, types)) {
-            throw HostEngineException.illegalArgument(polyglotAccess, "Could not determine a class loader that can see all types: " + Arrays.toString(types));
+            throw HostEngineException.illegalArgument(polyglotAccess, String.format("Could not determine a class loader that can see all types: %s", Arrays.toString(types)));
         }
 
         Class<?> adapterClass;
@@ -168,7 +168,7 @@ final class HostAdapterFactory {
             }
             return new AdapterResult(adapterClass, constructor, valueConstructor);
         } else {
-            return new AdapterResult(HostEngineException.illegalArgument(polyglotAccess, "No accessible constructor: " + superClass.getCanonicalName()));
+            return new AdapterResult(HostEngineException.illegalArgument(polyglotAccess, String.format("No accessible constructor: %s", superClass.getCanonicalName())));
         }
     }
 
