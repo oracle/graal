@@ -1823,9 +1823,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         CodeTypeElement operationStackEntry = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "OperationStackEntry");
         CodeTypeElement finallyTryContext = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "FinallyTryContext");
         CodeTypeElement constantPool = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "ConstantPool");
-        CodeTypeElement bytecodeLocation = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "BytecodeLocation");
+        CodeTypeElement unresolvedBranchImmediate = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "UnresolvedBranchTarget");
 
-        TypeMirror unresolvedLabelsType = generic(HashMap.class, types.BytecodeLabel, generic(context.getDeclaredType(ArrayList.class), bytecodeLocation.asType()));
+        TypeMirror unresolvedLabelsType = generic(HashMap.class, types.BytecodeLabel, generic(context.getDeclaredType(ArrayList.class), unresolvedBranchImmediate.asType()));
 
         Map<Integer, CodeExecutableElement> doEmitInstructionMethods = new TreeMap<>();
 
@@ -2285,12 +2285,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                 new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "bci"),
                                 new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "sp"));
 
-                bytecodeLocation.addAll(fields);
+                unresolvedBranchImmediate.addAll(fields);
 
-                CodeExecutableElement ctor = createConstructorUsingFields(Set.of(), bytecodeLocation, null);
-                bytecodeLocation.add(ctor);
+                CodeExecutableElement ctor = createConstructorUsingFields(Set.of(), unresolvedBranchImmediate, null);
+                unresolvedBranchImmediate.add(ctor);
 
-                return bytecodeLocation;
+                return unresolvedBranchImmediate;
             }
         }
 
@@ -3005,8 +3005,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "stackHeight"));
 
             CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(generic(context.getDeclaredType(ArrayList.class), bytecodeLocation.asType()), "locations", "unresolvedLabels.computeIfAbsent(label, k -> new ArrayList<>())");
-            b.statement("locations.add(new BytecodeLocation(immediateBci, stackHeight))");
+            b.declaration(generic(context.getDeclaredType(ArrayList.class), unresolvedBranchImmediate.asType()), "locations", "unresolvedLabels.computeIfAbsent(label, k -> new ArrayList<>())");
+            b.startStatement().startCall("locations.add");
+            b.startNew(unresolvedBranchImmediate.asType()).string("immediateBci").string("stackHeight").end();
+            b.end(2);
 
             return ex;
         }
@@ -3020,9 +3022,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.statement("BytecodeLabelImpl impl = (BytecodeLabelImpl) label");
             b.statement("assert impl.isDefined()");
-            b.declaration(generic(List.class, bytecodeLocation.asType()), "sites", "unresolvedLabels.remove(impl)");
+            b.declaration(generic(List.class, unresolvedBranchImmediate.asType()), "sites", "unresolvedLabels.remove(impl)");
             b.startIf().string("sites != null").end().startBlock();
-            b.startFor().startGroup().type(bytecodeLocation.asType()).string(" site : sites").end(2).startBlock();
+            b.startFor().startGroup().type(unresolvedBranchImmediate.asType()).string(" site : sites").end(2).startBlock();
 
             b.startIf().string("stackHeight != site.sp").end().startBlock();
             b.startThrow().startNew(type(IllegalStateException.class));
@@ -3047,7 +3049,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("HashMap<Integer, BytecodeLabel> result = new HashMap<>()");
             b.startFor().string("BytecodeLabel lbl : unresolvedLabels.keySet()").end().startBlock();
-            b.startFor().startGroup().type(bytecodeLocation.asType()).string(" site : unresolvedLabels.get(lbl)").end(2).startBlock();
+            b.startFor().startGroup().type(unresolvedBranchImmediate.asType()).string(" site : unresolvedLabels.get(lbl)").end(2).startBlock();
             b.statement("assert !result.containsKey(site.bci)");
             b.statement("result.put(site.bci, lbl)");
             b.end(2);
@@ -3064,7 +3066,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("HashMap<Integer, Integer> result = new HashMap<>()");
             b.startFor().string("BytecodeLabel lbl : unresolvedLabels.keySet()").end().startBlock();
-            b.startFor().startGroup().type(bytecodeLocation.asType()).string(" site : unresolvedLabels.get(lbl)").end(2).startBlock();
+            b.startFor().startGroup().type(unresolvedBranchImmediate.asType()).string(" site : unresolvedLabels.get(lbl)").end(2).startBlock();
             b.statement("assert !result.containsKey(site.bci)");
             b.statement("result.put(site.bci, site.sp)");
             b.end(2);
