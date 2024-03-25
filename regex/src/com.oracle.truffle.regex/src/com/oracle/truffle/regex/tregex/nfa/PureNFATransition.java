@@ -49,6 +49,8 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
+import java.util.Arrays;
+
 /**
  * Represents a transition of a {@link PureNFA}.
  */
@@ -122,6 +124,7 @@ public final class PureNFATransition implements AbstractTransition<PureNFAState,
                         Json.prop("source", source.getId()),
                         Json.prop("target", target.getId()),
                         Json.prop("groupBoundaries", groupBoundaries),
-                        Json.prop("sourceSections", groupBoundaries.indexUpdateSourceSectionsToJson(ast)));
+                        Json.prop("sourceSections", groupBoundaries.indexUpdateSourceSectionsToJson(ast)),
+                        Json.prop("quantifierGuards", Arrays.stream(quantifierGuards).map(QuantifierGuard::toJson)));
     }
 }
