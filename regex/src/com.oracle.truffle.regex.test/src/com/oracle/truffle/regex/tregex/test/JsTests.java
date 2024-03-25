@@ -289,4 +289,17 @@ public class JsTests extends RegexTestBase {
         test("\\udf06", "u", "\uD834\uDF06", 0, false);
         test("x?\\udf06", "u", "\uD834\uDF06", 0, false);
     }
+
+    @Test
+    public void gr52906() {
+        // Original test case
+        test("\\b(((.*?)){67108860})\\b|(?=(?=(?!.).\\b(\\d))){0,4}", "yi", "L1O\n\n\n11\n  \n\n11\n  \uD091  1aa\uFCDB=\n ", 0, true, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1);
+        // Minimized version
+        test("(.*?){67108863}", "", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxx", 0, true, 0, 0, 0, 0);
+
+        // Linked issue
+        test("(?=(?=(\\W)\u008e+|\\uC47A|(\\s)))+?|((((?:(\\\u0015)))+?))|(?:\\r|[^]+?[^])|\\3{3,}", "gyim", "", 0, true, 0, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
+        // Minimized version
+        test("()\\1{3,}", "", "", 0, true, 0, 0, 0, 0);
+    }
 }

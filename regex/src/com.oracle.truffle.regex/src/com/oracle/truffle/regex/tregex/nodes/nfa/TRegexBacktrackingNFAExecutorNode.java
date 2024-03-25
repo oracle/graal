@@ -89,12 +89,13 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     private static final int FLAG_BACKREF_WITH_NULL_TARGET_FAILS = 1 << 2;
     private static final int FLAG_MONITOR_CAPTURE_GROUPS_IN_EMPTY_CHECK = 1 << 3;
     private static final int FLAG_TRANSITION_MATCHES_STEP_BY_STEP = 1 << 4;
-    private static final int FLAG_TRACK_LAST_GROUP = 1 << 5;
-    private static final int FLAG_RETURNS_FIRST_GROUP = 1 << 6;
-    private static final int FLAG_MUST_ADVANCE = 1 << 7;
-    private static final int FLAG_LONE_SURROGATES = 1 << 8;
-    private static final int FLAG_LOOPBACK_INITIAL_STATE = 1 << 9;
-    private static final int FLAG_USE_MERGE_EXPLODE = 1 << 10;
+    private static final int FLAG_EMPTY_CHECKS_ON_MANDATORY_LOOP_ITERATIONS = 1 << 5;
+    private static final int FLAG_TRACK_LAST_GROUP = 1 << 6;
+    private static final int FLAG_RETURNS_FIRST_GROUP = 1 << 7;
+    private static final int FLAG_MUST_ADVANCE = 1 << 8;
+    private static final int FLAG_LONE_SURROGATES = 1 << 9;
+    private static final int FLAG_LOOPBACK_INITIAL_STATE = 1 << 10;
+    private static final int FLAG_USE_MERGE_EXPLODE = 1 << 11;
     private static final int FLAG_RECURSIVE_BACK_REFERENCES = 1 << 12;
 
     private final PureNFA nfa;
@@ -199,6 +200,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         flags = setFlag(flags, FLAG_BACKREF_WITH_NULL_TARGET_FAILS, ast.getOptions().getFlavor().backreferencesToUnmatchedGroupsFail());
         flags = setFlag(flags, FLAG_MONITOR_CAPTURE_GROUPS_IN_EMPTY_CHECK, ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups());
         flags = setFlag(flags, FLAG_TRANSITION_MATCHES_STEP_BY_STEP, ast.getOptions().getFlavor().matchesTransitionsStepByStep());
+        flags = setFlag(flags, FLAG_EMPTY_CHECKS_ON_MANDATORY_LOOP_ITERATIONS, ast.getOptions().getFlavor().emptyChecksOnMandatoryLoopIterations());
         flags = setFlag(flags, FLAG_TRACK_LAST_GROUP, ast.getOptions().getFlavor().usesLastGroupResultField());
         flags = setFlag(flags, FLAG_RETURNS_FIRST_GROUP, !isFlagSet(flags, FLAG_FORWARD) && ast.getOptions().getFlavor().lookBehindsRunLeftToRight());
         flags = setFlag(flags, FLAG_MUST_ADVANCE, mustAdvance);
@@ -248,6 +250,10 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
      */
     public boolean isTransitionMatchesStepByStep() {
         return isFlagSet(FLAG_TRANSITION_MATCHES_STEP_BY_STEP);
+    }
+
+    public boolean isEmptyChecksOnMandatoryLoopIterations() {
+        return isFlagSet(FLAG_EMPTY_CHECKS_ON_MANDATORY_LOOP_ITERATIONS);
     }
 
     public boolean isTrackLastGroup() {
@@ -749,7 +755,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                 case exitZeroWidth:
                     if (locals.getZeroWidthQuantifierGuardIndex(q) == index &&
                                     (!isMonitorCaptureGroupsInEmptyCheck() || locals.isResultUnmodifiedByZeroWidthQuantifier(q)) &&
-                                    (!q.hasIndex() || locals.getQuantifierCount(q) > q.getMin())) {
+                                    (isEmptyChecksOnMandatoryLoopIterations() || !q.hasIndex() || locals.getQuantifierCount(q) > q.getMin())) {
                         return false;
                     }
                     break;
@@ -826,6 +832,14 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                 case enterZeroWidth:
                     locals.setZeroWidthQuantifierGuardIndex(q);
                     locals.setZeroWidthQuantifierResults(q);
+                    break;
+                case exitZeroWidth:
+                    boolean emptyCheckFailed = locals.getZeroWidthQuantifierGuardIndex(q) == index &&
+                                    (!isMonitorCaptureGroupsInEmptyCheck() || locals.isResultUnmodifiedByZeroWidthQuantifier(q));
+                    boolean advancePastOptionalIterations = !isEmptyChecksOnMandatoryLoopIterations() && q.hasIndex() && locals.getQuantifierCount(q) < q.getMin();
+                    if (emptyCheckFailed && advancePastOptionalIterations && !transition.hasCaretGuard() && !transition.hasDollarGuard()) {
+                        locals.setQuantifierCount(q, q.getMin() - 1);
+                    }
                     break;
                 default:
                     break;
