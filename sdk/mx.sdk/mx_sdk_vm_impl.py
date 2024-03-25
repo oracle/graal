@@ -1229,6 +1229,10 @@ class SvmSupport(object):
             '-H:Path=' + output_directory or ".",
         ])
 
+        # Prefix native-image builds that print straight to stdout or stderr with [<output_filename>:<pid>]
+        out = out or mx.PrefixCapture(sys.stdout.write, basename(output_file))
+        err = err or mx.PrefixCapture(sys.stderr.write, basename(output_file))
+
         mx.run(native_image_command, nonZeroIsFatal=True, out=out, err=err)
 
     def is_debug_supported(self):
@@ -2380,7 +2384,6 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
         output_file = self.subject.output_file()
         mx_util.ensure_dir_exists(dirname(output_file))
 
-        # Disable build server (different Java properties on each build prevent server reuse)
         self.svm_support.native_image(build_args, output_file)
 
         with open(self._get_command_file(), 'w') as f:
@@ -2409,7 +2412,6 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
             '-EJVMCI_VERSION_CHECK', # Propagate this env var when running native image from mx
             '--parallelism=' + str(self.parallelism),
         ] + svm_experimental_options([
-            '-H:+BuildOutputPrefix',
             '-H:+GenerateBuildArtifactsFile',  # generate 'build-artifacts.json'
         ]) + [
             '--macro:' + GraalVmNativeProperties.macro_name(self.subject.native_image_config), # last to allow overrides

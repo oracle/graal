@@ -505,7 +505,7 @@ public class SubstrateOptions {
     @Option(help = "Silence build output", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputSilent = new HostedOptionKey<>(false);
 
-    @Option(help = "Prefix build output with '<pid>:<image name>'", type = OptionType.User)//
+    @Option(help = "Deprecated, option no longer has any effect.", type = OptionType.User, deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
     public static final HostedOptionKey<Boolean> BuildOutputPrefix = new HostedOptionKey<>(false);
 
     @Option(help = "Color build output (enabled by default if colors are supported by terminal)", type = OptionType.User, deprecated = true, deprecationMessage = "Please use '--color' instead.")//

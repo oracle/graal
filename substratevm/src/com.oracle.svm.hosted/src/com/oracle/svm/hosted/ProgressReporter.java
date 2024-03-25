@@ -39,10 +39,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.Map.Entry;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -101,7 +101,6 @@ import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 
 public class ProgressReporter {
     private static final boolean IS_CI = SubstrateUtil.isRunningInCI();
@@ -121,10 +120,8 @@ public class ProgressReporter {
     private final StagePrinter<?> stagePrinter;
     private final ColorStrategy colorStrategy;
     private final LinkStrategy linkStrategy;
-    private final boolean usePrefix;
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
-    private String outputPrefix = "";
     private long lastGCCheckTimeMillis = System.currentTimeMillis();
     private GCStats lastGCStats = GCStats.getCurrent();
     private long numRuntimeCompiledMethods = -1;
@@ -184,7 +181,6 @@ public class ProgressReporter {
             builderIO = NativeImageSystemIOWrappers.singleton();
         }
         jsonHelper = new ProgressReporterJsonHelper();
-        usePrefix = SubstrateOptions.BuildOutputPrefix.getValue(options);
 
         boolean enableColors = SubstrateOptions.hasColorsEnabled(options);
         colorStrategy = enableColors ? new ColorfulStrategy() : new ColorlessStrategy();
@@ -208,11 +204,6 @@ public class ProgressReporter {
     }
 
     public void printStart(String imageName, NativeImageKind imageKind) {
-        if (usePrefix) {
-            // Add the PID to further disambiguate concurrent builds of images with the same name
-            outputPrefix = String.format("[%s:%s] ", imageName, GraalServices.getExecutionID());
-            stagePrinter.progressBarStart += outputPrefix.length();
-        }
         l().printHeadlineSeparator();
         recordJsonMetric(GeneralInfo.IMAGE_NAME, imageName);
         String imageKindName = imageKind.name().toLowerCase(Locale.ROOT).replace('_', ' ');
@@ -1069,7 +1060,7 @@ public class ProgressReporter {
      * Start printing a new line.
      */
     public DirectPrinter l() {
-        return linePrinter.a(outputPrefix);
+        return linePrinter;
     }
 
     public CenteredTextPrinter centered() {
@@ -1151,7 +1142,7 @@ public class ProgressReporter {
     }
 
     abstract class StagePrinter<T extends StagePrinter<T>> extends LinePrinter<T> {
-        private int progressBarStart = 30;
+        private static final int PROGRESS_BAR_START = 30;
         private BuildStage activeBuildStage = null;
 
         private ScheduledFuture<?> periodicPrintingTask;
@@ -1189,12 +1180,12 @@ public class ProgressReporter {
         }
 
         private void appendStageStart() {
-            a(outputPrefix).blue().a(String.format("[%s/%s] ", 1 + activeBuildStage.ordinal(), BuildStage.NUM_STAGES)).reset()
+            blue().a(String.format("[%s/%s] ", 1 + activeBuildStage.ordinal(), BuildStage.NUM_STAGES)).reset()
                             .blueBold().doclink(activeBuildStage.message, "#stage-" + activeBuildStage.name().toLowerCase(Locale.ROOT)).a("...").reset();
         }
 
         final String progressBarStartPadding() {
-            return Utils.stringFilledWith(progressBarStart - getCurrentTextLength(), " ");
+            return Utils.stringFilledWith(PROGRESS_BAR_START - getCurrentTextLength(), " ");
         }
 
         void reportProgress() {
@@ -1341,12 +1332,6 @@ public class ProgressReporter {
             assert getCurrentTextLength() == CHARACTERS_PER_LINE / 2;
             return this;
         }
-
-        @Override
-        void flushln() {
-            print(outputPrefix);
-            super.flushln();
-        }
     }
 
     public final class CenteredTextPrinter extends LinePrinter<CenteredTextPrinter> {
@@ -1357,7 +1342,6 @@ public class ProgressReporter {
 
         @Override
         public void flushln() {
-            print(outputPrefix);
             String padding = Utils.stringFilledWith((Math.max(0, CHARACTERS_PER_LINE - getCurrentTextLength())) / 2, " ");
             print(padding);
             super.flushln();
