@@ -33,8 +33,9 @@
       ["git", "clone", ["mx", "urlrewrite", "https://github.com/graalvm/js-tests.git"], "../../js-tests"],
       ["mx", "-p", "../vm", "--dynamicimports", "/graal-js,js-tests", "checkout-downstream", "graal-js", "js-tests"],
       # run downstream gate from js-tests suite.
-      ["mx", "-p", "../../js-tests", "sversions"],
-      ["mx", "-p", "../../js-tests", "gate", "--no-warning-as-error", "--all-suites", "--tags", "build,Test262-default,TestV8-default,regex"],
+      ["cd", "../../js-tests"],
+      ["mx", "sversions"],
+      ["mx", "gate", "--no-warning-as-error", "--all-suites", "--tags", "build,Test262-default,TestV8-default,regex"],
     ],
     targets: ["gate"],
   },
