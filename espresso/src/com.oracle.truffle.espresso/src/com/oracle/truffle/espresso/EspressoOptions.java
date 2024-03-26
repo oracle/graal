@@ -304,7 +304,7 @@ public final class EspressoOptions {
                     category = OptionCategory.USER, //
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "true|false") //
-    public static final OptionKey<Boolean> UseTRegex = new OptionKey<>(true);
+    public static final OptionKey<Boolean> UseTRegex = new OptionKey<>(false);
 
     @Option(help = "Speculatively inline field accessors.", //
                     category = OptionCategory.EXPERT, //
