@@ -327,7 +327,7 @@ class NativeImageBenchmarkConfig:
         """
         bundle_create_arg = "--bundle-create="
 
-        for i, arg in enumerate(self.extra_image_build_arguments):
+        for arg in self.extra_image_build_arguments:
             if arg.startswith(bundle_create_arg):
                 bundle_spec = arg[len(bundle_create_arg):]
 
@@ -365,7 +365,7 @@ class BenchOutStream:
 
 @dataclass
 class StagesContext:
-    vm: NativeImageVM
+    native_image_vm: NativeImageVM
     bench_out: Callable[[str], int]
     bench_err: Callable[[str], int]
     non_zero_is_fatal: bool
@@ -375,8 +375,8 @@ class StagesContext:
 class StageRunner:
     def __init__(self, stages: StagesContext):
         self.stages = stages
-        self.stages_info = stages.vm.stages_info
-        self.config: NativeImageBenchmarkConfig = stages.vm.config
+        self.stages_info = stages.native_image_vm.stages_info
+        self.config: NativeImageBenchmarkConfig = stages.native_image_vm.config
         self.bench_out = stages.bench_out
         self.bench_err = stages.bench_err
         self.final_image_name = self.config.final_image_name
