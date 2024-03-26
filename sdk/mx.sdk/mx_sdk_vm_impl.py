@@ -2414,7 +2414,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
 
         alt_c_compiler = getattr(self.args, 'alt_cl' if mx.is_windows() else 'alt_cc')
         if alt_c_compiler is not None:
-            experimental_build_args += ['-H:CCompilerPath=' + alt_c_compiler]
+            experimental_build_args += ['-H:CCompilerPath=' + shutil.which(alt_c_compiler)]
         if self.args.alt_cflags is not None:
             experimental_build_args += ['-H:CCompilerOption=' + self.args.alt_cflags]
         if self.args.alt_ldflags is not None:
