@@ -1250,8 +1250,12 @@ class ObjdumpSectionRule(mx_benchmark.StdOutRule):
         self.executable = executable
 
     def parse(self, _) -> Iterable[DataPoint]:
+        # False positive in pylint, it does not know about the `text` keyword.
+        # https://github.com/pylint-dev/astroid/issues/715
+        # pylint: disable=unexpected-keyword-arg
+        objdump_output = subprocess.check_output(["objdump", "-h", str(self.executable)], text=True)
         # Instead of the benchmark output, we pass the objdump output
-        return super().parse(subprocess.check_output(["objdump", "-h", str(self.executable)], text=True))
+        return super().parse(objdump_output)
 
 
 class FileSizeRule(mx_benchmark.FixedRule):
