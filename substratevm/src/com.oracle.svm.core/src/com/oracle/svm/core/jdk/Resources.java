@@ -43,6 +43,7 @@ import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -142,6 +143,11 @@ public final class Resources {
 
     public static ModuleResourceRecord createStorageKey(Module module, String resourceName) {
         Module m = module != null && module.isNamed() ? module : null;
+        if (ImageInfo.inImageBuildtimeCode()) {
+            if (m != null) {
+                m = RuntimeModuleSupport.instance().getRuntimeModuleForHostedModule(m);
+            }
+        }
         return new ModuleResourceRecord(m, resourceName);
     }
 
@@ -171,7 +177,6 @@ public final class Resources {
     private void addEntry(Module module, String resourceName, boolean isDirectory, byte[] data, boolean fromJar, boolean isNegativeQuery) {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to add a resource entry after analysis.");
         Module m = module != null && module.isNamed() ? module : null;
-
         synchronized (resources) {
             ModuleResourceRecord key = createStorageKey(m, resourceName);
             ResourceStorageEntryBase entry = resources.get(key);

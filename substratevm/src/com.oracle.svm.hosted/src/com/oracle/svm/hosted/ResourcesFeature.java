@@ -26,18 +26,16 @@
 package com.oracle.svm.hosted;
 
 import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATOR;
-import static com.oracle.svm.core.jdk.Resources.createStorageKey;
+import static com.oracle.svm.hosted.EmbeddedResourcesInfo.declareResourceAsRegistered;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.net.JarURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -51,21 +49,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
@@ -99,6 +91,7 @@ import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
+import com.oracle.svm.hosted.util.ResourcesUtils;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -170,21 +163,6 @@ public final class ResourcesFeature implements InternalFeature {
 
     private Set<ConditionalPattern> resourcePatternWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<String> excludedResourcePatterns = Collections.newSetFromMap(new ConcurrentHashMap<>());
-
-    @Platforms(Platform.HOSTED_ONLY.class) private static final ConcurrentHashMap<Resources.ModuleResourceRecord, List<String>> registeredResources = new ConcurrentHashMap<>();
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static void declareResourceAsRegistered(Module module, String resource, String source) {
-        if (Options.GenerateEmbeddedResourcesFile.getValue()) {
-            Resources.ModuleResourceRecord key = createStorageKey(module, resource);
-            synchronized (registeredResources) {
-                registeredResources.computeIfAbsent(key, k -> new ArrayList<>());
-                if (!registeredResources.get(key).contains(source)) {
-                    registeredResources.get(key).add(source);
-                }
-            }
-        }
-    }
 
     private int loadedConfigurations;
     private ImageClassLoader imageClassLoader;
@@ -296,7 +274,7 @@ public final class ResourcesFeature implements InternalFeature {
 
                 boolean isDirectory = Files.isDirectory(Path.of(resourcePath));
                 if (isDirectory) {
-                    String content = getDirectoryContent(resourcePath, false);
+                    String content = ResourcesUtils.getDirectoryContent(resourcePath, false);
                     Resources.singleton().registerDirectoryResource(module, resourcePath, content, false);
                 } else {
                     InputStream is = module.getResourceAsStream(resourcePath);
@@ -337,15 +315,16 @@ public final class ResourcesFeature implements InternalFeature {
                 alreadyProcessedResources.add(url.toString());
                 try {
                     boolean fromJar = url.getProtocol().equalsIgnoreCase("jar");
-                    boolean isDirectory = resourceIsDirectory(url, fromJar, resourcePath);
+                    boolean isDirectory = ResourcesUtils.resourceIsDirectory(url, fromJar, resourcePath);
                     if (isDirectory) {
-                        String content = getDirectoryContent(fromJar ? url.toString() : Paths.get(url.toURI()).toString(), fromJar);
+                        String content = ResourcesUtils.getDirectoryContent(fromJar ? url.toString() : Paths.get(url.toURI()).toString(), fromJar);
                         Resources.singleton().registerDirectoryResource(null, resourcePath, content, fromJar);
                     } else {
                         InputStream is = url.openStream();
                         registerResource(null, resourcePath, fromJar, is);
                     }
-                    String source = fromJar ? url.toURI().toString() : Path.of(url.getPath()).toUri().toString();
+
+                    String source = ResourcesUtils.getResourceSource(url, resourcePath, fromJar);
                     declareResourceAsRegistered(null, resourcePath, source);
                 } catch (IOException e) {
                     Resources.singleton().registerIOException(null, resourcePath, e, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(resourcePath));
@@ -369,74 +348,6 @@ public final class ResourcesFeature implements InternalFeature {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        }
-
-        /* Util functions for resource attributes calculations */
-        private String urlToJarPath(URL url) {
-            try {
-                return ((JarURLConnection) url.openConnection()).getJarFileURL().toURI().getPath();
-            } catch (IOException | URISyntaxException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        private boolean resourceIsDirectory(URL url, boolean fromJar, String resourcePath) throws IOException, URISyntaxException {
-            if (fromJar) {
-                try (JarFile jf = new JarFile(urlToJarPath(url))) {
-                    return jf.getEntry(resourcePath).isDirectory();
-                }
-            } else {
-                return Files.isDirectory(Path.of(url.toURI()));
-            }
-        }
-
-        private String getDirectoryContent(String path, boolean fromJar) throws IOException {
-            Set<String> content = new TreeSet<>();
-            if (fromJar) {
-                try (JarFile jf = new JarFile(urlToJarPath(URI.create(path).toURL()))) {
-                    String pathSeparator = FileSystems.getDefault().getSeparator();
-                    String directoryPath = path.split("!")[1];
-
-                    // we are removing leading slash because jar entry names don't start with slash
-                    if (directoryPath.startsWith(pathSeparator)) {
-                        directoryPath = directoryPath.substring(1);
-                    }
-
-                    Enumeration<JarEntry> entries = jf.entries();
-                    while (entries.hasMoreElements()) {
-                        String entry = entries.nextElement().getName();
-                        if (entry.startsWith(directoryPath)) {
-                            String contentEntry = entry.substring(directoryPath.length());
-
-                            // remove the leading slash
-                            if (contentEntry.startsWith(pathSeparator)) {
-                                contentEntry = contentEntry.substring(1);
-                            }
-
-                            // prevent adding empty strings as a content
-                            if (!contentEntry.isEmpty()) {
-                                // get top level content only
-                                int firstSlash = contentEntry.indexOf(pathSeparator);
-                                if (firstSlash != -1) {
-                                    content.add(contentEntry.substring(0, firstSlash));
-                                } else {
-                                    content.add(contentEntry);
-                                }
-                            }
-                        }
-                    }
-
-                }
-            } else {
-                try (Stream<Path> contentStream = Files.list(Path.of(path))) {
-                    content = new TreeSet<>(contentStream
-                                    .map(Path::getFileName)
-                                    .map(Path::toString)
-                                    .toList());
-                }
-            }
-
-            return String.join(System.lineSeparator(), content);
         }
     }
 
@@ -593,7 +504,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void registerNegativeQuery(Module module, String resourceName) {
-            declareResourceAsRegistered(module, resourceName, "n/a");
+            declareResourceAsRegistered(module, resourceName, "");
             Resources.singleton().registerNegativeQuery(module, resourceName);
         }
     }
@@ -636,11 +547,8 @@ public final class ResourcesFeature implements InternalFeature {
         sealed = true;
         if (Options.GenerateEmbeddedResourcesFile.getValue()) {
             Path reportLocation = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton()).resolve("embedded-resources.json");
-            EmbeddedResourceExporter resourceExporter = new EmbeddedResourceExporter(registeredResources);
-            ImageSingletons.add(EmbeddedResourceExporter.class, resourceExporter);
-
             try (JsonWriter writer = new JsonWriter(reportLocation)) {
-                EmbeddedResourceExporter.singleton().printReport(writer);
+                EmbeddedResourceExporter.printReport(writer);
             } catch (IOException e) {
                 throw VMError.shouldNotReachHere("Json writer cannot write to: " + reportLocation, e);
             }
