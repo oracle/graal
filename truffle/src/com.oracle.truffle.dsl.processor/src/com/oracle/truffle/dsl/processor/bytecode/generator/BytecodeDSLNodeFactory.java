@@ -317,6 +317,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         bytecodeNodeGen.addOptional(createPrepareForInstrumentation());
 
         bytecodeNodeGen.add(createEncodeTags());
+        if (model.enableTagInstrumentation) {
+            bytecodeNodeGen.add(createSupportsTagImpl());
+        }
 
         // Define a loop counter class to track how many back-edges have been taken.
         bytecodeNodeGen.add(createLoopCounter());
@@ -380,6 +383,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         bytecodeNodeGen.add(createGetSourceSection());
         bytecodeNodeGen.addAll(createCopyLocals());
 
+        CodeTypeElement cachedNode = bytecodeNodeGen.add(new AbstractCachedNode().create());
+
         // Define the generated Node classes for custom instructions.
         StaticConstants consts = new StaticConstants();
         for (InstructionModel instr : model.getInstructions()) {
@@ -393,10 +398,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             CodeTypeElement el = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, cachedDataClassName(instr));
             mergeSuppressWarnings(el, "static-method");
-            el.setSuperClass(types.Node);
+            el.setSuperClass(cachedNode.asType());
             factory.create(el);
-
-            el.add(createNodeGetSourceSection(cachedBytecodeNode));
 
             List<ExecutableElement> cachedExecuteMethods = new ArrayList<>();
             cachedExecuteMethods.add(createCachedExecute(plugs, factory, el, instr));
@@ -432,13 +435,21 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return bytecodeNodeGen;
     }
 
-    private CodeExecutableElement createNodeGetSourceSection(CodeTypeElement cachedBytecodeNode) {
-        CodeExecutableElement ex = GeneratorUtils.override(types.Node, "getSourceSection");
+    private CodeExecutableElement createSupportsTagImpl() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(boolean.class), "supportsTagImpl");
+        ex.addParameter(new CodeVariableElement(type(Class.class), "tag"));
+        ex.getModifiers().remove(Modifier.ABSTRACT);
+        ex.getModifiers().add(Modifier.FINAL);
         CodeTreeBuilder b = ex.createBuilder();
-        b.declaration(cachedBytecodeNode.asType(), "bytecode", CodeTreeBuilder.createBuilder().cast(cachedBytecodeNode.asType(), "getParent()").build());
-        b.declaration(type(int.class), "bci", "bytecode.findBytecodeIndexOfOperationNode(this)");
-        b.startReturn().string("bytecode.findSourceLocation(bci)").end();
-        return withTruffleBoundary(ex);
+        boolean elseIf = false;
+        for (TypeMirror tag : model.getProvidedTags()) {
+            elseIf = b.startIf(elseIf);
+            b.string("tag == ").typeLiteral(tag).end().startBlock();
+            b.startReturn().string("true").end();
+            b.end();
+        }
+        b.returnFalse();
+        return ex;
     }
 
     private CodeVariableElement createBytecodeUpdater() {
@@ -1531,6 +1542,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
         CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.RootNode, "prepareForInstrumentation");
         ex.renameArguments("materializedTags");
+        GeneratorUtils.mergeSuppressWarnings(ex, "unchecked");
         CodeTreeBuilder b = ex.createBuilder();
 
         b.declaration(types.BytecodeConfig_Builder, "b", "newConfigBuilder()");
@@ -1851,14 +1863,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "operationSequenceNumber"),
                         new CodeVariableElement(Set.of(PRIVATE), new ArrayCodeTypeMirror(operationStackEntry.asType()), "operationStack"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "operationSp"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "rootOperationSp"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLocals"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLabels"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numNodes"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numConditionalBranches"),
-                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceIndexStack"),
-                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceIndexSp"),
-                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceLocationStack"),
-                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceLocationSp"),
                         reachable,
                         new CodeVariableElement(Set.of(PRIVATE), finallyTryContext.asType(), "finallyTryContext"),
                         new CodeVariableElement(Set.of(PRIVATE), constantPool.asType(), "constantPool"),
@@ -1895,13 +1904,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
         }
 
-        private static String getDataClassName(OperationModel operation) {
+        private String getDataClassName(OperationModel operation) {
             if (operation.isTransparent()) {
                 switch (operation.kind) {
                     case TAG:
                         return "TagOperationData";
                     case ROOT:
                         return "RootData";
+                    case SOURCE_SECTION:
+                        return "SourceSectionOperationData";
+                    case SOURCE:
+                        return "SourceOperationData";
                     default:
                         return "TransparentOperationData";
                 }
@@ -1915,7 +1928,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         return "RootData";
                     case STORE_LOCAL:
                     case STORE_LOCAL_MATERIALIZED:
-                        return "StoreLocalData";
+                        if (model.usesBoxingElimination()) {
+                            return "StoreLocalData";
+                        } else {
+                            return "BytecodeLocal";
+                        }
+                    case LOAD_LOCAL_MATERIALIZED:
+                        return "BytecodeLocal";
                     case IF_THEN:
                         return "IfThenData";
                     case IF_THEN_ELSE:
@@ -1935,7 +1954,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case CUSTOM_SHORT_CIRCUIT:
                         return "CustomShortCircuitOperationData";
                     default:
-                        throw new AssertionError("Unexpected data name " + operation.kind);
+                        return null;
                 }
             }
         }
@@ -1948,6 +1967,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                 field(types.TruffleLanguage, "language").asFinal(),
                                 field(context.getType(boolean.class), "producedValue").withInitializer("false"),
                                 field(context.getType(int.class), "childBci").withInitializer("-1"),
+                                field(context.getType(int.class), "beginBci").withInitializer("-1"),
                                 field(context.getType(boolean.class), "reachable").withInitializer("true")));
 
                 result.add(createDataClass(model.blockOperation,
@@ -1964,6 +1984,19 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                     field(generic(type(List.class), tagNode.asType()), "children").withInitializer("null"),
                                     field(tagNode.asType(), "node")));
                 }
+
+                result.add(createDataClass(model.sourceSectionOperation,
+                                field(context.getType(int.class), "sourceIndex").withInitializer("-1"),
+                                field(context.getType(int.class), "beginBci").withInitializer("-1"),
+                                field(context.getType(int.class), "start").withInitializer("-1"),
+                                field(context.getType(int.class), "length").withInitializer("-1"),
+                                field(context.getType(boolean.class), "producedValue"),
+                                field(context.getType(int.class), "childBci")));
+
+                result.add(createDataClass(model.sourceOperation,
+                                field(context.getType(int.class), "sourceIndex").withInitializer("-1"),
+                                field(context.getType(boolean.class), "producedValue"),
+                                field(context.getType(int.class), "childBci")));
 
                 result.add(createDataClass(model.returnOperation,
                                 field(context.getType(boolean.class), "producedValue"),
@@ -2396,6 +2429,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             builder.add(createFinish());
             builder.add(createDoEmitBranch());
             builder.add(createDoEmitReturn());
+            builder.add(createDoEmitRoot());
             builder.add(createAllocateNode());
             builder.add(createAllocateBranchProfile());
             builder.add(createInFinallyTryHandler());
@@ -3104,8 +3138,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             CodeTreeBuilder b = ex.createBuilder();
 
-            createCheckRoot(b);
-
             b.startIf().string("operationSp == operationStack.length").end().startBlock(); // {
             b.startAssign("operationStack").startStaticCall(context.getType(Arrays.class), "copyOf");
             b.string("operationStack");
@@ -3206,6 +3238,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = ex.createBuilder();
 
             if (operation.kind == OperationKind.TAG) {
+                b.startIf().string("newTags.length == 0").end().startBlock();
+                b.startThrow().startNew(type(IllegalArgumentException.class)).doubleQuote("The tags parameter for beginTag must not be empty. Please specify at least one tag.").end().end();
+                b.end();
+
                 b.declaration(type(int.class), "encodedTags", "encodeTags(newTags)");
                 b.startIf().string("(encodedTags & this.tags) == 0").end().startBlock();
                 b.returnStatement();
@@ -3244,6 +3280,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.statement("tagNodes.add(node)");
             }
 
+            if (operation.requiresRootOperation) {
+                b.startStatement().startCall("validateRootOperationBegin").end(2);
+            }
             b.startStatement().startCall("beforeChild").end(2);
 
             /**
@@ -3251,11 +3290,21 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
              * referenced by the returned CodeTree. We have to call it before we start the
              * beginOperation call.
              */
-            CodeTree operationData = createOperationBeginData(b, operation);
-            b.startStatement().startCall("beginOperation");
-            b.tree(createOperationConstant(operation));
-            b.tree(operationData);
-            b.end(2);
+
+            String dataClassName = getDataClassName(operation);
+            if (dataClassName != null) {
+                CodeTree operationData = createOperationBeginData(b, operation);
+                b.declaration(dataClassName, "operationData", operationData);
+                b.startStatement().startCall("beginOperation");
+                b.tree(createOperationConstant(operation));
+                b.string("operationData");
+                b.end(2);
+            } else {
+                b.startStatement().startCall("beginOperation");
+                b.tree(createOperationConstant(operation));
+                b.string("null");
+                b.end(2);
+            }
 
             switch (operation.kind) {
                 case SOURCE:
@@ -3263,40 +3312,40 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.startThrow().startNew(type(IllegalArgumentException.class)).doubleQuote("Byte-based sources are not supported.").end(2);
                     b.end();
 
-                    b.startIf().string("sourceIndexStack.length == sourceIndexSp").end().startBlock();
-                    b.statement("sourceIndexStack = Arrays.copyOf(sourceIndexStack, sourceIndexSp * 2)");
-                    b.end();
-
                     b.statement("int index = sources.indexOf(" + operation.getOperationArgumentName(0) + ")");
                     b.startIf().string("index == -1").end().startBlock();
                     b.statement("index = sources.size()");
                     b.statement("sources.add(" + operation.getOperationArgumentName(0) + ")");
                     b.end();
-
-                    b.statement("sourceIndexStack[sourceIndexSp++] = index");
-
-                    b.startIf().string("sourceLocationStack.length == sourceLocationSp").end().startBlock();
-                    b.statement("sourceLocationStack = Arrays.copyOf(sourceLocationStack, sourceLocationSp * 2)");
-                    b.end();
-
-                    b.statement("sourceLocationStack[sourceLocationSp++] = -1");
-                    b.statement("sourceLocationStack[sourceLocationSp++] = -1");
-
-                    b.statement("doEmitSourceInfo(index, -1, -1)");
+                    b.statement("operationData.sourceIndex = index");
                     break;
                 case SOURCE_SECTION:
-                    b.startIf().string("sourceIndexSp == 0").end().startBlock();
+                    b.declaration(type(int.class), "foundSourceIndex", "-1");
+                    b.string("loop: ").startFor().string("int i = operationSp -1; i >= 0; i--").end().startBlock();
+                    b.startSwitch().string("operationStack[i].operation").end().startBlock();
+
+                    b.startCase().tree(createOperationConstant(model.sourceOperation)).end();
+                    b.startCaseBlock();
+                    emitCastOperationData(b, model.sourceOperation, "i", "sourceData");
+                    b.statement("foundSourceIndex = sourceData.sourceIndex");
+                    b.statement("break loop");
+                    b.end(); // case epilog
+                    b.end(); // switch
+                    b.end(); // for
+
+                    b.startIf().string("foundSourceIndex == -1").end().startBlock();
                     emitThrowIllegalStateException(b, "\"No enclosing Source operation found - each SourceSection must be enclosed in a Source operation.\"");
                     b.end();
 
-                    b.startIf().string("sourceLocationStack.length == sourceLocationSp").end().startBlock();
-                    b.statement("sourceLocationStack = Arrays.copyOf(sourceLocationStack, sourceLocationSp * 2)");
+                    b.statement("operationData.sourceIndex = foundSourceIndex");
+                    b.startIf().string("rootOperationSp == -1").end().startBlock();
+                    b.lineComment("not in a root yet");
+                    b.statement("operationData.beginBci = 0");
+                    b.end().startElseBlock();
+                    b.statement("operationData.beginBci = bci");
                     b.end();
-
-                    b.statement("sourceLocationStack[sourceLocationSp++] = " + operation.getOperationArgumentName(0));
-                    b.statement("sourceLocationStack[sourceLocationSp++] = " + operation.getOperationArgumentName(1));
-
-                    b.statement("doEmitSourceInfo(sourceIndexStack[sourceIndexSp - 1], " + operation.getOperationArgumentName(0) + ", " + operation.getOperationArgumentName(1) + ")");
+                    b.statement("operationData.start = " + operation.getOperationArgumentName(0));
+                    b.statement("operationData.length = " + operation.getOperationArgumentName(1));
                     break;
                 case WHILE:
                     if (model.enableTracing) {
@@ -3362,9 +3411,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end(2);
             }
 
-            b.statement("operationStack = new OperationStackEntry[8]");
             b.statement("operationSequenceNumber = 0");
-            b.statement("operationSp = 0");
+            b.statement("rootOperationSp = operationSp");
 
             b.statement("reachable = true");
             if (model.enableTagInstrumentation) {
@@ -3378,28 +3426,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("numConditionalBranches = 0");
             b.statement("constantPool = new ConstantPool()");
 
-            b.startIf().string("parseSources").end().startBlock();
-            b.statement("sourceIndexStack = new int[1]");
-            b.statement("sourceIndexSp = 0");
-            b.statement("sourceLocationStack = new int[12]");
-            b.statement("sourceLocationSp = 0");
+            b.startStatement().string("RootData operationData = ");
+            b.tree(createOperationData("RootData", "language"));
             b.end();
 
             b.startStatement().startCall("beginOperation");
             b.tree(createOperationConstant(rootOperation));
-            b.tree(createOperationData("RootData", "language"));
+            b.string("operationData");
             b.end(2);
 
             if (model.prolog != null || model.epilogExceptional != null || model.epilogReturn != null) {
                 if (model.enableRootTagging) {
                     buildBegin(b, model.tagOperation, lookupTagConstant(types.StandardTags_RootTag).getSimpleName().toString());
-                }
-
-                if (model.epilogExceptional != null) {
-// b.lineComment("For exceptional epilog support, Root(ops...) is rewritten to
-// Root(TryCatch(Block(ops...), <invoke epilog; rethrow>))");
-// buildBegin(b, model.tryCatchOperation, String.format("new %s(%s)",
-// bytecodeLocalImpl.getSimpleName().toString(), EPILOG_EXCEPTION_IDX));
                 }
 
                 // If prolog defined, emit prolog before Root's child.
@@ -3424,6 +3462,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (needsRootBlock()) {
                 buildBegin(b, model.blockOperation);
             }
+
+            b.statement("operationData.beginBci = bci");
 
             return ex;
         }
@@ -3509,7 +3549,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeTree createOperationBeginData(CodeTreeBuilder b, OperationModel operation) {
             if (operation.isTransparent) {
-                return createOperationData("TransparentOperationData", "false", UNINIT);
+                return createOperationData(getDataClassName(operation), "false", UNINIT);
             }
             return switch (operation.kind) {
                 case STORE_LOCAL, STORE_LOCAL_MATERIALIZED -> {
@@ -3606,12 +3646,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createEndOperation() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "endOperation");
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), operationStackEntry.asType(), "endOperation");
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "id"));
 
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.startIf().string("operationSp <= 0 || operationStack == null").end().startBlock(); // {
+            b.startIf().string("operationSp == 0").end().startBlock(); // {
             b.startThrow().startNew(context.getType(IllegalStateException.class));
             b.string("\"Unexpected operation end - there are no operations on the stack. Did you forget a beginRoot()?\"").end();
             b.end(2);
@@ -3634,7 +3674,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(2);
             b.end(3);
 
+            b.statement("operationStack[operationSp - 1] = null");
             b.statement("operationSp -= 1");
+
+            b.statement("return entry");
 
             return ex;
         }
@@ -3657,6 +3700,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = ex.createBuilder();
 
             if (operation.kind == OperationKind.TAG) {
+                b.startIf().string("newTags.length == 0").end().startBlock();
+                b.startThrow().startNew(type(IllegalArgumentException.class)).doubleQuote("The tags parameter for beginTag must not be empty. Please specify at least one tag.").end().end();
+                b.end();
                 b.declaration(type(int.class), "encodedTags", "encodeTags(newTags)");
                 b.startIf().string("(encodedTags & this.tags) == 0").end().startBlock();
                 b.returnStatement();
@@ -3677,41 +3723,45 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 serializationWrapException(b, () -> {
                     serializationElements.writeShort(b, serializationElements.codeEnd[operation.id]);
                     if (operation.kind == OperationKind.TAG) {
-                        serializationElements.writeShort(b, "encodedTags");
+                        serializationElements.writeInt(b, "encodedTags");
                     }
                     b.statement("return");
                 });
                 b.end();
             }
 
-            b.startStatement().startCall("endOperation");
+            b.startDeclaration(operationStackEntry.asType(), "operation").startCall("endOperation");
             b.tree(createOperationConstant(operation));
             b.end(2);
 
             if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
                 // Short-circuiting operations should have at least one child.
-                b.startIf().string("operationStack[operationSp].childCount == 0").end().startBlock();
+                b.startIf().string("operation.childCount == 0").end().startBlock();
                 emitThrowIllegalStateException(b, "\"Operation " + operation.name + " expected at least " + childString(1) +
-                                ", but \" + operationStack[operationSp].childCount + \" provided. This is probably a bug in the parser.\"");
+                                ", but \" + operation.childCount + \" provided. This is probably a bug in the parser.\"");
                 b.end();
             } else if (operation.isVariadic && operation.numChildren > 1) {
                 // The variadic child is included in numChildren, so the operation requires
                 // numChildren - 1 children at minimum.
-                b.startIf().string("operationStack[operationSp].childCount < " + (operation.numChildren - 1)).end().startBlock();
+                b.startIf().string("operation.childCount < " + (operation.numChildren - 1)).end().startBlock();
                 emitThrowIllegalStateException(b, "\"Operation " + operation.name + " expected at least " + childString(operation.numChildren - 1) +
-                                ", but \" + operationStack[operationSp].childCount + \" provided. This is probably a bug in the parser.\"");
+                                ", but \" + operation.childCount + \" provided. This is probably a bug in the parser.\"");
                 b.end();
             } else if (!operation.isVariadic) {
-                b.startIf().string("operationStack[operationSp].childCount != " + operation.numChildren).end().startBlock();
+                b.startIf().string("operation.childCount != " + operation.numChildren).end().startBlock();
                 emitThrowIllegalStateException(b, "\"Operation " + operation.name + " expected exactly " + childString(operation.numChildren) +
-                                ", but \" + operationStack[operationSp].childCount + \" provided. This is probably a bug in the parser.\"");
+                                ", but \" + operation.childCount + \" provided. This is probably a bug in the parser.\"");
                 b.end();
+            }
+
+            if (operation.isTransparent) {
+                emitCastCurrentOperationData(b, operation);
             }
 
             switch (operation.kind) {
                 case CUSTOM_SHORT_CIRCUIT:
                     InstructionModel shortCircuitInstruction = operation.instruction;
-                    emitCastOperationData(b, operation, "operationSp");
+                    emitCastCurrentOperationData(b, operation);
                     if (shortCircuitInstruction.shortCircuitModel.returnConvertedBoolean()) {
                         /*
                          * All operands except the last are automatically converted when testing the
@@ -3729,27 +3779,21 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.end();
                     break;
                 case SOURCE_SECTION:
-                    b.statement("sourceLocationSp -= 2");
                     b.startStatement().startCall("doEmitSourceInfo");
-                    b.string("sourceIndexStack[sourceIndexSp - 1]");
-                    b.string("sourceLocationStack[sourceLocationSp - 2]");
-                    b.string("sourceLocationStack[sourceLocationSp - 1]");
+                    b.string("operationData.sourceIndex");
+                    b.string("operationData.beginBci");
+                    b.string("bci");
+                    b.string("operationData.start");
+                    b.string("operationData.length");
                     b.end(2);
                     break;
                 case SOURCE:
-                    b.statement("sourceLocationSp -= 2");
-                    b.statement("sourceIndexSp -= 1");
-                    b.startIf().string("sourceIndexSp > 0").end().startBlock();
-                    b.statement("doEmitSourceInfo(sourceIndexStack[sourceIndexSp - 1], sourceLocationStack[sourceLocationSp - 2], sourceLocationStack[sourceLocationSp - 1])");
-                    b.end().startElseBlock();
-                    b.statement("doEmitSourceInfo(sourceIndexStack[sourceIndexSp], -1, -1)");
-                    b.end();
                     break;
                 case IF_THEN_ELSE:
                     if (model.enableTracing) {
                         b.statement("basicBlockBoundary[bci] = true");
                     }
-                    emitCastOperationData(b, operation, "operationSp");
+                    emitCastCurrentOperationData(b, operation);
                     b.statement("markReachable(operationData.thenReachable || operationData.elseReachable)");
                     break;
                 case IF_THEN:
@@ -3760,7 +3804,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("updateReachable()");
                     break;
                 case CONDITIONAL:
-                    emitCastOperationData(b, operation, "operationSp");
+                    emitCastCurrentOperationData(b, operation);
                     if (model.enableTracing) {
                         b.statement("basicBlockBoundary[bci] = true");
                     }
@@ -3770,11 +3814,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     }
                     break;
                 case TRY_CATCH:
-                    emitCastOperationData(b, operation, "operationSp");
+                    emitCastCurrentOperationData(b, operation);
                     b.statement("markReachable(operationData.tryReachable || operationData.catchReachable)");
                     break;
                 case FINALLY_TRY:
-                    emitCastOperationData(b, operation, "operationSp");
+                    emitCastCurrentOperationData(b, operation);
 
                     b.declaration(type(int.class), "exHandlerIndex", UNINIT);
                     b.declaration(type(short.class), "exceptionIndex", UNINIT);
@@ -3826,7 +3870,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.end();
                     break;
                 case FINALLY_TRY_NO_EXCEPT:
-                    emitCastOperationData(b, operation, "operationSp");
+                    emitCastCurrentOperationData(b, operation);
                     b.statement("BytecodeLocalImpl exceptionLocal = (BytecodeLocalImpl) operationData.exceptionLocal");
 
                     b.statement("FinallyTryContext ctx = (FinallyTryContext) operationData.finallyTryContext");
@@ -3840,17 +3884,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                     break;
                 case RETURN:
-                    emitCastOperationData(b, operation, "operationSp");
+                    emitCastCurrentOperationData(b, operation);
                     b.statement("doEmitReturn(operationData.childBci)");
                     buildEmitOperationInstruction(b, operation);
                     b.statement("markReachable(false)");
                     break;
                 case TAG:
-                    emitCastOperationData(b, operation, "operationSp");
+                    emitCastCurrentOperationData(b, operation);
                     b.declaration(type(int.class), "sp", "operationSp - 1");
                     b.startWhile().string("sp >= 0").end().startBlock();
-                    b.declaration("OperationStackEntry", "e", "operationStack[sp]");
-                    b.startIf().string("e.data instanceof TagOperationData t").end().startBlock();
+                    b.startIf().string("operationStack[sp].data instanceof TagOperationData t").end().startBlock();
                     b.startIf().string("t.children == null").end().startBlock();
                     b.statement("t.children = new ArrayList<>(3)");
                     b.end();
@@ -3950,7 +3993,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 // handled in tag section
             } else if (operation.isTransparent) {
                 // custom transparent operations have the operation cast on the stack
-                emitCastOperationData(b, operation, "operationSp");
                 b.startStatement().startCall("afterChild");
                 b.string("operationData.producedValue");
                 b.string("operationData.childBci");
@@ -4023,15 +4065,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
             }
 
+            b.declaration("int", "rootEndBci", "this.bci");
             if (needsRootBlock()) {
                 emitCastOperationData(b, model.blockOperation, "operationSp - 1", "blockOperation");
                 b.startIf().string("!blockOperation.producedValue").end().startBlock();
                 buildEmit(b, model.loadConstantOperation, "null");
                 b.end();
                 buildEnd(b, model.blockOperation);
-                emitCastOperationData(b, model.rootOperation, "0");
+                emitCastOperationData(b, model.rootOperation, "rootOperationSp");
             } else {
-                emitCastOperationData(b, model.rootOperation, "0");
+                emitCastOperationData(b, model.rootOperation, "rootOperationSp");
                 b.startIf().string("!operationData.producedValue").end().startBlock();
                 buildEmit(b, model.loadConstantOperation, "null");
                 b.end();
@@ -4072,6 +4115,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.defaultDeclaration(e.asType(), e.getSimpleName().toString() + "_");
             }
 
+            b.statement("doEmitRoot()");
             b.startIf().string("parseSources").end().startBlock();
             CodeTree copyOf = CodeTreeBuilder.createBuilder().startStaticCall(type(Arrays.class), "copyOf").string("sourceInfo").string("sourceInfoIndex").end().build();
             b.startAssign("sourceInfo_").tree(copyOf).end();
@@ -4168,6 +4212,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end(); // }
 
             b.statement("buildIndex++");
+            b.statement("rootOperationSp = -1");
 
             b.startIf().string("savedState == null").end().startBlock(); // {
             b.lineComment("invariant: bc is null when no root node is being built");
@@ -4223,6 +4268,17 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
         }
 
+        private void emitCastCurrentOperationData(CodeTreeBuilder b, OperationModel operation) {
+            b.startIf();
+            b.string("!(operation.data instanceof ");
+            String dataClassName = getDataClassName(operation);
+            b.string(dataClassName);
+            b.string(" ").string("operationData").string(")");
+            b.end().startBlock();
+            emitThrowAssertionError(b, "\"Data class " + dataClassName + " expected, but was \" + operation.data");
+            b.end();
+        }
+
         private void buildEmitOperationInstruction(CodeTreeBuilder b, OperationModel operation) {
             buildEmitOperationInstruction(b, operation, null, "operationSp");
         }
@@ -4232,12 +4288,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case LOAD_LOCAL -> new String[]{"((BytecodeLocalImpl) " + operation.getOperationArgumentName(0) + ").index"};
                 case STORE_LOCAL, STORE_LOCAL_MATERIALIZED -> {
                     if (model.usesBoxingElimination()) {
-                        yield new String[]{"((StoreLocalData) operationStack[" + sp + "].data).local.index", "((StoreLocalData) operationStack[" + sp + "].data).childBci"};
+                        yield new String[]{"((StoreLocalData) operation.data).local.index", "((StoreLocalData) operation.data).childBci"};
                     } else {
-                        yield new String[]{"((BytecodeLocalImpl) operationStack[" + sp + "].data).index"};
+                        yield new String[]{"((BytecodeLocalImpl) operation.data).index"};
                     }
                 }
-                case LOAD_LOCAL_MATERIALIZED -> new String[]{"((BytecodeLocalImpl) operationStack[" + sp + "].data).index"};
+                case LOAD_LOCAL_MATERIALIZED -> new String[]{"((BytecodeLocalImpl) operation.data).index"};
                 case RETURN -> new String[]{};
                 case LOAD_ARGUMENT -> new String[]{operation.getOperationArgumentName(0)};
                 case LOAD_CONSTANT -> new String[]{"constantPool.addConstant(" + operation.getOperationArgumentName(0) + ")"};
@@ -4303,11 +4359,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createEmitOperationBegin() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "emitOperationBegin");
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "validateRootOperationBegin");
 
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.startIf().string("operationStack == null").end().startBlock(); // {
+            b.startIf().string("rootOperationSp == -1").end().startBlock(); // {
             b.startThrow().startNew(context.getType(IllegalStateException.class));
             b.string("\"Unexpected operation emit - no root operation present. Did you forget a beginRoot()?\"").end();
             b.end(2);
@@ -4349,8 +4405,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
             }
 
+            if (operation.requiresRootOperation) {
+                b.startStatement().startCall("validateRootOperationBegin").end(2);
+            }
+
             b.startStatement().startCall("beforeChild").end(2);
-            b.startStatement().startCall("emitOperationBegin").end(2);
 
             if (operation.kind == OperationKind.LABEL) {
                 b.startAssign("BytecodeLabelImpl labelImpl").string("(BytecodeLabelImpl) " + operation.getOperationArgumentName(0)).end();
@@ -4403,7 +4462,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             if (instruction.signature.isVariadic) {
                 // Before emitting a variadic instruction, we need to emit instructions to merge all
                 // of the operands on the stack into one array.
-                b.statement("doEmitVariadic(operationStack[" + sp + "].childCount - " + (instruction.signature.valueCount - 1) + ")");
+                b.statement("doEmitVariadic(operation.childCount - " + (instruction.signature.valueCount - 1) + ")");
             }
 
             if (customChildBci != null && operation.numChildren > 1) {
@@ -4414,7 +4473,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             if (!inEmit) {
                 // make "operationData" available for endX methods.
-                emitCastOperationData(b, operation, sp);
+                if (sp.equals("operationSp")) {
+                    emitCastCurrentOperationData(b, operation);
+                } else {
+                    emitCastOperationData(b, operation, sp);
+                }
             }
 
             List<InstructionImmediate> immediates = instruction.getImmediates();
@@ -4527,7 +4590,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "beforeChild");
             CodeTreeBuilder b = ex.createBuilder();
 
-            createCheckRoot(b);
+            b.startIf().string("operationSp == 0").end().startBlock();
+            b.statement("return");
+            b.end();
 
             b.statement("int childIndex = operationStack[operationSp - 1].childCount");
             b.startSwitch().string("operationStack[operationSp - 1].operation").end().startBlock();
@@ -4658,19 +4723,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             buildEmitInstruction(b, booleanConverter, args);
         }
 
-        private void createCheckRoot(CodeTreeBuilder b) {
-            b.startIf().string("operationStack == null").end().startBlock(); // {
-            b.startThrow().startNew(context.getType(IllegalStateException.class));
-            b.string("\"Unexpected operation begin - no root operation present. Did you forget a beginRoot()?\"").end();
-            b.end(2);
-            b.end(); // }
-        }
-
         private CodeExecutableElement createAfterChild() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "afterChild");
             ex.addParameter(new CodeVariableElement(context.getType(boolean.class), "producedValue"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "childBci"));
             CodeTreeBuilder b = ex.createBuilder();
+
+            b.startIf().string("operationSp == 0").end().startBlock();
+            b.statement("return");
+            b.end();
 
             b.statement("int childIndex = operationStack[operationSp - 1].childCount");
 
@@ -5162,10 +5223,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
 
             b.startIf().string("parseSources").end().startBlock();
-            b.startFor().string("int idx = 0; idx < context.handlerSourceInfo.length; idx += 3").end().startBlock();
-            b.statement("sourceInfo[sourceInfoIndex + idx] = context.handlerSourceInfo[idx] + offsetBci");
-            b.statement("sourceInfo[sourceInfoIndex + idx + 1] = context.handlerSourceInfo[idx + 1]");
-            b.statement("sourceInfo[sourceInfoIndex + idx + 2] = context.handlerSourceInfo[idx + 2]");
+            b.startFor().string("int i = 0; i < context.handlerSourceInfo.length; i += SOURCE_INFO_LENGTH").end().startBlock();
+            b.statement("int encodedBci = context.handlerSourceInfo[i + SOURCE_INFO_OFFSET_BCI]");
+            b.statement("int beginBci = encodedBci >> 16 & 0xFFFF");
+            b.statement("int endBci = encodedBci & 0xFFFF");
+            b.statement("int newBci = (beginBci + offsetBci << 16) | (endBci + offsetBci)");
+
+            b.statement("sourceInfo[sourceInfoIndex + i + SOURCE_INFO_OFFSET_BCI] = newBci");
+            b.statement("sourceInfo[sourceInfoIndex + i + SOURCE_INFO_OFFSET_SOURCE] = context.handlerSourceInfo[i + SOURCE_INFO_OFFSET_SOURCE]");
+            b.statement("sourceInfo[sourceInfoIndex + i + SOURCE_INFO_OFFSET_START] = context.handlerSourceInfo[i + SOURCE_INFO_OFFSET_START]");
+            b.statement("sourceInfo[sourceInfoIndex + i + SOURCE_INFO_OFFSET_LENGTH] = context.handlerSourceInfo[i + SOURCE_INFO_OFFSET_LENGTH]");
             b.end();
 
             b.statement("sourceInfoIndex += context.handlerSourceInfo.length");
@@ -5492,6 +5559,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private CodeExecutableElement createDoEmitSourceInfo() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "doEmitSourceInfo");
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "sourceIndex"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "beginBci"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "endBci"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "start"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "length"));
 
@@ -5499,24 +5568,42 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startAssert().string("parseSources").end();
 
-            b.startIf().string("sourceInfoIndex == 0 && start == -1").end().startBlock();
+            b.startIf().string("rootOperationSp == -1").end().startBlock();
             b.returnStatement();
             b.end();
 
-            // this is > 3 and not > 0 since we explicitly want to keep the very first entry, even
-            // if the second has the same BCI, since that first one is the entire function source
-            // section that we report
-            b.startIf().string("sourceInfoIndex > 3 && (sourceInfo[sourceInfoIndex - 3] & 0xffff) == bci").end().startBlock();
-            b.statement("sourceInfoIndex -= 3");
+            b.declaration(type(int.class), "encodedBcis", "(beginBci << 16) | endBci");
+            b.declaration(type(int.class), "index", "sourceInfoIndex ");
+            b.declaration(type(int.class), "prevIndex", "index - SOURCE_INFO_LENGTH ");
+
+            b.startIf();
+            b.string("prevIndex >= 0").newLine().startIndention();
+            b.string(" && (sourceInfo[prevIndex + SOURCE_INFO_OFFSET_BCI]) == encodedBcis").newLine();
+            b.string(" && (sourceInfo[prevIndex + SOURCE_INFO_OFFSET_SOURCE]) == sourceIndex").newLine();
+            b.string(" && (sourceInfo[prevIndex + SOURCE_INFO_OFFSET_START]) == start").newLine();
+            b.string(" && (sourceInfo[prevIndex + SOURCE_INFO_OFFSET_LENGTH]) == length");
+            b.end();
+            b.end().startBlock();
+            b.lineComment("duplicate entry");
+            b.statement("return");
             b.end();
 
-            b.startIf().string("sourceInfo.length == sourceInfoIndex").end().startBlock();
+            b.startIf().string("index >= sourceInfo.length").end().startBlock();
             b.statement("sourceInfo = Arrays.copyOf(sourceInfo, sourceInfo.length * 2)");
             b.end();
 
-            b.statement("sourceInfo[sourceInfoIndex++] = (sourceIndex << 16) | bci");
-            b.statement("sourceInfo[sourceInfoIndex++] = start");
-            b.statement("sourceInfo[sourceInfoIndex++] = length");
+            b.statement("sourceInfo[index + SOURCE_INFO_OFFSET_BCI] = encodedBcis");
+            b.statement("sourceInfo[index + SOURCE_INFO_OFFSET_SOURCE] = sourceIndex");
+            b.statement("sourceInfo[index + SOURCE_INFO_OFFSET_START] = start");
+            b.statement("sourceInfo[index + SOURCE_INFO_OFFSET_LENGTH] = length");
+
+            b.statement("sourceInfoIndex = index + SOURCE_INFO_LENGTH");
+
+            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "SOURCE_INFO_OFFSET_BCI")).createInitBuilder().string("0");
+            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "SOURCE_INFO_OFFSET_SOURCE")).createInitBuilder().string("1");
+            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "SOURCE_INFO_OFFSET_START")).createInitBuilder().string("2");
+            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "SOURCE_INFO_OFFSET_LENGTH")).createInitBuilder().string("3");
+            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "SOURCE_INFO_LENGTH")).createInitBuilder().string("4");
 
             return ex;
         }
@@ -5544,6 +5631,39 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("exHandlers[exHandlerCount++] = exceptionLocal");
 
             b.statement("return result");
+
+            return ex;
+        }
+
+        private CodeExecutableElement createDoEmitRoot() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "doEmitRoot");
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startIf().string("!parseSources").end().startBlock();
+            b.lineComment("Nothing to do here without sources");
+            b.statement("return");
+            b.end();
+
+            b.startFor().string("int i = operationSp -1; i >= 0; i--").end().startBlock();
+            b.startSwitch().string("operationStack[i].operation").end().startBlock();
+
+            b.startCase().tree(createOperationConstant(model.sourceSectionOperation)).end();
+            b.startCaseBlock();
+            emitCastOperationData(b, model.sourceSectionOperation, "i");
+
+            b.startStatement().startCall("doEmitSourceInfo");
+            b.string("operationData.sourceIndex");
+            b.string("operationData.beginBci");
+            b.string("bci");
+            b.string("operationData.start");
+            b.string("operationData.length");
+            b.end(2);
+
+            b.statement("break");
+            b.end(); // case epilog
+
+            b.end(); // switch
+            b.end(); // for
 
             return ex;
         }
@@ -5767,6 +5887,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("this.parseSources = parseSources");
             b.statement("this.sources = parseSources ? new ArrayList<>(4) : null");
             b.statement("this.builtNodes = new ArrayList<>()");
+            b.statement("this.operationStack = new OperationStackEntry[8]");
+            b.statement("this.rootOperationSp = -1");
 
             return ctor;
         }
@@ -5792,6 +5914,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("this.parseBytecodes = true");
             b.statement("this.sources = parseSources ? new ArrayList<>(4) : null");
             b.statement("this.builtNodes = new ArrayList<>()");
+            b.statement("this.operationStack = new OperationStackEntry[8]");
+            b.statement("this.rootOperationSp = -1");
 
             return ctor;
         }
@@ -5802,7 +5926,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("currentStackHeight = 0");
             b.statement("maxStackHeight = 0");
             b.startIf().string("parseSources").end().startBlock();
-            b.statement("sourceInfo = new int[15]");
+            b.statement("sourceInfo = new int[16]");
             b.statement("sourceInfoIndex = 0");
             b.end();
             b.statement("exHandlers = new int[10]");
@@ -6107,7 +6231,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             type.add(createFindProbe());
             type.add(createIsInstrumentable());
             type.add(createHasTag());
+            type.add(createSupportsTag());
             type.add(createGetSourceSection());
+            type.add(createGetSourceSections());
             type.add(createCreateSourceSection());
             type.add(createFindBytecodeNode());
             type.add(createToString());
@@ -6158,6 +6284,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createCreateWrapper() {
             CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "createWrapper");
+            ex.renameArguments("p");
             ex.getModifiers().remove(Modifier.ABSTRACT);
             ex.getModifiers().add(Modifier.FINAL);
             CodeTreeBuilder b = ex.createBuilder();
@@ -6170,12 +6297,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             ex.getModifiers().remove(Modifier.ABSTRACT);
             ex.getModifiers().add(Modifier.FINAL);
             CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(types.ProbeNode, "probe", "this.probe");
-            b.startIf().string("probe == null").end().startBlock();
+            b.declaration(types.ProbeNode, "p", "this.probe");
+            b.startIf().string("p == null").end().startBlock();
             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-            b.statement("this.probe = probe = insert(createProbe(getSourceSection()))");
+            b.statement("this.probe = p = insert(createProbe(getSourceSection()))");
             b.end();
-            b.statement("return probe");
+            b.statement("return p");
             return ex;
         }
 
@@ -6232,23 +6359,21 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             return ex;
         }
 
+        private CodeExecutableElement createGetSourceSections() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.TagTree, "getSourceSections");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.declaration(abstractBytecodeNode.asType(), "bytecode", "findBytecodeNode()");
+            b.startReturn().string("bytecode.findSourceLocations(enterBci, leaveBci)").end();
+            return ex;
+        }
+
         private CodeExecutableElement createCreateSourceSection() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), types.SourceSection, "createSourceSection");
             CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(abstractBytecodeNode.asType(), "bytecode", "findBytecodeNode()");
-            b.declaration(types.SourceSection, "enter", "bytecode.findSourceLocation(enterBci)");
-            b.declaration(types.SourceSection, "leave", "bytecode.findSourceLocation(leaveBci)");
-
-            b.startIf().string("enter == null").end().startBlock();
-            b.statement("return leave");
-            b.end().startElseIf().string("enter.getSource().equals(leave.getSource())").end().startBlock();
-            b.declaration(type(int.class), "start", "enter.getCharIndex()");
-            b.declaration(type(int.class), "end", "leave.getCharIndex()");
-            b.statement("return enter.getSource().createSection(start, end - start)");
-            b.end().startElseBlock();
-            b.startThrow().startNew(type(IllegalStateException.class)).doubleQuote("Invalid source section. Started in one source ended in another.").end().end();
-            b.end();
-
+            b.startReturn().string("findBytecodeNode().findSourceLocation(enterBci, leaveBci)").end();
             return ex;
         }
 
@@ -6279,6 +6404,92 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 index++;
             }
             b.returnFalse();
+            return ex;
+        }
+
+        private CodeExecutableElement createSupportsTag() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "supportsTag");
+            ex.renameArguments("tag");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            CodeTreeBuilder b = ex.createBuilder();
+            b.statement("return supportsTagImpl(tag)");
+            return ex;
+        }
+
+    }
+
+    class AbstractCachedNode {
+
+        private CodeTypeElement type;
+
+        AbstractCachedNode() {
+            type = new CodeTypeElement(Set.of(PRIVATE, STATIC, ABSTRACT),
+                            ElementKind.CLASS, null, "AbstractCachedNode");
+            type.setSuperClass(types.Node);
+
+            type.add(createGetSourceSection());
+
+            // TODO these InstrumentableNode methods should be removed
+            // the debugger currently requires these methods to be present
+            // as it does only accept source sections from instrumentable nodes.
+            if (model.enableTagInstrumentation) {
+                type.getImplements().add(types.InstrumentableNode);
+                type.add(createCreateWrapper());
+                type.add(createIsInstrumentable());
+                type.add(createFindProbe());
+                type.add(createHasTag());
+            }
+        }
+
+        private CodeTypeElement create() {
+            return type;
+        }
+
+        private CodeExecutableElement createGetSourceSection() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.Node, "getSourceSection");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            CodeTreeBuilder b = ex.createBuilder();
+            b.declaration("CachedBytecodeNode", "bytecode", "(CachedBytecodeNode) getParent()");
+            b.declaration(type(int.class), "bci", "bytecode.findBytecodeIndexOfOperationNode(this)");
+            b.startReturn().string("bytecode.findSourceLocation(bci)").end();
+            return withTruffleBoundary(ex);
+        }
+
+        private CodeExecutableElement createCreateWrapper() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "createWrapper");
+            ex.renameArguments("probe");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            CodeTreeBuilder b = ex.createBuilder();
+            b.statement("return null");
+            return ex;
+        }
+
+        private CodeExecutableElement createIsInstrumentable() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "isInstrumentable");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            ex.createBuilder().returnTrue();
+            return ex;
+        }
+
+        private CodeExecutableElement createFindProbe() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "findProbe");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            CodeTreeBuilder b = ex.createBuilder();
+            b.declaration(abstractBytecodeNode.asType(), "bytecode", "(AbstractBytecodeNode)getParent()");
+            b.statement("return bytecode.tagRoot != null ? bytecode.tagRoot.getProbe() : null");
+            return ex;
+        }
+
+        private CodeExecutableElement createHasTag() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "hasTag");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            ex.createBuilder().returnFalse();
             return ex;
         }
 
@@ -6366,6 +6577,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 type.add(createInstrumentableNodeIsInstrumentable());
                 type.add(createInstrumentableNodeFindProbe());
                 type.add(createInstrumentableNodeHasTag());
+                type.add(createInstrumentableNodeSupportsTag());
             }
 
             type.add(createReadValidBytecode());
@@ -6411,6 +6623,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             type.add(createParseInstruction());
             type.add(createGetSourceSection());
             type.add(createFindSourceLocation());
+            type.add(createFindSourceLocationBeginEnd());
+            type.add(createFindSourceLocations());
+            type.add(createFindSourceLocationsBeginEnd());
+            type.add(createCreateSourceSection());
             type.add(createFindInstructionIndex());
             type.add(createFindBciFromInstructionIndex());
             type.add(createFindInstruction());
@@ -6423,6 +6639,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             return type;
+        }
+
+        private CodeExecutableElement createInstrumentableNodeSupportsTag() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "supportsTag");
+            ex.renameArguments("tag");
+            ex.getModifiers().remove(Modifier.ABSTRACT);
+            ex.getModifiers().add(Modifier.FINAL);
+            CodeTreeBuilder b = ex.createBuilder();
+            b.statement("return supportsTagImpl(tag)");
+            return ex;
         }
 
         private Element createValidateBytecodes() {
@@ -6965,7 +7191,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createFindSourceLocation() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findSourceLocation");
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findSourceLocation", 1);
             ex.getModifiers().add(FINAL);
             ex.renameArguments("bci");
             CodeTreeBuilder b = ex.createBuilder();
@@ -6978,30 +7204,54 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("localSources = newNode.sources");
             b.end();
 
-            b.statement("int i = 0");
+            b.startFor().string("int i = 0; i < info.length; i += SOURCE_INFO_LENGTH").end().startBlock();
+            b.declaration(type(int.class), "encodedBci", "info[i + SOURCE_INFO_OFFSET_BCI]");
+            b.declaration(type(int.class), "beginBci", "(encodedBci >> 16) & 0xFFFF");
+            b.declaration(type(int.class), "endBci", "encodedBci & 0xFFFF");
 
-            b.startWhile().string("i < info.length && (info[i] & 0xffff) <= bci").end().startBlock();
-            b.statement("i += 3");
+            b.startIf().string("bci >= beginBci && bci < endBci").end().startBlock();
+            b.startReturn().string("createSourceSection(localSources, info, i)").end();
             b.end();
 
-            b.startIf().string("i == 0").end().startBlock();
-            b.returnNull();
             b.end();
 
-            b.statement("i -= 3");
-
-            b.startIf().string("info[i + 1] == -1").end().startBlock();
-            b.returnNull();
-            b.end();
-
-            b.statement("return localSources.get((info[i] >> 16) & 0xffff).createSection(info[i + 1], info[i + 2])");
-
+            b.startReturn().string("null").end();
             return ex;
         }
 
-        private CodeExecutableElement createGetSourceSection() {
-            CodeExecutableElement ex = GeneratorUtils.override(types.Node, "getSourceSection");
-            ex.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
+        private CodeExecutableElement createFindSourceLocationBeginEnd() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findSourceLocation", 2);
+            ex.getModifiers().add(FINAL);
+            ex.renameArguments("searchBeginBci", "searchEndBci");
+
+            CodeTreeBuilder b = ex.createBuilder();
+            b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
+            b.declaration(generic(type(List.class), types.Source), "localSources", "this.sources");
+            b.startIf().string("info == null").end().startBlock();
+            b.declaration(type.asType(), "newNode", "getRoot().ensureSources()");
+            b.statement("info = newNode.sourceInfo");
+            b.statement("localSources = newNode.sources");
+            b.end();
+
+            b.startFor().string("int i = 0; i < info.length; i += SOURCE_INFO_LENGTH").end().startBlock();
+            b.declaration(type(int.class), "encodedBci", "info[i + SOURCE_INFO_OFFSET_BCI]");
+            b.declaration(type(int.class), "beginBci", "(encodedBci >> 16) & 0xFFFF");
+            b.declaration(type(int.class), "endBci", "encodedBci & 0xFFFF");
+
+            b.startIf().string("searchBeginBci >= beginBci && searchEndBci <= endBci").end().startBlock();
+            b.startReturn().string("createSourceSection(localSources, info, i)").end();
+            b.end();
+
+            b.end();
+
+            b.startReturn().string("null").end();
+            return ex;
+        }
+
+        private CodeExecutableElement createFindSourceLocations() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findSourceLocations", 1);
+            ex.getModifiers().add(FINAL);
+            ex.renameArguments("bci");
             CodeTreeBuilder b = ex.createBuilder();
 
             b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
@@ -7012,12 +7262,81 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("localSources = newNode.sources");
             b.end();
 
-            b.startIf().string("info.length == 0").end().startBlock();
-            b.returnNull();
+            b.declaration(type(int.class), "sectionIndex", "0");
+            b.startDeclaration(arrayOf(types.SourceSection), "sections").startNewArray(arrayOf(types.SourceSection), CodeTreeBuilder.singleString("8")).end().end();
+
+            b.startFor().string("int i = 0; i < info.length; i += SOURCE_INFO_LENGTH").end().startBlock();
+            b.declaration(type(int.class), "encodedBci", "info[i + SOURCE_INFO_OFFSET_BCI]");
+            b.declaration(type(int.class), "beginBci", "(encodedBci >> 16) & 0xFFFF");
+            b.declaration(type(int.class), "endBci", "encodedBci & 0xFFFF");
+
+            b.startIf().string("bci >= beginBci && bci < endBci").end().startBlock();
+            b.startStatement().string("sections[sectionIndex] = createSourceSection(localSources, info, i)").end();
+            b.statement("sectionIndex++");
+            b.end(); // if
+
+            b.end(); // for block
+
+            b.startReturn().startStaticCall(type(Arrays.class), "copyOf").string("sections").string("sectionIndex").end().end();
+            return ex;
+        }
+
+        private CodeExecutableElement createFindSourceLocationsBeginEnd() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNode, "findSourceLocations", 2);
+            ex.getModifiers().add(FINAL);
+            ex.renameArguments("searchBeginBci", "searchEndBci");
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.declaration(arrayOf(type(int.class)), "info", "this.sourceInfo");
+            b.declaration(generic(type(List.class), types.Source), "localSources", "this.sources");
+            b.startIf().string("info == null").end().startBlock();
+            b.declaration(type.asType(), "newNode", "getRoot().ensureSources()");
+            b.statement("info = newNode.sourceInfo");
+            b.statement("localSources = newNode.sources");
             b.end();
 
-            b.startReturn().string("localSources.get((info[0] >> 16) & 0xffff).createSection(info[1], info[2])").end();
+            b.declaration(type(int.class), "sectionIndex", "0");
+            b.startDeclaration(arrayOf(types.SourceSection), "sections").startNewArray(arrayOf(types.SourceSection), CodeTreeBuilder.singleString("8")).end().end();
 
+            b.startFor().string("int i = 0; i < info.length; i += SOURCE_INFO_LENGTH").end().startBlock();
+            b.declaration(type(int.class), "encodedBci", "info[i + SOURCE_INFO_OFFSET_BCI]");
+            b.declaration(type(int.class), "beginBci", "(encodedBci >> 16) & 0xFFFF");
+            b.declaration(type(int.class), "endBci", "encodedBci & 0xFFFF");
+
+            b.startIf().string("searchBeginBci >= beginBci && searchEndBci <= endBci").end().startBlock();
+            b.startStatement().string("sections[sectionIndex] = createSourceSection(localSources, info, i)").end();
+            b.statement("sectionIndex++");
+            b.end(); // if
+
+            b.end(); // for block
+
+            b.startReturn().startStaticCall(type(Arrays.class), "copyOf").string("sections").string("sectionIndex").end().end();
+            return ex;
+        }
+
+        private CodeExecutableElement createCreateSourceSection() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), types.SourceSection, "createSourceSection");
+            ex.addParameter(new CodeVariableElement(generic(List.class, types.Source), "sources"));
+            ex.addParameter(new CodeVariableElement(type(int[].class), "info"));
+            ex.addParameter(new CodeVariableElement(type(int.class), "index"));
+
+            CodeTreeBuilder b = ex.createBuilder();
+            b.declaration(type(int.class), "sourceIndex", "info[index + SOURCE_INFO_OFFSET_SOURCE]");
+            b.declaration(type(int.class), "start", "info[index + SOURCE_INFO_OFFSET_START]");
+            b.declaration(type(int.class), "length", "info[index + SOURCE_INFO_OFFSET_LENGTH]");
+
+            b.startAssert().string("sourceIndex >= 0 && sourceIndex < sources.size() : ").doubleQuote("source index out of bounds").end();
+            b.startAssert().string("start >= 0 : ").doubleQuote("invalid source start index").end();
+            b.startAssert().string("length >= 0 : ").doubleQuote("invalid source length").end();
+            b.startReturn().string("sources.get(sourceIndex).createSection(start, length)").end();
+            return ex;
+        }
+
+        private CodeExecutableElement createGetSourceSection() {
+            CodeExecutableElement ex = GeneratorUtils.override(types.Node, "getSourceSection");
+            ex.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startReturn().string("findSourceLocation(0, bytecodes.length)").end();
             return ex;
         }
 
@@ -7066,17 +7385,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.declaration(generic(type(List.class), type(Object[].class)), "sourceData", "new ArrayList<>()");
             b.startIf().string("sourceInfo != null").end().startBlock();
-            b.startFor().string("int idx = 0; idx < sourceInfo.length; idx += 3").end().startBlock();
+            b.startFor().string("int index = 0; index < sourceInfo.length; index += SOURCE_INFO_LENGTH").end().startBlock();
 
             // we encode ranges with no SourceSection using (-1, -1)
-            b.startIf().string("sourceInfo[idx + 1] == -1").end().startBlock();
+            b.startIf().string("sourceInfo[index + 1] == -1").end().startBlock();
             b.statement("continue");
             b.end();
 
-            b.statement("int startIndex = sourceInfo[idx] & 0xffff");
-            b.statement("int endIndex = (idx + 3 == sourceInfo.length) ? bc.length : sourceInfo[idx + 3] & 0xffff");
-            b.declaration(types.SourceSection, "section", "this.sources.get((sourceInfo[idx] >> 16) & 0xffff).createSection(sourceInfo[idx + 1], sourceInfo[idx + 2])");
-            b.statement("sourceData.add(new Object[]{startIndex, endIndex, section})");
+            b.statement("int encodedBcis = sourceInfo[index + SOURCE_INFO_OFFSET_BCI]");
+            b.statement("int beginBci = (encodedBcis >> 16) & 0xFFFF");
+            b.statement("int endBci = encodedBcis & 0xFFFF");
+            b.declaration(types.SourceSection, "section", "createSourceSection(this.sources, sourceInfo, index)");
+            b.statement("sourceData.add(new Object[]{beginBci, endBci, section})");
             b.end();
             b.end();
 
@@ -7264,15 +7584,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             type.add(createSetUncachedThreshold());
             type.add(createGetTier());
 
-            // uninitialized does not need a copy constructor as the default constructor is already
-            // copying.
             if (!tier.isUninitialized()) {
+                // uninitialized does not need a copy constructor as the default constructor is
+                // already
+                // copying.
                 type.add(createCopyConstructor());
-            }
-            type.add(createResolveThrowable());
-            type.add(createResolveHandler());
+                type.add(createResolveThrowable());
+                type.add(createResolveHandler());
 
-            if (!tier.isUninitialized()) {
                 if (model.epilogExceptional != null) {
                     type.add(createDoEpilogExceptional());
                 }
@@ -8556,10 +8875,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             type(int.class), "resolveHandler",
                             new CodeVariableElement(type(int.class), "bci"),
                             new CodeVariableElement(type(int.class), "handler"),
-                            new CodeVariableElement(type(int[].class), "handlers"));
-
+                            new CodeVariableElement(type(int[].class), "localHandlers"));
             method.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_InliningCutoff));
             method.addAnnotationMirror(new CodeAnnotationMirror(types.ExplodeLoop));
+
+            if (!tier.isCached()) {
+                method.getModifiers().add(STATIC);
+            }
 
             CodeTreeBuilder b = method.createBuilder();
 
@@ -8567,12 +8889,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.declaration(type(int.class), "handlerId", "Math.floorDiv(handler, 5)");
             }
             if (tier.isCached()) {
-                b.startFor().string("int i = handler; i < handlers.length; i += 5, handlerId++").end().startBlock();
+                b.startFor().string("int i = handler; i < localHandlers.length; i += 5, handlerId++").end().startBlock();
             } else {
-                b.startFor().string("int i = handler; i < handlers.length; i += 5").end().startBlock();
+                b.startFor().string("int i = handler; i < localHandlers.length; i += 5").end().startBlock();
             }
-            b.startIf().string("handlers[i] > bci").end().startBlock().statement("continue").end();
-            b.startIf().string("handlers[i + 1] <= bci").end().startBlock().statement("continue").end();
+            b.startIf().string("localHandlers[i] > bci").end().startBlock().statement("continue").end();
+            b.startIf().string("localHandlers[i + 1] <= bci").end().startBlock().statement("continue").end();
 
             if (tier.isCached()) {
                 b.startIf().string("!this.exceptionProfiles_[handlerId]").end().startBlock();

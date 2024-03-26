@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -79,6 +80,7 @@ import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
@@ -86,8 +88,16 @@ import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 
 public class TagTest extends AbstractInstructionTest {
+
+    private static TagInstrumentationTestRootNode parseComplete(BytecodeParser<TagInstrumentationTestRootNodeGen.Builder> parser) {
+        BytecodeRootNodes<TagInstrumentationTestRootNode> nodes = TagInstrumentationTestRootNodeGen.create(BytecodeConfig.COMPLETE, parser);
+        TagInstrumentationTestRootNode root = nodes.getNodes().get(nodes.getNodes().size() - 1);
+        return root;
+    }
 
     private static TagInstrumentationTestRootNode parse(BytecodeParser<TagInstrumentationTestRootNodeGen.Builder> parser) {
         BytecodeRootNodes<TagInstrumentationTestRootNode> nodes = TagInstrumentationTestRootNodeGen.create(BytecodeConfig.DEFAULT, parser);
@@ -245,6 +255,25 @@ public class TagTest extends AbstractInstructionTest {
 
         assertStable(counts, node);
 
+    }
+
+    @Test
+    public void testTagsEmptyErrors() {
+        parse((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+
+            assertFails(() -> b.beginTag(), IllegalArgumentException.class);
+            assertFails(() -> b.beginTag((Class<?>) null), NullPointerException.class);
+            assertFails(() -> b.beginTag((Class<?>[]) null), NullPointerException.class);
+            assertFails(() -> b.beginTag(CallTag.class), IllegalArgumentException.class);
+
+            assertFails(() -> b.endTag(CallTag.class), IllegalArgumentException.class);
+            assertFails(() -> b.endTag(), IllegalArgumentException.class);
+            assertFails(() -> b.endTag((Class<?>) null), NullPointerException.class);
+            assertFails(() -> b.endTag((Class<?>[]) null), NullPointerException.class);
+
+            b.endRoot();
+        });
     }
 
     @Test
@@ -431,6 +460,97 @@ public class TagTest extends AbstractInstructionTest {
                         "return");
 
         QuickeningCounts counts = assertQuickenings(node, 0, 0);
+
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.ENTER, 0x0000, 0x000C, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x0002, 0x0006, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0002, 0x0006, 42, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x000C, null, StatementTag.class),
+                        new Event(EventKind.ENTER, 0x000e, 0x0017, null, StatementTag.class, ExpressionTag.class),
+                        new Event(EventKind.ENTER, 0x0010, 0x0014, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0010, 0x0014, 42, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x000e, 0x0017, 42, StatementTag.class, ExpressionTag.class));
+
+        assertStable(counts, node);
+    }
+
+    @Test
+    public void testStatementsAndExpressionCached() {
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+
+            var local = b.createLocal();
+            b.beginBlock();
+
+            b.beginTag(StatementTag.class);
+            b.beginStoreLocal(local);
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadConstant(42);
+            b.endTag(ExpressionTag.class);
+            b.endStoreLocal();
+            b.endTag(StatementTag.class);
+
+            b.beginReturn();
+            b.beginTag(StatementTag.class, ExpressionTag.class);
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadLocal(local);
+            b.endTag(ExpressionTag.class);
+            b.endTag(StatementTag.class, ExpressionTag.class);
+            b.endReturn();
+
+            b.endBlock();
+
+            b.endRoot();
+        });
+        node.getBytecodeNode().setUncachedThreshold(0);
+
+        assertInstructions(node,
+                        "load.constant",
+                        "store.local",
+                        "load.local",
+                        "return");
+        assertEquals(42, node.getCallTarget().call());
+        assertQuickenings(node, 3, 2);
+
+        assertInstructions(node,
+                        "load.constant$Int",
+                        "store.local$Int$unboxed",
+                        "load.local$Int",
+                        "return");
+
+        List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class, StandardTags.ExpressionTag.class).build());
+
+        assertInstructions(node,
+                        "tag.enter",
+                        "tag.enter",
+                        "load.constant",
+                        "tag.leave",
+                        "store.local",
+                        "tag.leaveVoid",
+                        "tag.enter",
+                        "tag.enter",
+                        "load.local",
+                        "tag.leave",
+                        "tag.leave",
+                        "return");
+
+        assertEquals(42, node.getCallTarget().call());
+        assertInstructions(node,
+                        "tag.enter",
+                        "tag.enter",
+                        "load.constant$Int",
+                        "tag.leave$Int$unboxed",
+                        "store.local$Int$unboxed",
+                        "tag.leaveVoid",
+                        "tag.enter",
+                        "tag.enter",
+                        "load.local$Int$unboxed",
+                        "tag.leave$Int$unboxed",
+                        "tag.leave$Int",
+                        "return");
+
+        QuickeningCounts counts = assertQuickenings(node, 12, 4);
 
         assertEvents(node,
                         events,
@@ -1065,6 +1185,70 @@ public class TagTest extends AbstractInstructionTest {
                         new Event(EventKind.RETURN_VALUE, 0x0002, 0x0008, null, ExpressionTag.class),
                         new Event(EventKind.RETURN_VALUE, 0x0000, 0x0012, null, RootTag.class));
 
+    }
+
+    @Test
+    public void testSourceSections() {
+        Source s = Source.newBuilder("test", "12345678", "name").build();
+        TagInstrumentationTestRootNode node = parseComplete((b) -> {
+            b.beginSource(s);
+
+            b.beginSourceSection(0, 8);
+            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginSourceSection(2, 4);
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadConstant(42);
+            b.endTag(ExpressionTag.class);
+            b.endSourceSection();
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadConstant(42);
+            b.endTag(ExpressionTag.class);
+
+            b.endRoot();
+            b.endSourceSection();
+            b.endSource();
+        });
+        TagTree tree = node.getIntrospectionData().getTagTree();
+        assertSourceSection(0, 8, tree.getSourceSection());
+        assertSourceSection(2, 4, tree.getTreeChildren().get(0).getSourceSection());
+        assertSourceSection(0, 8, tree.getTreeChildren().get(1).getSourceSection());
+
+        SourceSection[] sections = node.getIntrospectionData().getTagTree().getTreeChildren().get(0).getSourceSections();
+        assertSourceSection(2, 4, sections[0]);
+        assertSourceSection(0, 8, sections[1]);
+        assertEquals(2, sections.length);
+
+        sections = node.getIntrospectionData().getTagTree().getTreeChildren().get(1).getSourceSections();
+        assertSourceSection(0, 8, sections[0]);
+        assertEquals(1, sections.length);
+
+    }
+
+    @Test
+    public void testNoSourceSections() {
+        TagInstrumentationTestRootNode node = parseComplete((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadConstant(42);
+            b.endTag(ExpressionTag.class);
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadConstant(42);
+            b.endTag(ExpressionTag.class);
+            b.endRoot();
+        });
+
+        TagTree tree = node.getIntrospectionData().getTagTree();
+        assertNull(tree.getSourceSection());
+        assertEquals(0, tree.getSourceSections().length);
+        assertNull(tree.getTreeChildren().get(0).getSourceSection());
+        assertEquals(0, tree.getTreeChildren().get(0).getSourceSections().length);
+        assertNull(tree.getTreeChildren().get(1).getSourceSection());
+        assertEquals(0, tree.getTreeChildren().get(1).getSourceSections().length);
+    }
+
+    private static void assertSourceSection(int startIndex, int length, SourceSection section) {
+        assertEquals(startIndex, section.getCharIndex());
+        assertEquals(length, section.getCharLength());
     }
 
     @Test

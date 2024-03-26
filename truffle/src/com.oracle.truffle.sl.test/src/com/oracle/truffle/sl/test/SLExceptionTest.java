@@ -68,7 +68,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-public class SLExceptionTest {
+public class SLExceptionTest extends AbstractSLTest {
 
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {

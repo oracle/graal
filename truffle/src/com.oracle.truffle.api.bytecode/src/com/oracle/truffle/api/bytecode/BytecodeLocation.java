@@ -151,12 +151,23 @@ public final class BytecodeLocation {
     }
 
     /**
-     * Computes the source location of this bytecode location.
+     * Computes the most concrete source location of this bytecode location.
      *
+     * @see BytecodeNode#findSourceLocation(int)
      * @since 24.1
      */
     public SourceSection findSourceLocation() {
         return bytecodes.findSourceLocation(bci);
+    }
+
+    /**
+     * Computes all source locations of this bytecode location.
+     *
+     * @see BytecodeNode#findSourceLocations(int)
+     * @since 24.1
+     */
+    public SourceSection[] findSourceLocations() {
+        return bytecodes.findSourceLocations(bci);
     }
 
     /**
@@ -199,7 +210,7 @@ public final class BytecodeLocation {
             return null;
         }
         for (SourceInformation info : sourceInfos) {
-            if (bci >= info.getStartBci() && bci < info.getEndBci()) {
+            if (bci >= info.getBeginBci() && bci < info.getEndBci()) {
                 // return multiple source infos?
                 return info;
             }

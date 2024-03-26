@@ -40,29 +40,20 @@
  */
 package com.oracle.truffle.sl.bytecode;
 
-import java.io.IOException;
-
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
-import com.oracle.truffle.api.bytecode.EpilogExceptional;
-import com.oracle.truffle.api.bytecode.EpilogReturn;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
-import com.oracle.truffle.api.bytecode.Prolog;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
 import com.oracle.truffle.api.bytecode.Variadic;
-import com.oracle.truffle.api.bytecode.debug.BytecodeDebugTraceListener;
-import com.oracle.truffle.api.bytecode.introspection.Instruction;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -73,7 +64,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
@@ -91,7 +81,6 @@ import com.oracle.truffle.sl.nodes.expression.SLSubNode;
 import com.oracle.truffle.sl.nodes.expression.SLWritePropertyNode;
 import com.oracle.truffle.sl.nodes.util.SLToBooleanNode;
 import com.oracle.truffle.sl.nodes.util.SLUnboxNode;
-import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
@@ -117,73 +106,13 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 @OperationProxy(SLToBooleanNode.class)
 @ShortCircuitOperation(name = "SLAnd", booleanConverter = SLToBooleanNode.class, operator = Operator.AND_RETURN_CONVERTED)
 @ShortCircuitOperation(name = "SLOr", booleanConverter = SLToBooleanNode.class, operator = Operator.OR_RETURN_CONVERTED)
-public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeRootNode, BytecodeDebugTraceListener {
-
-    private static final boolean TRACE_BYTECODE = false;
+public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeRootNode {
 
     protected SLBytecodeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super((SLLanguage) language, frameDescriptor);
     }
 
     protected TruffleString tsName;
-
-    private transient String saved;
-
-    @Prolog
-    static final class TraceEnter {
-        @Specialization
-        public static void doEnter(@Bind("$root") SLBytecodeRootNode root) {
-            root.traceEnter();
-        }
-    }
-
-    private void traceEnter() {
-        if (!TRACE_BYTECODE) {
-            return;
-        }
-        if (saved == null) {
-            saved = dump();
-            printDump(saved);
-        }
-    }
-
-    @EpilogReturn
-    static final class TraceReturn {
-        @Specialization
-        public static Object doReturn(Object result, @Bind("$root") SLBytecodeRootNode root) {
-            root.traceExit();
-            return result;
-        }
-    }
-
-    @EpilogExceptional
-    static final class TraceException {
-        @Specialization
-        @SuppressWarnings("unused")
-        public static void doReturn(AbstractTruffleException ex, @Bind("$root") SLBytecodeRootNode root) {
-            root.traceExit();
-        }
-    }
-
-    public void traceExit() {
-        if (!TRACE_BYTECODE) {
-            return;
-        }
-        String newDump = dump();
-        if (!newDump.equals(saved)) {
-            printDump(newDump);
-            saved = newDump;
-        }
-    }
-
-    @TruffleBoundary
-    private void printDump(String dump) {
-        try {
-            SLContext.get(this).getEnv().out().write(dump.getBytes());
-        } catch (IOException e) {
-            throw new SLException("Failed printing dump", this);
-        }
-    }
 
     @Override
     public SLExpressionNode getBodyNode() {
@@ -197,27 +126,6 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
 
     public void setTSName(TruffleString tsName) {
         this.tsName = tsName;
-    }
-
-    @Override
-    public void onQuicken(Instruction before, Instruction after) {
-        if (TRACE_BYTECODE) {
-            BytecodeDebugTraceListener.super.onQuicken(before, after);
-        }
-    }
-
-    @Override
-    public void onQuickenOperand(Instruction base, int operandIndex, Instruction operandBefore, Instruction operandAfter) {
-        if (TRACE_BYTECODE) {
-            BytecodeDebugTraceListener.super.onQuickenOperand(base, operandIndex, operandBefore, operandAfter);
-        }
-    }
-
-    @Override
-    public void onSpecialize(Instruction instruction, String specialization) {
-        if (TRACE_BYTECODE) {
-            BytecodeDebugTraceListener.super.onSpecialize(instruction, specialization);
-        }
     }
 
     @Operation

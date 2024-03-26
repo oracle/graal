@@ -123,10 +123,11 @@ public abstract class BytecodeNode extends Node {
     }
 
     /**
-     * Gets the {@link SourceSection source location} associated with a particular location. Returns
-     * {@code null} if the node was not parsed {@link BytecodeConfig#WITH_SOURCE with sources} or if
-     * there is no associated source section for the given location. A location must always be
-     * provided to get a source location otherwise <code>null</code> will be returned.
+     * Gets the most concrete {@link SourceSection source location} associated with a particular
+     * location. Returns {@code null} if the node was not parsed {@link BytecodeConfig#WITH_SOURCE
+     * with sources} or if there is no associated source section for the given location. A location
+     * must always be provided to get a source location otherwise <code>null</code> will be
+     * returned.
      *
      * @param frame the current frame
      * @param location the current location
@@ -139,6 +140,25 @@ public abstract class BytecodeNode extends Node {
             return null;
         }
         return findSourceLocation(bci);
+    }
+
+    /**
+     * Gets all {@link SourceSection source locations} associated with a particular location.
+     * Returns {@code null} if the node was not parsed {@link BytecodeConfig#WITH_SOURCE with
+     * sources} or if there is no associated source section for the given location. A location must
+     * always be provided to get a source location otherwise <code>null</code> will be returned.
+     *
+     * @param frame the current frame
+     * @param location the current location
+     * @return a source section corresponding to the bci, or {@code null} if no source section is
+     *         available
+     */
+    public final SourceSection[] getSourceLocations(Frame frame, Node location) {
+        int bci = findBytecodeIndexImpl(frame, location);
+        if (bci == -1) {
+            return null;
+        }
+        return findSourceLocations(bci);
     }
 
     private int findBytecodeIndexImpl(Frame frame, Node location) {
@@ -177,6 +197,14 @@ public abstract class BytecodeNode extends Node {
             return null;
         }
         return findSourceLocation(bci);
+    }
+
+    public final SourceSection[] getSourceLocations(FrameInstance frameInstance) {
+        int bci = findBytecodeIndex(frameInstance);
+        if (bci == -1) {
+            return null;
+        }
+        return findSourceLocations(bci);
     }
 
     public BytecodeRootNode getBytecodeRootNode() {
@@ -250,7 +278,7 @@ public abstract class BytecodeNode extends Node {
                         exceptions.size(),
                         formatList(exceptions, (e) -> highlightedBci >= e.getStartIndex() && highlightedBci < e.getEndIndex()),
                         sourceInformation != null ? sourceInformation.size() : "-",
-                        formatList(sourceInformation, (s) -> highlightedBci >= s.getStartBci() && highlightedBci < s.getEndBci()),
+                        formatList(sourceInformation, (s) -> highlightedBci >= s.getBeginBci() && highlightedBci < s.getEndBci()),
                         formatTagTree(id.getTagTree(), (s) -> highlightedBci >= s.getStartBci() && highlightedBci <= s.getEndBci()));
     }
 
@@ -303,11 +331,27 @@ public abstract class BytecodeNode extends Node {
     }
 
     /**
-     * Finds the source location associated with the given bytecode index.
+     * Finds the most concrete source location associated with the given bytecode index. The method
+     * returns <code>null</code> if no source section could be found. Calling this method also
+     * {@link BytecodeRootNodes#ensureSources() ensures source sections} are materialized.
      *
      * @since 24.1
      */
     public abstract SourceSection findSourceLocation(int bci);
+
+    public abstract SourceSection findSourceLocation(int beginBci, int endBCi);
+
+    /**
+     * Finds all source locations associated with the given bytecode index. The array returns more
+     * concrete source sections first. Typically later source sections are contained in the previous
+     * source section, but there is no guarantee that this the case. Calling this method also
+     * {@link BytecodeRootNodes#ensureSources() ensures source sections} are materialized.
+     *
+     * @since 24.1
+     */
+    public abstract SourceSection[] findSourceLocations(int bci);
+
+    public abstract SourceSection[] findSourceLocations(int beginBci, int endBci);
 
     /**
      * Finds the instruction index associated with the given bytecode index.

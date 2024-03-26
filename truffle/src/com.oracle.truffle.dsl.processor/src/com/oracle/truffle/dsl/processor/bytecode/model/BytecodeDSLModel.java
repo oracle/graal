@@ -141,6 +141,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public OperationModel ifThenOperation;
     public OperationModel ifThenElseOperation;
     public OperationModel returnOperation;
+    public OperationModel sourceSectionOperation;
+    public OperationModel sourceOperation;
     public CustomOperationModel prolog = null;
     public CustomOperationModel epilogReturn = null;
     public CustomOperationModel epilogExceptional = null;
@@ -316,13 +318,17 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
                             .setChildrenMustBeValues(true) //
                             .setInstruction(yieldInstruction);
         }
-        operation(OperationKind.SOURCE, "Source") //
-                        .setNumChildren(1) //
+        sourceOperation = operation(OperationKind.SOURCE, "Source") //
+                        .setVariadic(0) //
+                        .setChildrenMustBeValues(false) //
                         .setTransparent(true) //
+                        .setRequiresParentRoot(false) //
                         .setOperationArguments(new OperationArgument(types.Source, "source", "the source object to associate with the enclosed operations"));
-        operation(OperationKind.SOURCE_SECTION, "SourceSection") //
-                        .setNumChildren(1) //
+        sourceSectionOperation = operation(OperationKind.SOURCE_SECTION, "SourceSection") //
+                        .setVariadic(0) //
+                        .setChildrenMustBeValues(false)//
                         .setTransparent(true) //
+                        .setRequiresParentRoot(false) //
                         .setOperationArguments(new OperationArgument(context.getType(int.class), "index", "the starting character index of the source section"),
                                         new OperationArgument(context.getType(int.class), "length", "the length (in characters) of the source section"));
 
