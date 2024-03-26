@@ -498,7 +498,7 @@ public final class Target_java_util_regex_Matcher {
 
     @TruffleBoundary
     private static Source getSource(String method, String pattern, StaticObject patternObject, Meta meta) {
-        String combined = "Encoding=UTF-16,Flavor=JavaUtilPattern,PythonMethod=" + method + ",JavaJDKVersion=" + meta.getJavaVersion();
+        String combined = "Encoding=UTF-16,Flavor=JavaUtilPattern,MatchingMode=" + method + ",JavaJDKVersion=" + meta.getJavaVersion();
         String sourceStr = combined + '/' + pattern + '/' + convertFlags(meta.java_util_regex_Pattern_flags0.getInt(patternObject));
         return Source.newBuilder("regex", sourceStr, "patternExpr").build();
     }

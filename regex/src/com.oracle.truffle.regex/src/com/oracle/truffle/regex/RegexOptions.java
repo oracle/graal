@@ -49,9 +49,9 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor;
+import com.oracle.truffle.regex.tregex.parser.flavors.MatchingMode;
 import com.oracle.truffle.regex.tregex.parser.flavors.OracleDBFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor;
-import com.oracle.truffle.regex.tregex.parser.flavors.PythonMethod;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.java.JavaFlavor;
@@ -78,8 +78,8 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
  * <li><b>BYTES</b> (equivalent to LATIN-1)</li>
  * </ul>
  * </li>
- * <li><b>PythonMethod</b>: specifies which Python {@code Pattern} method was called (Python flavors
- * only). Possible values:
+ * <li><b>MatchingMode</b>: specifies implicit anchoring modes. See {@link MatchingMode} for
+ * details. Possible values:
  * <ul>
  * <li><b>search</b></li>
  * <li><b>match</b></li>
@@ -148,10 +148,11 @@ public final class RegexOptions {
     public static final String ENCODING_NAME = "Encoding";
 
     public static final String PYTHON_METHOD_NAME = "PythonMethod";
-    public static final String PYTHON_METHOD_SEARCH = "search";
-    public static final String PYTHON_METHOD_MATCH = "match";
-    public static final String PYTHON_METHOD_FULLMATCH = "fullmatch";
-    private static final String[] PYTHON_METHOD_OPTIONS = {PYTHON_METHOD_SEARCH, PYTHON_METHOD_MATCH, PYTHON_METHOD_FULLMATCH};
+    public static final String MATCHING_MODE_NAME = "MatchingMode";
+    public static final String MATCHING_MODE_SEARCH = "search";
+    public static final String MATCHING_MODE_MATCH = "match";
+    public static final String MATCHING_MODE_FULLMATCH = "fullmatch";
+    private static final String[] MATCHING_MODE_OPTIONS = {MATCHING_MODE_SEARCH, MATCHING_MODE_MATCH, MATCHING_MODE_FULLMATCH};
 
     public static final String PYTHON_LOCALE_NAME = "PythonLocale";
     public static final String JAVA_JDK_VERSION_NAME = "JavaJDKVersion";
@@ -177,7 +178,7 @@ public final class RegexOptions {
     private final short maxBackTrackerCompileSize;
     private final RegexFlavor flavor;
     private final Encodings.Encoding encoding;
-    private final PythonMethod pythonMethod;
+    private final MatchingMode matchingMode;
     private final String pythonLocale;
     private final byte javaJDKVersion;
 
@@ -187,7 +188,7 @@ public final class RegexOptions {
                     short maxBackTrackerCompileSize,
                     RegexFlavor flavor,
                     Encodings.Encoding encoding,
-                    PythonMethod pythonMethod,
+                    MatchingMode matchingMode,
                     String pythonLocale,
                     byte javaJDKVersion) {
         this.options = options;
@@ -195,7 +196,7 @@ public final class RegexOptions {
         this.maxBackTrackerCompileSize = maxBackTrackerCompileSize;
         this.flavor = flavor;
         this.encoding = encoding;
-        this.pythonMethod = pythonMethod;
+        this.matchingMode = matchingMode;
         this.pythonLocale = pythonLocale;
         this.javaJDKVersion = javaJDKVersion;
     }
@@ -320,8 +321,8 @@ public final class RegexOptions {
         return encoding;
     }
 
-    public PythonMethod getPythonMethod() {
-        return pythonMethod;
+    public MatchingMode getMatchingMode() {
+        return matchingMode;
     }
 
     public String getPythonLocale() {
@@ -335,20 +336,12 @@ public final class RegexOptions {
         return javaJDKVersion;
     }
 
-    public RegexOptions withEncoding(Encodings.Encoding newEnc) {
-        return newEnc == encoding ? this : new RegexOptions(options, maxDFASize, maxBackTrackerCompileSize, flavor, newEnc, pythonMethod, pythonLocale, javaJDKVersion);
-    }
-
-    public RegexOptions withoutPythonMethod() {
-        return pythonMethod == null ? this : new RegexOptions(options, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, null, pythonLocale, javaJDKVersion);
-    }
-
     public RegexOptions withBooleanMatch() {
-        return new RegexOptions(options | BOOLEAN_MATCH, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, pythonMethod, pythonLocale, javaJDKVersion);
+        return new RegexOptions(options | BOOLEAN_MATCH, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, matchingMode, pythonLocale, javaJDKVersion);
     }
 
     public RegexOptions withoutBooleanMatch() {
-        return new RegexOptions(options & ~BOOLEAN_MATCH, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, pythonMethod, pythonLocale, javaJDKVersion);
+        return new RegexOptions(options & ~BOOLEAN_MATCH, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, matchingMode, pythonLocale, javaJDKVersion);
     }
 
     @Override
@@ -359,7 +352,7 @@ public final class RegexOptions {
         hash = prime * hash + Objects.hashCode(maxBackTrackerCompileSize);
         hash = prime * hash + Objects.hashCode(flavor);
         hash = prime * hash + encoding.hashCode();
-        hash = prime * hash + Objects.hashCode(pythonMethod);
+        hash = prime * hash + Objects.hashCode(matchingMode);
         hash = prime * hash + Objects.hashCode(pythonLocale);
         hash = prime * hash + Objects.hashCode(javaJDKVersion);
         return hash;
@@ -378,7 +371,7 @@ public final class RegexOptions {
                         this.maxBackTrackerCompileSize == other.maxBackTrackerCompileSize &&
                         this.flavor == other.flavor &&
                         this.encoding == other.encoding &&
-                        this.pythonMethod == other.pythonMethod &&
+                        this.matchingMode == other.matchingMode &&
                         this.pythonLocale.equals(other.pythonLocale) &&
                         this.javaJDKVersion == other.javaJDKVersion;
     }
@@ -387,10 +380,10 @@ public final class RegexOptions {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         if (maxDFASize != TRegexOptions.TRegexMaxDFATransitions) {
-            sb.append(MAX_DFA_SIZE_NAME + "=").append(maxDFASize);
+            sb.append(MAX_DFA_SIZE_NAME + "=").append(maxDFASize).append(',');
         }
         if (maxBackTrackerCompileSize != TRegexOptions.TRegexMaxBackTrackerMergeExplodeSize) {
-            sb.append(MAX_BACK_TRACKER_SIZE_NAME + "=").append(maxBackTrackerCompileSize);
+            sb.append(MAX_BACK_TRACKER_SIZE_NAME + "=").append(maxBackTrackerCompileSize).append(',');
         }
         if (isU180EWhitespace()) {
             sb.append(U180E_WHITESPACE_NAME + "=true,");
@@ -429,23 +422,27 @@ public final class RegexOptions {
             sb.append(FLAVOR_NAME + "=" + FLAVOR_PYTHON + ",");
         } else if (flavor == RubyFlavor.INSTANCE) {
             sb.append(FLAVOR_NAME + "=" + FLAVOR_RUBY + ",");
+        } else if (flavor == OracleDBFlavor.INSTANCE) {
+            sb.append(FLAVOR_NAME + "=" + FLAVOR_ORACLE_DB + ",");
+        } else if (flavor == JavaFlavor.INSTANCE) {
+            sb.append(FLAVOR_NAME + "=" + FLAVOR_JAVA + ",");
         }
         sb.append(ENCODING_NAME + "=").append(encoding.getName()).append(",");
-        if (pythonMethod == PythonMethod.search) {
-            sb.append(PYTHON_METHOD_NAME + "=" + PYTHON_METHOD_SEARCH + ",");
-        } else if (pythonMethod == PythonMethod.match) {
-            sb.append(PYTHON_METHOD_NAME + "=" + PYTHON_METHOD_MATCH + ",");
-        } else if (pythonMethod == PythonMethod.fullmatch) {
-            sb.append(PYTHON_METHOD_NAME + "=" + PYTHON_METHOD_FULLMATCH + ",");
+        if (matchingMode != null) {
+            sb.append(MATCHING_MODE_NAME).append('=').append(matchingMode).append(',');
         }
         if (pythonLocale != null) {
             sb.append(PYTHON_LOCALE_NAME + "=").append(pythonLocale).append(",");
         }
         if (isGenerateInput()) {
-            sb.append(GENERATE_INPUT_NAME).append("=true");
+            sb.append(GENERATE_INPUT_NAME).append("=true").append(",");
         }
         if (javaJDKVersion != JAVA_JDK_VERSION_DEFAULT) {
-            sb.append(JAVA_JDK_VERSION_NAME).append("=").append(javaJDKVersion);
+            sb.append(JAVA_JDK_VERSION_NAME).append("=").append(javaJDKVersion).append(",");
+        }
+        if (!sb.isEmpty()) {
+            assert sb.charAt(sb.length() - 1) == ',';
+            sb.setLength(sb.length() - 1);
         }
         return sb.toString();
     }
@@ -460,7 +457,7 @@ public final class RegexOptions {
         private short maxBackTrackerCompileSize = TRegexOptions.TRegexMaxBackTrackerMergeExplodeSize;
         private RegexFlavor flavor;
         private Encodings.Encoding encoding = Encodings.UTF_16_RAW;
-        private PythonMethod pythonMethod;
+        private MatchingMode matchingMode;
         private String pythonLocale;
         private byte javaJDKVersion = JAVA_JDK_VERSION_DEFAULT;
 
@@ -521,6 +518,9 @@ public final class RegexOptions {
                             case 'D':
                                 maxDFASize = parseShortOption(MAX_DFA_SIZE_NAME);
                                 break;
+                            case 'c':
+                                matchingMode = parseMatchingMode(MATCHING_MODE_NAME);
+                                break;
                             case 't':
                                 parseBooleanOption(MUST_ADVANCE_NAME, MUST_ADVANCE);
                                 break;
@@ -531,7 +531,7 @@ public final class RegexOptions {
                     case 'P':
                         switch (lookAheadInKey("Python".length())) {
                             case 'M':
-                                pythonMethod = parsePythonMethod();
+                                matchingMode = parseMatchingMode(PYTHON_METHOD_NAME);
                                 break;
                             case 'L':
                                 pythonLocale = parseStringOption(PYTHON_LOCALE_NAME, "expected a python locale name");
@@ -697,20 +697,20 @@ public final class RegexOptions {
             return expectValue(enc, enc.getName(), Encodings.ALL_NAMES);
         }
 
-        private PythonMethod parsePythonMethod() throws RegexSyntaxException {
-            expectOptionName(PYTHON_METHOD_NAME);
+        private MatchingMode parseMatchingMode(String optionName) throws RegexSyntaxException {
+            expectOptionName(optionName);
             if (i >= src.length()) {
-                throw optionsSyntaxErrorUnexpectedValue(PYTHON_METHOD_OPTIONS);
+                throw optionsSyntaxErrorUnexpectedValue(MATCHING_MODE_OPTIONS);
             }
             switch (src.charAt(i)) {
                 case 's':
-                    return expectValue(PythonMethod.search, PYTHON_METHOD_SEARCH, PYTHON_METHOD_OPTIONS);
+                    return expectValue(MatchingMode.search, MATCHING_MODE_SEARCH, MATCHING_MODE_OPTIONS);
                 case 'm':
-                    return expectValue(PythonMethod.match, PYTHON_METHOD_MATCH, PYTHON_METHOD_OPTIONS);
+                    return expectValue(MatchingMode.match, MATCHING_MODE_MATCH, MATCHING_MODE_OPTIONS);
                 case 'f':
-                    return expectValue(PythonMethod.fullmatch, PYTHON_METHOD_FULLMATCH, PYTHON_METHOD_OPTIONS);
+                    return expectValue(MatchingMode.fullmatch, MATCHING_MODE_FULLMATCH, MATCHING_MODE_OPTIONS);
                 default:
-                    throw optionsSyntaxErrorUnexpectedValue(PYTHON_METHOD_OPTIONS);
+                    throw optionsSyntaxErrorUnexpectedValue(MATCHING_MODE_OPTIONS);
             }
         }
 
@@ -741,63 +741,8 @@ public final class RegexOptions {
             return (options & bit) != 0;
         }
 
-        public Builder u180eWhitespace(boolean enabled) {
-            updateOption(enabled, U180E_WHITESPACE);
-            return this;
-        }
-
-        public Builder regressionTestMode(boolean enabled) {
-            updateOption(enabled, REGRESSION_TEST_MODE);
-            return this;
-        }
-
-        public Builder dumpAutomata(boolean enabled) {
-            updateOption(enabled, DUMP_AUTOMATA);
-            return this;
-        }
-
-        public Builder stepExecution(boolean enabled) {
-            updateOption(enabled, STEP_EXECUTION);
-            return this;
-        }
-
-        public Builder alwaysEager(boolean enabled) {
-            updateOption(enabled, ALWAYS_EAGER);
-            return this;
-        }
-
-        public Builder utf16ExplodeAstralSymbols(boolean enabled) {
-            updateOption(enabled, UTF_16_EXPLODE_ASTRAL_SYMBOLS);
-            return this;
-        }
-
         public boolean isUtf16ExplodeAstralSymbols() {
             return isBitSet(UTF_16_EXPLODE_ASTRAL_SYMBOLS);
-        }
-
-        public Builder validate(boolean enabled) {
-            updateOption(enabled, VALIDATE);
-            return this;
-        }
-
-        public Builder ignoreAtomicGroups(boolean enabled) {
-            updateOption(enabled, IGNORE_ATOMIC_GROUPS);
-            return this;
-        }
-
-        public Builder generateDFAImmediately(boolean enabled) {
-            updateOption(enabled, GENERATE_DFA_IMMEDIATELY);
-            return this;
-        }
-
-        public Builder booleanMatch(boolean enabled) {
-            updateOption(enabled, BOOLEAN_MATCH);
-            return this;
-        }
-
-        public Builder mustAdvance(boolean enabled) {
-            updateOption(enabled, MUST_ADVANCE);
-            return this;
         }
 
         public Builder flavor(@SuppressWarnings("hiding") RegexFlavor flavor) {
@@ -818,34 +763,8 @@ public final class RegexOptions {
             return encoding;
         }
 
-        public Builder pythonMethod(@SuppressWarnings("hiding") PythonMethod pythonMethod) {
-            this.pythonMethod = pythonMethod;
-            return this;
-        }
-
-        public PythonMethod getPythonMethod() {
-            return pythonMethod;
-        }
-
-        public Builder pythonLocale(@SuppressWarnings("hiding") String pythonLocale) {
-            this.pythonLocale = pythonLocale;
-            return this;
-        }
-
-        public String getPythonLocale() {
-            return pythonLocale;
-        }
-
         public RegexOptions build() {
-            return new RegexOptions(options, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, pythonMethod, pythonLocale, javaJDKVersion);
-        }
-
-        private void updateOption(boolean enabled, int bitMask) {
-            if (enabled) {
-                this.options |= bitMask;
-            } else {
-                this.options &= ~bitMask;
-            }
+            return new RegexOptions(options, maxDFASize, maxBackTrackerCompileSize, flavor, encoding, matchingMode, pythonLocale, javaJDKVersion);
         }
     }
 }

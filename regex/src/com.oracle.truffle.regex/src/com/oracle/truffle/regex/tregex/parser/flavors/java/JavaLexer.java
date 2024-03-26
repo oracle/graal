@@ -135,6 +135,7 @@ public final class JavaLexer extends RegexLexer {
 
     private static final TBitSet WHITESPACE = TBitSet.valueOf('\t', '\n', '\f', '\r', ' ');
     private static final TBitSet PREDEFINED_CHAR_CLASSES = TBitSet.valueOf('D', 'H', 'S', 'V', 'W', 'd', 'h', 's', 'v', 'w');
+    private static final TBitSet LATIN1_CHARS_THAT_CASE_FOLD_TO_NON_LATIN1_CHARS = TBitSet.valueOf(0x49, 0x4b, 0x53, 0x69, 0x6b, 0x73, 0xb5, 0xc5, 0xe5, 0xff);
 
     final JavaUnicodeProperties unicode;
     private final Deque<JavaFlags> flagsStack = new ArrayDeque<>();
@@ -264,8 +265,6 @@ public final class JavaLexer extends RegexLexer {
 
     @Override
     protected TBitSet getWhitespace() {
-        // TODO: check if this is correct, may also depend on flag Pattern.UNICODE_CHARACTER_CLASS
-        // (used only in skipWhitespace)
         return WHITESPACE;
     }
 
@@ -281,7 +280,6 @@ public final class JavaLexer extends RegexLexer {
 
     @Override
     protected boolean featureEnabledUnicodePropertyEscapes() {
-        // TODO: check if these are equal to what we currently use
         return true;
     }
 
@@ -459,7 +457,6 @@ public final class JavaLexer extends RegexLexer {
             }
             return ch;
         }
-
         throw syntaxError(JavaErrorMessages.ILLEGAL_HEX_ESCAPE);
     }
 
@@ -543,7 +540,6 @@ public final class JavaLexer extends RegexLexer {
 
     @Override
     protected void checkClassSetCharacter(int codePoint) throws RegexSyntaxException {
-
     }
 
     @Override
@@ -611,7 +607,6 @@ public final class JavaLexer extends RegexLexer {
                 // \p{InBlockName}
                 p = unicode.getBlock(name.substring(2));
             } else if (name.startsWith("Is")) {
-                // TODO handling the case sensitivity in UnicodeProperties might be redundant
                 // \p{IsGeneralCategory} and \p{IsScriptName}
                 String shortName = name.substring(2);
                 p = unicode.forUnicodeProperty(shortName, getLocalFlags().isCaseInsensitive());
@@ -684,7 +679,6 @@ public final class JavaLexer extends RegexLexer {
                                 }
                             }
                         }
-
                         if (hasBits) {
                             if (prev == null) {
                                 prev = curr = bits;
@@ -724,20 +718,17 @@ public final class JavaLexer extends RegexLexer {
                     } else if (hasBits) {
                         prev = prev.union(bits);
                     }
-
                     curCharClass.clear();
                     curCharClass.addSet(prev);
                     if (featureEnabledIgnoreCase()) {
                         caseFoldUnfold(curCharClass);
                     }
                     prev = curCharClass.toCodePointSet();
-
                     if (invert) {
                         return prev.createInverse(Encodings.UTF_16);
                     }
                     return prev;
                 }
-
             }
             char ch = consumeChar();
             ClassSetContents predef = parseCharClassAtomPredefCharClass(ch);
@@ -750,24 +741,16 @@ public final class JavaLexer extends RegexLexer {
                 }
                 continue;
             }
-
             CodePointSet range = parseRange(ch);
             curr = range;
             if (range.size() == 1 && range.getRanges()[0] == range.getRanges()[1]) {
                 int c = range.getRanges()[0];
-                if (c < 256 &&
-                                !(getLocalFlags().isCaseInsensitive() && getLocalFlags().isUnicodeCase() &&
-                                                (c == 0xff || c == 0xb5 ||
-                                                                c == 0x49 || c == 0x69 ||
-                                                                c == 0x53 || c == 0x73 ||
-                                                                c == 0x4b || c == 0x6b ||
-                                                                c == 0xc5 || c == 0xe5))) {
+                if (c < 256 && !(getLocalFlags().isCaseInsensitive() && getLocalFlags().isUnicodeCase() && LATIN1_CHARS_THAT_CASE_FOLD_TO_NON_LATIN1_CHARS.get(c))) {
                     hasBits = true;
                     curr = null;
                     bits = bits.union(range);
                 }
             }
-
             if (curr != null) {
                 if (prev == null) {
                     prev = curr;
@@ -776,35 +759,28 @@ public final class JavaLexer extends RegexLexer {
                 }
             }
         }
-
         throw syntaxError(JavaErrorMessages.UNCLOSED_CHARACTER_CLASS);
     }
 
     private CodePointSet parseRange(char c) {
         int ch = parseCharClassAtomCodePoint(c);
-
         if (consumingLookahead('-')) {
             if (atEnd()) {
                 throw syntaxError(JavaErrorMessages.ILLEGAL_CHARACTER_RANGE);
             }
-
             if (curChar() == ']' || curChar() == '[') {
-
                 // unmatched '-' is treated as literal
                 retreat();
                 return CodePointSet.create(ch);
             }
-
             int upper = parseCharClassAtomCodePoint(consumeChar());
             if (upper < ch) {
                 throw syntaxError(JavaErrorMessages.ILLEGAL_CHARACTER_RANGE);
             }
-
             return CodePointSet.create(ch, upper);
         } else {
             return CodePointSet.create(ch);
         }
-
     }
 
     @Override
@@ -931,42 +907,32 @@ public final class JavaLexer extends RegexLexer {
         // TODO do we need to do something else than inline flags? check "Special constructs" in
         // documentation
         char c = charAfterQuestionMark;
-
         if (c == '>') {
             throw new UnsupportedRegexException("Independent non-capturing groups are not supported");
         }
-
         int firstCharPos = position;
         JavaFlags newFlags = getLocalFlags();
         while (JavaFlags.isValidFlagChar(c)) {
-
             newFlags = newFlags.addFlag(c);
-
             if (atEnd()) {
                 throw handleUnfinishedGroupQ();
             }
             c = consumeChar();
         }
-
         if (c == '-') {
-
             if (atEnd()) {
                 throw handleUnfinishedGroupQ();
             }
             c = consumeChar();
-
             while (JavaFlags.isValidFlagChar(c)) {
                 newFlags = newFlags.delFlag(c);
-
                 if (atEnd()) {
                     throw handleUnfinishedGroupQ();
                 }
                 c = consumeChar();
             }
         }
-
         stagedFlags = newFlags;
-
         if (c == ':') {
             if (firstCharPos == position) {
                 return null;
@@ -975,7 +941,6 @@ public final class JavaLexer extends RegexLexer {
         } else if (c == ')') {
             return Token.createInlineFlags(stagedFlags, true);
         }
-
         return null;
     }
 
