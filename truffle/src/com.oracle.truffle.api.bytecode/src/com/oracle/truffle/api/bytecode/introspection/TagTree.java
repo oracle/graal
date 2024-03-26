@@ -57,4 +57,6 @@ public interface TagTree {
 
     SourceSection getSourceSection();
 
+    SourceSection[] getSourceSections();
+
 }

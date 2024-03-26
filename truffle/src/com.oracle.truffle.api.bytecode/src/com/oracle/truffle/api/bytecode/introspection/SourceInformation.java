@@ -49,7 +49,7 @@ public final class SourceInformation {
         this.data = data;
     }
 
-    public int getStartBci() {
+    public int getBeginBci() {
         return (int) data[0];
     }
 
@@ -67,6 +67,6 @@ public final class SourceInformation {
         if (sourceSection == null) {
             sourceSection = "<none>";
         }
-        return String.format("[%04x .. %04x] %s", getStartBci(), getEndBci(), sourceSection);
+        return String.format("[%04x .. %04x] %s", getBeginBci(), getEndBci(), sourceSection);
     }
 }

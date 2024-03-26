@@ -824,7 +824,7 @@ public final class SuspendedEvent {
         private boolean hasRootTag(Node callNode) {
             Node node = callNode;
             do {
-                if (node instanceof InstrumentableNode && ((InstrumentableNode) node).hasTag(RootTag.class)) {
+                if (node instanceof InstrumentableNode && ((InstrumentableNode) node).supportsTag(RootTag.class)) {
                     return true;
                 }
                 node = node.getParent();

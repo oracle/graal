@@ -41,8 +41,8 @@
 package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -147,45 +147,38 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
         Source source1 = Source.newBuilder("test", "This is just a piece of test source.", "test1.test").build();
         Source source2 = Source.newBuilder("test", "This is another test source.", "test2.test").build();
         BasicInterpreter root = parseNodeWithSource("sourceMultipleSources", b -> {
+            b.beginSource(source1);
+            b.beginSourceSection(0, source1.getLength());
+
             b.beginRoot(LANGUAGE);
 
             b.emitVoidOperation(); // no source
-
-            b.beginSource(source1);
             b.beginBlock();
-
             b.emitVoidOperation(); // no source
 
             b.beginSourceSection(1, 2);
+
             b.beginBlock();
-
             b.emitVoidOperation(); // source1, 1, 2
-
             b.beginSource(source2);
             b.beginBlock();
-
-            b.emitVoidOperation(); // no source
+            b.emitVoidOperation(); // source1, 1, 2
 
             b.beginSourceSection(3, 4);
             b.beginBlock();
-
             b.emitVoidOperation(); // source2, 3, 4
 
             b.beginSourceSection(5, 1);
             b.beginBlock();
-
             b.emitVoidOperation(); // source2, 5, 1
-
             b.endBlock();
             b.endSourceSection();
 
             b.emitVoidOperation(); // source2, 3, 4
-
             b.endBlock();
             b.endSourceSection();
 
-            b.emitVoidOperation(); // no source
-
+            b.emitVoidOperation(); // source1, 1, 2
             b.endBlock();
             b.endSource();
 
@@ -197,49 +190,39 @@ public class SourcesTest extends AbstractBasicInterpreterTest {
             b.emitVoidOperation(); // no source
 
             b.endBlock();
-            b.endSource();
 
             b.emitVoidOperation(); // no source
 
             b.endRoot();
+
+            b.endSourceSection();
+            b.endSource();
         });
 
-        assertEquals(root.getSourceSection().getSource(), source1);
-        assertEquals(root.getSourceSection().getCharIndex(), 1);
-        assertEquals(root.getSourceSection().getCharLength(), 2);
-
-        Source[] sources = {null, source1, source2};
-
-        int[][] expected = {
-                        null,
-                        null,
-                        {1, 1, 2},
-                        null,
-                        {2, 3, 4},
-                        {2, 5, 1},
-                        {2, 3, 4},
-                        null,
-                        {1, 1, 2},
-                        null,
-                        null,
-        };
+        assertSourceSection(source1, 0, source1.getLength(), root.getSourceSection());
 
         List<Instruction> instructions = root.getBytecodeNode().getIntrospectionData().getInstructions();
-        for (int i = 0; i < expected.length; i++) {
-            BytecodeLocation location = instructions.get(i).getLocation();
-            SourceSection sourceSection = location.findSourceLocation();
-            if (expected[i] == null) {
-                assertEquals("Mismatch at bci " + location, null, sourceSection);
-            } else {
-                assertNotNull("Mismatch at bci " + location, sourceSection);
-                assertEquals("Mismatch at bci " + location, sources[expected[i][0]],
-                                sourceSection.getSource());
-                assertEquals("Mismatch at bci " + location, expected[i][1],
-                                sourceSection.getCharIndex());
-                assertEquals("Mismatch at bci " + location, expected[i][2],
-                                sourceSection.getCharLength());
-            }
-        }
+        assertInstructionSourceSection(source1, 0, source1.getLength(), instructions.get(0));
+        assertInstructionSourceSection(source1, 0, source1.getLength(), instructions.get(1));
+        assertInstructionSourceSection(source1, 1, 2, instructions.get(2));
+        assertInstructionSourceSection(source1, 1, 2, instructions.get(3));
+        assertInstructionSourceSection(source2, 3, 4, instructions.get(4));
+        assertInstructionSourceSection(source2, 5, 1, instructions.get(5));
+        assertInstructionSourceSection(source2, 3, 4, instructions.get(6));
+        assertInstructionSourceSection(source1, 1, 2, instructions.get(7));
+        assertInstructionSourceSection(source1, 1, 2, instructions.get(8));
+        assertInstructionSourceSection(source1, 0, source1.getLength(), instructions.get(9));
+        assertInstructionSourceSection(source1, 0, source1.getLength(), instructions.get(10));
+    }
+
+    private static void assertInstructionSourceSection(Source source, int startIndex, int length, Instruction i) {
+        assertSourceSection(source, startIndex, length, i.getLocation().findSourceLocation());
+    }
+
+    private static void assertSourceSection(Source source, int startIndex, int length, SourceSection section) {
+        assertSame(source, section.getSource());
+        assertEquals(startIndex, section.getCharIndex());
+        assertEquals(length, section.getCharLength());
     }
 
     @Test

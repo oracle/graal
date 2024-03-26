@@ -57,11 +57,13 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
-import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
@@ -101,10 +103,16 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
     private static final boolean DO_LOG_NODE_CREATION = false;
     private static final boolean FORCE_SERIALIZE = false;
 
+    private static final Class<?>[] EXPRESSION = new Class[]{ExpressionTag.class};
+    private static final Class<?>[] STATEMENT = new Class[]{StatementTag.class};
+    private static final Class<?>[] CALL = new Class[]{CallTag.class, ExpressionTag.class};
+
     public static void parseSL(SLLanguage language, Source source, Map<TruffleString, RootCallTarget> functions) {
         BytecodeParser<SLBytecodeRootNodeGen.Builder> slParser = (b) -> {
             SLBytecodeVisitor visitor = new SLBytecodeVisitor(language, source, b);
+            b.beginSource(source);
             parseSLImpl(source, visitor);
+            b.endSource();
         };
 
         BytecodeRootNodes<SLBytecodeRootNode> nodes;
@@ -158,6 +166,13 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
 
     @Override
     public Void visit(ParseTree tree) {
+        beginSourceSection(tree);
+        super.visit(tree);
+        b.endSourceSection();
+        return null;
+    }
+
+    private void beginSourceSection(ParseTree tree) throws AssertionError {
         int sourceStart;
         int sourceEnd;
 
@@ -174,18 +189,14 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
         }
 
         b.beginSourceSection(sourceStart, sourceEnd - sourceStart);
-        super.visit(tree);
-        b.endSourceSection();
-        return null;
     }
 
     @Override
     public Void visitFunction(FunctionContext ctx) {
         TruffleString name = asTruffleString(ctx.IDENTIFIER(0).getSymbol(), false);
-        b.beginRoot(language);
+        beginSourceSection(ctx);
 
-        b.beginSource(source);
-        b.beginTag(StandardTags.RootTag.class);
+        b.beginRoot(language);
         b.beginBlock();
 
         int parameterCount = enterFunction(ctx).size();
@@ -202,7 +213,6 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
             b.endStoreLocal();
         }
 
-        b.beginTag(StandardTags.RootBodyTag.class);
         b.beginBlock();
 
         visit(ctx.body);
@@ -211,19 +221,17 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
         locals.clear();
 
         b.endBlock();
-        b.endTag();
 
         b.beginReturn();
         b.emitLoadConstant(SLNull.SINGLETON);
         b.endReturn();
 
         b.endBlock();
-        b.endTag();
-        b.endSource();
 
         SLBytecodeRootNode node = b.endRoot();
         node.setTSName(name);
 
+        b.endSourceSection();
         return null;
     }
 
@@ -252,9 +260,9 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
             semErr(ctx.b, "break used outside of loop");
         }
 
-        b.beginTag(StandardTags.StatementTag.class);
+        b.beginTag(STATEMENT);
         b.emitBranch(breakLabel);
-        b.endTag();
+        b.endTag(STATEMENT);
 
         return null;
     }
@@ -265,9 +273,9 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
             semErr(ctx.c, "continue used outside of loop");
         }
 
-        b.beginTag(StandardTags.StatementTag.class);
+        b.beginTag(STATEMENT);
         b.emitBranch(continueLabel);
-        b.endTag();
+        b.endTag(STATEMENT);
 
         return null;
     }
@@ -285,7 +293,7 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
         BytecodeLabel oldBreak = breakLabel;
         BytecodeLabel oldContinue = continueLabel;
 
-        b.beginTag(StandardTags.StatementTag.class);
+        b.beginTag(STATEMENT);
         b.beginBlock();
 
         breakLabel = b.createLabel();
@@ -303,7 +311,7 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
         b.emitLabel(breakLabel);
 
         b.endBlock();
-        b.endTag();
+        b.endTag(STATEMENT);
 
         breakLabel = oldBreak;
         continueLabel = oldContinue;
@@ -313,7 +321,7 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
 
     @Override
     public Void visitIf_statement(If_statementContext ctx) {
-        b.beginTag(StandardTags.StatementTag.class);
+        b.beginTag(STATEMENT);
 
         if (ctx.alt == null) {
             b.beginIfThen();
@@ -337,13 +345,13 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
             b.endIfThenElse();
         }
 
-        b.endTag();
+        b.endTag(STATEMENT);
         return null;
     }
 
     @Override
     public Void visitReturn_statement(Return_statementContext ctx) {
-        b.beginTag(StandardTags.StatementTag.class);
+        b.beginTag(STATEMENT);
         b.beginReturn();
 
         if (ctx.expression() == null) {
@@ -353,14 +361,14 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
         }
 
         b.endReturn();
-        b.endTag();
+        b.endTag(STATEMENT);
 
         return null;
     }
 
     @Override
     public Void visitExpression(ExpressionContext ctx) {
-        b.beginTag(StandardTags.ExpressionTag.class);
+        b.beginTag(EXPRESSION);
         List<Logic_termContext> terms = ctx.logic_term();
         if (terms.size() == 1) {
             visit(terms.get(0));
@@ -369,13 +377,13 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
             emitShortCircuitOperands(terms);
             b.endSLOr();
         }
-        b.endTag();
+        b.endTag(EXPRESSION);
         return null;
     }
 
     @Override
     public Void visitLogic_term(Logic_termContext ctx) {
-        b.beginTag(StandardTags.ExpressionTag.class);
+        b.beginTag(EXPRESSION);
         List<Logic_factorContext> factors = ctx.logic_factor();
         if (factors.size() == 1) {
             visit(factors.get(0));
@@ -384,7 +392,7 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
             emitShortCircuitOperands(factors);
             b.endSLAnd();
         }
-        b.endTag();
+        b.endTag(EXPRESSION);
 
         return null;
     }
@@ -408,7 +416,7 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
             return visit(ctx.arithmetic(0));
         }
 
-        b.beginTag(StandardTags.ExpressionTag.class);
+        b.beginTag(EXPRESSION);
 
         switch (ctx.OP_COMPARE().getText()) {
             case "<":
@@ -457,7 +465,7 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
                 throw new UnsupportedOperationException();
         }
 
-        b.endTag();
+        b.endTag(EXPRESSION);
 
         return null;
     }
@@ -490,7 +498,7 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
     public Void visitArithmetic(ArithmeticContext ctx) {
 
         if (!ctx.OP_ADD().isEmpty()) {
-            b.beginTag(StandardTags.ExpressionTag.class);
+            b.beginTag(EXPRESSION);
 
             for (int i = ctx.OP_ADD().size() - 1; i >= 0; i--) {
                 switch (ctx.OP_ADD(i).getText()) {
@@ -522,7 +530,7 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
                 }
             }
 
-            b.endTag();
+            b.endTag(EXPRESSION);
         } else {
             visit(ctx.term(0));
         }
@@ -533,7 +541,7 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
     @Override
     public Void visitTerm(TermContext ctx) {
         if (!ctx.OP_MUL().isEmpty()) {
-            b.beginTag(StandardTags.ExpressionTag.class);
+            b.beginTag(EXPRESSION);
 
             for (int i = ctx.OP_MUL().size() - 1; i >= 0; i--) {
                 switch (ctx.OP_MUL(i).getText()) {
@@ -564,7 +572,7 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
                 }
             }
 
-            b.endTag();
+            b.endTag(EXPRESSION);
         } else {
             visit(ctx.factor(0));
         }
@@ -592,10 +600,8 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
 
         Member_expressionContext last = members.get(idx);
 
-        if (last instanceof MemberCallContext) {
-            MemberCallContext lastCtx = (MemberCallContext) last;
-            b.beginTag(StandardTags.ExpressionTag.class);
-            b.beginTag(StandardTags.CallTag.class);
+        if (last instanceof MemberCallContext lastCtx) {
+            b.beginTag(CALL);
             b.beginSLInvoke();
 
             buildMemberExpressionRead(ident, members, idx - 1);
@@ -605,83 +611,68 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
             }
 
             b.endSLInvoke();
-            b.endTag();
-            b.endTag();
-        } else if (last instanceof MemberAssignContext) {
-            MemberAssignContext lastCtx = (MemberAssignContext) last;
+            b.endTag(CALL);
+        } else if (last instanceof MemberAssignContext lastCtx) {
+            int index = idx - 1;
 
-            buildMemberExpressionWriteBefore(ident, members, idx - 1, lastCtx.expression().start);
-            visit(lastCtx.expression());
-            buildMemberExpressionWriteAfter(ident, members, idx - 1);
-        } else if (last instanceof MemberFieldContext) {
-            MemberFieldContext lastCtx = (MemberFieldContext) last;
+            if (index == -1) {
+                int localIdx = getNameIndex(ident);
+                assert localIdx != -1;
 
-            b.beginTag(StandardTags.ExpressionTag.class);
+                b.beginBlock();
+                b.beginStoreLocal(locals.get(localIdx));
+                visit(lastCtx.expression());
+                b.endStoreLocal();
+                b.emitLoadLocal(locals.get(localIdx));
+                b.endBlock();
+
+            } else {
+                Member_expressionContext last1 = members.get(index);
+
+                if (last1 instanceof MemberCallContext) {
+                    semErr(lastCtx.expression().start, "invalid assignment target");
+                } else if (last1 instanceof MemberAssignContext) {
+                    semErr(lastCtx.expression().start, "invalid assignment target");
+                } else if (last1 instanceof MemberFieldContext lastCtx1) {
+                    b.beginTag(EXPRESSION);
+                    b.beginSLWriteProperty();
+                    buildMemberExpressionRead(ident, members, index - 1);
+                    b.emitLoadConstant(asTruffleString(lastCtx1.IDENTIFIER().getSymbol(), false));
+                    visit(lastCtx.expression());
+                    b.endSLWriteProperty();
+                    b.endTag(EXPRESSION);
+
+                } else {
+                    MemberIndexContext lastCtx2 = (MemberIndexContext) last1;
+
+                    b.beginTag(EXPRESSION);
+                    b.beginSLWriteProperty();
+                    buildMemberExpressionRead(ident, members, index - 1);
+                    visit(lastCtx2.expression());
+                    visit(lastCtx.expression());
+                    b.endSLWriteProperty();
+                    b.endTag(EXPRESSION);
+                }
+
+            }
+        } else if (last instanceof MemberFieldContext lastCtx) {
+
+            b.beginTag(EXPRESSION);
             b.beginSLReadProperty();
             buildMemberExpressionRead(ident, members, idx - 1);
             b.emitLoadConstant(asTruffleString(lastCtx.IDENTIFIER().getSymbol(), false));
             b.endSLReadProperty();
-            b.endTag();
+            b.endTag(EXPRESSION);
         } else {
             MemberIndexContext lastCtx = (MemberIndexContext) last;
 
-            b.beginTag(StandardTags.ExpressionTag.class);
+            b.beginTag(EXPRESSION);
             b.beginSLReadProperty();
             buildMemberExpressionRead(ident, members, idx - 1);
             visit(lastCtx.expression());
             b.endSLReadProperty();
-            b.endTag();
+            b.endTag(EXPRESSION);
         }
-    }
-
-    private final ArrayList<Integer> writeLocalsStack = new ArrayList<>();
-
-    private void buildMemberExpressionWriteBefore(Token ident, List<Member_expressionContext> members, int idx, Token errorToken) {
-        if (idx == -1) {
-            int localIdx = getNameIndex(ident);
-            assert localIdx != -1;
-            writeLocalsStack.add(localIdx);
-
-            b.beginBlock();
-            b.beginStoreLocal(locals.get(localIdx));
-            return;
-        }
-
-        Member_expressionContext last = members.get(idx);
-
-        if (last instanceof MemberCallContext) {
-            semErr(errorToken, "invalid assignment target");
-        } else if (last instanceof MemberAssignContext) {
-            semErr(errorToken, "invalid assignment target");
-        } else if (last instanceof MemberFieldContext) {
-            MemberFieldContext lastCtx = (MemberFieldContext) last;
-
-            b.beginTag(StandardTags.ExpressionTag.class);
-            b.beginSLWriteProperty();
-            buildMemberExpressionRead(ident, members, idx - 1);
-            b.emitLoadConstant(asTruffleString(lastCtx.IDENTIFIER().getSymbol(), false));
-        } else {
-            MemberIndexContext lastCtx = (MemberIndexContext) last;
-
-            b.beginTag(StandardTags.ExpressionTag.class);
-            b.beginSLWriteProperty();
-            buildMemberExpressionRead(ident, members, idx - 1);
-            visit(lastCtx.expression());
-        }
-    }
-
-    @SuppressWarnings("unused")
-    private void buildMemberExpressionWriteAfter(Token ident, List<Member_expressionContext> members, int idx) {
-        if (idx == -1) {
-            int localIdx = writeLocalsStack.remove(writeLocalsStack.size() - 1);
-            b.endStoreLocal();
-            b.emitLoadLocal(locals.get(localIdx));
-            b.endBlock();
-            return;
-        }
-
-        b.endSLWriteProperty();
-        b.endTag();
     }
 
     @Override

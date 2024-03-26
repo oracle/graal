@@ -1074,16 +1074,20 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     public void testIntrospectionDataSourceInformation() {
         Source source = Source.newBuilder("test", "return 1 + 2", "test.test").build();
         BasicInterpreter node = parseNodeWithSource("introspectionDataSourceInformation", b -> {
-            b.beginRoot(LANGUAGE);
             b.beginSource(source);
             b.beginSourceSection(0, 12);
+
+            b.beginRoot(LANGUAGE);
             b.beginReturn();
 
             b.beginSourceSection(7, 5);
             b.beginAddOperation();
 
+            // intentional duplicate source section
+            b.beginSourceSection(7, 1);
             b.beginSourceSection(7, 1);
             b.emitLoadConstant(1L);
+            b.endSourceSection();
             b.endSourceSection();
 
             b.beginSourceSection(11, 1);
@@ -1094,32 +1098,41 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
             b.endSourceSection();
 
             b.endReturn();
+            b.endRoot();
+
             b.endSourceSection();
             b.endSource();
-            b.endRoot();
         });
 
         BytecodeIntrospection data = node.getIntrospectionData();
         List<SourceInformation> sourceInformation = data.getSourceInformation();
 
-        assertEquals(5, sourceInformation.size());
-        SourceInformation s1 = sourceInformation.get(0); // return 1 + 2 (bci 0)
-        SourceInformation s2 = sourceInformation.get(1); // 1
-        SourceInformation s3 = sourceInformation.get(2); // 2
-        SourceInformation s4 = sourceInformation.get(3); // 1 + 2
-        SourceInformation s5 = sourceInformation.get(4); // return 1 + 2
+        assertEquals(4, sourceInformation.size());
+        SourceInformation s1 = sourceInformation.get(0); // 1
+        SourceInformation s2 = sourceInformation.get(1); // 2
+        SourceInformation s3 = sourceInformation.get(2); // 1 + 2
+        SourceInformation s4 = sourceInformation.get(3); // return 1 + 2
 
-        assertEquals("return 1 + 2", s1.getSourceSection().getCharacters().toString());
-        assertEquals("1", s2.getSourceSection().getCharacters().toString());
-        assertEquals("2", s3.getSourceSection().getCharacters().toString());
-        assertEquals("1 + 2", s4.getSourceSection().getCharacters().toString());
-        assertEquals("return 1 + 2", s5.getSourceSection().getCharacters().toString());
+        assertEquals("1", s1.getSourceSection().getCharacters().toString());
+        assertEquals("2", s2.getSourceSection().getCharacters().toString());
+        assertEquals("1 + 2", s3.getSourceSection().getCharacters().toString());
+        assertEquals("return 1 + 2", s4.getSourceSection().getCharacters().toString());
 
-        assertEquals(0, s1.getStartBci());
-        assertEquals(0, s1.getEndBci());
-        for (int i = 1; i < sourceInformation.size(); i++) {
-            assertTrue(sourceInformation.get(i - 1).getEndBci() <= sourceInformation.get(i).getStartBci());
-        }
+        List<Instruction> instructions = data.getInstructions();
+
+        System.out.println(node.dump());
+
+        assertEquals(0, s1.getBeginBci());
+        assertEquals(instructions.get(1).getBci(), s1.getEndBci());
+
+        assertEquals(2, instructions.get(1).getBci());
+        assertEquals(instructions.get(2).getBci(), s2.getEndBci());
+
+        assertEquals(0, s3.getBeginBci());
+        assertEquals(instructions.get(3).getBci(), s3.getEndBci());
+
+        assertEquals(0, s4.getBeginBci());
+        assertEquals(instructions.get(3).getBci() + 1, s4.getEndBci());
     }
 
     @Test
@@ -1129,12 +1142,15 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
             b.beginReturn();
             b.beginAddOperation();
+
             b.beginTag(ExpressionTag.class, StatementTag.class);
             b.emitLoadConstant(1L);
-            b.endTag();
+            b.endTag(ExpressionTag.class, StatementTag.class);
+
             b.beginTag(ExpressionTag.class);
             b.emitLoadConstant(2L);
-            b.endTag();
+            b.endTag(ExpressionTag.class);
+
             b.endAddOperation();
             b.endReturn();
 

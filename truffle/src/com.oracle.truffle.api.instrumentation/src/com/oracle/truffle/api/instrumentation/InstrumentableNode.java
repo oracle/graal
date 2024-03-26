@@ -237,6 +237,16 @@ public interface InstrumentableNode extends NodeInterface {
     }
 
     /**
+     * Returns true if this node or a child node supports tagging with a given tag. Defaults to
+     * {@link #hasTag(Class)} by default.
+     *
+     * @since 24.1
+     */
+    default boolean supportsTag(Class<? extends Tag> tag) {
+        return hasTag(tag);
+    }
+
+    /**
      * Returns an interop capable object that contains all keys and values of attributes associated
      * with this node. The returned object must return <code>true</code> in response to the
      * {@link com.oracle.truffle.api.interop.InteropLibrary#hasMembers(Object) has members} message.

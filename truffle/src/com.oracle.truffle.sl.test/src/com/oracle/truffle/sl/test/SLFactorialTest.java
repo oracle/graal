@@ -48,14 +48,14 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class SLFactorialTest {
+public class SLFactorialTest extends AbstractSLTest {
 
     private Context context;
     private Value factorial;
 
     @Before
     public void initEngine() throws Exception {
-        context = Context.create();
+        context = newContextBuilder().build();
         // @formatter:off
         context.eval("sl", "\n" +
                 "function fac(n) {\n" +

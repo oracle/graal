@@ -86,7 +86,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tck.DebuggerTester;
 
-public class SLDebugTest {
+public class SLDebugTest extends AbstractSLTest {
 
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {
@@ -97,7 +97,7 @@ public class SLDebugTest {
 
     @Before
     public void before() {
-        tester = new DebuggerTester(Context.newBuilder().allowAllAccess(true));
+        tester = new DebuggerTester(newContextBuilder().allowAllAccess(true));
     }
 
     @After

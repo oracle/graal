@@ -103,6 +103,7 @@ public class OperationModel implements PrettyPrintable {
      * Source position-related operations are also transparent.
      */
     public boolean isTransparent;
+    public boolean requiresRootOperation = true;
     public boolean isVoid;
     public boolean isVariadic;
     /**
@@ -139,6 +140,11 @@ public class OperationModel implements PrettyPrintable {
 
     public OperationModel setTransparent(boolean isTransparent) {
         this.isTransparent = isTransparent;
+        return this;
+    }
+
+    public OperationModel setRequiresParentRoot(boolean requiresRoot) {
+        this.requiresRootOperation = requiresRoot;
         return this;
     }
 

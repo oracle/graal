@@ -158,6 +158,8 @@ public final class ProbeNode extends Node {
     @CompilationFinal private volatile Assumption version;
     @CompilationFinal private volatile int seen = 0;
 
+    private final boolean eagerProbe;
+
     private static final boolean ASSERT_ENTER_RETURN_PARITY;
 
     static {
@@ -166,8 +168,13 @@ public final class ProbeNode extends Node {
         ASSERT_ENTER_RETURN_PARITY = assertsOn;
     }
 
+    /**
+     * Constructor for eager probes.
+     */
     ProbeNode(InstrumentableNode node, SourceSection sourceSection) {
-        this(findInstrumentationHandler(node), sourceSection);
+        this.handler = findInstrumentationHandler(node);
+        this.context = new EventContext(this, sourceSection);
+        this.eagerProbe = true;
     }
 
     private static InstrumentationHandler findInstrumentationHandler(InstrumentableNode node) {
@@ -182,6 +189,7 @@ public final class ProbeNode extends Node {
     ProbeNode(InstrumentationHandler handler, SourceSection sourceSection) {
         this.handler = handler;
         this.context = new EventContext(this, sourceSection);
+        this.eagerProbe = false;
     }
 
     RetiredNodeReference getRetiredNodeReference() {
@@ -470,7 +478,11 @@ public final class ProbeNode extends Node {
                     // chain is null -> remove wrapper;
                     // Note: never set child nodes to null, can cause races
                     if (retiredNodeReference == null) {
-                        InstrumentationHandler.removeWrapper(ProbeNode.this);
+
+                        // eager probes cannot be removed
+                        if (!eagerProbe) {
+                            InstrumentationHandler.removeWrapper(ProbeNode.this);
+                        }
                         return null;
                     } else {
                         oldChain = this.chain;

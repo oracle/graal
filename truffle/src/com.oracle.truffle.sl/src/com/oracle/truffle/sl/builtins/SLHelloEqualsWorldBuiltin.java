@@ -42,6 +42,7 @@ package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
@@ -63,7 +64,8 @@ public abstract class SLHelloEqualsWorldBuiltin extends SLBuiltinNode {
             Frame frame = f.getFrame(FrameAccess.READ_WRITE);
             int count = frame.getFrameDescriptor().getNumberOfSlots();
             for (int i = 0; i < count; i++) {
-                if (SLStrings.HELLO.equalsUncached((TruffleString) frame.getFrameDescriptor().getSlotName(i), SLLanguage.STRING_ENCODING)) {
+                Object slotName = frame.getFrameDescriptor().getSlotName(i);
+                if (slotName != null && SLStrings.HELLO.equalsUncached((TruffleString) slotName, SLLanguage.STRING_ENCODING)) {
                     frame.setObject(i, SLStrings.WORLD);
                     break;
                 }

@@ -101,7 +101,7 @@ import com.oracle.truffle.tck.DebuggerTester;
 /**
  * Test of SL instrumentation.
  */
-public class SLInstrumentTest {
+public class SLInstrumentTest extends AbstractSLTest {
 
     static final InteropLibrary INTEROP = LibraryFactory.resolve(InteropLibrary.class).getUncached();
 
@@ -140,7 +140,7 @@ public class SLInstrumentTest {
                         "}";
         Source source = Source.newBuilder("sl", code, "testing").build();
         List<Throwable> throwables;
-        try (Engine engine = Engine.newBuilder().out(new java.io.OutputStream() {
+        try (Engine engine = newEngineBuilder().out(new java.io.OutputStream() {
             // null output stream
             @Override
             public void write(int b) throws IOException {
@@ -212,7 +212,7 @@ public class SLInstrumentTest {
                     return NodeLibrary.getUncached().getScope(rootTagNode, frame, true);
                 }
             });
-            Context.newBuilder().engine(engine).build().eval(source);
+            newContextBuilder().engine(engine).build().eval(source);
         }
         assertTrue(throwables.toString(), throwables.isEmpty());
     }
@@ -499,8 +499,8 @@ public class SLInstrumentTest {
         // Pure exec:
         Source source = Source.newBuilder("sl", code, "testing").build();
         ByteArrayOutputStream engineOut = new ByteArrayOutputStream();
-        Engine engine = Engine.newBuilder().out(engineOut).build();
-        Context context = Context.newBuilder().engine(engine).build();
+        Engine engine = newEngineBuilder().out(engineOut).build();
+        Context context = newContextBuilder().engine(engine).build();
         context.eval(source);
         String engineOutput = fullOutput;
         assertEquals(engineOutput, toUnixString(engineOut));
@@ -597,11 +597,11 @@ public class SLInstrumentTest {
                 return strIn.read();
             }
         };
-        Engine engine = Engine.newBuilder().in(delegateInputStream).build();
+        Engine engine = newEngineBuilder().in(delegateInputStream).build();
         TestRedoIO redoIO = engine.getInstruments().get("testRedoIO").lookup(TestRedoIO.class);
         redoIOPtr[0] = redoIO;
         redoIO.inRead.drainPermits();
-        Context context = Context.newBuilder().engine(engine).build();
+        Context context = newContextBuilder().engine(engine).build();
         Value ret = context.eval(ioWait);
         assertEquals("O.K.", ret.asString());
         assertFalse(redoIO.beforePop);
@@ -697,8 +697,8 @@ public class SLInstrumentTest {
                         "}\n";
         final Source source = Source.newBuilder("sl", code, "testing").build();
         ByteArrayOutputStream engineOut = new ByteArrayOutputStream();
-        Engine engine = Engine.newBuilder().err(engineOut).build();
-        Context context = Context.newBuilder().engine(engine).build();
+        Engine engine = newEngineBuilder().err(engineOut).build();
+        Context context = newContextBuilder().engine(engine).build();
         // No instrument:
         Value ret = context.eval(source);
         assertTrue(ret.isNumber());

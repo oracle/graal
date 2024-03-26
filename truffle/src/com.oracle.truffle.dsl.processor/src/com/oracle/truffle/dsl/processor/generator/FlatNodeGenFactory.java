@@ -1805,7 +1805,7 @@ public class FlatNodeGenFactory {
                 }
 
                 builder.startStatement().startCall("cached", "add");
-                builder.startStaticCall(context.getType(List.class), "of");
+                builder.startStaticCall(context.getType(Arrays.class), "<Object>asList");
                 for (CacheExpression cache : specialization.getCaches()) {
                     if (cache.isAlwaysInitialized()) {
                         continue;
