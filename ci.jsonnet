@@ -4,9 +4,6 @@ local compiler = import 'compiler/ci.jsonnet';
 # GraalWasm
 local wasm = import 'wasm/ci.jsonnet';
 
-# Espresso
-local espresso = import 'espresso/ci.jsonnet';
-
 # Sulong
 local sulong = import 'sulong/ci.jsonnet';
 
@@ -23,5 +20,5 @@ local add_markdown_guard(build) = build + {
   _checkCommon: (import 'common.jsonnet'),
   ci_resources:: (import 'ci-resources.libsonnet'),
   specVersion: "2",
-  builds: [add_markdown_guard(b) for b in (compiler.builds + wasm.builds + espresso.builds + sulong.builds)]
+  builds: [add_markdown_guard(b) for b in (compiler.builds + wasm.builds + sulong.builds)]
 }
