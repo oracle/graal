@@ -34,7 +34,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 public class SubstrateExitHandlerFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (SubstrateOptions.InstallExitHandlers.getValue()) {
+        if (SubstrateOptions.InstallExitHandlers.getValue() || VMInspectionOptions.hasJfrSupport() || VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
             RuntimeSupport.getRuntimeSupport().addStartupHook(new SubstrateExitHandlerStartupHook());
         }
     }
