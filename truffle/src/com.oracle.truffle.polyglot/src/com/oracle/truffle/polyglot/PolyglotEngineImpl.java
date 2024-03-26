@@ -627,7 +627,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 res = engineLoggers;
                 if (res == null) {
                     LoggerCache loggerCache = PolyglotLoggers.LoggerCache.newEngineLoggerCache(this);
-                    loggerCache.setOwner(this);
                     res = LANGUAGE.createEngineLoggers(loggerCache);
                     EngineAccessor.LANGUAGE.configureLoggers(this, logLevels, res);
                     for (ContextWeakReference contextRef : contexts) {
