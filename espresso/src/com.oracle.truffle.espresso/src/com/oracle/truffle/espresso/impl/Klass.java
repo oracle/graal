@@ -81,14 +81,10 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
-import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
-import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNodeGen;
 import com.oracle.truffle.espresso.nodes.interop.LookupDeclaredMethod;
 import com.oracle.truffle.espresso.nodes.interop.LookupDeclaredMethodNodeGen;
 import com.oracle.truffle.espresso.nodes.interop.LookupFieldNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupFieldNodeGen;
-import com.oracle.truffle.espresso.nodes.interop.OverLoadedMethodSelectorNode;
-import com.oracle.truffle.espresso.nodes.interop.OverLoadedMethodSelectorNodeGen;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeFactory;
 import com.oracle.truffle.espresso.nodes.interop.ToPrimitive;
@@ -102,6 +98,8 @@ import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.BaseInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.EspressoInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.InteropLookupAndInvoke;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.InteropLookupAndInvokeNodeGen;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -310,33 +308,20 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         static Object doShared(Klass receiver, String member, Object[] arguments,
                         @CachedLibrary("receiver") @SuppressWarnings("unused") InteropLibrary receiverInterop,
                         @Bind("getLang(receiverInterop)") @SuppressWarnings("unused") EspressoLanguage language) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
-            return invokeMember(receiver, member, arguments, receiverInterop, LookupDeclaredMethodNodeGen.getUncached(), OverLoadedMethodSelectorNodeGen.getUncached(),
-                            InvokeEspressoNodeGen.getUncached(),
-                            ToEspressoNodeFactory.DynamicToEspressoNodeGen.getUncached());
+            return invokeMember(receiver, member, arguments, receiverInterop, InteropLookupAndInvokeNodeGen.getUncached());
         }
 
         @Specialization
         static Object invokeMember(Klass receiver, String member,
                         Object[] arguments,
                         @CachedLibrary("receiver") InteropLibrary receiverInterop,
-                        @Cached LookupDeclaredMethod lookupMethod,
-                        @Cached OverLoadedMethodSelectorNode overloadSelector,
-                        @Exclusive @Cached InvokeEspressoNode invoke,
-                        @Cached ToEspressoNode.DynamicToEspresso toEspressoNode)
+                        @Cached InteropLookupAndInvoke lookupAndInvoke)
                         throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
             if (!receiverInterop.isMemberInvocable(receiver, member)) {
                 // Not invocable, no matter the arity or argument types.
                 throw UnknownIdentifierException.create(member);
             }
-            // The member (static method) may be invocable only for a certain arity and argument
-            // types.
-            Method[] candidates = lookupMethod.execute(receiver, member, true, true, arguments.length);
-            if (candidates != null) {
-                return EspressoInterop.invokeEspressoMethodHelper(null, member, arguments, overloadSelector, invoke, toEspressoNode, candidates);
-            }
-            // TODO(peterssen): The expected arity is not known, only that the given one is not
-            // correct.
-            throw ArityException.create(arguments.length + 1, -1, arguments.length);
+            return lookupAndInvoke.execute(null, receiver, arguments, member, false);
         }
     }
 
@@ -429,8 +414,8 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                 return doMultidimensionalArray(receiver, args, ToPrimitiveFactory.ToIntNodeGen.getUncached());
             }
             if (isObjectKlass(receiver)) {
-                return doObject(receiver, args, receiverInterop, LookupDeclaredMethodNodeGen.getUncached(), OverLoadedMethodSelectorNodeGen.getUncached(), InvokeEspressoNodeGen.getUncached(),
-                                ToEspressoNodeFactory.DynamicToEspressoNodeGen.getUncached());
+                return doObject(receiver, args, receiverInterop,
+                                InteropLookupAndInvokeNodeGen.getUncached());
             }
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();
@@ -518,23 +503,14 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         @Specialization(guards = "isObjectKlass(receiver)")
         static Object doObject(Klass receiver, Object[] arguments,
                         @CachedLibrary("receiver") InteropLibrary receiverInterop,
-                        @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
-                        @Cached OverLoadedMethodSelectorNode overloadSelector,
-                        @Exclusive @Cached InvokeEspressoNode invoke,
-                        @Cached ToEspressoNode.DynamicToEspresso toEspressoNode) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+                        @Cached InteropLookupAndInvoke lookupAndInvoke) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
             if (!receiverInterop.isInstantiable(receiver)) {
                 throw UnsupportedMessageException.create();
             }
             ObjectKlass objectKlass = (ObjectKlass) receiver;
-            Method[] initCandidates = lookupMethod.execute(receiver, INIT_NAME, true, false, arguments.length);
-            if (initCandidates != null) {
-                StaticObject instance = allocateNewInstance(EspressoContext.get(invoke), objectKlass);
-                EspressoInterop.invokeEspressoMethodHelper(instance, INIT_NAME, arguments, overloadSelector, invoke, toEspressoNode, initCandidates);
-                return instance;
-            }
-            // TODO(peterssen): We don't know the expected arity of this method, only that the given
-            // arity is incorrect.
-            throw ArityException.create(arguments.length + 1, -1, arguments.length);
+            StaticObject instance = allocateNewInstance(EspressoContext.get(lookupAndInvoke), objectKlass);
+            lookupAndInvoke.execute(instance, objectKlass, arguments, INIT_NAME, false);
+            return instance;
         }
 
         private static StaticObject allocateNewInstance(EspressoContext context, ObjectKlass objectKlass) {
