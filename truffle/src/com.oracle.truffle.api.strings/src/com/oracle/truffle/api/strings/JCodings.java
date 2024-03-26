@@ -56,10 +56,17 @@ interface JCodings {
     JCodings INSTANCE = ENABLED ? new JCodingsImpl(PROVIDER) : new JCodingsDisabled();
 
     private static JCodingsProvider loadProvider() {
-        if (!TruffleOptions.AOT || TStringAccessor.getNeedsAllEncodings()) {
-            for (JCodingsProvider provider : loadService(JCodingsProvider.class)) {
-                return provider;
-            }
+        if (TruffleOptions.AOT && !TStringAccessor.getNeedsAllEncodings()) {
+            /*
+             * In the AOT case, we already know all included languages up front; if none of them
+             * need all encodings, we do not need to enable jcodings support even if it's available.
+             * In the non-AOT case on the other hand, languages are loaded lazily, so we cannot make
+             * such assumptions.
+             */
+            return null;
+        }
+        for (JCodingsProvider provider : loadService(JCodingsProvider.class)) {
+            return provider;
         }
         return null;
     }
