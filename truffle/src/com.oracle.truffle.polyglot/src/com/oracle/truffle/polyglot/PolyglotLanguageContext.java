@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
 import java.io.PrintStream;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -1222,6 +1223,26 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         } else {
             return null;
         }
+    }
+
+    static boolean isContextCreation(StackTraceElement[] stackTrace) {
+        assert hasMethod(PolyglotLanguageContext.class, "ensureCreated");
+        for (StackTraceElement element : stackTrace) {
+            if (element.getClassName().equals(PolyglotLanguageContext.class.getName()) &&
+                            element.getMethodName().equals("ensureCreated")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean hasMethod(Class<?> klass, String methodName) {
+        for (Method method : klass.getDeclaredMethods()) {
+            if (method.getName().equals(methodName)) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }

@@ -40,7 +40,10 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -82,6 +85,8 @@ final class PolyglotThreadLocalActions {
     private long idCounter;
     @CompilationFinal private boolean traceActions;
     private List<PolyglotStatisticsAction> statistics;  // final after context patching
+    private Timer missingPollTimer;  // final after context patching
+    private int missingPollMillis;  // final after context patching
     private Timer intervalTimer;  // final after context patching
 
     PolyglotThreadLocalActions(PolyglotContextImpl context) {
@@ -90,6 +95,10 @@ final class PolyglotThreadLocalActions {
     }
 
     void prepareContextStore() {
+        if (missingPollTimer != null) {
+            missingPollTimer.cancel();
+            missingPollTimer = null;
+        }
         if (intervalTimer != null) {
             intervalTimer.cancel();
             intervalTimer = null;
@@ -107,11 +116,21 @@ final class PolyglotThreadLocalActions {
 
     private void initialize() {
         OptionValuesImpl options = this.context.engine.getEngineOptionValues();
-        if (options.get(PolyglotEngineOptions.SafepointALot)) {
+        boolean safepointALot = options.get(PolyglotEngineOptions.SafepointALot);
+        missingPollMillis = options.get(PolyglotEngineOptions.TraceMissingSafepointPollInterval);
+
+        if (safepointALot || missingPollMillis > 0) {
             statistics = new ArrayList<>();
         } else {
             statistics = null;
         }
+
+        if (missingPollMillis > 0) {
+            missingPollTimer = new Timer(false);
+        } else {
+            missingPollTimer = null;
+        }
+
         this.traceActions = options.get(PolyglotEngineOptions.TraceThreadLocalActions);
         long interval = options.get(PolyglotEngineOptions.TraceStackTraceInterval);
         if (interval > 0) {
@@ -160,6 +179,9 @@ final class PolyglotThreadLocalActions {
         assert Thread.holdsLock(context);
         assert !context.isActive() || context.state == PolyglotContextImpl.State.CLOSED_CANCELLED ||
                         context.state == PolyglotContextImpl.State.CLOSED_EXITED : "context is still active, cannot flush safepoints";
+        if (missingPollTimer != null) {
+            missingPollTimer.cancel();
+        }
         if (intervalTimer != null) {
             intervalTimer.cancel();
         }
@@ -673,13 +695,16 @@ final class PolyglotThreadLocalActions {
 
     }
 
-    private static final class PolyglotStatisticsAction extends ThreadLocalAction {
+    private final class PolyglotStatisticsAction extends ThreadLocalAction {
 
         private static volatile ThreadMXBean threadBean;
 
-        private long prevTime = 0;
         private final LongSummaryStatistics intervalStatistics = new LongSummaryStatistics();
         private final String threadName;
+
+        private long prevTime = 0;
+        private TimerTask task = null;
+        private volatile StackTraceElement[] stackTrace = null;
 
         PolyglotStatisticsAction(Thread thread) {
             // no side-effects, async, recurring
@@ -689,12 +714,48 @@ final class PolyglotThreadLocalActions {
 
         @Override
         protected void perform(Access access) {
+            if (this.task != null) {
+                // Cancel the previous task if it has not started yet, does nothing otherwise.
+                // If it has not started yet, then we have polled a safepoint before
+                // missingPollMillis,
+                // so we don't need a stacktrace/to run that task.
+                this.task.cancel();
+            }
+
             long prev = this.prevTime;
             if (prev != 0) {
                 long now = System.nanoTime();
-                intervalStatistics.accept(now - prev);
+                long duration = now - prev;
+                intervalStatistics.accept(duration);
+
+                if (stackTrace != null && !PolyglotLanguageContext.isContextCreation(stackTrace)) {
+                    logger.info("No TruffleSafepoint.poll() for " + Duration.ofNanos(duration).toMillis() + "ms on " + threadName + " (stacktrace " + missingPollMillis + "ms after the last poll)" +
+                                    System.lineSeparator() + formatStackTrace(stackTrace));
+                    stackTrace = null;
+                }
             }
             this.prevTime = System.nanoTime();
+
+            if (missingPollTimer != null) {
+                Thread thread = access.getThread();
+                this.task = new TimerTask() {
+                    @Override
+                    public void run() {
+                        stackTrace = thread.getStackTrace();
+                    }
+                };
+                missingPollTimer.schedule(this.task, missingPollMillis);
+            }
+        }
+
+        private static String formatStackTrace(StackTraceElement[] stackTrace) {
+            final Exception exception = new Exception();
+            exception.setStackTrace(stackTrace);
+            ByteArrayOutputStream stream = new ByteArrayOutputStream();
+            exception.printStackTrace(new PrintStream(stream));
+            final String stackTraceString = stream.toString();
+            // Remove the java.lang.Exception line
+            return stackTraceString.substring(stackTraceString.indexOf("\t"));
         }
 
         @TruffleBoundary
