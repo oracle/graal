@@ -60,6 +60,7 @@ import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.loop.LoopSafepointVerification;
 import jdk.graal.compiler.nodes.spi.ProfileProvider;
 import jdk.graal.compiler.nodes.spi.ResolvedJavaMethodProfileProvider;
 import jdk.graal.compiler.nodes.spi.TrackedUnsafeAccess;
@@ -1304,4 +1305,18 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         assert (inliningLog == null) == (newInliningLog == null) : "the new inlining log must be null iff the previous is null";
         inliningLog = newInliningLog;
     }
+
+    private LoopSafepointVerification safepointVerification;
+
+    @Override
+    public boolean verify(boolean verifyInputs) {
+        if (verifyGraphEdges) {
+            if (safepointVerification == null) {
+                safepointVerification = new LoopSafepointVerification();
+            }
+            assert safepointVerification.verifyLoopSafepoints(this);
+        }
+        return super.verify(verifyInputs);
+    }
+
 }
