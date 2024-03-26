@@ -27,12 +27,25 @@ public class EmbeddedResourcesInfo {
 
     public void declareResourceAsRegistered(Module module, String resource, String source) {
         Resources.ModuleResourceRecord key = createStorageKey(module, resource);
-        synchronized (registeredResources) {
-            registeredResources.computeIfAbsent(key, k -> new ArrayList<>());
-            if (!registeredResources.get(key).contains(source)) {
-                registeredResources.get(key).add(source);
+        registeredResources.compute(key, (k, v) -> {
+            if (v == null) {
+                ArrayList<String> newValue = new ArrayList<>();
+                newValue.add(source);
+                return newValue;
             }
-        }
+
+            /*
+             * We have to avoid duplicated sources here. In case when declaring resource that comes
+             * from module as registered, we don't have information whether the resource is already
+             * registered or not. That check is performed later in {@link Resources.java#addEntry},
+             * so we have to perform same check here, to avoid duplicates when collecting
+             * information about resource.
+             */
+            if (!v.contains(source)) {
+                v.add(source);
+            }
+            return v;
+        });
     }
 
 }

@@ -148,7 +148,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         public static final String EMBEDDED_RESOURCES_FILE_NAME = "embedded-resources.json";
         @Option(help = "Create a " + EMBEDDED_RESOURCES_FILE_NAME + " file in the build directory. The output conforms to the JSON schema located at: " +
-                        "docs/reference-manual/native-image/assets/embedded-resources-schema-v0.1.0.json", type = OptionType.User)//
+                        "docs/reference-manual/native-image/assets/embedded-resources-schema-v1.0.0.json", type = OptionType.User)//
         public static final HostedOptionKey<Boolean> GenerateEmbeddedResourcesFile = new HostedOptionKey<>(false);
     }
 
