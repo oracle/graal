@@ -209,7 +209,9 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
             locals.add(argLocal);
 
             b.beginStoreLocal(argLocal);
-            b.emitLoadArgument(i);
+            b.beginSLLoadArgument();
+            b.emitLoadConstant(i);
+            b.endSLLoadArgument();
             b.endStoreLocal();
         }
 
