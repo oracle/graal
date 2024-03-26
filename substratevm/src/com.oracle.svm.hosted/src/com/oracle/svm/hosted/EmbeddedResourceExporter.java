@@ -29,7 +29,7 @@ public class EmbeddedResourceExporter {
 
     public static void printReport(JsonWriter writer) throws IOException {
         JsonPrinter.printCollection(writer,
-                        getResourceReportEntryList(EmbeddedResourcesInfo.getRegisteredResources()),
+                        getResourceReportEntryList(EmbeddedResourcesInfo.singleton().getRegisteredResources()),
                         Comparator.comparing(EmbeddedResourceExporter.ResourceReportEntry::resourceName),
                         EmbeddedResourceExporter::resourceReportElement);
     }

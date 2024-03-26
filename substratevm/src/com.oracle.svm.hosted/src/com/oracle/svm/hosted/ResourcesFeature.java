@@ -26,7 +26,6 @@
 package com.oracle.svm.hosted;
 
 import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATOR;
-import static com.oracle.svm.hosted.EmbeddedResourcesInfo.declareResourceAsRegistered;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -198,7 +197,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
-            declareResourceAsRegistered(module, resourcePath, "INJECTED");
+            EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(module, resourcePath, "INJECTED");
             Resources.singleton().registerResource(module, resourcePath, resourceContent);
         }
 
@@ -284,7 +283,7 @@ public final class ResourcesFeature implements InternalFeature {
                 var resolvedModule = module.getLayer().configuration().findModule(module.getName());
                 if (resolvedModule.isPresent()) {
                     Optional<URI> location = resolvedModule.get().reference().location();
-                    location.ifPresent(uri -> declareResourceAsRegistered(module, resourcePath, uri.toString()));
+                    location.ifPresent(uri -> EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(module, resourcePath, uri.toString()));
                 }
             } catch (IOException e) {
                 Resources.singleton().registerIOException(module, resourcePath, e, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(resourcePath));
@@ -325,7 +324,7 @@ public final class ResourcesFeature implements InternalFeature {
                     }
 
                     String source = ResourcesUtils.getResourceSource(url, resourcePath, fromJar);
-                    declareResourceAsRegistered(null, resourcePath, source);
+                    EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(null, resourcePath, source);
                 } catch (IOException e) {
                     Resources.singleton().registerIOException(null, resourcePath, e, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(resourcePath));
                     return;
@@ -358,6 +357,8 @@ public final class ResourcesFeature implements InternalFeature {
         ResourcesRegistryImpl resourcesRegistry = new ResourcesRegistryImpl();
         ImageSingletons.add(ResourcesRegistry.class, resourcesRegistry);
         ImageSingletons.add(RuntimeResourceSupport.class, resourcesRegistry);
+        EmbeddedResourcesInfo embeddedResourcesInfo = new EmbeddedResourcesInfo();
+        ImageSingletons.add(EmbeddedResourcesInfo.class, embeddedResourcesInfo);
     }
 
     private static ResourcesRegistryImpl resourceRegistryImpl() {
@@ -504,7 +505,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void registerNegativeQuery(Module module, String resourceName) {
-            declareResourceAsRegistered(module, resourceName, "");
+            EmbeddedResourcesInfo.singleton().declareResourceAsRegistered(module, resourceName, "");
             Resources.singleton().registerNegativeQuery(module, resourceName);
         }
     }
