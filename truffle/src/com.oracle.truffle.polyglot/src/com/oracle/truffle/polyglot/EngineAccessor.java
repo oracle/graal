@@ -1100,7 +1100,7 @@ final class EngineAccessor extends Accessor {
             }
 
             PolyglotContextConfig innerConfig = new PolyglotContextConfig(engine, creatorConfig.sandboxPolicy, sharingEnabled, useOut, useErr, useIn,
-                            useAllowHostLookup, usePolyglotAccess, useAllowNativeAccess, useAllowCreateThread, useAllowHostClassLoading,
+                            useAllowHostLookup, usePolyglotAccess, useAllowNativeAccess, useAllowCreateThread, creatorConfig.onDeniedThreadAccess, useAllowHostClassLoading,
                             useAllowInnerContextOptions, creatorConfig.allowExperimentalOptions,
                             useClassFilter, useArguments, allowedLanguages, useOptions, fileSystemConfig, creatorConfig.logHandler,
                             useAllowCreateProcess, useProcessHandler, useEnvironmentAccess, useCustomEnvironment,
@@ -1155,7 +1155,14 @@ final class EngineAccessor extends Accessor {
                 threadContext = innerContext.getContext(threadContext.language);
             }
             PolyglotThread newThread = new PolyglotThread(threadContext, runnable, group, stackSize, beforeEnter, afterLeave);
-            threadContext.context.checkMultiThreadedAccess(newThread);
+            for (;;) {
+                try {
+                    threadContext.context.checkMultiThreadedAccess(newThread);
+                    break;
+                } catch (PolyglotThreadAccessException ex) {
+                    ex.rethrow(threadContext.context);
+                }
+            }
             return newThread;
         }
 
