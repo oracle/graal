@@ -50,7 +50,6 @@ import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
@@ -71,9 +70,11 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
+import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateUtil;
@@ -221,19 +222,19 @@ public class LibGraalFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
-        access.registerObjectReachableCallback(OptionKey.class, optionCollector::accept);
+        access.registerObjectReachableCallback(OptionKey.class, optionCollector::doCallback);
 
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
         registerJNIConfiguration(imageClassLoader);
     }
 
     /** Collects all {@link OptionKey}s that are reachable at run time. */
-    private static class OptionCollector implements BiConsumer<DuringAnalysisAccess, OptionKey<?>> {
+    private static class OptionCollector implements ObjectReachableCallback<OptionKey<?>> {
         final ConcurrentHashMap<OptionKey<?>, OptionKey<?>> options = new ConcurrentHashMap<>();
         private boolean sealed;
 
         @Override
-        public void accept(DuringAnalysisAccess access, OptionKey<?> option) {
+        public void doCallback(DuringAnalysisAccess access, OptionKey<?> option, ObjectScanner.ScanReason reason) {
             if (sealed) {
                 assert options.contains(option) : "All options must have been discovered during static analysis";
             } else {

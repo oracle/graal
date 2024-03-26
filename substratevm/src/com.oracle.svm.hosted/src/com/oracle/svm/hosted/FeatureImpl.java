@@ -53,6 +53,7 @@ import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -60,6 +61,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.SubstrateOptions;
@@ -294,10 +296,10 @@ public class FeatureImpl {
         /**
          * Register a callback that is executed when an object of the specified type or any of its
          * subtypes is marked as reachable.
-         * 
+         *
          * @since 24.0
          */
-        public <T> void registerObjectReachableCallback(Class<T> clazz, BiConsumer<DuringAnalysisAccess, T> callback) {
+        public <T> void registerObjectReachableCallback(Class<T> clazz, ObjectReachableCallback<T> callback) {
             getMetaAccess().lookupJavaType(clazz).registerObjectReachableCallback(callback);
         }
 
@@ -396,6 +398,10 @@ public class FeatureImpl {
             registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field), "registered from Feature API");
         }
 
+        public void registerAsUnsafeAccessed(Field field, Object reason) {
+            registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field), reason);
+        }
+
         public boolean registerAsUnsafeAccessed(AnalysisField aField, Object reason) {
             return registerAsUnsafeAccessed(aField, DefaultUnsafePartition.get(), reason);
         }
@@ -423,6 +429,10 @@ public class FeatureImpl {
         }
 
         public void registerAsRoot(AnalysisMethod aMethod, boolean invokeSpecial, String reason, MultiMethod.MultiMethodKey... otherRoots) {
+            bb.addRootMethod(aMethod, invokeSpecial, reason, otherRoots);
+        }
+
+        public void registerAsRoot(AnalysisMethod aMethod, boolean invokeSpecial, ObjectScanner.ScanReason reason, MultiMethod.MultiMethodKey... otherRoots) {
             bb.addRootMethod(aMethod, invokeSpecial, reason, otherRoots);
         }
 
