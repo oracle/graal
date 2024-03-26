@@ -258,6 +258,7 @@ public final class Deoptimizer {
         throw VMError.shouldNotReachHere("Unable to retrieve Deoptimized frame");
     }
 
+    @Uninterruptible(reason = "Prevent stack walks from seeing an inconsistent stack.")
     private static void installDeoptimizedFrame(Pointer sourceSp, DeoptimizedFrame deoptimizedFrame) {
         /*
          * Replace the return address to the deoptimized method with a pointer to the deoptStub.
