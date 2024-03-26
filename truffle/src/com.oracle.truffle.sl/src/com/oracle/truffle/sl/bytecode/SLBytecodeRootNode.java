@@ -44,6 +44,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.ForceQuickening;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
@@ -52,9 +53,11 @@ import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
 import com.oracle.truffle.api.bytecode.Variadic;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -82,6 +85,7 @@ import com.oracle.truffle.sl.nodes.expression.SLWritePropertyNode;
 import com.oracle.truffle.sl.nodes.util.SLToBooleanNode;
 import com.oracle.truffle.sl.nodes.util.SLUnboxNode;
 import com.oracle.truffle.sl.runtime.SLFunction;
+import com.oracle.truffle.sl.runtime.SLNull;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 @GenerateBytecode(//
@@ -126,6 +130,27 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
 
     public void setTSName(TruffleString tsName) {
         this.tsName = tsName;
+    }
+
+    // see also SLReadArgumentNode
+    @Operation
+    @TypeSystemReference(SLTypes.class)
+    public static final class SLLoadArgument {
+
+        @Specialization(guards = "index < arguments.length")
+        @ForceQuickening
+        static Object doLoadInBounds(@SuppressWarnings("unused") VirtualFrame frame, int index,
+                        @Bind("frame.getArguments()") Object[] arguments) {
+            /* Regular in-bounds access. */
+            return arguments[index];
+        }
+
+        @Fallback
+        static Object doLoadOutOfBounds(@SuppressWarnings("unused") Object index) {
+            /* Use the default null value. */
+            return SLNull.SINGLETON;
+        }
+
     }
 
     @Operation
