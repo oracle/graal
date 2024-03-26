@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,48 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.nmt;
+package com.oracle.svm.core.jvmti.headers;
 
-import com.oracle.svm.core.Uninterruptible;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.List;
 
-/** Categories for native memory tracking. */
-public enum NmtCategory {
-    /** JIT compiler. */
-    Compiler("Compiler"),
-    /** JIT compiled code. */
-    Code("Code"),
-    /** Garbage collector. */
-    GC("GC"),
-    /** Heap dumping infrastructure. */
-    HeapDump("Heap Dump"),
-    /** Java Flight Recorder. */
-    JFR("JFR"),
-    /** Java Native Interface. */
-    JNI("JNI"),
-    /** JVM stat / perf data. */
-    JvmStat("jvmstat"),
-    /** Java Virtual Machine Tool Interface. */
-    JVMTI("JVMTI"),
-    /** NMT itself. */
-    NMT("Native Memory Tracking"),
-    /** Profile-guided optimizations. */
-    PGO("PGO"),
-    /** Threading. */
-    Threading("Threading"),
-    /** Memory allocated via Unsafe. */
-    Unsafe("Unsafe"),
+import org.graalvm.nativeimage.c.CContext;
 
-    /** Some other, VM internal reason - avoid if possible, better to add a new category. */
-    Internal("Internal");
+import com.oracle.svm.core.OS;
+import com.oracle.svm.core.SubstrateOptions;
 
-    private final String name;
+class JvmtiDirectives implements CContext.Directives {
+    private final Path jdkIncludeDir = Paths.get(System.getProperty("java.home")).resolve("include");
 
-    NmtCategory(String name) {
-        this.name = name;
+    @Override
+    public boolean isInConfiguration() {
+        return SubstrateOptions.JVMTI.getValue();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public String getName() {
-        return name;
+    @Override
+    public List<String> getHeaderFiles() {
+        return Collections.singletonList("\"" + jdkIncludeDir.resolve("jvmti.h") + "\"");
+    }
+
+    @Override
+    public List<String> getOptions() {
+        return Collections.singletonList("-I" + jdkIncludeDir.resolve(OS.getCurrent() == OS.WINDOWS ? "win32" : OS.getCurrent().asPackageName()));
     }
 }

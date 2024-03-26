@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,48 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.nmt;
+package com.oracle.svm.core.jvmti;
 
-import com.oracle.svm.core.Uninterruptible;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
 
-/** Categories for native memory tracking. */
-public enum NmtCategory {
-    /** JIT compiler. */
-    Compiler("Compiler"),
-    /** JIT compiled code. */
-    Code("Code"),
-    /** Garbage collector. */
-    GC("GC"),
-    /** Heap dumping infrastructure. */
-    HeapDump("Heap Dump"),
-    /** Java Flight Recorder. */
-    JFR("JFR"),
-    /** Java Native Interface. */
-    JNI("JNI"),
-    /** JVM stat / perf data. */
-    JvmStat("jvmstat"),
-    /** Java Virtual Machine Tool Interface. */
-    JVMTI("JVMTI"),
-    /** NMT itself. */
-    NMT("Native Memory Tracking"),
-    /** Profile-guided optimizations. */
-    PGO("PGO"),
-    /** Threading. */
-    Threading("Threading"),
-    /** Memory allocated via Unsafe. */
-    Unsafe("Unsafe"),
+import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.jvmti.headers.JvmtiEventCallbacks;
 
-    /** Some other, VM internal reason - avoid if possible, better to add a new category. */
-    Internal("Internal");
-
-    private final String name;
-
-    NmtCategory(String name) {
-        this.name = name;
+public final class JvmtiEventCallbacksUtil {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private JvmtiEventCallbacksUtil() {
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public String getName() {
-        return name;
+    public static void setEventCallbacks(JvmtiEventCallbacks envEventCallbacks, JvmtiEventCallbacks newCallbacks, int sizeOfCallbacks) {
+        int internalStructSize = SizeOf.get(JvmtiEventCallbacks.class);
+        UnmanagedMemoryUtil.fill((Pointer) envEventCallbacks, WordFactory.unsigned(internalStructSize), (byte) 0);
+
+        if (newCallbacks.isNonNull()) {
+            int bytesToCopy = UninterruptibleUtils.Math.min(internalStructSize, sizeOfCallbacks);
+            UnmanagedMemoryUtil.copy((Pointer) newCallbacks, (Pointer) envEventCallbacks, WordFactory.unsigned(bytesToCopy));
+        }
     }
 }
