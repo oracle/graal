@@ -1162,4 +1162,14 @@ public class OracleDBTests extends RegexTestBase {
         expectSyntaxError("[[.a.b.]]", "", "", getTRegexEncoding(), "[[.a.b.]]", 0, "invalid collation class in regular expression");
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
     }
+
+    @Test
+    public void gr52933() {
+        test("\\z{1,2}a", "", "a", 0, false);
+        test("\\z{1,3}a", "", "a", 0, false);
+        test("\\z{1,4}a", "", "a", 0, false);
+        test("\\z{1,5}a", "", "a", 0, false);
+        test("\\z{1,6}a", "", "a", 0, false);
+        test("\\z{1,7}a", "", "a", 0, false);
+    }
 }
