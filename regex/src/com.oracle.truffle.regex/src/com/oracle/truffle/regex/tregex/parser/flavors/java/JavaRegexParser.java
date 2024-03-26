@@ -57,7 +57,7 @@ import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
-import com.oracle.truffle.regex.tregex.parser.flavors.PythonMethod;
+import com.oracle.truffle.regex.tregex.parser.flavors.MatchingMode;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
 /**
@@ -91,14 +91,14 @@ public final class JavaRegexParser implements RegexParser {
     }
 
     public static RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
-        return new JavaRegexParser(source, new RegexASTBuilder(language, source, makeTRegexFlags(source.getOptions().getPythonMethod() != PythonMethod.search), true, compilationBuffer),
+        return new JavaRegexParser(source, new RegexASTBuilder(language, source, makeTRegexFlags(source.getOptions().getMatchingMode() != MatchingMode.search), true, compilationBuffer),
                         compilationBuffer);
     }
 
     @Override
     public RegexAST parse() {
         astBuilder.pushRootGroup();
-        if (lexer.source.getOptions().getPythonMethod() == PythonMethod.fullmatch) {
+        if (lexer.source.getOptions().getMatchingMode() == MatchingMode.fullmatch) {
             astBuilder.pushGroup();
         }
         Token token = null;
@@ -212,7 +212,7 @@ public final class JavaRegexParser implements RegexParser {
                     break;
             }
         }
-        if (lexer.source.getOptions().getPythonMethod() == PythonMethod.fullmatch) {
+        if (lexer.source.getOptions().getMatchingMode() == MatchingMode.fullmatch) {
             astBuilder.popGroup();
             astBuilder.addDollar();
         }
