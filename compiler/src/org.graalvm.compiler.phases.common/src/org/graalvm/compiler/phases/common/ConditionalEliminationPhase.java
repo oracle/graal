@@ -34,11 +34,13 @@ import java.util.Deque;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
+import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.And;
@@ -174,7 +176,11 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
             if (fullSchedule) {
                 if (moveGuards) {
-                    cfg.visitDominatorTree(new MoveGuardsUpwards(), graph.hasValueProxies());
+                    /**
+                     * See comment in {@link MoveGuardsUpwards#enter}.
+                     */
+                    final boolean deferLoopExits = false;
+                    cfg.visitDominatorTree(new MoveGuardsUpwards(cfg), deferLoopExits);
                 }
                 try (DebugContext.Scope scheduleScope = graph.getDebug().scope(SchedulePhase.class)) {
                     SchedulePhase.run(graph, SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER, cfg);
@@ -204,6 +210,12 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
 
     public static class MoveGuardsUpwards implements ControlFlowGraph.RecursiveVisitor<Block> {
 
+        private final ControlFlowGraph cfg;
+
+        public MoveGuardsUpwards(ControlFlowGraph cfg) {
+            this.cfg = cfg;
+        }
+
         Block anchorBlock;
 
         @Override
@@ -215,55 +227,107 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                 anchorBlock = b;
             }
 
-            AbstractBeginNode beginNode = b.getBeginNode();
-            if (beginNode instanceof AbstractMergeNode && anchorBlock != b) {
-                AbstractMergeNode mergeNode = (AbstractMergeNode) beginNode;
-                mergeNode.replaceAtUsages(anchorBlock.getBeginNode(), InputType.Anchor, InputType.Guard);
-                assert mergeNode.anchored().isEmpty();
-            }
+            /**
+             * A note on loop exits and deferred loop exits in dominator tree traversal for
+             * MoveGuardsUpwards: We must not defer loop exits when we run the move guards upwards
+             * because a loop exit block is itself part of the dominator tree (normally as a
+             * dedicated block) and we cannot leave it out. All the logic explained above under
+             * "REASONING" is only correct if we visit all blocks in dominance order. Thus, when we
+             * move guards we must ensure we are safe proxy wise.
+             *
+             * In order to do so we verify that the location of the anchor block can be used by the
+             * current block without the need of any proxies.
+             */
+            final boolean canMoveGuardsToAnchorBlock = !cfg.graph.hasValueProxies() ||
+                            canUseWithoutProxy(cfg, anchorBlock.getBeginNode(), b.getBeginNode());
 
-            FixedNode endNode = b.getEndNode();
-            if (endNode instanceof IfNode) {
-                IfNode node = (IfNode) endNode;
-
-                // Check if we can move guards upwards.
-                AbstractBeginNode trueSuccessor = node.trueSuccessor();
-                AbstractBeginNode falseSuccessor = node.falseSuccessor();
-
-                EconomicMap<LogicNode, GuardNode> trueGuards = EconomicMap.create(Equivalence.IDENTITY);
-                for (GuardNode guard : trueSuccessor.guards()) {
-                    LogicNode condition = guard.getCondition();
-                    if (condition.hasMoreThanOneUsage()) {
-                        trueGuards.put(condition, guard);
-                    }
+            if (canMoveGuardsToAnchorBlock) {
+                AbstractBeginNode beginNode = b.getBeginNode();
+                if (beginNode instanceof AbstractMergeNode && anchorBlock != b) {
+                    AbstractMergeNode mergeNode = (AbstractMergeNode) beginNode;
+                    mergeNode.replaceAtUsages(anchorBlock.getBeginNode(), InputType.Anchor, InputType.Guard);
+                    mergeNode.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, mergeNode.graph(), "After moving guard and anchored usages from %s to %s", mergeNode,
+                                    anchorBlock.getBeginNode());
+                    assert mergeNode.anchored().isEmpty();
                 }
 
-                if (!trueGuards.isEmpty()) {
-                    for (GuardNode guard : falseSuccessor.guards().snapshot()) {
-                        GuardNode otherGuard = trueGuards.get(guard.getCondition());
-                        if (otherGuard != null && guard.isNegated() == otherGuard.isNegated()) {
-                            Speculation speculation = otherGuard.getSpeculation();
-                            if (speculation == null) {
-                                speculation = guard.getSpeculation();
-                            } else if (guard.getSpeculation() != null && guard.getSpeculation() != speculation) {
-                                // Cannot optimize due to different speculations.
-                                continue;
+                FixedNode endNode = b.getEndNode();
+                if (endNode instanceof IfNode) {
+                    IfNode node = (IfNode) endNode;
+
+                    // Check if we can move guards upwards.
+                    AbstractBeginNode trueSuccessor = node.trueSuccessor();
+                    AbstractBeginNode falseSuccessor = node.falseSuccessor();
+
+                    EconomicMap<LogicNode, GuardNode> trueGuards = EconomicMap.create(Equivalence.IDENTITY);
+                    for (GuardNode guard : trueSuccessor.guards()) {
+                        LogicNode condition = guard.getCondition();
+                        if (condition.hasMoreThanOneUsage()) {
+                            trueGuards.put(condition, guard);
+                        }
+                    }
+                    if (!trueGuards.isEmpty()) {
+                        /*
+                         * Special case loop exits: We must only ever move guards over loop exits if
+                         * we move them over all loop exits (i.e. if a successor is a loop exit it
+                         * must be the only loop exit or a loop has two exits and both are
+                         * successors of the current if). Else we would risk moving a guard from
+                         * after a particular exit into the loop (might be loop invariant) which can
+                         * be too early resulting in the generated code deopting without the need
+                         * to.
+                         *
+                         * Note: The code below is written with the possibility in mind that both
+                         * successors are loop exits, even of potentially different loops. Thus, we
+                         * need to ensure we see all possible loop exits involved for all loops.
+                         */
+                        LoopExitNode trueSuccLex = trueSuccessor instanceof LoopExitNode ? (LoopExitNode) trueSuccessor : null;
+                        LoopExitNode falseSuccLex = falseSuccessor instanceof LoopExitNode ? (LoopExitNode) falseSuccessor : null;
+                        EconomicSet<LoopExitNode> allLoopsAllExits = null;
+                        if (trueSuccLex != null) {
+                            if (allLoopsAllExits == null) {
+                                allLoopsAllExits = EconomicSet.create();
                             }
-                            try (DebugCloseable closeable = guard.withNodeSourcePosition()) {
-                                GuardNode newlyCreatedGuard = new GuardNode(guard.getCondition(), anchorBlock.getBeginNode(), guard.getReason(), guard.getAction(), guard.isNegated(), speculation,
-                                                guard.getNoDeoptSuccessorPosition());
-                                GuardNode newGuard = node.graph().unique(newlyCreatedGuard);
-                                if (otherGuard.isAlive()) {
-                                    if (trueSuccessor instanceof LoopExitNode && beginNode.graph().hasValueProxies()) {
-                                        otherGuard.replaceAndDelete(ProxyNode.forGuard(newGuard, (LoopExitNode) trueSuccessor));
-                                    } else {
-                                        otherGuard.replaceAndDelete(newGuard);
+                            allLoopsAllExits.addAll(trueSuccLex.loopBegin().loopExits());
+                            allLoopsAllExits.remove(trueSuccLex);
+                        }
+                        if (falseSuccLex != null) {
+                            if (allLoopsAllExits == null) {
+                                allLoopsAllExits = EconomicSet.create();
+                            }
+                            allLoopsAllExits.addAll(falseSuccLex.loopBegin().loopExits());
+                            allLoopsAllExits.remove(falseSuccLex);
+                        }
+                        if (allLoopsAllExits == null || allLoopsAllExits.isEmpty()) {
+                            for (GuardNode guard : falseSuccessor.guards().snapshot()) {
+                                GuardNode otherGuard = trueGuards.get(guard.getCondition());
+                                if (otherGuard != null && guard.isNegated() == otherGuard.isNegated()) {
+                                    Speculation speculation = otherGuard.getSpeculation();
+                                    if (speculation == null) {
+                                        speculation = guard.getSpeculation();
+                                    } else if (guard.getSpeculation() != null && guard.getSpeculation() != speculation) {
+                                        // Cannot optimize due to different speculations.
+                                        continue;
                                     }
-                                }
-                                if (falseSuccessor instanceof LoopExitNode && beginNode.graph().hasValueProxies()) {
-                                    guard.replaceAndDelete(ProxyNode.forGuard(newGuard, (LoopExitNode) falseSuccessor));
-                                } else {
-                                    guard.replaceAndDelete(newGuard);
+                                    try (DebugCloseable closeable = guard.withNodeSourcePosition()) {
+                                        StructuredGraph graph = guard.graph();
+                                        GuardNode newlyCreatedGuard = new GuardNode(guard.getCondition(), anchorBlock.getBeginNode(), guard.getReason(), guard.getAction(), guard.isNegated(),
+                                                        speculation,
+                                                        guard.getNoDeoptSuccessorPosition());
+                                        GuardNode newGuard = node.graph().unique(newlyCreatedGuard);
+                                        if (otherGuard.isAlive()) {
+                                            if (trueSuccessor instanceof LoopExitNode && beginNode.graph().hasValueProxies()) {
+                                                otherGuard.replaceAndDelete(ProxyNode.forGuard(newGuard, (LoopExitNode) trueSuccessor));
+                                            } else {
+                                                otherGuard.replaceAndDelete(newGuard);
+                                            }
+                                        }
+                                        if (falseSuccessor instanceof LoopExitNode && beginNode.graph().hasValueProxies()) {
+                                            guard.replaceAndDelete(ProxyNode.forGuard(newGuard, (LoopExitNode) falseSuccessor));
+                                        } else {
+                                            guard.replaceAndDelete(newGuard);
+                                        }
+                                        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After combining %s and %s to new %s in the dominator", guard, otherGuard, newGuard);
+                                    }
                                 }
                             }
                         }
@@ -276,6 +340,47 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
         @Override
         public void exit(Block b, Block value) {
             anchorBlock = value;
+        }
+
+        /**
+         * Determine if the def can use node {@code use} without the need for value proxies. This
+         * means there is no loop exit between the schedule point of def and use that would require
+         * a {@link ProxyNode}.
+         */
+        private static boolean canUseWithoutProxy(ControlFlowGraph controlFlowGraph, Node def, Node use) {
+            if (def.graph() instanceof StructuredGraph && !((StructuredGraph) def.graph()).hasValueProxies()) {
+                return true;
+            }
+            if (!isFixedNode(def) || !isFixedNode(use)) {
+                /*
+                 * If def or use are not fixed nodes we cannot determine the schedule point for
+                 * them. Without the schedule point we cannot find their basic block in the control
+                 * flow graph. If we would schedule the graph we could answer the question for
+                 * floating nodes as well but this is too much overhead. Thus, for floating nodes we
+                 * give up and assume a proxy is necessary.
+                 */
+                return false;
+            }
+            Block useBlock = controlFlowGraph.blockFor(use);
+            Block defBlock = controlFlowGraph.blockFor(def);
+            Loop<Block> defLoop = defBlock.getLoop();
+            Loop<Block> useLoop = useBlock.getLoop();
+            if (defLoop != null) {
+                // the def is inside a loop, either a parent or a disjunct loop
+                if (useLoop != null) {
+                    // we are only safe without proxies if we are included in the def loop,
+                    // i.e., the def loop is a parent loop
+                    return useLoop.isAncestorOrSelf(defLoop);
+                } else {
+                    // the use is not in a loop but the def is, needs proxies, fail
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static boolean isFixedNode(Node n) {
+            return n instanceof FixedNode;
         }
 
     }
