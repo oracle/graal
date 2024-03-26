@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString.NumberFormatException.Reason;
@@ -263,6 +264,7 @@ final class NumberConversion {
         return new TruffleString.NumberFormatException(a, regionOffset, regionLength, msg);
     }
 
+    @InliningCutoff
     static byte[] longToString(long i, int length) {
         if (i == Long.MIN_VALUE) {
             return LONG_MIN_VALUE_BYTES;
@@ -348,6 +350,7 @@ final class NumberConversion {
         return sign + digits;
     }
 
+    @InliningCutoff
     static void writeLongToBytes(Node location, long i, byte[] buf, int stride, int fromIndex, int length) {
         if (i == Long.MIN_VALUE) {
             TStringOps.arraycopyWithStride(location,
