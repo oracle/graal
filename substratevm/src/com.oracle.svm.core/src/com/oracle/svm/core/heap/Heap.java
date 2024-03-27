@@ -44,7 +44,6 @@ import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.os.CommittedMemoryProvider;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -137,11 +136,7 @@ public abstract class Heap {
     /** Reset the heap to the normal execution state. */
     public abstract void endSafepoint();
 
-    /**
-     * Returns a multiple to which the heap address space should be aligned to at runtime.
-     *
-     * @see CommittedMemoryProvider#guaranteesHeapPreferredAddressSpaceAlignment()
-     */
+    /** Returns a multiple to which the heap address space should be aligned to at runtime. */
     @Fold
     public abstract int getPreferredAddressSpaceAlignment();
 

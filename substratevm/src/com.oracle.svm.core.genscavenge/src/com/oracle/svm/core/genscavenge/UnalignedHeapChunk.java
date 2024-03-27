@@ -34,7 +34,6 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
-import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -131,7 +130,7 @@ public final class UnalignedHeapChunk {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static UnalignedHeader getEnclosingChunkFromObjectPointer(Pointer ptr) {
         if (!GraalDirectives.inIntrinsic()) {
-            assert !HeapImpl.getHeapImpl().isInImageHeap(ptr) || CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment() : "can't be used because the image heap is unaligned";
+            assert HeapImpl.isImageHeapAligned() || !HeapImpl.getHeapImpl().isInImageHeap(ptr) : "can't be used for the image heap because the image heap is not aligned to the chunk size";
         }
         Pointer chunkPointer = ptr.subtract(getObjectStartOffset());
         return (UnalignedHeader) chunkPointer;
