@@ -59,8 +59,7 @@ public interface ConfigurationTypeDescriptor extends Comparable<ConfigurationTyp
     static void checkQualifiedJavaName(String javaName) {
         assert javaName.indexOf('/') == -1 : "Requires qualified Java name, not internal representation";
         assert !javaName.startsWith("[") : "Requires Java source array syntax, for example java.lang.String[]";
-    }
-}
+    }}
 
 record NamedConfigurationTypeDescriptor(String name) implements ConfigurationTypeDescriptor {
 

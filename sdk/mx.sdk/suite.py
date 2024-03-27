@@ -320,6 +320,9 @@ suite = {
       "dependencies" : [
          "org.graalvm.nativeimage",
       ],
+      "requiresConcealed" : {
+        "java.base" : ["jdk.internal.module"]
+      },
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "11+",
       "workingSets" : "API,SDK",

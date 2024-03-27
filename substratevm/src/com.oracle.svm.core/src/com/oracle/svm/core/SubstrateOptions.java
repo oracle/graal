@@ -175,6 +175,7 @@ public class SubstrateOptions {
     public static final String IMAGE_CLASSPATH_PREFIX = "-imagecp";
     public static final String IMAGE_MODULEPATH_PREFIX = "-imagemp";
     public static final String KEEP_ALIVE_PREFIX = "-keepalive";
+    public static final String INSTRUMENT_CLASSPATH_PREFIX = "-instcp";
     private static ValueUpdateHandler<OptimizationLevel> optimizeValueUpdateHandler;
 
     @Fold

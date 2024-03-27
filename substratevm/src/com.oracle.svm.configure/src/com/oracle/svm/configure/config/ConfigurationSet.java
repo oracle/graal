@@ -49,25 +49,27 @@ public class ConfigurationSet {
     private final ProxyConfiguration proxyConfiguration;
     private final SerializationConfiguration serializationConfiguration;
     private final PredefinedClassesConfiguration predefinedClassesConfiguration;
+    private final InstrumentConfiguration instrumentConfiguration;
 
     public ConfigurationSet(TypeConfiguration reflectionConfiguration, TypeConfiguration jniConfiguration, ResourceConfiguration resourceConfiguration, ProxyConfiguration proxyConfiguration,
-                    SerializationConfiguration serializationConfiguration, PredefinedClassesConfiguration predefinedClassesConfiguration) {
+                    SerializationConfiguration serializationConfiguration, PredefinedClassesConfiguration predefinedClassesConfiguration, InstrumentConfiguration instrumentConfiguration) {
         this.reflectionConfiguration = reflectionConfiguration;
         this.jniConfiguration = jniConfiguration;
         this.resourceConfiguration = resourceConfiguration;
         this.proxyConfiguration = proxyConfiguration;
         this.serializationConfiguration = serializationConfiguration;
         this.predefinedClassesConfiguration = predefinedClassesConfiguration;
+        this.instrumentConfiguration = instrumentConfiguration;
     }
 
     public ConfigurationSet(ConfigurationSet other) {
         this(other.reflectionConfiguration.copy(), other.jniConfiguration.copy(), other.resourceConfiguration.copy(), other.proxyConfiguration.copy(), other.serializationConfiguration.copy(),
-                        other.predefinedClassesConfiguration.copy());
+                        other.predefinedClassesConfiguration.copy(), other.instrumentConfiguration.copy());
     }
 
     public ConfigurationSet() {
         this(new TypeConfiguration(), new TypeConfiguration(), new ResourceConfiguration(), new ProxyConfiguration(), new SerializationConfiguration(),
-                        new PredefinedClassesConfiguration(new Path[0], hash -> false));
+                        new PredefinedClassesConfiguration(new Path[0], hash -> false), new InstrumentConfiguration(new Path[0]));
     }
 
     private ConfigurationSet mutate(ConfigurationSet other, Mutator mutator) {
@@ -77,7 +79,8 @@ public class ConfigurationSet {
         ProxyConfiguration proxyConfig = mutator.apply(this.proxyConfiguration, other.proxyConfiguration);
         SerializationConfiguration serializationConfig = mutator.apply(this.serializationConfiguration, other.serializationConfiguration);
         PredefinedClassesConfiguration predefinedClassesConfig = mutator.apply(this.predefinedClassesConfiguration, other.predefinedClassesConfiguration);
-        return new ConfigurationSet(reflectionConfig, jniConfig, resourceConfig, proxyConfig, serializationConfig, predefinedClassesConfig);
+        InstrumentConfiguration instrumentConfiguration = mutator.apply(this.instrumentConfiguration, other.instrumentConfiguration);
+        return new ConfigurationSet(reflectionConfig, jniConfig, resourceConfig, proxyConfig, serializationConfig, predefinedClassesConfig, instrumentConfiguration);
     }
 
     public ConfigurationSet copyAndMerge(ConfigurationSet other) {
@@ -99,7 +102,8 @@ public class ConfigurationSet {
         ProxyConfiguration proxyConfig = this.proxyConfiguration.copyAndFilter(filter);
         SerializationConfiguration serializationConfig = this.serializationConfiguration.copyAndFilter(filter);
         PredefinedClassesConfiguration predefinedClassesConfig = this.predefinedClassesConfiguration.copyAndFilter(filter);
-        return new ConfigurationSet(reflectionConfig, jniConfig, resourceConfig, proxyConfig, serializationConfig, predefinedClassesConfig);
+        InstrumentConfiguration instrumentConfig = this.instrumentConfiguration.copyAndFilter(filter);
+        return new ConfigurationSet(reflectionConfig, jniConfig, resourceConfig, proxyConfig, serializationConfig, predefinedClassesConfig, instrumentConfig);
     }
 
     public TypeConfiguration getReflectionConfiguration() {
@@ -126,6 +130,10 @@ public class ConfigurationSet {
         return predefinedClassesConfiguration;
     }
 
+    public InstrumentConfiguration getInstrumentConfiguration() {
+        return instrumentConfiguration;
+    }
+
     @SuppressWarnings("unchecked")
     public <T extends ConfigurationBase<T, ?>> T getConfiguration(ConfigurationFile configurationFile) {
         switch (configurationFile) {
@@ -141,6 +149,8 @@ public class ConfigurationSet {
                 return (T) serializationConfiguration;
             case PREDEFINED_CLASSES_NAME:
                 return (T) predefinedClassesConfiguration;
+            case INSTRUMENT:
+                return (T) instrumentConfiguration;
             default:
                 throw VMError.shouldNotReachHere("Unsupported configuration in configuration container: " + configurationFile);
         }

@@ -193,6 +193,13 @@ public final class Support {
         return handlePtr.read();
     }
 
+    public static int getIntArgument(JNIObjectHandle thread, int slot) {
+        assert thread.notEqual(nullHandle()) || jvmtiVersion() != JvmtiInterface.JVMTI_VERSION_19 : "JDK-8292657";
+        CIntPointer handlePtr = StackValue.get(CIntPointer.class);
+        check(jvmtiFunctions().GetLocalInt().invoke(jvmtiEnv(), thread, 0, slot, handlePtr));
+        return handlePtr.read();
+    }
+
     /**
      * This method might be slightly faster than {@link #getObjectArgument}, but can only be used
      * for instance methods, not static methods.

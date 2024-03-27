@@ -188,6 +188,14 @@ public interface JvmtiInterface extends PointerBase {
         JvmtiError invoke(JvmtiEnv env, JNIObjectHandle thread, int depth, PointerBase valuePtr);
     }
 
+    @CField("GetLocalInt")
+    GetLocalIntFunctionPointer GetLocalInt();
+
+    interface GetLocalIntFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv env, JNIObjectHandle thread, int depth, int slot, CIntPointer valuePtr);
+    }
+
     @CField("GetCurrentThread")
     GetCurrentThreadFunctionPointer GetCurrentThread();
 
@@ -362,5 +370,13 @@ public interface JvmtiInterface extends PointerBase {
     interface AddModuleOpensFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle module, CCharPointer pkgName, JNIObjectHandle toModule);
+    }
+
+    @CField("GetArgumentsSize")
+    GetArgumentsSizeFunctionPointer GetArgumentsSize();
+
+    interface GetArgumentsSizeFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIMethodId method, CIntPointer sizePtr);
     }
 }
