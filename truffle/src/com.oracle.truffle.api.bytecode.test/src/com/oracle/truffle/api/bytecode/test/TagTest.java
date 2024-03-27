@@ -53,6 +53,7 @@ import org.graalvm.polyglot.Context;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.ContextThreadLocal;
@@ -63,6 +64,7 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.EpilogExceptional;
 import com.oracle.truffle.api.bytecode.EpilogReturn;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
@@ -1304,6 +1306,93 @@ public class TagTest extends AbstractInstructionTest {
 
     }
 
+    // TODO enable and fix this test once we properly emit enter events for each exit
+    @Test
+    @Ignore
+    public void testYield() {
+        TagInstrumentationTestRootNode node = parse((b) -> {
+            b.beginRoot(TagTestLanguage.REF.get(null));
+
+            b.beginReturn();
+            b.beginTag(ExpressionTag.class);
+            b.beginYield();
+            b.emitLoadConstant(42);
+            b.endYield();
+            b.endTag(ExpressionTag.class);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertInstructions(node,
+                        "load.constant",
+                        "yield",
+                        "return");
+
+        ContinuationResult cont = (ContinuationResult) node.getCallTarget().call();
+        assertEquals(42, cont.getResult());
+
+        // Instrument while continuation is suspended. It should resume right after the yield.
+        List<Event> events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build());
+        assertInstructions(node,
+                        "tag.enter",
+                        "load.constant",
+                        "yield",
+                        "tag.leave",
+                        "return");
+
+        assertEquals(123, cont.continueWith(123));
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0006, 123, ExpressionTag.class));
+
+        events.clear();
+
+        // Now, both events should fire.
+        cont = (ContinuationResult) node.getCallTarget().call();
+        assertEquals(42, cont.getResult());
+        assertEquals(321, cont.continueWith(321));
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.ENTER, 0x0000, 0x0006, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x0006, 321, ExpressionTag.class));
+
+        // Add a second instrumentation while the continuation is suspended. It should resume at the
+        // proper location.
+        cont = (ContinuationResult) node.getCallTarget().call();
+        assertEquals(42, cont.getResult());
+
+        events = attachEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootBodyTag.class, StandardTags.ExpressionTag.class).build());
+        assertInstructions(node,
+                        "tag.enter",
+                        "tag.enter",
+                        "load.constant",
+                        "yield",
+                        "tag.leave",
+                        "tag.leave",
+                        "return",
+                        "tag.leave",
+                        "return");
+        assertEquals(456, cont.continueWith(456));
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.RETURN_VALUE, 0x0002, 0x0008, 456, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x000f, 456, RootBodyTag.class));
+        events.clear();
+
+        // Now, four events should fire.
+        cont = (ContinuationResult) node.getCallTarget().call();
+        assertEquals(42, cont.getResult());
+        assertEquals(333, cont.continueWith(333));
+        assertEvents(node,
+                        events,
+                        new Event(EventKind.ENTER, 0x0000, 0x000f, null, RootBodyTag.class),
+                        new Event(EventKind.ENTER, 0x0002, 0x0008, null, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0002, 0x0008, 333, ExpressionTag.class),
+                        new Event(EventKind.RETURN_VALUE, 0x0000, 0x000f, 333, RootBodyTag.class));
+
+    }
+
     @SuppressWarnings("serial")
     static class TestException extends AbstractBytecodeTruffleException {
 
@@ -1317,7 +1406,9 @@ public class TagTest extends AbstractInstructionTest {
                     enableQuickening = true, //
                     enableUncachedInterpreter = true,  //
                     enableTagInstrumentation = true, //
-                    enableSerialization = true, boxingEliminationTypes = {int.class})
+                    enableSerialization = true, //
+                    enableYield = true, //
+                    boxingEliminationTypes = {int.class})
     public abstract static class TagInstrumentationTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected TagInstrumentationTestRootNode(TruffleLanguage<?> language,

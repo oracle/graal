@@ -69,6 +69,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
@@ -186,6 +187,10 @@ public abstract class AbstractBasicInterpreterTest {
         return createNodes(interpreterClass, testSerialize, config, builder);
     }
 
+    public BytecodeConfig.Builder createBytecodeConfigBuilder() {
+        return invokeNewConfigBuilder(interpreterClass);
+    }
+
     /**
      * Creates a root node using the given parameters.
      *
@@ -273,6 +278,19 @@ public abstract class AbstractBasicInterpreterTest {
         }
     }
 
+    public static BytecodeConfig.Builder invokeNewConfigBuilder(Class<? extends BasicInterpreter> interpreterClass) {
+        try {
+            Method newConfigBuilder = interpreterClass.getMethod("newConfigBuilder");
+            return (BytecodeConfig.Builder) newConfigBuilder.invoke(null);
+        } catch (InvocationTargetException e) {
+            // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
+            // get caught by the test harness.
+            throw new IllegalStateException(e.getCause());
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
     private static void assertBytecodeNodesEqual(BytecodeRootNodes<BasicInterpreter> expectedBytecodeNodes, BytecodeRootNodes<BasicInterpreter> actualBytecodeNodes) {
         List<BasicInterpreter> expectedNodes = expectedBytecodeNodes.getNodes();
         List<BasicInterpreter> actualNodes = actualBytecodeNodes.getNodes();
@@ -302,6 +320,10 @@ public abstract class AbstractBasicInterpreterTest {
                 assertEquals(expectedRoot.name, actualRoot.name);
             } else if (expected instanceof long[] expectedLongs && actual instanceof long[] actualLongs) {
                 assertArrayEquals(expectedLongs, actualLongs);
+            } else if (expected instanceof ContinuationRootNode expectedContinuation && actual instanceof ContinuationRootNode actualContinuation) {
+                // The fields of a ContinuationRootNode are not exposed. At least validate they have
+                // the same source root node.
+                assertConstantsEqual(new Object[]{expectedContinuation.getSourceRootNode()}, new Object[]{actualContinuation.getSourceRootNode()});
             } else {
                 assertEquals(expected, actual);
             }

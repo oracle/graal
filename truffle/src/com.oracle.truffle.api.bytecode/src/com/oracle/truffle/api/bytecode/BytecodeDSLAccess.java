@@ -153,6 +153,13 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
     public abstract <T> T objectArrayRead(T[] arr, int index);
 
     /**
+     * Writes to an Object array.
+     *
+     * @since 24.1
+     */
+    public abstract <T> void objectArrayWrite(T[] arr, int index, T value);
+
+    /**
      * Casts a value to the given class.
      *
      * @since 24.1
@@ -484,6 +491,12 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
         }
 
         @Override
+        public <T> void objectArrayWrite(T[] arr, int index, T value) {
+            assert index >= 0 && index < arr.length;
+            UNSAFE.putObject(arr, Unsafe.ARRAY_OBJECT_BASE_OFFSET + index * Unsafe.ARRAY_OBJECT_INDEX_SCALE, value);
+        }
+
+        @Override
         @SuppressWarnings("unchecked")
         public <T> T cast(Object obj, Class<T> clazz) {
             // TODO make this unsafer
@@ -692,6 +705,11 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLAccess.SafeImp
         @Override
         public <T> T objectArrayRead(T[] arr, int index) {
             return arr[index];
+        }
+
+        @Override
+        public <T> void objectArrayWrite(T[] arr, int index, T value) {
+            arr[index] = value;
         }
 
         @Override

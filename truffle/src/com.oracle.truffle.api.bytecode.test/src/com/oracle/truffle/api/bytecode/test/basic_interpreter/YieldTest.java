@@ -77,7 +77,7 @@ public class YieldTest extends AbstractBasicInterpreterTest {
         ContinuationResult r1 = (ContinuationResult) root.call();
         assertEquals(1L, r1.getResult());
 
-        ContinuationResult r2 = (ContinuationResult) r1.continueWith(null);
+        ContinuationResult r2 = (ContinuationResult) r1.continueWith(42L);
         assertEquals(2L, r2.getResult());
 
         assertEquals(3L, r2.continueWith(null));
@@ -321,4 +321,117 @@ public class YieldTest extends AbstractBasicInterpreterTest {
         }
     }
 
+    @Test
+    public void testYieldTransitionToInstrumented() {
+        BasicInterpreter rootNode = parseNode("yieldTransitionToInstrumented", b -> {
+            b.beginRoot(LANGUAGE);
+
+            BytecodeLocal result = b.createLocal();
+            b.beginStoreLocal(result);
+            b.beginYield();
+            b.emitLoadArgument(0);
+            b.endYield();
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.beginIncrementValue();
+            b.emitLoadLocal(result);
+            b.endIncrementValue();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        // Regular invocation succeeds.
+        ContinuationResult cont = (ContinuationResult) rootNode.getCallTarget().call(123L);
+        assertEquals(42L, cont.continueWith(42L));
+
+        // A suspended invocation should transition.
+        cont = (ContinuationResult) rootNode.getCallTarget().call(123L);
+        rootNode.getRootNodes().update(createBytecodeConfigBuilder().addInstrumentation(BasicInterpreter.IncrementValue.class).build());
+        assertEquals(43L, cont.continueWith(42L));
+
+        // Subsequent invocations work as expected.
+        cont = (ContinuationResult) rootNode.getCallTarget().call(123L);
+        assertEquals(43L, cont.continueWith(42L));
+    }
+
+    @Test
+    public void testYieldTransitionToInstrumentedInsideContinuation() {
+        BasicInterpreter rootNode = parseNode("yieldTransitionToInstrumentedInsideContinuation", b -> {
+            b.beginRoot(LANGUAGE);
+
+            BytecodeLocal result = b.createLocal();
+            b.beginStoreLocal(result);
+            b.beginYield();
+            b.beginIncrementValue();
+            b.emitLoadArgument(0);
+            b.endIncrementValue();
+            b.endYield();
+            b.endStoreLocal();
+
+            b.emitEnableIncrementValueInstrumentation();
+
+            b.beginReturn();
+            b.beginIncrementValue();
+            b.emitLoadLocal(result);
+            b.endIncrementValue();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        ContinuationResult cont = (ContinuationResult) rootNode.getCallTarget().call(123L);
+        assertEquals(123L, cont.getResult());
+        assertEquals(43L, cont.continueWith(42L));
+
+        // After the first iteration, the first IncrementValue instrumentation should change the
+        // yielded value.
+        cont = (ContinuationResult) rootNode.getCallTarget().call(123L);
+        assertEquals(124L, cont.getResult());
+        assertEquals(43L, cont.continueWith(42L));
+    }
+
+    @Test
+    public void testYieldTransitionToInstrumentedInsideContinuationTwice() {
+        BasicInterpreter rootNode = parseNode("yieldTransitionToInstrumentedInsideContinuationTwice", b -> {
+            b.beginRoot(LANGUAGE);
+
+            BytecodeLocal result = b.createLocal();
+            b.beginStoreLocal(result);
+            b.beginYield();
+            b.beginIncrementValue();
+            b.beginDoubleValue();
+            b.emitLoadArgument(0);
+            b.endDoubleValue();
+            b.endIncrementValue();
+            b.endYield();
+            b.endStoreLocal();
+
+            b.emitEnableIncrementValueInstrumentation();
+            b.beginStoreLocal(result);
+            b.beginIncrementValue();
+            b.emitLoadLocal(result);
+            b.endIncrementValue();
+            b.endStoreLocal();
+
+            b.emitEnableDoubleValueInstrumentation();
+            b.beginReturn();
+            b.beginDoubleValue();
+            b.emitLoadLocal(result);
+            b.endDoubleValue();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        ContinuationResult cont = (ContinuationResult) rootNode.getCallTarget().call(123L);
+        assertEquals(123L, cont.getResult());
+        assertEquals(42L, cont.continueWith(20L));
+
+        // After the first iteration, the instrumentations should change the yielded value.
+        cont = (ContinuationResult) rootNode.getCallTarget().call(10L);
+        assertEquals(21L, cont.getResult());
+        assertEquals(42L, cont.continueWith(20L));
+    }
 }
