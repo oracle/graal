@@ -45,12 +45,6 @@ import com.oracle.svm.core.util.UnsignedUtils;
 import jdk.graal.compiler.api.replacements.Fold;
 
 public abstract class AbstractCommittedMemoryProvider implements CommittedMemoryProvider {
-    @Fold
-    @Override
-    public boolean guaranteesHeapPreferredAddressSpaceAlignment() {
-        return SubstrateOptions.SpawnIsolates.getValue() && ImageHeapProvider.get().guaranteesHeapPreferredAddressSpaceAlignment();
-    }
-
     @Uninterruptible(reason = "Still being initialized.")
     protected static int protectSingleIsolateImageHeap() {
         assert !SubstrateOptions.SpawnIsolates.getValue() : "Must be handled by ImageHeapProvider when SpawnIsolates is enabled";

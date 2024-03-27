@@ -75,7 +75,6 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.ThreadStatus;
@@ -407,9 +406,9 @@ public final class HeapImpl extends Heap {
         if (enabled == Boolean.FALSE || enabled == null && !SubstrateOptions.useRememberedSet()) {
             return false;
         } else if (enabled == null) {
-            return CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment();
+            return isImageHeapAligned();
         }
-        UserError.guarantee(CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment(),
+        UserError.guarantee(isImageHeapAligned(),
                         "Enabling option %s requires a custom image heap alignment at runtime, which cannot be ensured with the current configuration (option %s might be disabled)",
                         SerialGCOptions.ImageHeapCardMarking, SubstrateOptions.SpawnIsolates);
         return true;
@@ -424,7 +423,7 @@ public final class HeapImpl extends Heap {
     @Fold
     @Override
     public int getImageHeapOffsetInAddressSpace() {
-        if (SubstrateOptions.SpawnIsolates.getValue() && SubstrateOptions.UseNullRegion.getValue() && CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment()) {
+        if (SubstrateOptions.SpawnIsolates.getValue() && SubstrateOptions.UseNullRegion.getValue()) {
             /*
              * The image heap will be mapped in a way that there is a memory protected gap between
              * the heap base and the start of the image heap. The gap won't need any memory in the
@@ -433,6 +432,11 @@ public final class HeapImpl extends Heap {
             return NumUtil.safeToInt(SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue());
         }
         return 0;
+    }
+
+    @Fold
+    public static boolean isImageHeapAligned() {
+        return SubstrateOptions.SpawnIsolates.getValue();
     }
 
     @Override
