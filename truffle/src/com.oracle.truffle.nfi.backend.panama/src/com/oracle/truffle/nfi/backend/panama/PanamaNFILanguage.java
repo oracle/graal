@@ -126,6 +126,11 @@ public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
     }
 
     @Override
+    protected void initializeThread(PanamaNFIContext context, Thread thread) {
+        errorContext.get().initialize();
+    }
+
+    @Override
     protected boolean patchContext(PanamaNFIContext context, Env newEnv) {
         context.patchEnv(newEnv);
         context.initialize();
