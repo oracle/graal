@@ -232,7 +232,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
                 }
                 if (factory == null) {
                     throw new GraalError("Compiler configuration '%s' not found. Available configurations are: %s", value,
-                                    getAllCandidates().stream().map(c -> c.name).collect(Collectors.joining(", ")));
+                                    getAllCandidates().stream().map(c -> c.name).distinct().collect(Collectors.joining(", ")));
                 }
             } else {
                 List<CompilerConfigurationFactory> candidates = getAllCandidates();
