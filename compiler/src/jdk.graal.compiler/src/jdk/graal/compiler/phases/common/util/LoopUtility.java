@@ -29,6 +29,7 @@ import java.util.EnumSet;
 import jdk.graal.compiler.core.common.cfg.Loop;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Graph.NodeEvent;
 import jdk.graal.compiler.graph.Graph.NodeEventScope;
 import jdk.graal.compiler.graph.Node;
@@ -53,6 +54,38 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 
 public class LoopUtility {
+
+    public static boolean canTakeAbs(long l, int bits) {
+        try {
+            abs(l, bits);
+            return true;
+        } catch (ArithmeticException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Compute {@link Math#abs(long)} for the given arguments and the given bit size. Throw a
+     * {@link ArithmeticException} if the abs operation would overflow.
+     */
+    public static long abs(long l, int bits) throws ArithmeticException {
+        if (bits == 32) {
+            if (l == Integer.MIN_VALUE) {
+                throw new ArithmeticException("Abs on Integer.MIN_VALUE would cause an overflow because abs(Integer.MIN_VALUE) = Integer.MAX_VALUE + 1 which does not fit in int (32 bits)");
+            } else {
+                final int i = (int) l;
+                return Math.abs(i);
+            }
+        } else if (bits == 64) {
+            if (l == Long.MIN_VALUE) {
+                throw new ArithmeticException("Abs on Long.MIN_VALUE would cause an overflow because abs(Long.MIN_VALUE) = Long.MAX_VALUE + 1 which does not fit in long (64 bits)");
+            } else {
+                return Math.abs(l);
+            }
+        } else {
+            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes int/long but is " + bits);
+        }
+    }
 
     /**
      * Determine if the def can use node {@code use} without the need for value proxies. This means
