@@ -372,8 +372,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         boolean needsAllEncodings = reg.needsAllEncodings();
         if (!needsAllEncodings) {
             if (providerModule.isNamed()) {
-                ModuleLayer layer = Objects.requireNonNullElse(providerModule.getLayer(), ModuleLayer.boot());
-                Optional<Module> jcodingsModule = layer.findModule("org.graalvm.shadowed.jcodings");
+                Optional<Module> jcodingsModule = providerModule.getLayer().findModule("org.graalvm.shadowed.jcodings");
                 needsAllEncodings = jcodingsModule.isPresent() && providerModule.canRead(jcodingsModule.get());
             } else {
                 // If language is on the class path, assume needsAllEncodings=true.
