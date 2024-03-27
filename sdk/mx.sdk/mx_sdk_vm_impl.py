@@ -2408,12 +2408,22 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
         return self.subject.output_file() + '.cmd'
 
     def get_build_args(self):
+        experimental_build_args = [
+            '-H:+GenerateBuildArtifactsFile',  # generate 'build-artifacts.json'
+        ]
+
+        alt_c_compiler = getattr(self.args, 'alt_cl' if mx.is_windows() else 'alt_cc')
+        if alt_c_compiler is not None:
+            experimental_build_args += ['-H:CCompilerPath=' + shutil.which(alt_c_compiler)]
+        if self.args.alt_cflags is not None:
+            experimental_build_args += ['-H:CCompilerOption=' + self.args.alt_cflags]
+        if self.args.alt_ldflags is not None:
+            experimental_build_args += ['-H:NativeLinkerOption=' + self.args.alt_ldflags]
+
         build_args = [
             '-EJVMCI_VERSION_CHECK', # Propagate this env var when running native image from mx
             '--parallelism=' + str(self.parallelism),
-        ] + svm_experimental_options([
-            '-H:+GenerateBuildArtifactsFile',  # generate 'build-artifacts.json'
-        ]) + [
+        ] + svm_experimental_options(experimental_build_args) + [
             '--macro:' + GraalVmNativeProperties.macro_name(self.subject.native_image_config), # last to allow overrides
         ]
         if self.subject.native_image_config.is_polyglot:
