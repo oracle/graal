@@ -24,10 +24,12 @@
  */
 package com.oracle.svm.core.heap;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -44,7 +46,6 @@ import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
-
 import com.sun.management.OperatingSystemMXBean;
 
 /**
@@ -123,32 +124,69 @@ public class PhysicalMemory {
         return cachedSize;
     }
 
-    /**
-     * Returns the amount of used physical memory in bytes, or -1 if not supported yet.
-     */
+    /** Returns the amount of used physical memory in bytes, or -1 if not supported. */
     public static long usedSize() {
-        // Containerized Linux, Windows and Mac OS X use the OS bean
-        if ((Containers.isContainerized() && Containers.memoryLimitInBytes() > 0) ||
-                        Platform.includedIn(Platform.WINDOWS.class) ||
-                        Platform.includedIn(Platform.MACOS.class)) {
+        // Windows, macOS, and containerized Linux use the OS bean.
+        if (Platform.includedIn(Platform.WINDOWS.class) ||
+                        Platform.includedIn(Platform.MACOS.class) ||
+                        (Containers.isContainerized() && Containers.memoryLimitInBytes() > 0)) {
             OperatingSystemMXBean osBean = (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
             return osBean.getTotalMemorySize() - osBean.getFreeMemorySize();
         }
-        // Non-containerized Linux uses MemAvailable from /proc/meminfo
+
+        // Non-containerized Linux uses /proc/meminfo.
         if (Platform.includedIn(Platform.LINUX.class)) {
-            try {
-                List<String> lines = Files.readAllLines(Paths.get("/proc/meminfo"));
-                for (String line : lines) {
-                    if (!line.contains("MemAvailable")) {
-                        continue;
-                    }
-                    String memAvailable = line.replaceAll("\\D", "");
-                    if (!memAvailable.isEmpty()) {
-                        return size().rawValue() - Long.parseLong(memAvailable) * K;
-                    }
+            return getUsedSizeFromProcMemInfo();
+        }
+
+        return -1L;
+    }
+
+    // Will be removed as part of GR-51479.
+    private static long getUsedSizeFromProcMemInfo() {
+        try {
+            List<String> lines = readAllLines("/proc/meminfo");
+            for (String line : lines) {
+                if (line.contains("MemAvailable")) {
+                    return size().rawValue() - parseFirstNumber(line) * K;
                 }
-            } catch (IOException e) {
             }
+        } catch (Exception e) {
+            /* Nothing to do. */
+        }
+        return -1L;
+    }
+
+    private static List<String> readAllLines(String fileName) throws IOException {
+        List<String> lines = new ArrayList<>();
+        try (BufferedReader bufferedReader = new BufferedReader(new FileReader(fileName, StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = bufferedReader.readLine()) != null) {
+                lines.add(line);
+            }
+        }
+        return lines;
+    }
+
+    /** Parses the first number in the String as a long value. */
+    private static long parseFirstNumber(String str) {
+        int firstDigit = -1;
+        int lastDigit = -1;
+
+        for (int i = 0; i < str.length(); i++) {
+            if (Character.isDigit(str.charAt(i))) {
+                if (firstDigit == -1) {
+                    firstDigit = i;
+                }
+                lastDigit = i;
+            } else if (firstDigit != -1) {
+                break;
+            }
+        }
+
+        if (firstDigit >= 0) {
+            String number = str.substring(firstDigit, lastDigit + 1);
+            return Long.parseLong(number);
         }
         return -1;
     }

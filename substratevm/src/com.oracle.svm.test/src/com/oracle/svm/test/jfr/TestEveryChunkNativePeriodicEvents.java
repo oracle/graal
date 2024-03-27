@@ -28,55 +28,53 @@ package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertTrue;
 
-import com.oracle.svm.core.jfr.JfrEvent;
-
 import java.util.List;
+
+import org.junit.Test;
+
+import com.oracle.svm.core.jfr.JfrEvent;
 
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
-import org.junit.Test;
 
 /**
- * This tests built in native JFR events that are sent periodically upon every chunk. The events
- * ThreadCPULoad and ThreadAllocationStatistics are not tested here since they already have their
- * own individual tests.
+ * Tests the VM-level JFR events that are created periodically upon every chunk. Note that the
+ * events ThreadCPULoad and ThreadAllocationStatistics are not tested here since they already have
+ * their own individual tests.
  */
 public class TestEveryChunkNativePeriodicEvents extends JfrRecordingTest {
-
     @Test
     public void test() throws Throwable {
-        String[] events = new String[]{
-                        JfrEvent.JavaThreadStatistics.getName(),
-                        JfrEvent.PhysicalMemory.getName(),
-                        JfrEvent.ClassLoadingStatistics.getName(),
-        };
+        String[] events = new String[]{JfrEvent.JavaThreadStatistics.getName(), JfrEvent.PhysicalMemory.getName(), JfrEvent.ClassLoadingStatistics.getName()};
         Recording recording = startRecording(events);
-
-        stopRecording(recording, this::validateEvents);
+        stopRecording(recording, TestEveryChunkNativePeriodicEvents::validateEvents);
     }
 
-    private void validateEvents(List<RecordedEvent> events) {
+    private static void validateEvents(List<RecordedEvent> events) {
         boolean foundJavaThreadStatistics = false;
         boolean foundPhysicalMemory = false;
         boolean foundClassLoadingStatistics = false;
+
         for (RecordedEvent e : events) {
-            if (e.getEventType().getName().equals(JfrEvent.JavaThreadStatistics.getName())) {
+            String eventName = e.getEventType().getName();
+            if (eventName.equals(JfrEvent.JavaThreadStatistics.getName())) {
                 foundJavaThreadStatistics = true;
                 assertTrue(e.getLong("activeCount") > 1);
                 assertTrue(e.getLong("daemonCount") > 0);
                 assertTrue(e.getLong("accumulatedCount") > 1);
                 assertTrue(e.getLong("peakCount") > 1);
-            } else if (e.getEventType().getName().equals(JfrEvent.PhysicalMemory.getName())) {
+            } else if (eventName.equals(JfrEvent.PhysicalMemory.getName())) {
                 foundPhysicalMemory = true;
                 assertTrue(e.getLong("totalSize") > 0);
-                assertTrue(e.getLong("usedSize") > 0 || e.getLong("usedSize") == -1);
-
-            } else if (e.getEventType().getName().equals(JfrEvent.ClassLoadingStatistics.getName())) {
+                assertTrue(e.getLong("usedSize") > 0);
+            } else if (eventName.equals(JfrEvent.ClassLoadingStatistics.getName())) {
                 foundClassLoadingStatistics = true;
                 assertTrue(e.getLong("loadedClassCount") > 0);
             }
         }
-        assertTrue(foundJavaThreadStatistics && foundPhysicalMemory && foundClassLoadingStatistics);
-    }
 
+        assertTrue(foundJavaThreadStatistics);
+        assertTrue(foundPhysicalMemory);
+        assertTrue(foundClassLoadingStatistics);
+    }
 }
