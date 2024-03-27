@@ -290,7 +290,28 @@ public class LoggingTest {
                     expected.addAll(createExpectedLog(LoggingLanguageSecond.ID, defaultLevel, Collections.emptyMap()));
                     Assert.assertEquals(expected, handler3.getLog());
                 }
+                handler1.clear();
+                handler2.clear();
+                ctx1.eval(LoggingLanguageFirst.ID, "");
+                ctx1.eval(LoggingLanguageSecond.ID, "");
+                ctx2.eval(LoggingLanguageFirst.ID, "");
+                ctx2.eval(LoggingLanguageSecond.ID, "");
+                List<Map.Entry<Level, String>> expected = new ArrayList<>();
+                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a.a", Level.FINEST)));
+                expected.addAll(createExpectedLog(LoggingLanguageSecond.ID, defaultLevel, Collections.emptyMap()));
+                Assert.assertEquals(expected, handler1.getLog());
+                expected = new ArrayList<>();
+                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.emptyMap()));
+                expected.addAll(createExpectedLog(LoggingLanguageSecond.ID, defaultLevel, Collections.singletonMap("a.a", Level.FINEST)));
+                Assert.assertEquals(expected, handler2.getLog());
             }
+            handler1.clear();
+            ctx1.eval(LoggingLanguageFirst.ID, "");
+            ctx1.eval(LoggingLanguageSecond.ID, "");
+            List<Map.Entry<Level, String>> expected = new ArrayList<>();
+            expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a.a", Level.FINEST)));
+            expected.addAll(createExpectedLog(LoggingLanguageSecond.ID, defaultLevel, Collections.emptyMap()));
+            Assert.assertEquals(expected, handler1.getLog());
         }
     }
 
@@ -303,13 +324,15 @@ public class LoggingTest {
             try (Context ctx2 = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.a", Level.FINE.toString())).logHandler(handler2).build()) {
                 ctx1.eval(LoggingLanguageFirst.ID, "");
                 ctx2.eval(LoggingLanguageFirst.ID, "");
-                List<Map.Entry<Level, String>> expected = new ArrayList<>();
-                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a", Level.FINER)));
+                List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a", Level.FINER));
                 Assert.assertEquals(expected, handler1.getLog());
-                expected = new ArrayList<>();
-                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a.a", Level.FINE)));
+                expected = createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a.a", Level.FINE));
                 Assert.assertEquals(expected, handler2.getLog());
             }
+            handler1.clear();
+            ctx1.eval(LoggingLanguageFirst.ID, "");
+            List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a", Level.FINER));
+            Assert.assertEquals(expected, handler1.getLog());
         }
     }
 
@@ -325,13 +348,15 @@ public class LoggingTest {
                 ctx2.close();
                 ctx1.eval(LoggingLanguageFirst.ID, "");
                 ctx3.eval(LoggingLanguageFirst.ID, "");
-                List<Map.Entry<Level, String>> expected = new ArrayList<>();
-                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a", Level.FINE)));
+                List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a", Level.FINE));
                 Assert.assertEquals(expected, handler1.getLog());
-                expected = new ArrayList<>();
-                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a.a.a", Level.FINER)));
+                expected = createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a.a.a", Level.FINER));
                 Assert.assertEquals(expected, handler3.getLog());
             }
+            handler1.clear();
+            ctx1.eval(LoggingLanguageFirst.ID, "");
+            List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a", Level.FINE));
+            Assert.assertEquals(expected, handler1.getLog());
         }
     }
 
@@ -347,13 +372,15 @@ public class LoggingTest {
                 ctx2.close();
                 ctx1.eval(LoggingLanguageFirst.ID, "");
                 ctx3.eval(LoggingLanguageFirst.ID, "");
-                List<Map.Entry<Level, String>> expected = new ArrayList<>();
-                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a", Level.FINE)));
+                List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a", Level.FINE));
                 Assert.assertEquals(expected, handler1.getLog());
-                expected = new ArrayList<>();
-                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a.a", Level.FINER)));
+                expected = createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a.a", Level.FINER));
                 Assert.assertEquals(expected, handler3.getLog());
             }
+            handler1.clear();
+            ctx1.eval(LoggingLanguageFirst.ID, "");
+            List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a", Level.FINE));
+            Assert.assertEquals(expected, handler1.getLog());
         }
     }
 
@@ -374,17 +401,14 @@ public class LoggingTest {
     @Test
     public void testNoParameters() {
         String message = "Test{0}";
-        AbstractLoggingLanguage.action = new BiPredicate<>() {
-            @Override
-            public boolean test(final LoggingContext context, final TruffleLogger[] loggers) {
-                for (TruffleLogger logger : loggers) {
-                    logger.log(Level.WARNING, message);
-                    logger.log(Level.WARNING, () -> message);
-                    logger.logp(Level.WARNING, "C", "M", message);
-                    logger.logp(Level.WARNING, "C", "M", () -> message);
-                }
-                return false;
+        AbstractLoggingLanguage.action = (context, loggers) -> {
+            for (TruffleLogger logger : loggers) {
+                logger.log(Level.WARNING, message);
+                logger.log(Level.WARNING, () -> message);
+                logger.logp(Level.WARNING, "C", "M", message);
+                logger.logp(Level.WARNING, "C", "M", () -> message);
             }
+            return false;
         };
         final TestHandler handler = new TestHandler();
         try (Context ctx1 = newContextBuilder().logHandler(handler).build()) {
@@ -413,17 +437,14 @@ public class LoggingTest {
     }
 
     private static void assertLoggerOutput(String expected, Consumer<TruffleLogger> log) {
-        AbstractLoggingLanguage.action = new BiPredicate<>() {
-            @Override
-            public boolean test(final LoggingContext context, final TruffleLogger[] loggers) {
-                log.accept(loggers[0]);
-                return false;
-            }
+        AbstractLoggingLanguage.action = (context, loggers) -> {
+            log.accept(loggers[0]);
+            return false;
         };
         final ByteArrayOutputStream logStream = new ByteArrayOutputStream();
         try (Context ctx1 = Context.newBuilder().logHandler(logStream).build()) {
             ctx1.eval(LoggingLanguageFirst.ID, "");
-            final String output = new String(logStream.toByteArray());
+            final String output = logStream.toString();
             Assert.assertTrue(output, output.indexOf(expected) > 0);
         }
     }
@@ -431,14 +452,11 @@ public class LoggingTest {
     @Test
     public void testParametersPrimitive() {
         final Object[] expected = new Object[]{1, 1L, null, 1.1, 1.1d, "test", 't', null, true};
-        AbstractLoggingLanguage.action = new BiPredicate<>() {
-            @Override
-            public boolean test(final LoggingContext context, final TruffleLogger[] loggers) {
-                for (TruffleLogger logger : loggers) {
-                    logger.log(Level.WARNING, "Parameters", Arrays.copyOf(expected, expected.length));
-                }
-                return false;
+        AbstractLoggingLanguage.action = (context, loggers) -> {
+            for (TruffleLogger logger : loggers) {
+                logger.log(Level.WARNING, "Parameters", Arrays.copyOf(expected, expected.length));
             }
+            return false;
         };
         final TestHandler handler1 = new TestHandler();
         try (Context ctx1 = newContextBuilder().logHandler(handler1).build()) {
@@ -455,14 +473,11 @@ public class LoggingTest {
 
     @Test
     public void testParametersObjects() {
-        AbstractLoggingLanguage.action = new BiPredicate<>() {
-            @Override
-            public boolean test(final LoggingContext context, final TruffleLogger[] loggers) {
-                for (TruffleLogger logger : loggers) {
-                    logger.log(Level.WARNING, "Parameters", new LoggingLanguageObject("passed"));
-                }
-                return false;
+        AbstractLoggingLanguage.action = (context, loggers) -> {
+            for (TruffleLogger logger : loggers) {
+                logger.log(Level.WARNING, "Parameters", new LoggingLanguageObject("passed"));
             }
+            return false;
         };
         final TestHandler handler1 = new TestHandler();
         try (Context ctx1 = newContextBuilder().logHandler(handler1).build()) {
@@ -479,21 +494,18 @@ public class LoggingTest {
 
     @Test
     public void testInnerContextLogging() {
-        AbstractLoggingLanguage.action = new BiPredicate<>() {
-            @Override
-            public boolean test(final LoggingContext context, final TruffleLogger[] loggers) {
-                TruffleContext tc = context.getEnv().newInnerContextBuilder().initializeCreatorContext(true).build();
-                final Object prev = tc.enter(null);
-                try {
-                    for (TruffleLogger logger : loggers) {
-                        logger.log(Level.FINEST, "INNER: " + logger.getName());
-                    }
-                } finally {
-                    tc.leave(null, prev);
-                    tc.close();
+        AbstractLoggingLanguage.action = (context, loggers) -> {
+            TruffleContext tc = context.getEnv().newInnerContextBuilder().initializeCreatorContext(true).build();
+            final Object prev = tc.enter(null);
+            try {
+                for (TruffleLogger logger : loggers) {
+                    logger.log(Level.FINEST, "INNER: " + logger.getName());
                 }
-                return true;
+            } finally {
+                tc.leave(null, prev);
+                tc.close();
             }
+            return true;
         };
         TestHandler handler = new TestHandler();
         try (Context ctx = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(handler).build()) {
@@ -515,46 +527,43 @@ public class LoggingTest {
     }
 
     @Test
-    public void testGcedContext() {
+    public void testGarbageCollectedContext() {
         TestHandler handler = new TestHandler();
-        Context gcedContext = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(handler).build();
-        gcedContext.eval(LoggingLanguageFirst.ID, "");
-        List<Map.Entry<Level, String>> expected = new ArrayList<>();
-        expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap()));
+        Context collectedContext = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(handler).build();
+        collectedContext.eval(LoggingLanguageFirst.ID, "");
+        List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap());
         Assert.assertEquals(expected, handler.getLog());
-        Reference<Context> gcedContextRef = new WeakReference<>(gcedContext);
-        gcedContext = null;
-        GCUtils.assertGc("Cannot free context.", gcedContextRef);
+        Reference<Context> collectedContextRef = new WeakReference<>(collectedContext);
+        collectedContext = null;
+        GCUtils.assertGc("Cannot free context.", collectedContextRef);
         handler = new TestHandler();
-        Context newContext = newContextBuilder().logHandler(handler).build();
-        newContext.eval(LoggingLanguageFirst.ID, "");
-        expected = new ArrayList<>();
-        expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.INFO, Collections.emptyMap()));
-        Assert.assertEquals(expected, handler.getLog());
+        try (Context newContext = newContextBuilder().logHandler(handler).build()) {
+            newContext.eval(LoggingLanguageFirst.ID, "");
+            expected = createExpectedLog(LoggingLanguageFirst.ID, Level.INFO, Collections.emptyMap());
+            Assert.assertEquals(expected, handler.getLog());
+        }
     }
 
     @Test
-    public void testGcedContext2() {
-        TestHandler gcedContextHandler = new TestHandler();
-        Context gcedContext = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(gcedContextHandler).build();
+    public void testGarbageCollectedContext2() {
+        TestHandler collectedContextHandler = new TestHandler();
+        Context collectedContext = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(collectedContextHandler).build();
         TestHandler contextHandler = new TestHandler();
-        Context context = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString())).logHandler(contextHandler).build();
-        gcedContext.eval(LoggingLanguageFirst.ID, "");
-        List<Map.Entry<Level, String>> expected = new ArrayList<>();
-        expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap()));
-        Assert.assertEquals(expected, gcedContextHandler.getLog());
-        context.eval(LoggingLanguageFirst.ID, "");
-        expected = new ArrayList<>();
-        expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINE, Collections.emptyMap()));
-        Assert.assertEquals(expected, contextHandler.getLog());
-        Reference<Context> gcedContextRef = new WeakReference<>(gcedContext);
-        gcedContext = null;
-        GCUtils.assertGc("Cannot free context.", gcedContextRef);
-        contextHandler.clear();
-        context.eval(LoggingLanguageFirst.ID, "");
-        expected = new ArrayList<>();
-        expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINE, Collections.emptyMap()));
-        Assert.assertEquals(expected, contextHandler.getLog());
+        try (Context context = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString())).logHandler(contextHandler).build()) {
+            collectedContext.eval(LoggingLanguageFirst.ID, "");
+            List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap());
+            Assert.assertEquals(expected, collectedContextHandler.getLog());
+            context.eval(LoggingLanguageFirst.ID, "");
+            expected = createExpectedLog(LoggingLanguageFirst.ID, Level.FINE, Collections.emptyMap());
+            Assert.assertEquals(expected, contextHandler.getLog());
+            Reference<Context> collectedContextRef = new WeakReference<>(collectedContext);
+            collectedContext = null;
+            GCUtils.assertGc("Cannot free context.", collectedContextRef);
+            contextHandler.clear();
+            context.eval(LoggingLanguageFirst.ID, "");
+            expected = createExpectedLog(LoggingLanguageFirst.ID, Level.FINE, Collections.emptyMap());
+            Assert.assertEquals(expected, contextHandler.getLog());
+        }
     }
 
     @Test
@@ -584,8 +593,7 @@ public class LoggingTest {
         TestHandler handler = new TestHandler();
         try (Context ctx = builder.logHandler(handler).build()) {
             ctx.eval(LoggingLanguageFirst.ID, "");
-            List<Map.Entry<Level, String>> expected = new ArrayList<>();
-            expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, setLevelsMap));
+            List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, setLevelsMap);
             Assert.assertEquals(expected, handler.getLog());
         }
     }
@@ -603,13 +611,15 @@ public class LoggingTest {
             try (Context ctx2 = newContextBuilder().logHandler(handler2).build()) {
                 ctx.eval(LoggingLanguageFirst.ID, "");
                 ctx2.eval(LoggingLanguageFirst.ID, "");
-                List<Map.Entry<Level, String>> expected = new ArrayList<>();
-                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, setLevelsMap));
+                List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, setLevelsMap);
                 Assert.assertEquals(expected, handler.getLog());
-                expected = new ArrayList<>();
-                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.emptyMap()));
+                expected = createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.emptyMap());
                 Assert.assertEquals(expected, handler2.getLog());
             }
+            handler.clear();
+            ctx.eval(LoggingLanguageFirst.ID, "");
+            List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, setLevelsMap);
+            Assert.assertEquals(expected, handler.getLog());
         }
     }
 
@@ -623,8 +633,7 @@ public class LoggingTest {
         Context.Builder builder = configureLogLevels(newContextBuilder(), setLevelsMap);
         try (Context ctx = builder.logHandler(handler).build()) {
             ctx.eval(LoggingLanguageFirst.ID, "");
-            List<Map.Entry<Level, String>> expected = new ArrayList<>();
-            expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, setLevelsMap.remove(null), setLevelsMap));
+            List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, setLevelsMap.remove(null), setLevelsMap);
             Assert.assertEquals(expected, handler.getLog());
         }
     }
@@ -641,8 +650,7 @@ public class LoggingTest {
         try (Context ctx = builder.logHandler(handler).build()) {
             interferingContext.close();
             ctx.eval(LoggingLanguageFirst.ID, "");
-            List<Map.Entry<Level, String>> expected = new ArrayList<>();
-            expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, setLevelsMap.remove(null), setLevelsMap));
+            List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, setLevelsMap.remove(null), setLevelsMap);
             Assert.assertEquals(expected, handler.getLog());
         }
     }
@@ -650,6 +658,7 @@ public class LoggingTest {
     @Test
     public void testDecreaseIncreaseLogLevelMultipleContexts() {
         Level defaultLevel = Level.INFO;
+        Level rootLevel;
         Map<String, Level> setLevelsMap = new HashMap<>();
         setLevelsMap.put(null, Level.FINEST);   // level on language root level
         setLevelsMap.put("a", Level.INFO);
@@ -661,13 +670,16 @@ public class LoggingTest {
             try (Context ctx2 = newContextBuilder().logHandler(handler2).build()) {
                 ctx.eval(LoggingLanguageFirst.ID, "");
                 ctx2.eval(LoggingLanguageFirst.ID, "");
-                List<Map.Entry<Level, String>> expected = new ArrayList<>();
-                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, setLevelsMap.remove(null), setLevelsMap));
+                rootLevel = setLevelsMap.remove(null);
+                List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, rootLevel, setLevelsMap);
                 Assert.assertEquals(expected, handler.getLog());
-                expected = new ArrayList<>();
-                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.emptyMap()));
+                expected = createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.emptyMap());
                 Assert.assertEquals(expected, handler2.getLog());
             }
+            handler.clear();
+            ctx.eval(LoggingLanguageFirst.ID, "");
+            List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, rootLevel, setLevelsMap);
+            Assert.assertEquals(expected, handler.getLog());
         }
     }
 
@@ -680,8 +692,7 @@ public class LoggingTest {
         TestHandler handler = new TestHandler();
         try (Context ctx = builder.logHandler(handler).build()) {
             ctx.eval(LoggingLanguageFirst.ID, "");
-            List<Map.Entry<Level, String>> expected = new ArrayList<>();
-            expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, setLevelsMap.remove(null), setLevelsMap));
+            List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, setLevelsMap.remove(null), setLevelsMap);
             Assert.assertEquals(expected, handler.getLog());
         }
     }
@@ -695,40 +706,107 @@ public class LoggingTest {
 
     @Test
     public void testDisableLoggersMultipleContexts() {
+        Map<String, Level> outerLevels = new HashMap<>();
+        outerLevels.put(null, Level.FINEST);   // level on language root level
+        outerLevels.put("a", Level.OFF);
+        Map<String, Level> innerLevels = Map.of();
+        testDisableLoggersMultipleContextsImpl(outerLevels, innerLevels);
+    }
+
+    @Test
+    public void testDisableLoggersMultipleContexts2() {
+        Map<String, Level> outerLevels = new HashMap<>();
+        outerLevels.put("a", Level.OFF);
+        Map<String, Level> innerLevels = Map.of();
+        testDisableLoggersMultipleContextsImpl(outerLevels, innerLevels);
+    }
+
+    @Test
+    public void testDisableLoggersMultipleContexts3() {
+        Map<String, Level> outerLevels = new HashMap<>();
+        outerLevels.put("a", Level.FINE);
+        Map<String, Level> innerLevels = Map.of("b", Level.OFF);
+        testDisableLoggersMultipleContextsImpl(outerLevels, innerLevels);
+    }
+
+    @Test
+    public void testDisableLoggersMultipleContexts4() {
+        Map<String, Level> outerLevels = new HashMap<>();
+        Map<String, Level> innerLevels = Map.of("b", Level.OFF);
+        testDisableLoggersMultipleContextsImpl(outerLevels, innerLevels);
+    }
+
+    private static void testDisableLoggersMultipleContextsImpl(Map<String, Level> outerContextLevels, Map<String, Level> innerContextLevels) {
         Level defaultLevel = Level.INFO;
-        Map<String, Level> setLevelsMap = new HashMap<>();
-        setLevelsMap.put(null, Level.FINEST);   // level on language root level
-        setLevelsMap.put("a", Level.OFF);
-        Context.Builder builder = configureLogLevels(newContextBuilder(), setLevelsMap);
+        Level rootLevel;
+        Context.Builder builder = configureLogLevels(Context.newBuilder(), outerContextLevels);
         TestHandler handler = new TestHandler();
         try (Context ctx = builder.logHandler(handler).build()) {
             TestHandler handler2 = new TestHandler();
-            try (Context ctx2 = newContextBuilder().logHandler(handler2).build()) {
+            try (Context ctx2 = configureLogLevels(Context.newBuilder(), innerContextLevels).logHandler(handler2).build()) {
                 ctx.eval(LoggingLanguageFirst.ID, "");
                 ctx2.eval(LoggingLanguageFirst.ID, "");
-                List<Map.Entry<Level, String>> expected = new ArrayList<>();
-                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, setLevelsMap.remove(null), setLevelsMap));
+                rootLevel = outerContextLevels.remove(null);
+                if (rootLevel == null) {
+                    rootLevel = defaultLevel;
+                }
+                List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, rootLevel, outerContextLevels);
                 Assert.assertEquals(expected, handler.getLog());
-                expected = new ArrayList<>();
-                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.emptyMap()));
+                expected = createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, innerContextLevels);
                 Assert.assertEquals(expected, handler2.getLog());
             }
+            handler.clear();
+            ctx.eval(LoggingLanguageFirst.ID, "");
+            List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, rootLevel, outerContextLevels);
+            Assert.assertEquals(expected, handler.getLog());
         }
     }
 
     @Test
-    public void testGR52530Interfering() {
-        Map<String, Level> setLevelsMap = new HashMap<>();
-        setLevelsMap.put(null, Level.FINEST);   // level on language root level
-        setLevelsMap.put("a", Level.OFF);
-        Context.Builder builder = configureLogLevels(newContextBuilder(), setLevelsMap);
+    public void testGR52530Interfering1() {
+        Map<String, Level> contextLevels = new HashMap<>();
+        contextLevels.put(null, Level.FINEST);   // level on language root level
+        contextLevels.put("a", Level.OFF);
+        Map<String, Level> interferingContextLevels = new HashMap<>();
+        interferingContextLevels.put(null, Level.FINE);   // level on language root level
+        testGR52530InterferingImpl(contextLevels, interferingContextLevels);
+    }
+
+    @Test
+    public void testGR52530Interfering2() {
+        Map<String, Level> contextLevels = new HashMap<>();
+        contextLevels.put(null, Level.FINEST);   // level on language root level
+        contextLevels.put("a", Level.OFF);
+        Map<String, Level> interferingContextLevels = Map.of("a", Level.FINE);
+        testGR52530InterferingImpl(contextLevels, interferingContextLevels);
+    }
+
+    @Test
+    public void testGR52530Interfering3() {
+        Map<String, Level> contextLevels = new HashMap<>();
+        contextLevels.put(null, Level.FINEST);   // level on language root level
+        contextLevels.put("a", Level.OFF);
+        Map<String, Level> interferingContextLevels = Map.of("b", Level.FINE);
+        testGR52530InterferingImpl(contextLevels, interferingContextLevels);
+    }
+
+    @Test
+    public void testGR52530Interfering4() {
+        Map<String, Level> contextLevels = new HashMap<>();
+        contextLevels.put(null, Level.FINEST);   // level on language root level
+        contextLevels.put("a", Level.OFF);
+        Map<String, Level> interferingContextLevels = Map.of();
+        testGR52530InterferingImpl(contextLevels, interferingContextLevels);
+    }
+
+    private static void testGR52530InterferingImpl(Map<String, Level> contextLevels, Map<String, Level> interferingContextLevels) {
+        Context.Builder builder = configureLogLevels(newContextBuilder(), contextLevels);
         TestHandler handler = new TestHandler();
-        Context interferingContext = configureLogLevels(newContextBuilder(), Map.of("a", Level.FINE)).build();
+        Context interferingContext = configureLogLevels(newContextBuilder(), interferingContextLevels).build();
         try (Context ctx = builder.logHandler(handler).build()) {
             interferingContext.close();
             ctx.eval(LoggingLanguageFirst.ID, "");
-            List<Map.Entry<Level, String>> expected = new ArrayList<>();
-            expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, setLevelsMap.remove(null), setLevelsMap));
+            List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, contextLevels.remove(null), contextLevels);
             Assert.assertEquals(expected, handler.getLog());
         }
     }
@@ -745,12 +823,10 @@ public class LoggingTest {
             try (Context ctx = builder.logHandler(handler).build()) {
                 outerContext.eval(LoggingLanguageFirst.ID, "");
                 ctx.eval(LoggingLanguageFirst.ID, "");
-                List<Map.Entry<Level, String>> expected = new ArrayList<>();
-                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, setLevelsMap.remove(null), setLevelsMap));
+                List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, setLevelsMap.remove(null), setLevelsMap);
                 Assert.assertEquals(expected, handler.getLog());
             }
-            List<Map.Entry<Level, String>> expected = new ArrayList<>();
-            expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.INFO, Map.of("a", Level.FINE)));
+            List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, Level.INFO, Map.of("a", Level.FINE));
             Assert.assertEquals(expected, outerHandler.getLog());
         }
     }
@@ -776,19 +852,23 @@ public class LoggingTest {
             try (Context ctx2 = newContextBuilder().logHandler(handler2).build()) {
                 ctx.eval(LoggingLanguageFirst.ID, "");
                 ctx2.eval(LoggingLanguageFirst.ID, "");
-                List<Map.Entry<Level, String>> expected = Arrays.asList(new AbstractMap.SimpleEntry<>(Level.INFO, String.format("%s.%s", LoggingLanguageFirst.ID, parentLoggerName)));
+                List<Map.Entry<Level, String>> expected = List.of(new AbstractMap.SimpleEntry<>(Level.INFO, String.format("%s.%s", LoggingLanguageFirst.ID, parentLoggerName)));
                 Assert.assertEquals(expected, handler.getLog());
                 expected = new ArrayList<>();
                 expected.add(new AbstractMap.SimpleEntry<>(Level.INFO, String.format("%s.%s", LoggingLanguageFirst.ID, parentLoggerName)));
                 expected.add(new AbstractMap.SimpleEntry<>(Level.INFO, String.format("%s.%s", LoggingLanguageFirst.ID, childLoggerName)));
                 Assert.assertEquals(expected, handler2.getLog());
             }
+            handler.clear();
+            ctx.eval(LoggingLanguageFirst.ID, "");
+            List<Map.Entry<Level, String>> expected = List.of(new AbstractMap.SimpleEntry<>(Level.INFO, String.format("%s.%s", LoggingLanguageFirst.ID, parentLoggerName)));
+            Assert.assertEquals(expected, handler.getLog());
         }
     }
 
     @Test
     public void testNoContextLoggingBasic() {
-        // Engine handler overriden by context handler, logging from language with context
+        // Engine handler overridden by context handler, logging from language with context
         final Level defaultLevel = Level.INFO;
         TestHandler engineHandler = new TestHandler();
         try (Engine eng = newEngineBuilder().logHandler(engineHandler).build()) {
@@ -924,11 +1004,9 @@ public class LoggingTest {
             TestHandler contextHandler = new TestHandler();
             try (Context ctx = newContextBuilder().engine(eng).options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINER.toString())).logHandler(contextHandler).build()) {
                 ctx.eval(LoggingLanguageFirst.ID, "");
-                List<Map.Entry<Level, String>> expectedInEngine = new ArrayList<>();
-                expectedInEngine.addAll(createExpectedLog(ProxyInstrument.ID, Level.FINE, Collections.emptyMap()));
+                List<Map.Entry<Level, String>> expectedInEngine = createExpectedLog(ProxyInstrument.ID, Level.FINE, Collections.emptyMap());
                 Assert.assertEquals(expectedInEngine, engineHandler.getLog());
-                List<Map.Entry<Level, String>> expectedInContext = new ArrayList<>();
-                expectedInContext.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINER, Collections.emptyMap()));
+                List<Map.Entry<Level, String>> expectedInContext = createExpectedLog(LoggingLanguageFirst.ID, Level.FINER, Collections.emptyMap());
                 Assert.assertEquals(expectedInContext, contextHandler.getLog());
             }
         }
@@ -971,13 +1049,10 @@ public class LoggingTest {
         try (Engine eng = newEngineBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString(), ProxyInstrument.ID, null, Level.FINE.toString())).logHandler(
                         engineHandler).build()) {
             AtomicReference<TruffleLogger> loggerRef = new AtomicReference<>();
-            LoggingLanguageFirst.action = new BiPredicate<>() {
-                @Override
-                public boolean test(LoggingContext ctx, TruffleLogger[] loggers) {
-                    Assert.assertTrue(loggers.length > 0);
-                    loggerRef.set(loggers[0]);
-                    return true;
-                }
+            LoggingLanguageFirst.action = (ctx, loggers) -> {
+                Assert.assertTrue(loggers.length > 0);
+                loggerRef.set(loggers[0]);
+                return true;
             };
             try (Context ctx = newContextBuilder().engine(eng).build()) {
                 ctx.eval(LoggingLanguageFirst.ID, "");
@@ -987,8 +1062,7 @@ public class LoggingTest {
                 } catch (IllegalStateException e) {
                     // Expected
                 }
-                List<Map.Entry<Level, String>> expectedInEngine = new ArrayList<>();
-                expectedInEngine.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINE, Collections.emptyMap()));
+                List<Map.Entry<Level, String>> expectedInEngine = createExpectedLog(LoggingLanguageFirst.ID, Level.FINE, Collections.emptyMap());
                 Assert.assertEquals(expectedInEngine, engineHandler.getLog());
             }
         }
@@ -998,19 +1072,16 @@ public class LoggingTest {
     public void testEngineLoggerIdentity() {
         ProxyInstrument delegate = new ProxyInstrument();
         AtomicReferenceArray<TruffleLogger> eng1Loggers = new AtomicReferenceArray<>(2);
-        delegate.setOnCreate(new Consumer<TruffleInstrument.Env>() {
-            @Override
-            public void accept(TruffleInstrument.Env env) {
-                TruffleLogger logger1 = env.getLogger("a.b.c");
-                TruffleLogger logger2 = env.getLogger("a.b");
-                Assert.assertNotSame(logger1, logger2);
-                Assert.assertSame(logger1, env.getLogger("a.b.c"));
-                Assert.assertSame(logger2, env.getLogger("a.b"));
-                Assert.assertNotSame(logger1, TruffleLogger.getLogger(ProxyInstrument.ID, "a.b.c"));
-                Assert.assertNotSame(logger2, TruffleLogger.getLogger(ProxyInstrument.ID, "a.b"));
-                eng1Loggers.set(0, logger1);
-                eng1Loggers.set(1, logger2);
-            }
+        delegate.setOnCreate((env) -> {
+            TruffleLogger logger1 = env.getLogger("a.b.c");
+            TruffleLogger logger2 = env.getLogger("a.b");
+            Assert.assertNotSame(logger1, logger2);
+            Assert.assertSame(logger1, env.getLogger("a.b.c"));
+            Assert.assertSame(logger2, env.getLogger("a.b"));
+            Assert.assertNotSame(logger1, TruffleLogger.getLogger(ProxyInstrument.ID, "a.b.c"));
+            Assert.assertNotSame(logger2, TruffleLogger.getLogger(ProxyInstrument.ID, "a.b"));
+            eng1Loggers.set(0, logger1);
+            eng1Loggers.set(1, logger2);
         });
         ProxyInstrument.setDelegate(delegate);
         try (Engine eng = Engine.create()) {
@@ -1020,15 +1091,12 @@ public class LoggingTest {
             }
         }
         delegate = new ProxyInstrument();
-        delegate.setOnCreate(new Consumer<TruffleInstrument.Env>() {
-            @Override
-            public void accept(TruffleInstrument.Env env) {
-                TruffleLogger logger1 = env.getLogger("a.b.c");
-                TruffleLogger logger2 = env.getLogger("a.b");
-                Assert.assertNotSame(logger1, logger2);
-                Assert.assertNotSame(eng1Loggers.get(0), logger1);
-                Assert.assertNotSame(eng1Loggers.get(1), logger2);
-            }
+        delegate.setOnCreate(env -> {
+            TruffleLogger logger1 = env.getLogger("a.b.c");
+            TruffleLogger logger2 = env.getLogger("a.b");
+            Assert.assertNotSame(logger1, logger2);
+            Assert.assertNotSame(eng1Loggers.get(0), logger1);
+            Assert.assertNotSame(eng1Loggers.get(1), logger2);
         });
         ProxyInstrument.setDelegate(delegate);
         try (Engine eng = Engine.create()) {
@@ -1044,12 +1112,9 @@ public class LoggingTest {
         Assume.assumeTrue(System.getProperty("polyglot.log.file") == null);
         ByteArrayOutputStream errConsumer = new ByteArrayOutputStream();
         ProxyInstrument delegate = new ProxyInstrument();
-        delegate.setOnCreate(new Consumer<TruffleInstrument.Env>() {
-            @Override
-            public void accept(TruffleInstrument.Env env) {
-                env.getInstrumenter().attachErrConsumer(errConsumer);
-                new InstrumentLogging(false).accept(env);
-            }
+        delegate.setOnCreate(env -> {
+            env.getInstrumenter().attachErrConsumer(errConsumer);
+            new InstrumentLogging(false).accept(env);
         });
         ProxyInstrument.setDelegate(delegate);
         LoggingLanguageFirst.action = new LookupInstrumentAction(true);
@@ -1065,29 +1130,26 @@ public class LoggingTest {
     public void testInvalidId() {
         Context.Builder builder = newContextBuilder();
         TestHandler handler = new TestHandler();
-        LoggingLanguageFirst.action = new BiPredicate<>() {
-            @Override
-            public boolean test(LoggingContext ctx, TruffleLogger[] defaultLoggers) {
-                try {
-                    TruffleLogger.getLogger("LoggingTest-Invalid-Id");
-                    Assert.fail("Expected IllegalArgumentException");
-                } catch (IllegalArgumentException iae) {
-                    // Expected exception
-                }
-                try {
-                    TruffleLogger.getLogger("LoggingTest-Invalid-Id", LoggingTest.class);
-                    Assert.fail("Expected IllegalArgumentException");
-                } catch (IllegalArgumentException iae) {
-                    // Expected exception
-                }
-                try {
-                    TruffleLogger.getLogger("LoggingTest-Invalid-Id", "global");
-                    Assert.fail("Expected IllegalArgumentException");
-                } catch (IllegalArgumentException iae) {
-                    // Expected exception
-                }
-                return false;
+        LoggingLanguageFirst.action = (ctx, defaultLoggers) -> {
+            try {
+                TruffleLogger.getLogger("LoggingTest-Invalid-Id");
+                Assert.fail("Expected IllegalArgumentException");
+            } catch (IllegalArgumentException iae) {
+                // Expected exception
             }
+            try {
+                TruffleLogger.getLogger("LoggingTest-Invalid-Id", LoggingTest.class);
+                Assert.fail("Expected IllegalArgumentException");
+            } catch (IllegalArgumentException iae) {
+                // Expected exception
+            }
+            try {
+                TruffleLogger.getLogger("LoggingTest-Invalid-Id", "global");
+                Assert.fail("Expected IllegalArgumentException");
+            } catch (IllegalArgumentException iae) {
+                // Expected exception
+            }
+            return false;
         };
         try (Context ctx = builder.logHandler(handler).build()) {
             ctx.eval(LoggingLanguageFirst.ID, "");
@@ -1111,7 +1173,7 @@ public class LoggingTest {
     }
 
     @Test
-    public void testLogFileOptionMultpileContexts() throws IOException {
+    public void testLogFileOptionMultipleContexts() throws IOException {
         File f = File.createTempFile(getClass().getSimpleName(), "log");
         String expectedMessageFirstCtx = "expected_message1";
         String expectedMessageSecondCtx = "expected_message2";
@@ -1136,7 +1198,7 @@ public class LoggingTest {
     }
 
     @Test
-    public void testLogFileOptionMultpileContextsNested() throws IOException {
+    public void testLogFileOptionMultipleContextsNested() throws IOException {
         File f = File.createTempFile(getClass().getSimpleName(), "log");
         String expectedMessageFirstCtx = "expected_message1";
         String expectedMessageSecondCtx = "expected_message2";
@@ -1163,16 +1225,14 @@ public class LoggingTest {
     @Test
     public void testLogFileOptionNonWritableFile() throws IOException {
         File f = File.createTempFile(getClass().getSimpleName(), "log");
-        f.setWritable(false);
+        Assert.assertTrue(f.setWritable(false));
         // Some file systems does not support non writable files
         Assume.assumeFalse("File cannot be writeable.", f.canWrite());
         AbstractPolyglotTest.assertFails(() -> {
             try (Context ctx = newContextBuilder().option("log.file", f.getAbsolutePath()).build()) {
                 ctx.eval(LoggingLanguageFirst.ID, "");
             }
-        }, IllegalArgumentException.class, (e) -> {
-            Assert.assertTrue(e.getMessage().contains("Cannot open log file"));
-        });
+        }, IllegalArgumentException.class, (e) -> Assert.assertTrue(e.getMessage().contains("Cannot open log file")));
     }
 
     @Test
@@ -1306,13 +1366,13 @@ public class LoggingTest {
             try (Context ctx = Context.newBuilder().logHandler(handler).build()) {
                 boolean hasMessage = hasInterpreterOnlyWarning(handler.getLog());
                 boolean graalRuntime = AbstractPolyglotTest.isGraalRuntime();
-                Assert.assertTrue(graalRuntime ? !hasMessage : hasMessage);
+                Assert.assertTrue(graalRuntime != hasMessage);
             }
             handler.clear();
             try (Context ctx = Context.newBuilder().option("engine.WarnInterpreterOnly", "true").logHandler(handler).build()) {
                 boolean hasMessage = hasInterpreterOnlyWarning(handler.getLog());
                 boolean graalRuntime = AbstractPolyglotTest.isGraalRuntime();
-                Assert.assertTrue(graalRuntime ? !hasMessage : hasMessage);
+                Assert.assertTrue(graalRuntime != hasMessage);
             }
             handler.clear();
             try (Context ctx = Context.newBuilder().option("engine.WarnInterpreterOnly", "false").logHandler(handler).build()) {
@@ -1345,9 +1405,7 @@ public class LoggingTest {
         GCUtils.assertGc("Context should be collected.", ctxRef);
         TruffleLogger closedLogger = loggerHolder.getAndSet(null);
         Assert.assertNotNull(closedLogger);
-        AbstractPolyglotTest.assertFails(() -> closedLogger.config("Should fail"), AssertionError.class, (e) -> {
-            Assert.assertTrue(e.getMessage().contains("Invalid sharing of bound TruffleLogger"));
-        });
+        AbstractPolyglotTest.assertFails(() -> closedLogger.config("Should fail"), AssertionError.class, (e) -> Assert.assertTrue(e.getMessage().contains("Invalid sharing of bound TruffleLogger")));
     }
 
     private static boolean hasInterpreterOnlyWarning(Iterable<Map.Entry<Level, String>> log) {
@@ -1400,13 +1458,13 @@ public class LoggingTest {
             ctx.eval(LoggingLanguageFirst.ID, "");
         }
         Assert.assertEquals(expectStreamClosed, stream.isClosed());
-        String output = new String(stream.toByteArray());
+        String output = stream.toString();
         if (expectRedirectMessage) {
             String redirectMessage = getRedirectMessage();
             Assert.assertTrue(output.startsWith(redirectMessage));
             output = output.substring(redirectMessage.length());
         }
-        final Pattern p = Pattern.compile("\\[(.*)\\]\\sWARNING:\\s(.*)");
+        final Pattern p = Pattern.compile("\\[(.*)]\\sWARNING:\\s(.*)");
         for (String line : output.split("\n")) {
             final Matcher m = p.matcher(line.trim());
             Assert.assertTrue(m.matches());
@@ -1599,20 +1657,16 @@ public class LoggingTest {
                 return this;
             }
             int index = loggerName.indexOf('.');
-            String currentNameCompoment;
+            String currentNameComponent;
             String nameRest;
             if (index > 0) {
-                currentNameCompoment = loggerName.substring(0, index);
+                currentNameComponent = loggerName.substring(0, index);
                 nameRest = loggerName.substring(index + 1);
             } else {
-                currentNameCompoment = loggerName;
+                currentNameComponent = loggerName;
                 nameRest = "";
             }
-            LoggerNode child = children.get(currentNameCompoment);
-            if (child == null) {
-                child = new LoggerNode();
-                children.put(currentNameCompoment, child);
-            }
+            LoggerNode child = children.computeIfAbsent(currentNameComponent, k -> new LoggerNode());
             return child.findChild(nameRest);
         }
 
@@ -1625,16 +1679,16 @@ public class LoggingTest {
                 return res;
             }
             int index = loggerName.indexOf('.');
-            String currentNameCompoment;
+            String currentNameComponent;
             String nameRest;
             if (index > 0) {
-                currentNameCompoment = loggerName.substring(0, index);
+                currentNameComponent = loggerName.substring(0, index);
                 nameRest = loggerName.substring(index + 1);
             } else {
-                currentNameCompoment = loggerName;
+                currentNameComponent = loggerName;
                 nameRest = "";
             }
-            LoggerNode child = children.get(currentNameCompoment);
+            LoggerNode child = children.get(currentNameComponent);
             if (child == null) {
                 return res;
             }
@@ -1826,9 +1880,7 @@ public class LoggingTest {
         @Override
         public void accept(TruffleInstrument.Env env) {
             if (detached) {
-                Thread t = new Thread(() -> {
-                    doLogging(env);
-                });
+                Thread t = new Thread(() -> doLogging(env));
                 t.start();
                 try {
                     t.join(10_000);
