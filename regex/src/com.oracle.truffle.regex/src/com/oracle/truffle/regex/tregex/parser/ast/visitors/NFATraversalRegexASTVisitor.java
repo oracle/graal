@@ -928,12 +928,20 @@ public abstract class NFATraversalRegexASTVisitor {
             Group quantifierGroup = otherAlternative.get(0).asGroup();
             assert quantifierGroup.hasQuantifier();
             Quantifier quantifier = quantifierGroup.getQuantifier();
-            if (quantifier.hasIndex()) {
-                if (quantifier.getMin() > 0) {
-                    quantifierGuardsExited[quantifier.getIndex()]++;
-                    pushQuantifierGuard(QuantifierGuard.createExit(quantifier));
+            if (!quantifierGroup.isExpandedQuantifier()) {
+                if (quantifier.hasIndex()) {
+                    if (quantifier.getMin() > 0) {
+                        quantifierGuardsExited[quantifier.getIndex()]++;
+                        pushQuantifierGuard(QuantifierGuard.createExit(quantifier));
+                    } else {
+                        pushQuantifierGuard(QuantifierGuard.createClear(quantifier));
+                    }
                 } else {
-                    pushQuantifierGuard(QuantifierGuard.createClear(quantifier));
+                    // this path will be hit if the body of the quantifier is dead
+                    assert quantifierGroup.isDead();
+                    if (quantifier.getMin() > 0) {
+                        shouldRetreat = true;
+                    }
                 }
             }
         }
@@ -952,7 +960,7 @@ public abstract class NFATraversalRegexASTVisitor {
             Group quantifierGroup = otherAlternative.get(0).asGroup();
             assert quantifierGroup.hasQuantifier();
             Quantifier quantifier = quantifierGroup.getQuantifier();
-            if (quantifier.hasIndex() && quantifier.getMin() > 0) {
+            if (!quantifierGroup.isExpandedQuantifier() && quantifier.hasIndex() && quantifier.getMin() > 0) {
                 quantifierGuardsExited[quantifier.getIndex()]--;
             }
         }
