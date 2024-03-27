@@ -56,12 +56,13 @@ public class TestContainerEvent extends JfrRecordingTest {
 
     private static void validateEvents(List<RecordedEvent> events) {
         assertEquals(1, events.size());
-        assertEquals(events.getFirst().getEventType().getName(), "jdk.ContainerConfiguration");
         RecordedEvent re = events.getFirst();
-        long hostTotalMem = (long) re.getValue("hostTotalMemory");
-        long hostTotalSwap = (long) re.getValue("hostTotalSwapMemory");
+        assertEquals(re.getEventType().getName(), "jdk.ContainerConfiguration");
 
+        long hostTotalMem = re.getValue("hostTotalMemory");
         assertTrue(hostTotalMem > 0);
+
+        long hostTotalSwap = re.getValue("hostTotalSwapMemory");
         assertTrue("Host swap not implemented", hostTotalSwap < 0);
     }
 }
