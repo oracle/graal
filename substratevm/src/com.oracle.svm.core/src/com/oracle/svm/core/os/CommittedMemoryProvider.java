@@ -32,7 +32,6 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
-import com.oracle.svm.core.heap.Heap;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -45,14 +44,6 @@ public interface CommittedMemoryProvider {
     static CommittedMemoryProvider get() {
         return ImageSingletons.lookup(CommittedMemoryProvider.class);
     }
-
-    /**
-     * Returns whether this provider will always guarantee a heap address space alignment of
-     * {@link Heap#getPreferredAddressSpaceAlignment()} at image runtime, which may also depend on
-     * {@link ImageHeapProvider#guaranteesHeapPreferredAddressSpaceAlignment()}.
-     */
-    @Fold
-    boolean guaranteesHeapPreferredAddressSpaceAlignment();
 
     /**
      * Performs initializations <em>for the current isolate</em>, before any other methods of this

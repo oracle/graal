@@ -44,7 +44,6 @@ import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.graal.compiler.word.Word;
@@ -265,7 +264,7 @@ public final class HeapVerifier {
 
         assert aChunk.isNonNull() ^ uChunk.isNonNull();
         HeapChunk.Header<?> chunk = aChunk.isNonNull() ? aChunk : uChunk;
-        if (CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment()) {
+        if (HeapImpl.isImageHeapAligned() || !HeapImpl.getHeapImpl().isInImageHeap(obj)) {
             HeapChunk.Header<?> enclosingHeapChunk = HeapChunk.getEnclosingHeapChunk(obj);
             if (chunk.notEqual(enclosingHeapChunk)) {
                 Log.log().string("Object ").zhex(ptr).string(" should have ").zhex(chunk).string(" as its enclosing chunk but getEnclosingHeapChunk returned ").zhex(enclosingHeapChunk).newline();
