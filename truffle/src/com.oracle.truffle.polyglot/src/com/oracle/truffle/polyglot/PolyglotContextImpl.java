@@ -555,9 +555,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
          * Instruments can add loggers, and so configuration of loggers for this context must be
          * done after instruments are created.
          */
-        if (!config.logLevels.isEmpty()) {
-            EngineAccessor.LANGUAGE.configureLoggers(this, config.logLevels, getAllLoggers());
-        }
+        EngineAccessor.LANGUAGE.configureLoggers(this, config.logLevels, getAllLoggers());
     }
 
     /*
@@ -588,9 +586,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         this.exitMessage = this.parent.exitMessage;
         this.contextBoundLoggers = this.parent.contextBoundLoggers;
         this.threadLocalActions = new PolyglotThreadLocalActions(this);
-        if (!parent.config.logLevels.isEmpty()) {
-            EngineAccessor.LANGUAGE.configureLoggers(this, parent.config.logLevels, getAllLoggers());
-        }
+        EngineAccessor.LANGUAGE.configureLoggers(this, parent.config.logLevels, getAllLoggers());
         this.contexts = createContextArray();
         this.subProcesses = new HashSet<>();
         // notifyContextCreated() is called after spiContext.impl is set to this.
@@ -2842,12 +2838,10 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 }
             }
             if (parent == null) {
-                if (!this.config.logLevels.isEmpty()) {
-                    Object defaultLoggers = EngineAccessor.LANGUAGE.getDefaultLoggers();
-                    Object engineLoggers = engine.getEngineLoggers();
-                    Object[] loggersToRecompute = engineLoggers != null ? new Object[]{defaultLoggers, engineLoggers} : new Object[]{defaultLoggers};
-                    EngineAccessor.LANGUAGE.configureLoggers(this, null, loggersToRecompute);
-                }
+                Object defaultLoggers = EngineAccessor.LANGUAGE.getDefaultLoggers();
+                Object engineLoggers = engine.getEngineLoggers();
+                Object[] loggersToRecompute = engineLoggers != null ? new Object[]{defaultLoggers, engineLoggers} : new Object[]{defaultLoggers};
+                EngineAccessor.LANGUAGE.configureLoggers(this, null, loggersToRecompute);
                 if (this.config.logHandler != null && !PolyglotLoggers.haveSameTarget(this.config.logHandler, engine.logHandler)) {
                     this.config.logHandler.close();
                 }
@@ -3479,9 +3473,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
         this.config = newConfig;
         threadLocalActions.onContextPatch();
-        if (!newConfig.logLevels.isEmpty()) {
-            EngineAccessor.LANGUAGE.configureLoggers(this, newConfig.logLevels, getAllLoggers());
-        }
+        EngineAccessor.LANGUAGE.configureLoggers(this, newConfig.logLevels, getAllLoggers());
         final Object[] prev = engine.enter(this);
         try {
             for (int i = 0; i < this.contexts.length; i++) {
@@ -3621,9 +3613,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             context.threadLocalActions.prepareContextStore();
             ((PreInitializeContextFileSystem) fileSystemConfig.fileSystem).onPreInitializeContextEnd();
             ((PreInitializeContextFileSystem) fileSystemConfig.internalFileSystem).onPreInitializeContextEnd();
-            if (!config.logLevels.isEmpty()) {
-                EngineAccessor.LANGUAGE.configureLoggers(context, null, context.getAllLoggers());
-            }
+            EngineAccessor.LANGUAGE.configureLoggers(context, null, context.getAllLoggers());
         }
     }
 
@@ -3634,9 +3624,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 res = contextBoundLoggers;
                 if (res == null) {
                     res = LANGUAGE.createEngineLoggers(PolyglotLoggers.LoggerCache.newContextLoggerCache(this));
-                    if (!this.config.logLevels.isEmpty()) {
-                        EngineAccessor.LANGUAGE.configureLoggers(this, this.config.logLevels, res);
-                    }
+                    EngineAccessor.LANGUAGE.configureLoggers(this, this.config.logLevels, res);
                     contextBoundLoggers = res;
                 }
             }
