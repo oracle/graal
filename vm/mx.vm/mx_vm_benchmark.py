@@ -1250,8 +1250,7 @@ class ObjdumpSectionRule(mx_benchmark.StdOutRule):
         self.executable = executable
 
     def parse(self, _) -> Iterable[DataPoint]:
-        # False positive in pylint, it does not know about the `text` keyword.
-        # https://github.com/pylint-dev/astroid/issues/715
+        # False positive in pylint, it does not know about the `text` keyword. This is fixed in pylint >=2.5.0
         # pylint: disable=unexpected-keyword-arg
         objdump_output = subprocess.check_output(["objdump", "-h", str(self.executable)], text=True)
         # Instead of the benchmark output, we pass the objdump output
