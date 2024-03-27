@@ -35,15 +35,11 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicLong;
 
-import jdk.internal.misc.Unsafe;
-
 class NmtMallocMemoryInfo {
-    private static final Unsafe U = Unsafe.getUnsafe();
-    protected static final long PEAK_USAGE_OFFSET = U.objectFieldOffset(NmtMallocMemoryInfo.class, "peakUsage");
     private final AtomicLong count = new AtomicLong(0);
     private final AtomicLong used = new AtomicLong(0);
-    private volatile long peakUsage;
-    private volatile long peakCount;
+    private final AtomicLong countAtPeakUsage = new AtomicLong(0);
+    private final AtomicLong peakUsed = new AtomicLong(0);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     NmtMallocMemoryInfo() {
@@ -51,22 +47,21 @@ class NmtMallocMemoryInfo {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void track(UnsignedWord allocationSize) {
-        /*
-         * Similar to Hotspot, we only make a best effort to record the count at the time of the
-         * peak. Observing the memory used and count is not together atomic.
-         */
-        updatePeak(used.addAndGet(allocationSize.rawValue()), count.incrementAndGet());
+        long newUsed = used.addAndGet(allocationSize.rawValue());
+        long newCount = count.incrementAndGet();
+        updatePeak(newUsed, newCount);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void updatePeak(long newUsed, long newCount) {
-        long expectedPeakUsage = peakUsage;
-        while (expectedPeakUsage < newUsed) {
-            if (U.compareAndSetLong(this, PEAK_USAGE_OFFSET, expectedPeakUsage, newUsed)) {
-                peakCount = newCount;
+        long oldUsed = peakUsed.get();
+        while (oldUsed < newUsed) {
+            if (peakUsed.compareAndSet(oldUsed, newUsed)) {
+                /* Recording the count at peak usage is racy (similar to Hotspot). */
+                countAtPeakUsage.set(newCount);
                 return;
             }
-            expectedPeakUsage = peakUsage;
+            oldUsed = peakUsed.get();
         }
     }
 
@@ -89,11 +84,11 @@ class NmtMallocMemoryInfo {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     long getPeakUsed() {
-        return peakUsage;
+        return peakUsed.get();
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     long getCountAtPeakUsage() {
-        return peakCount;
+        return countAtPeakUsage.get();
     }
 }

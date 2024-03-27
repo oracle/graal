@@ -26,9 +26,10 @@
 
 package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.nmt.NmtCategory;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.nmt.NmtCategory;
 
 public class JfrNmtCategorySerializer implements JfrSerializer {
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -41,9 +42,9 @@ public class JfrNmtCategorySerializer implements JfrSerializer {
 
         NmtCategory[] nmtCategories = NmtCategory.values();
         writer.writeCompressedLong(nmtCategories.length);
-        for (int i = 0; i < nmtCategories.length; i++) {
-            writer.writeCompressedInt(i);
-            writer.writeString(nmtCategories[i].getName());
+        for (NmtCategory nmtCategory : nmtCategories) {
+            writer.writeCompressedInt(nmtCategory.ordinal());
+            writer.writeString(nmtCategory.getName());
         }
     }
 }

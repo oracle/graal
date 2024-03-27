@@ -28,18 +28,18 @@ package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertTrue;
 
+import java.util.List;
+
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
+import org.junit.Test;
+
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 
-import java.util.List;
-
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
-import org.junit.Test;
-
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 public class TestNmtEvents extends JfrRecordingTest {
     private static final int ALLOCATION_SIZE = 1024 * 16;
@@ -49,10 +49,9 @@ public class TestNmtEvents extends JfrRecordingTest {
         String[] events = new String[]{
                         JfrEvent.NativeMemoryUsage.getName(),
                         JfrEvent.NativeMemoryUsageTotal.getName(),
-                        "svm.NativeMemoryUsageTotalPeak",
-                        "svm.NativeMemoryUsagePeak"
+                        "jdk.NativeMemoryUsagePeak",
+                        "jdk.NativeMemoryUsageTotalPeak"
         };
-
         Recording recording = startRecording(events);
 
         Pointer ptr = NativeMemory.malloc(WordFactory.unsigned(ALLOCATION_SIZE), NmtCategory.Code);
@@ -66,32 +65,35 @@ public class TestNmtEvents extends JfrRecordingTest {
     }
 
     private static void validateEvents(List<RecordedEvent> events) {
+        assertTrue(events.size() >= 4);
+
         boolean foundNativeMemoryUsage = false;
+        boolean foundNativeMemoryUsagePeak = false;
         boolean foundNativeMemoryUsageTotal = false;
         boolean foundNativeMemoryUsageTotalPeak = false;
-        boolean foundNativeMemoryUsagePeak = false;
 
-        assertTrue(events.size() >= 4);
         for (RecordedEvent e : events) {
-            if (e.getEventType().getName().equals(JfrEvent.NativeMemoryUsage.getName()) &&
-                            e.getString("type").equals(NmtCategory.Code.getName())) {
+            String eventName = e.getEventType().getName();
+            if (eventName.equals(JfrEvent.NativeMemoryUsage.getName()) && e.getString("type").equals(NmtCategory.Code.getName())) {
                 foundNativeMemoryUsage = true;
-
             }
-            if (e.getEventType().getName().equals("svm.NativeMemoryUsageTotalPeak")) {
+
+            if (eventName.equals("jdk.NativeMemoryUsageTotalPeak")) {
                 foundNativeMemoryUsageTotalPeak = true;
             }
-            if (e.getEventType().getName().equals("svm.NativeMemoryUsagePeak") &&
-                            e.getString("type").equals(NmtCategory.Code.getName())) {
+
+            if (eventName.equals("jdk.NativeMemoryUsagePeak") && e.getString("type").equals(NmtCategory.Code.getName())) {
                 foundNativeMemoryUsagePeak = true;
             }
-            if (e.getEventType().getName().equals(JfrEvent.NativeMemoryUsageTotal.getName())) {
+
+            if (eventName.equals(JfrEvent.NativeMemoryUsageTotal.getName())) {
                 foundNativeMemoryUsageTotal = true;
             }
         }
+
         assertTrue(foundNativeMemoryUsage);
-        assertTrue(foundNativeMemoryUsageTotal);
         assertTrue(foundNativeMemoryUsagePeak);
+        assertTrue(foundNativeMemoryUsageTotal);
         assertTrue(foundNativeMemoryUsageTotalPeak);
     }
 }

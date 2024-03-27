@@ -26,11 +26,12 @@
 
 package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import com.oracle.svm.test.jfr.utils.JfrFileParser;
-import com.oracle.svm.test.jfr.utils.RecordingInput;
+import java.io.IOException;
+
 import org.junit.Assert;
 
-import java.io.IOException;
+import com.oracle.svm.test.jfr.utils.JfrFileParser;
+import com.oracle.svm.test.jfr.utils.RecordingInput;
 
 public class NmtCategoryConstantPoolParser extends AbstractSerializerParser {
     public NmtCategoryConstantPoolParser(JfrFileParser parser) {
@@ -43,7 +44,7 @@ public class NmtCategoryConstantPoolParser extends AbstractSerializerParser {
         Assert.assertTrue(count > 0);
         for (int i = 0; i < count; i++) {
             addFoundId(input.readInt());
-            Assert.assertFalse("NMT category name is empty!", input.readUTF().isEmpty());
+            Assert.assertFalse("NMT category name is empty!", input.readUTF().isBlank());
         }
     }
 }

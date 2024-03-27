@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.jfr.JfrCheckpointType;
 import com.oracle.svm.core.jfr.JfrChunkFileWriter;
 import com.oracle.svm.core.jfr.JfrReservedEvent;
@@ -93,7 +94,10 @@ public class JfrFileParser {
         addParser(JfrType.MonitorInflationCause, new MonitorInflationCauseConstantPoolParser(this));
         addParser(JfrType.GCWhen, new GCWhenConstantPoolParser(this));
         addParser(JfrType.OldObject, new OldObjectConstantPoolParser(this));
-        addParser(JfrType.NMTType, new NmtCategoryConstantPoolParser(this));
+
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            addParser(JfrType.NMTType, new NmtCategoryConstantPoolParser(this));
+        }
     }
 
     private void addParser(JfrType type, ConstantPoolParser parser) {

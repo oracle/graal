@@ -28,17 +28,21 @@ package com.oracle.svm.core.jfr.events;
 import jdk.jfr.Category;
 import jdk.jfr.Description;
 import jdk.jfr.Event;
+import jdk.jfr.Experimental;
 import jdk.jfr.Label;
 import jdk.jfr.Name;
 import jdk.jfr.StackTrace;
 
-@Name("svm.NativeMemoryUsagePeak")
+/** Similar to the JFR event jdk.NativeMemoryUsage, except that it tracks the peak usage. */
+@Experimental
+@Name("jdk.NativeMemoryUsagePeak")
 @Label("Native Memory Usage Peak")
-@Description("Information about native memory peak usage of committed virtual memory and malloc.")
-@Category("Native Image")
+@Description("Native memory peak usage for a given memory type in the JVM (GraalVM Native Image only).")
+@Category({"Java Virtual Machine", "Memory"})
 @StackTrace(false)
 public class NativeMemoryUsagePeakEvent extends Event {
     @Label("Memory Type") public String type;
-    @Label("Peak Usage") public long peakUsage;
+    @Label("Peak Reserved") public long peakReserved;
+    @Label("Peak Committed") public long peakCommitted;
     @Label("Count At Peak") public long countAtPeak;
 }
