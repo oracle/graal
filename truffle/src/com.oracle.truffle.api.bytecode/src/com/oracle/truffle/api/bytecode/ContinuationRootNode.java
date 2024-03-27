@@ -40,7 +40,10 @@
  */
 package com.oracle.truffle.api.bytecode;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Interface to model continuations.
@@ -50,13 +53,17 @@ import com.oracle.truffle.api.frame.Frame;
  *
  * @since 24.1
  */
-public interface ContinuationRootNode {
+public abstract class ContinuationRootNode extends RootNode {
+    protected ContinuationRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        super(language, frameDescriptor);
+    }
+
     /**
      * Returns the original root node from which this continuation was created.
      *
      * @since 24.1
      */
-    BytecodeRootNode getSourceRootNode();
+    public abstract BytecodeRootNode getSourceRootNode();
 
     /**
      * Returns the locals stored in the frame at the point that execution was suspended.
@@ -64,5 +71,5 @@ public interface ContinuationRootNode {
      * @see BytecodeRootNode#getLocals
      * @since 24.1
      */
-    Object[] getLocals(Frame frame);
+    public abstract Object[] getLocals(Frame frame);
 }

@@ -49,6 +49,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.AbstractBytecodeTruffleException;
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
@@ -56,6 +57,7 @@ import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
+import com.oracle.truffle.api.bytecode.Instrumentation;
 import com.oracle.truffle.api.bytecode.LocalSetter;
 import com.oracle.truffle.api.bytecode.LocalSetterRange;
 import com.oracle.truffle.api.bytecode.Operation;
@@ -421,6 +423,42 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
         public static Object invokeIndirect(ContinuationResult result, Object value,
                         @Cached IndirectCallNode callNode) {
             return callNode.call(result.getContinuationCallTarget(), result.getFrame(), value);
+        }
+    }
+
+    @Instrumentation
+    public static final class IncrementValue {
+        @Specialization
+        public static long doIncrement(long value) {
+            return value + 1;
+        }
+    }
+
+    @Instrumentation
+    public static final class DoubleValue {
+        @Specialization
+        public static long doDouble(long value) {
+            return value << 1;
+        }
+    }
+
+    @Operation
+    public static final class EnableIncrementValueInstrumentation {
+        @Specialization
+        public static void doEnable(@Bind("$root") BasicInterpreter root) {
+            BytecodeConfig.Builder configBuilder = AbstractBasicInterpreterTest.invokeNewConfigBuilder(root.getClass());
+            configBuilder.addInstrumentation(IncrementValue.class);
+            root.getRootNodes().update(configBuilder.build());
+        }
+    }
+
+    @Operation
+    public static final class EnableDoubleValueInstrumentation {
+        @Specialization
+        public static void doEnable(@Bind("$root") BasicInterpreter root) {
+            BytecodeConfig.Builder configBuilder = AbstractBasicInterpreterTest.invokeNewConfigBuilder(root.getClass());
+            configBuilder.addInstrumentation(DoubleValue.class);
+            root.getRootNodes().update(configBuilder.build());
         }
     }
 

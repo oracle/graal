@@ -1120,8 +1120,6 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
         List<Instruction> instructions = data.getInstructions();
 
-        System.out.println(node.dump());
-
         assertEquals(0, s1.getBeginBci());
         assertEquals(instructions.get(1).getBci(), s1.getEndBci());
 

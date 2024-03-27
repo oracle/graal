@@ -81,12 +81,20 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public final class ContinuationResult {
 
-    private final ContinuationLocation location;
+    private final ContinuationRootNode rootNode;
     private final MaterializedFrame frame;
     private final Object result;
 
-    ContinuationResult(ContinuationLocation location, MaterializedFrame frame, Object result) {
-        this.location = location;
+    /**
+     * Creates a continuation.
+     * <p>
+     * The generated interpreter will use this constructor; continuations should not be created
+     * directly in user code.
+     *
+     * @since 24.1
+     */
+    public ContinuationResult(ContinuationRootNode rootNode, MaterializedFrame frame, Object result) {
+        this.rootNode = rootNode;
         this.frame = frame;
         this.result = result;
     }
@@ -112,7 +120,7 @@ public final class ContinuationResult {
      * @since 24.1
      */
     public RootNode getContinuationRootNode() {
-        return location.getRootNode();
+        return rootNode;
     }
 
     /**
@@ -130,7 +138,7 @@ public final class ContinuationResult {
      * @since 24.1
      */
     public RootCallTarget getContinuationCallTarget() {
-        return location.getRootNode().getCallTarget();
+        return rootNode.getCallTarget();
     }
 
     /**
@@ -176,6 +184,6 @@ public final class ContinuationResult {
      */
     @Override
     public String toString() {
-        return String.format("ContinuationResult [location=%s, result=%s]", location, result);
+        return String.format("ContinuationResult [bci=%s, result=%s]", getBci(), result);
     }
 }
