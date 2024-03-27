@@ -58,6 +58,8 @@ public class NativeMemoryTracking {
     private static final UnsignedWord ALIGNMENT = WordFactory.unsigned(16);
     private static final int MAGIC = 0xF0F1F2F3;
     private final NmtMallocMemorySnapshot mallocMemorySnapshot = new NmtMallocMemorySnapshot();
+    private final NmtVirtualMemorySnapshot virtualMemorySnapshot = new NmtVirtualMemorySnapshot();
+    private final NmtVirtualMemoryTracker virtualMemoryTracker = new NmtVirtualMemoryTracker();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public NativeMemoryTracking() {
@@ -148,24 +150,120 @@ public class NativeMemoryTracking {
         return mallocMemorySnapshot.getInfoByCategory(category).getUsed();
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void trackReserve(PointerBase baseAddr, UnsignedWord size, NmtCategory category) {
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            NativeMemoryTracking.singleton().virtualMemoryTracker.trackReserve(baseAddr, size, category);
+        }
+    }
+
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static void recordReserve(UnsignedWord size, NmtCategory category) {
+        NativeMemoryTracking.singleton().virtualMemorySnapshot.getInfoByCategory(category).trackReserved(size);
+        NativeMemoryTracking.singleton().virtualMemorySnapshot.getTotalInfo().trackReserved(size);
+    }
+
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void trackCommit(PointerBase baseAddr, UnsignedWord size, NmtCategory category) {
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            NativeMemoryTracking.singleton().virtualMemoryTracker.trackCommit(baseAddr, size, category);
+        }
+    }
+
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static void recordCommit(UnsignedWord size, NmtCategory category) {
+        NativeMemoryTracking.singleton().virtualMemorySnapshot.getInfoByCategory(category).trackCommitted(size);
+        NativeMemoryTracking.singleton().virtualMemorySnapshot.getTotalInfo().trackCommitted(size);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void trackUncommit(PointerBase baseAddr, UnsignedWord size) {
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            NativeMemoryTracking.singleton().virtualMemoryTracker.trackUncommit(baseAddr, size);
+        }
+    }
+
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static void recordUncommit(UnsignedWord size, NmtCategory category) {
+        NativeMemoryTracking.singleton().virtualMemorySnapshot.getInfoByCategory(category).trackUncommit(size);
+        NativeMemoryTracking.singleton().virtualMemorySnapshot.getTotalInfo().trackUncommit(size);
+    }
+
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void trackFree(PointerBase baseAddr) {
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            NativeMemoryTracking.singleton().virtualMemoryTracker.trackFree(baseAddr);
+        }
+    }
+
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static void recordFree(UnsignedWord size, NmtCategory category) {
+        NativeMemoryTracking.singleton().virtualMemorySnapshot.getInfoByCategory(category).trackFree(size);
+        NativeMemoryTracking.singleton().virtualMemorySnapshot.getTotalInfo().trackFree(size);
+    }
+
+    public static long getReservedByCategory(NmtCategory category) {
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            return NativeMemoryTracking.singleton().virtualMemorySnapshot.getInfoByCategory(category).getReservedSize();
+        }
+        return -1;
+    }
+
+    public static long getCommittedByCategory(NmtCategory category) {
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            return NativeMemoryTracking.singleton().virtualMemorySnapshot.getInfoByCategory(category).getCommittedSize();
+        }
+        return -1;
+    }
+
+    public static long getPeakCommittedByCategory(NmtCategory category) {
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            return NativeMemoryTracking.singleton().virtualMemorySnapshot.getInfoByCategory(category).getPeakCommittedSize();
+        }
+        return -1;
+    }
+
+    public static long getPeakReservedByCategory(NmtCategory category) {
+        if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
+            return NativeMemoryTracking.singleton().virtualMemorySnapshot.getInfoByCategory(category).getPeakReservedSize();
+        }
+        return -1;
+    }
+
     public static RuntimeSupport.Hook shutdownHook() {
-        return isFirstIsolate -> NativeMemoryTracking.singleton().printStatistics();
+        return isFirstIsolate -> {
+            NativeMemoryTracking.singleton().printStatistics();
+            NativeMemoryTracking.teardown();
+        };
     }
 
     public void printStatistics() {
         if (VMInspectionOptions.PrintNMTStatistics.getValue()) {
             System.out.println();
             System.out.println("Native memory tracking");
-            System.out.println("  Total used memory: " + mallocMemorySnapshot.getTotalInfo().getUsed() + " bytes");
-            System.out.println("  Total alive allocations: " + mallocMemorySnapshot.getTotalInfo().getCount());
+            System.out.println("  Total used malloc memory: " + mallocMemorySnapshot.getTotalInfo().getUsed() + " bytes");
+            System.out.println("  Total alive malloc allocations: " + mallocMemorySnapshot.getTotalInfo().getCount());
+            System.out.println("  Total committed memory: " + virtualMemorySnapshot.getTotalInfo().getCommittedSize() + " bytes");
+            System.out.println("  Total reserved memory: " + virtualMemorySnapshot.getTotalInfo().getReservedSize() + " bytes");
+            System.out.println("  Peak Total committed memory: " + virtualMemorySnapshot.getTotalInfo().getPeakCommittedSize() + " bytes");
+            System.out.println("  Peak Total reserved memory: " + virtualMemorySnapshot.getTotalInfo().getPeakReservedSize() + " bytes");
 
             for (int i = 0; i < NmtCategory.values().length; i++) {
                 String name = NmtCategory.values()[i].getName();
-                NmtMallocMemoryInfo info = mallocMemorySnapshot.getInfoByCategory(i);
+                NmtMallocMemoryInfo mallocInfo = mallocMemorySnapshot.getInfoByCategory(i);
+                NmtVirtualMemoryInfo vMemInfo = virtualMemorySnapshot.getInfoByCategory(i);
 
-                System.out.println("  " + name + " used memory: " + info.getUsed() + " bytes");
-                System.out.println("  " + name + " alive allocations: " + info.getCount());
+                System.out.println("  " + name + " used memory: " + mallocInfo.getUsed() + " bytes");
+                System.out.println("  " + name + " alive allocations: " + mallocInfo.getCount());
+                System.out.println("  " + name + " committed memory: " + vMemInfo.getCommittedSize());
+                System.out.println("  " + name + " reserved memory: " + vMemInfo.getReservedSize());
+                System.out.println("  " + name + " peak committed memory: " + vMemInfo.getPeakCommittedSize());
+                System.out.println("  " + name + " peak reserved memory: " + vMemInfo.getPeakReservedSize());
             }
         }
+    }
+
+    private static void teardown() {
+        NativeMemoryTracking.singleton().virtualMemoryTracker.teardown();
     }
 }

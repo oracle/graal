@@ -78,6 +78,8 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.nmt.NmtPreImageHeapData;
+import com.oracle.svm.core.nmt.NmtPreImageHeapDataAccess;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
@@ -238,7 +240,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
 
         WordPointer isolatePtr = StackValue.get(WordPointer.class);
-        int error = Isolates.create(isolatePtr, parameters);
+        NmtPreImageHeapData nmtData = NmtPreImageHeapDataAccess.create();
+
+        int error = Isolates.create(isolatePtr, parameters, nmtData);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
@@ -246,6 +250,8 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (SpawnIsolates.getValue()) {
             setHeapBase(Isolates.getHeapBase(isolate));
         }
+
+        NmtPreImageHeapDataAccess.trackAndTeardown(nmtData);
 
         return createIsolate0(isolate, parameters, parsedArgs);
     }
