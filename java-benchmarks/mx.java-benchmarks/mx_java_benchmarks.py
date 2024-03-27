@@ -1615,6 +1615,9 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
 
     def vmArgs(self, bmSuiteArgs):
         vm_args = super(RenaissanceBenchmarkSuite, self).vmArgs(bmSuiteArgs)
+
+        # Renaissance issue #439
+        vm_args.append("-Djava.security.manager=allow")
         return vm_args
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
