@@ -72,11 +72,6 @@ interface JCodings {
     }
 
     private static <S> Iterable<S> loadService(Class<S> service) {
-        Class<?> lookupClass = JCodings.class;
-        Module truffleModule = lookupClass.getModule();
-        if (!truffleModule.canUse(service)) {
-            truffleModule.addUses(service);
-        }
         return TStringAccessor.ACCESSOR.engineSupport().loadServices(service);
     }
 
