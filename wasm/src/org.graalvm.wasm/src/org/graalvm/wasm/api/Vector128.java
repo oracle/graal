@@ -42,12 +42,14 @@ package org.graalvm.wasm.api;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+
+import java.nio.ByteOrder;
 
 @ExportLibrary(InteropLibrary.class)
 @CompilerDirectives.ValueType
@@ -209,26 +211,78 @@ public final class Vector128 implements TruffleObject {
         return bytes;
     }
 
+    private static ByteArraySupport byteArraySupportForByteOrder(ByteOrder byteOrder) {
+        if (byteOrder == ByteOrder.LITTLE_ENDIAN) {
+            return ByteArraySupport.littleEndian();
+        } else {
+            assert byteOrder == ByteOrder.BIG_ENDIAN;
+            return ByteArraySupport.bigEndian();
+        }
+    }
+
     @ExportMessage
-    protected static boolean hasArrayElements(@SuppressWarnings("unused") Vector128 receiver) {
+    protected static boolean hasBufferElements(@SuppressWarnings("unused") Vector128 receiver) {
         return true;
     }
 
     @ExportMessage
-    protected static int getArraySize(@SuppressWarnings("unused") Vector128 receiver) {
+    protected static int getBufferSize(@SuppressWarnings("unused") Vector128 receiver) {
         return 16;
     }
 
     @ExportMessage
-    protected static boolean isArrayElementReadable(@SuppressWarnings("unused") Vector128 receiver, long index) {
-        return index >= 0 && index < 16;
+    protected byte readBufferByte(long byteOffset) throws InvalidBufferOffsetException {
+        if (byteOffset < 0 || byteOffset >= getBufferSize(this)) {
+            throw InvalidBufferOffsetException.create(byteOffset, 1);
+        }
+        return bytes[(int) byteOffset];
     }
 
     @ExportMessage
-    protected byte readArrayElement(long index) throws InvalidArrayIndexException {
-        if (!isArrayElementReadable(this, index)) {
-            throw InvalidArrayIndexException.create(index);
+    protected void readBuffer(long byteOffset, byte[] destination, int destinationOffset, int length) throws InvalidBufferOffsetException {
+        if (byteOffset < 0 || length < 0 || byteOffset + length > getBufferSize(this)) {
+            throw InvalidBufferOffsetException.create(byteOffset, length);
         }
-        return bytes[(int) index];
+        System.arraycopy(bytes, (int) byteOffset, destination, destinationOffset, length);
+    }
+
+    @ExportMessage
+    protected short readBufferShort(ByteOrder byteOrder, long byteOffset) throws InvalidBufferOffsetException {
+        if (byteOffset < 0 || byteOffset >= getBufferSize(this) - 1) {
+            throw InvalidBufferOffsetException.create(byteOffset, 2);
+        }
+        return byteArraySupportForByteOrder(byteOrder).getShort(bytes, (int) byteOffset);
+    }
+
+    @ExportMessage
+    protected int readBufferInt(ByteOrder byteOrder, long byteOffset) throws InvalidBufferOffsetException {
+        if (byteOffset < 0 || byteOffset >= getBufferSize(this) - 3) {
+            throw InvalidBufferOffsetException.create(byteOffset, 4);
+        }
+        return byteArraySupportForByteOrder(byteOrder).getInt(bytes, (int) byteOffset);
+    }
+
+    @ExportMessage
+    protected long readBufferLong(ByteOrder byteOrder, long byteOffset) throws InvalidBufferOffsetException {
+        if (byteOffset < 0 || byteOffset >= getBufferSize(this) - 7) {
+            throw InvalidBufferOffsetException.create(byteOffset, 8);
+        }
+        return byteArraySupportForByteOrder(byteOrder).getLong(bytes, (int) byteOffset);
+    }
+
+    @ExportMessage
+    protected float readBufferFloat(ByteOrder byteOrder, long byteOffset) throws InvalidBufferOffsetException {
+        if (byteOffset < 0 || byteOffset >= getBufferSize(this) - 3) {
+            throw InvalidBufferOffsetException.create(byteOffset, 4);
+        }
+        return byteArraySupportForByteOrder(byteOrder).getFloat(bytes, (int) byteOffset);
+    }
+
+    @ExportMessage
+    protected double readBufferDouble(ByteOrder byteOrder, long byteOffset) throws InvalidBufferOffsetException {
+        if (byteOffset < 0 || byteOffset >= getBufferSize(this) - 7) {
+            throw InvalidBufferOffsetException.create(byteOffset, 8);
+        }
+        return byteArraySupportForByteOrder(byteOrder).getDouble(bytes, (int) byteOffset);
     }
 }
